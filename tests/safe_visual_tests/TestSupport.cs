@@ -1,12 +1,14 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 using Ihc;
 using Ihc.Vis;
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 using Ihc.Vis.Session;
 using Microsoft.Extensions.Logging;
 
@@ -30,20 +32,20 @@ public sealed class FakeDialogService : IDialogService
     public VariablePropertiesResult? VariablePropertiesResult { get; set; }
     public VariablePropertiesInput? LastVariablePropertiesInput { get; private set; }
     public int EditVariablePropertiesCalls { get; private set; }
-    public ProductPropertiesResult? ProductPropertiesResult { get; set; }
-    public ProductPropertiesInput? LastProductPropertiesInput { get; private set; }
-    public int EditProductPropertiesCalls { get; private set; }
-    public Func<ProductPropertiesInput, ProductPropertiesResult?>? ProductPropertiesResponder { get; set; }
+
     public SceneContainerResult? SceneContainerResult { get; set; }
     public SceneContainerInput? LastSceneContainerInput { get; private set; }
     public int EditSceneContainerCalls { get; private set; }
     public PinPropertiesResult? PinPropertiesResult { get; set; }
     public PinPropertiesInput? LastPinPropertiesInput { get; private set; }
     public int EditPinPropertiesCalls { get; private set; }
-    public ModemPropertiesResult? ModemPropertiesResult { get; set; }
-    public ModemPropertiesInput? LastModemPropertiesInput { get; private set; }
-    public int EditModemPropertiesCalls { get; private set; }
-    public Func<ModemPropertiesInput, ModemPropertiesResult?>? ModemPropertiesResponder { get; set; }
+    // The ONE generic product dialog. There is no *Input record to record: the dialog's input IS the composed
+    // descriptor, so a test that wants to know what the installer was offered asserts on LastProductDialog.
+    public ProductDialogDescriptor? LastProductDialog { get; private set; }
+    public int EditProductDialogCalls { get; private set; }
+    /// <summary>Answers the dialog. Null (the default) means CANCEL; return an empty edit list for the ordinary
+    /// "OK without touching anything", which is a commit and not a cancel.</summary>
+    public Func<ProductDialogDescriptor, ProductDialogEdits?>? ProductDialogResponder { get; set; }
     public AdvancedDimmerResult? AdvancedDimmerResult { get; set; }
     public AdvancedDimmerInput? LastAdvancedDimmerInput { get; private set; }
     public int EditAdvancedDimmerCalls { get; private set; }
@@ -148,27 +150,6 @@ public sealed class FakeDialogService : IDialogService
         return Task.FromResult(VariablePropertiesResult);
     }
 
-    /// <summary>Makes the product dialog answer Cancel. Needed explicitly because the DEFAULT is now OK-without-edits:
-    /// the dialog opens as part of placing a product (uxparity S-12), so "no result configured" has to mean the
-    /// ordinary path — a test that wanted a product would otherwise silently get none.</summary>
-    public bool CancelProductProperties { get; set; }
-
-    public Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input)
-    {
-        EditProductPropertiesCalls++;
-        LastProductPropertiesInput = input;
-        if (CancelProductProperties)
-            return Task.FromResult<ProductPropertiesResult?>(null);
-        if (ProductPropertiesResponder is not null)
-            return Task.FromResult(ProductPropertiesResponder(input));
-        return Task.FromResult(ProductPropertiesResult ?? EchoUnchanged(input));
-    }
-
-    // "OK without editing anything": every field handed straight back, so an insert keeps the catalog defaults.
-    private static ProductPropertiesResult? EchoUnchanged(ProductPropertiesInput i) =>
-        new(i.Name, i.CurrentLocalityId, i.Note, i.CableType, i.CableNumber, i.IdentificationCode, i.LightGroup,
-            OpenAdvanced: false, ConfigureTerminalPinId: null, Position: i.Position, EndUserReport: i.EndUserReport);
-
     public Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input)
     {
         EditSceneContainerCalls++;
@@ -183,23 +164,73 @@ public sealed class FakeDialogService : IDialogService
         return Task.FromResult(PinPropertiesResult);
     }
 
-    /// <summary>Makes the modem dialog answer Cancel — same reason as <see cref="CancelProductProperties"/>: the
-    /// dialog now opens as part of placing a modem, so the default has to be the ordinary OK path.</summary>
-    public bool CancelModemProperties { get; set; }
+    /// <summary>Makes the generic product dialog answer Cancel. Needed explicitly because the DEFAULT is
+    /// OK-without-edits: the dialog opens as part of PLACING a product (uxparity S-12), so "no result configured"
+    /// has to mean the ordinary path — a test that wanted a product would otherwise silently get none.</summary>
+    public bool CancelProductDialog { get; set; }
 
-    public Task<ModemPropertiesResult?> EditModemPropertiesAsync(ModemPropertiesInput input)
+    /// <summary>The terminal rows handed to the last dialog — what the grids would have shown.</summary>
+    public IReadOnlyList<ProductTerminal>? LastProductDialogTerminals { get; private set; }
+
+    /// <summary>The settings rows handed to the last dialog — what the Indstillinger grid would have shown.</summary>
+    public IReadOnlyList<ProductSetting>? LastProductDialogSettings { get; private set; }
+
+    public Task<ProductDialogEdits?> EditProductDialogAsync(
+        ProductDialogDescriptor descriptor, IReadOnlyList<ProductTerminal>? terminals = null,
+        IReadOnlyList<ProductSetting>? settings = null)
     {
-        EditModemPropertiesCalls++;
-        LastModemPropertiesInput = input;
-        if (CancelModemProperties)
-            return Task.FromResult<ModemPropertiesResult?>(null);
-        if (ModemPropertiesResponder is not null)
-            return Task.FromResult(ModemPropertiesResponder(input));
-        return Task.FromResult<ModemPropertiesResult?>(ModemPropertiesResult ?? new ModemPropertiesResult(
-            input.Name, input.CurrentLocalityId, input.Note, input.IdentificationCode,
-            input.Cable0V, input.Cable24V, input.CableRS485Minus, input.CableRS485Plus,
-            input.PinCode, input.PhoneNumbers));
+        EditProductDialogCalls++;
+        LastProductDialog = descriptor;
+        LastProductDialogTerminals = terminals;
+        LastProductDialogSettings = settings;
+        if (CancelProductDialog)
+            return Task.FromResult<ProductDialogEdits?>(null);
+        if (ProductDialogResponder is not null)
+            return Task.FromResult(ProductDialogResponder(descriptor));
+        // The default is OK with NOTHING changed — the untouched-OK commit. Echoing every field back as an "edit"
+        // would make every test that opens this dialog also a test of writing every attribute.
+        return Task.FromResult<ProductDialogEdits?>(new ProductDialogEdits([]));
     }
+
+    // ── Reading and answering the composed dialog, by CAPTION ────────────────────────────────────────────────
+    // A test asks what the installer was OFFERED and answers as they would. Caption rather than attribute name
+    // because the caption is what the dialog puts on screen, and it is what the vendor oracle records.
+
+    private IEnumerable<DialogDescriptorField> OfferedFields =>
+        LastProductDialog?.Groups.SelectMany(g => g.Fields) ?? [];
+
+    /// <summary>Whether the last dialog offered a field with this caption at all.</summary>
+    public bool Offered(string caption) => OfferedFields.Any(f => f.Caption == caption);
+
+    /// <summary>The value the last dialog SHOWED for a field, or null when it offered no such field.</summary>
+    public string? OfferedValue(string caption) =>
+        OfferedFields.FirstOrDefault(f => f.Caption == caption)?.Value;
+
+    /// <summary>Whether the last dialog showed a field greyed out (a locked product's Navn).</summary>
+    public bool OfferedReadOnly(string caption) =>
+        OfferedFields.FirstOrDefault(f => f.Caption == caption)?.ReadOnly ?? false;
+
+    /// <summary>Whether the last dialog hosted a hand-written composite — the terminal grids, the Avanceret button.</summary>
+    public bool OfferedWidget(DialogWidgetKind kind) =>
+        LastProductDialog?.Groups.Any(g => g.Widgets.Contains(kind)) ?? false;
+
+    /// <summary>Answers OK, having edited the named fields. A caption the dialog does not offer is an ERROR, not a
+    /// silent no-op: a test that thinks it typed into a field which is not there is testing nothing.</summary>
+    public void RespondWithEdits(params (string Caption, string Value)[] edits) =>
+        ProductDialogResponder = descriptor => new ProductDialogEdits(
+            [.. edits.Select(e =>
+            {
+                DialogDescriptorField field = descriptor.Groups.SelectMany(g => g.Fields)
+                    .FirstOrDefault(f => f.Caption == e.Caption)
+                    ?? throw new InvalidOperationException(
+                        $"The dialog for '{descriptor.Title}' offers no field captioned '{e.Caption}'. "
+                        + $"It offers: {string.Join(", ", descriptor.Groups.SelectMany(g => g.Fields).Select(f => f.Caption))}");
+                return new ProductDialogEdit(field.Target, field.Attribute, e.Value);
+            })]);
+
+    /// <summary>Answers OK and steps into a hand-written composite, as clicking <i>Avanceret</i> or a terminal row does.</summary>
+    public void RespondWithWidget(DialogWidgetKind kind, ElementId? target = null) =>
+        ProductDialogResponder = _ => new ProductDialogEdits([], new ProductDialogWidgetAction(kind, target));
 
     public Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input)
     {

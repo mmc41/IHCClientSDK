@@ -543,7 +543,7 @@ public class MainWindowViewModelTests
 
     // US-011: applying product documentation writes the mapped attributes on the product element.
     [Test]
-    public async Task UpdateProduct_WritesDocumentationAttributes()
+    public async Task TheProductDialog_WritesDocumentationAttributes()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -551,10 +551,13 @@ public class MainWindowViewModelTests
         var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
         var localityId = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var pid = (await harness.Session.AddProductAsync(localityId, product.ProductIdentifier))!.Value;
+        // _0x2701 rather than the first wired product: its name is editable (it omits `locked`), and since T031
+        // the write-back refuses an edit to a field the dialog offered read-only.
+        var pid = (await harness.Session.AddProductAsync(localityId, "_0x2701"))!.Value;
 
-        var ok = await harness.Session.UpdateProductAsync(pid,
-            new ProductPropertiesResult("My push button", localityId.ToToken(), "hallway", "LK 4x0.5", "K7", "ID-42", "LG-3"));
+        var ok = await harness.Session.EditProductDialogAsync(pid,
+            ("Navn", "My push button"), ("Note", "hallway"), ("Kabeltype", "LK 4x0.5"),
+            ("Kabelnummer", "K7"), ("Identifikationskode", "ID-42"), ("Lysgruppe", "LG-3"));
 
         var el = harness.Session.Current!.FindById(pid)!;
         Assert.Multiple(() =>
@@ -570,9 +573,13 @@ public class MainWindowViewModelTests
         });
     }
 
-    // US-011: setting Location to another locality re-parents the product (ids preserved).
+    // Was "setting Location to another locality re-parents the product". T014 removed in-dialog re-parenting
+    // from both properties dialogs to match the original: Placering is the free-text POSITION descriptor, and
+    // moving a device between localities is a tree operation (US-054/A-13). The guarantee worth keeping is the
+    // same one stated positively — committing a properties edit must never move the product out from under the
+    // installer.
     [Test]
-    public async Task UpdateProduct_LocationChange_ReParentsProduct()
+    public async Task TheProductDialog_NeverMovesTheProductBetweenLocalities()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -580,17 +587,16 @@ public class MainWindowViewModelTests
         var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
         var livingRoomId = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var kitchenId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
         var pid = (await harness.Session.AddProductAsync(livingRoomId, product.ProductIdentifier))!.Value;
 
-        await harness.Session.UpdateProductAsync(pid,
-            new ProductPropertiesResult(product.DisplayName, kitchenId.ToToken(), "", "", "", "", ""));
+        await harness.Session.EditProductDialogAsync(pid, ("Placering", "i loft"));
 
         Assert.Multiple(() =>
         {
-            Assert.That(vm.InstallationNodes[0].Children[0].Children, Is.Empty, "product left Living room");
-            Assert.That(vm.InstallationNodes[0].Children[2].Children.Select(c => c.ElementId),
-                Does.Contain((Ihc.Vis.Model.ElementId?)pid), "product now under Kitchen");
+            Assert.That(vm.InstallationNodes[0].Children[0].Children.Select(c => c.ElementId),
+                Does.Contain((Ihc.Vis.Model.ElementId?)pid), "the product stays in Living room");
+            Assert.That(harness.Session.Current!.FindById(pid)!.GetAttribute("position"), Is.EqualTo("i loft"),
+                "Placering wrote the position attribute instead");
         });
     }
 
@@ -611,7 +617,7 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1), "the properties dialog opens on insert");
+            Assert.That(harness.Dialogs.EditProductDialogCalls, Is.EqualTo(1), "the properties dialog opens on insert");
             Assert.That(vm.InstallationNodes[0].Children[0].Children, Has.Count.EqualTo(1),
                 "the product is inserted under the selected locality");
         });
@@ -629,10 +635,10 @@ public class MainWindowViewModelTests
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, lampeudtag.ProductIdentifier);
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
 
-        harness.Dialogs.ProductPropertiesResult = null;   // cancel — just capture the input
+        harness.Dialogs.CancelProductDialog = true;   // cancel - just capture what the dialog offered
         await vm.PropertiesCommand.ExecuteAsync(productNode);
 
-        Assert.That(harness.Dialogs.LastProductPropertiesInput!.Title, Is.EqualTo("Lampeudtag"),
+        Assert.That(harness.Dialogs.LastProductDialog!.Title, Is.EqualTo("Lampeudtag"),
             "the title is the product type, not the generic 'Product properties'");
     }
 
@@ -652,10 +658,10 @@ public class MainWindowViewModelTests
         var pinId = productNode.Children.First(c => c.NodeKind == "pin:dataline_input").ElementId!.Value;
         await harness.Session.UpdatePinAsync(pinId, new PinPropertiesResult(2, 4, "brun", string.Empty, false));  // Datalinie 2.04
 
-        harness.Dialogs.ProductPropertiesResult = null;   // cancel — just capture the dialog input
+        harness.Dialogs.CancelProductDialog = true;   // cancel - just capture what the dialog offered
         await vm.PropertiesCommand.ExecuteAsync(productNode);
 
-        var terminals = harness.Dialogs.LastProductPropertiesInput!.Terminals!;
+        var terminals = harness.Dialogs.LastProductDialogTerminals!;
         Assert.Multiple(() =>
         {
             Assert.That(terminals.Any(t => !t.IsOutput), "the input terminal grid is populated");
@@ -678,18 +684,16 @@ public class MainWindowViewModelTests
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
 
-        harness.Dialogs.ProductPropertiesResponder = i =>
-            new ProductPropertiesResult(i.Name, i.CurrentLocalityId, i.Note, i.CableType, i.CableNumber,
-                i.IdentificationCode, i.LightGroup, Position: "i loft");
+        harness.Dialogs.RespondWithEdits(("Placering", "i loft"));
         await vm.PropertiesCommand.ExecuteAsync(productNode);
 
-        harness.Dialogs.ProductPropertiesResponder = null;
-        harness.Dialogs.ProductPropertiesResult = null;   // reopen and cancel — just capture the input
+        harness.Dialogs.ProductDialogResponder = null;
+        harness.Dialogs.CancelProductDialog = true;   // reopen and cancel - just capture what it offered
         await vm.PropertiesCommand.ExecuteAsync(productNode);
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastProductPropertiesInput!.Position, Is.EqualTo("i loft"), "Placement round-trips");
+            Assert.That(harness.Dialogs.OfferedValue("Placering"), Is.EqualTo("i loft"), "Placement round-trips");
             Assert.That(vm.InstallationNodes[0].Children[0].Children[0].DisplayName, Does.Contain("(i loft)"),
                 "the placement renders in the tree label");
         });
@@ -710,9 +714,9 @@ public class MainWindowViewModelTests
         {
             var pid = (await harness.Session.AddProductAsync(loc, productIdentifier))!.Value;
             var node = FindNodeById(vm.InstallationNodes, pid)!;
-            harness.Dialogs.ProductPropertiesResult = null;   // cancel — just capture the input
+            harness.Dialogs.CancelProductDialog = true;   // cancel - just capture what the dialog offered
             await vm.PropertiesCommand.ExecuteAsync(node);
-            return harness.Dialogs.LastProductPropertiesInput!.NameLocked;
+            return harness.Dialogs.OfferedReadOnly("Navn");
         }
 
         bool lampeudtag = await NameLockedFor("_0x2202");   // (1) inserts with locked="yes"
@@ -727,61 +731,62 @@ public class MainWindowViewModelTests
         });
     }
 
-    // A-23/US-012: the end-user-report flag is exposed as a checkbox that reflects and writes the product's
-    // enduser_report attribute (shipped always-visible; the visibility gate is unmeasured — §2 C15).
+    // A-23/US-012 + C15: the enduser_report flag. The vendor NEVER shows this control — control 303 is hidden
+    // project-wide (13 products / 6 families measured 2026-07-18, 0 showing it), so OpenVisual's checkbox shipped
+    // with IsVisible="False" and existed only to read the value and write it straight back.
+    //
+    // Since T030 the composed dialog does not offer the field at all, and — because only CHANGED fields become
+    // edits — never writes it either. The value survives by being left alone, which is a stronger guarantee than
+    // the round-trip it replaces: a read-and-rewrite can corrupt on a read bug, and not touching cannot.
     [Test]
-    public async Task ProductProperties_HasEndUserReportCheckbox()
+    public async Task ProductProperties_LeavesTheEndUserReportFlagAlone()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var product = harness.ProjectService.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
-        await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
+        ElementId pid = (await harness.Session.AddProductAsync(
+            vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier))!.Value;
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
+        string? before = harness.Session.Current!.FindById(pid)!.GetAttribute("enduser_report");
 
-        // Reflects+writes both directions (the product's inserted default is not relied on).
-        async Task<bool> SetAndReopen(bool value)
-        {
-            harness.Dialogs.ProductPropertiesResponder = i =>
-                new ProductPropertiesResult(i.Name, i.CurrentLocalityId, i.Note, i.CableType, i.CableNumber,
-                    i.IdentificationCode, i.LightGroup, EndUserReport: value);
-            await vm.PropertiesCommand.ExecuteAsync(productNode);
-            harness.Dialogs.ProductPropertiesResponder = null;
-            harness.Dialogs.ProductPropertiesResult = null;   // reopen and cancel — capture the reflected input
-            await vm.PropertiesCommand.ExecuteAsync(productNode);
-            return harness.Dialogs.LastProductPropertiesInput!.EndUserReport;
-        }
-
-        bool turnedOn = await SetAndReopen(true);
-        bool turnedOff = await SetAndReopen(false);
+        harness.Dialogs.RespondWithEdits(("Note", "rørt"));   // an ordinary OK that changes something else
+        await vm.PropertiesCommand.ExecuteAsync(productNode);
 
         Assert.Multiple(() =>
         {
-            Assert.That(turnedOn, Is.True, "checking the box writes enduser_report=yes and reflects on reopen");
-            Assert.That(turnedOff, Is.False, "unchecking it writes enduser_report=no and reflects on reopen");
+            Assert.That(harness.Dialogs.Offered("Medtag produkt i slutbrugerrapport"), Is.False,
+                "the vendor shows no such control, so neither does the composed dialog");
+            Assert.That(harness.Session.Current!.FindById(pid)!.GetAttribute("enduser_report"), Is.EqualTo(before),
+                "and committing the dialog leaves the stored flag exactly as it was");
+            Assert.That(harness.Session.Current!.FindById(pid)!.GetAttribute("note"), Is.EqualTo("rørt"),
+                "precondition: the commit really happened");
         });
     }
 
     // US-011: reopening via the Properties route on a product node edits its documentation (not the locality dialog).
+    //
+    // On an UNLOCKED product (_0x2701 omits `locked`, per ProductName_DisabledWhenElementLocked). It used to run on
+    // whichever wired product came first, which is locked — and the rename went through anyway, because the fake
+    // handed back a result the real dialog could never have produced from a greyed-out box. Since T030 the engine
+    // refuses an edit to a field it offered read-only, so that route is closed and the test has to pick a product
+    // whose name the installer can actually type in.
     [Test]
     public async Task ProductNode_Properties_OpensProductDialog_AndApplies()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
-        await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
+        await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, "_0x2701");
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
 
-        harness.Dialogs.ProductPropertiesResponder =
-            i => new ProductPropertiesResult("Renamed button", i.CurrentLocalityId, "", "", "", "", "");
+        harness.Dialogs.RespondWithEdits(("Navn", "Renamed button"));
         await vm.PropertiesCommand.ExecuteAsync(productNode);
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1), "the product dialog opened");
+            Assert.That(harness.Dialogs.EditProductDialogCalls, Is.EqualTo(1), "the product dialog opened");
             Assert.That(harness.Dialogs.EditPropertiesCalls, Is.EqualTo(0), "not the locality rename dialog");
             Assert.That(vm.InstallationNodes[0].Children[0].Children[0].DisplayName, Is.EqualTo("Renamed button"));
         });
@@ -856,7 +861,7 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(harness.Dialogs.EditPinPropertiesCalls, Is.EqualTo(2));
-            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(0), "not the product dialog");
+            Assert.That(harness.Dialogs.EditProductDialogCalls, Is.EqualTo(0), "not the product dialog");
             Assert.That(harness.Dialogs.EditPropertiesCalls, Is.EqualTo(0), "not the locality dialog");
             Assert.That(harness.Dialogs.LastPinPropertiesInput!.IsOutput, Is.False);
             Assert.That(harness.Dialogs.LastPinPropertiesInput!.InUseTerminals,
@@ -891,7 +896,7 @@ public class MainWindowViewModelTests
 
     // US-013: editing modem properties writes documentation, the four cabling colours, the PIN and a phone number.
     [Test]
-    public async Task UpdateModem_WritesDocumentationCablingPinAndPhone()
+    public async Task TheModemDialog_WritesDocumentationCablingPinAndPhone()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -900,9 +905,14 @@ public class MainWindowViewModelTests
         var loc = vm.InstallationNodes[0].Children[7].ElementId!.Value;   // Garage
         var mid = (await harness.Session.AddProductAsync(loc, modem.ProductIdentifier))!.Value;
 
-        var ok = await harness.Session.UpdateModemAsync(mid, new ModemPropertiesResult(
-            "Alarm modem", loc.ToToken(), "roof", "ID-9",
-            "black", "red", "blue", "white", "4321", new List<string> { "+4512345678", "", "", "" }));
+        // Navn is deliberately absent: the modem's is composed READ-ONLY (the vendor greys it), and since T031 the
+        // write-back refuses an edit to a field it offered read-only. The old bespoke command took a Name and wrote
+        // it unconditionally, which is a write the dialog could never have produced.
+        var ok = await harness.Session.EditProductDialogAsync(mid,
+            ("Placering", "på taget"), ("Note", "roof"), ("Identifikationskode", "ID-9"),
+            ("Ledningsfarve 0V", "black"), ("Ledningsfarve 24V", "red"),
+            ("Ledningsfarve RS485 minus", "blue"), ("Ledningsfarve RS485 plus", "white"),
+            ("Pin Kode", "4321"), ("Nummer 1", "+4512345678"));
 
         var el = harness.Session.Current!.FindById(mid)!;
         var pin = el.DescendantsAndSelf().First(e => e.Tag == "sms_modem_pincode");
@@ -910,7 +920,7 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(ok, Is.True);
-            Assert.That(el.GetAttribute("name"), Is.EqualTo("Alarm modem"));
+            Assert.That(el.GetAttribute("position"), Is.EqualTo("på taget"));
             Assert.That(el.GetAttribute("documentation_tag"), Is.EqualTo("ID-9"));
             Assert.That(el.GetAttribute("cablecolour_0V"), Is.EqualTo("black"));
             Assert.That(el.GetAttribute("cablecolour_RS485Plus"), Is.EqualTo("white"));
@@ -936,11 +946,133 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.EditModemPropertiesCalls, Is.EqualTo(1),
-                "a modem opens the MODEM dialog on insert (IHC Visual raises 'SMS Modem Egenskaber')");
-            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(0), "not the generic product dialog");
+            Assert.That(harness.Dialogs.EditProductDialogCalls, Is.EqualTo(1),
+                "a modem raises a dialog on insert (IHC Visual raises 'SMS Modem Egenskaber')");
+            // Since T029 "the MODEM dialog" is not a different window — it is a different DESCRIPTOR through the
+            // one window. What makes it the modem's is what the composer put in it, so that is what is asserted.
+            Assert.That(harness.Dialogs.LastProductDialog?.Title, Is.EqualTo("SMS Modem Egenskaber"));
+            Assert.That(harness.Dialogs.Offered("Nummer 30"), Is.True,
+                "and it is the MODEM's descriptor — the wired one has no telephone slots");
             Assert.That(vm.InstallationNodes[0].Children[0].Children, Has.Count.EqualTo(1),
                 "the modem is inserted under the selected locality");
+        });
+    }
+
+    // F-52 / US-013: the modem dialog must offer EVERY phone slot the product declares. The catalog SMS
+    // modem carries 30 `sms_modem_phonenumber` children (three `sms_modem_settings` groups of ten), and the
+    // vendor's own dialog renders all 30 as `Nummer 1`…`Nummer 30` (measured 2026-08-11: 39 labelled
+    // fields). OpenVisual offered four, so 26 recipient slots were unreachable — an absent capability,
+    // not a layout difference.
+    //
+    // Asserted at the COORDINATOR seam — what the dialog service was handed — rather than against
+    // ModemView.PhoneNumbers or a window's named controls. Both of those are now GONE (T029/T031) — which is
+    // exactly why the seam was the right thing to assert from while they still existed. Since T029 it carries
+    // the composed DESCRIPTOR, so the slots are counted as offered fields.
+    [Test]
+    public async Task ModemDialog_OffersEveryPhoneSlotTheProductDeclares()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        vm.SelectNode(vm.InstallationNodes[0].Children[0]);
+
+        var modemLeaf = Category(vm, CatalogMenu.BusProductsCategory).First(m => m.Header == "SMS Modem");
+        await ((IAsyncRelayCommand)modemLeaf.Command!).ExecuteAsync(null);
+
+        ProductDialogDescriptor? offered = harness.Dialogs.LastProductDialog;
+        Assert.That(offered, Is.Not.Null);
+        Assert.That(PhoneSlotsOf(offered!), Has.Count.EqualTo(30),
+            "the dialog offers one field per declared slot; the catalog modem declares 30");
+    }
+
+    /// <summary>The composed dialog's telephone slots, in the order the composer offered them.</summary>
+    private static List<DialogDescriptorField> PhoneSlotsOf(ProductDialogDescriptor descriptor) =>
+        descriptor.Groups.SelectMany(g => g.Fields)
+            .Where(f => f.Caption.StartsWith("Nummer", StringComparison.Ordinal))
+            .ToList();
+
+    // The count alone would pass on a list of 30 blanks that all write slot 1. This pins the ROUND TRIP:
+    // 30 distinct values go in, and each lands in its own slot, in address order 1..30.
+    [Test]
+    public async Task ModemDialog_ThirtyEnteredNumbers_EachLandInTheirOwnSlot()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var expected = Enumerable.Range(1, 30)
+            .Select(slot => "+457010" + slot.ToString("D4", System.Globalization.CultureInfo.InvariantCulture))
+            .ToList();
+        harness.Dialogs.ProductDialogResponder = descriptor => new ProductDialogEdits(
+            [.. PhoneSlotsOf(descriptor).Select((slot, i) =>
+                new ProductDialogEdit(slot.Target, slot.Attribute, expected[i]))]);
+        vm.SelectNode(vm.InstallationNodes[0].Children[0]);
+
+        var modemLeaf = Category(vm, CatalogMenu.BusProductsCategory).First(m => m.Header == "SMS Modem");
+        await ((IAsyncRelayCommand)modemLeaf.Command!).ExecuteAsync(null);
+
+        var modem = harness.Session.Current!.Root.Descendants().First(e => ProductClassifier.IsModem(e.Tag));
+        var written = modem.Descendants()
+            .Where(e => e.Tag == "sms_modem_phonenumber")
+            .OrderBy(e => int.Parse(e.GetAttribute("address")!, System.Globalization.CultureInfo.InvariantCulture))
+            .Select(e => e.GetAttribute("phonenumber"))
+            .ToList();
+        Assert.That(written, Is.EqualTo(expected).AsCollection);
+    }
+
+    // Proposal 2.1.1: the S0 metering device is a product, but its device-root tag is `s0_device` — it has no
+    // `product_` prefix, which is the only thing ProductClassifier.IsProduct keyed on. So the Egenskaber route
+    // fell straight through its product branch and opened NOTHING: a placed node whose properties could not be
+    // reached at all. The vendor opens an ordinary properties dialog for it (measured 2026-08-12: title
+    // "S0 Device", one group box, seven fields).
+    //
+    // Both routes are asserted because they dispatch separately — OpenForInsertAsync and OpenAsync — and the
+    // insert route happened to work already, so a test of that route alone would have proved nothing.
+    [Test]
+    public async Task S0Device_OpensItsPropertiesDialog_OnBothRoutes()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        vm.SelectNode(vm.InstallationNodes[0].Children[0]);
+
+        var s0Leaf = Category(vm, CatalogMenu.SpecialProductsCategory).First(m => m.Header == "S0 Device");
+        await ((IAsyncRelayCommand)s0Leaf.Command!).ExecuteAsync(null);
+        Assert.That(harness.Dialogs.EditProductDialogCalls, Is.EqualTo(1),
+            "the insert route raises the product dialog");
+
+        var s0Node = vm.InstallationNodes[0].Children[0].Children[0];
+        harness.Dialogs.CancelProductDialog = true;
+        await vm.PropertiesCommand.ExecuteAsync(s0Node);
+
+        Assert.That(harness.Dialogs.EditProductDialogCalls, Is.EqualTo(2),
+            "and Egenskaber on the placed node raises it again");
+    }
+
+    // T024: pressing OK on a just-inserted product's dialog WITHOUT editing anything must keep the product.
+    //
+    // The insert flow rolls the insert back when the dialog reports false, and an untouched dialog produces
+    // EditStatus.NoChange rather than Committed. A flow that read the commit status as the answer would delete a
+    // product the installer had just placed and accepted — silently, since a rollback leaves no undo entry.
+    // Pinned here because the generic write-back (ApplyProductDialog) returns NoChange for exactly this case, so
+    // the migration in T029/T030 is where it would be easiest to get wrong.
+    [Test]
+    public async Task InsertThenOkWithoutEditing_KeepsTheProduct()
+    {
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel();
+        await vm.InitializeAsync();
+        var locality = vm.InstallationNodes[0].Children[0];
+        vm.SelectNode(locality);
+        // The fake dialog's default answer echoes every field back unchanged — "OK, edited nothing".
+        var leaf = FirstLeaf(Category(vm, CatalogMenu.WiredProductsCategory));
+
+        await ((IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(locality.Children, Has.Count.EqualTo(1), "the accepted product survives an empty edit");
+            Assert.That(vm.StatusText, Does.Contain("indsat"));
+            Assert.That(vm.StatusText, Does.Not.Contain("annulleret"), "an untouched OK is not a cancellation");
         });
     }
 
@@ -991,17 +1123,24 @@ public class MainWindowViewModelTests
         var loc = vm.InstallationNodes[0].Children[3].ElementId!.Value;
         var pid = (await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier))!.Value;
 
-        var ok = await harness.Session.UpdateProductAsync(pid,
-            new ProductPropertiesResult("Sender", loc.ToToken(), "note", "IGNORED", "IGNORED", "ID-7", "LG-2"));
+        // No Navn: this catalog product inserts locked, so its dialog offers the name read-only (A-15) and the
+        // write-back refuses an edit to it. The old bespoke command took a Name and wrote it regardless.
+        var ok = await harness.Session.EditProductDialogAsync(pid,
+            ("Note", "note"), ("Identifikationskode", "ID-7"), ("Lysgruppe", "LG-2"));
 
         var el = harness.Session.Current!.FindById(pid)!;
         Assert.Multiple(() =>
         {
-            Assert.That(ok, Is.True, "wireless cabling fields are skipped, not rejected by the schema");
-            Assert.That(el.GetAttribute("name"), Is.EqualTo("Sender"));
+            Assert.That(ok, Is.True);
+            Assert.That(el.GetAttribute("note"), Is.EqualTo("note"));
             Assert.That(el.GetAttribute("documentation_tag"), Is.EqualTo("ID-7"));
             Assert.That(el.GetAttribute("power_group"), Is.EqualTo("LG-2"));
             Assert.That(el.GetAttribute("cabletype"), Is.Null, "a wireless product has no cabletype attribute");
+            // The old payload carried "IGNORED" cable values that the command skipped by asking the schema. There
+            // is nothing to skip now: the wireless dialog never OFFERS a cabling field, so a caller cannot name one
+            // — EditProductDialogAsync throws on a caption the dialog does not have.
+            Assert.That(() => harness.Session.EditProductDialogAsync(pid, ("Kabeltype", "IGNORED")),
+                Throws.InvalidOperationException, "a wireless dialog offers no Kabeltype to write");
         });
     }
 
@@ -1017,18 +1156,18 @@ public class MainWindowViewModelTests
 
         var leaf = FirstLeaf(Category(vm, CatalogMenu.WirelessProductsCategory));
         await ((IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);
-        Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1), "the dialog opens on insert (uxparity S-12)");
+        Assert.That(harness.Dialogs.EditProductDialogCalls, Is.EqualTo(1), "the dialog opens on insert (uxparity S-12)");
 
         // Re-open it to inspect the input the dialog was handed; cancel so nothing is applied.
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
-        harness.Dialogs.CancelProductProperties = true;
+        harness.Dialogs.CancelProductDialog = true;
         await vm.PropertiesCommand.ExecuteAsync(productNode);
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(2),
+            Assert.That(harness.Dialogs.EditProductDialogCalls, Is.EqualTo(2),
                 "once on insert, once more on demand via Properties");
-            Assert.That(harness.Dialogs.LastProductPropertiesInput!.IsWireless, Is.True, "the dialog is flagged wireless");
+            Assert.That(harness.Dialogs.Offered("Kabeltype"), Is.False, "a wireless product is offered no cabling fields");
         });
     }
 
@@ -1084,8 +1223,7 @@ public class MainWindowViewModelTests
         var pid = (await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, dimmer.ProductIdentifier))!.Value;
         var node = vm.InstallationNodes[0].Children[3].Children[0];
 
-        harness.Dialogs.ProductPropertiesResponder = i =>
-            new ProductPropertiesResult(i.Name, i.CurrentLocalityId, i.Note, "", "", i.IdentificationCode, i.LightGroup, OpenAdvanced: true);
+        harness.Dialogs.RespondWithWidget(DialogWidgetKind.AdvancedDimmerButton);
         harness.Dialogs.AdvancedDimmerResult = new AdvancedDimmerResult(700, 700, 3, 20, 90, "rc");
         await vm.PropertiesCommand.ExecuteAsync(node);
 
@@ -1093,7 +1231,7 @@ public class MainWindowViewModelTests
         string Val(string tag) => el.DescendantsAndSelf().First(e => e.Tag == tag).GetAttribute("value")!;
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastProductPropertiesInput!.IsWirelessDimmer, Is.True, "Advanced is offered for a dimmer");
+            Assert.That(harness.Dialogs.OfferedWidget(DialogWidgetKind.AdvancedDimmerButton), Is.True, "Advanced is offered for a dimmer");
             Assert.That(harness.Dialogs.EditAdvancedDimmerCalls, Is.EqualTo(1), "Advanced opened the dimmer dialog");
             Assert.That(Val("dimmer_setting_maximum_value"), Is.EqualTo("90"));
             Assert.That(Val("dimmer_setting_load_mode"), Is.EqualTo("rc"), "Capacitive maps to the rc load mode");
@@ -1117,8 +1255,7 @@ public class MainWindowViewModelTests
         var node = vm.InstallationNodes[0].Children[3].Children[0];
 
         // Commit 7 seconds through the dialog; the stored dimming_rate must be 7000 ms.
-        harness.Dialogs.ProductPropertiesResponder = i =>
-            new ProductPropertiesResult(i.Name, i.CurrentLocalityId, i.Note, "", "", i.IdentificationCode, i.LightGroup, OpenAdvanced: true);
+        harness.Dialogs.RespondWithWidget(DialogWidgetKind.AdvancedDimmerButton);
         harness.Dialogs.AdvancedDimmerResult = new AdvancedDimmerResult(700, 700, 7, 20, 90, "rc");
         await vm.PropertiesCommand.ExecuteAsync(node);
 
@@ -1143,10 +1280,10 @@ public class MainWindowViewModelTests
             .First(p => p.CategoryPath.StartsWith("LK IHC Wireless") && !p.CategoryPath.Contains("Dimmer"));
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, wireless.ProductIdentifier);
 
-        harness.Dialogs.ProductPropertiesResult = null;
+        harness.Dialogs.CancelProductDialog = true;   // cancel - just capture what the dialog offered
         await vm.PropertiesCommand.ExecuteAsync(vm.InstallationNodes[0].Children[3].Children[0]);
 
-        Assert.That(harness.Dialogs.LastProductPropertiesInput!.IsWirelessDimmer, Is.False);
+        Assert.That(harness.Dialogs.OfferedWidget(DialogWidgetKind.AdvancedDimmerButton), Is.False);
     }
 
     // US-018: inserting a library function block nests it in the Functions pane with its variable sections and pins.
@@ -3987,7 +4124,7 @@ public class MainWindowViewModelTests
 
         await vm.ActivateNodeCommand.ExecuteAsync(product);
 
-        Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1));
+        Assert.That(harness.Dialogs.EditProductDialogCalls, Is.EqualTo(1));
     }
 
     // The sharpest cell in the matrix: the vendor has NO pin dialog — a terminal is configured from inside the
@@ -4004,8 +4141,8 @@ public class MainWindowViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1), "the parent product's dialog opens");
-            Assert.That(harness.Dialogs.LastProductPropertiesInput!.Name, Is.EqualTo("Lampeudtag"));
+            Assert.That(harness.Dialogs.EditProductDialogCalls, Is.EqualTo(1), "the parent product's dialog opens");
+            Assert.That(harness.Dialogs.OfferedValue("Navn"), Is.EqualTo("Lampeudtag"));
             Assert.That(harness.Dialogs.EditPinPropertiesCalls, Is.Zero, "the vendor has no per-pin dialog");
         });
 
@@ -4078,7 +4215,7 @@ public class MainWindowViewModelTests
         {
             Assert.That(vm.InstallationNodes[0].IsLocalitiesRoot, Is.True);
             Assert.That(harness.Dialogs.EditPropertiesCalls, Is.Zero, "the installation root opens nothing");
-            Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.Zero, "a link row opens nothing");
+            Assert.That(harness.Dialogs.EditProductDialogCalls, Is.Zero, "a link row opens nothing");
             Assert.That(harness.Dialogs.EditPinPropertiesCalls, Is.Zero);
         });
     }

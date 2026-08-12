@@ -61,6 +61,31 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
 - Refuses to save text the `.vis` character repertoire cannot store — naming the offending element and
   character — where the original writes an unparsable file.
   *Pinned by:* `Latin1SaveRefusalTests`.
+- Suggestion drop-downs (*Placering*, *Identifikationskode*, *Kabeltype* and the cable-colour fields) offer the
+  **values already used in the open project**, where the original offers a **machine-local history** of what was
+  typed on that installation. The original's list therefore differs between two people opening the same project
+  and is empty on a fresh machine; ours is a property of the work rather than of the workstation, travels with the
+  file, and is reproducible in a test. Both are open combos — a value used nowhere yet is still typeable, so the
+  list never becomes a constraint.
+  *Pinned by:* `ProductDialogComposerTests`
+  (`AComboSuggestField_OffersTheProjectsOwnValuesForThatAttribute`, `SuggestionsDoNotConstrainTheValue`).
+- A product whose family the SDK does not recognise still opens a **minimal dialog** — Navn, Placering, Note and
+  Identifikationskode, the four attributes every known family declares — instead of failing to open. The original
+  has no equivalent: its dialogs are per-family, and a product outside them is not something it can show.
+  Inserting an unrecognised product is therefore never blocked here. The fallback deliberately does not walk the
+  grammar and caption fields by raw attribute name — English DTD identifiers on a Danish screen would be worse
+  than the four known ones, and the real answer to an unknown family arriving is a sixth measured preset.
+  *Pinned by:* `ProductDialogComposerTests.TheMinimalFallback_OffersTheFourUniversalFields`.
+- Modem telephone numbers are validated as **3–20 characters, no spaces, leading country code** (US-013) and
+  refused inline, naming the offending slot. **Only the 3-character minimum matches the original.** Measured
+  2026-08-12 against LK IHC Visual: it refuses a 2-character number (*"Ugyldigt telefonnummer på talværdi 1 /
+  skal være mere end 3 cifre"* — a message that misstates its own rule, since exactly 3 characters is
+  accepted) but it accepts a **60-digit** number, accepts a number with **no country code**, and **silently
+  strips spaces** at input rather than refusing them. The 20-character maximum, the whitespace ban and the
+  country-code requirement are therefore deliberate OpenVisual strictnesses: a number the modem cannot dial
+  is worth catching at entry rather than at the alarm.
+  *Pinned by:* `DialogValueRuleTests` (the rule and its boundaries), `ModemPhoneValidationTests` (the dialog
+  consults that rule and states the refusal).
 - Every drag-and-drop operation is also reachable from the menus and the keyboard, so linking, moving, and reordering never require a mouse.
   *Pinned by:* `DragRouteAlternativesParityTests`.
 - Unavailable commands explain themselves: pressing the keyboard shortcut of a greyed menu command shows the reason in the status bar.
@@ -99,19 +124,52 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   its own route.")
   *Pinned by:* `VariablePaletteCompletenessTests`.
 - The free-text fields the original backs with a **suggestion drop-down** are **plain text boxes** in IHC
-  OpenVisual. This covers the product dialog's documentation fields (*Placering*, *Note*, *Kabeltype*,
-  *Kabelnummer*, *Identifikationskode*, *Lysgruppe*, and *Navn* when unlocked) **and the terminal address
-  editor's *Note* and *Ledningsfarve***. Those lists are a machine-local history — they are not part of the
-  `.vis` and do not travel with the project, so the same project offers different suggestions on a different
-  PC. The field values themselves are identical either way; only the typing aid differs.
-  **These fields are free text, not closed vocabularies** — `cable_colour` is `CDATA` in the format and the
-  original's own list mixes colour names with installer-written pair descriptions ("Brun", "1-Hvid. 3-Sort",
-  sourced from `DATA\noteCableColour.txt`). Constraining any of them to a fixed list would REFUSE values the
-  format and the original both accept, so do not "align" them into drop-downs of a fixed set.
+  OpenVisual — **now only where the composer says so, and the product dialog is largely no longer among them
+  (narrowed 2026-08-12, T030).** *Placering*, *Note*, *Kabeltype* and *Identifikationskode* are composed as
+  `ComboSuggest`: an always-editable combo over the values already used elsewhere in the project (D07), which
+  is the original's affordance. *Navn*, *Kabelnummer* and *Lysgruppe* stay plain `Text`. **What remains a
+  difference is the terminal address editor's *Note* and *Ledningsfarve***, and the fact that a suggestion
+  list here is drawn from the OPEN project rather than a machine-local history file — so it travels with the
+  project instead of differing per PC.
+  **None of these fields is a closed vocabulary, and none may become one** — `cable_colour` is `CDATA` in the
+  format and the original's own list mixes colour names with installer-written pair descriptions ("Brun",
+  "1-Hvid. 3-Sort", sourced from `DATA\noteCableColour.txt`). Constraining any of them to a fixed list would
+  REFUSE values the format and the original both accept, so do not "align" them into drop-downs of a fixed
+  set. The control vocabulary has no closed-list kind at all (D12), which is what makes that structural.
   (Story 03/US-011 records the decision and its reasoning; registered here 2026-08-11, alignment F-13; scope
-  widened to the terminal editor 2026-08-11, alignment F-34.)
-  *Pinned by:* `FreeTextFieldParityTests` (the fields are text boxes, not drop-downs),
-  `ProductDialogLabelParityTests` (their labels).
+  widened to the terminal editor 2026-08-11, alignment F-34; narrowed to the terminal editor 2026-08-12 when
+  the metadata engine gave the product fields their suggestion lists.)
+  *Pinned by:* `FreeTextFieldParityTests` (the kinds, and that no closed-list kind exists).
+  The labels were pinned by `ProductDialogLabelParityTests`, deleted with the hand-written dialogs in T030 —
+  a caption cannot now differ between two product dialogs, because there is only one, and every caption comes
+  from a single shared composer fragment. `CatalogInsertionTests`' descriptor gate asserts each is non-empty
+  across all 100 products.
+- **An unaddressed terminal shows an EMPTY address cell**, where the original writes `ikke konfigureret`
+  into every unwired row. Deliberate, and the reason is the point: a grid of eight rows all reading
+  *ikke konfigureret* is eight rows of identical text, while eight blanks make the wired ones the only
+  thing on the column — so "which terminals still need wiring" is answerable at a glance instead of by
+  reading. The token itself is not lost: it is still the explicit **not-configured** entry in the address
+  editor's module list, which is where it means an *action* (return this terminal to unaddressed) rather
+  than a state. Story 03/US-012 states the blank as a MUST with this reasoning.
+  (Measured on product 006 and registered 2026-08-12, T040 — the story had mandated it since it was
+  written, but the divergence from the original was never recorded here, so a later comparison would have
+  read it as a defect and "fixed" it.)
+  *Pinned by:* `TerminalAddressListParityTests` (the `ikke konfigureret` entry in the editor's list),
+  US-012's grid tests (the empty cell).
+- **The wireless dimmer's advanced settings open in a SUB-DIALOG behind an *Avanceret* button**, where the
+  original expands them in place inside the product dialog (a group box *Avancerede Dimmer egenskaber*).
+  **Corrected 2026-08-12 (T114):** this entry used to add "no vendor capture in the 100-product oracle
+  carries an *Avanceret* caption", and product 080's capture falsifies it — the vendor draws a button
+  captioned exactly *Avanceret*, no ellipsis. So the BUTTON is parity; OpenVisual's ellipsis was dropped to
+  match, and what stays registered is only what pressing it does. The claim was written when the oracle had
+  been captured but not yet read product by product — the failure mode this sweep exists to catch.
+  The settings themselves match —
+  factory defaults 700/700/5/0/100, seconds in the dialog vs milliseconds in the file, and the vendor
+  `auto | rc | rl` load-characteristic order. Only the containment differs. (Registered 2026-08-12, T030:
+  the slot was declared on the wireless preset so that routing the family through the one generic dialog did
+  not silently delete a reachable capability; reshaping it to the in-place form is separate work.)
+  *Pinned by:* `ProductDialogPresetTests.Airlink_OffersAdvancedDimmerSettings_OnlyWhereDimmerSettingsExist`,
+  `AdvancedDimmerLoadModeTests` (the settings themselves).
 - The block-section variable popup sorts its **value types** in **correct Danish collation** (æ/ø/å after
   z, so *Tal* precedes *Tæller*), where the original collates æ as "ae" (putting *Tæller* before *Tal*).
   A clear improvement over a vendor collation quirk. (Alignment F-26, 2026-08-09; re-measured 2026-08-11

@@ -55,8 +55,10 @@ public class ReorderTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var products = harness.ProjectService.GetAvailableProducts().Where(p => p.Resources.Any(r => r.Tag == "dataline_input")).Take(2).ToList();
-        await harness.Session.AddProductAsync(loc, products[0].ProductIdentifier);
-        await harness.Session.AddProductAsync(loc, products[1].ProductIdentifier);
+        // Named as well as identified: this takes whatever comes first in the catalog, which can be one of
+        // D22's shared identifiers, and the factory refuses an ambiguous id rather than guessing (T046).
+        await harness.Session.AddProductAsync(loc, products[0].ProductIdentifier, products[0].DisplayName);
+        await harness.Session.AddProductAsync(loc, products[1].ProductIdentifier, products[1].DisplayName);
         var group = harness.Session.Current!.FindById(loc)!;
         var second = group.ChildrenOrEmpty().Where(c => c.Tag.StartsWith("product_")).ElementAt(1).Id!.Value;
 

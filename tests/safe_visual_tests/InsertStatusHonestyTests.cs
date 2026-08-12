@@ -35,12 +35,10 @@ public class InsertStatusHonestyTests
         var (harness, vm) = await ShellAsync();
         using var _ = harness;
         string? statusDuringDialog = null;
-        harness.Dialogs.ProductPropertiesResponder = input =>
+        harness.Dialogs.ProductDialogResponder = _ =>
         {
             statusDuringDialog = vm.StatusText;
-            return new ProductPropertiesResult(input.Name, input.CurrentLocalityId, input.Note, input.CableType,
-                input.CableNumber, input.IdentificationCode, input.LightGroup, OpenAdvanced: false,
-                ConfigureTerminalPinId: null, Position: input.Position, EndUserReport: input.EndUserReport);
+            return new ProductDialogEdits([]);   // an ordinary OK with nothing changed
         };
 
         await InsertLampeudtagAsync(vm);
@@ -69,7 +67,7 @@ public class InsertStatusHonestyTests
     {
         var (harness, vm) = await ShellAsync();
         using var _ = harness;
-        harness.Dialogs.CancelProductProperties = true;
+        harness.Dialogs.CancelProductDialog = true;
 
         await InsertLampeudtagAsync(vm);
 

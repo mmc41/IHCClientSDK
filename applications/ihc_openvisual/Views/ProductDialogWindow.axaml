@@ -1,0 +1,325 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:a="using:Avalonia.Automation"
+        xmlns:controls="using:ihc_openvisual.Controls"
+        xmlns:svc="using:ihc_openvisual.Services"
+        xmlns:vm="using:ihc_openvisual.ViewModels"
+        x:Class="ihc_openvisual.Views.ProductDialogWindow"
+        x:DataType="vm:ProductDialogViewModel"
+        a:AutomationProperties.AutomationId="ProductDialogWindow"
+        Width="620" MaxHeight="760" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ShowInTaskbar="False"
+        Title="{Binding Title}">
+    <Window.Styles>
+        <!-- One frame for every group, supplied here rather than per dialog: the stock theme renders the header
+             as plain text with no chrome, and the original draws a box around each of its captioned sections.
+
+             Selected on HeaderedContentControl, NOT on controls|AccessibleGroupBox: a XAML type selector matches
+             the control's STYLE KEY, and AccessibleGroupBox overrides StyleKeyOverride to HeaderedContentControl
+             so that it inherits that control's theme (without which it renders untemplated). A selector naming
+             the subclass therefore never matches — the Template setter is silently ignored, the stock theme
+             still draws the header, and the result is a caption with no box: exactly what product 002's
+             composite showed against the vendor's framed group (T036). -->
+        <Style Selector="HeaderedContentControl.group">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <DockPanel LastChildFill="True">
+                        <TextBlock DockPanel.Dock="Top" Text="{TemplateBinding Header}"
+                                   FontWeight="Bold" Margin="4,0,4,4"/>
+                        <Border BorderBrush="{DynamicResource SystemControlForegroundBaseMediumLowBrush}"
+                                BorderThickness="1" CornerRadius="3" Padding="10">
+                            <ContentPresenter Content="{TemplateBinding Content}"/>
+                        </Border>
+                    </DockPanel>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="TextBlock.caption">
+            <Setter Property="Margin" Value="0,0,0,2"/>
+        </Style>
+    </Window.Styles>
+
+    <Window.Resources>
+        <!-- Fields are realized by DataTemplates keyed on the control KIND, not by themed-control subclasses.
+             A subclass per kind would put presentation policy in a type hierarchy the composer cannot see; a
+             template is data the renderer owns, and adding a kind is adding one template here.
+
+             ONE of these is built per field, chosen by DialogFieldTemplate — not four with IsVisible bindings.
+             Hiding is not the same as not building: four realized editors sharing one AutomationId leave three
+             invisible-but-focusable phantoms that break every driver and every screen reader. -->
+        <controls:DialogFieldTemplate x:Key="FieldEditor">
+            <controls:DialogFieldTemplate.Text>
+                <DataTemplate x:DataType="vm:ProductDialogFieldViewModel">
+                    <TextBox Text="{Binding Value, Mode=TwoWay}"
+                             IsEnabled="{Binding !IsReadOnly}"
+                             a:AutomationProperties.AutomationId="{Binding AutomationId}"
+                             a:AutomationProperties.Name="{Binding Caption}"/>
+                </DataTemplate>
+            </controls:DialogFieldTemplate.Text>
+
+            <controls:DialogFieldTemplate.TextMultiline>
+                <DataTemplate x:DataType="vm:ProductDialogFieldViewModel">
+                    <TextBox Text="{Binding Value, Mode=TwoWay}"
+                             IsEnabled="{Binding !IsReadOnly}"
+                             AcceptsReturn="True" MinHeight="56" TextWrapping="Wrap"
+                             a:AutomationProperties.AutomationId="{Binding AutomationId}"
+                             a:AutomationProperties.Name="{Binding Caption}"/>
+                </DataTemplate>
+            </controls:DialogFieldTemplate.TextMultiline>
+
+            <!-- ALWAYS editable: a suggestion list is a typing aid over free text, never a closed list (D07). -->
+            <controls:DialogFieldTemplate.ComboSuggest>
+                <DataTemplate x:DataType="vm:ProductDialogFieldViewModel">
+                    <ComboBox ItemsSource="{Binding Suggestions}"
+                              SelectedItem="{Binding Value, Mode=TwoWay}"
+                              IsEnabled="{Binding !IsReadOnly}"
+                              HorizontalAlignment="Stretch"
+                              a:AutomationProperties.AutomationId="{Binding AutomationId}"
+                              a:AutomationProperties.Name="{Binding Caption}"/>
+                </DataTemplate>
+            </controls:DialogFieldTemplate.ComboSuggest>
+
+            <controls:DialogFieldTemplate.Number>
+                <DataTemplate x:DataType="vm:ProductDialogFieldViewModel">
+                    <TextBox Text="{Binding Value, Mode=TwoWay}"
+                             IsEnabled="{Binding !IsReadOnly}"
+                             a:AutomationProperties.AutomationId="{Binding AutomationId}"
+                             a:AutomationProperties.Name="{Binding Caption}"/>
+                </DataTemplate>
+            </controls:DialogFieldTemplate.Number>
+
+            <!-- Labelled by its own Content, and the shared caption block stands down for it
+                 (HasSeparateCaption) — the vendor draws the tick with the sentence to its right, once. -->
+            <controls:DialogFieldTemplate.Checkbox>
+                <DataTemplate x:DataType="vm:ProductDialogFieldViewModel">
+                    <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                              IsEnabled="{Binding !IsReadOnly}"
+                              Content="{Binding Caption}"
+                              a:AutomationProperties.AutomationId="{Binding AutomationId}"
+                              a:AutomationProperties.Name="{Binding Caption}"/>
+                </DataTemplate>
+            </controls:DialogFieldTemplate.Checkbox>
+        </controls:DialogFieldTemplate>
+
+        <!-- The caption stays out here, shared by every kind. Its accessible-name link is the editor's
+             AutomationProperties.Name rather than LabeledBy: the editor is built in a separate template scope,
+             where a {Binding #FieldCaption} element reference cannot resolve. Same announcement, same string. -->
+        <DataTemplate x:Key="FieldTemplate" x:DataType="vm:ProductDialogFieldViewModel">
+            <StackPanel Margin="0,0,0,8">
+                <TextBlock Classes="caption" Text="{Binding Caption}"
+                           IsVisible="{Binding HasSeparateCaption}"/>
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource FieldEditor}"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- One row of the settings grid: three columns, same ellipsize-and-tooltip treatment as the terminal
+             rows, since a calibration note is easily longer than its column. -->
+        <DataTemplate x:Key="SettingRow" x:DataType="svc:ProductSetting">
+            <Grid ColumnDefinitions="1.6*,2*,*">
+                <TextBlock Grid.Column="0" Text="{Binding Name}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
+                <TextBlock Grid.Column="1" Text="{Binding Note}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Note}"/>
+                <TextBlock Grid.Column="2" Text="{Binding Value}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Value}"/>
+            </Grid>
+        </DataTemplate>
+
+        <!-- A group lays out as ROWS, not as one flat uniform grid, because a field may take the whole row: the
+             vendor gives Note the full width and pairs the fields after it up beneath. A flat grid cannot say
+             that — it would put the next field beside Note and shift every later field one cell (T038).
+             Each row is its own small uniform grid of `Cells` columns, so the renderer needs no span arithmetic;
+             the view-model already decided which fields share a row. -->
+        <DataTemplate x:Key="RowTemplate" x:DataType="vm:ProductDialogRow">
+            <ItemsControl ItemsSource="{Binding Fields}" ItemTemplate="{StaticResource FieldTemplate}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Columns="{Binding Cells}"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </DataTemplate>
+
+        <!-- ONE row template for both terminal grids: they render the same record with the same four columns, and
+             a per-list copy is four TextBlocks and a column spec to keep in step by hand.
+             (The widths stay literal in each Grid: ColumnDefinitions is an owned collection, so it cannot be
+             shared out of a resource, and a string resource is not converted through a markup extension.) -->
+        <!-- Cells ELLIPSIZE and carry the full text as a tooltip. The vendor's dialog is far wider than this
+             one, so a long terminal name or note ("Tilstedeværelses indikering", "Følg (Beo4 = Light + Grøn)")
+             does not fit here and was being HARD-CLIPPED mid-word: the installer could not tell the text was
+             cut, let alone read it. Widening the columns is not the fix; the column ratios are not the
+             problem, and guessing a width would be inventing pixel parity the rubric puts out of scope.
+             Making the truncation visible and the text recoverable is (products 009, 019 and 028; T062). -->
+        <DataTemplate x:Key="TerminalRow" x:DataType="svc:ProductTerminal">
+            <Grid ColumnDefinitions="1.4*,1.3*,*,1.6*">
+                <TextBlock Grid.Column="0" Text="{Binding Name}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/>
+                <TextBlock Grid.Column="1" Text="{Binding Address}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Address}"/>
+                <TextBlock Grid.Column="2" Text="{Binding CableColour}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding CableColour}"/>
+                <TextBlock Grid.Column="3" Text="{Binding Note}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Note}"/>
+            </Grid>
+        </DataTemplate>
+    </Window.Resources>
+
+    <ScrollViewer>
+        <StackPanel Margin="20" Spacing="10">
+            <ItemsControl Name="GroupList" ItemsSource="{Binding Groups}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ProductDialogGroupViewModel">
+                        <StackPanel Margin="0,0,0,6">
+                            <!-- A captioned group draws a box; an uncaptioned one is a bare run of fields. Both
+                                 flow their fields into the descriptor's Columns as a UNIFORM grid. -->
+                            <controls:AccessibleGroupBox Classes="group"
+                                                         IsVisible="{Binding HasCaption}"
+                                                         Header="{Binding Caption}">
+                                <ItemsControl ItemsSource="{Binding Rows}"
+                                              ItemTemplate="{StaticResource RowTemplate}"/>
+                            </controls:AccessibleGroupBox>
+
+                            <ItemsControl IsVisible="{Binding !HasCaption}"
+                                          ItemsSource="{Binding Rows}"
+                                          ItemTemplate="{StaticResource RowTemplate}"/>
+
+                            <!-- ── The two hand-written composites (D12) ──────────────────────────────────────
+                                 Everything above this line is generated from metadata. These two are not, and
+                                 deliberately so: a terminal grid and a sub-dialog button are structure, not
+                                 fields, and expressing them as metadata would mean a vocabulary big enough to
+                                 describe arbitrary UI. The DESCRIPTOR still decides WHETHER each appears and in
+                                 which group; only the markup is hand-written. -->
+
+                            <!-- US-012: input/output terminal addressing. Columns Navn | Adresse | Ledningsfarve |
+                                 Note; a row is addressed by double-tapping it, or selecting it and clicking
+                                 Konfigurer. -->
+                            <ItemsControl ItemsSource="{Binding TerminalSection}">
+                              <ItemsControl.ItemTemplate>
+                               <DataTemplate x:DataType="vm:ProductDialogGroupViewModel">
+                                <StackPanel Spacing="4">
+                                <StackPanel.Styles>
+                                    <Style Selector="TextBlock.thead">
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Setter Property="FontSize" Value="12"/>
+                                    </Style>
+                                    <!-- F-35: the generated ListBoxItem IS the row's automation element, so the
+                                         name belongs on the CONTAINER — setting it on the template's Grid leaves
+                                         the item announcing the record's ToString(), PinId and all. Selected by
+                                         CLASS, not by name: both grids hold the same row type and owe the same
+                                         accessible name, and a per-list copy is a rule that gets fixed in one
+                                         list only. -->
+                                    <Style Selector="ListBox.terminals > ListBoxItem" x:DataType="svc:ProductTerminal">
+                                        <Setter Property="a:AutomationProperties.Name" Value="{Binding Summary}"/>
+                                    </Style>
+                                </StackPanel.Styles>
+
+                                <!-- ALWAYS present, both of them (US-012 MUST): a product with no outputs shows an
+                                     EMPTY Udgange grid with its Configure button disabled, never a missing
+                                     section. An empty grid says "this product has no outputs"; an absent one says
+                                     nothing and reads as an unfinished dialog. T030's markup hid each side when
+                                     it was empty; product 003's vendor composite caught it (T037). -->
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="caption" FontWeight="SemiBold"
+                                               Text="Indgange &lt;klik for at konfigurere&gt;"/>
+                                    <Grid ColumnDefinitions="1.4*,1.3*,*,1.6*">
+                                        <TextBlock Grid.Column="0" Classes="thead" Text="Navn"/>
+                                        <TextBlock Grid.Column="1" Classes="thead" Text="Adresse"/>
+                                        <TextBlock Grid.Column="2" Classes="thead" Text="Ledningsfarve"/>
+                                        <TextBlock Grid.Column="3" Classes="thead" Text="Note"/>
+                                    </Grid>
+                                    <ListBox Name="InputsList" Classes="terminals" MaxHeight="120"
+                                             ItemsSource="{Binding Inputs}" SelectedIndex="0"
+                                             DoubleTapped="OnTerminalActivated"
+                                             ItemTemplate="{StaticResource TerminalRow}"
+                                             a:AutomationProperties.AutomationId="dlg.terminaler.indgange"
+                                             a:AutomationProperties.Name="Indgange"/>
+                                    <Button Content="Konfigurer indgang" HorizontalAlignment="Left"
+                                            IsEnabled="{Binding HasInputs}" Click="OnConfigureInput"
+                                            a:AutomationProperties.AutomationId="dlg.terminaler.konfigurerIndgang"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="caption" FontWeight="SemiBold"
+                                               Text="Udgange &lt;klik for at konfigurere&gt;"/>
+                                    <Grid ColumnDefinitions="1.4*,1.3*,*,1.6*">
+                                        <TextBlock Grid.Column="0" Classes="thead" Text="Navn"/>
+                                        <TextBlock Grid.Column="1" Classes="thead" Text="Adresse"/>
+                                        <TextBlock Grid.Column="2" Classes="thead" Text="Ledningsfarve"/>
+                                        <TextBlock Grid.Column="3" Classes="thead" Text="Note"/>
+                                    </Grid>
+                                    <ListBox Name="OutputsList" Classes="terminals" MaxHeight="120"
+                                             ItemsSource="{Binding Outputs}" SelectedIndex="0"
+                                             DoubleTapped="OnTerminalActivated"
+                                             ItemTemplate="{StaticResource TerminalRow}"
+                                             a:AutomationProperties.AutomationId="dlg.terminaler.udgange"
+                                             a:AutomationProperties.Name="Udgange"/>
+                                    <Button Content="Konfigurer udgang" HorizontalAlignment="Left"
+                                            IsEnabled="{Binding HasOutputs}" Click="OnConfigureOutput"
+                                            a:AutomationProperties.AutomationId="dlg.terminaler.konfigurerUdgang"/>
+                                </StackPanel>
+                                </StackPanel>
+                               </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- T070: the sensors' Indstillinger grid, a third terminal-style list. Presence is
+                                 the descriptor's business, so this section renders only where the widget was
+                                 declared; the vendor shows it only for products that HAVE settings, unlike the
+                                 two terminal grids it always shows. Read-only for now: the vendor's own
+                                 "klik for at konfigurere" opens an editor, which is a separate flow. -->
+                            <ItemsControl ItemsSource="{Binding SettingsSection}">
+                              <ItemsControl.ItemTemplate>
+                               <DataTemplate x:DataType="vm:ProductDialogGroupViewModel">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="caption" FontWeight="SemiBold"
+                                               Text="Indstillinger &lt;klik for at konfigurere&gt;"/>
+                                    <Grid ColumnDefinitions="1.6*,2*,*">
+                                        <TextBlock Grid.Column="0" FontWeight="SemiBold" FontSize="12" Text="Navn"/>
+                                        <TextBlock Grid.Column="1" FontWeight="SemiBold" FontSize="12" Text="Note"/>
+                                        <TextBlock Grid.Column="2" FontWeight="SemiBold" FontSize="12" Text="Værdi"/>
+                                    </Grid>
+                                    <ListBox Name="SettingsList" Classes="terminals" MaxHeight="120"
+                                             ItemsSource="{Binding Settings}"
+                                             ItemTemplate="{StaticResource SettingRow}"
+                                             a:AutomationProperties.AutomationId="dlg.indstillinger.liste"
+                                             a:AutomationProperties.Name="Indstillinger"/>
+                                </StackPanel>
+                               </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- US-015: the wireless dimmer's advanced settings. Applies its documentation first,
+                                 then signals the caller to open the sub-dialog. -->
+                            <ItemsControl ItemsSource="{Binding AdvancedSection}">
+                              <ItemsControl.ItemTemplate>
+                               <DataTemplate x:DataType="vm:ProductDialogGroupViewModel">
+                                <!-- Caption is the vendor's, measured on product 080: "Avanceret", no
+                                     ellipsis (T114). What the button DOES still differs — the vendor
+                                     expands in place, this opens a window — and stays in product.md. -->
+                                <Button Content="Avanceret" MinWidth="96" HorizontalAlignment="Left"
+                                        Click="OnAdvanced"
+                                        a:AutomationProperties.AutomationId="dlg.avanceret.abn"/>
+                               </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- Inline, next to the fields, rather than a second modal on top of this one: the installer has to be
+                 able to see the offending value while reading why it was refused. -->
+            <TextBlock Name="DialogError"
+                       Text="{Binding Refusal}" IsVisible="{Binding HasRefusal}"
+                       Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                       TextWrapping="Wrap" Margin="0,2,0,0"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,6,0,0">
+                <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
+                <Button Name="CancelButton" Content="Annuller" MinWidth="84" IsCancel="True" Click="OnCancel"/>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

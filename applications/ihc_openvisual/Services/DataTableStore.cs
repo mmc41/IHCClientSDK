@@ -28,8 +28,18 @@ public sealed record DataTableDefinition(string Name, string Key);
 /// <b>There is no editor for these tables</b> — maintaining them by hand is a declared product exclusion. They fill
 /// up the way the vendor's own do: a value typed into a documentation field joins that field's table, so the next
 /// project offers it. Today the only writer and only reader is <see cref="ProjectInfoSuggestions"/>, behind the
-/// project-info dialog's contact drop-downs; the tables no field feeds yet stay empty rather than being dropped,
-/// since they are the keys the remaining documentation fields will feed.
+/// project-info dialog's contact drop-downs.
+/// </para>
+/// <para>
+/// <b>The product dialog's suggestion lists do NOT come from here, and are not planned to</b> (corrected 2026-08-12,
+/// T032 — this used to say the remaining documentation fields would feed these keys). A
+/// <c>ComboSuggest</c> field on the product dialog is offered the OPEN PROJECT's own distinct values for the
+/// attribute it binds (D07), computed per open by <c>ProductDialogComposer</c>. That is a deliberate divergence from
+/// the vendor, which reads a machine-local <c>Data\*.txt</c>: a project-sourced list travels WITH the project, so
+/// two installers opening the same file are offered the same suggestions, where the vendor's differ per PC.
+/// <c>Kabeltyper</c>, <c>Ledningsfarver</c> and the other field-backed rows therefore stay empty here by design.
+/// They are kept rather than dropped because the manifest is the vendor's eighteen rows verbatim, which is what
+/// lets a future import of an installation's <c>Data\</c> folder need no second mapping.
 /// </para>
 /// </summary>
 public sealed class DataTableStore

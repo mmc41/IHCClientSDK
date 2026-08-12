@@ -20,7 +20,7 @@ namespace Ihc.Vis.Session
         internal override EditVerdict Evaluate(EditContext context) =>
             Source != Target && context.Project.Edit().CanLink(Source, Target)
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("These pins cannot be linked in this direction.");
+                : EditVerdict.Refuse("De to klemmer kan ikke linkes i den retning.");
         internal override void Execute(ProjectEditor editor) => editor.Link(Source, Target);
     }
 
@@ -28,7 +28,7 @@ namespace Ihc.Vis.Session
     public sealed record RemoveLink(ElementId LinkRowId) : ProjectCommand
     {
         internal override string Describe(Project project) => "Fjern link";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LinkRowId, "link");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LinkRowId, "Linket");
         internal override void Execute(ProjectEditor editor) => editor.DeleteById(LinkRowId);
     }
 
@@ -42,7 +42,7 @@ namespace Ihc.Vis.Session
         {
             if (context.Index.FindById(SceneOutputId) is null || context.Index.FindById(ScenesId) is not { } scenes)
             {
-                return EditVerdict.Refuse("A scene endpoint no longer exists.");
+                return EditVerdict.Refuse("Et endepunkt i scenariet findes ikke længere.");
             }
             // A3: the scenes container's bound output family pins which scene-member kind it accepts, and this command
             // can only author a relay or dimmer value; a container bound to a family that pins a DIFFERENT kind is
@@ -55,7 +55,7 @@ namespace Ihc.Vis.Session
                 && pinned != produced)
             {
                 return EditVerdict.Refuse(
-                    $"This scenes container takes {pinned} members; a {produced} value cannot be linked here.");
+                    $"Denne scenarie-beholder rummer {pinned}-medlemmer; en {produced}-værdi kan ikke tilknyttes her.");
             }
             return EditVerdict.Allow;
         }
@@ -69,7 +69,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Rediger scene værdi";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireTag(MemberId, "a relay or dimmer scene member", "scene_dimmer", "scene_relay");
+            context.RequireTag(MemberId, "et relæ- eller dæmper-scenariemedlem", "scene_dimmer", "scene_relay");
         internal override void Execute(ProjectEditor editor)
         {
             ElementRef handle = editor.Resolve(MemberId, "scene member");
@@ -81,7 +81,7 @@ namespace Ihc.Vis.Session
     public sealed record UpdateSceneContainer(ElementId ScenesId, string Note) : ProjectCommand
     {
         internal override string Describe(Project project) => "Rediger scenarie container";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(ScenesId, "scenes container");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(ScenesId, "Scenarie-beholderen");
         internal override void Execute(ProjectEditor editor) =>
             editor.Resolve(ScenesId, "scenes container").SetAttribute("note", Note);
     }

@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Ihc.Vis;
 using Ihc.Vis.Addressing;
+using Ihc.Vis.Products;
 using Ihc.Vis.Session;
 
 namespace ihc_openvisual.Services;
@@ -66,22 +68,23 @@ public sealed record VariablePropertiesInput(string Title, string Name, string N
 public sealed record VariablePropertiesResult(string Name, string Note, ResourceInitialValue Value,
     string HelpNote = "", bool SaveOnPowerLoss = false, bool EditEnumType = false);
 
-/// <summary>A locality option for the modem dialog's <i>Location</i> drop-down (US-013). The product dialog has no
-/// such field: re-parenting a PRODUCT is a tree operation, not a dialog field (A-13).</summary>
-public sealed record LocalityChoice(string Id, string Name);
-
 /// <summary>The current values shown by the product-properties dialog (US-011). When <c>IsWireless</c> is true the
 /// dialog omits the cable type/numbering fields (wireless products have no cabling, US-014).
-/// <para>There is no locality CHOICE list here, only <see cref="CurrentLocalityId"/>, which the dialog carries
-/// through untouched into its result: moving a product between localities is a tree operation (A-13). The modem
-/// dialog, which does offer the drop-down, takes its own <see cref="ModemPropertiesInput.Localities"/>.</para></summary>
-public sealed record ProductPropertiesInput(
-    string Title, string Name, string Note, string CableType, string CableNumber,
-    string IdentificationCode, string LightGroup,
-    string CurrentLocalityId,
-    bool IsWireless = false, bool IsWirelessDimmer = false,
-    IReadOnlyList<ProductTerminal>? Terminals = null, string Position = "", bool NameLocked = false,
-    bool EndUserReport = false);
+/// <para>NEITHER properties dialog re-parents, so there is no locality list and no current-locality carrier here.
+/// Moving a device between localities is a tree operation (US-054/A-13), and <c>Placering</c> — on the product
+/// dialog and, since T014, on the modem dialog too — is the free-text POSITION descriptor the original shows.</para>
+/// </summary>
+// ProductPropertiesInput is gone (T030). Every family's dialog is composed now, and a hand-built input record
+// stating which fields a family gets — IsWireless to hide the cabling, NameLocked to grey the name — was a second
+// answer to a question the composer already answers from the measured oracle.
+
+/// <summary>
+/// One row of the sensors' <i>Indstillinger</i> grid (T070): a configurable setting's name, the note
+/// explaining it, and its current value.
+/// <para>Element data rather than dialog metadata, exactly like <see cref="ProductTerminal"/> — the
+/// descriptor says WHETHER the grid appears; these are what goes in it.</para>
+/// </summary>
+public sealed record ProductSetting(string Name, string Note, string Value);
 
 /// <summary>One input/output terminal row shown in the product-properties dialog's terminal grids (US-012). The
 /// <c>Address</c> is the vendor-formatted <c>Datalinie N.PP</c> (blank when unassigned); <c>PinId</c> is the
@@ -207,15 +210,23 @@ public sealed record PinPropertiesInput(
     bool SaveOnPowerFailure = false);
 
 
-/// <summary>The current values shown by the modem properties dialog (US-013). <c>PhoneNumbers</c> holds telephone
-/// numbers 1..N (slot order).</summary>
-public sealed record ModemPropertiesInput(
-    string Title, string Name, string Note, string IdentificationCode,
-    string Cable0V, string Cable24V, string CableRS485Minus, string CableRS485Plus,
-    string PinCode, IReadOnlyList<string> PhoneNumbers,
-    IReadOnlyList<LocalityChoice> Localities, string CurrentLocalityId);
-
-// ModemPropertiesResult moved to the SDK (Ihc.Vis.Session, W2-10) — an edit payload for the modem command.
+/// <summary>
+/// What the ONE generic product dialog returns: the fields the installer actually changed, already resolved to
+/// the elements they write.
+/// <para>An EMPTY list is a valid, ordinary result — OK pressed without touching anything. Only <c>null</c> is a
+/// cancellation. The insert path depends on the distinction: treating an untouched OK as a cancel would delete a
+/// product the installer had just placed and accepted.</para>
+/// <para>There is no matching <c>Input</c> record. The dialog's input IS the composed
+/// <see cref="ProductDialogDescriptor"/>, which already carries the title, the groups, and every field's caption,
+/// current value, rule and write target — a hand-built input record here would be a second, drifting statement of
+/// the same thing, which is exactly what the metadata engine exists to remove.</para>
+/// </summary>
+/// <param name="Edits">The changed fields, already resolved to the elements they write.</param>
+/// <param name="WidgetAction">The hand-written composite the installer stepped into on their way out — a terminal
+/// row to address, or the advanced dimmer settings — or null for a plain OK.</param>
+public sealed record ProductDialogEdits(
+    ImmutableArray<ProductDialogEdit> Edits,
+    ProductDialogWidgetAction? WidgetAction = null);
 
 /// <summary>
 /// Abstraction over the modal dialogs the shell needs (confirm-save, file pickers, message boxes, the
@@ -270,9 +281,6 @@ public interface IDialogService
     /// value (the control shown depends on the value's <see cref="ResourceValueKind"/>). Returns null on Cancel.</summary>
     Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input);
 
-    /// <summary>Opens the modal product-documentation Properties dialog (US-011); returns the edited documentation,
-    /// or null when the installer cancels.</summary>
-    Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input);
 
     /// <summary>Shows a product's scene container (<c>Scenarier</c>) — its name (read-only), note, and the table of
     /// its scene memberships (US-024). Resolves to the edited note, or null when dismissed.</summary>
@@ -285,9 +293,15 @@ public interface IDialogService
     /// the returned result is the OK commit, or null when cancelled.</summary>
     Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input, Func<PinPropertiesResult, Task>? onApply = null);
 
-    /// <summary>Opens the modal modem properties dialog (US-013); returns the edited documentation, or null when the
-    /// installer cancels.</summary>
-    Task<ModemPropertiesResult?> EditModemPropertiesAsync(ModemPropertiesInput input);
+    /// <summary>Opens the ONE generic product dialog for a composed descriptor; returns the edits the installer
+    /// made (possibly none) plus any composite they stepped into, or null when they cancel.</summary>
+    /// <param name="terminals">Rows for the terminal grids, when the descriptor declares that widget. Element
+    /// data, not dialog metadata — which is why it travels beside the descriptor rather than inside it.</param>
+    /// <param name="settings">Rows for the sensors' Indstillinger grid, when the descriptor declares that
+    /// widget. Element data too, and for the same reason (T070).</param>
+    Task<ProductDialogEdits?> EditProductDialogAsync(
+        ProductDialogDescriptor descriptor, IReadOnlyList<ProductTerminal>? terminals = null,
+        IReadOnlyList<ProductSetting>? settings = null);
 
     /// <summary>Opens the modal advanced wireless-dimmer dialog (US-015); returns the edited settings, or null when
     /// the installer cancels.</summary>

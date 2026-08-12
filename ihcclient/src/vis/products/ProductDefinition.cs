@@ -56,6 +56,19 @@ namespace Ihc.Vis.Products
         public DefinitionDocumentation Documentation { get; init; } = DefinitionDocumentation.Empty;
 
         /// <summary>
+        /// What this product's properties dialog contains — <b>programmatic-lookup only</b>, and, exactly like
+        /// <see cref="Documentation"/>, deliberately <b>not</b> part of the serialized <see cref="Body"/>: it is
+        /// never written into a project <c>.vis</c> or a catalog <c>.def</c>. That is what keeps the byte-fidelity
+        /// guarantee independent of anything the dialog layer decides.
+        /// <para>Resolved from the device-root tag by <see cref="ProductDialogPresets.ForRootTag"/> on every
+        /// construction path — the five builder factories, the open-world <c>Create</c>, and <c>CatalogReader</c> —
+        /// so a definition's dialog never depends on how the definition was obtained. Defaults to
+        /// <see cref="ProductDialogModel.Empty"/>, which is the open-world case: a family the SDK has never seen
+        /// still opens a dialog, composed as the minimal fallback.</para>
+        /// </summary>
+        public ProductDialogModel Dialog { get; init; } = ProductDialogModel.Empty;
+
+        /// <summary>
         /// A decoded, read-only view of the product's direct resource children (I/O pins and family-specific
         /// resources), excluding structural children (the <c>scenes</c> container, an embedded <c>enum_definition</c>,
         /// and any settings/config container — the generic <c>settings</c> or a family variant such as

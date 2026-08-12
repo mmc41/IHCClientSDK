@@ -255,7 +255,11 @@ later via properties), **so that** the generated reports (E9) describe the insta
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ✅ Implemented. *(2026-08-12: the dialog is no longer hand-written per family —
+it is composed from a per-family descriptor and rendered by one window. Which fields a family gets, their
+captions, order, layout and validation all come from the recorded 100-product vendor oracle rather than from
+markup, so this story's field list is now stated in one place and checked against all 100 products by
+`CatalogInsertionTests`' descriptor gate. The `locked` gate is unchanged and still read off the element.)*
 
 ---
 
@@ -356,8 +360,12 @@ rule.
 
 **Insertion & constraint rules:**
 - MUST: A modem is inserted via right-click a locality > *Products* > *Bus Produkter* > `<product>`
-  (US-010's category structure; the category label renders verbatim — *Bus Produkter*). Per US-010's dialog-gated insert, the modem's **own** properties dialog opens as
-  part of the insert — not the generic product dialog — and cancelling it inserts nothing.
+  (US-010's category structure; the category label renders verbatim — *Bus Produkter*). Per US-010's
+  dialog-gated insert, the modem's properties dialog opens as part of the insert, and cancelling it inserts
+  nothing. *(Until 2026-08-12 this said "its **own** dialog — not the generic product dialog". There is one
+  dialog now, and what makes it the modem's is the descriptor it renders: title `SMS Modem Egenskaber`, four
+  groups, thirty slots. The requirement was always about what the installer is shown, never about which
+  window class shows it.)*
 - MUST: A project may contain **at most one** modem, regardless of `<product>`. The limit is enforced **on
   insert, not in the menu**: the modem entry stays enabled once a modem exists, and the second attempt is
   refused with a message and no change to the tree. That matches the original exactly — measured live
@@ -379,12 +387,18 @@ rule.
 - SHOULD: **Cabling** — wire colours for 0 V, 24 V, RS485 minus, RS485 plus.
 - SHOULD: **Telephone numbers** — Number 1–4, dialled in priority order (Number 2 is dialled only if
   Number 1 is unanswered, Number 3 if Number 2 is unanswered, Number 4 if Number 3 is unanswered).
+  *(Four is this product's own declared capacity, not a rendering limit — the SMS modem below declares
+  thirty and gets thirty. The two must not be conflated: reading "Number 1–4" as a dialog constraint is
+  what produced F-52. Neither is built, because the analogue modem has no catalog product.)*
 - SHOULD: **Settings** — Access code (4-digit access code, default `1234`); Call pause
   (integer, **1–99 minutes**); Call delay (integer, **1–99 seconds**); ID code (alarm-centre
   identifier, text); Number of rings (integer, **0–9**; `0` means the modem never answers).
 
 **Property groups (dialog "SMS modem properties"):**
-- SHOULD: **SMS modem properties** — Name, Note, Location, Identification code.
+- SHOULD: **SMS modem properties** — Name, **Placering**, Note, Identification code. *Placering* is the
+  free-text **position descriptor** — where in the room the modem physically sits — exactly as on the product
+  dialog (US-011). It is **not** a `Location` locality drop-down: the modem dialog does not re-parent, matching
+  the original, and moving a device between localities is a tree operation (US-054).
 - SHOULD: **Cabling** — 0 V / 24 V / RS485 minus / RS485 plus wire colours.
 - SHOULD: **Settings** — PIN code (SIM PIN; irrelevant if the SIM has none).
 - MUST: **Telephone numbers** — Number 1–**30**; each **3–20 characters**, no spaces, must start with a
@@ -395,11 +409,16 @@ rule.
 > *Modem egenskaber* (Navn, Note, Placering, Identifikationskode), *Kabling* (four `Ledningsfarve` fields),
 > *Indstillinger* (Pin Kode), *Telefon numre* (**Nummer 1 … Nummer 30**). Its `Navn` is **disabled**, and
 > Note / Placering / Identifikationskode / the four cable colours are **suggestion drop-downs**.
-> OpenVisual currently renders 39 controls with **Nummer 1–4** — a violation of this story, not merely of the
-> original — and its cable-colour fields are plain text boxes, which may or may not fall under the registered
-> suggestion-drop-down difference (product.md names the product dialog and terminal editor, not this one).
-> Open as **F-53/F-52** in the campaign record; the count above is raised from SHOULD to MUST because a
-> missing field is a missing capability.
+>
+> **F-52 and F-53 are CLOSED (2026-08-12).** OpenVisual rendered 39 controls with *Nummer 1–4* — a violation
+> of this story, not merely of the original, since 26 recipients could not be entered at all. The modem no
+> longer has a dialog of its own: it is one composed descriptor through the single generic product dialog, so
+> all **30** slots are offered and editable, `Navn` is composed read-only as the original's is, and Note /
+> Placering / Identifikationskode / the four cable colours are `ComboSuggest` — always-editable combos over
+> the project's own distinct values, which closes the suggestion-drop-down half (F-53) for this dialog too.
+> The 3–20-character, no-spaces, country-code rule is enforced with a stated refusal naming the offending
+> slot. The MUST above stays a MUST: a missing field is a missing capability, and the slot count is now
+> pinned by the descriptor gate over all 100 catalog products.
 
 **Output:**
 - A `<product>` node exposes its catalog-defined pins (`<pin>`), enabling telephone control to be wired into function blocks.
@@ -422,3 +441,12 @@ rule.
 **Implementation status:** 🟡 Partly implemented (SMS modem) — the dialog fields and the one-modem rule
 exist; the *Products > Bus Produkter > `<product>`* insert route depends on the Bus category being present in
 the menu (US-010).
+
+*2026-08-12:* the SMS-modem half is now **complete against this story's MUSTs** — all 30 telephone slots are
+offered, validated and written, `Navn` is read-only, and the four groups are composed from the measured
+oracle (F-52/F-53 closed). It stays 🟡 because the **analogue** modem's groups above — *Access code*, *Call
+pause*, *Call delay*, *ID code*, *Number of rings*, and its own *Number 1–4* priority list — are unbuilt.
+That is not an omission in the dialog layer: `product_rs485_modem` is recognised by the classifier but has
+no `TypeCode` and no catalog product, so there is nothing to place and nothing to compose a dialog for. The
+`ProductFamily.Rs485Modem` exemption in `CatalogInsertionTests` asserts it stays empty, so adding a preset
+forces this line to be revisited rather than silently widened.

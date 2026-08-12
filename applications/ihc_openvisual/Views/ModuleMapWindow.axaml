@@ -47,7 +47,7 @@
              StackPanel: a StackPanel measures its child with INFINITE height, so the output group's ScrollViewer
              never overflowed — it reported nothing to scroll and the window clipped data lines 13-16 away
              instead. The '*' row passes the group's own height constraint down to the list. -->
-        <Style Selector="controls|AccessibleGroupBox.group">
+        <Style Selector="HeaderedContentControl.group">
             <Setter Property="Template">
                 <ControlTemplate>
                     <Grid RowDefinitions="Auto,*">

@@ -51,7 +51,7 @@ namespace Ihc.Vis.Tests
             ProductRef lamp = stue.Product("Lampeudtag");
 
             Assert.That(() => lamp.RemoveOutput(lamp.Output("Udgang")),
-                Throws.InvalidOperationException.With.Message.Contains("catalog"),
+                Throws.InvalidOperationException.With.Message.Contains("katalogdefineret"),
                 "a product's catalog pin cannot be deleted on its own — delete the product to remove it");
         }
 

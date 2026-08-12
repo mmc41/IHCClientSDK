@@ -71,10 +71,26 @@ namespace Ihc.Vis
         /// <summary>Command to insert the catalog product with <paramref name="productIdentifier"/> into a locality
         /// (US-010), or null when no such product is in the catalog. The at-most-one-modem rule (US-013) is a separate
         /// pre-check — <see cref="WouldExceedModemLimit"/> — so the caller can surface it before applying.</summary>
-        public Session.AddProduct? AddProduct(Project project, ElementId localityId, string productIdentifier) =>
-            _catalog.Value.Products.FirstOrDefault(p => p.ProductIdentifier == productIdentifier) is { } definition
-                ? new Session.AddProduct(localityId, definition)
-                : null;
+        /// <summary>
+        /// Command to insert a catalog product by identifier — or null when the catalog has no such product,
+        /// <b>or when the identifier names more than one</b>.
+        /// <para>Refusing the ambiguous case is the point. Catalog identifiers are NOT unique (D22): `_0x2102`
+        /// is both <c>LK FUGA Tryk 4 tast</c> and <c>LK OPUS Tryk 4 tast</c>, and eight identifiers are shared
+        /// this way. This resolved with <c>FirstOrDefault</c>, so picking OPUS from the insert menu placed the
+        /// FUGA product — a different product with its own terminals, written into the project under the wrong
+        /// name and only noticed when its dialog said so (T046). A caller that means one of two must say which,
+        /// through the <see cref="AddProduct(Project, ElementId, ProductDefinition)"/> overload.</para>
+        /// </summary>
+        public Session.AddProduct? AddProduct(Project project, ElementId localityId, string productIdentifier)
+        {
+            var matches = _catalog.Value.Products.Where(p => p.ProductIdentifier == productIdentifier).Take(2).ToList();
+            return matches.Count == 1 ? new Session.AddProduct(localityId, matches[0]) : null;
+        }
+
+        /// <summary>Command to insert a catalog product the caller has already resolved — the unambiguous form,
+        /// and the only one that can express which of two products sharing an identifier is meant (D22).</summary>
+        public Session.AddProduct AddProduct(Project project, ElementId localityId, ProductDefinition definition) =>
+            new Session.AddProduct(localityId, definition);
 
         /// <summary>Command to insert a preprogrammed library function block by master type into a locality (US-018),
         /// or null when no such block is in the catalog.</summary>
@@ -149,10 +165,17 @@ namespace Ihc.Vis
         public Session.DeleteEnumValue DeleteEnumValue(Project project, string typeName, int valueIndex) =>
             new Session.DeleteEnumValue(typeName, valueIndex);
 
-        /// <summary>Command to apply edited product documentation (US-011), capturing the product's current locality
-        /// so the command can re-parent it when the Location changed.</summary>
-        public Session.UpdateProduct UpdateProduct(Project project, ElementId productId, Session.ProductPropertiesResult result) =>
-            new Session.UpdateProduct(productId, result, project.FindParent(productId)?.Id);
+        /// <summary>
+        /// Command to apply a product properties dialog — one undoable commit over a flat list of pre-resolved
+        /// edits, whatever family the dialog belonged to. The write-back half of
+        /// <see cref="ProjectAppService.GetProductDialog"/>, and since T031 the ONLY one: the per-family
+        /// <c>UpdateProduct</c>/<c>UpdateModem</c> pair it succeeded is deleted.
+        /// </summary>
+        public Session.ApplyProductDialog ApplyProductDialog(
+            Project project, ElementId productId,
+            System.Collections.Immutable.ImmutableArray<Session.ProductDialogEdit> edits,
+            Session.ProductDialogWidgetAction? widgetAction = null) =>
+            new Session.ApplyProductDialog(productId, edits, widgetAction);
 
         /// <summary>Command to apply edited data-line pin addressing (US-012).</summary>
         public Session.UpdatePin UpdatePin(Project project, ElementId pinId, Session.PinPropertiesResult result) =>
@@ -332,7 +355,17 @@ namespace Ihc.Vis
                 DeleteKind.General => HasLinkHalves(element!) || WouldThrowStrict(project, id),   // link halves / strict cascade
                 _ => false,   // NotDeletable / Link never confirm
             };
-            return new DeleteImpact(kind != DeleteKind.NotDeletable, needsConfirm, kind);
+            bool deletable = kind != DeleteKind.NotDeletable;
+            // A node can be undeletable for three reasons, and the installer deserves to be told which: the engine's
+            // own refusal (catalog pin / locked block), a node type that is structure rather than content, or an id
+            // that no longer resolves. Only the first has an engine sentence, so the other two are named here.
+            string? reason = deletable
+                ? null
+                : ProjectEditor.DeletionRefusalReason(project.Root, id)
+                  ?? (element is null
+                        ? "Noden findes ikke længere."
+                        : "Denne node er en del af projektets struktur og kan ikke slettes.");
+            return new DeleteImpact(deletable, needsConfirm, kind, reason);
         }
 
         // ---- Link/Scene family (T006): pin links, link removal, scenario links + values (sliver #11 relocated) ----
@@ -516,10 +549,8 @@ namespace Ihc.Vis
         public Session.UpdateDimmerSettings UpdateDimmerSettings(Project project, ElementId productId, Session.AdvancedDimmerResult result) =>
             new Session.UpdateDimmerSettings(productId, result);
 
-        /// <summary>Command to apply edited modem documentation (US-013), capturing the modem's current locality so the
-        /// command can re-parent it when the Location changed.</summary>
-        public Session.UpdateModem UpdateModem(Project project, ElementId modemId, Session.ModemPropertiesResult result) =>
-            new Session.UpdateModem(modemId, result, project.FindParent(modemId)?.Id);
+        // UpdateModem is gone (T031): a modem's dialog is composed like every other product's and written back
+        // through ApplyProductDialog above.
 
         // The node types US-053 can delete: products, function blocks, variables/pins, and program elements. Structural
         // containers (sections, event/command/conditions groups, programs) and metadata are not user-deletable.
@@ -557,6 +588,11 @@ namespace Ihc.Vis
     /// whether it can be deleted, whether that needs confirmation (it cascades), and which delete <see cref="Kind"/>
     /// dispatches. The confirmation WORDING stays app-side (D05); this decides only the kind and whether a confirm is
     /// needed. For a <see cref="DeleteKind.General"/> node <see cref="NeedsConfirm"/> doubles as the reference-cascade
-    /// flag the <c>DeleteNode</c> command takes.</summary>
-    public readonly record struct DeleteImpact(bool Deletable, bool NeedsConfirm, DeleteKind Kind);
+    /// flag the <c>DeleteNode</c> command takes.
+    /// <para><see cref="Reason"/> is null when the node IS deletable, and otherwise carries the SDK's own Danish
+    /// sentence saying why not — so the GUI states the specific reason ("… er en katalogdefineret klemme …",
+    /// "Denne node er inde i en låst funktionsblok …") rather than authoring a generic copy. The engine already
+    /// computed it; before this it was discarded at the boundary and replaced with "Denne node kan ikke slettes."</para>
+    /// </summary>
+    public readonly record struct DeleteImpact(bool Deletable, bool NeedsConfirm, DeleteKind Kind, string? Reason = null);
 }

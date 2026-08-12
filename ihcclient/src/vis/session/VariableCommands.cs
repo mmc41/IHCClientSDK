@@ -152,10 +152,10 @@ namespace Ihc.Vis.Session
         internal override string Describe(Project project) => "Sæt startværdi";
 
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireExists(Id, "variable")
+            context.RequireExists(Id, "Variablen")
                 .And(context.RequireUnlockedTarget(Id, inclusive: true));   // T003: no edit inside a locked block
 
-        internal override void Execute(ProjectEditor editor) => Value.WriteTo(editor.Resolve(Id, "variable"));
+        internal override void Execute(ProjectEditor editor) => Value.WriteTo(editor.Resolve(Id, "Variablen"));
     }
 
     /// <summary>Edits an ordinary FB resource variable's Name, both documentation fields, and typed initial value in
@@ -174,12 +174,12 @@ namespace Ihc.Vis.Session
         internal override string Describe(Project project) => "Rediger " + Name;
 
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireExists(Id, "variable")
+            context.RequireExists(Id, "Variablen")
                 .And(context.RequireUnlockedTarget(Id, inclusive: true));   // T003
 
         internal override void Execute(ProjectEditor editor)
         {
-            ElementRef handle = editor.Resolve(Id, "variable");
+            ElementRef handle = editor.Resolve(Id, "Variablen");
             handle.SetAttribute("name", Name).SetAttribute("note", Note).SetAttribute("note-2", HelpNote);
             Value.WriteTo(handle);
         }

@@ -40,7 +40,7 @@ namespace Ihc.Vis.Tests
 
             var ex = Assert.Throws<InvalidOperationException>(
                 () => editor.FunctionBlock(autoProof).AddInternalVariable("resource_flag", "New"));
-            Assert.That(ex!.Message, Does.Contain("locked function block"));
+            Assert.That(ex!.Message, Does.Contain("låst funktionsblok"));
         }
 
         [Test]
@@ -103,7 +103,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
-                Assert.That(outcome.Reason, Does.Contain("locked function block"));
+                Assert.That(outcome.Reason, Does.Contain("låst funktionsblok"));
             });
         }
 
@@ -156,7 +156,7 @@ namespace Ihc.Vis.Tests
             ElementId emptyLocality = project.Groups.Last().Id!.Value;
 
             var ex = Assert.Throws<InvalidOperationException>(() => editor.MoveSubtree(lockedPin, emptyLocality));
-            Assert.That(ex!.Message, Does.Contain("locked function block"));
+            Assert.That(ex!.Message, Does.Contain("låst funktionsblok"));
         }
 
         // review A1: the drag-over probe must not offer a reorder the command would refuse. Two same-tag siblings

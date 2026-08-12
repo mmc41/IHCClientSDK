@@ -87,6 +87,32 @@ namespace Ihc.Vis.Editing
             return result;
         }
 
+        /// <summary>
+        /// Whether <paramref name="name"/> is a writable declared attribute of this element's type — the
+        /// question <see cref="SetAttribute"/> answers by throwing.
+        /// <para>Exists because a product's documentation attribute set varies by FAMILY, not by any coarser
+        /// property: <c>product_rs485_led_dimmer</c> declares neither <c>power_group</c> nor
+        /// <c>cabletype</c>/<c>cablenumber</c> and yet is not wireless, so a writer that gated on
+        /// wired-versus-wireless threw on the OK button of a dialog that had opened perfectly well. Asking the
+        /// schema is the only answer that stays correct as families are added.</para>
+        /// <para>Answered from the SAME <c>SchemaView</c> that <see cref="SetAttribute"/> validates against, so
+        /// the predicate and the write can never disagree. Use it to skip a field a family does not have —
+        /// never to swallow a misspelled attribute name, which it cannot tell apart from an absent one.</para>
+        /// </summary>
+        public bool DeclaresAttribute(string name)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            ElementSchema declaringSchema = editor.SchemaView.Get(editor.Require(Id).Tag);
+            foreach (AttrSchema attr in declaringSchema.Attrs)
+            {
+                if (attr.Name == name)
+                {
+                    return attr.Render != AttrRender.Id;
+                }
+            }
+            return false;
+        }
+
         private AttrSchema RequireWritableAttr(string name)
         {
             string tag = editor.Require(Id).Tag;

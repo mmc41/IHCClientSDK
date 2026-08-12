@@ -10,7 +10,11 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
+using Ihc;
 using Ihc.Vis;
+using Ihc.Vis.Model;
+using Ihc.Vis.Projects;
+using Ihc.Vis.Session;
 using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 using ihc_openvisual.Views;
@@ -688,38 +692,44 @@ public class SmokeTests : AvaloniaTestBase
         });
     }
 
-    // A-13/US-011: the product-properties dialog exposes the documentation fields plus a free-text Placement field,
-    // and has NO Location room dropdown (moving a product is a tree operation, not a dialog field).
+    // A-13/US-011: a wired product's dialog exposes the documentation fields plus an editable Placement field, and
+    // has NO Location room dropdown (moving a product is a tree operation, not a dialog field).
+    //
+    // Restated in the D07/D12 vocabulary since T030: there are no named controls to look up, so the fields are
+    // asserted by CAPTION and KIND against the composed descriptor, and the "no Location dropdown" claim becomes
+    // the stronger "no field writes anything but this product's own attributes" — a re-parenting control could
+    // not be expressed by a binding at all.
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]
-    public void ProductProperties_HasPlaceringTextBox_NoLocationDropdown()
+    public void ProductDialog_OffersAnEditablePlacering_AndNoLocationDropdown()
     {
-        var window = new ProductPropertiesWindow { Title = "Produkt egenskaber" };
-        var name = window.FindControl<TextBox>("NameBox");
-        var placering = window.FindControl<TextBox>("PlaceringBox");
-        var location = window.FindControl<ComboBox>("LocationCombo");
-        var endUserReport = window.FindControl<CheckBox>("EndUserReportCheck");
-        var cableType = window.FindControl<TextBox>("CableTypeBox");
-        var identification = window.FindControl<TextBox>("IdentificationBox");
-        var lightGroup = window.FindControl<TextBox>("LightGroupBox");
-        if (name is not null) name.Text = "LK FUGA Tryk 2 tast";
-        if (placering is not null) placering.Text = "i loft";
+        var app = new ProjectAppService(new IhcSettings());
+        Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
+        ElementId locality = project.Groups.First().Id!.Value;
+        var session = new ProjectDocumentSession();
+        session.Open(project);
+        ElementId placed = session.Apply(new AddProduct(locality,
+            app.GetAvailableProducts().First(p => p.ProductIdentifier == "_0x2101"))).Value;
+
+        var viewModel = new ProductDialogViewModel(app.GetProductDialog(session.Current!, placed));
+        var window = new ProductDialogWindow();
+        window.Populate(viewModel);
         CurrentTestWindow = window;
         window.Show();
         window.CaptureRenderedFrame();
 
+        var fields = viewModel.AllFields.ToDictionary(f => f.Caption);
         Assert.Multiple(() =>
         {
-            Assert.That(window.Title, Is.EqualTo("Produkt egenskaber"));
-            Assert.That(name?.Text, Is.EqualTo("LK FUGA Tryk 2 tast"));
-            Assert.That(placering, Is.Not.Null, "an editable Placement text field is present");
-            Assert.That(placering!.Text, Is.EqualTo("i loft"), "Placement is a plain, editable textbox");
-            Assert.That(location, Is.Null, "the Location room dropdown is gone");
-            Assert.That(endUserReport, Is.Not.Null, "the end-user-report control still exists (the value round-trips through it)");
-            Assert.That(endUserReport!.IsVisible, Is.False, "but is HIDDEN — the vendor never shows control 303 (C15 measured 2026-07-18: 0/13 products across 6 families)");
-            Assert.That(cableType, Is.Not.Null);
-            Assert.That(identification, Is.Not.Null);
-            Assert.That(lightGroup, Is.Not.Null);
+            Assert.That(window.Title, Is.EqualTo("LK FUGA Tryk 2 tast"), "titled with the product TYPE");
+            Assert.That(fields["Navn"].Value, Is.EqualTo("LK FUGA Tryk 2 tast"));
+            Assert.That(fields.ContainsKey("Placering"), Is.True, "an editable Placement field is present");
+            Assert.That(fields["Placering"].IsReadOnly, Is.False, "and it is editable, not a fixed choice");
+            Assert.That(fields.ContainsKey("Lokalitet"), Is.False, "the Location room dropdown is gone");
+            Assert.That(fields.ContainsKey("Medtag produkt i slutbrugerrapport"), Is.False,
+                "the vendor never shows control 303 (C15 measured 2026-07-18: 0/13 products across 6 families), "
+                + "and an unoffered field is never written, so the stored flag survives untouched");
+            Assert.That(fields.Keys, Does.Contain("Kabeltype").And.Contain("Identifikationskode").And.Contain("Lysgruppe"));
         });
     }
 
@@ -751,28 +761,40 @@ public class SmokeTests : AvaloniaTestBase
         });
     }
 
-    // US-013: the SMS-modem properties dialog exposes documentation, cabling, PIN and telephone-number fields.
+    // US-013: the SMS modem's dialog exposes documentation, cabling, PIN and telephone-number fields.
+    // Since T029 there is no ModemPropertiesWindow — the modem is one more descriptor through the ONE generic
+    // dialog. So this drives that, and asserts on the fields the composer produced BY CAPTION: the named-control
+    // lookups this used to do have nothing left to name.
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]
-    public void ModemPropertiesWindow_ShowsModemFields()
+    public void ProductDialogWindow_ShowsTheModemFields()
     {
-        var window = new ModemPropertiesWindow { Title = "SMS modem egenskaber" };
-        var name = window.FindControl<TextBox>("NameBox");
-        var pin = window.FindControl<TextBox>("PinCodeBox");
-        var cable = window.FindControl<TextBox>("Cable0VBox");
-        var phone1 = window.FindControl<TextBox>("Phone1Box");
-        if (name is not null) name.Text = "SMS Modem";
+        var app = new ProjectAppService(new IhcSettings());
+        Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
+        ElementId locality = project.Groups.First().Id!.Value;
+        var session = new ProjectDocumentSession();
+        session.Open(project);
+        ElementId modem = session.Apply(new AddProduct(locality,
+            app.GetAvailableProducts().First(p => p.ProductIdentifier == "_0x3103"))).Value;
+
+        var viewModel = new ProductDialogViewModel(app.GetProductDialog(session.Current!, modem));
+        var window = new ProductDialogWindow();
+        window.Populate(viewModel);
         CurrentTestWindow = window;
         window.Show();
         window.CaptureRenderedFrame();
 
+        var captions = viewModel.AllFields.Select(f => f.Caption).ToList();
         Assert.Multiple(() =>
         {
-            Assert.That(window.Title, Is.EqualTo("SMS modem egenskaber"));
-            Assert.That(name?.Text, Is.EqualTo("SMS Modem"));
-            Assert.That(pin, Is.Not.Null, "the PIN field is present");
-            Assert.That(cable, Is.Not.Null, "the cabling fields are present");
-            Assert.That(phone1, Is.Not.Null, "the telephone-number fields are present");
+            Assert.That(window.Title, Is.EqualTo("SMS Modem Egenskaber"));
+            Assert.That(captions, Does.Contain("Navn"));
+            Assert.That(captions, Does.Contain("Pin Kode"), "the PIN field is present (the vendor's own spacing)");
+            Assert.That(captions, Does.Contain("Ledningsfarve 0V"), "the cabling fields are present");
+            Assert.That(captions.Count(c => c.StartsWith("Nummer")), Is.EqualTo(30),
+                "one editable field per declared slot — 30, not 4 (F-52)");
+            Assert.That(window.GetVisualDescendants().OfType<TextBox>().Count(), Is.GreaterThanOrEqualTo(30),
+                "and they are realized, not merely composed");
         });
     }
 

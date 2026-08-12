@@ -51,7 +51,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
-                Assert.That(outcome.Reason, Does.Contain("locked function block"));
+                Assert.That(outcome.Reason, Does.Contain("låst funktionsblok"));
             });
         }
 
@@ -109,7 +109,7 @@ namespace Ihc.Vis.Tests
             ElementId inLocked = Fb(project, "AutoProof").FindChild("outputs")!.ChildrenOrEmpty().First().Id!.Value;
 
             var ex = Assert.Throws<InvalidOperationException>(() => editor.ToggleLogMark(inLocked));
-            Assert.That(ex!.Message, Does.Contain("locked function block"));
+            Assert.That(ex!.Message, Does.Contain("låst funktionsblok"));
         }
 
         // ---- no over-reach: the same edits succeed off a locked block ----

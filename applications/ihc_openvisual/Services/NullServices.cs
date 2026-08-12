@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Ihc.Vis;
+using Ihc.Vis.Products;
 using Ihc.Vis.Session;
 
 namespace ihc_openvisual.Services;
@@ -20,10 +22,9 @@ public sealed class NullDialogService : IDialogService
     public Task<bool> OpenExternalUrlAsync(string url) => Task.FromResult(true);
     public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null, string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null) => Task.FromResult<PropertiesResult?>(null);
     public Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input) => Task.FromResult<VariablePropertiesResult?>(null);
-    public Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input) => Task.FromResult<ProductPropertiesResult?>(null);
     public Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input) => Task.FromResult<SceneContainerResult?>(null);
     public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input, Func<PinPropertiesResult, Task>? onApply = null) => Task.FromResult<PinPropertiesResult?>(null);
-    public Task<ModemPropertiesResult?> EditModemPropertiesAsync(ModemPropertiesInput input) => Task.FromResult<ModemPropertiesResult?>(null);
+    public Task<ProductDialogEdits?> EditProductDialogAsync(ProductDialogDescriptor descriptor, IReadOnlyList<ProductTerminal>? terminals = null, IReadOnlyList<ProductSetting>? settings = null) => Task.FromResult<ProductDialogEdits?>(null);
     public Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input) => Task.FromResult<AdvancedDimmerResult?>(null);
     public Task<SceneValueResult?> EditSceneValueAsync(SceneValueInput input) => Task.FromResult<SceneValueResult?>(null);
     public Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input) => Task.FromResult<EnumDefinitionResult?>(null);

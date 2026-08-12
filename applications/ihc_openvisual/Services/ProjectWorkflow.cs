@@ -11,6 +11,7 @@ using ihc_openvisual.Configuration;
 using Ihc.Vis;
 using Ihc.Vis.Addressing;
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
 using Microsoft.Extensions.Logging;
@@ -269,6 +270,25 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>The catalog function blocks as slim insert-menu items (<see cref="CatalogItem"/>).</summary>
     public IReadOnlyList<CatalogItem> GetFunctionBlockCatalogItems() => _service.GetFunctionBlockCatalogItems();
 
+    /// <summary>
+    /// The catalog product an insert-menu leaf stands for, resolved by identifier AND display name.
+    /// <para>The name is not decoration: catalog identifiers are not unique (D22), and `_0x2102` is both
+    /// <c>LK FUGA Tryk 4 tast</c> and <c>LK OPUS Tryk 4 tast</c>. Resolving by identifier alone placed the FUGA
+    /// product when the installer chose OPUS (T046). The menu leaf already knows both, so it can say which.</para>
+    /// </summary>
+    public ProductDefinition? ResolveCatalogProduct(string productIdentifier, string displayName)
+    {
+        var byIdentifier = _service.GetAvailableProducts()
+            .Where(p => p.ProductIdentifier == productIdentifier).ToList();
+        return byIdentifier.FirstOrDefault(p => p.DisplayName == displayName)
+            ?? (byIdentifier.Count == 1 ? byIdentifier[0] : null);
+    }
+
+    /// <summary>The composed properties dialog for a placed product — its groups, fields, current values, rules and
+    /// write targets, all decided by the SDK. Empty when no project is open or the element composes no dialog.</summary>
+    public ProductDialogDescriptor GetProductDialog(ElementId productId) =>
+        Current is { } project ? _service.GetProductDialog(project, productId) : new ProductDialogDescriptor("", []);
+
     /// <summary>The default name a freshly inserted empty function block carries until renamed (US-019). Written into
     /// the file as the block's <c>name</c> — project data like <see cref="NewLocalityName"/>, so it is the format's own
     /// placeholder rather than an English one.</summary>
@@ -441,11 +461,12 @@ public sealed class ProjectWorkflow : IDisposable
     public PreviewOutcome Preview(ProjectCommand command) =>
         _document?.Preview(command) ?? PreviewOutcome.Refused(NoDocumentReason);
 
-    // The ONE "no document is open" refusal for every route through this workflow (review F14): both Apply
-    // overloads and both probes answer with the same wording, built the same way, so re-wording it is one edit
-    // rather than a hunt across the file. The stale-version guard that used to sit alongside it now lives in the
-    // document, where the version does.
-    private const string NoDocumentReason = "Intet projekt er åbent.";
+    // The ONE "no document is open" refusal for every route through this workflow (review F14) — and it is the
+    // SDK's own sentence, FORWARDED rather than a second wording. The session answers this question when it holds
+    // no project; this workflow answers it when it holds no document at all, where there is no session to ask. Two
+    // separately-authored sentences meant the installer saw "Intet projekt er åbent." or "Der er ikke åbnet et
+    // projekt." depending on which layer noticed first. One condition, one sentence (D13).
+    private const string NoDocumentReason = ProjectDocumentSession.NoProjectOpenRefusal;
 
     // Likewise the ONE title over every failed write this workflow reports — saving the project and saving a
     // function block to the library both surface it, and one title for one kind of failure is what the installer

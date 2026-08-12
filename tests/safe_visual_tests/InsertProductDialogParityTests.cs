@@ -51,7 +51,7 @@ public class InsertProductDialogParityTests
 
         await ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);
 
-        Assert.That(harness.Dialogs.EditProductPropertiesCalls, Is.EqualTo(1),
+        Assert.That(harness.Dialogs.EditProductDialogCalls, Is.EqualTo(1),
             "the product's documentation is asked for as part of placing it");
     }
 
@@ -79,7 +79,7 @@ public class InsertProductDialogParityTests
         using var _h = harness;
         int before = ProductCount(harness.Session.Current!);
         string idsBefore = harness.Session.Current!.LastUniqueId!;
-        harness.Dialogs.CancelProductProperties = true;
+        harness.Dialogs.CancelProductDialog = true;
         var leaf = FirstWiredLeaf(vm);
 
         await ((CommunityToolkit.Mvvm.Input.IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);

@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE utcs_project [
+   <!ELEMENT utcs_project ANY>
+   <!ATTLIST utcs_project version_major CDATA #REQUIRED
+                  version_minor CDATA #REQUIRED
+                  id1 CDATA #REQUIRED
+                  id2 CDATA #REQUIRED
+                  icon CDATA "_0x0"
+                  last_unique_id CDATA #REQUIRED>
+   <!ELEMENT modified ANY>
+   <!ATTLIST modified year CDATA #REQUIRED
+                  month CDATA #REQUIRED
+                  day CDATA #REQUIRED
+                  hour CDATA #REQUIRED
+                  minute CDATA #REQUIRED>
+   <!ELEMENT customer_info ANY>
+   <!ATTLIST customer_info name CDATA ""
+                  address CDATA ""
+                  city CDATA ""
+                  zipcode CDATA ""
+                  country CDATA ""
+                  phone CDATA ""
+                  mobilephone CDATA ""
+                  email CDATA ""
+                  udf CDATA "">
+   <!ELEMENT installer_info ANY>
+   <!ATTLIST installer_info name CDATA ""
+                  address CDATA ""
+                  city CDATA ""
+                  zipcode CDATA ""
+                  country CDATA ""
+                  phone CDATA ""
+                  mobilephone CDATA ""
+                  email CDATA ""
+                  udf CDATA "">
+   <!ELEMENT project_info ANY>
+   <!ATTLIST project_info programmer CDATA ""
+                  number CDATA ""
+                  drawing CDATA ""
+                  type CDATA ""
+                  description CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_definitions ANY>
+   <!ATTLIST enum_definitions id ID #REQUIRED
+                  name CDATA ""
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_definition ANY>
+   <!ATTLIST enum_definition id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT enum_value ANY>
+   <!ATTLIST enum_value id ID #REQUIRED
+                  typeid CDATA "_0x0"
+                  name CDATA ""
+                  note CDATA ""
+                  index CDATA "0"
+                  udf CDATA "">
+   <!ELEMENT groups ANY>
+   <!ATTLIST groups id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT group ANY>
+   <!ATTLIST group id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT product_rs485_sms_modem ANY>
+   <!ATTLIST product_rs485_sms_modem id ID #REQUIRED
+                  product_identifier CDATA #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  helpfile CDATA ""
+                  documentation_tag CDATA ""
+                  note CDATA ""
+                  position CDATA ""
+                  cablecolour_0V CDATA ""
+                  cablecolour_24V CDATA ""
+                  cablecolour_RS485Minus CDATA ""
+                  cablecolour_RS485Plus CDATA ""
+                  udf CDATA "">
+   <!ELEMENT sms_modem_settings ANY>
+   <!ATTLIST sms_modem_settings id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT sms_modem_pincode ANY>
+   <!ATTLIST sms_modem_pincode id ID #REQUIRED
+                  value CDATA "0"
+                  minimum CDATA "0"
+                  maximum CDATA "99999999"
+                  udf CDATA "">
+   <!ELEMENT sms_modem_phonenumber ANY>
+   <!ATTLIST sms_modem_phonenumber id ID #REQUIRED
+                  address CDATA #REQUIRED
+                  phonenumber CDATA ""
+                  udf CDATA "">
+   <!ELEMENT documentation_modules ANY>
+   <!ATTLIST documentation_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT dataline_input_modules ANY>
+   <!ATTLIST dataline_input_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+   <!ELEMENT dataline_output_modules ANY>
+   <!ATTLIST dataline_output_modules id ID #REQUIRED
+                  name CDATA ""
+                  icon CDATA "_0x0"
+                  note CDATA ""
+                  udf CDATA "">
+]>
+<utcs_project version_major="4" version_minor="0" id1="_0xb091e00" id2="_0xb091e00" last_unique_id="_0x74">
+   <modified year="2026" month="8" day="11" hour="9" minute="30"/>
+   <customer_info/>
+   <installer_info name="Morten" country="Danmark"/>
+   <project_info programmer="Morten Christensen"/>
+   <enum_definitions id="_0x3046" name="Enumerator definitioner">
+      <enum_definition id="_0x4147" typeid="_0x10" name="Persienne tilstand">
+         <enum_value id="_0x4248" typeid="_0x11" name="Ukendt"/>
+         <enum_value id="_0x4348" typeid="_0x12" name="Oppe" index="1"/>
+         <enum_value id="_0x4448" typeid="_0x13" name="Nede" index="2"/>
+         <enum_value id="_0x4548" typeid="_0x14" name="Kører op" index="3"/>
+         <enum_value id="_0x4648" typeid="_0x15" name="Kører ned" index="4"/>
+      </enum_definition>
+      <enum_definition id="_0x4747" typeid="_0x16" name="Logning">
+         <enum_value id="_0x4848" typeid="_0x17" name="Off"/>
+         <enum_value id="_0x4948" typeid="_0x18" name="Kun ændringer" index="1"/>
+         <enum_value id="_0x4a48" typeid="_0x19" name="Hver Time" index="2"/>
+         <enum_value id="_0x4b48" typeid="_0x20" name="Dagligt" index="3"/>
+         <enum_value id="_0x4c48" typeid="_0x21" name="Ugentligt" index="4"/>
+         <enum_value id="_0x4d48" typeid="_0x22" name="Månedligt" index="5"/>
+      </enum_definition>
+   </enum_definitions>
+   <groups id="_0x2031" name="Lokaliteter" icon="_0x15" note="Gruppering af produkter og funktionsblokke">
+      <group id="_0x2132" name="Stue" icon="_0x15">
+         <product_rs485_sms_modem id="_0x5156" product_identifier="_0x3103" name="SMS Modem" icon="_0x11" documentation_tag="MOD-01" note="Modem i teknikskab, SIM fra TDC" cablecolour_0V="Sort" cablecolour_24V="Rød" cablecolour_RS485Minus="Grøn" cablecolour_RS485Plus="Gul">
+            <sms_modem_settings id="_0x52cb" icon="_0xd">
+               <sms_modem_pincode id="_0x53cc" value="4711" maximum="9999"/>
+            </sms_modem_settings>
+            <sms_modem_settings id="_0x54cb" name="Telephone numbers #1-#10" icon="_0xd">
+               <sms_modem_phonenumber id="_0x55cd" address="1" phonenumber="+4570100001"/>
+               <sms_modem_phonenumber id="_0x56cd" address="2" phonenumber="+4570100002"/>
+               <sms_modem_phonenumber id="_0x57cd" address="3" phonenumber="+4570100003"/>
+               <sms_modem_phonenumber id="_0x58cd" address="4" phonenumber="+4570100004"/>
+               <sms_modem_phonenumber id="_0x59cd" address="5" phonenumber="+4570100005"/>
+               <sms_modem_phonenumber id="_0x5acd" address="6" phonenumber="+4570100006"/>
+               <sms_modem_phonenumber id="_0x5bcd" address="7" phonenumber="+4570100007"/>
+               <sms_modem_phonenumber id="_0x5ccd" address="8" phonenumber="+4570100008"/>
+               <sms_modem_phonenumber id="_0x5dcd" address="9" phonenumber="+4570100009"/>
+               <sms_modem_phonenumber id="_0x5ecd" address="10" phonenumber="+4570100010"/>
+            </sms_modem_settings>
+            <sms_modem_settings id="_0x5fcb" name="Telephone numbers #11-#20" icon="_0xd">
+               <sms_modem_phonenumber id="_0x60cd" address="11" phonenumber="+4570100011"/>
+               <sms_modem_phonenumber id="_0x61cd" address="12" phonenumber="+4570100012"/>
+               <sms_modem_phonenumber id="_0x62cd" address="13" phonenumber="+4570100013"/>
+               <sms_modem_phonenumber id="_0x63cd" address="14" phonenumber="+4570100014"/>
+               <sms_modem_phonenumber id="_0x64cd" address="15" phonenumber="+4570100015"/>
+               <sms_modem_phonenumber id="_0x65cd" address="16" phonenumber="+4570100016"/>
+               <sms_modem_phonenumber id="_0x66cd" address="17" phonenumber="+4570100017"/>
+               <sms_modem_phonenumber id="_0x67cd" address="18" phonenumber="+4570100018"/>
+               <sms_modem_phonenumber id="_0x68cd" address="19" phonenumber="+4570100019"/>
+               <sms_modem_phonenumber id="_0x69cd" address="20" phonenumber="+4570100020"/>
+            </sms_modem_settings>
+            <sms_modem_settings id="_0x6acb" name="Telephone numbers #21-#30" icon="_0xd">
+               <sms_modem_phonenumber id="_0x6bcd" address="21" phonenumber="+4570100021"/>
+               <sms_modem_phonenumber id="_0x6ccd" address="22" phonenumber="+4570100022"/>
+               <sms_modem_phonenumber id="_0x6dcd" address="23" phonenumber="+4570100023"/>
+               <sms_modem_phonenumber id="_0x6ecd" address="24" phonenumber="+4570100024"/>
+               <sms_modem_phonenumber id="_0x6fcd" address="25" phonenumber="+4570100025"/>
+               <sms_modem_phonenumber id="_0x70cd" address="26" phonenumber="+4570100026"/>
+               <sms_modem_phonenumber id="_0x71cd" address="27" phonenumber="+4570100027"/>
+               <sms_modem_phonenumber id="_0x72cd" address="28" phonenumber="+4570100028"/>
+               <sms_modem_phonenumber id="_0x73cd" address="29" phonenumber="+4570100029"/>
+               <sms_modem_phonenumber id="_0x74cd" address="30" phonenumber="+4570100030"/>
+            </sms_modem_settings>
+         </product_rs485_sms_modem>
+      </group>
+      <group id="_0x2232" name="Entré" icon="_0x15"/>
+      <group id="_0x2332" name="Køkken" icon="_0x15"/>
+      <group id="_0x2432" name="Soveværelse" icon="_0x15"/>
+      <group id="_0x2532" name="Værelse" icon="_0x15"/>
+      <group id="_0x2632" name="Bad" icon="_0x15"/>
+      <group id="_0x2732" name="Bryggers" icon="_0x15"/>
+      <group id="_0x2832" name="Garage" icon="_0x15"/>
+      <group id="_0x2932" name="Kælder" icon="_0x15"/>
+      <group id="_0x2a32" name="Udendørs" icon="_0x15"/>
+   </groups>
+   <documentation_modules id="_0x4e34">
+      <dataline_input_modules id="_0x4f35"/>
+      <dataline_output_modules id="_0x5036"/>
+   </documentation_modules>
+</utcs_project>

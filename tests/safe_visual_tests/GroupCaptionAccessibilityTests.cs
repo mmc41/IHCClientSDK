@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless.NUnit;
 using Avalonia.VisualTree;
@@ -64,6 +65,29 @@ public class GroupCaptionAccessibilityTests : AvaloniaTestBase
                     + "walked, so any name on it reaches nothing (the F-11 Separator lesson)");
                 Assert.That(peer.GetName(), Is.EqualTo(group.Header as string),
                     $"{dialog}: the '{group.Header}' group must announce its own caption");
+
+                // A group that claims the `group` class must also be SEEN as one, not merely announced.
+                // That class exists to apply a Template wrapping the content in a bordered box, because the
+                // vendor draws one -- but the style selector naming the SUBCLASS never matched, since
+                // AccessibleGroupBox sets StyleKeyOverride to HeaderedContentControl and a XAML type
+                // selector matches the style KEY. The setter was silently ignored in FOUR dialogs at once,
+                // the stock theme went on drawing the header, and the result was a caption floating over
+                // unboxed fields. Found on product 002's vendor composite (T036); asserted here so it
+                // cannot come back in any dialog.
+                //
+                // Scoped to the class, not to every captioned group: NamePromptWindow's 'Navn' group is
+                // captioned WITHOUT it (see the walk above), and that is a deliberate shape rather than a
+                // missing frame -- the class is what promises a box.
+                if (!group.Classes.Contains("group")) { continue; }
+
+                Border? frame = group.GetVisualDescendants().OfType<Border>()
+                    .FirstOrDefault(b => b.Child is ContentPresenter);
+                Assert.That(frame, Is.Not.Null,
+                    $"{dialog}: the '{group.Header}' group must DRAW its box, not just announce it");
+                Assert.That(frame?.BorderThickness.Top, Is.GreaterThan(0),
+                    $"{dialog}: the '{group.Header}' group's frame must have a thickness that draws");
+                Assert.That(frame?.BorderBrush, Is.Not.Null,
+                    $"{dialog}: the '{group.Header}' group's BorderBrush must resolve");
             }
         });
     }

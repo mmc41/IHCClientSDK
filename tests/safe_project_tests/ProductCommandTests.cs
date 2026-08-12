@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using Ihc.Vis.Products;
@@ -8,7 +9,7 @@ namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// fablerefac W2-6: the product/pin/function-block command family — AddProduct returns a resolvable id;
-    /// UpdateProduct/UpdatePin apply their DTOs; UnlockFunctionBlock then Undo re-locks (E14 / W0-3 #5).
+    /// ApplyProductDialog/UpdatePin apply their edits; UnlockFunctionBlock then Undo re-locks (E14 / W0-3 #5).
     /// </summary>
     public class ProductCommandTests
     {
@@ -71,62 +72,165 @@ namespace Ihc.Vis.Tests
             Assert.That(name, Is.EqualTo(def.DisplayName));
         }
 
+        /// <summary>
+        /// Applies a dialog edit through the one write-back (T031 — was <c>UpdateProduct_AppliesTheDto</c>).
+        /// <para><c>enduser_report</c> is no longer among the assertions: the composed dialog does not offer it
+        /// (the vendor shows no such control), and an unoffered field is never written. That is checked where it
+        /// belongs, by <c>ProductProperties_LeavesTheEndUserReportFlagAlone</c>.</para>
+        /// </summary>
         [Test]
-        public async Task UpdateProduct_AppliesTheDto()
+        public async Task ApplyProductDialog_AppliesTheEdits()
         {
             Project project = await Load("project3-KompleksWired.vis");
             ProjectElement product = project.Root.Descendants()
                 .First(e => ProductClassifier.IsProduct(e.Tag) && !ProductClassifier.IsWireless(e.Tag) && e.Id is not null);
             ElementId id = product.Id!.Value;
             ProjectDocumentSession session = Session(project);
-            var r = new ProductPropertiesResult(
-                "NewName", "", "the note", "CT", "CN", "IDC", "LG", Position: "pos", EndUserReport: true);
 
-            EditOutcome outcome = session.Apply(new UpdateProduct(id, r, CurrentLocalityId: null));
+            EditOutcome outcome = session.Apply(new ApplyProductDialog(id, DialogEdits(session, id,
+                ("Note", "the note"), ("Placering", "pos"), ("Kabeltype", "CT"), ("Kabelnummer", "CN"),
+                ("Identifikationskode", "IDC"), ("Lysgruppe", "LG"))));
 
             ProjectElement updated = session.Current!.FindById(id)!;
             Assert.Multiple(() =>
             {
-                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
-                Assert.That(updated.GetAttribute("name"), Is.EqualTo("NewName"));
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed), outcome.Reason);
                 Assert.That(updated.GetAttribute("note"), Is.EqualTo("the note"));
                 Assert.That(updated.GetAttribute("position"), Is.EqualTo("pos"));
-                Assert.That(updated.GetAttribute("enduser_report"), Is.EqualTo("yes"));
+                Assert.That(updated.GetAttribute("documentation_tag"), Is.EqualTo("IDC"));
                 Assert.That(updated.GetAttribute("cabletype"), Is.EqualTo("CT"), "a wired product carries cabling");
             });
         }
 
-        // C3: a "change Location" whose target is unresolvable or not a group must Refuse — not silently drop the
-        // move (garbage id) and not build an invalid tree that still saves (moving a product under another product).
+        /// <summary>Resolves dialog edits BY CAPTION against the product's own composed dialog — the same
+        /// resolution the GUI does, so a caption no family offers cannot be smuggled into a write.</summary>
+        private static ImmutableArray<ProductDialogEdit> DialogEdits(
+            ProjectDocumentSession session, ElementId productId, params (string Caption, string Value)[] edits)
+        {
+            var byCaption = App.GetProductDialog(session.Current!, productId)
+                .Groups.SelectMany(g => g.Fields).ToDictionary(f => f.Caption);
+            return
+            [
+                .. edits.Select(e => byCaption.TryGetValue(e.Caption, out DialogDescriptorField? field)
+                    ? new ProductDialogEdit(field.Target, field.Attribute, e.Value)
+                    : throw new InvalidOperationException(
+                        $"no field captioned '{e.Caption}'; offered: {string.Join(", ", byCaption.Keys)}"))
+            ];
+        }
+
+        // T014 replaces the former C3 test. C3 pinned that a BAD re-parent target was refused rather than
+        // silently dropped — a guard on a capability the dialog no longer has: neither properties dialog
+        // re-parents now, matching the original (A-13 for the product, T014 for the modem), and moving a
+        // device between localities is a tree operation (US-054).
+        //
+        // The guarantee worth keeping from C3 is the same one, stated positively: committing a properties
+        // edit must never move the element. Deleting the test outright would have left "the dialog silently
+        // moved my product" untested rather than impossible.
         [Test]
-        public async Task UpdateProduct_ChangeLocation_RefusesBadTarget_CommitsValidMove()
+        public async Task TheProductDialog_NeverReParentsTheProduct()
         {
             Project project = await Load("project3-KompleksWired.vis");
             ProjectElement product = project.Root.Descendants()
                 .First(e => ProductClassifier.IsProduct(e.Tag) && e.Id is not null);
             ElementId productId = product.Id!.Value;
             ElementId currentGroup = project.FindParent(productId)!.Id!.Value;
-            ElementId otherProduct = project.Root.Descendants()
-                .First(e => ProductClassifier.IsProduct(e.Tag) && e.Id is not null && e.Id!.Value != productId).Id!.Value;
-            ElementId otherGroup = project.Root.Descendants()
-                .First(g => g.Tag == "group" && g.Id is not null && g.Id!.Value != currentGroup).Id!.Value;
+            ProjectDocumentSession session = Session(project);
 
-            static ProductPropertiesResult ToLoc(string localityId) =>
-                new("N", localityId, "", "", "", "", "", Position: "", EndUserReport: false);
-
-            EditStatus garbage = Session(project)
-                .Apply(new UpdateProduct(productId, ToLoc("garbage"), currentGroup)).Status;
-            EditStatus nonGroup = Session(project)
-                .Apply(new UpdateProduct(productId, ToLoc(otherProduct.ToToken()), currentGroup)).Status;
-            ProjectDocumentSession valid = Session(project);
-            EditOutcome move = valid.Apply(new UpdateProduct(productId, ToLoc(otherGroup.ToToken()), currentGroup));
+            EditOutcome outcome = session.Apply(new ApplyProductDialog(productId,
+                DialogEdits(session, productId, ("Placering", "flyttet?"))));
 
             Assert.Multiple(() =>
             {
-                Assert.That(garbage, Is.EqualTo(EditStatus.Refused), "an unparseable target is refused, not silently dropped");
-                Assert.That(nonGroup, Is.EqualTo(EditStatus.Refused), "a non-group target is refused, not moved into an invalid tree");
-                Assert.That(move.Status, Is.EqualTo(EditStatus.Committed), "a valid Location change commits");
-                Assert.That(valid.Current!.FindParent(productId)!.Id, Is.EqualTo(otherGroup), "the product re-parents to the chosen group");
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
+                Assert.That(session.Current!.FindParent(productId)!.Id, Is.EqualTo(currentGroup),
+                    "the product stays in the locality it was in");
+                Assert.That(session.Current!.FindById(productId)!.GetAttribute("position"), Is.EqualTo("flyttet?"),
+                    "Placering is free text about where it sits, not a locality that moves it");
+            });
+        }
+
+        // The same guarantee for the modem, whose dialog DID re-parent until T014.
+        [Test]
+        public async Task TheModemDialog_NeverReParentsTheModem()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            ElementId loc = project.Groups.First().Id!.Value;
+            ProductDefinition modemDef = App.GetAvailableProducts()
+                .First(p => ProductClassifier.IsModem(p.Body.Tag));
+            ProjectDocumentSession session = Session(project);
+            ElementId modemId = session.Apply(new AddProduct(loc, modemDef)).Value;
+
+            EditOutcome outcome = session.Apply(new ApplyProductDialog(modemId,
+                DialogEdits(session, modemId, ("Placering", "i teknikskab"), ("Note", "note"))));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
+                Assert.That(session.Current!.FindParent(modemId)!.Id, Is.EqualTo(loc));
+                Assert.That(session.Current!.FindById(modemId)!.GetAttribute("position"), Is.EqualTo("i teknikskab"),
+                    "the modem's Placering writes the position attribute, as the product dialog's already did");
+            });
+        }
+
+        // Proposal 2.1.1: UpdateProduct wrote power_group unconditionally and cabletype/cablenumber for every
+        // non-wireless product, but the attribute set is per FAMILY, not per wired/wireless. The RS485 LED
+        // dimmer (_0x4409) declares none of the three and is not wireless, so committing its dialog threw
+        // ArgumentException from SetAttribute — a crash on the OK button of a dialog that had opened fine.
+        //
+        // T031 removed the class of bug rather than the instance: there is no fixed attribute list left to
+        // over-write, because the dialog only OFFERS what the family declares. The regression is now stated
+        // structurally — the dimmer's dialog cannot even name the three attributes, so the crash has no route.
+        [Test]
+        public async Task TheDialogOfAFamilyWithoutCablingAttributes_CannotEvenNameThem()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            ElementId loc = project.Groups.First().Id!.Value;
+            ProductDefinition dimmer = App.GetAvailableProducts()
+                .First(p => p.Body.Tag == "product_rs485_led_dimmer");
+            ProjectDocumentSession session = Session(project);
+            ElementId id = session.Apply(new AddProduct(loc, dimmer)).Value;
+
+            // No Navn: this product inserts locked, and the dialog offers its name read-only.
+            EditOutcome outcome = session.Apply(new ApplyProductDialog(id, DialogEdits(session, id,
+                ("Placering", "i tavle"), ("Note", "note"))));
+
+            ProjectElement updated = session.Current!.FindById(id)!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed),
+                    "committing the dialog of a family without cabling attributes must not throw");
+                Assert.That(updated.GetAttribute("position"), Is.EqualTo("i tavle"), "the offered fields still land");
+                Assert.That(updated.GetAttribute("note"), Is.EqualTo("note"));
+                Assert.That(updated.GetAttribute("power_group"), Is.Null, "undeclared attributes are not invented");
+                Assert.That(updated.GetAttribute("cabletype"), Is.Null);
+                Assert.That(updated.GetAttribute("cablenumber"), Is.Null);
+                // The crash route is closed at the source: the dialog has no such field to write through.
+                Assert.That(() => DialogEdits(session, id, ("Kabeltype", "CT")),
+                    Throws.InvalidOperationException, "this family's dialog offers no Kabeltype at all");
+            });
+        }
+
+        // The narrowing must be driven by the SCHEMA, not by a family allow-list: a wired dataline product
+        // declares all three and must still receive them. Without this, "stop throwing" could be implemented by
+        // simply never writing the cabling fields, and every wired product would silently lose its cabling.
+        [Test]
+        public async Task TheDialogOfAFamilyThatDeclaresCabling_StillWritesIt()
+        {
+            Project project = await Load("project3-KompleksWired.vis");
+            ElementId loc = project.Groups.First().Id!.Value;
+            ProductDefinition wired = App.GetAvailableProducts().First(p => p.Body.Tag == "product_dataline");
+            ProjectDocumentSession session = Session(project);
+            ElementId id = session.Apply(new AddProduct(loc, wired)).Value;
+
+            session.Apply(new ApplyProductDialog(id, DialogEdits(session, id,
+                ("Kabeltype", "3G1,5"), ("Kabelnummer", "7"), ("Lysgruppe", "gruppe2"))));
+
+            ProjectElement updated = session.Current!.FindById(id)!;
+            Assert.Multiple(() =>
+            {
+                Assert.That(updated.GetAttribute("cabletype"), Is.EqualTo("3G1,5"));
+                Assert.That(updated.GetAttribute("cablenumber"), Is.EqualTo("7"));
+                Assert.That(updated.GetAttribute("power_group"), Is.EqualTo("gruppe2"));
             });
         }
 
@@ -144,8 +248,8 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused), "a stale-id command is refused, not committed");
-                Assert.That(outcome.Reason, Does.Contain("element").And.Contain("no longer exists"),
-                    "the refusal keeps the command's per-noun message");
+                Assert.That(outcome.Reason, Does.Contain("Elementet").And.Contain("findes ikke længere"),
+                    "the refusal keeps the command's per-noun message — in Danish since T015");
             });
         }
 

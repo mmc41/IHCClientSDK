@@ -597,6 +597,60 @@ namespace Ihc.Vis
                 return result;
             });
 
+        /// <summary>
+        /// What the properties dialog of the placed product <paramref name="productId"/> contains, fully resolved
+        /// against that element: repeats expanded, every binding resolved to a concrete <c>ElementId</c>, values
+        /// read effectively, numeric ranges derived, read-only decided, automation ids formed and the title in the
+        /// per-family form the original uses.
+        /// <para>The one door a frontend needs: everything family-specific is decided here, so a renderer draws
+        /// what it is handed and a write-back writes what it is handed. A product whose family has no preset gets
+        /// the minimal fallback rather than an error — an open-world product must still open a dialog.</para>
+        /// </summary>
+        /// <exception cref="ArgumentException">No element with that id, or it is not a product.</exception>
+        public ProductDialogDescriptor GetProductDialog(Project project, ElementId productId)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return RunTraced(nameof(GetProductDialog), activity =>
+            {
+                ProjectElement product = project.FindById(productId)
+                    ?? throw new ArgumentException(
+                        $"No element with id {productId.ToToken()}.", nameof(productId));
+                if (!ProductClassifier.IsProduct(product.Tag))
+                {
+                    throw new ArgumentException(
+                        $"<{product.Tag}> is not a product device root.", nameof(productId));
+                }
+
+                // The dialog is titled with the product TYPE, as the original titles it — not with the element's
+                // own (possibly renamed) name. Falls back to the element's name for a product whose identifier the
+                // catalog CANNOT ANSWER FOR, which is two cases: an identifier it does not know (the open-world
+                // case) and an identifier it knows TWICE.
+                //
+                // The second is real: eight catalog identifiers name two products each (D22), so `_0x2102` is both
+                // LK FUGA and LK OPUS Tryk 4 tast, and no lookup by identifier can say which was placed. Taking
+                // the first match titled the OPUS product's dialog "LK FUGA Tryk 4 tast" (T046). The element's
+                // stored name is the better answer precisely because these products insert `locked`, which fixes
+                // that name to the type name.
+                string? identifier = product.GetAttribute("product_identifier");
+                var namedByIdentifier = identifier is null
+                    ? new System.Collections.Generic.List<ProductDefinition>()
+                    : catalog.Value.Products.Where(p => p.ProductIdentifier == identifier).Take(2).ToList();
+                string displayName =
+                    (namedByIdentifier.Count == 1 ? namedByIdentifier[0].DisplayName : null)
+                    ?? project.View(product).Name
+                    ?? product.Tag;
+
+                // The identifier also selects the dialog SHAPE, for the one product measured to carry the
+                // end-user-report checkbox (T099). Unlike the title it is taken straight from the element and
+                // needs no catalog: the write-back reads the same attribute and therefore composes the same
+                // dialog, which is what keeps "the dialog is the contract" exact for that field too.
+                ProductDialogDescriptor result = ProductDialogComposer.Compose(
+                    project, productId, ProductDialogPresets.ForRootTag(product.Tag, identifier), displayName);
+                activity?.SetReturnValue(result.Groups.Length);
+                return result;
+            });
+        }
+
         /// <summary>The function blocks available for insertion, from the SDK-embedded catalog (plus any imported).</summary>
         public IReadOnlyList<FunctionBlockDefinition> GetAvailableFunctionBlocks() =>
             RunTraced(nameof(GetAvailableFunctionBlocks), activity =>

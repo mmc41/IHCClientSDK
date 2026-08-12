@@ -169,5 +169,100 @@ namespace Ihc.Vis.Tests
                 Assert.That(a.GetHashCode(), Is.EqualTo(b.GetHashCode()));
             });
         }
+
+        // ── the dialog-metadata model (T017) ────────────────────────────────────────────────────────
+        //
+        // Same pitfall, new records: ProductDialogModel and DialogGroupModel each hold an ImmutableArray, which a
+        // record compares by backing-array REFERENCE. Value equality matters here beyond tidiness — T020 asserts
+        // that the builder path and the catalog-reader path carry the SAME model for a family, and a
+        // reference-compared model would fail that for two models that are in fact identical.
+
+        private static ProductDialogModel DialogModel() =>
+            new(ImmutableArray.Create(
+                new DialogGroupModel("identitet", "Produkt egenskaber", 1, ImmutableArray.Create<DialogPartModel>(
+                    new DialogFieldModel("navn", "Navn", DialogControlKind.Text,
+                        new DialogBinding.RootAttribute("name"), ReadOnly: true),
+                    new DialogFieldModel("placering", "Placering", DialogControlKind.ComboSuggest,
+                        new DialogBinding.RootAttribute("position")))),
+                new DialogGroupModel("telefonnumre", "Telefon numre", 3, ImmutableArray.Create<DialogPartModel>(
+                    new DialogRepeatModel("nummer", "Nummer {0}", "sms_modem_phonenumber", "address",
+                        "phonenumber", DialogControlKind.Text, DialogValueRule.PhoneNumber)))));
+
+        [Test]
+        public void ProductDialogModel_SameContent_DifferentArrays_AreEqual()
+        {
+            ProductDialogModel a = DialogModel();
+            ProductDialogModel b = DialogModel();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(a, Is.EqualTo(b), "two independently constructed identical models compare equal");
+                Assert.That(a.GetHashCode(), Is.EqualTo(b.GetHashCode()));
+            });
+        }
+
+        /// <summary>A difference buried in a nested part must break equality — otherwise the check is decorative.</summary>
+        [Test]
+        public void ProductDialogModel_DifferingNestedCaption_AreNotEqual()
+        {
+            ProductDialogModel a = DialogModel();
+            ProductDialogModel b = new(ImmutableArray.Create(
+                new DialogGroupModel("identitet", "Produkt egenskaber", 1, ImmutableArray.Create<DialogPartModel>(
+                    new DialogFieldModel("navn", "Name", DialogControlKind.Text,      // English caption
+                        new DialogBinding.RootAttribute("name"), ReadOnly: true)))));
+
+            Assert.That(a, Is.Not.EqualTo(b));
+        }
+
+        [Test]
+        public void DialogGroupModel_DifferingColumns_AreNotEqual()
+        {
+            var three = new DialogGroupModel("g", "C", 3, ImmutableArray<DialogPartModel>.Empty);
+            var one = new DialogGroupModel("g", "C", 1, ImmutableArray<DialogPartModel>.Empty);
+
+            Assert.That(three, Is.Not.EqualTo(one), "the column count is content, not presentation trivia");
+        }
+
+        /// <summary>
+        /// The three part kinds are distinct types, so two parts sharing an id are never equal. Without this a
+        /// widget slot could satisfy a test expecting a field of the same name.
+        /// </summary>
+        [Test]
+        public void DialogParts_OfDifferentKinds_AreNeverEqual()
+        {
+            DialogPartModel field = new DialogFieldModel("x", "X", DialogControlKind.Text,
+                new DialogBinding.RootAttribute("x"));
+            DialogPartModel widget = new DialogWidgetModel("x", DialogWidgetKind.TerminalGrids);
+
+            Assert.That(field, Is.Not.EqualTo(widget));
+        }
+
+        /// <summary>The two binding kinds likewise: a root attribute is not a descendant attribute of the same name.</summary>
+        [Test]
+        public void DialogBindings_CompareByKindAndContent()
+        {
+            DialogBinding root = new DialogBinding.RootAttribute("value");
+            DialogBinding descendant = new DialogBinding.DescendantAttribute("value");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(root, Is.Not.EqualTo(descendant));
+                Assert.That(new DialogBinding.DescendantAttribute("sms_modem_pincode"),
+                    Is.EqualTo(new DialogBinding.DescendantAttribute("sms_modem_pincode", "value")),
+                    "the default attribute name participates in equality as its literal value");
+            });
+        }
+
+        /// <summary>Empty and default arrays mean the same thing here, as they do everywhere else in the model.</summary>
+        [Test]
+        public void ProductDialogModel_Empty_IsEmptyAndEqualsAnEmptyModel()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(ProductDialogModel.Empty.IsEmpty, Is.True);
+                Assert.That(ProductDialogModel.Empty, Is.EqualTo(new ProductDialogModel(default)));
+                Assert.That(DialogModel().IsEmpty, Is.False);
+            });
+        }
     }
 }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE product_unknown_family[
+   <!ELEMENT product_unknown_family ANY>
+   <!ATTLIST product_unknown_family id ID #REQUIRED
+                  product_identifier CDATA #REQUIRED
+                  name CDATA ""
+                  locked (yes | no) "yes"
+                  icon CDATA ""
+                  note CDATA ""
+                  position CDATA ""
+                  documentation_tag CDATA "">
+]>
+<product_unknown_family id="_0x01" product_identifier="_0x9f14" name="SYNTETISK ukendt produktfamilie (testdata)" note="SYNTHETIC TEST FIXTURE - not a real product and not IHC Visual output; a family the SDK has never seen, exercising the open-world dialog fallback" />

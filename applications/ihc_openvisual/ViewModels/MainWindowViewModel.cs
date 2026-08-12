@@ -492,13 +492,26 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // The single outcome→status/dialog rule (W2-14): Committed → success status; NoChange → silent (a no-op edit
     // leaves the status alone); Refused → the refusal reason as status; Failed → an error dialog. Applying a command
     // through the session and mapping its outcome here is how the VM drives every edit, replacing the per-op wrappers.
+    /// <summary>The one sentence shown when an edit FAILS (as opposed to being refused): the engine's own message
+    /// is an English developer diagnostic, so it goes to the log and the installer gets this.</summary>
+    internal const string EditFailedMessage =
+        "Redigeringen kunne ikke gennemføres på grund af en intern fejl. Ændringen blev ikke gemt.";
+
     private async Task<EditOutcome> ReportOutcomeAsync(EditOutcome outcome, string? successStatus)
     {
         switch (outcome.Status)
         {
             case EditStatus.Committed when successStatus is not null: StatusText = successStatus; break;
+            // Refused: the SDK's reason IS the user-facing sentence (Danish since T015) — shown verbatim.
             case EditStatus.Refused when outcome.Reason is not null: StatusText = outcome.Reason; break;
-            case EditStatus.Failed: await _dialogs.ShowMessageAsync("Redigering mislykkedes", outcome.Reason ?? "Redigeringen mislykkedes."); break;
+            // Failed: the reason is an ENGINE EXCEPTION message — a developer diagnostic, in English, naming
+            // element tags and attribute names. Showing it put untranslated internals in front of the installer,
+            // so it is logged and one fixed Danish sentence is shown instead. A refusal is a rule the installer
+            // can act on; a failure is a defect they can only report, and the log is where the detail belongs.
+            case EditStatus.Failed:
+                _logger.LogError("Edit failed: {Label} — {Reason}", outcome.Label, outcome.Reason);
+                await _dialogs.ShowMessageAsync("Redigering mislykkedes", EditFailedMessage);
+                break;
         }
         return outcome;
     }
@@ -1038,7 +1051,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         DeleteImpact impact = _session.Commands.PreviewDelete(project, id);
         if (!impact.Deletable)
         {
-            await _dialogs.ShowMessageAsync("Kan ikke slette", "Denne node kan ikke slettes.");
+            // The SDK's own sentence, forwarded — not a generic copy authored here. It names WHICH rule refused
+            // (a catalog-declared pin, a locked library block, project structure), which the GUI cannot know.
+            await _dialogs.ShowMessageAsync("Kan ikke slette", impact.Reason!);
             return;
         }
         if (impact.Kind == DeleteKind.Link)
@@ -1221,11 +1236,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 return;
             }
             string localityName = SelectedNode.DisplayName;
-            if (_session.Commands.AddProduct(project, localityId, productIdentifier) is not { } command)
+            // Resolved by identifier AND the leaf's own name: eight catalog identifiers name two products each
+            // (D22), so the identifier alone cannot say whether the installer picked LK FUGA or LK OPUS. It used
+            // to take whichever came first, which placed the wrong product under the wrong name (T046).
+            if (_session.ResolveCatalogProduct(productIdentifier, productName) is not { } definition)
             {
                 await _dialogs.ShowMessageAsync("Indsætning mislykkedes", $"Intet katalogprodukt med identifikator '{productIdentifier}'.");
                 return;
             }
+            AddProduct command = _session.Commands.AddProduct(project, localityId, definition);
             if (_session.Commands.WouldExceedModemLimit(project, productIdentifier))   // at most one modem per project (US-013)
             {
                 await _dialogs.ShowMessageAsync("Kun ét modem",
@@ -1687,7 +1706,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private static EditVerdict AllowGate(ShellContext ctx) => EditVerdict.Allow;
 
     private static EditVerdict ProjectOpenGate(ShellContext ctx) =>
-        ctx.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse("Intet projekt er åbent.");
+        ctx.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse(ProjectDocumentSession.NoProjectOpenRefusal);
 
     // Ctrl+I/Ctrl+U pin authoring: only inside an UNLOCKED block's programming view (A-27).
     private EditVerdict ProgrammingAuthoringGate(ShellContext ctx) =>
@@ -1916,7 +1935,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private async Task<string?> ApplyEnumTypeOperationAsync(EnumTypeManagerOperation operation)
     {
         if (_session.Current is not { } project)
-            return "Intet projekt er åbent.";
+            return ProjectDocumentSession.NoProjectOpenRefusal;
 
         (ProjectCommand command, string status) = operation switch
         {

@@ -13,11 +13,13 @@ namespace Ihc.Vis.Session
     //      presentation; their dialog *Input* counterparts stay GUI-side). ----
 
     /// <summary>The edited product documentation (US-011/US-012): the fields the product properties dialog writes.
-    /// <c>LocalityId</c> is the chosen Location; a change re-parents the product.</summary>
-    public sealed record ProductPropertiesResult(
-        string Name, string LocalityId, string Note, string CableType, string CableNumber,
-        string IdentificationCode, string LightGroup, bool OpenAdvanced = false,
-        string? ConfigureTerminalPinId = null, string Position = "", bool EndUserReport = false);
+    /// <c>Position</c> is the free-text <i>Placering</i> descriptor; the dialog carries no locality and never
+    /// re-parents (A-13/US-054).</summary>
+    // ProductPropertiesResult and its UpdateProduct command are gone (T031), superseded by ApplyProductDialog.
+    // A fixed record of "the fields the product dialog writes" could only ever describe ONE family's dialog: it
+    // named Kabeltype and Lysgruppe, which the LED dimmer does not declare and the modem does not show, so every
+    // other family either wrote attributes it lacks or carried blanks through fields it never offered. The
+    // composed descriptor states per family what is writable, and ApplyProductDialog carries only what changed.
 
     /// <summary>The edited pin addressing (US-012): the terminal address, cable colour, note, and (outputs) the
     /// initial on/off value.</summary>
@@ -32,7 +34,7 @@ namespace Ihc.Vis.Session
     public sealed record AddProduct(ElementId LocalityId, ProductDefinition Definition) : ProjectCommand<ElementId>
     {
         internal override string Describe(Project project) => "Indsæt produkt";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LocalityId, "locality");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LocalityId, "Lokaliteten");
         internal override ElementId ExecuteCore(ProjectEditor editor) =>
             editor.Group(LocalityId).AddProduct(Definition).Id;
     }
@@ -42,7 +44,7 @@ namespace Ihc.Vis.Session
         : ProjectCommand<ElementId>
     {
         internal override string Describe(Project project) => "Indsæt funktionsblok";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LocalityId, "locality");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LocalityId, "Lokaliteten");
         internal override ElementId ExecuteCore(ProjectEditor editor) =>
             editor.Group(LocalityId).AddFunctionBlock(Definition).Id;
     }
@@ -53,7 +55,7 @@ namespace Ihc.Vis.Session
         : ProjectCommand<ElementId>
     {
         internal override string Describe(Project project) => "Indsæt funktionsblok";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LocalityId, "locality");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(LocalityId, "Lokaliteten");
         internal override ElementId ExecuteCore(ProjectEditor editor) =>
             editor.Group(LocalityId).AddEmptyFunctionBlock(Template, Created, Name).Id;
     }
@@ -64,7 +66,7 @@ namespace Ihc.Vis.Session
         internal override string Describe(Project project) => "Oplås funktionsblok";
         // A5: RequireTag (not the weaker RequireExists) so a wrong-tag id is a clean Refuse, not the engine throw
         // Execute would raise — matching the sibling SaveFunctionBlockToLibrary, whose Execute is the same FunctionBlock(Id).
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(Id, "a function block", "functionblock");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(Id, "en funktionsblok", "functionblock");
         internal override void Execute(ProjectEditor editor) =>
             editor.FunctionBlock(Id).Unlock(Programmer, Unlocked);
     }
@@ -76,7 +78,7 @@ namespace Ihc.Vis.Session
         : ProjectCommand
     {
         internal override string Describe(Project project) => "Gem funktionsblok i biblioteket";
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(Id, "a function block", "functionblock");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireTag(Id, "en funktionsblok", "functionblock");
         internal override void Execute(ProjectEditor editor) =>
             editor.FunctionBlock(Id).SaveAsLibraryInstance(Name, Programmer, Date, Note);
     }
@@ -90,12 +92,12 @@ namespace Ihc.Vis.Session
         {
             if (context.Index.FindById(Id) is not { } pin)
             {
-                return EditVerdict.Refuse("The pin no longer exists.");
+                return EditVerdict.Refuse("Klemmen findes ikke længere.");
             }
             bool isOutput = pin.Tag == "dataline_output";
             return DatalineAddress.TryEncode(Result.DataLine, Result.Terminal, isOutput, out _)
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("The terminal is out of range for this line.");
+                : EditVerdict.Refuse("Klemmenummeret ligger uden for datalinjens område.");
         }
         internal override void Execute(ProjectEditor editor)
         {
@@ -103,7 +105,7 @@ namespace Ihc.Vis.Session
             bool isOutput = handle.Tag == "dataline_output";
             if (!DatalineAddress.TryEncode(Result.DataLine, Result.Terminal, isOutput, out string addressToken))
             {
-                throw new EditRefusedException("The terminal is out of range for this line.");
+                throw new EditRefusedException("Klemmenummeret ligger uden for datalinjens område.");
             }
             handle.SetAttribute("address_dataline", addressToken);
             handle.SetAttribute("cable_colour", Result.CableColour);
@@ -119,69 +121,14 @@ namespace Ihc.Vis.Session
         }
     }
 
-    /// <summary>Applies edited product documentation (US-011): name/position/enduser/note/id-code/light-group, the
-    /// cabling attributes for wired products only, and a re-parent when the Location changed.
-    /// <paramref name="CurrentLocalityId"/> is the product's current parent (resolved by the caller), so the
-    /// re-parent is skipped when the Location is unchanged (a same-parent move would re-order it).</summary>
-    public sealed record UpdateProduct(ElementId Id, ProductPropertiesResult Result, ElementId? CurrentLocalityId)
-        : ProjectCommand
-    {
-        internal override string Describe(Project project) => "Rediger produkt";
-        internal override EditVerdict Evaluate(EditContext context)
-        {
-            EditVerdict exists = context.RequireExists(Id, "product");
-            return exists.Ok ? Relocation.Verdict(context, CurrentLocalityId, Result.LocalityId) : exists;
-        }
-        internal override void Execute(ProjectEditor editor)
-        {
-            ElementRef handle = editor.Resolve(Id, "product");
-            handle.SetAttribute("name", Result.Name);
-            handle.SetAttribute("position", Result.Position);
-            handle.SetAttribute("enduser_report", Result.EndUserReport ? "yes" : "no");
-            handle.SetAttribute("note", Result.Note);
-            handle.SetAttribute("documentation_tag", Result.IdentificationCode);
-            handle.SetAttribute("power_group", Result.LightGroup);
-            if (!ProductClassifier.IsWireless(handle.Tag))
-            {
-                handle.SetAttribute("cabletype", Result.CableType);
-                handle.SetAttribute("cablenumber", Result.CableNumber);
-            }
-            Relocation.Apply(editor, Id, CurrentLocalityId, Result.LocalityId);   // Location changed → re-parent
-        }
-    }
+    // UpdateProduct is gone (T031). It wrote a FIXED attribute list on every product, and the family variation it
+    // could not express had already cost one crash: product_rs485_led_dimmer declares no power_group, cabletype or
+    // cablenumber, so committing its dialog threw out of SetAttribute — from a dialog that had opened perfectly
+    // well. The fix at the time was a SetIfDeclared escape hatch for three attributes; ApplyProductDialog needs no
+    // such hatch, because it writes only the fields the composed dialog actually offered.
 
-    /// <summary>The shared "change Location" guard for the product/modem property edits (US-011/US-013 re-parent).
-    /// A re-parent is requested when the edited Location differs from the element's current parent; the target must
-    /// resolve to an existing group (the only valid product/modem container — see <c>ProjectEditor.Group</c>).
-    /// Centralizing it keeps <see cref="UpdateProduct"/>/<see cref="UpdateModem"/> Evaluate verdict and Execute
-    /// move in lock-step, so a bad target Refuses instead of being silently dropped (unparseable id) or building an
-    /// invalid tree that still saves (a non-group target) — review C3.</summary>
-    internal static class Relocation
-    {
-        // A re-parent is requested when the selected Location differs from the element's current parent token; an
-        // unchanged edit re-selects the current parent, so its token round-trips to equality here (no move).
-        private static bool IsRequested(ElementId? currentParent, string selectedLocalityId) =>
-            selectedLocalityId != (currentParent?.ToToken() ?? string.Empty);
-
-        /// <summary>Allow unless a requested re-parent targets something that is not an existing group.</summary>
-        public static EditVerdict Verdict(EditContext context, ElementId? currentParent, string selectedLocalityId) =>
-            !IsRequested(currentParent, selectedLocalityId) || ResolveGroup(context, selectedLocalityId) is not null
-                ? EditVerdict.Allow
-                : EditVerdict.Refuse("The chosen Location is not an existing group.");
-
-        /// <summary>Performs the re-parent when one is requested; the target was validated by <see cref="Verdict"/>.</summary>
-        public static void Apply(ProjectEditor editor, ElementId elementId, ElementId? currentParent, string selectedLocalityId)
-        {
-            if (IsRequested(currentParent, selectedLocalityId) && ElementId.TryParse(selectedLocalityId, out ElementId target))
-            {
-                editor.MoveSubtree(elementId, target);   // ids preserved
-            }
-        }
-
-        private static ProjectElement? ResolveGroup(EditContext context, string selectedLocalityId) =>
-            ElementId.TryParse(selectedLocalityId, out ElementId target)
-                && context.Index.FindById(target) is { Tag: "group" } group
-                    ? group
-                    : null;
-    }
+    // The shared "change Location" re-parent guard that used to live here is GONE. Neither properties dialog
+    // re-parents any more: the product dialog never offered the choice (A-13), and the modem dialog's
+    // `Placering` is the vendor's free-text POSITION descriptor — where in the room the device physically
+    // sits — not a locality picker. Moving a product between localities is a tree operation (US-054).
 }

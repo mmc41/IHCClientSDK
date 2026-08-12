@@ -4,10 +4,12 @@ using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Ihc.Vis;
+using Ihc.Vis.Products;
 using Ihc.Vis.Session;
 using Avalonia.Layout;
 using Avalonia.Platform.Storage;
 using ihc_openvisual.Configuration;
+using ihc_openvisual.ViewModels;
 using ihc_openvisual.Views;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -160,13 +162,6 @@ public sealed class AvaloniaDialogService : IDialogService
         return await VariablePropertiesWindow.ShowAsync(Owner, input);
     }
 
-    public async Task<ProductPropertiesResult?> EditProductPropertiesAsync(ProductPropertiesInput input)
-    {
-        if (Owner is null)
-            return null;
-        return await ProductPropertiesWindow.ShowAsync(Owner, input);
-    }
-
     public async Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input)
     {
         if (Owner is null)
@@ -181,11 +176,15 @@ public sealed class AvaloniaDialogService : IDialogService
         return await PinPropertiesWindow.ShowAsync(Owner, input, onApply);
     }
 
-    public async Task<ModemPropertiesResult?> EditModemPropertiesAsync(ModemPropertiesInput input)
+    public async Task<ProductDialogEdits?> EditProductDialogAsync(
+        ProductDialogDescriptor descriptor, IReadOnlyList<ProductTerminal>? terminals = null,
+        IReadOnlyList<ProductSetting>? settings = null)
     {
         if (Owner is null)
             return null;
-        return await ModemPropertiesWindow.ShowAsync(Owner, input);
+        ProductDialogResult? result =
+            await ProductDialogWindow.ShowAsync(Owner, new ProductDialogViewModel(descriptor, terminals, settings));
+        return result is null ? null : new ProductDialogEdits(result.Edits, result.WidgetAction);
     }
 
     public async Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input)

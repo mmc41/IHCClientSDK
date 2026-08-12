@@ -50,7 +50,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
-                Assert.That(outcome.Reason, Does.Contain("locked function block"));
+                Assert.That(outcome.Reason, Does.Contain("låst funktionsblok"));
             });
         }
     }

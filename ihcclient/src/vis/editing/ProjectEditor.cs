@@ -717,12 +717,12 @@ namespace Ihc.Vis.Editing
                 }
                 else if (parent is not null && ProductClassifier.IsProduct(parent.Tag) && IsCatalogPinTag(target.Tag))
                 {
-                    reason = $"\"{target.GetAttribute("name") ?? target.Tag}\" is a catalog-declared pin of its "
-                           + "product and cannot be deleted on its own — delete the product to remove it.";
+                    reason = $"\"{target.GetAttribute("name") ?? target.Tag}\" er en katalogdefineret klemme på sit "
+                           + "produkt og kan ikke slettes alene — slet produktet for at fjerne den.";
                 }
                 else if (IsWithinLockedBlock(root, id, inclusive: false))
                 {
-                    reason = "This node is inside a locked function block and cannot be deleted — unlock the block first.";
+                    reason = "Denne node er inde i en låst funktionsblok og kan ikke slettes — lås blokken op først.";
                 }
             }
             return reason;
@@ -771,9 +771,10 @@ namespace Ihc.Vis.Editing
         }
 
         /// <summary>The refusal a structural edit targeting a locked block's subtree reports — the engine throw and the
-        /// session verdict share this one message (T003).</summary>
+        /// session verdict share this one message (T003). Danish, because the GUI forwards it to the installer
+        /// verbatim rather than authoring its own copy (FR-2.6 / D13).</summary>
         internal const string LockedBlockEditRefusal =
-            "This node is inside a locked function block and cannot be edited — unlock the block first.";
+            "Denne node er inde i en låst funktionsblok og kan ikke redigeres — lås blokken op først.";
 
         // Throws when a structural insert/move/copy would mutate a locked block's subtree (T003) — the engine half of
         // the central authorization, so a direct engine caller is refused exactly where a session command's Evaluate

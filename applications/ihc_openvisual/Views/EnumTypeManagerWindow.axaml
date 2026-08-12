@@ -10,7 +10,7 @@
     <Window.Styles>
         <!-- The vendor frames each pane in a group box whose caption sits on the frame. HeaderedContentControl
              renders no chrome of its own, so the frame is supplied here — once, for both panes. -->
-        <Style Selector="controls|AccessibleGroupBox.group">
+        <Style Selector="HeaderedContentControl.group">
             <Setter Property="Template">
                 <ControlTemplate>
                     <DockPanel LastChildFill="True">

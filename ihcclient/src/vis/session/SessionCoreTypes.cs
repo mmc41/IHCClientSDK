@@ -103,9 +103,13 @@ namespace Ihc.Vis.Session
     {
         /// <summary>Allow when <paramref name="id"/> still resolves in the pre-edit index, else Refuse naming the
         /// <paramref name="noun"/> — the single "does the target still exist?" legality guard the command Evaluate
-        /// checks route through, preserving each command's per-noun refusal message (review theme 2).</summary>
+        /// checks route through, preserving each command's per-noun refusal message (review theme 2).
+        /// <para><paramref name="noun"/> is DANISH and in its definite form, because it is spliced into a Danish
+        /// sentence the GUI forwards to the installer verbatim (FR-2.6 / D13). An English noun here breaks nothing
+        /// mechanically — it just puts half-Danish text in front of a user — so the nouns are named at the call
+        /// sites and the whole channel is asserted by <c>RefusalLanguageTests</c>.</para></summary>
         public EditVerdict RequireExists(ElementId id, string noun) =>
-            Index.FindById(id) is not null ? EditVerdict.Allow : EditVerdict.Refuse($"The {noun} no longer exists.");
+            Index.FindById(id) is not null ? EditVerdict.Allow : EditVerdict.Refuse($"{noun} findes ikke længere.");
 
         /// <summary>Allow when <paramref name="id"/> resolves to an element whose tag is one of
         /// <paramref name="tags"/>, else Refuse naming the expected <paramref name="noun"/> — the tag-aware peer of
@@ -115,7 +119,7 @@ namespace Ihc.Vis.Session
         public EditVerdict RequireTag(ElementId id, string noun, params string[] tags) =>
             Index.FindById(id) is { } element && System.Array.IndexOf(tags, element.Tag) >= 0
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse($"The target is not {noun}.");
+                : EditVerdict.Refuse($"Målet er ikke {noun}.");
 
         /// <summary>Allow unless <paramref name="id"/> lies at/within a locked function block's subtree, in which case
         /// Refuse — the session half of the central locked-ancestor authorization (T003): a structural

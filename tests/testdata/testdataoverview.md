@@ -596,6 +596,13 @@ IHC Visual output.
   verbatim (never "repaired"), with the logical value read as mojibake.
 - **OpenWorldUndeclaredAttr.vis** — carries an attribute declared by neither registry nor inline
   DTD; serialization must throw rather than silently emit it.
+- **ModemDialog30Slots.vis** (10.5 KB) — a *characterization snapshot of this repository's own
+  output*, not a hand-crafted file and not IHC Visual output: `CreateNew` + `AddProduct(_0x3103)` +
+  a full 30-slot modem dialog edit through the bespoke `UpdateModem` command, saved with
+  `PreserveExistingMetadata` over a fixed 2026-08-11 09:30Z clock. Built and consumed by
+  `ModemDialogOracle` / `ModemDialogByteOracleTests`; recorded before the generic dialog write-back
+  exists so that replacement can be proven byte-neutral. **Do not regenerate it to make a failing
+  test pass** — a difference here means modem-edit serialization moved, which is the finding.
 
 ## Synthetic Product oracles (`products/synthetic/`) — not authentic
 
@@ -608,6 +615,14 @@ code-authored **byte** test (`ProductBuilderOracleTests`: the product is authore
 whose header is exactly a family grammar preset's rendering byte-pin that preset (`9f02` dataline, `9f04`
 airlink, `9f05` RS485 LED dimmer, `9f06` RS485 SMS modem, `9f07` S0); the grammar-envelope files (`9f09`–
 `9f13`) pin the corpus irregularity classes. Pick the file whose feature you need to cover.
+
+- **`synthetic_9f14_unknownfamily.def`** — the OPEN-WORLD fixture. Its root tag `product_unknown_family`
+  is deliberately a family the SDK has never seen, so `ProductDialogPresets.ForRootTag` returns the empty
+  preset and the dialog composer's minimal fallback is what a caller gets. It **is** importable, insertable
+  and editable end to end (`SyntheticCatalogEndToEndTests.AnImportedUnknownFamily_IsInsertedAndOpensTheMinimalFallback`),
+  which is the promise the fallback exists to keep: insert is never blocked by an unrecognised product.
+  Carries an explicit "SYNTHETIC TEST FIXTURE" comment, note and display name so it can never be mistaken
+  for a real product.
 
 Format is byte-identical to a real vendor `.def`: UTF-8 **BOM** followed by a *lying*
 `<?xml … encoding="ISO-8859-1"?>` declaration over UTF-8 body bytes (`CatalogReader` trusts the BOM), **CRLF**

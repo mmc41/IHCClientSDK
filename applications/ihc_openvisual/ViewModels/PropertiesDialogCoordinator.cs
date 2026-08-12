@@ -17,7 +17,7 @@ namespace ihc_openvisual.ViewModels;
 /// fablerefac W3-8: the per-node-type <i>Properties</i> dialog flows, extracted from
 /// <see cref="MainWindowViewModel"/> (C# 12 primary ctor). <see cref="OpenAsync"/> is the node dispatch; each flow
 /// reads the element through a typed SDK read view (<see cref="PinView"/>/<see cref="ProductView"/>/
-/// <see cref="ModemView"/>/<see cref="DimmerView"/> or <see cref="ElementView"/>), opens its dialog through
+/// <see cref="DimmerView"/> or <see cref="ElementView"/>), opens its dialog through
 /// <see cref="IDialogService"/>, and applies the result as a command via <paramref name="applyAndReport"/> — the
 /// view-model's single outcome→status/dialog rule (<paramref name="setStatus"/> serves the one flow, pin
 /// addressing, that reports a bespoke message). No raw schema attribute reads remain in this layer.
@@ -35,10 +35,10 @@ internal sealed class PropertiesDialogCoordinator(
     {
         if (session.Current is not { } project || project.FindById(id) is not { } element)
             return;
-        if (ProductClassifier.IsModem(element.Tag))
-            await OpenModemAsync(id);
-        else if (ProductClassifier.IsProduct(element.Tag))
-            await OpenProductAsync(id);
+        // EVERY product family — wired, wireless, modem, LED dimmer, S0 — opens the same dialog on its own
+        // composed descriptor (T030). There is no per-family branch left to get wrong.
+        if (ProductClassifier.IsProduct(element.Tag))
+            await OpenComposedDialogAsync(id);
         else if (element.Kind == ElementKind.DatalinePin)
             await OpenPinAsync(id, element);
         else if (element.IsScenesContainer)
@@ -108,14 +108,18 @@ internal sealed class PropertiesDialogCoordinator(
     /// product asks for its documentation as part of placing it and cancelling places nothing (US-011, uxparity
     /// S-12) — so the insert path needs both the right dialog for the type (a modem raises the modem dialog, not
     /// the generic product one — measured: IHC Visual opens "SMS Modem Egenskaber") and the yes/no answer.
+    /// <para><b>The answer is whether the installer ACCEPTED the dialog, never whether the edit changed
+    /// anything.</b> Pressing OK without touching a field is an ordinary act and produces
+    /// <c>EditStatus.NoChange</c>; the caller rolls the insert back when this returns false, so reporting a
+    /// commit status here would delete a product the installer had just placed and accepted. Only Cancel — a
+    /// null dialog result — is false. Pinned by
+    /// <c>MainWindowViewModelTests.InsertThenOkWithoutEditing_KeepsTheProduct</c>.</para>
     /// </summary>
     public async Task<bool> OpenForInsertAsync(ElementId id)
     {
-        if (session.Current is not { } project || project.FindById(id) is not { } element)
+        if (session.Current is not { } project || project.FindById(id) is null)
             return false;
-        return ProductClassifier.IsModem(element.Tag)
-            ? await OpenModemAsync(id)
-            : await OpenProductAsync(id);
+        return await OpenComposedDialogAsync(id);
     }
 
     /// <summary>Edits a locality's or function block's Name and Note through the shared dialog and generic rename
@@ -389,41 +393,81 @@ internal sealed class PropertiesDialogCoordinator(
         return (project.View(def).Name ?? string.Empty, states);
     }
 
-    private async Task<bool> OpenModemAsync(ElementId modemId)
+    /// <summary>
+    /// Opens the ONE generic product dialog on a composed descriptor and applies whatever the installer changed.
+    /// <para>Nothing family-specific happens here. The composer decided the title, the groups, every field's
+    /// caption, current value, validation rule and write target; this reads none of them and touches no attribute
+    /// — which is the whole point of the metadata engine and the reason the modem no longer needs a flow of its
+    /// own (T029). Returns <c>false</c> only on cancel: an untouched OK is an ordinary commit with nothing in it,
+    /// and the insert path rolls back on <c>false</c>.</para>
+    /// </summary>
+    private async Task<bool> OpenComposedDialogAsync(ElementId productId)
     {
-        if (session.Current is not { } project || project.FindById(modemId) is not { } modem)
-            return false;
-        var view = new ModemView(project, modem);
-        List<LocalityChoice> localities = BuildLocalityChoices(project);
-        string currentLocalityId = project.FindParent(modemId)?.Id?.ToToken() ?? string.Empty;
-        string pin = view.PinCode ?? string.Empty;
-        if (pin == "0")
-            pin = string.Empty;   // the DTD default reads as blank in the dialog
+        bool committed = false;
+        while (true)
+        {
+            if (session.Current is not { } project)
+                return committed;
+            ProductDialogDescriptor descriptor = session.GetProductDialog(productId);
+            if (descriptor.Groups.IsEmpty)
+                return committed;   // nothing composed for this element — no dialog to open
 
-        // F-49: "<type> Egenskaber", the original's own form — measured "SMS Modem Egenskaber", not
-        // "Egenskaber for SMS-modem". Derived from the catalog type rather than written out, the same way the
-        // product dialog derives its title, so a second modem family would title itself correctly too.
-        // Through ProductView for the identifier: a modem IS a product, and this layer reads elements through
-        // typed views rather than raw attributes.
-        string? modemIdentifier = new ProductView(project, modem).ProductIdentifier;
-        string modemType = (modemIdentifier is null ? null : session.GetProductCatalogItem(modemIdentifier))?.DisplayName
-            ?? view.Name ?? "Modem";
-        var input = new ModemPropertiesInput(
-            $"{modemType} Egenskaber",
-            view.Name ?? string.Empty,
-            view.Note ?? string.Empty,
-            view.DocumentationTag ?? string.Empty,
-            view.CableColour0V ?? string.Empty,
-            view.CableColour24V ?? string.Empty,
-            view.CableColourRS485Minus ?? string.Empty,
-            view.CableColourRS485Plus ?? string.Empty,
-            pin, view.PhoneNumbers, localities, currentLocalityId);
+            // The terminal rows are element DATA, not dialog metadata: the descriptor says whether the grids
+            // apply, and this supplies what goes in them. Read once here rather than inside the dialog, which
+            // has no project to read.
+            ProductView? productView =
+                project.FindById(productId) is { } el ? new ProductView(project, el) : null;
+            IReadOnlyList<ProductTerminal> terminals =
+                productView is { } pv ? BuildTerminals(pv) : [];
+            // Same rule as the terminals: the descriptor says whether the Indstillinger grid appears, and
+            // these are the rows that go in it (T070).
+            //
+            // The VALUE is rendered by the app's existing per-type formatter, not printed raw. The vendor
+            // shows a calibration offset as "0,0 °C" -- Danish decimal comma, one place, unit -- and
+            // VariableValueFormat already produces exactly that for resource_temperature (F-41/F-44). The
+            // raw inivalue is "0.00", so printing it directly showed the stored form rather than the
+            // displayed one, which is a display-interpretation concern and belongs on this side of the
+            // boundary (ADR-002).
+            IReadOnlyList<ProductSetting> settings = productView is { } sv
+                ? [.. sv.SettingElements.Select(e => new ProductSetting(
+                        project.View(e).Name ?? string.Empty,
+                        project.View(e).Note ?? string.Empty,
+                        VariableValueFormat.For(e.Tag, project.View(e).Effective) ?? string.Empty))]
+                : [];
 
-        ModemPropertiesResult? result = await dialogs.EditModemPropertiesAsync(input);
-        if (result is null)
-            return false;
-        await applyAndReport(session.Commands.UpdateModem(project, modemId, result), $"{result.Name} blev opdateret.");
-        return true;
+            ProductDialogEdits? result = await dialogs.EditProductDialogAsync(descriptor, terminals, settings);
+            if (result is null)
+                return committed;   // cancelled — the product keeps its documentation
+
+            // The status line names the product as the installer will see it in the tree a moment later — so the
+            // name AFTER the edit when they renamed it, not the descriptor's title (which is the product TYPE).
+            string nameNow = project.FindById(productId) is { } element
+                ? project.View(element).Name ?? string.Empty
+                : string.Empty;
+            string name = result.Edits
+                .Where(edit => edit.Target == productId && edit.Attribute == "name")
+                .Select(edit => edit.Value)
+                .LastOrDefault() ?? nameNow;
+
+            await applyAndReport(session.Commands.ApplyProductDialog(project, productId, result.Edits),
+                $"{name} blev opdateret.");
+            committed = true;
+
+            // Stepping into a composite: the documentation above is already applied, so the sub-dialog opens over
+            // a committed state and the product dialog re-opens after it — the vendor's in-place flow (US-012).
+            switch (result.WidgetAction)
+            {
+                case { Kind: DialogWidgetKind.TerminalGrids, Target: { } pinId }
+                    when session.Current?.FindById(pinId) is { Kind: ElementKind.DatalinePin } pin:
+                    await OpenPinAsync(pinId, pin);
+                    continue;
+                case { Kind: DialogWidgetKind.AdvancedDimmerButton }:
+                    await OpenAdvancedDimmerAsync(productId);   // Properties ▸ Advanced (US-015)
+                    return committed;
+                default:
+                    return committed;
+            }
+        }
     }
 
     private async Task OpenPinAsync(ElementId pinId, ProjectElement pin)
@@ -459,18 +503,6 @@ internal sealed class PropertiesDialogCoordinator(
         await Commit(result);
     }
 
-    // The localities offered as re-parent choices in the product/modem dialogs.
-    private static List<LocalityChoice> BuildLocalityChoices(Project project)
-    {
-        var localities = new List<LocalityChoice>();
-        foreach (ProjectElement group in project.Groups)
-        {
-            if (group.Id is { } gid)
-                localities.Add(new LocalityChoice(gid.ToToken(), project.View(group).Name ?? string.Empty));
-        }
-        return localities;
-    }
-
     // The addresses already used by other pins of the same direction (US-012 in-use indication). Handed over as
     // DatalineAddress values, not as formatted keys: the dialog matches them by the record's own equality, so
     // neither side has to agree with the other about how a line and a terminal are spelled into one string.
@@ -491,62 +523,11 @@ internal sealed class PropertiesDialogCoordinator(
         return used;
     }
 
-    // The product documentation dialog (US-011) plus its terminal-addressing grids (US-012). Re-entrant: choosing to
-    // configure a terminal applies the documentation, opens the addressing sub-dialog for that terminal, then re-opens
-    // this dialog — the vendor's in-place "Konfigurer indgang/udgang" flow.
-    /// <summary>Opens a placed product's documentation dialog. Returns <c>false</c> when the installer cancelled
-    /// without committing anything — the insert path needs that answer, because cancelling the dialog that opens
-    /// as part of placing a product means the product is not placed at all (US-011).</summary>
-    public async Task<bool> OpenProductAsync(ElementId productId)
-    {
-        bool committed = false;
-        while (true)
-        {
-            if (session.Current is not { } project || project.FindById(productId) is not { } product)
-                return committed;
-            var view = new ProductView(project, product);
-            // No locality CHOICES are built here: the product dialog has no Location drop-down (A-13 — re-parenting a
-            // product is a tree operation), so the list was computed on every open and discarded. Only the current
-            // locality is needed, and only to be carried through into the result.
-            string currentLocalityId = project.FindParent(productId)?.Id?.ToToken() ?? string.Empty;
-            // The dialog is titled with the product TYPE (the catalog name), not a generic "Produktegenskaber" —
-            // it is how the vendor tells two open product dialogs apart (A-8/F-015).
-            string productType =
-                (view.ProductIdentifier is null ? null : session.GetProductCatalogItem(view.ProductIdentifier))?.DisplayName
-                ?? view.Name ?? "Produktegenskaber";
-            var input = new ProductPropertiesInput(
-                productType,
-                view.Name ?? string.Empty,
-                view.Note ?? string.Empty,
-                view.CableType ?? string.Empty,
-                view.CableNumber ?? string.Empty,
-                view.DocumentationTag ?? string.Empty,
-                view.PowerGroup ?? string.Empty,
-                currentLocalityId, view.IsWireless, view.IsWirelessDimmer,
-                BuildTerminals(view), view.Position ?? string.Empty,
-                // A locked (library) product's name is fixed to the catalog type name — greyed out (A-15/F-032).
-                // Read locked off the ELEMENT, resolved via the project's inline DTD (default "no"); never a catalog
-                // lookup (whose default is "yes" and would grey the wrong products).
-                NameLocked: view.Locked,
-                EndUserReport: view.EnduserReport);
-
-            ProductPropertiesResult? result = await dialogs.EditProductPropertiesAsync(input);
-            if (result is null)
-                return committed;   // cancelled — the product keeps its documentation
-            await applyAndReport(session.Commands.UpdateProduct(project, productId, result),
-                $"{result.Name} blev opdateret.");
-            committed = true;
-            if (result.ConfigureTerminalPinId is { } pinToken && ElementId.TryParse(pinToken, out ElementId pinId)
-                && session.Current?.FindById(pinId) is { } pinEl && pinEl.Kind == ElementKind.DatalinePin)
-            {
-                await OpenPinAsync(pinId, pinEl);
-                continue;   // re-open the product dialog after addressing the terminal (US-012)
-            }
-            if (result.OpenAdvanced)
-                await OpenAdvancedDimmerAsync(productId);   // Properties ▸ Advanced (US-015)
-            return committed;
-        }
-    }
+    /// <summary>Opens a placed product's documentation dialog — every family, through
+    /// <see cref="OpenComposedDialogAsync"/>. Returns <c>false</c> when the installer cancelled without committing
+    /// anything: the insert path needs that answer, because cancelling the dialog that opens as part of placing a
+    /// product means the product is not placed at all (US-011).</summary>
+    public Task<bool> OpenProductAsync(ElementId productId) => OpenComposedDialogAsync(productId);
 
     // The product's input/output terminals for the addressing grids (US-012): each terminal's name, its
     // vendor-formatted "Datalinie N.PP" address (blank when unassigned), cable colour and note. The typed PinView

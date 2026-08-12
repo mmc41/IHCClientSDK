@@ -144,20 +144,22 @@ namespace Ihc.Vis.Tests
             Assert.That(app.Commands.AddVariable(project, localityId, "resource_input", "X"), Is.Null);
         }
 
+        // Was UpdateProduct_IsAPassThroughFactory, and before that "captures the product's current locality"
+        // (D10). T014 removed in-dialog re-parenting so there was no locality to capture; T031 removed the
+        // command itself. The surviving factory is the generic one, and it is a plain pass-through too.
         [Test]
-        public async Task UpdateProduct_CapturesTheProductsCurrentLocality()
+        public async Task ApplyProductDialog_IsAPassThroughFactory()
         {
             ProjectAppService app = App;
             Project project = await Load("project3-KompleksWired.vis");
             ProjectElement product = project.Root.DescendantsAndSelf()
                 .First(e => Ihc.Vis.Products.ProductClassifier.IsProduct(e.Tag));
             ElementId productId = product.Id!.Value;
-            ElementId parentId = project.FindParent(productId)!.Id!.Value;
-            var r = new ProductPropertiesResult("N", parentId.ToToken(), "note", "", "", "", "");
+            System.Collections.Immutable.ImmutableArray<ProductDialogEdit> edits =
+                [new ProductDialogEdit(productId, "note", "n")];
 
-            Assert.That(app.Commands.UpdateProduct(project, productId, r),
-                Is.EqualTo(new UpdateProduct(productId, r, parentId)),
-                "D10: captures the same current-parent id the app did");
+            Assert.That(app.Commands.ApplyProductDialog(project, productId, edits),
+                Is.EqualTo(new ApplyProductDialog(productId, edits)));
         }
 
         [Test]
@@ -407,7 +409,6 @@ namespace Ihc.Vis.Tests
             ElementId productId = project.Root.DescendantsAndSelf()
                 .First(e => Ihc.Vis.Products.ProductClassifier.IsProduct(e.Tag)).Id!.Value;
             var dimmer = new AdvancedDimmerResult(1, 2, 3, 4, 5, "m");
-            var modem = new ModemPropertiesResult("n", "loc", "note", "id", "0", "24", "r-", "r+", "pin", System.Array.Empty<string>());
 
             Assert.Multiple(() =>
             {
@@ -415,9 +416,8 @@ namespace Ihc.Vis.Tests
                 Assert.That(app.Commands.UpdateUserText(project, id, "t"), Is.EqualTo(new UpdateUserText(id, "t")));
                 Assert.That(app.Commands.DeleteUserText(project, id), Is.EqualTo(new DeleteUserText(id)));
                 Assert.That(app.Commands.UpdateDimmerSettings(project, productId, dimmer), Is.EqualTo(new UpdateDimmerSettings(productId, dimmer)));
-                Assert.That(app.Commands.UpdateModem(project, productId, modem),
-                    Is.EqualTo(new UpdateModem(productId, modem, project.FindParent(productId)?.Id)),
-                    "D10: captures the same current-parent id the app did");
+                // UpdateModem's factory is gone (T031) — a modem writes back through ApplyProductDialog, covered
+                // by ApplyProductDialog_IsAPassThroughFactory above.
             });
         }
 

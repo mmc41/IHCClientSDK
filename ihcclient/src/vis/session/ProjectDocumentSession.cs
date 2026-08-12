@@ -329,6 +329,14 @@ namespace Ihc.Vis.Session
             }
         }
 
+        /// <summary>
+        /// The ONE "nothing is open" refusal. Public so the app layer forwards this exact sentence instead of
+        /// authoring its own: the workflow answers the same question when it holds no document at all, where there
+        /// is no session to ask, and two separately-worded sentences for one condition is the duplication D13
+        /// removes.
+        /// </summary>
+        public const string NoProjectOpenRefusal = "Der er ikke åbnet et projekt.";
+
         /// <summary>The command's legality verdict against the current project (cheap — no edit), for drag-over
         /// probes and menu gates.</summary>
         public EditVerdict CanApply(ProjectCommand command)
@@ -337,7 +345,7 @@ namespace Ihc.Vis.Session
             {
                 return _current is { } current
                     ? command.Evaluate(new EditContext(current, _index!))
-                    : EditVerdict.Refuse("No project is open.");
+                    : EditVerdict.Refuse(NoProjectOpenRefusal);
             }
         }
 

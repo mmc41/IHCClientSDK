@@ -67,7 +67,9 @@ public class DialogTitleParityTests
 
         await vm.PropertiesCommand.ExecuteAsync(TreeNodes.FindById(vm.InstallationNodes, modem)!);
 
-        Assert.That(harness.Dialogs.LastModemPropertiesInput?.Title, Is.EqualTo("SMS Modem Egenskaber"),
+        // Since T029 the title is the composed descriptor's, not one this layer builds — the assertion is
+        // unchanged because the composer states the same rule, in the one place it now lives.
+        Assert.That(harness.Dialogs.LastProductDialog?.Title, Is.EqualTo("SMS Modem Egenskaber"),
             "the original names the type and then the word, not 'Egenskaber for <type>'");
     }
 

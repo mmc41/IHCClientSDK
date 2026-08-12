@@ -10,7 +10,15 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
+using ihc_openvisual.ViewModels;
 using ihc_openvisual.Views;
+using Ihc;
+using Ihc.Vis;
+using Ihc.Vis.Model;
+using Ihc.Vis.Products;
+using Ihc.Vis.Projects;
+using Ihc.Vis.Session;
 
 namespace safe_visual_tests;
 
@@ -43,9 +51,9 @@ public class AutomationCoverageTests : AvaloniaTestBase
     private static readonly Type[] DialogWindows =
     {
         typeof(AboutWindow), typeof(AdvancedDimmerWindow),
-        typeof(EnumDefinitionWindow), typeof(EnumTypeManagerWindow), typeof(ModemPropertiesWindow),
+        typeof(EnumDefinitionWindow), typeof(EnumTypeManagerWindow),
         typeof(ModuleMapWindow), typeof(NamePromptWindow), typeof(PinPropertiesWindow),
-        typeof(ProductPropertiesWindow), typeof(ProjectInfoWindow), typeof(PropertiesWindow),
+        typeof(ProductDialogWindow), typeof(ProjectInfoWindow), typeof(PropertiesWindow),
         typeof(ReportPickerWindow), typeof(SceneContainerWindow), typeof(SceneValueWindow),
         typeof(VariablePropertiesWindow),
     };
@@ -140,6 +148,137 @@ public class AutomationCoverageTests : AvaloniaTestBase
 
         Assert.That(failures, Is.Empty, Explain("the dialogs", failures));
     }
+
+    // ── The descriptor-driven dialog ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// One representative catalog product per product family, DISCOVERED from the catalog rather than listed. A
+    /// family whose products stop composing a dialog fails here without anyone remembering to add a case, and a
+    /// family added later joins on its own.
+    /// </summary>
+    private static IEnumerable<TestCaseData> ProductDialogFamilies()
+    {
+        var app = new ProjectAppService(new IhcSettings());
+        foreach (var family in app.GetAvailableProducts()
+                     .GroupBy(product => ProductClassifier.Classify(product.Body.Tag))
+                     .OrderBy(group => group.Key))
+        {
+            ProductDefinition representative = family
+                .OrderBy(product => product.ProductIdentifier, StringComparer.Ordinal).First();
+            yield return new TestCaseData(representative.ProductIdentifier)
+                .SetName($"TheProductDialog_IsAuditedPopulated_{family.Key}");
+        }
+    }
+
+    /// <summary>
+    /// The generic dialog is audited POPULATED, once per family — and the population is asserted first.
+    /// <para>Every other window in this fixture carries its controls in XAML, so constructing it is enough to have
+    /// something to audit. <see cref="ProductDialogWindow"/> carries none: its entire surface comes from a composed
+    /// descriptor, so the roster's <c>Activator.CreateInstance</c> walk sees an empty shell and reports no gaps
+    /// — a clean pass that measured nothing. The guard below is what makes the audit mean something here, and
+    /// <see cref="TheEmptyProductDialog_PassesTheAuditVacuously_WhichIsWhyTheGuardExists"/> proves it is load-bearing.</para>
+    /// </summary>
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    [TestCaseSource(nameof(ProductDialogFamilies))]
+    public void TheProductDialog_IsAuditedPopulated_ForEveryFamily(string productIdentifier)
+    {
+        ProductDialogViewModel viewModel = ComposeDialogFor(productIdentifier);
+        var window = new ProductDialogWindow();
+        window.Populate(viewModel);
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        AssertThereIsSomethingToAudit(window, viewModel, productIdentifier);
+
+        Assert.That(Audit(window), Is.Empty, Explain($"the {productIdentifier} dialog", Audit(window)));
+    }
+
+    /// <summary>
+    /// The armed control: handed an UNPOPULATED window, the guard FAILS — and the audit it protects passes clean.
+    /// <para>Both halves are the point. The clean audit is the vacuous pass this task exists to prevent; the
+    /// failing guard is what prevents it. And it is the REAL guard being armed — the same method the arm above
+    /// calls, not a lookalike written for the control, which would prove only that some check can fail.</para>
+    /// </summary>
+    [AvaloniaTest]
+    public void TheGuard_FailsWhenHandedAnUnpopulatedWindow()
+    {
+        ProductDialogViewModel viewModel = ComposeDialogFor("_0x3103");   // a descriptor with 30+ fields
+        var window = new ProductDialogWindow();                           // that never reached this window
+        CurrentTestWindow = window;
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        Assert.That(Audit(window), Is.Empty,
+            "the empty shell reports no accessibility gaps — because it has no fields to have gaps");
+
+        var thrown = Assert.Throws<AssertionException>(
+            () => AssertThereIsSomethingToAudit(window, viewModel, "_0x3103"),
+            "the guard rejects a window the descriptor never reached");
+        Assert.That(thrown!.Message, Does.Contain("reached the window"));
+    }
+
+    /// <summary>
+    /// The anti-vacuity guard: the descriptor's fields are on the window, one addressable control each.
+    /// <para>Exactly one per field, not merely at least one — a renderer that materializes every control kind and
+    /// hides all but one leaves N-1 duplicates sharing an AutomationId, so a driver asking for that id gets
+    /// several elements and cannot proceed, and a screen reader walks the phantoms. This is the same defect
+    /// <see cref="AssertMenuIds"/> guards against on the menus, and it is what this guard caught on its first
+    /// run: every field of every family was realized ×4.</para>
+    /// </summary>
+    private static void AssertThereIsSomethingToAudit(
+        Window window, ProductDialogViewModel viewModel, string productIdentifier)
+    {
+        var declaredIds = viewModel.AllFields.Select(f => f.AutomationId).ToHashSet(StringComparer.Ordinal);
+        List<Control> realized = DescriptorFieldControls(window)
+            .Where(c => declaredIds.Contains(AutomationProperties.GetAutomationId(c)!))
+            .ToList();
+        int declared = declaredIds.Count;
+
+        Assert.That(declared, Is.GreaterThan(0), $"{productIdentifier}: the composer produced a non-empty dialog");
+        Assert.That(realized, Is.Not.Empty,
+            $"{productIdentifier}: the descriptor's {declared} field(s) reached the window as real controls");
+
+        var duplicates = realized
+            .GroupBy(control => AutomationProperties.GetAutomationId(control))
+            .Where(group => group.Count() > 1)
+            .Select(group => $"{group.Key} ×{group.Count()} "
+                             + $"({string.Join(", ", group.Select(control => control.GetType().Name))})")
+            .ToList();
+        Assert.That(duplicates, Is.Empty,
+            $"{productIdentifier}: each descriptor field materializes exactly ONE addressable control:\n  "
+            + string.Join("\n  ", duplicates));
+        Assert.That(realized, Has.Count.EqualTo(declared),
+            $"{productIdentifier}: every declared field is realized, exactly once. "
+            + $"Missing: {string.Join(", ", declaredIds.Except(realized.Select(c => AutomationProperties.GetAutomationId(c)!)))}");
+    }
+
+    /// <summary>Composes the real descriptor for a freshly placed product — no hand-built stub, so the window is
+    /// driven by exactly the shape the composer emits in the app.</summary>
+    private static ProductDialogViewModel ComposeDialogFor(string productIdentifier)
+    {
+        var app = new ProjectAppService(new IhcSettings());
+        Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
+        ElementId locality = project.Groups.First().Id!.Value;
+        ProductDefinition definition = app.GetAvailableProducts()
+            .First(product => product.ProductIdentifier == productIdentifier);
+
+        var session = new ProjectDocumentSession();
+        session.Open(project);
+        ElementId placed = session.Apply(new AddProduct(locality, definition)).Value;
+        return new ProductDialogViewModel(app.GetProductDialog(session.Current!, placed));
+    }
+
+    /// <summary>Every control carrying a <c>dlg.</c> automation id — the prefix the composer stamps on fields and
+    /// the window stamps on its hand-written composites. Deliberately not "every focusable control": OK and Cancel
+    /// are authored in XAML and are present whether or not a single field ever arrived. Callers narrow this to the
+    /// ids the descriptor DECLARED, so a widget's controls are not miscounted as fields.</summary>
+    private static List<Control> DescriptorFieldControls(Window window) =>
+        window.GetVisualDescendants().OfType<Control>()
+            .Where(c => AutomationProperties.GetAutomationId(c)?
+                .StartsWith("dlg.", StringComparison.Ordinal) == true)
+            .ToList();
 
     // ── Menus ────────────────────────────────────────────────────────────────────────────────────────────────
 

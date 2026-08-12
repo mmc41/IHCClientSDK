@@ -63,7 +63,11 @@ public class SceneValueTitleParityTests
         // The PRODUCT decides the variant: a Lampeudtag's Scenarier takes relay members, a Lampeudtag dimmer's
         // Scenarier/regulering takes dimmer ones — the engine refuses the mismatched pairing outright, which is
         // why each case places its own product rather than flipping a flag.
-        await harness.Session.AddProductAsync(locality, isDimmer ? "_0x4304" : "_0x2202");
+        // _0x4304 is one of D22's shared identifiers (also "1-10v converter - Lampeudtag dimmer"), so the
+        // wanted product is NAMED rather than guessed at — the factory refuses an ambiguous id (T046).
+        await (isDimmer
+            ? harness.Session.AddProductAsync(locality, "_0x4304", "Lampeudtag dimmer")
+            : harness.Session.AddProductAsync(locality, "_0x2202"));
         ElementId block = (await harness.Session.AddEmptyFunctionBlockAsync(locality))!.Value;
         ElementId outputs = harness.Session.Current!.FindById(block)!.Descendants()
             .First(e => e.Tag == "outputs").Id!.Value;

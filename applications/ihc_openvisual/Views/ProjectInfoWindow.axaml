@@ -15,7 +15,7 @@
     <Window.Styles>
         <!-- A captioned group box: the three sections IHC Visual draws (uxparity S-32). Avalonia has no GroupBox,
              so a HeaderedContentControl carries the caption and a bordered panel the fields. -->
-        <Style Selector="controls|AccessibleGroupBox.group">
+        <Style Selector="HeaderedContentControl.group">
             <!-- F-38: the caption below lives in the TEMPLATE, and a templated TextBlock never reaches the
                  automation tree — so all three captions rendered on screen and NONE appeared in the control
                  inventory. AccessibleGroupBox's peer publishes the Header as the group's name, which is why the

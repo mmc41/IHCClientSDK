@@ -62,7 +62,7 @@ namespace Ihc.Vis.Tests
             InvalidOperationException? refused =
                 Assert.Throws<InvalidOperationException>(() => project.Edit().DeleteById(pin.Id!.Value));
 
-            Assert.That(refused!.Message, Does.Contain("catalog").IgnoreCase,
+            Assert.That(refused!.Message, Does.Contain("katalogdefineret").IgnoreCase,
                 "the engine names why a catalog-declared pin cannot be deleted on its own");
         }
 
@@ -75,7 +75,7 @@ namespace Ihc.Vis.Tests
             InvalidOperationException? refused =
                 Assert.Throws<InvalidOperationException>(() => project.Edit().DeleteById(inner.Id!.Value));
 
-            Assert.That(refused!.Message, Does.Contain("locked").IgnoreCase,
+            Assert.That(refused!.Message, Does.Contain("låst").IgnoreCase,
                 "the engine names why a node inside a locked block cannot be deleted");
         }
 

@@ -108,6 +108,10 @@ namespace Ihc.Vis.Catalog
             {
                 Grammar = CatalogDtdParser.ParseLenient(CatalogDtdParser.CaptureHeadText(bytes)),
                 SourceEncoding = CatalogTextEncodingExtensions.Classify(bytes),
+                // The same lookup the builder uses, keyed on the same thing (the device-root tag), so a product
+                // read from a .def and the same product authored in code carry the SAME dialog — not two models
+                // that merely look alike.
+                Dialog = ProductDialogPresets.ForRootTag(body.Tag),
             };
             return documentation is null ? definition : definition with { Documentation = documentation };
         }

@@ -7,7 +7,7 @@ using Ihc.Vis.Products;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// fablerefac W3-8: the typed read views (PinView/ProductView/ModemView/DimmerView) are the read-side peers of
+    /// fablerefac W3-8: the typed read views (PinView/ProductView/DimmerView) are the read-side peers of
     /// the write Ref handles. Characterization: each field must equal the raw attribute the dialog assembly used to
     /// read, so moving the attribute-name literals SDK-side is behavior-preserving (the documentation/cable/address
     /// attributes are #IMPLIED, so the effective read equals the old GetAttribute).
@@ -54,28 +54,13 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        // T018: ModemView.Name reads through the shared ElementView.Name surface (project.View(element).Name),
-        // not a re-typed raw GetAttribute("name"). For a named element (as every real modem is) the effective
-        // read equals the element's own name.
-        [Test]
-        public void ModemView_Name_ReadsThroughTheElementViewSurface()
-        {
-            var modem = new ProjectElement("sms_modem_settings", new ElementId(0x57d, 0xcb),
-                ImmutableArray.Create(("id", "_0x57dcb"), ("name", "Telephone numbers #1-#10")),
-                ImmutableArray<ProjectElement>.Empty);
-            var root = new ProjectElement("utcs_project", null,
-                ImmutableArray.Create(("version_major", "4"), ("last_unique_id", "_0x600000")),
-                ImmutableArray.Create(modem));
-            var project = new Project(root);
-
-            var view = new ModemView(project, modem);
-            Assert.Multiple(() =>
-            {
-                Assert.That(view.Name, Is.EqualTo("Telephone numbers #1-#10"));
-                Assert.That(view.Name, Is.EqualTo(project.View(modem).Name),
-                    "ModemView.Name delegates to the shared ElementView.Name surface");
-            });
-        }
+        // ModemView_Name_ReadsThroughTheElementViewSurface (T018) is gone with the type it tested (T138).
+        // It asserted that ModemView.Name delegated to the shared ElementView.Name surface rather than
+        // re-typing GetAttribute("name") — a real invariant, and one the modem still enjoys: the composer
+        // binds Navn to the root `name` and reads every field through project.View(...).Effective, so the
+        // modem's own Navn is covered by the composer tests and by ProductAndPinView_ReadTheSameValuesAs-
+        // RawAttributes above for the shared read surface. What is not kept is a test for a type nothing
+        // else called; it was the last thing holding ModemView alive.
 
         // review H1: a loadable-but-quirky library block whose master_date_year is outside 1..9999 must read as
         // "no usable date" (the documented null contract) — not throw ArgumentOutOfRangeException out of

@@ -11,11 +11,12 @@ namespace Ihc.Vis.Session
     public sealed record AdvancedDimmerResult(
         int SoftOnMs, int SoftOffMs, int ManualRampS, int MinimumPercent, int MaximumPercent, string LoadMode);
 
-    /// <summary>The edited modem documentation (US-013). An edit payload moved down from the GUI dialog.</summary>
-    public sealed record ModemPropertiesResult(
-        string Name, string LocalityId, string Note, string IdentificationCode,
-        string Cable0V, string Cable24V, string CableRS485Minus, string CableRS485Plus,
-        string PinCode, IReadOnlyList<string> PhoneNumbers);
+    // ModemPropertiesResult and its UpdateModem command are gone (T031), superseded by ApplyProductDialog. The
+    // record named the SMS modem's fields one by one — four cable colours, a PIN, and a positional list of phone
+    // numbers — so the modem needed a payload type, a command and a write-back of its own for what is, in the
+    // composed model, one more descriptor. Its byte behaviour is preserved and still pinned: the generic replay
+    // is compared against the committed 30-slot oracle recorded while UpdateModem was the only writer
+    // (ModemDialogByteOracleTests, T002/T025).
 
     /// <summary>Applies edited project/customer/installer information (US-039); exercises the id-less metadata path.</summary>
     public sealed record UpdateProjectInfo(ProjectInfoData Data) : ProjectCommand
@@ -56,9 +57,9 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Rediger tekst";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireExists(TextId, "text");
+            context.RequireExists(TextId, "Teksten");
         internal override void Execute(ProjectEditor editor) =>
-            editor.Resolve(TextId, "text").SetAttribute("name", Text);
+            editor.Resolve(TextId, "Teksten").SetAttribute("name", Text);
     }
 
     /// <summary>Deletes a user-defined text by id (US-049 Delete).</summary>
@@ -66,7 +67,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Slet tekst";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireExists(TextId, "text");
+            context.RequireExists(TextId, "Teksten");
         internal override void Execute(ProjectEditor editor) =>
             editor.DeleteById(TextId, DeleteReferencePolicy.CascadeReferences);
     }
@@ -78,7 +79,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Indsæt variabel";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireUnlockedTag(BlockId, "a function block", "functionblock");   // T003
+            context.RequireUnlockedTag(BlockId, "en funktionsblok", "functionblock");   // T003
         internal override ElementId ExecuteCore(ProjectEditor editor)
         {
             FunctionBlockRef fb = editor.FunctionBlock(BlockId);
@@ -88,9 +89,9 @@ namespace Ihc.Vis.Session
                 "outputs" => fb.AddOutput(ResourceTag, Name),
                 "settings" => fb.AddSetting(ResourceTag, Name),
                 "internalsettings" => fb.AddInternalVariable(ResourceTag, Name),
-                _ => throw new EditRefusedException($"<{SectionTag}> is not a function-block variable section."),
+                _ => throw new EditRefusedException($"<{SectionTag}> er ikke en variabelsektion i en funktionsblok."),
             };
-            return added.Id ?? throw new EditRefusedException("The variable was not added.");
+            return added.Id ?? throw new EditRefusedException("Variablen blev ikke tilføjet.");
         }
     }
 
@@ -102,7 +103,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Tilføj enumerator";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireUnlockedTag(BlockId, "a function block", "functionblock");   // T003
+            context.RequireUnlockedTag(BlockId, "en funktionsblok", "functionblock");   // T003
         internal override ElementId ExecuteCore(ProjectEditor editor)
         {
             EnumDefinitionRef def = editor.AddEnumDefinition(TypeName, States.ToArray());
@@ -119,7 +120,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Tilføj enumerator";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireUnlockedTag(BlockId, "a function block", "functionblock");   // T003
+            context.RequireUnlockedTag(BlockId, "en funktionsblok", "functionblock");   // T003
         internal override ElementId ExecuteCore(ProjectEditor editor)
         {
             EnumDefinitionRef def = editor.EnumDefinition(TypeName);   // resolve the EXISTING type — no new def authored
@@ -149,9 +150,9 @@ namespace Ihc.Vis.Session
             {
                 "settings" => fb.AddSetting("resource_enum", variableName, Configure),
                 "internalsettings" => fb.AddInternalVariable("resource_enum", variableName, Configure),
-                _ => throw new EditRefusedException($"<{sectionTag}> does not accept an enum variable."),
+                _ => throw new EditRefusedException($"<{sectionTag}> kan ikke rumme en enumerator-variabel."),
             };
-            return added.Id ?? throw new EditRefusedException("The variable was not added.");
+            return added.Id ?? throw new EditRefusedException("Variablen blev ikke tilføjet.");
         }
     }
 
@@ -312,9 +313,9 @@ namespace Ihc.Vis.Session
         internal static EditVerdict RequireEditable(EditContext context, string defName) =>
             Find(context.Project, defName) switch
             {
-                null => EditVerdict.Refuse($"The project has no enumerator type named '{defName}'."),
+                null => EditVerdict.Refuse($"Projektet har ingen enumeratortype ved navn '{defName}'."),
                 { } def when (def.GetAttribute("typeid") ?? ElementId.NullToken) != ElementId.NullToken =>
-                    EditVerdict.Refuse($"Enumerator type '{defName}' is a built-in [read only] type and cannot be edited."),
+                    EditVerdict.Refuse($"Enumeratortypen '{defName}' er en indbygget [read only]-type og kan ikke redigeres."),
                 _ => EditVerdict.Allow,
             };
 
@@ -331,7 +332,7 @@ namespace Ihc.Vis.Session
             int users = ProjectEditor.ReferenceCount(context.Project.Root, "typedef", defId);
             return users == 0
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse($"Enumerator type '{defName}' is still used by {users} resource(s) and cannot be deleted.");
+                : EditVerdict.Refuse($"Enumeratortypen '{defName}' bruges stadig af {users} ressource(r) og kan ikke slettes.");
         }
 
         /// <summary>The 0-based value position must exist in the type — the dialog addresses values by position.</summary>
@@ -344,7 +345,7 @@ namespace Ihc.Vis.Session
             int count = def.ChildrenOrEmpty().Count(v => v.Tag == "enum_value");
             return index >= 0 && index < count
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse($"Enumerator type '{defName}' has no value at position {index}.");
+                : EditVerdict.Refuse($"Enumeratortypen '{defName}' har ingen værdi på plads {index}.");
         }
 
         private static ProjectElement? Find(Project project, string defName) =>
@@ -357,7 +358,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Rediger dæmperindstillinger";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireExists(ProductId, "product");
+            context.RequireExists(ProductId, "Produktet");
         internal override void Execute(ProjectEditor editor)
         {
             ProjectElement product = editor.Require(ProductId);
@@ -374,39 +375,5 @@ namespace Ihc.Vis.Session
         }
     }
 
-    /// <summary>Applies edited modem documentation (US-013): name/note/id-code, the four RS485 cable colours, the SIM
-    /// pincode, the phone-number slots, and a re-parent when the Location changed (caller supplies the current parent).</summary>
-    public sealed record UpdateModem(ElementId ModemId, ModemPropertiesResult Result, ElementId? CurrentLocalityId)
-        : ProjectCommand
-    {
-        internal override string Describe(Project project) => "Rediger modem";
-        internal override EditVerdict Evaluate(EditContext context)
-        {
-            EditVerdict exists = context.RequireExists(ModemId, "modem");
-            return exists.Ok ? Relocation.Verdict(context, CurrentLocalityId, Result.LocalityId) : exists;
-        }
-        internal override void Execute(ProjectEditor editor)
-        {
-            ElementRef handle = editor.Resolve(ModemId, "modem");
-            handle.SetAttribute("name", Result.Name);
-            handle.SetAttribute("note", Result.Note);
-            handle.SetAttribute("documentation_tag", Result.IdentificationCode);
-            handle.SetAttribute("cablecolour_0V", Result.Cable0V);
-            handle.SetAttribute("cablecolour_24V", Result.Cable24V);
-            handle.SetAttribute("cablecolour_RS485Minus", Result.CableRS485Minus);
-            handle.SetAttribute("cablecolour_RS485Plus", Result.CableRS485Plus);
-
-            ProjectElement modem = editor.Require(ModemId);
-            editor.SetDescendantAttribute(modem, e => e.Tag == "sms_modem_pincode", "value",
-                string.IsNullOrEmpty(Result.PinCode) ? "0" : Result.PinCode);
-            for (int i = 0; i < Result.PhoneNumbers.Count; i++)
-            {
-                string slot = DecToken.Format(i + 1);
-                editor.SetDescendantAttribute(modem,
-                    e => e.Tag == "sms_modem_phonenumber" && e.GetAttribute("address") == slot,
-                    "phonenumber", Result.PhoneNumbers[i]);
-            }
-            Relocation.Apply(editor, ModemId, CurrentLocalityId, Result.LocalityId);   // Location changed → re-parent
-        }
-    }
+    // UpdateModem is gone (T031) — see the note beside ModemPropertiesResult at the top of this file.
 }

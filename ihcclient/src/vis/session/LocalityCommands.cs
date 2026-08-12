@@ -25,7 +25,7 @@ namespace Ihc.Vis.Session
             "Omdøb " + ((project.FindById(Id) is { } element ? project.View(element).Name : null) ?? "element");
 
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireExists(Id, "element")
+            context.RequireExists(Id, "Elementet")
                 .And(context.RequireUnlockedTarget(Id, inclusive: false));  // A locked block's instance Name/Note remain editable; only its descendants are protected.
 
         internal override void Execute(ProjectEditor editor)
@@ -43,7 +43,7 @@ namespace Ihc.Vis.Session
         internal override string Describe(Project project) =>
             "Slet " + ((project.FindById(Id) is { } element ? project.View(element).Name : null) ?? "lokalitet");
 
-        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(Id, "locality");
+        internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(Id, "Lokaliteten");
 
         internal override void Execute(ProjectEditor editor) =>
             editor.DeleteById(Id, DeleteReferencePolicy.CascadeReferences);

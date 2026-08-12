@@ -20,7 +20,7 @@ namespace Ihc.Vis.Session
             && context.Index.FindParent(SourceId)?.Id != TargetParentId
             && context.Project.Edit().CanMoveSubtree(SourceId, TargetParentId)
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("That move is not allowed."))
+                : EditVerdict.Refuse("Den flytning er ikke tilladt."))
             .And(context.RequireUnlockedTarget(TargetParentId, inclusive: true))    // T003: no move INTO a locked block
             .And(context.RequireUnlockedTarget(SourceId, inclusive: false));        // T003: no move of a node OUT of a locked block (review B1)
         internal override void Execute(ProjectEditor editor) => editor.MoveSubtree(SourceId, TargetParentId);
@@ -32,7 +32,7 @@ namespace Ihc.Vis.Session
     {
         internal override string Describe(Project project) => "Omarranger";
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireExists(Id, "node")
+            context.RequireExists(Id, "Noden")
                 .And(context.RequireUnlockedTarget(Id, inclusive: false));   // T003: no reorder INSIDE a locked block
         internal override void Execute(ProjectEditor editor) => editor.ReorderSubtree(Id, SameTagIndex);
     }
@@ -48,7 +48,7 @@ namespace Ihc.Vis.Session
             && StructurePlacement.CanContain(source.Tag, target.Tag, context.Project.FindParent(TargetParentId)?.Tag)
             && context.Project.Edit().CanMoveSubtree(SourceId, TargetParentId)   // A2: no copy INTO the source or its own descendant (CopySubtree throws) — clean Refuse, mirroring MoveNode
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("That container cannot hold this node."))
+                : EditVerdict.Refuse("Den beholder kan ikke rumme denne node."))
             .And(context.RequireUnlockedTarget(TargetParentId, inclusive: true));   // T003: no copy INTO a locked block
         // DropAll, not the DropExternal default: a clipboard paste produces an UNWIRED duplicate, links and all
         // (uxparity S-10, measured against IHC Visual on a whole-locality copy). A product copy is unaffected —
@@ -71,7 +71,7 @@ namespace Ihc.Vis.Session
             ProjectCommands.ClassifyDelete(context.Project, Id) switch
             {
                 (not DeleteKind.NotDeletable, _) => EditVerdict.Allow,
-                (_, null) => context.RequireExists(Id, "node"),
+                (_, null) => context.RequireExists(Id, "Noden"),
                 _ => EditVerdict.Refuse(ProjectEditor.DeletionRefusalReason(context.Project.Root, Id)
                     ?? "This element cannot be deleted."),   // catalog pin / locked block, else a structural container
             };

@@ -187,7 +187,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
-                Assert.That(outcome.Reason, Does.Contain("still used"));
+                Assert.That(outcome.Reason, Does.Contain("bruges stadig"));
                 Assert.That(session.Current!.GetEnumeratorTypes(), Does.Contain(inUse.Name));
             });
         }
@@ -262,7 +262,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
-                Assert.That(outcome.Reason, Does.Contain("no value at position"));
+                Assert.That(outcome.Reason, Does.Contain("ingen værdi på plads"));
             });
         }
 

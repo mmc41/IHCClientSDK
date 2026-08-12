@@ -2,10 +2,17 @@ using System.Linq;
 using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Headless.NUnit;
 using Avalonia.VisualTree;
 using ihc_openvisual.Services;
+using ihc_openvisual.ViewModels;
 using ihc_openvisual.Views;
+using Ihc;
+using Ihc.Vis;
+using Ihc.Vis.Model;
+using Ihc.Vis.Projects;
+using Ihc.Vis.Session;
 using NUnit.Framework;
 
 namespace safe_visual_tests;
@@ -69,11 +76,19 @@ public class TerminalRowAccessibilityTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public void TheRealizedRow_AnnouncesTheSummary()
     {
-        var window = new ProductPropertiesWindow();
+        // Driven through the ONE dialog on a real wired descriptor (T030): the grids are a hand-written composite
+        // hosted by the group whose descriptor declares them, so a stub descriptor would host nothing.
+        var app = new ProjectAppService(new IhcSettings());
+        Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
+        ElementId locality = project.Groups.First().Id!.Value;
+        var session = new ProjectDocumentSession();
+        session.Open(project);
+        ElementId placed = session.Apply(new AddProduct(locality,
+            app.GetAvailableProducts().First(p => p.ProductIdentifier == "_0x2202"))).Value;
+
+        var window = new ProductDialogWindow();
         CurrentTestWindow = window;
-        window.Populate(new ProductPropertiesInput(
-            "Lampeudtag", "Lampeudtag", string.Empty, string.Empty, string.Empty, string.Empty, string.Empty,
-            CurrentLocalityId: string.Empty, Terminals: [Terminal]));
+        window.Populate(new ProductDialogViewModel(app.GetProductDialog(session.Current!, placed), [Terminal]));
         window.Show();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
 
@@ -81,5 +96,44 @@ public class TerminalRowAccessibilityTests : AvaloniaTestBase
         AutomationPeer peer = ControlAutomationPeer.CreatePeerForElement(row);
 
         Assert.That(peer.GetName(), Is.EqualTo(Terminal.Summary));
+    }
+
+    /// <summary>
+    /// A cell too narrow for its text ELLIPSIZES and offers the whole text as a tooltip, rather than
+    /// hard-clipping mid-word.
+    /// <para>The vendor's dialog is far wider than this one, so long terminal names and notes do not fit
+    /// here — "Tilstedeværelses indikering" rendered as "Tilstedeværelses indik" with nothing to say it
+    /// had been cut (seen on products 009, 019 and 028 before this was fixed; T062). Guessing a wider
+    /// column would be inventing pixel parity the rubric puts out of scope; making the truncation visible
+    /// and the text recoverable is not.</para>
+    /// </summary>
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public void ARowsCells_EllipsizeAndKeepTheirFullTextReachable()
+    {
+        var app = new ProjectAppService(new IhcSettings());
+        Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
+        ElementId locality = project.Groups.First().Id!.Value;
+        var session = new ProjectDocumentSession();
+        session.Open(project);
+        ElementId placed = session.Apply(new AddProduct(locality,
+            app.GetAvailableProducts().First(p => p.ProductIdentifier == "_0x2202"))).Value;
+
+        var window = new ProductDialogWindow();
+        CurrentTestWindow = window;
+        window.Populate(new ProductDialogViewModel(app.GetProductDialog(session.Current!, placed), [Terminal]));
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        TextBlock nameCell = window.GetVisualDescendants().OfType<TextBlock>()
+            .First(t => (t.Text ?? string.Empty) == Terminal.Name);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(nameCell.TextTrimming, Is.EqualTo(TextTrimming.CharacterEllipsis),
+                "a cell that does not fit shows an ellipsis, not a word cut in half");
+            Assert.That(ToolTip.GetTip(nameCell), Is.EqualTo(Terminal.Name),
+                "and the whole text stays reachable");
+        });
     }
 }

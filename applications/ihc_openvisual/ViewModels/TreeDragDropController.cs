@@ -36,6 +36,11 @@ public sealed class TreeDragDropController(
     /// copies of the sentence would let the two routes drift into describing it differently.</summary>
     public const string MovedStatus = "Flyttet.";
 
+    /// <summary>The last resort when an SDK verdict refuses without saying why. Never expected — every
+    /// <c>EditVerdict.Refuse</c> carries a reason — but a silent refused drop looks like a broken app, so the
+    /// fallback states that something refused rather than nothing at all.</summary>
+    private const string UnexplainedRefusal = "Handlingen blev afvist.";
+
     /// <summary>Whether — and how — the dragged node may drop onto the target: a <see cref="DropVerdict"/> of ok +
     /// effect + the resolved <see cref="DropRoute"/>, or a reason when refused. Only the legality every route shares
     /// is decided here (a node cannot drop onto itself); the per-route grammar is asked of the SDK.</summary>
@@ -51,9 +56,11 @@ public sealed class TreeDragDropController(
         // Ask the LinkPins command's own Evaluate; this precedes reorder so two same-tag pins link (never reorder).
         if (draggedNode.IsPin && targetNode.IsPin)
         {
-            return session.CanApply(session.Commands.LinkPins(session.Current!, dragged, target)).Ok
-                ? DropVerdict.PinLink()
-                : DropVerdict.Refused("De to klemmer kan ikke linkes i den retning.");
+            // The SDK verdict carries its own Danish sentence, so it is FORWARDED rather than restated here. The
+            // copy that used to live at this line said the same thing in the same words — maintained separately,
+            // free to drift from the rule it described.
+            EditVerdict link = session.CanApply(session.Commands.LinkPins(session.Current!, dragged, target));
+            return link.Ok ? DropVerdict.PinLink() : DropVerdict.Refused(link.Reason ?? UnexplainedRefusal);
         }
         // Program build: dropping a variable/pin onto an events, commands OR conditions container arms the method
         // popup for that family (US-028 "one drag gesture, three families" — the target group picks Event/Command/
@@ -73,9 +80,8 @@ public sealed class TreeDragDropController(
         // whether this exact target is a legal destination (the same legality Cut/Paste uses).
         if (draggedNode.Kind == TreeNodeKind.Product)
         {
-            return session.CanApply(session.Commands.MoveNode(session.Current!, dragged, target)).Ok
-                ? DropVerdict.Reparent()
-                : DropVerdict.Refused("Den placering kan ikke indeholde dette element.");
+            EditVerdict move = session.CanApply(session.Commands.MoveNode(session.Current!, dragged, target));
+            return move.Ok ? DropVerdict.Reparent() : DropVerdict.Refused(move.Reason ?? UnexplainedRefusal);
         }
         return DropVerdict.None;
     }

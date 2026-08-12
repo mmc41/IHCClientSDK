@@ -98,6 +98,40 @@ namespace Ihc.Vis
                     .Select(e => new PinView(project, e));
             }
         }
+
+        /// <summary>
+        /// The product's configurable SETTINGS — the rows of the vendor's <i>Indstillinger</i> grid, in
+        /// declared order: a name, an explanatory note and the current value.
+        /// <para>A setting is any resource the catalog marked <c>setting="yes"</c>, whatever its resource
+        /// type: the six sensors that have them use <c>resource_temperature</c>, <c>resource_humidity</c>
+        /// and <c>resource_light</c>. Keyed on the attribute rather than on a tag list, so a sensor type
+        /// the SDK has not met still shows its settings (T070).</para>
+        /// <para>The value read is the <c>inivalue</c> the row displays, not a runtime reading.</para>
+        /// </summary>
+        public IEnumerable<(string Name, string Note, string Value)> Settings
+        {
+            get
+            {
+                Project project = Project;
+                return SettingElements.Select(e =>
+                {
+                    ElementView view = project.View(e);
+                    return (view.Name ?? string.Empty,
+                            view.Note ?? string.Empty,
+                            view.Effective("inivalue") ?? string.Empty);
+                });
+            }
+        }
+
+        /// <summary>
+        /// The setting RESOURCES themselves, for a caller that renders the value its own way.
+        /// <para>The GUI needs this: a calibration offset is shown as <c>0,0 °C</c>, not as the stored
+        /// <c>0.00</c>, and how a typed value is rendered is frontend presentation policy (ADR-002). The
+        /// SDK supplies the raw value in <see cref="Settings"/> and the elements here, and takes no view
+        /// on which the caller wants.</para>
+        /// </summary>
+        public IEnumerable<ProjectElement> SettingElements =>
+            Element.DescendantsAndSelf().Where(e => e.GetAttribute("setting") == "yes");
     }
 
     /// <summary>
@@ -156,41 +190,18 @@ namespace Ihc.Vis
                 : null;
     }
 
-    /// <summary>Typed read view of an SMS modem for its properties dialog.</summary>
-    public readonly record struct ModemView(Project Project, ProjectElement Element)
-    {
-        private ElementView View => Project.View(Element);
-
-        public string? Name => View.Name;
-        public string? Note => Element.GetAttribute("note");
-        public string? DocumentationTag => Element.GetAttribute("documentation_tag");
-        public string? CableColour0V => Element.GetAttribute("cablecolour_0V");
-        public string? CableColour24V => Element.GetAttribute("cablecolour_24V");
-        public string? CableColourRS485Minus => Element.GetAttribute("cablecolour_RS485Minus");
-        public string? CableColourRS485Plus => Element.GetAttribute("cablecolour_RS485Plus");
-
-        /// <summary>The modem's stored PIN code, or null when none (the DTD default "0" is preserved verbatim; the
-        /// dialog blanks it for presentation).</summary>
-        public string? PinCode =>
-            Element.FindDescendantOrSelf(e => e.Tag == "sms_modem_pincode")?.GetAttribute("value");
-
-        /// <summary>The four phone-number slots (1..4), blank where unset — the order the dialog shows them.</summary>
-        public IReadOnlyList<string> PhoneNumbers
-        {
-            get
-            {
-                var phones = new List<string>();
-                for (int slot = 1; slot <= 4; slot++)
-                {
-                    string s = slot.ToString(CultureInfo.InvariantCulture);
-                    ProjectElement? pn = Element.FindDescendantOrSelf(
-                        e => e.Tag == "sms_modem_phonenumber" && e.GetAttribute("address") == s);
-                    phones.Add(pn?.GetAttribute("phonenumber") ?? string.Empty);
-                }
-                return phones;
-            }
-        }
-    }
+    // ModemView is gone in full (T138), having lost its last reader.
+    //
+    // T031 removed its PhoneNumbers member; what the static review found is that the REST of it had gone the
+    // same way without anyone saying so. Its consumer was the modem's own properties flow, and T030 routed the
+    // modem through the one composed dialog like every other family — after which the only caller left in the
+    // tree was the type's own unit test. A type exercised solely by its own test is not covered, it is
+    // preserved: nothing would have failed if any of these eight properties had started returning nonsense.
+    //
+    // Every value it read is still reachable, and now through the surface that has readers: the composer
+    // resolves `note`, `position`, `documentation_tag`, the four `cablecolour_*` and the PIN from the modem
+    // preset's own bindings, so the dialog shows them and ApplyProductDialog writes them back. This deletes a
+    // second way to read the same attributes, which is what made the pair able to disagree.
 
     /// <summary>Typed read view of a wireless dimmer's advanced settings (US-015).</summary>
     public readonly record struct DimmerView(Project Project, ProjectElement Element)

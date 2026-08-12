@@ -1,8 +1,12 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
 using System.Threading.Tasks;
 using ihc_openvisual.Services;
 using Ihc.Vis;
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 using Ihc.Vis.Session;
 
 namespace safe_visual_tests;
@@ -61,11 +65,26 @@ internal static class SessionEditingTestExtensions
         s.Committed(s.Commands.ReorderNodeToSibling(s.Current!, dragged, targetSibling));
 
     // ---- products / function blocks / variables (T004: built through the SDK ProjectCommands gateway) ----
-    public static Task<ElementId?> AddProductAsync(this ProjectWorkflow s, ElementId localityId, string productIdentifier) =>
+    /// <param name="displayName">Which product, when the identifier names more than one. Eight identifiers do
+    /// (D22) — `_0x4304` is both <c>Lampeudtag dimmer</c> and <c>1-10v converter - Lampeudtag dimmer</c> — and
+    /// the SDK factory REFUSES an ambiguous identifier rather than guessing (T046). Omit for the ~92 products
+    /// whose identifier is unique.</param>
+    public static Task<ElementId?> AddProductAsync(
+        this ProjectWorkflow s, ElementId localityId, string productIdentifier, string? displayName = null)
+    {
         // The at-most-one-modem rule (US-013) is an app-level pre-check, not part of the command's legality.
-        s.Commands.WouldExceedModemLimit(s.Current!, productIdentifier)
-            ? Task.FromResult<ElementId?>(null)
-            : s.ProducedId(s.Commands.AddProduct(s.Current!, localityId, productIdentifier));
+        if (s.Commands.WouldExceedModemLimit(s.Current!, productIdentifier))
+        {
+            return Task.FromResult<ElementId?>(null);
+        }
+        AddProduct? command = displayName is null
+            ? s.Commands.AddProduct(s.Current!, localityId, productIdentifier)
+            : s.Commands.AddProduct(s.Current!, localityId,
+                s.ResolveCatalogProduct(productIdentifier, displayName)
+                ?? throw new InvalidOperationException(
+                    $"No catalog product '{productIdentifier}' named '{displayName}'."));
+        return s.ProducedId(command);
+    }
 
     public static Task<ElementId?> AddFunctionBlockAsync(this ProjectWorkflow s, ElementId localityId, string masterType) =>
         s.ProducedId(s.Commands.AddFunctionBlock(s.Current!, localityId, masterType));
@@ -90,11 +109,30 @@ internal static class SessionEditingTestExtensions
     public static Task<bool> UpdateProjectInfoAsync(this ProjectWorkflow s, ProjectInfoData data) =>
         s.Committed(s.Commands.UpdateProjectInfo(s.Current!, data));
 
-    public static Task<bool> UpdateProductAsync(this ProjectWorkflow s, ElementId productId, ProductPropertiesResult r) =>
-        s.CommittedOrNoChange(s.Commands.UpdateProduct(s.Current!, productId, r));
-
-    public static Task<bool> UpdateModemAsync(this ProjectWorkflow s, ElementId modemId, ModemPropertiesResult r) =>
-        s.CommittedOrNoChange(s.Commands.UpdateModem(s.Current!, modemId, r));
+    /// <summary>
+    /// Edits a placed product's dialog fields BY CAPTION, as the installer would — composing the real dialog,
+    /// resolving each caption to the field the composer offered, and committing through
+    /// <see cref="ProjectCommands.ApplyProductDialog"/>.
+    /// <para>Replaces the per-family <c>UpdateProductAsync</c>/<c>UpdateModemAsync</c> pair (T031). Caption rather
+    /// than attribute name, because a caption is what the dialog shows and what the vendor oracle records — and
+    /// because a caption the dialog does not offer THROWS here, where an attribute name would have written a field
+    /// the installer was never shown.</para>
+    /// </summary>
+    public static Task<bool> EditProductDialogAsync(
+        this ProjectWorkflow s, ElementId productId, params (string Caption, string Value)[] edits)
+    {
+        ProductDialogDescriptor dialog = s.GetProductDialog(productId);
+        var byCaption = dialog.Groups.SelectMany(g => g.Fields).ToDictionary(f => f.Caption);
+        ImmutableArray<ProductDialogEdit> resolved =
+        [
+            .. edits.Select(e => byCaption.TryGetValue(e.Caption, out DialogDescriptorField? field)
+                ? new ProductDialogEdit(field.Target, field.Attribute, e.Value)
+                : throw new InvalidOperationException(
+                    $"'{dialog.Title}' offers no field captioned '{e.Caption}'. It offers: "
+                    + string.Join(", ", byCaption.Keys)))
+        ];
+        return s.CommittedOrNoChange(s.Commands.ApplyProductDialog(s.Current!, productId, resolved));
+    }
 
     public static Task<bool> UpdateDimmerSettingsAsync(this ProjectWorkflow s, ElementId productId, AdvancedDimmerResult r) =>
         s.CommittedOrNoChange(s.Commands.UpdateDimmerSettings(s.Current!, productId, r));
