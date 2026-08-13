@@ -198,8 +198,8 @@ namespace Ihc.Vis.Tests
         private static void AssertSameShapeModuloIds(ProjectElement source, ProjectElement placed)
         {
             Assert.That(placed.Tag, Is.EqualTo(source.Tag));
-            var a = source.ChildrenOrEmpty();
-            var b = placed.ChildrenOrEmpty();
+            var a = source.Children;
+            var b = placed.Children;
             Assert.That(b.Length, Is.EqualTo(a.Length), $"child count under <{source.Tag}>");
             for (int i = 0; i < a.Length; i++)
             {

@@ -31,7 +31,7 @@ namespace Ihc.Vis.Tests
         private static ElementId ProgramsOf(Project project, string blockName) =>
             project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("name") == blockName)
-                .ChildrenOrEmpty().First(c => c.Tag == "programs").Id!.Value;
+                .Children.First(c => c.Tag == "programs").Id!.Value;
 
         private static async Task<Project> RoundTrip(Project project)
         {
@@ -47,7 +47,7 @@ namespace Ihc.Vis.Tests
             var app = App;
             ProjectDocumentSession session = Session(project);
             ElementId programs = ProgramsOf(project, "Custom blok");
-            int before = project.FindById(programs)!.ChildrenOrEmpty().Count(c => c.Tag == "program_simple");
+            int before = project.FindById(programs)!.Children.Count(c => c.Tag == "program_simple");
 
             session.Apply(app.Commands.AddProgram(session.Current!, programs, "Nyt program"));
             Project reloaded = await RoundTrip(session.Current!);
@@ -57,13 +57,13 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(reloaded.FindById(ProgramsOf(reloaded, "Custom blok"))!.ChildrenOrEmpty()
+                Assert.That(reloaded.FindById(ProgramsOf(reloaded, "Custom blok"))!.Children
                         .Count(c => c.Tag == "program_simple"), Is.EqualTo(before + 1),
                     "exactly one program was added");
-                Assert.That(added.ChildrenOrEmpty().Select(c => c.Tag), Is.EqualTo(new[] { "events", "actions" }),
+                Assert.That(added.Children.Select(c => c.Tag), Is.EqualTo(new[] { "events", "actions" }),
                     "a program owns an events container and a commands container, in that order");
                 Assert.That(added.GetAttribute("icon"), Is.EqualTo("_0x7"), "the vendor program icon");
-                Assert.That(added.ChildrenOrEmpty().First(c => c.Tag == "actions").GetAttribute("type"),
+                Assert.That(added.Children.First(c => c.Tag == "actions").GetAttribute("type"),
                     Is.EqualTo("_0x2"), "the root commands container carries the vendor branch type");
             });
         }
@@ -86,7 +86,7 @@ namespace Ihc.Vis.Tests
 
             static (string? name, string? icon, string? note, string? type) Shape(ProjectElement e, string tag)
             {
-                ProjectElement c = e.ChildrenOrEmpty().First(x => x.Tag == tag);
+                ProjectElement c = e.Children.First(x => x.Tag == tag);
                 return (c.GetAttribute("name"), c.GetAttribute("icon"), c.GetAttribute("note"), c.GetAttribute("type"));
             }
 
@@ -106,7 +106,7 @@ namespace Ihc.Vis.Tests
             var app = App;
             ElementId inputs = project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("name") == "Custom blok")
-                .ChildrenOrEmpty().First(c => c.Tag == "inputs").Id!.Value;
+                .Children.First(c => c.Tag == "inputs").Id!.Value;
 
             EditVerdict verdict = app.CanApply(project, app.Commands.AddProgram(project, inputs, "Nyt program"));
 

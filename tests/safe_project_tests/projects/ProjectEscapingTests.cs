@@ -46,7 +46,7 @@ namespace Ihc.Vis.Tests
         private static Project WithProgrammer(Project project, string value)
         {
             ProjectElement root = project.Root;
-            ImmutableArray<ProjectElement> children = root.Children;
+            ImmutableArray<ProjectElement> children = root.Children.AsImmutableArray();
             for (int i = 0; i < children.Length; i++)
             {
                 if (children[i].Tag == "project_info")

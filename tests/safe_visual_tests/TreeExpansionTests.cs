@@ -35,8 +35,8 @@ public class TreeExpansionTests : AvaloniaTestBase
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         var productId = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
-        var productInputId = harness.Session.Current!.FindById(productId)!.ChildrenOrEmpty().First(c => c.Tag == "dataline_input").Id!.Value;
-        var fbInputId = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.ChildrenOrEmpty().First().Id!.Value;
+        var productInputId = harness.Session.Current!.FindById(productId)!.Children.First(c => c.Tag == "dataline_input").Id!.Value;
+        var fbInputId = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.Children.First().Id!.Value;
         return (harness, vm, productId, productInputId, fbId, fbInputId);
     }
 
@@ -81,7 +81,7 @@ public class TreeExpansionTests : AvaloniaTestBase
         using var _ = harness;
         var inputsSectionId = InputsSectionId(harness, fbId);
         await vm.DragDrop.PerformDropAsync(productInputId, fbInputId);   // create a link to delete
-        var linkRowId = harness.Session.Current!.FindById(productInputId)!.ChildrenOrEmpty()
+        var linkRowId = harness.Session.Current!.FindById(productInputId)!.Children
             .First(c => c.Tag is "link_from_resource" or "link_to_resource").Id!.Value;
 
         Expand(vm.InstallationNodes, productId);

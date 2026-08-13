@@ -826,7 +826,7 @@ public class MainWindowViewModelTests
         await vm.InitializeAsync();
         var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.Contains("02#Output"));
         var pid = (await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier))!.Value;
-        var outputPin = harness.Session.Current!.FindById(pid)!.ChildrenOrEmpty().First(c => c.Tag == "dataline_output");
+        var outputPin = harness.Session.Current!.FindById(pid)!.Children.First(c => c.Tag == "dataline_output");
 
         await harness.Session.UpdatePinAsync(outputPin.Id!.Value, new PinPropertiesResult(1, 2, "", "", true));
 
@@ -1664,7 +1664,7 @@ public class MainWindowViewModelTests
                 "the picker lists the existing types plus the create route");
             Assert.That(harness.Session.Current!.Root.Descendants().Count(e => e.Tag == "enum_definition"),
                 Is.EqualTo(defsBefore), "picking an existing type authors no new enum type");
-            Assert.That(harness.Session.Current!.FindById(settingsNode.ElementId!.Value)!.ChildrenOrEmpty().Any(c => c.Tag == "resource_enum"),
+            Assert.That(harness.Session.Current!.FindById(settingsNode.ElementId!.Value)!.Children.Any(c => c.Tag == "resource_enum"),
                 Is.True, "the enum variable was inserted");
         });
     }
@@ -1684,14 +1684,14 @@ public class MainWindowViewModelTests
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Standalone", System.Array.Empty<string>());
 
         var enumEntry = vm.VariablePaletteMenu.First(m => m.Children.Any());
-        int enumsInSectionBefore = harness.Session.Current!.FindById(settingsNode.ElementId!.Value)!.ChildrenOrEmpty().Count(c => c.Tag == "resource_enum");
+        int enumsInSectionBefore = harness.Session.Current!.FindById(settingsNode.ElementId!.Value)!.Children.Count(c => c.Tag == "resource_enum");
         await ((IAsyncRelayCommand)enumEntry.Children.First(c => c.Header == "Ny selvstændig type…").Command!).ExecuteAsync(null);
 
         Assert.Multiple(() =>
         {
             Assert.That(harness.Session.Current!.Root.Descendants().Any(e => e.Tag == "enum_definition" && e.GetAttribute("name") == "Standalone"),
                 Is.True, "the standalone type is authored");
-            Assert.That(harness.Session.Current!.FindById(settingsNode.ElementId!.Value)!.ChildrenOrEmpty().Count(c => c.Tag == "resource_enum"),
+            Assert.That(harness.Session.Current!.FindById(settingsNode.ElementId!.Value)!.Children.Count(c => c.Tag == "resource_enum"),
                 Is.EqualTo(enumsInSectionBefore), "no variable was inserted");
         });
     }
@@ -1802,8 +1802,8 @@ public class MainWindowViewModelTests
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Outputs.Count > 0);
         var pid = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
-        var productOutputId = harness.Session.Current!.FindById(pid)!.ChildrenOrEmpty().First(c => c.Tag == "dataline_output").Id!.Value;
-        var blockOutputId = harness.Session.Current!.FindById(fbId)!.FindChild("outputs")!.ChildrenOrEmpty().First().Id!.Value;
+        var productOutputId = harness.Session.Current!.FindById(pid)!.Children.First(c => c.Tag == "dataline_output").Id!.Value;
+        var blockOutputId = harness.Session.Current!.FindById(fbId)!.FindChild("outputs")!.Children.First().Id!.Value;
 
         // Drag the block output onto the product output (dragged = source = block output).
         var ok = await harness.Session.LinkPinsAsync(blockOutputId, productOutputId);
@@ -1845,11 +1845,11 @@ public class MainWindowViewModelTests
         editor.Group("Living room").AddFunctionBlock(fbDef);
         Project mid = editor.ToProject();
         ProjectElement room = mid.Groups.First(g => g.GetAttribute("name") == "Living room");
-        ElementId scenePinId = room.ChildrenOrEmpty().First(c => c.Tag == "functionblock")
-            .FindChild("outputs")!.ChildrenOrEmpty()
+        ElementId scenePinId = room.Children.First(c => c.Tag == "functionblock")
+            .FindChild("outputs")!.Children
             .First(c => c.Tag == "resource_scene" && c.GetAttribute("name") == "Regulering").Id!.Value;
-        ElementId scenesId = room.ChildrenOrEmpty().First(c => c.Tag == "product_airlink")
-            .ChildrenOrEmpty().First(c => c.Tag == "scenes").Id!.Value;
+        ElementId scenesId = room.Children.First(c => c.Tag == "product_airlink")
+            .Children.First(c => c.Tag == "scenes").Id!.Value;
         editor.LinkScene(scenePinId, scenesId, SceneValue.Shutter(up: true));
 
         string path = harness.TempPath("shutter.vis");
@@ -1937,13 +1937,13 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Body.ChildrenOrEmpty().Any(c => c.Tag == "scenes"));
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Body.Children.Any(c => c.Tag == "scenes"));
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Outputs.Any(o => o.Tag == "resource_scene"));
         var pid = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
-        var scenes = harness.Session.Current!.FindById(pid)!.ChildrenOrEmpty().First(c => c.Tag == "scenes");
+        var scenes = harness.Session.Current!.FindById(pid)!.Children.First(c => c.Tag == "scenes");
         var scenesId = scenes.Id!.Value;
-        var sceneOutId = harness.Session.Current!.FindById(fbId)!.FindChild("outputs")!.ChildrenOrEmpty()
+        var sceneOutId = harness.Session.Current!.FindById(fbId)!.FindChild("outputs")!.Children
             .First(c => c.Tag == "resource_scene").Id!.Value;
         bool isDimmer = Ihc.Vis.Model.ElementId.TryParse(scenes.GetAttribute("scene_resource"), out var b)
             && harness.Session.Current!.FindById(b)?.Tag == "airlink_dimming";
@@ -1955,9 +1955,9 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(ok, Is.True);
-            Assert.That(scenesAfter.ChildrenOrEmpty().Any(c => c.Tag is "scene_relay" or "scene_dimmer"), Is.True,
+            Assert.That(scenesAfter.Children.Any(c => c.Tag is "scene_relay" or "scene_dimmer"), Is.True,
                 "a scene member is added to the scenes container");
-            Assert.That(pinAfter.ChildrenOrEmpty().Any(c => c.Tag == "scene_link"), Is.True,
+            Assert.That(pinAfter.Children.Any(c => c.Tag == "scene_link"), Is.True,
                 "the FB scene output gets a scene_link back-reference");
             Assert.That(harness.Session.IsDirty, Is.True);
         });
@@ -1971,12 +1971,12 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Body.ChildrenOrEmpty().Any(c => c.Tag == "scenes"));
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Body.Children.Any(c => c.Tag == "scenes"));
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Outputs.Any(o => o.Tag == "resource_scene"));
         var pid = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
-        var scenesId = harness.Session.Current!.FindById(pid)!.ChildrenOrEmpty().First(c => c.Tag == "scenes").Id!.Value;
-        var sceneOutId = harness.Session.Current!.FindById(fbId)!.FindChild("outputs")!.ChildrenOrEmpty()
+        var scenesId = harness.Session.Current!.FindById(pid)!.Children.First(c => c.Tag == "scenes").Id!.Value;
+        var sceneOutId = harness.Session.Current!.FindById(fbId)!.FindChild("outputs")!.Children
             .First(c => c.Tag == "resource_scene").Id!.Value;
         var sceneOutNode = FindNodeById(vm.FunctionNodes, sceneOutId)!;
         var scenesNode = FindNodeById(vm.InstallationNodes, scenesId)!;
@@ -2071,26 +2071,26 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Body.ChildrenOrEmpty().Any(c => c.Tag == "scenes"));
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Body.Children.Any(c => c.Tag == "scenes"));
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Outputs.Any(o => o.Tag == "resource_scene"));
         var pid = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
-        var scenes = harness.Session.Current!.FindById(pid)!.ChildrenOrEmpty().First(c => c.Tag == "scenes");
+        var scenes = harness.Session.Current!.FindById(pid)!.Children.First(c => c.Tag == "scenes");
         var scenesId = scenes.Id!.Value;
-        var sceneOutId = harness.Session.Current!.FindById(fbId)!.FindChild("outputs")!.ChildrenOrEmpty().First(c => c.Tag == "resource_scene").Id!.Value;
+        var sceneOutId = harness.Session.Current!.FindById(fbId)!.FindChild("outputs")!.Children.First(c => c.Tag == "resource_scene").Id!.Value;
         bool isDimmer = Ihc.Vis.Model.ElementId.TryParse(scenes.GetAttribute("scene_resource"), out var b)
             && harness.Session.Current!.FindById(b)?.Tag == "airlink_dimming";
         await harness.Session.LinkSceneAsync(sceneOutId, scenesId, new SceneValueResult(true, 80, 0, 1), isDimmer);
-        var memberId = harness.Session.Current!.FindById(scenesId)!.ChildrenOrEmpty().First(c => c.Tag is "scene_relay" or "scene_dimmer").Id!.Value;
+        var memberId = harness.Session.Current!.FindById(scenesId)!.Children.First(c => c.Tag is "scene_relay" or "scene_dimmer").Id!.Value;
 
         var ok = await harness.Session.RemoveLinkAsync(memberId);
 
         Assert.Multiple(() =>
         {
             Assert.That(ok, Is.True);
-            Assert.That(harness.Session.Current!.FindById(scenesId)!.ChildrenOrEmpty().Any(c => c.Tag is "scene_relay" or "scene_dimmer"), Is.False,
+            Assert.That(harness.Session.Current!.FindById(scenesId)!.Children.Any(c => c.Tag is "scene_relay" or "scene_dimmer"), Is.False,
                 "the scene member is removed");
-            Assert.That(harness.Session.Current!.FindById(sceneOutId)!.ChildrenOrEmpty().Any(c => c.Tag == "scene_link"), Is.False,
+            Assert.That(harness.Session.Current!.FindById(sceneOutId)!.Children.Any(c => c.Tag == "scene_link"), Is.False,
                 "the scene_link back-reference is removed");
         });
     }
@@ -2103,17 +2103,17 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Body.ChildrenOrEmpty().Any(c => c.Tag == "scenes"));
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.Body.Children.Any(c => c.Tag == "scenes"));
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Outputs.Any(o => o.Tag == "resource_scene"));
         var pid = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
-        var scenes = harness.Session.Current!.FindById(pid)!.ChildrenOrEmpty().First(c => c.Tag == "scenes");
+        var scenes = harness.Session.Current!.FindById(pid)!.Children.First(c => c.Tag == "scenes");
         var scenesId = scenes.Id!.Value;
-        var sceneOutId = harness.Session.Current!.FindById(fbId)!.FindChild("outputs")!.ChildrenOrEmpty().First(c => c.Tag == "resource_scene").Id!.Value;
+        var sceneOutId = harness.Session.Current!.FindById(fbId)!.FindChild("outputs")!.Children.First(c => c.Tag == "resource_scene").Id!.Value;
         bool isDimmer = Ihc.Vis.Model.ElementId.TryParse(scenes.GetAttribute("scene_resource"), out var b)
             && harness.Session.Current!.FindById(b)?.Tag == "airlink_dimming";
         await harness.Session.LinkSceneAsync(sceneOutId, scenesId, new SceneValueResult(true, 80, 0, 1), isDimmer);
-        var memberId = harness.Session.Current!.FindById(scenesId)!.ChildrenOrEmpty().First(c => c.Tag is "scene_relay" or "scene_dimmer").Id!.Value;
+        var memberId = harness.Session.Current!.FindById(scenesId)!.Children.First(c => c.Tag is "scene_relay" or "scene_dimmer").Id!.Value;
         var memberNode = FindNodeById(vm.InstallationNodes, memberId)!;
 
         harness.Dialogs.SceneValueResult = new SceneValueResult(false, 20, 0, 3);   // new value
@@ -2189,9 +2189,9 @@ public class MainWindowViewModelTests
 
         vm.EnterProgrammingModeCommand.Execute(fbNode);
 
-        int inputsBefore = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.ChildrenOrEmpty().Count();
+        int inputsBefore = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.Children.Count();
         await vm.InsertInputCommand.ExecuteAsync(null);   // Ctrl+I — must be refused on a locked block
-        int inputsAfter = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.ChildrenOrEmpty().Count();
+        int inputsAfter = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.Children.Count();
 
         vm.SelectNode(vm.InstallationNodes[0].Children.First(s => s.NodeKind == "section:inputs"));
 
@@ -2335,7 +2335,7 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(id, Is.Not.Null);
-            Assert.That(section.ChildrenOrEmpty().Any(c => c.Tag == "resource_temperature" && c.GetAttribute("name") == "Temperature"), Is.True);
+            Assert.That(section.Children.Any(c => c.Tag == "resource_temperature" && c.GetAttribute("name") == "Temperature"), Is.True);
             Assert.That(harness.Session.IsDirty, Is.True);
         });
     }
@@ -2564,7 +2564,7 @@ public class MainWindowViewModelTests
         {
             Assert.That(palette, Is.SupersetOf(new[] { "kW", "kWh", "W", "Wh" }.Select(VariablePalette.LabelFor)),
                 "all four power/energy types are offered (T017)");
-            Assert.That(harness.Session.Current!.FindById(internalSection.ElementId!.Value)!.ChildrenOrEmpty().Any(c => c.Tag == "kW"),
+            Assert.That(harness.Session.Current!.FindById(internalSection.ElementId!.Value)!.Children.Any(c => c.Tag == "kW"),
                 Is.True, "inserting 'kW' adds a variable of the mapped SDK type kW");
         });
     }
@@ -2642,7 +2642,7 @@ public class MainWindowViewModelTests
 
         var commandsAfter = FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!;
         var authored = harness.Session.Current!.FindById(commandsAfter.ElementId!.Value)!
-            .ChildrenOrEmpty().First(a => a.Tag == "action");
+            .Children.First(a => a.Tag == "action");
         Assert.Multiple(() =>
         {
             Assert.That(commandsAfter.Children.Any(c => c.DisplayName == "Kip Chime"), Is.True, "the vendor command renders under Commands");
@@ -2671,7 +2671,7 @@ public class MainWindowViewModelTests
         var assignSubmenu = vm.ProgramCommandMenu.First(m => m.Header == "Out1 sættes til …");
         await ((IAsyncRelayCommand)assignSubmenu.Children.First(c => c.Header == "Out2").Command!).ExecuteAsync(null);
 
-        var action = harness.Session.Current!.FindById(commandsNode.ElementId!.Value)!.ChildrenOrEmpty().First(a => a.Tag == "action");
+        var action = harness.Session.Current!.FindById(commandsNode.ElementId!.Value)!.Children.First(a => a.Tag == "action");
         ElementId.TryParse(action.GetAttribute("link1"), out var l1);
         ElementId.TryParse(action.GetAttribute("link2"), out var l2);
         Assert.Multiple(() =>
@@ -3019,7 +3019,7 @@ public class MainWindowViewModelTests
         await ((IAsyncRelayCommand)notSubmenu.Children.First(c => c.Header == "Home").Command!).ExecuteAsync(null);
 
         var condition = harness.Session.Current!.FindById(conditionsNode.ElementId!.Value)!
-            .ChildrenOrEmpty().First(c => c.Tag == "condition");
+            .Children.First(c => c.Tag == "condition");
         ElementId.TryParse(condition.GetAttribute("link1"), out var l1);
         ElementId.TryParse(condition.GetAttribute("link2"), out var l2);
         var rendered = FindByFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!;
@@ -3117,14 +3117,14 @@ public class MainWindowViewModelTests
         var enumLeaf = vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny type…");
         await ((IAsyncRelayCommand)enumLeaf.Command!).ExecuteAsync(null);
 
-        var enumVar = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty().First(c => c.Tag == "resource_enum");
+        var enumVar = harness.Session.Current!.FindById(settingsSectionId)!.Children.First(c => c.Tag == "resource_enum");
         ElementId.TryParse(enumVar.GetAttribute("typedef"), out var defId);
         var def = harness.Session.Current!.FindById(defId)!;
         Assert.Multiple(() =>
         {
             Assert.That(enumVar.GetAttribute("name"), Is.EqualTo("Mode"), "the variable is named after the type");
             Assert.That(def.GetAttribute("name"), Is.EqualTo("Mode"));
-            Assert.That(def.ChildrenOrEmpty().Count(c => c.Tag == "enum_value"), Is.EqualTo(3), "the three states are stored in order");
+            Assert.That(def.Children.Count(c => c.Tag == "enum_value"), Is.EqualTo(3), "the three states are stored in order");
             Assert.That(harness.Session.Current!.FindParent(defId)!.Tag, Is.EqualTo("enum_definitions"),
                 "the type is project-global (in enum_definitions), reusable by other blocks");
         });
@@ -3148,7 +3148,7 @@ public class MainWindowViewModelTests
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);
         await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny type…").Command!).ExecuteAsync(null);
 
-        var enumVar = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty()
+        var enumVar = harness.Session.Current!.FindById(settingsSectionId)!.Children
             .FirstOrDefault(c => c.Tag == "resource_enum" && c.GetAttribute("name") == "TestEnum");
         Assert.That(enumVar, Is.Not.Null, "an empty enum type is authored bound to a referencing variable, not as a bare type");
         ElementId.TryParse(enumVar!.GetAttribute("typedef"), out var defId);
@@ -3156,7 +3156,7 @@ public class MainWindowViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(def.GetAttribute("name"), Is.EqualTo("TestEnum"));
-            Assert.That(def.ChildrenOrEmpty().Count(c => c.Tag == "enum_value"), Is.EqualTo(0),
+            Assert.That(def.Children.Count(c => c.Tag == "enum_value"), Is.EqualTo(0),
                 "the empty type carries zero states, exactly like gold's TestEnum");
             Assert.That(harness.Session.Current!.FindParent(defId)!.Tag, Is.EqualTo("enum_definitions"),
                 "the type lands in the global container but is reachable only via its variable's typedef — no bare-type authoring route (F-089)");
@@ -3176,7 +3176,7 @@ public class MainWindowViewModelTests
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay" });
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);
         await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny type…").Command!).ExecuteAsync(null);
-        var enumVarId = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty().First(c => c.Tag == "resource_enum").Id!.Value;
+        var enumVarId = harness.Session.Current!.FindById(settingsSectionId)!.Children.First(c => c.Tag == "resource_enum").Id!.Value;
 
         // Re-run Properties: keep the two existing states and add one new one; a duplicate must not double.
         // Properties on an enum row opens the VARIABLE dialog (alignment F-50); the type editor sits behind its
@@ -3187,7 +3187,7 @@ public class MainWindowViewModelTests
         await vm.PropertiesCommand.ExecuteAsync(FindNodeById(vm.InstallationNodes, enumVarId));
 
         ElementId.TryParse(harness.Session.Current!.FindById(enumVarId)!.GetAttribute("typedef"), out var defId);
-        var values = harness.Session.Current!.FindById(defId)!.ChildrenOrEmpty().Where(c => c.Tag == "enum_value").ToList();
+        var values = harness.Session.Current!.FindById(defId)!.Children.Where(c => c.Tag == "enum_value").ToList();
         Assert.Multiple(() =>
         {
             Assert.That(values.Count, Is.EqualTo(3), "one new state appended, no duplication of the existing two");
@@ -3210,9 +3210,9 @@ public class MainWindowViewModelTests
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay" });
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);
         await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny type…").Command!).ExecuteAsync(null);
-        var enumVarId = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty().First(c => c.Tag == "resource_enum").Id!.Value;
+        var enumVarId = harness.Session.Current!.FindById(settingsSectionId)!.Children.First(c => c.Tag == "resource_enum").Id!.Value;
         ElementId.TryParse(harness.Session.Current!.FindById(enumVarId)!.GetAttribute("typedef"), out var defId);
-        ElementId firstValueId = harness.Session.Current!.FindById(defId)!.ChildrenOrEmpty().First(c => c.Tag == "enum_value").Id!.Value;
+        ElementId firstValueId = harness.Session.Current!.FindById(defId)!.Children.First(c => c.Tag == "enum_value").Id!.Value;
 
         // Re-run Properties: relabel the first state in place, keep the second; the count must not grow.
         // Through the variable dialog's "Rediger" button, which is where the type editor lives (F-50).
@@ -3221,7 +3221,7 @@ public class MainWindowViewModelTests
             "Mode", string.Empty, ResourceInitialValue.OfChoice("Direct"), string.Empty, EditEnumType: true);
         await vm.PropertiesCommand.ExecuteAsync(FindNodeById(vm.InstallationNodes, enumVarId));
 
-        var values = harness.Session.Current!.FindById(defId)!.ChildrenOrEmpty().Where(c => c.Tag == "enum_value").ToList();
+        var values = harness.Session.Current!.FindById(defId)!.Children.Where(c => c.Tag == "enum_value").ToList();
         Assert.Multiple(() =>
         {
             Assert.That(values.Count, Is.EqualTo(2), "a relabel does not append");
@@ -3290,7 +3290,7 @@ public class MainWindowViewModelTests
         harness.Dialogs.EnumDefinitionResult = new EnumDefinitionResult("Mode", new[] { "Direct", "With delay" });
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);
         await ((IAsyncRelayCommand)vm.VariablePaletteMenu.First(m => m.Header == "Enum").Children.First(c => c.Header == "Ny type…").Command!).ExecuteAsync(null);
-        var enumVarId = harness.Session.Current!.FindById(settingsSectionId)!.ChildrenOrEmpty().First(c => c.Tag == "resource_enum").Id!.Value;
+        var enumVarId = harness.Session.Current!.FindById(settingsSectionId)!.Children.First(c => c.Tag == "resource_enum").Id!.Value;
 
         // Arm it and insert a Case (Mode) on the Commands container.
         vm.UseInProgramCommand.Execute(FindNodeById(vm.InstallationNodes, enumVarId));
@@ -3303,11 +3303,11 @@ public class MainWindowViewModelTests
         await vm.NewCaseValueCommand.ExecuteAsync(caseNode);
 
         var kase = harness.Session.Current!.FindById(caseNode.ElementId!.Value)!;
-        var branch = kase.ChildrenOrEmpty().FirstOrDefault(c => c.Tag == "case_action" && c.GetAttribute("name") == "Direct");
+        var branch = kase.Children.FirstOrDefault(c => c.Tag == "case_action" && c.GetAttribute("name") == "Direct");
         Assert.Multiple(() =>
         {
             Assert.That(branch, Is.Not.Null, "a branch tagged with the chosen state is added");
-            Assert.That(branch!.ChildrenOrEmpty().Any(c => c.Tag == "resource_enum"), Is.True, "the enum case branch carries a resource_enum operand");
+            Assert.That(branch!.Children.Any(c => c.Tag == "resource_enum"), Is.True, "the enum case branch carries a resource_enum operand");
         });
     }
 
@@ -3320,7 +3320,7 @@ public class MainWindowViewModelTests
         await vm.InitializeAsync();
 
         var container = harness.Session.Current!.Child("enum_definitions");
-        var types = container?.ChildrenOrEmpty().Count(c => c.Tag == "enum_definition") ?? 0;
+        var types = container?.Children.Count(c => c.Tag == "enum_definition") ?? 0;
         Assert.That(types, Is.GreaterThanOrEqualTo(2), "at least two default enumerator types are available");
     }
 
@@ -3467,8 +3467,8 @@ public class MainWindowViewModelTests
         harness.Dialogs.PropertiesResult = new PropertiesResult("100", string.Empty);
         await vm.NewCaseValueCommand.ExecuteAsync(FindByFlag(vm.FunctionNodes, n => n.IsCaseNode));
 
-        var caseAction = harness.Session.Current!.FindById(caseId)!.ChildrenOrEmpty().First(c => c.Tag == "case_action");
-        var operand = caseAction.ChildrenOrEmpty().First(c => c.Tag == "resource_counter");
+        var caseAction = harness.Session.Current!.FindById(caseId)!.Children.First(c => c.Tag == "case_action");
+        var operand = caseAction.Children.First(c => c.Tag == "resource_counter");
         Assert.Multiple(() =>
         {
             Assert.That(caseAction.GetAttribute("name"), Is.EqualTo("100"), "the value branch is tagged with its criterion");
@@ -3499,7 +3499,7 @@ public class MainWindowViewModelTests
         await ((IAsyncRelayCommand)vm.ProgramCommandMenu.First(m => m.Header == "Lys sættes til ON").Command!).ExecuteAsync(null);
 
         var branch = harness.Session.Current!.FindById(valueBranch.ElementId!.Value)!;
-        Assert.That(branch.ChildrenOrEmpty().Any(a => a.Tag == "action"), Is.True, "the command lands in the case value branch");
+        Assert.That(branch.Children.Any(a => a.Tag == "action"), Is.True, "the command lands in the case value branch");
     }
 
     // US-032: the value palette now offers Kommatal (resource_floating_point) so decimal arithmetic is possible.
@@ -3517,7 +3517,7 @@ public class MainWindowViewModelTests
         var decimalLeaf = vm.VariablePaletteMenu.First(m => m.Header == VariablePalette.LabelFor("resource_floating_point"));
         await ((IAsyncRelayCommand)decimalLeaf.Command!).ExecuteAsync(null);
 
-        Assert.That(harness.Session.Current!.FindById(settingsId)!.ChildrenOrEmpty().Any(c => c.Tag == "resource_floating_point"),
+        Assert.That(harness.Session.Current!.FindById(settingsId)!.Children.Any(c => c.Tag == "resource_floating_point"),
             Is.True, "a decimal variable is inserted");
     }
 
@@ -3540,7 +3540,7 @@ public class MainWindowViewModelTests
         await ((IAsyncRelayCommand)addCategory.Children.First(c => c.Header == "F2").Command!).ExecuteAsync(null);
 
         var commandsId = FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!.ElementId!.Value;
-        var action = harness.Session.Current!.FindById(commandsId)!.ChildrenOrEmpty().First(a => a.Tag == "action");
+        var action = harness.Session.Current!.FindById(commandsId)!.Children.First(a => a.Tag == "action");
         ElementId.TryParse(action.GetAttribute("link1"), out var l1);
         ElementId.TryParse(action.GetAttribute("link2"), out var l2);
         var rendered = FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!;
@@ -3574,7 +3574,7 @@ public class MainWindowViewModelTests
         await ((IAsyncRelayCommand)subCategory.Children.First(c => c.Header == "F2").Command!).ExecuteAsync(null);
 
         var commandsId = FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!.ElementId!.Value;
-        var action = harness.Session.Current!.FindById(commandsId)!.ChildrenOrEmpty().First(a => a.Tag == "action");
+        var action = harness.Session.Current!.FindById(commandsId)!.Children.First(a => a.Tag == "action");
         Assert.That(action.GetAttribute("method"), Is.EqualTo("_0x64"));
     }
 
@@ -3597,7 +3597,7 @@ public class MainWindowViewModelTests
         await ((IAsyncRelayCommand)addCategory.Children.First(c => c.Header == "F1").Command!).ExecuteAsync(null);
 
         var commandsId = FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!.ElementId!.Value;
-        var action = harness.Session.Current!.FindById(commandsId)!.ChildrenOrEmpty().First(a => a.Tag == "action");
+        var action = harness.Session.Current!.FindById(commandsId)!.Children.First(a => a.Tag == "action");
         ElementId.TryParse(action.GetAttribute("link1"), out var target);
         Assert.That(harness.Session.Current!.FindById(target)!.Tag, Is.EqualTo("resource_integer"),
             "the running register that receives (and truncates) the result is the integer");
@@ -3617,7 +3617,7 @@ public class MainWindowViewModelTests
         await vm.AddPowerEventCommand.ExecuteAsync(eventsNode);
 
         var eventsEl = harness.Session.Current!.FindById(eventsNode.ElementId!.Value)!;
-        var power = eventsEl.ChildrenOrEmpty().Single(e => e.Tag == "event_power");
+        var power = eventsEl.Children.Single(e => e.Tag == "event_power");
         var after = FindByFlag(vm.FunctionNodes, n => n.IsEventsContainer)!;
         Assert.Multiple(() =>
         {
@@ -3689,7 +3689,7 @@ public class MainWindowViewModelTests
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        var blocks = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().Where(c => c.Tag == "functionblock").ToList();
+        var blocks = harness.Session.Current!.FindById(loc)!.Children.Where(c => c.Tag == "functionblock").ToList();
         var outA = (await harness.Session.AddVariableAsync(blocks[0].FindChild("outputs")!.Id!.Value, "resource_output", "OutA"))!.Value;
         var inB = (await harness.Session.AddVariableAsync(blocks[1].FindChild("inputs")!.Id!.Value, "resource_input", "InB"))!.Value;
 
@@ -3715,7 +3715,7 @@ public class MainWindowViewModelTests
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        var blocks = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().Where(c => c.Tag == "functionblock").ToList();
+        var blocks = harness.Session.Current!.FindById(loc)!.Children.Where(c => c.Tag == "functionblock").ToList();
         var outA = (await harness.Session.AddVariableAsync(blocks[0].FindChild("outputs")!.Id!.Value, "resource_output", "OutA"))!.Value;
         var inB = (await harness.Session.AddVariableAsync(blocks[1].FindChild("inputs")!.Id!.Value, "resource_input", "InB"))!.Value;
         await harness.Session.LinkPinsAsync(outA, inB);
@@ -3745,7 +3745,7 @@ public class MainWindowViewModelTests
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        var blocks = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().Where(c => c.Tag == "functionblock").ToList();
+        var blocks = harness.Session.Current!.FindById(loc)!.Children.Where(c => c.Tag == "functionblock").ToList();
         var inA = (await harness.Session.AddVariableAsync(blocks[0].FindChild("inputs")!.Id!.Value, "resource_input", "InA"))!.Value;
         var outB = (await harness.Session.AddVariableAsync(blocks[1].FindChild("outputs")!.Id!.Value, "resource_output", "OutB"))!.Value;
 
@@ -3768,7 +3768,7 @@ public class MainWindowViewModelTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        var block = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().First(c => c.Tag == "functionblock");
+        var block = harness.Session.Current!.FindById(loc)!.Children.First(c => c.Tag == "functionblock");
         var output = (await harness.Session.AddVariableAsync(block.FindChild("outputs")!.Id!.Value, "resource_output", "O"))!.Value;
         var input = (await harness.Session.AddVariableAsync(block.FindChild("inputs")!.Id!.Value, "resource_input", "I"))!.Value;
 
@@ -3831,7 +3831,7 @@ public class MainWindowViewModelTests
         {
             if (e.Tag == tag && e.Id is { } id)
                 return id;
-            if (FindTagged(e.ChildrenOrEmpty(), tag) is { } found)
+            if (FindTagged(e.Children, tag) is { } found)
                 return found;
         }
         return null;
@@ -3872,8 +3872,8 @@ public class MainWindowViewModelTests
         var block = harness.Session.Current!.FindById(blockId)!;
         Assert.Multiple(() =>
         {
-            Assert.That(block.FindChild("inputs")!.ChildrenOrEmpty().Any(c => c.Tag == "resource_input"), Is.True);
-            Assert.That(block.FindChild("outputs")!.ChildrenOrEmpty().Any(c => c.Tag == "resource_output"), Is.True);
+            Assert.That(block.FindChild("inputs")!.Children.Any(c => c.Tag == "resource_input"), Is.True);
+            Assert.That(block.FindChild("outputs")!.Children.Any(c => c.Tag == "resource_output"), Is.True);
         });
     }
 
@@ -4202,7 +4202,7 @@ public class MainWindowViewModelTests
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        var blocks = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().Where(c => c.Tag == "functionblock").ToList();
+        var blocks = harness.Session.Current!.FindById(loc)!.Children.Where(c => c.Tag == "functionblock").ToList();
         var outA = (await harness.Session.AddVariableAsync(blocks[0].FindChild("outputs")!.Id!.Value, "resource_output", "OutA"))!.Value;
         var inB = (await harness.Session.AddVariableAsync(blocks[1].FindChild("inputs")!.Id!.Value, "resource_input", "InB"))!.Value;
         await harness.Session.LinkPinsAsync(outA, inB);

@@ -24,7 +24,7 @@ namespace Ihc.Vis.Catalog
         public static ProjectElement Materialize(ProjectElement element, ProjectSchemaView view)
         {
             ElementSchema? schema = view.TryGet(element.Tag);
-            ImmutableArray<(string Name, string Value)> present = element.AttrsOrEmpty();
+            ImmutableArray<(string Name, string Value)> present = element.Attrs.AsImmutableArray();
             ImmutableArray<(string Name, string Value)> attrs = present;
             if (schema is not null)
             {
@@ -46,7 +46,7 @@ namespace Ihc.Vis.Catalog
                 attrs = builder.Count == present.Length ? present : builder.ToImmutable();
             }
 
-            ImmutableArray<ProjectElement> children = element.Children.IsDefaultOrEmpty
+            ImmutableArray<ProjectElement> children = element.Children.IsEmpty
                 ? ImmutableArray<ProjectElement>.Empty
                 : element.Children.Select(c => Materialize(c, view)).ToImmutableArray();
 

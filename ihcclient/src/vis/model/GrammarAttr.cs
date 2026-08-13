@@ -45,7 +45,7 @@ namespace Ihc.Vis.Model
     /// state (the XML 1.0 validity constraints the model enforces are corpus-verified to hold across every vendor
     /// catalog file). Value semantics: two attrs with equal content are equal and hash equal.
     /// </summary>
-    public sealed class GrammarAttr : IEquatable<GrammarAttr>
+    public sealed record GrammarAttr
     {
         /// <summary>The attribute name (a validated XML Name).</summary>
         public string Name { get; }
@@ -55,7 +55,7 @@ namespace Ihc.Vis.Model
 
         /// <summary>The enumeration's NMTOKEN values, in declared order — non-empty exactly when
         /// <see cref="Type"/> is <see cref="GrammarAttrType.Enumerated"/>.</summary>
-        public ImmutableArray<string> EnumTokens { get; }
+        public EquatableArray<string> EnumTokens { get; }
 
         /// <summary>How the default is declared.</summary>
         public GrammarDefault Default { get; }
@@ -68,7 +68,9 @@ namespace Ihc.Vis.Model
         /// view compares and materializes. Empty for <c>#REQUIRED</c>/<c>#IMPLIED</c>.</summary>
         internal string DecodedLiteral => RawLiteral is null ? string.Empty : XmlText.Unescape(RawLiteral);
 
-        private GrammarAttr(string name, GrammarAttrType type, ImmutableArray<string> enumTokens,
+        // Private, and the properties are get-only rather than init: construction stays behind the validated
+        // factories below, so `with` cannot bypass them and no caller can build a contradictory grammar.
+        private GrammarAttr(string name, GrammarAttrType type, EquatableArray<string> enumTokens,
             GrammarDefault @default, string? rawLiteral)
         {
             Name = name;
@@ -130,12 +132,12 @@ namespace Ihc.Vis.Model
         // Literal kind; an ID default must be #REQUIRED/#IMPLIED (VC: ID Attribute Default); an Enumerated literal
         // default must match a token by DECODED value; a literal must not contain '<', '"' or a bare '&' (it could
         // not be re-emitted between double quotes as well-formed XML).
-        internal static GrammarAttr Create(string name, GrammarAttrType type, ImmutableArray<string> enumTokens,
+        internal static GrammarAttr Create(string name, GrammarAttrType type, EquatableArray<string> enumTokens,
             GrammarDefault @default, string? rawLiteral)
         {
             ArgumentNullException.ThrowIfNull(name);
             VerifyXmlName(name, $"attribute name '{name}'");
-            ImmutableArray<string> tokens = enumTokens.IsDefault ? ImmutableArray<string>.Empty : enumTokens;
+            EquatableArray<string> tokens = enumTokens;   // no default-normalization needed: the wrapper reads default as empty
 
             if (type == GrammarAttrType.Enumerated)
             {
@@ -213,19 +215,8 @@ namespace Ihc.Vis.Model
             }
         }
 
-        public bool Equals(GrammarAttr? other) =>
-            other is not null
-            && Name == other.Name
-            && Type == other.Type
-            && Default == other.Default
-            && RawLiteral == other.RawLiteral
-            && ImmutableArrayValue.Equal(EnumTokens, other.EnumTokens);
-
-        public override bool Equals(object? obj) => Equals(obj as GrammarAttr);
-
-        public override int GetHashCode() =>
-            HashCode.Combine(Name, Type, Default, RawLiteral, ImmutableArrayValue.Hash(EnumTokens));
-
+        // Equality and hashing are the record's, over EquatableArray<string> EnumTokens. ToString stays
+        // handwritten: this DTD-shaped form is what diagnostics print, not the record's `Type { Prop = … }`.
         public override string ToString() =>
             $"GrammarAttr({Name} {Type}{(EnumTokens.IsEmpty ? "" : "(" + string.Join("|", EnumTokens) + ")")} " +
             $"{(Default == GrammarDefault.Literal ? "\"" + RawLiteral + "\"" : Default == GrammarDefault.Required ? "#REQUIRED" : "#IMPLIED")})";

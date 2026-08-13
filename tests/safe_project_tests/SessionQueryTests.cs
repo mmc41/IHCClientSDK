@@ -28,14 +28,13 @@ namespace Ihc.Vis.Tests
                 Assert.That(session.GetProjectInfo(), Is.EqualTo(project.GetProjectInfo()), "project info");
                 Assert.That(session.GetUnlinkedWirelessProducts(),
                     Is.EqualTo(project.GetUnlinkedWirelessProducts()), "unlinked wireless");
-                Assert.That(sTables.UserTexts, Is.EqualTo(pTables.UserTexts), "user texts");
-                // DataTableView.Rows is itself an ImmutableArray (reference-equal only), so compare projected scalars.
-                Assert.That(sTables.SystemTables.Select(t => t.Name),
-                    Is.EqualTo(pTables.SystemTables.Select(t => t.Name)), "system table names");
-                Assert.That(sTables.SystemTables.SelectMany(t => t.Rows),
-                    Is.EqualTo(pTables.SystemTables.SelectMany(t => t.Rows)), "system table rows");
-                Assert.That(sMap.InputModules, Is.EqualTo(pMap.InputModules), "input modules");
-                Assert.That(sMap.OutputModules, Is.EqualTo(pMap.OutputModules), "output modules");
+                // Whole read models compared by value. This used to project scalars out and compare those,
+                // because DataTableView.Rows was a raw ImmutableArray that only ever compared reference-equal;
+                // EquatableArray<T> makes the records structurally comparable, so the workaround is gone — and
+                // the assertion is stronger than the one it replaces, since flattening every table's rows into
+                // one sequence could not tell which table a row belonged to.
+                Assert.That(sTables, Is.EqualTo(pTables), "data tables");
+                Assert.That(sMap, Is.EqualTo(pMap), "module address map");
             });
         }
 

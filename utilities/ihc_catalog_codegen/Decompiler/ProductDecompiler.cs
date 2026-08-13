@@ -57,7 +57,7 @@ namespace Ihc.Vis.CatalogCodegen
             // exactly the attributes the file wrote, in file order — emit every one (byte-faithful) except id and
             // product_identifier the factory places. name is emitted here too (via .Name), at its file position, so a
             // family that writes another attribute before it (an airlink root's device_type) stays file-faithful.
-            foreach ((string name, string value) in body.AttrsOrEmpty())
+            foreach ((string name, string value) in body.Attrs)
             {
                 if (name is "id" or "product_identifier")
                 {
@@ -69,7 +69,7 @@ namespace Ihc.Vis.CatalogCodegen
             if (BodyIsFluentExpressible(body))
             {
                 string? lastResourceId = null;
-                foreach (ProjectElement child in body.ChildrenOrEmpty())
+                foreach (ProjectElement child in body.Children)
                 {
                     if (child.Tag == "scenes")
                     {
@@ -90,7 +90,7 @@ namespace Ihc.Vis.CatalogCodegen
                 // as RawChild, keeping every id and cross-child IDREF (scenes → its resource, resource_enum → its enum)
                 // exactly as the file wrote them. Product-level setters stay fluent; only the child graph goes raw.
                 // This fallback intentionally imposes no IDREF self-containment check (all sibling ids are verbatim too).
-                foreach (ProjectElement child in body.ChildrenOrEmpty())
+                foreach (ProjectElement child in body.Children)
                 {
                     recipe.Calls.Add(RawChildCall(child));
                 }
@@ -102,7 +102,7 @@ namespace Ihc.Vis.CatalogCodegen
         // and binds the immediately-preceding addable resource. Anything else routes the whole child list to RawChild.
         private static bool BodyIsFluentExpressible(ProjectElement body)
         {
-            ImmutableArray<ProjectElement> children = body.ChildrenOrEmpty();
+            ImmutableArray<ProjectElement> children = body.Children.AsImmutableArray();
             int scenesCount = children.Count(c => c.Tag == "scenes");
             if (scenesCount == 0)
             {
@@ -113,7 +113,7 @@ namespace Ihc.Vis.CatalogCodegen
                 return false;   // several scenes, or scenes is not the trailing child AddScenes would append it as
             }
             ProjectElement scenes = children[^1];
-            foreach ((string name, string _) in scenes.AttrsOrEmpty())
+            foreach ((string name, string _) in scenes.Attrs)
             {
                 if (name is not ("id" or "name" or "scene_resource"))
                 {
@@ -143,7 +143,7 @@ namespace Ihc.Vis.CatalogCodegen
         // typedef/inivalue are ordinary IDREF attributes the canonicalizer remaps. Everything else (nested container,
         // structural or open-world leaf) is a RawChild.
         private static bool IsAddableLeaf(ProjectElement child) =>
-            child.ChildrenOrEmpty().IsEmpty
+            child.Children.IsEmpty
             && !IsStructural(child.Tag)
             && TypeCode.ForTag(child.Tag) is not null
             && ProjectSchemaView.RegistryOnly.TryGet(child.Tag) is not null;
@@ -160,7 +160,7 @@ namespace Ihc.Vis.CatalogCodegen
             // container's internal IDREF must resolve inside the subtree (a verbatim-token render preserves it); a
             // reference reaching outside is a cross-child wiring the fluent path does not reverse (the whole-body
             // RawChild fallback handles those, where every sibling id is also verbatim).
-            if (!child.ChildrenOrEmpty().IsEmpty && !IdRefsSelfContained(child, grammar))
+            if (!child.Children.IsEmpty && !IdRefsSelfContained(child, grammar))
             {
                 throw new DecompileNotSupportedException(
                     $"nested container '{child.Tag}' has an IDREF reaching outside the subtree — needs whole-body RawChild.");
@@ -204,7 +204,7 @@ namespace Ihc.Vis.CatalogCodegen
 
         private static FluentCall ScenesCall(ProjectElement scenes, string? lastResourceId)
         {
-            foreach ((string name, string _) in scenes.AttrsOrEmpty())
+            foreach ((string name, string _) in scenes.Attrs)
             {
                 if (name is not ("id" or "name" or "scene_resource"))
                 {
@@ -231,7 +231,7 @@ namespace Ihc.Vis.CatalogCodegen
         {
             string name = child.GetAttribute("name") ?? string.Empty;
             var config = ImmutableArray.CreateBuilder<ResourceCall>();
-            foreach ((string attrName, string attrValue) in child.AttrsOrEmpty())
+            foreach ((string attrName, string attrValue) in child.Attrs)
             {
                 if (attrName is "id" or "name")   // set by the AddInput/AddOutput/AddResource factory; the rest ride in file order
                 {
@@ -317,7 +317,7 @@ namespace Ihc.Vis.CatalogCodegen
             // ElRaw must preserve that order for byte fidelity. StampDocumentOrder re-mints the id value in place.
             string attrs = RenderAttrs(node);
             string head = $"ElRaw({CSharpLiteral.Quote(node.Tag)}, {attrs}";
-            ImmutableArray<ProjectElement> children = node.ChildrenOrEmpty();
+            ImmutableArray<ProjectElement> children = node.Children.AsImmutableArray();
             if (children.IsEmpty)
             {
                 return head + ")";
@@ -334,7 +334,7 @@ namespace Ihc.Vis.CatalogCodegen
 
         private static string RenderAttrs(ProjectElement node)
         {
-            IEnumerable<string> pairs = node.AttrsOrEmpty()
+            IEnumerable<string> pairs = node.Attrs
                 .Select(a => $"({CSharpLiteral.Quote(a.Name)}, {CSharpLiteral.Quote(a.Value)})");
             string joined = string.Join(", ", pairs);
             return joined.Length == 0 ? "System.Array.Empty<(string, string)>()" : $"new[] {{ {joined} }}";
@@ -365,7 +365,7 @@ namespace Ihc.Vis.CatalogCodegen
             ElementSchema? schema = grammar.TryGet(element.Tag);
             if (schema is not null)
             {
-                foreach ((string name, string value) in element.AttrsOrEmpty())
+                foreach ((string name, string value) in element.Attrs)
                 {
                     if (schema.IsIdRef(name) && value.Length > 0 && !ids.Contains(value))
                     {
@@ -373,7 +373,7 @@ namespace Ihc.Vis.CatalogCodegen
                     }
                 }
             }
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
+            foreach (ProjectElement child in element.Children)
             {
                 if (!AllIdRefsResolve(child, grammar, ids))
                 {

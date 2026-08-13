@@ -43,7 +43,7 @@ public class ProjectTreeProjectorTests
 
     // The function blocks of a project, reached exactly as the projector reaches them (direct children of a locality).
     private static IEnumerable<ProjectElement> FunctionBlocks(Project project) =>
-        project.Groups.SelectMany(g => g.ChildrenOrEmpty()).Where(c => c.Kind == ElementKind.FunctionBlock);
+        project.Groups.SelectMany(g => g.Children).Where(c => c.Kind == ElementKind.FunctionBlock);
 
     private static IEnumerable<TreeNodeViewModel> Flatten(TreeNodeViewModel node)
     {

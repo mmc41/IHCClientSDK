@@ -27,10 +27,10 @@ namespace Ihc.Vis.Tests
 
         // The pre-existing empty, editable (non-catalog) enumerator in project3 — the vendor's "TestEnum".
         private static string EmptyEditableEnumName(Project project) =>
-            project.Child("enum_definitions")!.ChildrenOrEmpty()
+            project.Child("enum_definitions")!.Children
                 .First(c => c.Tag == "enum_definition"
                     && (project.View(c).Effective("typeid") ?? ElementId.NullToken) == ElementId.NullToken
-                    && !c.ChildrenOrEmpty().Any(v => v.Tag == "enum_value"))
+                    && !c.Children.Any(v => v.Tag == "enum_value"))
                 .GetAttribute("name")!;
 
         [Test]
@@ -145,9 +145,9 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             ProjectElement def = project.Root.Descendants().First(e => e.Tag == "enum_definition"
-                && e.GetAttribute("typeid") is null && e.ChildrenOrEmpty().Any(v => v.IsEnumValue));
+                && e.GetAttribute("typeid") is null && e.Children.Any(v => v.IsEnumValue));
             string name = project.View(def).Name!;
-            ElementId valueId = def.ChildrenOrEmpty().First(v => v.IsEnumValue).Id!.Value;
+            ElementId valueId = def.Children.First(v => v.IsEnumValue).Id!.Value;
             ProjectDocumentSession session = Session(project);
 
             EditOutcome outcome = session.Apply(new UpdateEnumStates(name, []) { Relabels = [(valueId, "Relabeled")] });

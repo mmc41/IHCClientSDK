@@ -43,7 +43,7 @@ namespace Ihc.Vis.Validation
 
             foreach (ProjectElement group in project.Groups)
             {
-                foreach (ProjectElement product in group.ChildrenOrEmpty().Where(c => c.Tag == "product_dataline"))
+                foreach (ProjectElement product in group.Children.Where(c => c.Tag == "product_dataline"))
                 {
                     void Product(string attribute, string ruleId, string label)
                     {
@@ -55,9 +55,9 @@ namespace Ihc.Vis.Validation
                     Product("cablenumber", "doc-cablenumber", "Mangler Kabelnummer");
                     Product("position", "doc-position", "Mangler Placering");
 
-                    foreach (ProjectElement terminal in product.ChildrenOrEmpty().Where(c => c.Tag is "dataline_input" or "dataline_output"))
+                    foreach (ProjectElement terminal in product.Children.Where(c => c.Tag is "dataline_input" or "dataline_output"))
                     {
-                        bool linked = terminal.ChildrenOrEmpty().Any(c => c.Tag is ReciprocalTags.FollowLinkFromTag or ReciprocalTags.FollowLinkToTag);
+                        bool linked = terminal.Children.Any(c => c.Tag is ReciprocalTags.FollowLinkFromTag or ReciprocalTags.FollowLinkToTag);
                         if (!linked) { Add("doc-not-linked", terminal, "Ikke forbundet"); }
                         if (Blank(terminal, "cable_colour")) { Add("doc-cable-colour", terminal, "Mangler Ledningsfarve"); }
                         if (!DatalineAddress.TryParse(terminal.GetAttribute("address_dataline"), terminal.Tag == "dataline_output", out _))

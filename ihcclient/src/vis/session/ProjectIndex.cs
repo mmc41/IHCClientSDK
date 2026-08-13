@@ -44,7 +44,7 @@ namespace Ihc.Vis.Session
             {
                 byId.TryAdd(id, element);
             }
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
+            foreach (ProjectElement child in element.Children)
             {
                 if (child.Id is { } childId)
                 {

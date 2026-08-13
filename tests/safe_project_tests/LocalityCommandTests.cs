@@ -71,7 +71,7 @@ namespace Ihc.Vis.Tests
         public async Task DeleteLocality_LabelUsesPreEditName()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectElement group = project.Groups.First(g => !g.Children.IsDefaultOrEmpty);
+            ProjectElement group = project.Groups.First(g => !g.Children.IsEmpty);
             string name = group.GetAttribute("name") ?? "";
             ProjectDocumentSession session = Session(project);
 
@@ -100,7 +100,7 @@ namespace Ihc.Vis.Tests
         public async Task DeleteLocality_CascadesContents_AndUndoReversesAsOneStep()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectElement group = project.Groups.First(g => !g.Children.IsDefaultOrEmpty);
+            ProjectElement group = project.Groups.First(g => !g.Children.IsEmpty);
             ElementId id = group.Id!.Value;
             ProjectDocumentSession session = Session(project);
 
@@ -116,7 +116,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(restored, Is.Not.Null, "one undo restores the locality");
-                Assert.That(restored!.Children.IsDefaultOrEmpty, Is.False, "and its contents — the cascade reverses as a unit");
+                Assert.That(restored!.Children.IsEmpty, Is.False, "and its contents — the cascade reverses as a unit");
             });
         }
     }

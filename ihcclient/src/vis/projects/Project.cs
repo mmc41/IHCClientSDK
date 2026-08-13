@@ -180,7 +180,7 @@ namespace Ihc.Vis.Projects
         }
 
         /// <summary>The seven fixed root children, in document order.</summary>
-        public IReadOnlyList<ProjectElement> Children => Root.ChildrenOrEmpty();
+        public IReadOnlyList<ProjectElement> Children => Root.Children;
 
         /// <summary>Returns the named fixed child element (e.g. <c>groups</c>), or <c>null</c> when absent.</summary>
         public ProjectElement? Child(string tag) => Root.FindChild(tag);
@@ -198,11 +198,11 @@ namespace Ihc.Vis.Projects
         /// navigation is resolved here against the tree (the read side of link navigation and far-end paths).
         /// </summary>
         public ProjectElement? FindParent(ElementId id) =>
-            Root.FindDescendantOrSelf(e => e.ChildrenOrEmpty().Any(c => c.Id == id));
+            Root.FindDescendantOrSelf(e => e.Children.Any(c => c.Id == id));
 
         /// <summary>The <c>group</c> localities declared under <c>groups</c>.</summary>
         public IReadOnlyList<ProjectElement> Groups =>
-            Child("groups") is { } groups && !groups.Children.IsDefaultOrEmpty
+            Child("groups") is { } groups && !groups.Children.IsEmpty
                 ? groups.Children.Where(c => c.Tag == "group").ToImmutableArray()
                 : ImmutableArray<ProjectElement>.Empty;
 

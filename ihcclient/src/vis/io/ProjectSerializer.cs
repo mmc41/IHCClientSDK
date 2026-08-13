@@ -68,7 +68,7 @@ namespace Ihc.Vis.Io
         // One bad character in a 200 KB project is a needle in a haystack — name the first offender.
         private static string LocateNonLatin1(ProjectElement element)
         {
-            if (!element.Attrs.IsDefaultOrEmpty)
+            if (!element.Attrs.IsEmpty)
             {
                 foreach ((string name, string value) in element.Attrs)
                 {
@@ -88,7 +88,7 @@ namespace Ihc.Vis.Io
                     }
                 }
             }
-            if (!element.Children.IsDefaultOrEmpty)
+            if (!element.Children.IsEmpty)
             {
                 foreach (ProjectElement child in element.Children)
                 {
@@ -127,7 +127,7 @@ namespace Ihc.Vis.Io
             {
                 order.Add(element.Tag);
             }
-            if (!element.Children.IsDefaultOrEmpty)
+            if (!element.Children.IsEmpty)
             {
                 foreach (ProjectElement child in element.Children)
                 {
@@ -144,7 +144,7 @@ namespace Ihc.Vis.Io
             sb.Append(indent).Append('<').Append(element.Tag);
             AppendAttributes(sb, element, schema);
 
-            if (element.Children.IsDefaultOrEmpty)
+            if (element.Children.IsEmpty)
             {
                 sb.Append("/>").Append(Crlf);
                 return;

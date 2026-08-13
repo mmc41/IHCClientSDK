@@ -118,7 +118,9 @@ namespace Ihc.Vis
             Project project, ElementId sectionId, string variableName, string typeName, IReadOnlyList<string> states) =>
             project.FindById(sectionId) is { } section
                 && project.FindParent(sectionId) is { Id: { } blockId } block && block.Kind == ElementKind.FunctionBlock
-                ? new Session.AddEnumVariable(blockId, section.Tag, variableName, typeName, states)
+                // Snapshot at the gateway: `states` is caller-owned and mutable, and a command must not change
+                // after it is minted (its history entry would silently rewrite itself).
+                ? new Session.AddEnumVariable(blockId, section.Tag, variableName, typeName, EquatableArray.CreateRange(states))
                 : null;
 
         /// <summary>Command to add a variable of an EXISTING project-global enumerator type to a function-block section
@@ -134,7 +136,7 @@ namespace Ihc.Vis
         /// <summary>Command to author a standalone project-global enumerator TYPE (no variable) — a 0-state,
         /// unreferenced type when <paramref name="states"/> is empty (US-030 standalone-type route, PG-7/D02).</summary>
         public Session.AddStandaloneEnumType AddStandaloneEnumType(Project project, string typeName, IReadOnlyList<string> states) =>
-            new Session.AddStandaloneEnumType(typeName, states);
+            new Session.AddStandaloneEnumType(typeName, EquatableArray.CreateRange(states));   // snapshot: see AddEnumVariable
 
         /// <summary>Command to set an enum variable's initial STATE, addressed positionally in its type's value
         /// list (alignment F-50). Separate from <see cref="SetResourceInitialValue"/> because a
@@ -247,7 +249,7 @@ namespace Ihc.Vis
             {
                 int here = -1;
                 int count = 0;
-                foreach (ProjectElement sibling in parent.ChildrenOrEmpty())
+                foreach (ProjectElement sibling in parent.Children)
                 {
                     if (sibling.Tag == node.Tag)
                     {
@@ -274,7 +276,7 @@ namespace Ihc.Vis
             {
                 return null;
             }
-            int targetIndex = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList().FindIndex(c => c.Id == targetSibling);
+            int targetIndex = parent.Children.Where(c => c.Tag == node.Tag).ToList().FindIndex(c => c.Id == targetSibling);
             return targetIndex < 0 ? null : new Session.ReorderNode(dragged, targetIndex);
         }
 
@@ -350,7 +352,7 @@ namespace Ihc.Vis
             (DeleteKind kind, ProjectElement? element) = ClassifyDelete(project, id);
             bool needsConfirm = kind switch
             {
-                DeleteKind.Locality => !element!.Children.IsDefaultOrEmpty,   // US-009: confirm only when it still holds contents
+                DeleteKind.Locality => !element!.Children.IsEmpty,   // US-009: confirm only when it still holds contents
                 DeleteKind.General => HasLinkHalves(element!) || WouldThrowStrict(project, id),   // link halves / strict cascade
                 _ => false,   // NotDeletable / Link never confirm
             };
@@ -473,7 +475,7 @@ namespace Ihc.Vis
             // real state so the branch operand can carry the right typedef + inivalue.
             return ElementId.TryParse(project.View(switchVar).Effective("typedef"), out ElementId defId)
                 && project.FindById(defId) is { } def && project.View(def).Name is { } typeName
-                && def.ChildrenOrEmpty().Any(v => v.IsEnumValue && project.View(v).Name == criterion)
+                && def.Children.Any(v => v.IsEnumValue && project.View(v).Name == criterion)
                     ? new Session.AddCaseValue(caseId, criterion, switchVar.Tag, typeName) : null;
         }
 
@@ -502,7 +504,7 @@ namespace Ihc.Vis
         /// <summary>Command to append a user-defined text (US-049), reporting whether the user-texts table already
         /// exists so the command creates it on first use.</summary>
         public Session.AddUserText AddUserText(Project project, string text) =>
-            new Session.AddUserText(text, project.Child("enum_definitions")?.ChildrenOrEmpty()
+            new Session.AddUserText(text, project.Child("enum_definitions")?.Children
                 .Any(c => c.IsEnumDefinition && project.View(c).Name == ProjectProjections.UserTextsTableName) == true);
 
         /// <summary>Command to rename a user-defined text by id (US-049 Edit).</summary>
@@ -530,7 +532,7 @@ namespace Ihc.Vis
             {
                 return null;
             }
-            var existingValues = def.ChildrenOrEmpty().Where(c => c.IsEnumValue).ToList();
+            var existingValues = def.Children.Where(c => c.IsEnumValue).ToList();
             var relabels = new List<(ElementId ValueId, string NewName)>();
             int prefix = Math.Min(existingValues.Count, states.Count);
             for (int i = 0; i < prefix; i++)
@@ -540,8 +542,9 @@ namespace Ihc.Vis
                     relabels.Add((existingValues[i].Id!.Value, states[i]));
                 }
             }
-            string[] added = states.Skip(existingValues.Count).ToArray();
-            return new Session.UpdateEnumStates(defName, added) { Relabels = relabels };
+            // Both snapshot: `relabels` is a List this method still holds, and `states` is caller-owned.
+            EquatableArray<string> added = EquatableArray.CreateRange(states.Skip(existingValues.Count));
+            return new Session.UpdateEnumStates(defName, added) { Relabels = EquatableArray.CreateRange(relabels) };
         }
 
         /// <summary>Command to apply edited advanced wireless-dimmer settings (US-015).</summary>

@@ -276,11 +276,11 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(placering.SuggestionsOrEmpty, Does.Contain("I loft").And.Contain("Ved dør"));
-                Assert.That(placering.SuggestionsOrEmpty.Count(s => s == "I loft"), Is.EqualTo(1),
+                Assert.That(placering.Suggestions, Does.Contain("I loft").And.Contain("Ved dør"));
+                Assert.That(placering.Suggestions.Count(s => s == "I loft"), Is.EqualTo(1),
                     "distinct: a value used twice is offered once");
-                Assert.That(placering.SuggestionsOrEmpty,
-                    Is.EqualTo(placering.SuggestionsOrEmpty.OrderBy(s => s, System.StringComparer.Ordinal)).AsCollection,
+                Assert.That(placering.Suggestions,
+                    Is.EqualTo(placering.Suggestions.OrderBy(s => s, System.StringComparer.Ordinal)).AsCollection,
                     "a stable order, so the list does not reshuffle between opens");
             });
         }
@@ -301,7 +301,7 @@ namespace Ihc.Vis.Tests
         {
             (Project project, ElementId id) = await Placed("_0x2101");
 
-            Assert.That(Field(App.GetProductDialog(project, id), "identitet.lysgruppe").SuggestionsOrEmpty,
+            Assert.That(Field(App.GetProductDialog(project, id), "identitet.lysgruppe").Suggestions,
                 Is.Empty, "Lysgruppe is plain text (D07 keeps it so)");
         }
 

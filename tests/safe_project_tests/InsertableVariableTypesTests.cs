@@ -28,7 +28,7 @@ namespace Ihc.Vis.Tests
             Project project = ProjectReader.Read(TestData.ReadBytes("projects/project2-CustomBlock.vis"));
             ProjectElement block = project.Root.DescendantsAndSelf()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("name") == "Custom blok");
-            ElementId Section(string tag) => block.ChildrenOrEmpty().First(c => c.Tag == tag).Id!.Value;
+            ElementId Section(string tag) => block.Children.First(c => c.Tag == tag).Id!.Value;
             return (app, project, Section("inputs"), Section("outputs"), Section("settings"), Section("internalsettings"));
         }
 

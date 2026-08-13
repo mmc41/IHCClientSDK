@@ -25,7 +25,7 @@ public class CopyPasteTests
     }
 
     private static IEnumerable<ProjectElement> ProductsUnder(ProjectElement group) =>
-        group.ChildrenOrEmpty().Where(c => c.Tag.StartsWith("product_"));
+        group.Children.Where(c => c.Tag.StartsWith("product_"));
 
     // US-056: the Copy/Paste route duplicates, the copy is not consumed (paste again for a second), and it is undoable.
     [Test]

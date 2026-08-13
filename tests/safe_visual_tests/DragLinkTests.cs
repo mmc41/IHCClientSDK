@@ -22,7 +22,7 @@ namespace safe_visual_tests;
 public class DragLinkTests : AvaloniaTestBase
 {
     private static bool HasChildTag(ShellHarness harness, ElementId pinId, string tag) =>
-        harness.Session.Current!.FindById(pinId)!.ChildrenOrEmpty().Any(c => c.Tag == tag);
+        harness.Session.Current!.FindById(pinId)!.Children.Any(c => c.Tag == tag);
 
     // A product with a dataline input plus a function block that has an input — the smallest US-023 pair.
     private static async Task<(ShellHarness harness, MainWindowViewModel vm, ElementId productInputId, ElementId fbInputId)>
@@ -36,8 +36,8 @@ public class DragLinkTests : AvaloniaTestBase
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         var pid = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
-        var productInputId = harness.Session.Current!.FindById(pid)!.ChildrenOrEmpty().First(c => c.Tag == "dataline_input").Id!.Value;
-        var fbInputId = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.ChildrenOrEmpty().First().Id!.Value;
+        var productInputId = harness.Session.Current!.FindById(pid)!.Children.First(c => c.Tag == "dataline_input").Id!.Value;
+        var fbInputId = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.Children.First().Id!.Value;
         return (harness, vm, productInputId, fbInputId);
     }
 
@@ -60,8 +60,8 @@ public class DragLinkTests : AvaloniaTestBase
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var fbSrcId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
         var fbDstId = (await harness.Session.AddFunctionBlockAsync(loc, block2.MasterType))!.Value;
-        var fbOutputId = harness.Session.Current!.FindById(fbSrcId)!.FindChild("outputs")!.ChildrenOrEmpty().First().Id!.Value;
-        var fbDstInputId = harness.Session.Current!.FindById(fbDstId)!.FindChild("inputs")!.ChildrenOrEmpty().First().Id!.Value;
+        var fbOutputId = harness.Session.Current!.FindById(fbSrcId)!.FindChild("outputs")!.Children.First().Id!.Value;
+        var fbDstInputId = harness.Session.Current!.FindById(fbDstId)!.FindChild("inputs")!.Children.First().Id!.Value;
 
         await vm.DragDrop.PerformDropAsync(fbOutputId, fbDstInputId);
 
@@ -89,8 +89,8 @@ public class DragLinkTests : AvaloniaTestBase
         var product = harness.ProjectService.GetAvailableProducts().First(p => p.Resources.Any(r => r.Tag == "dataline_input"));
         var pidA = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
         var pidB = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
-        var inputA = harness.Session.Current!.FindById(pidA)!.ChildrenOrEmpty().First(c => c.Tag == "dataline_input").Id!.Value;
-        var inputB = harness.Session.Current!.FindById(pidB)!.ChildrenOrEmpty().First(c => c.Tag == "dataline_input").Id!.Value;
+        var inputA = harness.Session.Current!.FindById(pidA)!.Children.First(c => c.Tag == "dataline_input").Id!.Value;
+        var inputB = harness.Session.Current!.FindById(pidB)!.Children.First(c => c.Tag == "dataline_input").Id!.Value;
 
         DropVerdict verdict = vm.DragDrop.CanDropOn(inputA, inputB);
         await vm.DragDrop.PerformDropAsync(inputA, inputB);
@@ -115,8 +115,8 @@ public class DragLinkTests : AvaloniaTestBase
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0 && f.Outputs.Count > 0);
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
-        var ownOutputId = harness.Session.Current!.FindById(fbId)!.FindChild("outputs")!.ChildrenOrEmpty().First().Id!.Value;
-        var ownInputId = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.ChildrenOrEmpty().First().Id!.Value;
+        var ownOutputId = harness.Session.Current!.FindById(fbId)!.FindChild("outputs")!.Children.First().Id!.Value;
+        var ownInputId = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.Children.First().Id!.Value;
 
         Assert.That(vm.DragDrop.CanDropOn(ownOutputId, ownInputId).Effect, Is.EqualTo(DropEffect.Link), "a self-link (output→own input) is allowed");
         await vm.DragDrop.PerformDropAsync(ownOutputId, ownInputId);
@@ -139,7 +139,7 @@ public class DragLinkTests : AvaloniaTestBase
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var product = harness.ProjectService.GetAvailableProducts().First(p => p.Resources.Any(r => r.Tag == "dataline_input"));
         var pidB = (await harness.Session.AddProductAsync(loc, product.ProductIdentifier))!.Value;
-        var inputB = harness.Session.Current!.FindById(pidB)!.ChildrenOrEmpty().First(c => c.Tag == "dataline_input").Id!.Value;
+        var inputB = harness.Session.Current!.FindById(pidB)!.Children.First(c => c.Tag == "dataline_input").Id!.Value;
 
         var window = new MainWindow { DataContext = vm };
         window.Show();

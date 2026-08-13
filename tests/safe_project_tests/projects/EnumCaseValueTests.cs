@@ -38,10 +38,10 @@ namespace Ihc.Vis.Tests
             EditOutcome outcome = session.Apply(command!);
 
             ProjectElement kase = session.Current!.FindById(caseId)!;
-            ProjectElement branch = kase.ChildrenOrEmpty().First(c => c.Tag == "case_action" && c.GetAttribute("name") == "Værdi2");
-            ProjectElement operand = branch.ChildrenOrEmpty().First(c => c.Tag == "resource_enum");
+            ProjectElement branch = kase.Children.First(c => c.Tag == "case_action" && c.GetAttribute("name") == "Værdi2");
+            ProjectElement operand = branch.Children.First(c => c.Tag == "resource_enum");
             ProjectElement def = session.Current!.Root.Descendants().First(e => e.Tag == "enum_definition" && e.GetAttribute("name") == "NyTypeForThisProject");
-            string expectedIniValue = def.ChildrenOrEmpty().First(v => v.IsEnumValue && v.GetAttribute("name") == "Værdi2").Id!.Value.ToToken();
+            string expectedIniValue = def.Children.First(v => v.IsEnumValue && v.GetAttribute("name") == "Værdi2").Id!.Value.ToToken();
             Assert.Multiple(() =>
             {
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));

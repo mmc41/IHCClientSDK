@@ -95,7 +95,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = Load();
             ElementId id = project.Root.Descendants().First(e => e.Tag == "functionblock" && e.GetAttribute("name") == "AutoProof")
-                .FindChild("outputs")!.ChildrenOrEmpty().First(e => e.Tag == "resource_output").Id!.Value;
+                .FindChild("outputs")!.Children.First(e => e.Tag == "resource_output").Id!.Value;
             var session = new ProjectDocumentSession();
             session.Open(project);
 

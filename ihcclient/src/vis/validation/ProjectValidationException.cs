@@ -22,7 +22,7 @@ namespace Ihc.Vis.Validation
 
         private static string BuildMessage(ProjectValidationResult result)
         {
-            int count = result.Errors.IsDefaultOrEmpty ? 0 : result.Errors.Length;
+            int count = result.Errors.Length;
             string preview = count == 0
                 ? string.Empty
                 : ": " + string.Join(" | ", result.Errors.Take(5)) + (count > 5 ? $" | … ({count - 5} more)" : string.Empty);

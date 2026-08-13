@@ -74,7 +74,7 @@ namespace Ihc.Vis.Catalog
             ArgumentNullException.ThrowIfNull(definition);
             ArgumentNullException.ThrowIfNull(output);
             WriteDefinition(definition.Grammar, definition.Body, definition.SourceEncoding, output, layout,
-                definition.ExplicitCloseIds);
+                definition.ExplicitCloseIds.AsImmutableHashSet());
         }
 
         private static void WriteDefinition(CatalogGrammar grammar, ProjectElement body, CatalogTextEncoding encoding,
@@ -133,7 +133,7 @@ namespace Ihc.Vis.Catalog
         {
             AppendIndent(sb, depth, layout);
             sb.Append('<').Append(element.Tag);
-            foreach ((string name, string value) in element.AttrsOrEmpty())
+            foreach ((string name, string value) in element.Attrs)
             {
                 sb.Append(' ').Append(name).Append('=').Append('"');
                 XmlText.AppendEscaped(sb, value, escapeApostrophe: false);   // the catalog writer leaves ' literal (D3)
@@ -142,14 +142,14 @@ namespace Ihc.Vis.Catalog
 
             // An element the export EMPTIED keeps its two-tag form; one that never had children self-closes (S-22).
             bool explicitClose = element.Id is { } id && explicitCloseIds.Contains(id);
-            if (element.Children.IsDefaultOrEmpty && !explicitClose)
+            if (element.Children.IsEmpty && !explicitClose)
             {
                 // The export writer closes tight; the catalog writer leaves a space (S-22).
                 sb.Append(layout == CatalogLayout.Export ? "/>" : " />").Append(Crlf);
                 return;
             }
             sb.Append('>').Append(Crlf);
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
+            foreach (ProjectElement child in element.Children)
             {
                 AppendElement(sb, child, depth + 1, layout, explicitCloseIds);
             }

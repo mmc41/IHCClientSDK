@@ -98,7 +98,7 @@ namespace Ihc.Vis.Session
     /// <summary>Creates a project-global enumerator type and adds a variable of it to a block section (US-030),
     /// returning the variable's id. The caller resolves the owning block id and the section tag.</summary>
     public sealed record AddEnumVariable(
-        ElementId BlockId, string SectionTag, string VariableName, string TypeName, IReadOnlyList<string> States)
+        ElementId BlockId, string SectionTag, string VariableName, string TypeName, EquatableArray<string> States)
         : ProjectCommand<ElementId>
     {
         internal override string Describe(Project project) => "Tilføj enumerator";
@@ -159,7 +159,7 @@ namespace Ihc.Vis.Session
     /// <summary>Authors a project-global enumerator TYPE with no variable (US-030 standalone/empty-type route, PG-7,
     /// D02): a 0-state, unreferenced type when <paramref name="States"/> is empty — distinct from the variable-insert
     /// "New…" which also inserts a resource_enum. The type lands in the project-global <c>enum_definitions</c> container.</summary>
-    public sealed record AddStandaloneEnumType(string TypeName, IReadOnlyList<string> States) : ProjectCommand
+    public sealed record AddStandaloneEnumType(string TypeName, EquatableArray<string> States) : ProjectCommand
     {
         internal override string Describe(Project project) => "Tilføj enumerator type";
         internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;   // project-global — no block target
@@ -170,11 +170,11 @@ namespace Ihc.Vis.Session
     /// appends the newly-listed ones. The caller diffs the dialog's full ordered list into <see cref="Relabels"/> and
     /// <paramref name="Added"/>; with both empty the command is a no-op (NoChange). Relabels run first (a built-in
     /// "[read only]" type is refused by the engine); reorder / remove / rename-type are out of scope (D05).</summary>
-    public sealed record UpdateEnumStates(string DefName, IReadOnlyList<string> Added) : ProjectCommand
+    public sealed record UpdateEnumStates(string DefName, EquatableArray<string> Added) : ProjectCommand
     {
         /// <summary>Position-keyed relabels of EXISTING values (T013): each targeted value's id paired with its new
         /// label. Defaults to none, so the append-only construction stays valid.</summary>
-        public IReadOnlyList<(ElementId ValueId, string NewName)> Relabels { get; init; } = [];
+        public EquatableArray<(ElementId ValueId, string NewName)> Relabels { get; init; } = [];
 
         internal override string Describe(Project project) => "Rediger enumerator";
         internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;
@@ -342,14 +342,14 @@ namespace Ihc.Vis.Session
             {
                 return EditVerdict.Allow;   // RequireEditable already refused it
             }
-            int count = def.ChildrenOrEmpty().Count(v => v.Tag == "enum_value");
+            int count = def.Children.Count(v => v.Tag == "enum_value");
             return index >= 0 && index < count
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse($"Enumeratortypen '{defName}' har ingen værdi på plads {index}.");
         }
 
         private static ProjectElement? Find(Project project, string defName) =>
-            project.Child("enum_definitions")?.ChildrenOrEmpty()
+            project.Child("enum_definitions")?.Children
                 .FirstOrDefault(c => c.Tag == "enum_definition" && c.GetAttribute("name") == defName);
     }
 

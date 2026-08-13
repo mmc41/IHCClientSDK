@@ -87,9 +87,7 @@ namespace Ihc.Vis.Editing
         {
             string? oldId = element.GetAttribute("id");
             ElementId? newId = element.Id;
-            ImmutableArray<(string, string)> attrs = element.Attrs.IsDefaultOrEmpty
-                ? ImmutableArray<(string, string)>.Empty
-                : element.Attrs;
+            EquatableArray<(string Name, string Value)> attrs = element.Attrs;
 
             if (oldId is not null)
             {
@@ -121,7 +119,7 @@ namespace Ihc.Vis.Editing
             attrs = StampRequiredNullTokens(attrs, element.Tag, view);   // #REQUIRED-yet-empty → null token "_0x0"
 
             var children = ImmutableArray.CreateBuilder<ProjectElement>();
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
+            foreach (ProjectElement child in element.Children)
             {
                 if (child.Tag == "enum_definition")
                 {
@@ -167,7 +165,7 @@ namespace Ihc.Vis.Editing
             bool KeyMatches(ProjectElement def) => def.Tag == "enum_definition"
                 && (byTypeid ? def.GetAttribute("typeid") == typeid : name is not null && def.GetAttribute("name") == name);
 
-            foreach (ProjectElement candidate in enumDefinitions.ChildrenOrEmpty().Concat(hoisted))
+            foreach (ProjectElement candidate in enumDefinitions.Children.Concat(hoisted))
             {
                 if (KeyMatches(candidate) && AllValuesMap(stub, candidate))
                 {
@@ -180,7 +178,7 @@ namespace Ihc.Vis.Editing
         /// <summary>True when every <c>enum_value</c> in the stub resolves to a value in <paramref name="candidate"/> (by typeid else name).</summary>
         private static bool AllValuesMap(ProjectElement stub, ProjectElement candidate)
         {
-            foreach (ProjectElement value in stub.ChildrenOrEmpty())
+            foreach (ProjectElement value in stub.Children)
             {
                 if (value.Tag == "enum_value" && MatchValue(candidate, value) is null)
                 {
@@ -205,7 +203,7 @@ namespace Ihc.Vis.Editing
             {
                 idMap[stubId] = existingId;
             }
-            foreach (ProjectElement value in stub.ChildrenOrEmpty())
+            foreach (ProjectElement value in stub.Children)
             {
                 if (value.Tag != "enum_value")
                 {
@@ -236,7 +234,7 @@ namespace Ihc.Vis.Editing
             }
 
             var values = ImmutableArray.CreateBuilder<ProjectElement>();
-            foreach (ProjectElement value in stub.ChildrenOrEmpty())
+            foreach (ProjectElement value in stub.Children)
             {
                 if (value.Tag != "enum_value")
                 {
@@ -248,9 +246,9 @@ namespace Ihc.Vis.Editing
                 {
                     idMap[oldValueId] = valueId.ToToken();
                 }
-                values.Add(value with { Id = valueId, Attrs = ProjectElement.SetAttribute(value.AttrsOrEmpty(), "id", valueId.ToToken()) });
+                values.Add(value with { Id = valueId, Attrs = ProjectElement.SetAttribute(value.Attrs, "id", valueId.ToToken()) });
             }
-            hoisted.Add(stub with { Id = defId, Attrs = ProjectElement.SetAttribute(stub.AttrsOrEmpty(), "id", defId.ToToken()), Children = values.ToImmutable() });
+            hoisted.Add(stub with { Id = defId, Attrs = ProjectElement.SetAttribute(stub.Attrs, "id", defId.ToToken()), Children = values.ToImmutable() });
         }
 
         /// <summary>Finds the value inside <paramref name="existingDef"/> that the stub value maps to: by typeid when present, else by name.</summary>
@@ -272,7 +270,7 @@ namespace Ihc.Vis.Editing
             Func<ElementSchema?, string, string, string?> rule)
         {
             ElementSchema? schema = view?.TryGet(element.Tag);
-            ImmutableArray<(string Name, string Value)> attrs = element.AttrsOrEmpty();
+            ImmutableArray<(string Name, string Value)> attrs = element.Attrs.AsImmutableArray();
             for (int i = 0; i < attrs.Length; i++)
             {
                 if (rule(schema, attrs[i].Name, attrs[i].Value) is { } rewritten)
@@ -281,7 +279,7 @@ namespace Ihc.Vis.Editing
                 }
             }
 
-            ImmutableArray<ProjectElement> children = element.ChildrenOrEmpty()
+            ImmutableArray<ProjectElement> children = element.Children
                 .Select(c => RewriteAttributes(c, view, rule)).ToImmutableArray();
 
             return element with { Attrs = attrs, Children = children };
@@ -404,7 +402,7 @@ namespace Ihc.Vis.Editing
 
         private static ProjectElement? FindValueBy(ProjectElement def, string attrName, string wanted)
         {
-            foreach (ProjectElement value in def.ChildrenOrEmpty())
+            foreach (ProjectElement value in def.Children)
             {
                 if (value.Tag == "enum_value" && value.GetAttribute(attrName) == wanted)
                 {
@@ -424,8 +422,8 @@ namespace Ihc.Vis.Editing
         /// so it also covers a custom component resolved from the file's own inline DTD) rather than a per-type table;
         /// the element's own <c>id</c> is excluded — it is already allocated.
         /// </summary>
-        private static ImmutableArray<(string, string)> StampRequiredNullTokens(
-            ImmutableArray<(string Name, string Value)> attrs, string tag, ProjectSchemaView view)
+        private static EquatableArray<(string Name, string Value)> StampRequiredNullTokens(
+            EquatableArray<(string Name, string Value)> attrs, string tag, ProjectSchemaView view)
         {
             ElementSchema? schema = view.TryGet(tag);
             if (schema is null)
@@ -443,23 +441,22 @@ namespace Ihc.Vis.Editing
             return attrs;
         }
 
-        private static ImmutableArray<(string, string)> StripMenuPrefixFromName(ImmutableArray<(string Name, string Value)> attrs)
+        private static EquatableArray<(string Name, string Value)> StripMenuPrefixFromName(
+            EquatableArray<(string Name, string Value)> attrs)
         {
-            for (int i = 0; i < attrs.Length; i++)
+            ImmutableArray<(string Name, string Value)> bag = attrs.AsImmutableArray();
+            for (int i = 0; i < bag.Length; i++)
             {
-                if (attrs[i].Name == "name")
+                if (bag[i].Name == "name")
                 {
-                    string stripped = MenuPrefix.Strip(attrs[i].Value);
-                    return stripped == attrs[i].Value ? attrs : attrs.SetItem(i, ("name", stripped));
+                    string stripped = MenuPrefix.Strip(bag[i].Value);
+                    return stripped == bag[i].Value ? attrs : bag.SetItem(i, ("name", stripped));
                 }
             }
             return attrs;
         }
 
-        private static ImmutableArray<ProjectElement> Concat(ImmutableArray<ProjectElement> existing, List<ProjectElement> added)
-        {
-            ImmutableArray<ProjectElement> baseArray = existing.IsDefaultOrEmpty ? ImmutableArray<ProjectElement>.Empty : existing;
-            return baseArray.AddRange(added);
-        }
+        private static EquatableArray<ProjectElement> Concat(EquatableArray<ProjectElement> existing, List<ProjectElement> added) =>
+            existing.AsImmutableArray().AddRange(added);
     }
 }

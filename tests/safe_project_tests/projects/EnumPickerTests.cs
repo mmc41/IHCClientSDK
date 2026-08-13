@@ -48,7 +48,7 @@ namespace Ihc.Vis.Tests
                 Assert.That(EnumDefCount(session.Current!), Is.EqualTo(defsBefore), "picking an existing type authors NO new enum type");
                 Assert.That(variable.Tag, Is.EqualTo("resource_enum"));
                 Assert.That(variable.GetAttribute("typedef"), Is.EqualTo(builtIn.Id!.Value.ToToken()), "references the existing type's def-id");
-                Assert.That(variable.GetAttribute("inivalue"), Is.EqualTo(builtIn.ChildrenOrEmpty().First(v => v.Tag == "enum_value").Id!.Value.ToToken()),
+                Assert.That(variable.GetAttribute("inivalue"), Is.EqualTo(builtIn.Children.First(v => v.Tag == "enum_value").Id!.Value.ToToken()),
                     "the initial value is the type's first state");
             });
         }
@@ -69,7 +69,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(EnumDefCount(session.Current!), Is.EqualTo(defsBefore + 1), "one new type authored");
-                Assert.That(type.ChildrenOrEmpty().Count(c => c.Tag == "enum_value"), Is.EqualTo(0), "a 0-state type");
+                Assert.That(type.Children.Count(c => c.Tag == "enum_value"), Is.EqualTo(0), "a 0-state type");
                 Assert.That(session.Current!.FindParent(type.Id!.Value)!.Tag, Is.EqualTo("enum_definitions"), "project-global");
                 Assert.That(session.Current!.Root.Descendants().Any(e => e.Tag == "resource_enum" && e.GetAttribute("typedef") == type.Id!.Value.ToToken()),
                     Is.False, "unreferenced — no variable was inserted");
@@ -90,7 +90,7 @@ namespace Ihc.Vis.Tests
             Project reloaded = ProjectReader.Read(ms.ToArray());
 
             ProjectElement type = reloaded.Root.Descendants().First(e => e.Tag == "enum_definition" && e.GetAttribute("name") == "MyStandalone");
-            Assert.That(type.ChildrenOrEmpty().Count(c => c.Tag == "enum_value"), Is.EqualTo(0), "the empty standalone type survives save→reload");
+            Assert.That(type.Children.Count(c => c.Tag == "enum_value"), Is.EqualTo(0), "the empty standalone type survives save→reload");
         }
     }
 }

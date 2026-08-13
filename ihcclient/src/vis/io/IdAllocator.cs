@@ -77,7 +77,7 @@ namespace Ihc.Vis.Io
         internal static long MaxCounterPresent(ProjectElement element)
         {
             long max = element.Id is { } id ? id.Counter : 0;
-            if (!element.Children.IsDefaultOrEmpty)
+            if (!element.Children.IsEmpty)
             {
                 foreach (ProjectElement child in element.Children)
                 {
@@ -105,9 +105,9 @@ namespace Ihc.Vis.Io
             // token cannot be a live IDREF target a caller wired at anyway. Both predicates key off the id attribute.
             bool hasIdToken = element.GetAttribute("id") is not null;
             ElementId? id = element.Id ?? (!hasIdToken && TypeCode.ForTag(element.Tag) is { } code ? Allocate(code) : null);
-            ImmutableArray<ProjectElement> children = element.ChildrenOrEmpty().IsEmpty
+            ImmutableArray<ProjectElement> children = element.Children.IsEmpty
                 ? ImmutableArray<ProjectElement>.Empty
-                : element.ChildrenOrEmpty().Select(MintMissingIds).ToImmutableArray();
+                : element.Children.Select(MintMissingIds).ToImmutableArray();
             ProjectElement rebuilt = element with { Id = id, Children = children };
             return id is { } minted && !hasIdToken
                 ? rebuilt.WithAttribute("id", minted.ToToken())
@@ -118,7 +118,7 @@ namespace Ihc.Vis.Io
         {
             long max = 0;
             ElementSchema? schema = view.TryGet(element.Tag);
-            if (schema is not null && !element.Attrs.IsDefaultOrEmpty)
+            if (schema is not null && !element.Attrs.IsEmpty)
             {
                 foreach ((string name, string value) in element.Attrs)
                 {
@@ -129,7 +129,7 @@ namespace Ihc.Vis.Io
                     }
                 }
             }
-            if (!element.Children.IsDefaultOrEmpty)
+            if (!element.Children.IsEmpty)
             {
                 foreach (ProjectElement child in element.Children)
                 {

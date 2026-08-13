@@ -60,7 +60,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project2-CustomBlock.vis");
             ElementId output = Fb(project, "AutoProof").FindChild("outputs")!
-                .ChildrenOrEmpty().First(e => e.Tag == "resource_output").Id!.Value;
+                .Children.First(e => e.Tag == "resource_output").Id!.Value;
             ProjectDocumentSession session = Session(project);
 
             EditOutcome outcome = session.Apply(new SetOutputBackup(output, Save: true));
@@ -106,7 +106,7 @@ namespace Ihc.Vis.Tests
             // engine, where it refuses any locked-block target before the Logning-shape check.
             Project project = await Load("project2-CustomBlock.vis");
             ProjectEditor editor = project.Edit();
-            ElementId inLocked = Fb(project, "AutoProof").FindChild("outputs")!.ChildrenOrEmpty().First().Id!.Value;
+            ElementId inLocked = Fb(project, "AutoProof").FindChild("outputs")!.Children.First().Id!.Value;
 
             var ex = Assert.Throws<InvalidOperationException>(() => editor.ToggleLogMark(inLocked));
             Assert.That(ex!.Message, Does.Contain("låst funktionsblok"));

@@ -242,7 +242,7 @@ namespace Ihc.Vis.Tests
         {
             ProjectAppService app = App;
             Project project = await Load("project3-KompleksWired.vis");
-            ElementId localityWithContents = project.Groups.First(g => !g.Children.IsDefaultOrEmpty).Id!.Value;
+            ElementId localityWithContents = project.Groups.First(g => !g.Children.IsEmpty).Id!.Value;
             ElementId product = project.Root.DescendantsAndSelf()
                 .First(e => Ihc.Vis.Products.ProductClassifier.IsProduct(e.Tag)).Id!.Value;
             ElementId linkHalf = project.Root.DescendantsAndSelf().First(e => e.IsLinkHalf).Id!.Value;
@@ -443,7 +443,7 @@ namespace Ihc.Vis.Tests
                 .Select(e => e.Id!.Value)
                 .First(id => app.Commands.UpdateEnumStates(project, id, new[] { "probe" }) is not null);
             Assert.That(ElementId.TryParse(project.View(project.FindById(enumId)!).Effective("typedef"), out ElementId defId), Is.True);
-            List<string> current = project.FindById(defId)!.ChildrenOrEmpty().Where(c => c.IsEnumValue)
+            List<string> current = project.FindById(defId)!.Children.Where(c => c.IsEnumValue)
                 .Select(c => project.View(c).Name ?? string.Empty).ToList();
             Assert.That(current, Is.Not.Empty, "the referenced type has states");
 

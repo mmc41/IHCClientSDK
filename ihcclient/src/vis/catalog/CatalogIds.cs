@@ -97,7 +97,7 @@ namespace Ihc.Vis.Catalog
             }
 
             var attrs = ImmutableArray.CreateBuilder<(string, string)>();
-            foreach ((string name, string value) in element.AttrsOrEmpty())
+            foreach ((string name, string value) in element.Attrs)
             {
                 if (name == "id" && newToken is not null)
                 {
@@ -113,7 +113,7 @@ namespace Ihc.Vis.Catalog
                 }
             }
 
-            ImmutableArray<ProjectElement> children = element.ChildrenOrEmpty()
+            ImmutableArray<ProjectElement> children = element.Children
                 .Select(c => RewriteIds(c, view, nextToken, idRefMap))
                 .ToImmutableArray();
             return new ProjectElement(element.Tag, newId, attrs.ToImmutable(), children);

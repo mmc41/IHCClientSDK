@@ -118,7 +118,7 @@ namespace Ihc.Vis.Tests
                 Assert.That(() => editor.Link(flag, flag), Throws.InvalidOperationException,
                     "Link refuses the self-link too — no engine/session/doc divergence");
                 ProjectElement pin = editor.ToProject().FindById(flag)!;
-                Assert.That(pin.ChildrenOrEmpty().Any(c => c.Tag is "link_from_resource" or "link_to_resource"), Is.False,
+                Assert.That(pin.Children.Any(c => c.Tag is "link_from_resource" or "link_to_resource"), Is.False,
                     "the refused self-link wrote no half — it fails before any mutation");
             });
         }

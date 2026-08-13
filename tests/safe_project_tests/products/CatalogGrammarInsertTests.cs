@@ -127,7 +127,7 @@ namespace Ihc.Vis.Tests
                 {
                     continue;
                 }
-                foreach ((string name, string value) in element.AttrsOrEmpty())
+                foreach ((string name, string value) in element.Attrs)
                 {
                     if (schema.IsIdRef(name) && value.Length > 0 && value != "_0x0" && !ids.Contains(value))
                     {

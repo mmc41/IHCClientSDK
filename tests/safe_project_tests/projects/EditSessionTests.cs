@@ -30,7 +30,7 @@ namespace Ihc.Vis.Tests
                 {
                     ids.Add(id);
                 }
-                if (!e.Children.IsDefaultOrEmpty)
+                if (!e.Children.IsEmpty)
                 {
                     foreach (ProjectElement c in e.Children)
                     {

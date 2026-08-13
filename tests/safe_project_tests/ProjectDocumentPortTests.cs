@@ -92,8 +92,8 @@ namespace Ihc.Vis.Tests
 
             ElementId g0 = project.Groups.First().Id!.Value;
             ElementId g1 = project.Groups.Skip(1).First().Id!.Value;
-            ElementId childOfGroup = project.Groups.First(g => g.ChildrenOrEmpty().Any(c => c.Id is not null))
-                .ChildrenOrEmpty().First(c => c.Id is not null).Id!.Value;
+            ElementId childOfGroup = project.Groups.First(g => g.Children.Any(c => c.Id is not null))
+                .Children.First(c => c.Id is not null).Id!.Value;
             ElementId product = project.Root.Descendants()
                 .First(e => e.Tag.StartsWith("product_", System.StringComparison.Ordinal) && e.Id is not null).Id!.Value;
             // Same tag under DIFFERENT parents — reorder must refuse across containers.

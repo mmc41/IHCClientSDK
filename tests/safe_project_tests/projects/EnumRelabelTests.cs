@@ -23,7 +23,7 @@ namespace Ihc.Vis.Tests
         public async Task EnumRelabel_UserTypeState_ChangesLabelPreservingIdAndElidedIndex()
         {
             Project project = Load("Project1-SimpelWired.vis");
-            ElementId valueId = EnumType(project, "PIR funktion").ChildrenOrEmpty().First(v => v.Tag == "enum_value").Id!.Value;
+            ElementId valueId = EnumType(project, "PIR funktion").Children.First(v => v.Tag == "enum_value").Id!.Value;
 
             ProjectEditor editor = project.Edit();
             editor.RelabelEnumValue(editor.EnumDefinition("PIR funktion"), valueId, "Relabeled");
@@ -47,7 +47,7 @@ namespace Ihc.Vis.Tests
         public void EnumRelabel_BuiltInType_IsRefused()
         {
             Project project = Load("Project1-SimpelWired.vis");
-            ElementId valueId = EnumType(project, "Persienne tilstand").ChildrenOrEmpty().First(v => v.Tag == "enum_value").Id!.Value;
+            ElementId valueId = EnumType(project, "Persienne tilstand").Children.First(v => v.Tag == "enum_value").Id!.Value;
             ProjectEditor editor = project.Edit();
 
             InvalidOperationException? ex = Assert.Throws<InvalidOperationException>(() =>

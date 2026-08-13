@@ -58,7 +58,7 @@ namespace Ihc.Vis.Reporting
         // ancestor group is this locality — a nested group's subtree belongs to that nested locality.
         private static IEnumerable<ProjectElement> EndUserProducts(Project project, ProjectElement locality)
         {
-            foreach (ProjectElement child in locality.ChildrenOrEmpty())
+            foreach (ProjectElement child in locality.Children)
             {
                 if (child.Tag == "group")
                 {
@@ -78,7 +78,7 @@ namespace Ihc.Vis.Reporting
         // A6: dataline inputs always precede outputs; airlink products list their inputs (vendor scope).
         private static IEnumerable<ProjectElement> Terminals(ProjectElement product)
         {
-            ImmutableArray<ProjectElement> children = product.ChildrenOrEmpty();
+            ImmutableArray<ProjectElement> children = product.Children.AsImmutableArray();
             return product.Tag == "product_airlink"
                 ? children.Where(c => c.Tag == "airlink_input")
                 : children.Where(c => c.Tag == "dataline_input").Concat(children.Where(c => c.Tag == "dataline_output"));

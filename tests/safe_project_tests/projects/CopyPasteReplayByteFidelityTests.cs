@@ -28,7 +28,7 @@ namespace Ihc.Vis.Tests
             Project after = project.Edit().NormalizeCatalogEnums().ToProject();
 
             ProjectElement enums = after.Child("enum_definitions")!;
-            var defs = enums.ChildrenOrEmpty().Where(e => e.Tag == "enum_definition").ToList();
+            var defs = enums.Children.Where(e => e.Tag == "enum_definition").ToList();
             ProjectElement persienne = defs[^2];   // the two typeid enums are now the last two, renumbered
             ProjectElement logning = defs[^1];
             // project3 has 60 resource_enum rows in all; only the 4 that referenced Logning are re-pointed.
@@ -45,7 +45,7 @@ namespace Ihc.Vis.Tests
                 Assert.That(persienne.GetAttribute("typeid"), Is.EqualTo("_0x10"), "typeid preserved");
                 Assert.That(logning.GetAttribute("name"), Is.EqualTo("Logning"));
                 Assert.That(logning.GetAttribute("id"), Is.EqualTo("_0x57347"));
-                Assert.That(logning.ChildrenOrEmpty().First().GetAttribute("id"), Is.EqualTo("_0x57448"),
+                Assert.That(logning.Children.First().GetAttribute("id"), Is.EqualTo("_0x57448"),
                     "first Logning value renumbered");
                 Assert.That(after.LastUniqueId, Is.EqualTo("_0x579"), "13 ids consumed (2 defs + 11 values)");
                 Assert.That(logningRefs, Has.Count.EqualTo(4), "the 4 Logning refs repoint at the re-hoisted def");
@@ -85,7 +85,7 @@ namespace Ihc.Vis.Tests
             editor.NormalizeCatalogEnums();                       // Logning → _0x57347 (+ 6 values)
             Project beforeCopy = editor.ToProject();
             int enumDefsBefore = beforeCopy.Child("enum_definitions")!
-                .ChildrenOrEmpty().Count(e => e.Tag == "enum_definition");
+                .Children.Count(e => e.Tag == "enum_definition");
             long lastBefore = HexValue(beforeCopy.LastUniqueId!);   // _0x579
 
             // Copy the "med logning" sensor (2 resource_enum → shared Logning) into an empty group.
@@ -100,7 +100,7 @@ namespace Ihc.Vis.Tests
                 // id and its 9 serialized children → 17 ids for a 10-element product (1 + 7 + 9), not 10.
                 Assert.That(HexValue(after.LastUniqueId!) - lastBefore, Is.EqualTo(17),
                     "product (1) + burned Logning footprint (7) + children (9)");
-                Assert.That(after.Child("enum_definitions")!.ChildrenOrEmpty().Count(e => e.Tag == "enum_definition"),
+                Assert.That(after.Child("enum_definitions")!.Children.Count(e => e.Tag == "enum_definition"),
                     Is.EqualTo(enumDefsBefore), "shared enum reused, not duplicated");
                 Assert.That(copyEnumRows, Has.Count.EqualTo(2));
                 Assert.That(copyEnumRows.All(r => r.GetAttribute("typedef") == "_0x57347"), Is.True,

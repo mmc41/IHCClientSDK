@@ -81,7 +81,7 @@ namespace Ihc.Vis.Validation
             ImmutableArray<ProjectValidationFinding> documentation = DocumentationValidator.Check(project);
             return documentation.IsEmpty
                 ? structural
-                : ProjectValidationResult.FromFindings(structural.Findings.AddRange(documentation));
+                : ProjectValidationResult.FromFindings(structural.Findings.AsImmutableArray().AddRange(documentation));
         }
 
         // ----- ids -----
@@ -156,7 +156,7 @@ namespace Ihc.Vis.Validation
                 }
             }
 
-            if (element.Attrs.IsDefaultOrEmpty)
+            if (element.Attrs.IsEmpty)
             {
                 return;
             }
@@ -201,7 +201,7 @@ namespace Ihc.Vis.Validation
         private static void ValidateFunctionBlockShape(ProjectElement functionBlock, FindingCollector findings)
         {
             string id = functionBlock.GetAttribute("id") ?? "?";
-            ImmutableArray<ProjectElement> children = functionBlock.ChildrenOrEmpty();
+            ImmutableArray<ProjectElement> children = functionBlock.Children.AsImmutableArray();
 
             // (1) exactly the five containers, in the fixed order (no missing / extra / foreign / reordered child).
             List<string> actual = children.Select(c => c.Tag).ToList();
@@ -214,7 +214,7 @@ namespace Ihc.Vis.Validation
 
             // (2) programs may hold only program_simple.
             ProjectElement? programs = functionBlock.FindChild("programs");
-            if (programs is not null && !programs.Children.IsDefaultOrEmpty)
+            if (programs is not null && !programs.Children.IsEmpty)
             {
                 foreach (ProjectElement program in programs.Children)
                 {
@@ -229,7 +229,7 @@ namespace Ihc.Vis.Validation
             // (3) pin types are bound to their container (§6.3.1).
             foreach (ProjectElement container in children)
             {
-                if (container.Children.IsDefaultOrEmpty)
+                if (container.Children.IsEmpty)
                 {
                     continue;
                 }
@@ -269,7 +269,7 @@ namespace Ihc.Vis.Validation
             void Walk(ProjectElement element)
             {
                 ElementSchema? schema = view.TryGet(element.Tag);
-                if (schema is not null && !element.Attrs.IsDefaultOrEmpty)
+                if (schema is not null && !element.Attrs.IsEmpty)
                 {
                     foreach ((string name, string value) in element.Attrs)
                     {
@@ -289,7 +289,7 @@ namespace Ihc.Vis.Validation
                 {
                     ValidateEmbeddedConstants(element, findings);
                 }
-                if (!element.Children.IsDefaultOrEmpty)
+                if (!element.Children.IsEmpty)
                 {
                     foreach (ProjectElement child in element.Children)
                     {
@@ -302,7 +302,7 @@ namespace Ihc.Vis.Validation
 
         private static void ValidateEmbeddedConstants(ProjectElement leaf, FindingCollector findings)
         {
-            if (leaf.Children.IsDefaultOrEmpty)
+            if (leaf.Children.IsEmpty)
             {
                 return;
             }
@@ -331,7 +331,7 @@ namespace Ihc.Vis.Validation
             string[] expected = program.Tag == "program_simple"
                 ? new[] { "events", "actions" }
                 : new[] { "conditions", "actions", "actions" };
-            List<string> actual = program.ChildrenOrEmpty().Select(c => c.Tag).ToList();
+            List<string> actual = program.Children.Select(c => c.Tag).ToList();
             if (!actual.SequenceEqual(expected))
             {
                 findings.Warning("program-shape", program,
@@ -485,7 +485,7 @@ namespace Ihc.Vis.Validation
                 {
                     continue;
                 }
-                bool found = !definition.Children.IsDefaultOrEmpty
+                bool found = !definition.Children.IsEmpty
                     && definition.Children.Any(v => v.Tag == "enum_value" && v.GetAttribute("id") == inivalue);
                 if (!found)
                 {
@@ -544,7 +544,7 @@ namespace Ihc.Vis.Validation
                     $"last_unique_id (0x{lastUniqueId:x}) is below the highest counter present (0x{maxCounter:x})");
             }
 
-            List<string> actual = root.ChildrenOrEmpty().Select(c => c.Tag).ToList();
+            List<string> actual = root.Children.Select(c => c.Tag).ToList();
             if (!actual.SequenceEqual(RootChildOrder))
             {
                 findings.Warning("root-children", root,
@@ -557,7 +557,7 @@ namespace Ihc.Vis.Validation
 
         private static void ValidateContainment(ProjectElement parent, ProjectElement? grandParent, FindingCollector findings)
         {
-            if (parent.Children.IsDefaultOrEmpty)
+            if (parent.Children.IsEmpty)
             {
                 return;
             }

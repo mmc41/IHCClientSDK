@@ -16,7 +16,7 @@ public class DeletionTests
         {
             if (e.Tag == tag && e.Id is { } id)
                 return id;
-            if (FindTagged(e.ChildrenOrEmpty(), tag) is { } found)
+            if (FindTagged(e.Children, tag) is { } found)
                 return found;
         }
         return null;
@@ -31,7 +31,7 @@ public class DeletionTests
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var product = harness.ProjectService.GetAvailableProducts().First(p => p.Resources.Any(r => r.Tag == "dataline_input"));
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
-        var productId = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().First(c => c.Tag.StartsWith("product_")).Id!.Value;
+        var productId = harness.Session.Current!.FindById(loc)!.Children.First(c => c.Tag.StartsWith("product_")).Id!.Value;
         harness.Dialogs.ConfirmResult = false;   // must NOT be consulted for an unreferenced node
 
         var ok = await harness.Session.DeleteNodeAsync(productId);
@@ -61,7 +61,7 @@ public class DeletionTests
         var productPin = vm.InstallationNodes[0].Children[0].Children[0].Children[0];
         var blockPin = vm.FunctionNodes[0].Children[0].Children[0].Children[0].Children[0];
         await harness.Session.LinkPinsAsync(productPin.ElementId!.Value, blockPin.ElementId!.Value);
-        var productId = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().First(c => c.Tag.StartsWith("product_")).Id!.Value;
+        var productId = harness.Session.Current!.FindById(loc)!.Children.First(c => c.Tag.StartsWith("product_")).Id!.Value;
 
         // No prompt: the product and the reciprocal link half on the block pin go together straight away.
         await vm.DeleteCommand.ExecuteAsync(FindNode(vm.InstallationNodes, productId));
@@ -69,7 +69,7 @@ public class DeletionTests
         {
             Assert.That(harness.Dialogs.ConfirmCalls, Is.Zero, "a referenced product deletes without asking");
             Assert.That(harness.Session.Current!.FindById(productId), Is.Null, "the product is removed");
-            Assert.That(harness.Session.Current!.FindById(blockPin.ElementId!.Value)!.ChildrenOrEmpty()
+            Assert.That(harness.Session.Current!.FindById(blockPin.ElementId!.Value)!.Children
                 .Any(c => c.Tag is "link_from_resource" or "link_to_resource"), Is.False, "the block's link half cascades away");
         });
 
@@ -78,7 +78,7 @@ public class DeletionTests
         Assert.Multiple(() =>
         {
             Assert.That(harness.Session.Current!.FindById(productId), Is.Not.Null, "undo restores the product");
-            Assert.That(harness.Session.Current!.FindById(blockPin.ElementId!.Value)!.ChildrenOrEmpty()
+            Assert.That(harness.Session.Current!.FindById(blockPin.ElementId!.Value)!.Children
                 .Any(c => c.Tag is "link_from_resource" or "link_to_resource"), Is.True, "and the link — one step");
         });
     }
@@ -91,7 +91,7 @@ public class DeletionTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        var block = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().First(c => c.Tag == "functionblock");
+        var block = harness.Session.Current!.FindById(loc)!.Children.First(c => c.Tag == "functionblock");
         var inputsSection = block.FindChild("inputs")!.Id!.Value;
 
         var ok = await harness.Session.DeleteNodeAsync(inputsSection);

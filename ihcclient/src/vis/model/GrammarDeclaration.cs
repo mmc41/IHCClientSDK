@@ -14,7 +14,7 @@ namespace Ihc.Vis.Model
     /// list of these records reproduces a vendor header's declaration stream exactly (corpus: zero interleavings).
     /// Created through validated factories only; value semantics.
     /// </summary>
-    public sealed class GrammarDeclaration : IEquatable<GrammarDeclaration>
+    public sealed record GrammarDeclaration
     {
         /// <summary>The element type name the declaration is for (ordinal-compared — the corpus contains a
         /// case-colliding pair that case-folding would merge).</summary>
@@ -26,9 +26,11 @@ namespace Ihc.Vis.Model
         public bool HasElementDecl { get; }
 
         /// <summary>The ATTLIST's attribute declarations in declared order; empty for an ELEMENT-only record.</summary>
-        public ImmutableArray<GrammarAttr> Attrs { get; }
+        public EquatableArray<GrammarAttr> Attrs { get; }
 
-        private GrammarDeclaration(string tag, bool hasElementDecl, ImmutableArray<GrammarAttr> attrs)
+        // Private, and the properties are get-only rather than init: construction stays behind the validated
+        // factories below, so `with` cannot bypass them and no caller can build a contradictory grammar.
+        private GrammarDeclaration(string tag, bool hasElementDecl, EquatableArray<GrammarAttr> attrs)
         {
             Tag = tag;
             HasElementDecl = hasElementDecl;
@@ -54,11 +56,11 @@ namespace Ihc.Vis.Model
         // The single validated construction path. Per-declaration DTD validity constraints (corpus-verified to
         // hold with zero violations): at most one ID-typed attribute (VC: One ID per Element Type) and unique
         // attribute names; plus the model's own consistency rules (XML-Name tag, non-empty orphan).
-        internal static GrammarDeclaration Create(string tag, bool hasElementDecl, ImmutableArray<GrammarAttr> attrs)
+        internal static GrammarDeclaration Create(string tag, bool hasElementDecl, EquatableArray<GrammarAttr> attrs)
         {
             ArgumentNullException.ThrowIfNull(tag);
             GrammarAttr.VerifyXmlName(tag, $"declaration tag '{tag}'");
-            ImmutableArray<GrammarAttr> list = attrs.IsDefault ? ImmutableArray<GrammarAttr>.Empty : attrs;
+            EquatableArray<GrammarAttr> list = attrs;   // no default-normalization needed: the wrapper reads default as empty
             if (!hasElementDecl && list.IsEmpty)
             {
                 throw new ArgumentException(
@@ -98,17 +100,8 @@ namespace Ihc.Vis.Model
             return null;
         }
 
-        public bool Equals(GrammarDeclaration? other) =>
-            other is not null
-            && Tag == other.Tag
-            && HasElementDecl == other.HasElementDecl
-            && ImmutableArrayValue.Equal(Attrs, other.Attrs);
-
-        public override bool Equals(object? obj) => Equals(obj as GrammarDeclaration);
-
-        public override int GetHashCode() =>
-            HashCode.Combine(Tag, HasElementDecl, ImmutableArrayValue.Hash(Attrs));
-
+        // Equality and hashing are the record's, over EquatableArray<GrammarAttr> Attrs. ToString stays
+        // handwritten: this DTD-shaped form is what diagnostics print, not the record's `Type { Prop = … }`.
         public override string ToString() =>
             $"GrammarDeclaration({Tag}, {(HasElementDecl ? "element" : "orphan-attlist")}, {Attrs.Length} attrs)";
     }

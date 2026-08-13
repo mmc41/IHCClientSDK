@@ -144,7 +144,7 @@ namespace Ihc.Vis.Editing
         // The container-scoped, type-agnostic row-by-name lookup shared by Setting(name, configure) and
         // ResolveResource; null when the container is absent or holds no row of that name.
         private static ElementId? NamedRowIdIn(ProjectElement block, string container, string name) =>
-            block.FindChild(container)?.ChildrenOrEmpty().FirstOrDefault(c => c.GetAttribute("name") == name)?.Id;
+            block.FindChild(container)?.Children.FirstOrDefault(c => c.GetAttribute("name") == name)?.Id;
 
         /// <summary>
         /// Adds a new input pin (<c>resource_input</c>) under this block's <c>inputs</c> container and returns its
@@ -297,8 +297,8 @@ namespace Ihc.Vis.Editing
             var emptied = ImmutableHashSet.CreateBuilder<ElementId>();
             foreach (ProjectElement element in source.DescendantsAndSelf())
             {
-                if (element.Id is { } id && !element.Children.IsDefaultOrEmpty
-                    && element.ChildrenOrEmpty().All(c => ReciprocalTags.All.Contains(c.Tag)))
+                if (element.Id is { } id && !element.Children.IsEmpty
+                    && element.Children.All(c => ReciprocalTags.All.Contains(c.Tag)))
                 {
                     emptied.Add(id);
                 }
@@ -310,7 +310,7 @@ namespace Ihc.Vis.Editing
         // just externally-paired ones: a type definition carries no instance wiring, and no catalog file (stock or
         // vendor-exported) contains such rows.
         private static ProjectElement WithoutWiringRows(ProjectElement element) =>
-            element.Children.IsDefaultOrEmpty
+            element.Children.IsEmpty
                 ? element
                 : element with
                 {
@@ -342,7 +342,7 @@ namespace Ihc.Vis.Editing
                 stamps.Add(("note", note));
             }
             var bag = new List<(string Name, string Value)>();
-            foreach ((string attr, string value) in root.AttrsOrEmpty())
+            foreach ((string attr, string value) in root.Attrs)
             {
                 if (attr is "id" or "master_schneider_electric" or "master_type" or "master_version" or "note")
                 {
@@ -360,7 +360,7 @@ namespace Ihc.Vis.Editing
                 }
             }
             bag.AddRange(stamps);
-            return ProjectElement.Create(root.Tag, root.Id, bag, root.ChildrenOrEmpty());
+            return ProjectElement.Create(root.Tag, root.Id, bag, root.Children);
         }
 
         // The vendor head shape: one declaration per element type the body uses, in preorder first-occurrence

@@ -26,7 +26,7 @@ namespace Ihc.Vis.Model
     /// <para><b>Value semantics</b> including the array members — a precondition for the generated catalog's
     /// grammar interning/deduplication.</para>
     /// </remarks>
-    public sealed class CatalogGrammar : IEquatable<CatalogGrammar>
+    public sealed record CatalogGrammar
     {
         /// <summary>The encoding label every vendor catalog file declares (independently of its physical
         /// <see cref="CatalogTextEncoding"/> — the corpus's <c>.def</c> files are physically UTF-8-BOM while
@@ -36,7 +36,7 @@ namespace Ihc.Vis.Model
         /// <summary>The grammar of a definition authored without any DTD: no declarations, no fallback. A
         /// definition carrying it can be built and inserted (registry-resolved) but not written to a catalog file.</summary>
         public static readonly CatalogGrammar Empty =
-            new(ImmutableArray<GrammarDeclaration>.Empty, DefaultDeclaredEncoding, doctypeRoot: null, verbatimHead: null);
+            new([], DefaultDeclaredEncoding, doctypeRoot: null, verbatimHead: null);
 
         /// <summary>The encoding label of the XML prolog — header <b>data</b> (what the file says), deliberately
         /// independent of the physical byte encoding the writer uses (<see cref="CatalogTextEncoding"/>).</summary>
@@ -47,7 +47,7 @@ namespace Ihc.Vis.Model
         public string? DoctypeRoot { get; }
 
         /// <summary>The ordered per-tag declaration records; tags are unique (ordinal).</summary>
-        public ImmutableArray<GrammarDeclaration> Declarations { get; }
+        public EquatableArray<GrammarDeclaration> Declarations { get; }
 
         /// <summary>The lenient parser's byte-faithful fallback for an out-of-envelope user header — see the class
         /// remarks for the two-state semantics. Never set by builders or generated code.</summary>
@@ -57,7 +57,9 @@ namespace Ihc.Vis.Model
         /// verbatim fallback (the <see cref="Empty"/> state, possibly with different prolog data).</summary>
         public bool IsEmpty => Declarations.IsEmpty && VerbatimHead is null;
 
-        private CatalogGrammar(ImmutableArray<GrammarDeclaration> declarations, string declaredEncoding,
+        // Private, and the properties are get-only rather than init: construction stays behind the validated
+        // factories below, so `with` cannot bypass them and no caller can build a contradictory grammar.
+        private CatalogGrammar(EquatableArray<GrammarDeclaration> declarations, string declaredEncoding,
             string? doctypeRoot, string? verbatimHead)
         {
             Declarations = declarations;
@@ -140,18 +142,9 @@ namespace Ihc.Vis.Model
             return null;
         }
 
-        public bool Equals(CatalogGrammar? other) =>
-            other is not null
-            && DeclaredEncoding == other.DeclaredEncoding
-            && DoctypeRoot == other.DoctypeRoot
-            && VerbatimHead == other.VerbatimHead
-            && ImmutableArrayValue.Equal(Declarations, other.Declarations);
-
-        public override bool Equals(object? obj) => Equals(obj as CatalogGrammar);
-
-        public override int GetHashCode() =>
-            HashCode.Combine(DeclaredEncoding, DoctypeRoot, VerbatimHead, ImmutableArrayValue.Hash(Declarations));
-
+        // Equality and hashing are the record's, over EquatableArray<GrammarDeclaration> Declarations — the
+        // value semantics the generated catalog's grammar interning/deduplication depends on. ToString stays
+        // handwritten: this summary form is what diagnostics print, not the record's `Type { Prop = … }`.
         public override string ToString() =>
             $"CatalogGrammar({Declarations.Length} declarations, encoding={DeclaredEncoding}" +
             $"{(DoctypeRoot is null ? "" : ", root=" + DoctypeRoot)}{(VerbatimHead is null ? "" : ", verbatim fallback")})";

@@ -101,7 +101,7 @@ namespace Ihc.Vis.Tests
                 Assert.That(sande.Id!.Value.ToToken(), Is.EqualTo("_0x10766"), "skeleton: true branch third");
                 Assert.That(sande.GetAttribute("type"), Is.EqualTo("_0x1"), "true branch keeps its vendor type");
                 Assert.That(falske.Id!.Value.ToToken(), Is.EqualTo("_0x10866"), "skeleton: false branch fourth");
-                Assert.That(falske.Children.IsDefaultOrEmpty, Is.True, "false branch stays empty");
+                Assert.That(falske.Children.IsEmpty, Is.True, "false branch stays empty");
 
                 ProjectElement plain = conditions.Children[0];
                 Assert.That(plain.Id!.Value.ToToken(), Is.EqualTo("_0x109c9"), "plain condition fifth");
@@ -128,7 +128,7 @@ namespace Ihc.Vis.Tests
                 Assert.That(group.GetAttribute("note"), Is.EqualTo("Gruppering af betingelser til logisk test"),
                     "conditions note");
                 Assert.That(group.GetAttribute("type"), Is.Null, "nested group stays AND (attr omitted)");
-                Assert.That(group.Children.IsDefaultOrEmpty, Is.True, "nested group authored empty");
+                Assert.That(group.Children.IsEmpty, Is.True, "nested group authored empty");
 
                 ProjectElement action = sande.Children[0];
                 Assert.That(action.Id!.Value.ToToken(), Is.EqualTo("_0x10cca"), "action eighth (last)");

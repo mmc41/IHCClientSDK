@@ -91,7 +91,7 @@ namespace Ihc.Vis.Session
             {
                 map.TryAdd(id, element);
             }
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
+            foreach (ProjectElement child in element.Children)
             {
                 Walk(child, map);
             }
@@ -102,18 +102,18 @@ namespace Ihc.Vis.Session
         // id-less descendant's change surfaces as its nearest id-bearing ancestor being Changed.
         private static bool SelfAndIdlessEqual(ProjectElement a, ProjectElement b)
         {
-            if (a.Tag != b.Tag || !ImmutableArrayValue.Equal(a.Attrs, b.Attrs))
+            if (a.Tag != b.Tag || a.Attrs != b.Attrs)
             {
                 return false;
             }
-            List<ProjectElement> aIdless = a.ChildrenOrEmpty().Where(c => c.Id is null).ToList();
-            List<ProjectElement> bIdless = b.ChildrenOrEmpty().Where(c => c.Id is null).ToList();
+            List<ProjectElement> aIdless = a.Children.Where(c => c.Id is null).ToList();
+            List<ProjectElement> bIdless = b.Children.Where(c => c.Id is null).ToList();
             return aIdless.Count == bIdless.Count
                 && aIdless.Zip(bIdless, SelfAndIdlessEqual).All(equal => equal);
         }
 
         private static List<ElementId> ChildIdSequence(ProjectElement element) =>
-            element.ChildrenOrEmpty().Where(c => c.Id is not null).Select(c => c.Id!.Value).ToList();
+            element.Children.Where(c => c.Id is not null).Select(c => c.Id!.Value).ToList();
 
         private static bool MetadataBlockChanged(Project old, Project updated, string tag)
         {

@@ -75,7 +75,7 @@ namespace Ihc.Vis.Tests
             ProjectElement enumDefinition = El("enum_definition", 0x80, new[] { ("typeid", "_0x16") },
                 El("enum_value", 0x81, new[] { ("typeid", "_0x17") }));
             string enumId = enumDefinition.GetAttribute("id")!;
-            string valueId = enumDefinition.ChildrenOrEmpty()[0].GetAttribute("id")!;
+            string valueId = enumDefinition.Children[0].GetAttribute("id")!;
 
             ProductDefinition product = ProductDefinitionBuilder
                 .Dataline("_0x9f03", "03#Synthetic Sensor Product")
@@ -235,7 +235,7 @@ namespace Ihc.Vis.Tests
             ProjectElement enumDefinition = El("enum_definition", 0x80, new[] { ("typeid", "_0x16") },
                 El("enum_value", 0x81, new[] { ("typeid", "_0x17") }));
             string enumId = enumDefinition.GetAttribute("id")!;
-            string valueId = enumDefinition.ChildrenOrEmpty()[0].GetAttribute("id")!;
+            string valueId = enumDefinition.Children[0].GetAttribute("id")!;
 
             ProductDefinition product = ProductDefinitionBuilder
                 .Dataline("_0x9f09", "11#Synthetic sensor med logning")

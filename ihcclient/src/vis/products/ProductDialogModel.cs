@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using Ihc.Vis.Model;
 
@@ -17,13 +16,13 @@ namespace Ihc.Vis.Products
     /// <see cref="ProductDefinition"/> in memory the way <c>Documentation</c> is, and no writer reads it. That is
     /// what keeps the byte-fidelity guarantee independent of anything decided here.</para>
     /// </summary>
-    public sealed record ProductDialogModel(ImmutableArray<DialogGroupModel> Groups)
+    public sealed record ProductDialogModel(EquatableArray<DialogGroupModel> Groups)
     {
         /// <summary>The model for a family with no preset — the minimal fallback's starting point.</summary>
-        public static ProductDialogModel Empty { get; } = new(ImmutableArray<DialogGroupModel>.Empty);
+        public static ProductDialogModel Empty { get; } = new([]);
 
         /// <summary>True when the model declares no groups at all.</summary>
-        public bool IsEmpty => Groups.IsDefaultOrEmpty;
+        public bool IsEmpty => Groups.IsEmpty;
 
         /// <summary>
         /// What the dialog's title appends to the product's catalog type name — empty for almost every family.
@@ -34,17 +33,8 @@ namespace Ihc.Vis.Products
         /// </summary>
         public string TitleSuffix { get; init; } = string.Empty;
 
-        // A record compares an ImmutableArray member by its backing-array REFERENCE, so two independently
-        // constructed but identical models would be unequal — the pitfall ProjectModelEqualityTests exists for.
-        // ImmutableArrayValue restores the by-value semantics a record is expected to have, exactly as
-        // ProjectElement and CatalogGrammar do.
-        public bool Equals(ProductDialogModel? other) =>
-            other is not null
-            && string.Equals(TitleSuffix, other.TitleSuffix, StringComparison.Ordinal)
-            && ImmutableArrayValue.Equal(Groups, other.Groups);
-
-        public override int GetHashCode() => HashCode.Combine(TitleSuffix, ImmutableArrayValue.Hash(Groups));
-
+        // Equality is the compiler's: EquatableArray<T> compares its elements structurally, so every member
+        // declared above — and every member added later — is covered without a handwritten list.
         public override string ToString() => $"ProductDialogModel({Groups.Length} groups)";
     }
 
@@ -61,7 +51,7 @@ namespace Ihc.Vis.Products
         string Id,
         string? Caption,
         int Columns,
-        ImmutableArray<DialogPartModel> Parts)
+        EquatableArray<DialogPartModel> Parts)
     {
         /// <summary>
         /// Whether a multi-column group reads DOWN each column rather than across each row.
@@ -87,18 +77,6 @@ namespace Ihc.Vis.Products
         /// (it treats an unresolved preset field as a defect, and it should).</para>
         /// </summary>
         public DialogPresence Presence { get; init; } = DialogPresence.Always;
-
-        public bool Equals(DialogGroupModel? other) =>
-            other is not null
-            && string.Equals(Id, other.Id, StringComparison.Ordinal)
-            && string.Equals(Caption, other.Caption, StringComparison.Ordinal)
-            && Columns == other.Columns
-            && ColumnMajor == other.ColumnMajor
-            && Equals(Presence, other.Presence)
-            && ImmutableArrayValue.Equal(Parts, other.Parts);
-
-        public override int GetHashCode() =>
-            HashCode.Combine(Id, Caption, Columns, ColumnMajor, Presence, ImmutableArrayValue.Hash(Parts));
 
         public override string ToString() =>
             $"DialogGroupModel({Id}, {Parts.Length} parts{(Caption is null ? "" : ", \"" + Caption + "\"")})";

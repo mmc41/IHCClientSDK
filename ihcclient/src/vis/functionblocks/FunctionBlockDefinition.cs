@@ -61,7 +61,7 @@ namespace Ihc.Vis.FunctionBlocks
         /// that never had children stays self-closing and one that was emptied does not (uxparity S-22). Empty for a
         /// definition read from a catalog file, where what is on disk is already the truth.
         /// </summary>
-        public ImmutableHashSet<ElementId> ExplicitCloseIds { get; init; } = ImmutableHashSet<ElementId>.Empty;
+        public EquatableSet<ElementId> ExplicitCloseIds { get; init; } = [];
 
         /// <summary>
         /// True only for the catalog's empty "Tom blok" scaffold (<c>Data\fb.def</c>).
@@ -95,45 +95,19 @@ namespace Ihc.Vis.FunctionBlocks
 
         private IReadOnlyList<ResourceSummary> Container(string container) =>
             Body.FindChild(container) is { } holder
-                ? holder.ChildrenOrEmpty()
+                ? holder.Children
                         .Select(c => new ResourceSummary(c.Tag, c.GetAttribute("name") ?? string.Empty, c.Id))
                         .ToArray()
                 : Array.Empty<ResourceSummary>();
 
-        // review F2: the synthesized record equality compares ExplicitCloseIds (an ImmutableHashSet, no value Equals)
-        // BY REFERENCE, so two content-equal definitions with independently-built close-id sets compare unequal —
-        // unlike Body/Grammar/Documentation, which carry value equality by design. Compare it by SET content. Every
-        // OTHER member is already value-equal; KEEP THIS LIST IN SYNC with the record's members if one is added.
-        public bool Equals(FunctionBlockDefinition? other) =>
-            other is not null
-            && string.Equals(MasterType, other.MasterType, StringComparison.Ordinal)
-            && string.Equals(MasterVersion, other.MasterVersion, StringComparison.Ordinal)
-            && string.Equals(MasterName, other.MasterName, StringComparison.Ordinal)
-            && string.Equals(DisplayName, other.DisplayName, StringComparison.Ordinal)
-            && string.Equals(CategoryPath, other.CategoryPath, StringComparison.Ordinal)
-            && Body.Equals(other.Body)
-            && Grammar.Equals(other.Grammar)
-            && SourceEncoding == other.SourceEncoding
-            && IsEmptyTemplate == other.IsEmptyTemplate
-            && Documentation.Equals(other.Documentation)
-            && ExplicitCloseIds.SetEquals(other.ExplicitCloseIds);
-
-        public override int GetHashCode()
-        {
-            var hash = new HashCode();
-            hash.Add(MasterType, StringComparer.Ordinal);
-            hash.Add(MasterVersion, StringComparer.Ordinal);
-            hash.Add(MasterName, StringComparer.Ordinal);
-            hash.Add(DisplayName, StringComparer.Ordinal);
-            hash.Add(CategoryPath, StringComparer.Ordinal);
-            hash.Add(Body);
-            hash.Add(Grammar);
-            hash.Add(SourceEncoding);
-            hash.Add(IsEmptyTemplate);
-            hash.Add(Documentation);
-            hash.Add(ExplicitCloseIds.Count);   // order-independent, cheap, stable across equal sets
-            return hash.ToHashCode();
-        }
+        // review F2 (resolved): ExplicitCloseIds was an ImmutableHashSet, which has no value Equals, so the
+        // synthesized record equality compared it BY REFERENCE and two content-equal definitions with
+        // independently-built close-id sets came out unequal. That single member forced a handwritten pair
+        // listing all ELEVEN members — every other one was already value-equal and gained nothing from being
+        // listed, while the list itself had to be kept in sync by hand. EquatableSet<ElementId> compares by set
+        // content, so the pair is gone and a member added later is covered automatically.
+        // The Inputs/Outputs/Settings/InternalVariables views stay out of equality for free: they are computed,
+        // so there is no backing field for the compiler to compare.
 
         public override string ToString() =>
             $"FunctionBlockDefinition(MasterType={MasterType}, MasterVersion={MasterVersion}, MasterName={MasterName}, DisplayName={DisplayName}, CategoryPath={CategoryPath}, Body={Body})";

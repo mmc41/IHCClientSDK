@@ -79,7 +79,7 @@ namespace Ihc.Vis.CatalogCodegen
             ProjectElement body = def.Body;
             EmitHead(body, def);
             EmitDocumentation(documentation);
-            foreach (ProjectElement child in body.ChildrenOrEmpty())
+            foreach (ProjectElement child in body.Children)
             {
                 if (child.Tag == "enum_definition")
                 {
@@ -93,7 +93,7 @@ namespace Ihc.Vis.CatalogCodegen
             ProjectElement? programs = body.FindChild("programs");
             if (programs is not null)
             {
-                foreach (ProjectElement program in programs.ChildrenOrEmpty())
+                foreach (ProjectElement program in programs.Children)
                 {
                     RequireTag(program, "program_simple");
                     EmitProgram(program);
@@ -111,7 +111,7 @@ namespace Ihc.Vis.CatalogCodegen
             // master_type/version/name come from Create as the definition's identity fields, but are ALSO written as
             // body attributes here (their file position is not constant across the corpus), as is name — the builder's
             // composed default is only used for the DisplayName record field, set separately below.
-            foreach ((string name, string value) in body.AttrsOrEmpty())
+            foreach ((string name, string value) in body.Attrs)
             {
                 switch (name)
                 {
@@ -224,7 +224,7 @@ namespace Ihc.Vis.CatalogCodegen
             }
 
             var values = new List<(string Name, int Index, string? Typeid)>();
-            foreach (ProjectElement value in enumDef.ChildrenOrEmpty())
+            foreach (ProjectElement value in enumDef.Children)
             {
                 RequireTag(value, "enum_value");
                 string valueName = value.GetAttribute("name") ?? string.Empty;
@@ -267,7 +267,7 @@ namespace Ihc.Vis.CatalogCodegen
             {
                 return;
             }
-            foreach (ProjectElement resource in element.ChildrenOrEmpty())
+            foreach (ProjectElement resource in element.Children)
             {
                 EmitResource(container, addMethod, resource);
             }
@@ -325,7 +325,7 @@ namespace Ihc.Vis.CatalogCodegen
                     ?? throw new DecompileNotSupportedException("resource_enum without inivalue.");
             }
 
-            foreach ((string name, string value) in resource.AttrsOrEmpty())
+            foreach ((string name, string value) in resource.Attrs)
             {
                 if (name is "id" or "name")
                 {
@@ -408,7 +408,7 @@ namespace Ihc.Vis.CatalogCodegen
                 env.Set(varName, builder);
             }, render));
 
-            foreach (ProjectElement leaf in events.ChildrenOrEmpty())
+            foreach (ProjectElement leaf in events.Children)
             {
                 EmitEvent(varName, leaf);
             }
@@ -464,7 +464,7 @@ namespace Ihc.Vis.CatalogCodegen
 
         private void EmitActionNodes(Target target, ProjectElement actionsContainer)
         {
-            foreach (ProjectElement node in actionsContainer.ChildrenOrEmpty())
+            foreach (ProjectElement node in actionsContainer.Children)
             {
                 DispatchActionNode(target, node);
             }
@@ -586,7 +586,7 @@ namespace Ihc.Vis.CatalogCodegen
                 recipe.Statements.Add(new FbStatement(
                     env => groupLive(env).OrConditions(), $"{groupExpr}.OrConditions();"));
             }
-            foreach (ProjectElement child in conditions.ChildrenOrEmpty())
+            foreach (ProjectElement child in conditions.Children)
             {
                 if (child.Tag == "condition")
                 {
@@ -651,7 +651,7 @@ namespace Ihc.Vis.CatalogCodegen
                 $"var {caseVar} = {switchArg};"));
 
             ProjectElement? defaultActions = null;
-            foreach (ProjectElement child in caseElement.ChildrenOrEmpty())
+            foreach (ProjectElement child in caseElement.Children)
             {
                 if (child.Tag == "case_action")
                 {
@@ -688,7 +688,7 @@ namespace Ihc.Vis.CatalogCodegen
                 $"var {caseBranchVar} = {caseArgs};"));
 
             var target = new Target(caseBranchVar, env => env.Get<FbBranchRef>(caseBranchVar));
-            foreach (ProjectElement node in caseAction.ChildrenOrEmpty())
+            foreach (ProjectElement node in caseAction.Children)
             {
                 if (ReferenceEquals(node, operandEl))
                 {
@@ -704,7 +704,7 @@ namespace Ihc.Vis.CatalogCodegen
             string note = defaultActions.GetAttribute("note") ?? string.Empty;
             bool overrideName = name != FbGrammar.DefaultCaseName;
             bool overrideNote = note != FbGrammar.DefaultCaseNote;
-            bool hasChildren = !defaultActions.ChildrenOrEmpty().IsEmpty;
+            bool hasChildren = !defaultActions.Children.IsEmpty;
             if (!overrideName && !overrideNote && !hasChildren)
             {
                 return;   // the builder already emits the standard empty default branch
@@ -733,7 +733,7 @@ namespace Ihc.Vis.CatalogCodegen
         // child resource whose id the leaf's link2 (or a case_action's value) targets — or null when the operand is a
         // reference to another resource instead.
         private static ProjectElement? OperandChild(ProjectElement leaf) =>
-            leaf.ChildrenOrEmpty().FirstOrDefault(c => c.Tag.StartsWith("resource_", StringComparison.Ordinal));
+            leaf.Children.FirstOrDefault(c => c.Tag.StartsWith("resource_", StringComparison.Ordinal));
 
         // Builds the (rendered FbOperand expression, live factory) for an embedded operand: an enum value wired by the
         // enum handle, or a value-type constant carrying its verbatim attributes.
@@ -832,7 +832,7 @@ namespace Ihc.Vis.CatalogCodegen
 
         private static (ProjectElement True, ProjectElement False) TrueFalseBranches(ProjectElement sub)
         {
-            ImmutableArray<ProjectElement> actions = sub.ChildrenOrEmpty().Where(c => c.Tag == "actions").ToImmutableArray();
+            ImmutableArray<ProjectElement> actions = sub.Children.Where(c => c.Tag == "actions").ToImmutableArray();
             if (actions.Length != 2)
             {
                 throw new DecompileNotSupportedException(

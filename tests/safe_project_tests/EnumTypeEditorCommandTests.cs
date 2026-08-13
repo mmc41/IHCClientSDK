@@ -285,14 +285,14 @@ namespace Ihc.Vis.Tests
             session.Current!.GetEnumeratorTypeViews().First(t => t.Name == typeName).Values.ToList();
 
         private static System.Collections.Generic.IEnumerable<string> Indexes(ProjectDocumentSession session, string typeName) =>
-            session.Current!.Child("enum_definitions")!.ChildrenOrEmpty()
+            session.Current!.Child("enum_definitions")!.Children
                 .First(c => c.Tag == "enum_definition" && c.GetAttribute("name") == typeName)
-                .ChildrenOrEmpty().Where(v => v.Tag == "enum_value")
+                .Children.Where(v => v.Tag == "enum_value")
                 .Select(v => v.GetAttribute("index") ?? "0");
 
         private static bool IsReferenced(Project project, string typeName)
         {
-            ProjectElement def = project.Child("enum_definitions")!.ChildrenOrEmpty()
+            ProjectElement def = project.Child("enum_definitions")!.Children
                 .First(c => c.Tag == "enum_definition" && c.GetAttribute("name") == typeName);
             return project.Root.DescendantsAndSelf().Any(e =>
                 e.GetAttribute("typedef") is { } token

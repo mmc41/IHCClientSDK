@@ -19,7 +19,7 @@ public class OpenLoadNormalizationParityTests
         Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", "projects", "Project1-SimpelWired.vis");
 
     private static ProjectElement[] EnumDefinitions(Project project) =>
-        project.Child("enum_definitions")!.ChildrenOrEmpty().Where(c => c.Tag == "enum_definition").ToArray();
+        project.Child("enum_definitions")!.Children.Where(c => c.Tag == "enum_definition").ToArray();
 
     private static bool IsCatalogEnum(ProjectElement definition) =>
         definition.GetAttribute("typeid") is { } typeid && typeid != ElementId.NullToken;

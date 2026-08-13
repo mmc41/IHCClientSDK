@@ -21,7 +21,7 @@ namespace Ihc.Vis.Tests
 
         private static ProjectElement FirstWiredResource(Project project) =>
             project.Root.Descendants().First(e =>
-                !e.Children.IsDefaultOrEmpty &&
+                !e.Children.IsEmpty &&
                 e.Children.Any(c => c.Tag is "link_from_resource" or "link_to_resource"));
 
         [Test]

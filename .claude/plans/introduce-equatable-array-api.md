@@ -6,9 +6,22 @@
 
 ## 2. Background
 
-Several public SDK value types store ordered data in `ImmutableArray<T>` or `IReadOnlyList<T>`. The collection objects are immutable, but their own `Equals` implementation is identity-based, so compiler-generated record equality does not compare their elements. Five product-dialog records compensate with handwritten `Equals`/`GetHashCode` pairs. That duplication already drifted when `DialogDescriptorField.ColumnSpan` was omitted, and every later scalar member—such as `ProductDialogModel.TitleSuffix`—must be added independently to the declaration, equality method, and hash method.
+Several public SDK value types store ordered data in `ImmutableArray<T>` or `IReadOnlyList<T>`. The collection objects are immutable, but their own `Equals` implementation is identity-based, so compiler-generated record equality does not compare their elements. Five product-dialog records compensate with handwritten `Equals`/`GetHashCode` pairs. Those five are currently **in sync**: the `DialogDescriptorField.ColumnSpan` omission an earlier review found was fixed at HEAD (`90fcdea`, verified at `ProductDialogDescriptor.cs:116,122`). The mechanism that produced it is unchanged, though — every later member, such as `ProductDialogModel.TitleSuffix`, must still be added independently to the declaration, the equality method, and the hash method, and eight hand-maintained member lists remain across the SDK (one of them, `FunctionBlockDefinition`, carrying an explicit "KEEP THIS LIST IN SYNC with the record's members" comment). **This change is preventive, not a fix for a live defect.**
 
 The SDK already centralizes sequence comparison in the internal `ImmutableArrayValue` helper, but callers must still enumerate every record member manually. The intended change is to introduce one public ordered, immutable, structurally equatable collection value and use it for equality-bearing sequence members throughout the public `Ihc.Vis` API. Compiler-generated record equality can then include every current and future stored member automatically.
+
+**Outcome (recorded at Step 6, discharging D1).** Twelve handwritten `Equals`/`GetHashCode` pairs were
+removed and `ImmutableArrayValue` deleted. Because D1(a) added `EquatableSet<T>`, the claim above holds for
+both ordered and set members. **Two pairs survive by design, and neither is a sequence:**
+
+- `DefinitionDocumentation` — **map** equality over `ImmutableDictionary`. No `EquatableDictionary<TKey,TValue>`
+  exists; the ordered and set wrappers are both wrong semantics for a keyed lookup. Adding that wrapper is the
+  only change that retires this pair.
+- `Project` — a **semantic** exclusion of serialization provenance (`InlineDtdBlocks`), not leftover plumbing.
+  It must not be "fixed".
+
+Both are pinned by `ValueCollectionArchitectureTests.TheDeliberateCustomEqualityImplementations_Survive`, so a
+later cleanup that mistakes either for duplication fails a test.
 
 API compatibility is explicitly not a constraint. The implementation should therefore prefer the clean public model over compatibility constructors, duplicate properties, or adapters whose only purpose is retaining the old signatures.
 
@@ -19,17 +32,25 @@ The worktree is currently dirty, including in product-dialog files that this ref
 ### Current findings
 
 - `ihcclient/src/vis/model/ImmutableArrayValue.cs` implements ordered content equality and hashing, including the established rule that `default` and empty arrays mean the same logical value.
-- Handwritten sequence-aware equality currently exists in:
+- Handwritten sequence-aware equality currently exists in ten types. Eight are in scope:
   - `ProjectElement`;
   - `GrammarAttr`, `GrammarDeclaration`, and `CatalogGrammar`;
   - `ProjectValidationResult`;
   - `ProductDialogModel`, `DialogGroupModel`, `ProductDialogDescriptor`, `DialogDescriptorGroup`, and `DialogDescriptorField`.
+
+  Two more are handwritten for **non-ordered** reasons and are excluded here (see D1 below), but are listed
+  in both places so a reader cannot conclude they were overlooked:
+  - `FunctionBlockDefinition` — hand-lists eleven members solely because `ImmutableHashSet<ElementId> ExplicitCloseIds` compares by reference (`FunctionBlockDefinition.cs:103-119`);
+  - `DefinitionDocumentation` — map equality (`DefinitionDocumentation.cs:48`).
+
+  `Project` (`Project.cs:41`) is a third exclusion, but a deliberate *semantic* one rather than leftover plumbing.
 - Public records with stored sequence members and compiler-generated reference equality currently include:
   - `DataTableView`, `EnumTypeView`, `DataTablesModel`, `DatalineModuleMap`, and `ModuleAddressMap` in `ProjectProjections.cs`;
   - `CompositeCommand.Parts`;
   - `ApplyProductDialog.Edits`;
   - `AttrInfo.AllowedValues`;
   - `AddStandaloneEnumType.States`;
+  - `AddEnumVariable.States` (`MetadataCommands.cs:100-101` — same file and shape as `AddStandaloneEnumType`; the Step 6 guard fails on it if it is skipped);
   - `UpdateEnumStates.Added` and its init-only `Relabels` member.
 - `SessionQueryTests` explicitly works around the current `DataTableView.Rows` identity equality by projecting scalars. This is evidence that the issue affects API behavior outside the product-dialog types.
 - Other collection-valued records use different mathematical semantics:
@@ -42,22 +63,48 @@ The worktree is currently dirty, including in product-dialog files that this ref
 
 Included:
 
-1. Add one public `EquatableArray<T>` value type for ordered immutable sequences in `Ihc.Vis.Model`.
+1. Add one public `EquatableArray<T>` value type for ordered immutable sequences in `Ihc.Vis.Model`, and (per D1(a)) one public `EquatableSet<T>` for unordered immutable sets.
 2. Migrate stored ordered-sequence members on public `Ihc.Vis` value records/classes to that type.
-3. Convert the three validated grammar value classes (`GrammarAttr`, `GrammarDeclaration`, `CatalogGrammar`) to sealed record classes so their scalar and `EquatableArray<T>` fields receive compiler-generated equality while retaining their private constructors and validated factories.
+3. Convert the three validated grammar value classes (`GrammarAttr`, `GrammarDeclaration`, `CatalogGrammar`) to sealed record classes so their scalar and `EquatableArray<T>` fields receive compiler-generated equality while retaining their private constructors and validated factories. Note that this conversion also **synthesizes `==`/`!=`** (today reference equality on these classes, afterwards value equality — silently, with no compile error) and **replaces `ToString()`** with the record's `Type { Prop = … }` form; both are checked in Step 3.
 4. Delete sequence-specific handwritten equality/hash implementations made redundant by the wrapper.
 5. Correct public records that currently have accidental reference equality for immutable ordered collections.
-6. Add a build-time regression test that detects raw ordered collection backing fields on public `Ihc.Vis` records.
+6. Add a **test-time** (reflection) regression test in `safe_architecture_tests` that detects raw ordered collection backing fields on public `Ihc.Vis` records.
 7. Update downstream SDK, OpenVisual, and test call sites.
 
 Excluded:
 
 - Arrays and immutable collections used as local algorithm storage, builders, parser results, static lookup tables, or ordinary method return values that do not participate in a value object's equality.
 - Internal reporting shape records unless a concrete equality use is found during compilation; changing unused internal equality is not required for the public API goal.
-- Set and map equality. Existing specialized implementations remain until a separately justified `EquatableSet<T>` or `EquatableDictionary<TKey,TValue>` change is planned.
+- Map equality. `EquatableDictionary<TKey,TValue>` stays deferred, so `DefinitionDocumentation`'s handwritten pair remains. (**Set** equality is now *included* — see D1(a) above.)
 - Mutable byte/file payload APIs and legacy reflection metadata outside `Ihc.Vis`, such as `LabAppService.ResultFileContent.Bytes` and `FieldMetaData.SubTypes`. Replacing those would change ownership and mutability semantics, not merely equality.
 - `Project`'s custom equality, which intentionally omits serialization provenance.
 - Product specification and user-story documents: this is implementation architecture (HOW), not product behavior (WHAT).
+
+### Owner decisions — ANSWERED 2026-08-13
+
+Both are settled. What follows is the ruling, not a question.
+
+**D1 — Is `EquatableSet<T>` in scope? → (a) YES.** A minimal `EquatableSet<T>` lands alongside
+`EquatableArray<T>` in Step 2, and `FunctionBlockDefinition`'s eleven-member handwritten list
+(`FunctionBlockDefinition.cs:103-119`, comment "KEEP THIS LIST IN SYNC with the record's members if one
+is added") is deleted in Step 6 by migrating `ImmutableHashSet<ElementId> ExplicitCloseIds` — that
+member is the list's *only* reason to exist, since every other member of the record is already
+value-equal.
+
+Consequences: scope grows by one small public type plus one migration; the "set and map equality"
+exclusion below narrows to **map** equality only; the surviving handwritten residue drops from three
+pairs to two, both deliberate — `DefinitionDocumentation` (map semantics) and `Project` (a semantic
+exclusion of serialization provenance). `ProjectChangeSet`'s set members are algorithm state rather
+than a value record's identity, so they stay unless Step 6 finds them trivially convertible.
+
+**D2 — Backup tree, or commit first? → (a) COMMIT/STASH FIRST.** The user commits or stashes the
+in-progress product-dialog work before Step 2. Rollback is then `git checkout -- <file>`.
+
+Consequences: `tmp/equatable-array-refactor/backup/` and `backup-manifest.md` are **not created** and
+are struck from §9; Step 1 collapses to the baseline record plus the focused-test run; §8 collapses to
+its stated D2(a) form; the §16.3 per-file backup obligation is struck. The standing rule that the
+executing agent never mutates git state is **unchanged** — the commit is the user's action, not the
+agent's.
 
 ### `EquatableArray<T>` design
 
@@ -74,6 +121,13 @@ Create `ihcclient/src/vis/model/EquatableArray.cs` with these properties:
 - An explicit `AsImmutableArray()` escape hatch that returns a normalized empty `ImmutableArray<T>` without allocation. Do not add an implicit conversion in the other direction; keeping that boundary visible avoids overload ambiguity and hidden dependence on the concrete backing type.
 - Factories from `IEnumerable<T>`/`ReadOnlySpan<T>` must snapshot into immutable storage. No constructor may retain a mutable array or list.
 - Do not mirror all of `ImmutableArray<T>`. Where mutation-style immutable operations are genuinely needed, call `AsImmutableArray()` explicitly or add a narrowly justified wrapper operation with tests.
+- **Add no transitional overloads.** Implementing `IReadOnlyList<T>` *and* an implicit conversion from `ImmutableArray<T>` creates an overload-resolution hazard: a standard boxing conversion to `IReadOnlyList<T>` is *better* than a user-defined conversion to `EquatableArray<T>`, so where both overloads exist the interface one wins silently. Since API compatibility is out of scope, the fix is simply never to have both — migrate each member's signature outright.
+
+The mechanical rewrite rules that follow from this surface, applied throughout Steps 3-5:
+
+- `IsDefaultOrEmpty` → `IsEmpty`. This — not `IsDefault` — is the workhorse of the migration: it appears at `ProjectElement.cs:56,110,114,164`, `ProjectValidationResult.cs:28,45,65`, `ProductDialogModel.cs:24` and elsewhere.
+- **Three** default-normalizing accessors become redundant, not one: `ProjectElement.ChildrenOrEmpty()`, `ProjectElement.AttrsOrEmpty()` and `DialogDescriptorField.SuggestionsOrEmpty`. All three are deleted and their call sites read the member directly. `ChildrenOrEmpty()`/`AttrsOrEmpty()` are called across the SDK, the GUI, the utilities and the tests, so this is the largest single mechanical part of Step 3. Do not retain them as passthroughs — the repo forbids a method that only calls another.
+- Decide **once**, at the start of Step 3, whether the `internal static` raw-bag helpers `ProjectElement.GetAttribute(ImmutableArray<…>, string)` and `SetAttribute(ImmutableArray<…>, …)` take `EquatableArray<T>` or stay raw. Either is defensible; leaving it undecided produces ad-hoc `AsImmutableArray()` churn at every call site. `SetAttribute` uses `SetItem`/`Add`, so if it takes the wrapper it converts internally, in one place.
 
 ### Migration decisions
 
@@ -81,13 +135,18 @@ Create `ihcclient/src/vis/model/EquatableArray.cs` with these properties:
 2. **Validation next.** Migrate `ProjectValidationResult.Errors`/`Findings`; retain `Warnings` as a computed view, returning `EquatableArray<string>` only if doing so avoids an otherwise redundant conversion at its call sites.
 3. **Product dialogs.** Migrate all six stored arrays (`Groups`, `Parts`, descriptor `Groups`, `Fields`, `Widgets`, and `Suggestions`) and remove all five handwritten pairs. `SuggestionsOrEmpty` becomes redundant because the wrapper normalizes default; delete it and read `Suggestions` directly unless a real semantic distinction appears.
 4. **Read projections.** Migrate the collection-bearing records in `ProjectProjections.cs`, then replace scalar-projection equality workarounds with direct record equality assertions.
-5. **Commands and attribute metadata.** Migrate `CompositeCommand.Parts`, `ApplyProductDialog.Edits`, `AttrInfo.AllowedValues`, `AddStandaloneEnumType.States`, `UpdateEnumStates.Added`, and `UpdateEnumStates.Relabels`. Construction must snapshot caller-owned mutable lists so commands remain immutable after creation.
+5. **Commands and attribute metadata.** Migrate `CompositeCommand.Parts`, `ApplyProductDialog.Edits`, `AttrInfo.AllowedValues`, `AddStandaloneEnumType.States`, `AddEnumVariable.States`, `UpdateEnumStates.Added`, and `UpdateEnumStates.Relabels`. Construction must snapshot caller-owned mutable lists so commands remain immutable after creation.
 6. **Remove the old helper only after the final reference disappears.** `ProjectChangeSet.SelfAndIdlessEqual` should compare the new value arrays directly or use sequence comparison appropriate to its partial-tree algorithm; it must not retain `ImmutableArrayValue` merely as a compatibility bridge.
 7. **Keep deliberate custom equality visible.** Add concise comments/tests around `Project`, `DefinitionDocumentation`, and `FunctionBlockDefinition` so a later cleanup does not mistake their domain-specific exclusions or set/map semantics for leftover duplication.
 
 ### Regression guard
 
-Add an SDK architecture/equality policy test that:
+Add the policy test to **`safe_architecture_tests`** — per `CLAUDE.md` it is the home for assembly-wide
+reflection rules and already has the self-check / armed-detector / seeded-violator convention this test
+needs. (`safe_project_tests` would work mechanically; naming one suite avoids a coin flip at execution
+time.) It is a **test-time** reflection check, not a build-time analyzer.
+
+The test:
 
 - discovers public record types under the `Ihc.Vis` namespace root;
 - inspects declared instance backing fields, including private compiler-generated fields;
@@ -96,16 +155,25 @@ Add an SDK architecture/equality policy test that:
 - does not flag sets, maps, static lookup collections, method parameters, or method-local arrays;
 - contains a seeded positive control proving the detector fails on a test-only record with a raw collection field.
 
-This turns the convention into compiler/test feedback for future members and records instead of relying on review memory.
+**The production exemption list is expected to be empty.** No public `Ihc.Vis` record needs one: the
+computed collection views (`ProjectValidationResult.Warnings`,
+`FunctionBlockDefinition.Inputs`/`Outputs`/`Settings`/`InternalVariables`) have no backing field, and
+`Project`'s own fields are a map (`InlineDtdBlocks`) and a private memo record. If an exemption turns
+out to be necessary, treat that as a finding to explain, not a knob to turn.
+
+This turns the convention into test feedback for future members and records instead of relying on review memory.
 
 ### Implementation sequence and completion criteria
 
-#### Step 1 — Establish baseline and protect the dirty worktree
+#### Step 1 — Establish baseline
+
+**D2(a) shape**: baseline record plus the focused-test run. The backup tree, `backup-manifest.md` and
+the per-file backup obligation in §16.3 do not exist.
 
 - Record `git status --short` and `git diff --stat` in `tmp/equatable-array-refactor/baseline.md`.
-- Copy every already-modified file that later phases will touch into a path-preserving `tmp/equatable-array-refactor/backup/` tree and record hashes in `backup-manifest.md`.
-- Run the current focused equality tests and the explicit Release performance benchmark; record concise results in `verification.md`.
-- Completion: baseline files exist and are non-empty; every dirty overlapping file has a verified backup; baseline tests/benchmark have a recorded outcome.
+- Run the current focused equality tests; record concise results in `verification.md`.
+- No baseline performance run: §7 gates on the benchmark's own absolute budgets after Step 7, not on a before/after delta, so a baseline figure would be unused data.
+- Completion: baseline files exist and are non-empty; baseline tests have a recorded outcome.
 
 #### Step 2 — Implement and verify `EquatableArray<T>`
 
@@ -116,13 +184,20 @@ This turns the convention into compiler/test feedback for future members and rec
 
 #### Step 3 — Migrate core model, grammar, and validation types
 
+- Decide the raw-bag helper boundary (`GetAttribute`/`SetAttribute`) before editing — see the design section.
 - Migrate `ProjectElement`, the three grammar types, and `ProjectValidationResult`.
 - Convert grammar classes to sealed record classes without opening public construction or writable properties.
-- Remove their now-redundant equality/hash implementations.
+- **Before converting**, run `rg -n "GrammarAttr|GrammarDeclaration|CatalogGrammar" ihcclient applications tests` filtered for `==`/`!=` usage: the conversion turns reference comparison into value comparison silently, with no compile error. Check the same three types for a custom `ToString()` and for diagnostic/report/assertion text that embeds one — records replace it.
+- Remove their now-redundant equality/hash implementations, and delete `ChildrenOrEmpty()`/`AttrsOrEmpty()` along with them (rewriting `IsDefaultOrEmpty` → `IsEmpty` at every call site). This is the bulk of the step's diff and reaches the GUI, the utilities (`ihc_catalog_codegen`'s two decompilers especially) and the tests.
 - Update builders, readers, writers, canonicalization, and validation call sites using collection expressions or `AsImmutableArray()` at concrete-array boundaries.
-- Completion: existing project-model equality tests pass; catalog grammar round-trip tests pass; equal independently built trees/grammars/results hash equally; factories still reject invalid grammar states.
+- Completion: existing project-model equality tests pass; catalog grammar round-trip tests pass; equal independently built trees/grammars/results hash equally; factories still reject invalid grammar states; no `==` on a grammar type changed meaning unnoticed.
 
 #### Step 4 — Migrate product-dialog models and descriptors
+
+**Depends on Step 2 only, not Step 3** — the dialog records share nothing with the tree or grammar
+except the wrapper itself. Prefer running it immediately after Step 2: it is the step that overlaps
+the dirty worktree, and doing it first shortens the window in which in-progress user work sits under
+an in-flight refactor, which is this plan's top-listed risk.
 
 - Migrate all six dialog sequence members.
 - Remove the five handwritten equality/hash pairs and obsolete default-normalization accessors/comments.
@@ -132,17 +207,18 @@ This turns the convention into compiler/test feedback for future members and rec
 
 #### Step 5 — Migrate the remaining public ordered-sequence value records
 
-- Migrate read projections, command records, and `AttrInfo` listed above.
+- Migrate read projections, command records (including `AddEnumVariable`), and `AttrInfo` listed above.
 - Snapshot `IReadOnlyList<T>` command inputs at the gateway boundary; no command may retain caller-owned mutable list state.
 - Replace test workarounds such as scalar projection in `SessionQueryTests` with direct record equality where that expresses the intended contract.
 - Completion: two independently materialized read models and commands with equal contents compare and hash equal; changing order or one element makes them unequal; mutating an original input list after command construction does not change the command.
 
 #### Step 6 — Remove legacy equality plumbing and add the guard
 
-- Remove remaining sequence-only manual equality/hash implementations and delete `ImmutableArrayValue.cs` once `rg` confirms no references.
-- Add the public-record backing-field policy test with its positive control.
+- Remove remaining sequence-only manual equality/hash implementations and delete `ImmutableArrayValue.cs` once `rg` confirms no references. Note `ProjectChangeSet.cs:105` is one of the last holders.
+- Add the public-record backing-field policy test to `safe_architecture_tests`, with its positive control.
+- Per D1(a): migrate `FunctionBlockDefinition.ExplicitCloseIds` to `EquatableSet<ElementId>` and delete its eleven-member handwritten list together with the "KEEP THIS LIST IN SYNC" comment.
 - Confirm the deliberate project/set/map custom equality implementations remain and still pass their specialized tests.
-- Completion: no production reference to `ImmutableArrayValue`; the guard passes on production types and demonstrably catches its seeded violator.
+- Completion: no production reference to `ImmutableArrayValue`; the guard passes on production types with an empty exemption list and demonstrably catches its seeded violator; D1 is answered in writing.
 
 #### Step 7 — Downstream migration and documentation
 
@@ -154,13 +230,13 @@ This turns the convention into compiler/test feedback for future members and rec
 #### Step 8 — Full verification and audit
 
 - Run the controller-free suites listed in the Verification Plan.
-- Re-run the Release performance benchmark and compare its median/p95 results with the recorded baseline, treating large repeatable regressions in tree-heavy paths as a blocker.
+- Run the Release performance benchmark once and check each figure against the benchmark's own documented budgets (see §7). A budget breach is a blocker; a median/p95 wobble against a baseline taken on a different day or machine is not evidence of anything.
 - Review the final diff specifically for handwritten member lists, accidental set/map conversion, mutable collection retention, unrelated formatting churn, and loss of dirty-worktree changes.
-- Completion: all required tests/builds pass; benchmark is not materially regressed after a repeat run; audit findings are recorded and resolved.
+- Completion: all required tests/builds pass; every benchmarked path is inside its budget; audit findings are recorded and resolved.
 
 ## 4. Source/Rationale
 
-- The initiating review found that `DialogDescriptorField.Equals` omitted `ColumnSpan` and that adding `ProductDialogModel.TitleSuffix` required another manual equality/hash edit.
+- The initiating review found that `DialogDescriptorField.Equals` omitted `ColumnSpan` and that adding `ProductDialogModel.TitleSuffix` required another manual equality/hash edit. The omission is **already fixed** (HEAD `90fcdea`); the defect is closed, the mechanism is not, and it is the mechanism this change removes.
 - `ProductDialogDescriptor.cs` and `ProductDialogModel.cs` contain five handwritten equality/hash pairs solely because `ImmutableArray<T>` compares by backing-array identity.
 - `ImmutableArrayValue.cs` documents the existing logical contract: ordered comparison and `default == empty`.
 - `ProjectModelEqualityTests` already asserts nested structural equality and default/empty equivalence.
@@ -182,8 +258,9 @@ No external research or product-behavior change is required.
 | Read projections | `ProjectProjections.cs`, session query tests/callers | Medium | Fixes currently accidental reference equality. |
 | Session commands | `CompositeCommand.cs`, `ProductDialogCommands.cs`, `MetadataCommands.cs`, gateways | Medium | Must snapshot mutable inputs and preserve command behavior/history. |
 | Attribute metadata | `AttrInfo.cs`, property-grid consumers | Low | Read-only collection surface changes without changing attribute behavior. |
-| Policy tests | `safe_project_tests` and/or `safe_architecture_tests` | Medium | Enforces future use and needs a positive control to avoid a vacuous test. |
+| Policy tests | `safe_architecture_tests` | Medium | Enforces future use and needs a positive control to avoid a vacuous test. |
 | Downstream GUI | `applications/ihc_openvisual`, `safe_visual_tests` | Medium | Compile-time type changes; no intended UI behavior change. |
+| Utilities | `ihc_catalog_codegen` (`ProductDecompiler`, `FunctionBlockDecompiler`), `ihc_lab` | Medium | Among the heaviest `.Children`/`.Attrs` consumers in the repo; covered by the solution build but easy to under-estimate. |
 | Architecture documentation | `ARCHITECTURE.md` | Low | Records the cross-cutting value-collection convention; no product docs change. |
 
 ## 6. Potential Negative Effects
@@ -196,6 +273,9 @@ No external research or product-behavior change is required.
 | Wrapper grows into a duplicate `ImmutableArray<T>` API | API review and final diff audit | Keep a minimal read surface; use explicit backing-array access for uncommon transforms. |
 | Mutable lists remain captured by commands | Mutation-after-construction tests | Snapshot all `IReadOnlyList<T>` inputs when creating `EquatableArray<T>`. |
 | Grammar factories can be bypassed after class-to-record conversion | Compile/API review and invalid-construction tests | Keep constructors private and properties get-only; do not introduce public init setters. |
+| Class-to-record conversion silently flips `==` from reference to value equality on the three grammar types | `rg` for `==`/`!=` on those types **before** converting — there is no compile error to catch it | Inspect each hit and rewrite any that genuinely wanted reference identity. |
+| Class-to-record conversion replaces `ToString()` with the record's synthesized form | Search for diagnostic/report/assertion text embedding a grammar type | Re-declare an explicit `ToString()` on any type whose printed form is depended on. |
+| A transitional `IReadOnlyList<T>` overload silently out-competes the `EquatableArray<T>` one | API review of any overload pair | Add no transitional overloads; compatibility is out of scope. |
 | Deliberate map/set/project equality gets unintentionally rewritten | Specialized existing equality tests | Maintain an explicit exclusion list and do not apply an ordered wrapper to unordered or excluded state. |
 | `default` versus empty becomes observably different despite equality | API inspection and default tests | Do not expose `IsDefault`; return normalized empty backing storage. |
 | Hash codes change | Test only equal-hash contract, never exact hash values | Treat hash codes as process-local implementation details; do not persist them. |
@@ -252,23 +332,41 @@ Do not run `safe_integration_tests`; this refactor does not require a controller
 
 ### Performance gate
 
-Run before Step 2 and after Step 7:
-
 ```powershell
 dotnet test tests/safe_project_tests/safe_project_tests.csproj -c Release --filter "FullyQualifiedName~PerfBaselineBenchmark" -l "console;verbosity=detailed"
 ```
 
-Record median and p95 values in `tmp/equatable-array-refactor/verification.md`. If a tree-heavy metric regresses materially, repeat once to rule out noise. A repeatable regression attributable to wrapper enumeration/conversion blocks completion until resolved or explicitly accepted by the user.
+**Gate on the benchmark's own budgets, not on a before/after delta.** `PerfBaselineBenchmark` measures
+the drag-over probe (< 5 ms), commit (< 50 ms), undo/redo (< 50 ms), open (< 2 s) and save (< 1 s)
+(`PerfBaselineBenchmark.cs:23-31`). Those absolute budgets are the meaningful check here for two reasons:
+
+- the benchmark does not directly measure the axis this refactor touches — `ProjectElement`
+  equality/hashing, consumed by `ProjectChangeSet.SelfAndIdlessEqual` (`ProjectChangeSet.cs:105`) and the
+  tree reconciler — it reaches it only indirectly through commit and undo/redo; and
+- the migration preserves the same element-wise recursion and the same `HashCode.Combine` shape, so
+  there is no algorithmic delta for a delta-comparison to find. "Materially regressed" was undefined.
+
+Run it once, after Step 7, and record each figure against its budget in
+`tmp/equatable-array-refactor/verification.md`. If a before/after comparison is kept anyway, both runs
+must happen **on the same machine in the same session** — the benchmark prints the machine in its header
+because the numbers are machine-specific.
 
 ## 8. Rollback Strategy
 
-1. Before implementation, create `tmp/equatable-array-refactor/backup/` with path-preserving copies of every touched file and a hash manifest. Verify all copies exist and are non-empty where the source is non-empty.
-2. Roll back by phase, not by broad repository operation:
-   - restore the affected phase's files from the backup with explicit `Copy-Item -LiteralPath` operations;
-   - remove only newly created, explicitly named files from that phase after verifying their resolved paths remain under this repository;
-   - re-run the focused tests for the last known-good phase.
-3. Never use `git reset`, `git checkout`, `git restore`, or a broad recursive delete. Existing changes belong to the user.
-4. If the user prefers version-control rollback, stop and ask them to perform it; the executing agent should provide the exact touched-file list and current diff summary.
+**D2(a) form.** The user commits or stashes the in-progress product-dialog work before Step 2, so
+version control is the rollback mechanism and no `tmp/` backup tree exists.
+
+1. Inspect the change with `git diff` / `git diff --stat`, scoped to the current step's files.
+2. Roll back by phase, not by broad repository operation: `git checkout -- <explicit file list>` for
+   that phase's modified files, delete only newly created, explicitly named files from that phase after
+   verifying their resolved paths remain under this repository, then re-run the focused tests for the
+   last known-good phase.
+3. **The executing agent still never mutates git state.** It supplies the exact touched-file list and
+   diff summary; the user runs the `git checkout`/`git stash` command. This survives D2(a) unchanged —
+   D2(a) chose who holds the safety net, not who is allowed to run destructive commands.
+4. Never use `git reset --hard`, a broad `git restore`, or a recursive delete: work committed in Step 1's
+   preamble is the user's, and anything uncommitted after it is this refactor's, so a broad operation
+   cannot tell them apart.
 5. Keep this plan and `verification.md` after rollback so the failure and last good checkpoint remain available for a later attempt.
 
 ## 9. State Files
@@ -277,9 +375,9 @@ Record median and p95 values in `tmp/equatable-array-refactor/verification.md`. 
 | --- | --- | --- |
 | `.claude/plans/introduce-equatable-array-api.md` | Authoritative scope, decisions, inline step status, and resumption point | Before starting and after completing/blocking every step |
 | `tmp/equatable-array-refactor/baseline.md` | Initial dirty-worktree summary, affected-file inventory, and baseline environment | Step 1 only, amended only if initial capture was incomplete |
-| `tmp/equatable-array-refactor/backup-manifest.md` | Source/backup path pairs and hashes for recoverable rollback | When a new touched file is backed up before editing |
-| `tmp/equatable-array-refactor/verification.md` | Concise command, result, test counts, failures, and benchmark median/p95 deltas | After each focused or full verification run |
-| `tmp/equatable-array-refactor/backup/` | Path-preserving file copies; not a progress log | Before first edit to each file |
+| `tmp/equatable-array-refactor/verification.md` | Concise command, result, test counts, failures, and each benchmark figure against its budget | After each focused or full verification run |
+
+`backup-manifest.md` and `backup/` are **struck by D2(a)** — version control is the rollback mechanism.
 
 Progress must remain inline in this plan; do not create a separate `progress.txt`.
 
@@ -287,14 +385,16 @@ Progress must remain inline in this plan; do not create a separate `progress.txt
 
 | Step | Description | Dependencies | Completion criterion | Status |
 | --- | --- | --- | --- | --- |
-| 1 | Capture baseline, back up overlapping dirty files, run baseline equality/performance checks | None | State files verified; dirty overlaps backed up; baseline recorded | pending |
-| 2 | Implement and unit-test `EquatableArray<T>` | Step 1 | Wrapper contract tests pass | pending |
-| 3 | Migrate core tree, grammar, and validation types | Step 2 | Focused model/grammar/validation tests pass | pending |
-| 4 | Migrate product-dialog models/descriptors | Step 3 | No dialog equality member lists; dialog engine and GUI compilation pass | pending |
-| 5 | Migrate remaining public sequence-bearing read models, commands, and `AttrInfo` | Step 3 | Structural equality and snapshot tests pass | pending |
-| 6 | Delete legacy helper and add the public-record policy guard | Steps 4-5 | No helper references; armed guard passes | pending |
-| 7 | Complete downstream migration and architecture note | Step 6 | Solution builds with warnings as errors; docs accurately state convention | pending |
-| 8 | Run full controller-free verification, performance comparison, and final diff audit | Step 7 | All gates pass; no unresolved audit or benchmark regression | pending |
+| 1 | Capture baseline, run baseline equality checks | D2 answered | State files verified; baseline recorded | **done** (D1(a)+D2(a) recorded; `baseline.md` 3.0 KB / `verification.md` 0.9 KB written; focused gate green 117/117; D2(a) discharged — user committed the dirty work as `8618556`, worktree clean) |
+| 2 | Implement and unit-test `EquatableArray<T>` **and `EquatableSet<T>`** (D1(a)) | Step 1; user has committed/stashed the dirty product-dialog work (D2(a)) | Wrapper contract tests pass | **done** (both types + XML docs in `src/vis/model/`; 26 focused tests green, full `safe_project_tests` 1307/1307; purely additive, no existing file touched) |
+| 3 | Migrate core tree, grammar, and validation types | Step 2 | Focused model/grammar/validation tests pass | **done** (7 members migrated; 3 grammar classes → sealed records; 6 handwritten pairs + `ChildrenOrEmpty()`/`AttrsOrEmpty()` deleted, 332 call sites rewritten; 110 files +646/−657; all 5 suites green = 2834 tests. `==` sweep clean — all hits were the `GrammarAttrType` enum; all 3 grammar types already declared `ToString()`, which records keep) |
+| 4 | Migrate product-dialog models/descriptors | Step 2 (prefer running before Step 3 — closes the dirty-worktree overlap first) | No dialog equality member lists; dialog engine and GUI compilation pass | **done** (6 members migrated, 5 handwritten pairs + `SuggestionsOrEmpty` deleted, +32/−84; solution builds; project 1322/1322, visual 730/730, unit 529/529; criterion asserted by an armed reflection test) |
+| 5 | Migrate remaining public sequence-bearing read models, commands, and `AttrInfo` | Step 2 | Structural equality and snapshot tests pass | **done** (12 members across projections/commands/`AttrInfo`; 3 gateway factories now snapshot caller-owned lists; `SessionQueryTests` scalar workaround replaced by direct record equality; **removed `CompositeCommand`'s params ctor — it made every collection-expression call site CS0121-ambiguous**; 2841 tests green) |
+| 6 | Delete legacy helper, migrate `FunctionBlockDefinition.ExplicitCloseIds` to `EquatableSet<ElementId>` (D1(a)), and add the public-record policy guard in `safe_architecture_tests` | Steps 3-5 | No helper references; no eleven-member list; armed guard passes with an empty exemption list | **done** (`ImmutableArrayValue.cs` deleted, zero references; eleven-member list gone via `EquatableSet<ElementId>`; `ValueCollectionArchitectureTests` 5/5 — **empty exemption list**, armed scan, 3-shape positive control, 4 negative controls; residue = 2 deliberate pairs, recorded below; 2846 tests green) |
+| 7 | Complete downstream migration and architecture note | Step 6 | Solution builds with warnings as errors; docs accurately state convention | **done** (28 `AsImmutable*` sites + 4 residual `IsDefaultOrEmpty` audited — all justified boundaries, zero adapters, zero compat-only overloads; guard scoping questioned and confirmed correct (`AttrSchema` is internal); `ARCHITECTURE.md` challenge 3 extended; product docs untouched; build 0/0 under warnings-as-errors) |
+| 8 | Run full controller-free verification, performance comparison, and final diff audit | Step 7 | All gates pass; no unresolved audit or benchmark regression | **done** (2846/2846 across all 5 controller-free suites; build 0/0 warnings-as-errors; benchmark 1/1 with every path inside its own budget, commit & undo/redo ~18-33× headroom; 5-point diff audit clean — 12 handwritten pairs removed, 2 deliberate survivors intact, no set/map conversion, no mutable retention, no formatting churn, user's `8618556` work preserved) |
+
+**ALL 8 STEPS COMPLETE (2026-08-13).** Full results in `tmp/equatable-array-refactor/verification.md`.
 
 Status values are `pending`, `in-progress (<concise note>)`, `done (<verification summary>)`, or `blocked (<specific cause>)`. Update a row before work starts and immediately after its completion or blockage.
 
@@ -317,7 +417,7 @@ Status values are `pending`, `in-progress (<concise note>)`, `done (<verificatio
 Each execution session begins with this five-step orientation, limited to five tool calls and three minutes:
 
 1. Read this plan's Progress Tracking table and find the first row whose status is not `done`; read that step's detailed subsection and completion criterion.
-2. Read only the tail/relevant headings of `baseline.md`, `backup-manifest.md`, and `verification.md` for the current phase. Do not reload old successful test logs.
+2. Read only the tail/relevant headings of `baseline.md` and `verification.md` for the current phase. Do not reload old successful test logs.
 3. Run `git status --short` and `git diff --stat`; compare them with the baseline and last completed-step annotation.
 4. Verify the expected current-step artifacts exist (`EquatableArray.cs`, relevant backups, or test files as applicable) and that state files are non-empty.
 5. Announce: `Resuming step N: <description>. Last completed: <step/result>. Next verification: <command>.`
@@ -370,7 +470,7 @@ Task-specific warning signs:
 - reintroducing handwritten equality member lists after adding the wrapper;
 - exposing `IsDefault` despite the `default == empty` contract;
 - adding a broad implicit wrapper-to-`ImmutableArray<T>` conversion without revisiting overload ambiguity;
-- forgetting `UpdateEnumStates.Relabels`, body-declared init properties, or nested collection members;
+- forgetting `AddEnumVariable.States`, `UpdateEnumStates.Relabels`, body-declared init properties, or nested collection members;
 - changing `Project` equality to include `InlineDtdBlocks`;
 - overwriting `HidesUnresolvedResourceKey` or another pre-existing dirty change;
 - claiming the guard works without running its seeded positive control;
@@ -379,7 +479,7 @@ Task-specific warning signs:
 Recovery protocol:
 
 1. Stop editing and summarize completed work, unresolved errors, and the exact next action.
-2. Update this plan, `backup-manifest.md`, and `verification.md`; independently verify each write.
+2. Update this plan and `verification.md`; independently verify each write.
 3. Ask the user to make a version-control checkpoint if desired; the executing agent must not mutate git state.
 4. Start a new session using only this plan, the state-file summaries, and the current step's files.
 5. If confusion remains, narrow work to one type family and one focused test command before continuing.
@@ -388,9 +488,13 @@ Recovery protocol:
 
 | Phase | Steps | Context boundary | Carry forward | Mandatory break trigger |
 | --- | --- | --- | --- | --- |
-| Foundation | 1-2 | Baseline plus wrapper contract only | Wrapper API, test results, backup manifest | After Step 2 if more than 12 turns were used |
+| Foundation | 1-2 | Baseline plus wrapper contract only | Wrapper API and test results | After Step 2 if more than 12 turns were used |
 | Core models | 3 | Tree/grammar/validation files and focused failures only | Migrated API decisions and performance notes | After core model tests pass |
 | Public consumers | 4-5 | One family at a time: dialogs, then projections/commands | Compile fixes and equality outcomes | Between Steps 4 and 5 if context exceeds 70% |
+
+Steps 4 and 5 depend on Step 2 only, so the "Public consumers" phase may run **before** "Core models" —
+and Step 4 preferably should, to close the dirty-worktree overlap early. The phase grouping is a context
+boundary, not an ordering constraint.
 | Enforcement | 6-7 | Remaining references, guard, downstream compile, architecture note | Guard result and solution build result | Before full verification if any unresolved warning exists |
 | Final verification | 8 | Commands and concise results only | Final pass/fail summary and benchmark delta | End immediately after plan is marked done or blocked |
 
@@ -402,7 +506,7 @@ Before each step:
 
 1. Mark the step `in-progress` in this plan and verify the plan file persists.
 2. Run `git status --short` and compare with `baseline.md`.
-3. Back up any newly touched file and update/verify `backup-manifest.md` before editing.
+3. (Struck by D2(a) — no per-file backup obligation.)
 4. Read only the files and tests needed for that step.
 
 During each step:

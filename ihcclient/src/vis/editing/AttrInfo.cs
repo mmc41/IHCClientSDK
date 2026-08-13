@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 
+using Ihc.Vis.Model;
 using Ihc.Vis.Schema;
 namespace Ihc.Vis.Editing
 {
@@ -29,7 +30,7 @@ namespace Ihc.Vis.Editing
         string Name,
         AttrRequirement Kind,
         string? Default,
-        IReadOnlyList<string> AllowedValues)
+        EquatableArray<string> AllowedValues)
     {
         internal static AttrInfo From(AttrSchema attr) =>
             new(attr.Name,
@@ -40,6 +41,6 @@ namespace Ihc.Vis.Editing
                     _ => AttrRequirement.Defaulted,
                 },
                 attr.Kind == AttrKind.Defaulted ? attr.Default : null,
-                attr.EnumValues.IsDefaultOrEmpty ? Array.Empty<string>() : attr.EnumValues);
+                attr.EnumValues);   // implicit, and default reads as empty — no normalizing ternary needed
     }
 }

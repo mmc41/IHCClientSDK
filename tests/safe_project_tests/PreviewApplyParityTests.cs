@@ -18,7 +18,7 @@ namespace Ihc.Vis.Tests
         public async Task Preview_ReturnsTheSameDeltaAsTheSubsequentApply()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ElementId locality = project.Groups.First(g => g.ChildrenOrEmpty().Any()).Id!.Value;
+            ElementId locality = project.Groups.First(g => g.Children.Any()).Id!.Value;
             var command = new DeleteLocality(locality);   // a cascading delete: locality + contents + references
             var session = new ProjectDocumentSession();
             session.Open(project);

@@ -58,7 +58,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await LoadOracle();
             ProjectEditor editor = project.Edit();
-            ElementId output = Fb(project, "AutoProof").FindChild("outputs")!.ChildrenOrEmpty().First().Id!.Value;
+            ElementId output = Fb(project, "AutoProof").FindChild("outputs")!.Children.First().Id!.Value;
 
             Assert.Throws<InvalidOperationException>(() => editor.ReorderSubtree(output, 0));
         }
@@ -113,7 +113,7 @@ namespace Ihc.Vis.Tests
             Project project = await LoadOracle();
             var session = new ProjectDocumentSession();
             session.Open(project);
-            ElementId output = Fb(project, "AutoProof").FindChild("outputs")!.ChildrenOrEmpty().First().Id!.Value;
+            ElementId output = Fb(project, "AutoProof").FindChild("outputs")!.Children.First().Id!.Value;
 
             EditOutcome outcome = session.Apply(new ReorderNode(output, 0));
 
@@ -151,7 +151,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await LoadOracle();
             ProjectEditor editor = project.Edit();
-            ElementId lockedPin = Fb(project, "AutoProof").FindChild("outputs")!.ChildrenOrEmpty()
+            ElementId lockedPin = Fb(project, "AutoProof").FindChild("outputs")!.Children
                 .First(c => c.Id is not null).Id!.Value;
             ElementId emptyLocality = project.Groups.Last().Id!.Value;
 

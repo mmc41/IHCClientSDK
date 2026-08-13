@@ -24,7 +24,7 @@ namespace Ihc.Vis.Tests
 
         private static (string Room, string Block) FirstBlock(Project p) =>
             p.Groups
-                .Where(g => !g.Children.IsDefaultOrEmpty)
+                .Where(g => !g.Children.IsEmpty)
                 .SelectMany(g => g.Children.Where(c => c.Tag == "functionblock").Select(c => (g.GetAttribute("name")!, c.GetAttribute("name")!)))
                 .First();
 

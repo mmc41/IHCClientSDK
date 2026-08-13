@@ -494,7 +494,7 @@ namespace Ihc.Vis.Tests
                 {
                     count++;
                 }
-                if (!e.Children.IsDefaultOrEmpty)
+                if (!e.Children.IsEmpty)
                 {
                     foreach (ProjectElement child in e.Children)
                     {

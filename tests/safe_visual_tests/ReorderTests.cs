@@ -60,11 +60,11 @@ public class ReorderTests
         await harness.Session.AddProductAsync(loc, products[0].ProductIdentifier, products[0].DisplayName);
         await harness.Session.AddProductAsync(loc, products[1].ProductIdentifier, products[1].DisplayName);
         var group = harness.Session.Current!.FindById(loc)!;
-        var second = group.ChildrenOrEmpty().Where(c => c.Tag.StartsWith("product_")).ElementAt(1).Id!.Value;
+        var second = group.Children.Where(c => c.Tag.StartsWith("product_")).ElementAt(1).Id!.Value;
 
         await harness.Session.ReorderNodeAsync(second, -1);   // move the second product above the first
 
-        var after = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty()
+        var after = harness.Session.Current!.FindById(loc)!.Children
             .Where(c => c.Tag.StartsWith("product_")).ToList();
         // T017: the report-order observation goes through the NEW pipeline — the generated installation
         // report lists the component blocks in tree (document) order, so the moved product renders first.

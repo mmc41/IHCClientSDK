@@ -60,7 +60,7 @@ namespace Ihc.Vis.Validation
                         }
                     }
                 }
-                if (!element.Children.IsDefaultOrEmpty)
+                if (!element.Children.IsEmpty)
                 {
                     foreach (ProjectElement child in element.Children)
                     {

@@ -16,7 +16,7 @@ namespace Ihc.Vis.Tests
 
         private static ElementId OutputOf(Project p, string fbName) =>
             p.Root.Descendants().First(e => e.Tag == "functionblock" && e.GetAttribute("name") == fbName)
-                .FindChild("outputs")!.ChildrenOrEmpty().First(e => e.Tag == "resource_output").Id!.Value;
+                .FindChild("outputs")!.Children.First(e => e.Tag == "resource_output").Id!.Value;
 
         [Test]
         public async Task GenericVarProperties_RenamesAnUnlockedVariableNameAndNote()

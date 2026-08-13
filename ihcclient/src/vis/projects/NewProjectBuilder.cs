@@ -85,7 +85,7 @@ namespace Ihc.Vis.Projects
         // make a name-keyed lookup ambiguous).
         private static ProjectElement RenameLocalities(ProjectElement groups, IReadOnlyList<string>? names)
         {
-            ImmutableArray<ProjectElement> rooms = groups.ChildrenOrEmpty();
+            ImmutableArray<ProjectElement> rooms = groups.Children.AsImmutableArray();
             if (names is null || names.Count != rooms.Count(c => c.Tag == "group"))
             {
                 return groups;   // no request, or a customised template — leave it exactly as the catalog wrote it
@@ -122,7 +122,7 @@ namespace Ihc.Vis.Projects
             string containerName = skeletonEnums.GetAttribute("name") ?? "Enumerator definitioner";
 
             var definitions = ImmutableArray.CreateBuilder<ProjectElement>();
-            foreach (ProjectElement def in template.ChildrenOrEmpty())
+            foreach (ProjectElement def in template.Children)
             {
                 if (def.Tag != "enum_definition")
                 {
@@ -130,7 +130,7 @@ namespace Ihc.Vis.Projects
                 }
                 string defId = allocator.Allocate(TypeCode.RequireForTag("enum_definition")).ToToken();
                 var values = ImmutableArray.CreateBuilder<ProjectElement>();
-                foreach (ProjectElement value in def.ChildrenOrEmpty())
+                foreach (ProjectElement value in def.Children)
                 {
                     if (value.Tag != "enum_value")
                     {

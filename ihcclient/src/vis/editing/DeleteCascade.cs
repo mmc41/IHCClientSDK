@@ -92,9 +92,9 @@ namespace Ihc.Vis.Editing
             {
                 ProjectElement mapped = e.GetAttribute("address_dataline") is null
                     ? e
-                    : e with { Attrs = e.AttrsOrEmpty().Where(a => a.Name != "address_dataline").ToImmutableArray() };
-                return mapped.ChildrenOrEmpty().Any()
-                    ? mapped with { Children = mapped.ChildrenOrEmpty().Select(Strip).ToImmutableArray() }
+                    : e with { Attrs = e.Attrs.Where(a => a.Name != "address_dataline").ToImmutableArray() };
+                return mapped.Children.Any()
+                    ? mapped with { Children = mapped.Children.Select(Strip).ToImmutableArray() }
                     : mapped;
             }
             return Strip(source);
@@ -139,7 +139,7 @@ namespace Ihc.Vis.Editing
                     }
                     else
                     {
-                        foreach (ProjectElement child in element.ChildrenOrEmpty())
+                        foreach (ProjectElement child in element.Children)
                         {
                             Walk(child);
                         }
@@ -160,7 +160,7 @@ namespace Ihc.Vis.Editing
         // the deleted set — schema-driven like FindDanglingReferences, so a future row IDREF slot cannot be missed
         // here while the strict guard still sees it.
         private static bool RowReferencesDeleted(ProjectElement row, HashSet<ElementId> deletedIds, ProjectSchemaView schemaView) =>
-            schemaView.TryGet(row.Tag) is { } schema && !row.Attrs.IsDefaultOrEmpty
+            schemaView.TryGet(row.Tag) is { } schema && !row.Attrs.IsEmpty
             && row.Attrs.Any(a => IsDeletedIdRef(schema, a.Name, a.Value, deletedIds));
 
         // The one IDREF-into-the-deleted-set test, shared by the cascade (RowReferencesDeleted) and the strict guard
@@ -176,7 +176,7 @@ namespace Ihc.Vis.Editing
                 ElementSchema? schema = schemaView.TryGet(element.Tag);
                 if (schema is not null)
                 {
-                    foreach ((string name, string value) in element.AttrsOrEmpty())
+                    foreach ((string name, string value) in element.Attrs)
                     {
                         if (IsDeletedIdRef(schema, name, value, deletedIds))
                         {
@@ -184,7 +184,7 @@ namespace Ihc.Vis.Editing
                         }
                     }
                 }
-                foreach (ProjectElement child in element.ChildrenOrEmpty())
+                foreach (ProjectElement child in element.Children)
                 {
                     Walk(child);
                 }

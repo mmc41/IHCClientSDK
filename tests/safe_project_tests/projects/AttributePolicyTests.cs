@@ -63,7 +63,7 @@ namespace Ihc.Vis.Tests
             int index = project.Root.Children.IndexOf(modified);
             Project broken = project with
             {
-                Root = project.Root with { Children = project.Root.Children.SetItem(index, stripped) },
+                Root = project.Root with { Children = project.Root.Children.AsImmutableArray().SetItem(index, stripped) },
             };
 
             Assert.That(() => ProjectSerializer.Serialize(broken),
@@ -75,7 +75,7 @@ namespace Ihc.Vis.Tests
         private static ProjectElement Replace(ProjectElement node, ElementId id, ProjectElement replacement) =>
             node.Id == id
                 ? replacement
-                : node with { Children = node.ChildrenOrEmpty().Select(c => Replace(c, id, replacement)).ToImmutableArray() };
+                : node with { Children = node.Children.Select(c => Replace(c, id, replacement)).ToImmutableArray() };
 
         // T036 (D03): pin — the serializer OMITS a Defaulted attribute whose value equals its DTD default
         // (omit-if-default, AttrSchema.OmitsOnWrite); the reader never re-materializes it. No serializer change.
@@ -126,7 +126,7 @@ namespace Ihc.Vis.Tests
             int index = project.Root.Children.IndexOf(modified);
             Project broken = project with
             {
-                Root = project.Root with { Children = project.Root.Children.SetItem(index, stripped) },
+                Root = project.Root with { Children = project.Root.Children.AsImmutableArray().SetItem(index, stripped) },
             };
 
             ProjectValidationResult result = ProjectValidator.Validate(broken);

@@ -134,7 +134,7 @@ namespace Ihc.Vis.Products
                 sourceEncoding = existing.SourceEncoding,
                 ids = new IdAllocator(IdAllocator.MaxCounterPresent(existing.Body)),
             };
-            foreach ((string name, string value) in existing.Body.AttrsOrEmpty())
+            foreach ((string name, string value) in existing.Body.Attrs)
             {
                 switch (name)
                 {
@@ -148,7 +148,7 @@ namespace Ihc.Vis.Products
                         break;
                 }
             }
-            foreach (ProjectElement child in existing.Body.ChildrenOrEmpty())
+            foreach (ProjectElement child in existing.Body.Children)
             {
                 builder.children.Add(child);
                 if (child.Id is { } id)

@@ -72,7 +72,7 @@ namespace Ihc.Vis.Reporting
             shapes.Add(FullModeShapes.ProjektBlock(project));
             foreach (ProjectElement locality in TreeIndex.Localities(project))
             {
-                foreach (ProjectElement block in locality.ChildrenOrEmpty().Where(c => c.Tag == "functionblock"))
+                foreach (ProjectElement block in locality.Children.Where(c => c.Tag == "functionblock"))
                 {
                     shapes.Add(BuildBlock(project, block, index));
                 }
@@ -97,7 +97,7 @@ namespace Ihc.Vis.Reporting
                 if (container == "programs")
                 {
                     // U7: only program_simple children are programs; stray sub/case elements are dropped.
-                    foreach (ProjectElement program in section.ChildrenOrEmpty().Where(c => c.Tag == "program_simple"))
+                    foreach (ProjectElement program in section.Children.Where(c => c.Tag == "program_simple"))
                     {
                         AddProgramRows(program, 1, rows, index);
                     }
@@ -107,7 +107,7 @@ namespace Ihc.Vis.Reporting
                     // The four variable sections render the same vendor-scope type union (pins, scenes and
                     // the classic variable types); only settings/internalsettings add `= value` (A10).
                     bool variables = container is "settings" or "internalsettings";
-                    foreach (ProjectElement child in section.ChildrenOrEmpty()
+                    foreach (ProjectElement child in section.Children
                         .Where(c => PinTags.Contains(c.Tag) || VariableTags.Contains(c.Tag)))
                     {
                         rows.Add(Row(child, 1, index, value: variables ? FormatValue(child, index) : null));
@@ -197,14 +197,14 @@ namespace Ihc.Vis.Reporting
         // consumed by the value column, and the vendor never rendered deeper structure there).
         private static IEnumerable<ProjectElement> ProgramChildren(ProjectElement element) => element.Tag switch
         {
-            "program_simple" or "program_sub" => element.ChildrenOrEmpty()
+            "program_simple" or "program_sub" => element.Children
                 .Where(c => c.Tag is "events" or "actions" or "conditions"),
-            "events" => element.ChildrenOrEmpty().Where(c => c.Tag is "event" or "event_power"),
-            "actions" => element.ChildrenOrEmpty()
+            "events" => element.Children.Where(c => c.Tag is "event" or "event_power"),
+            "actions" => element.Children
                 .Where(c => c.Tag is "action" or "program_sub" or "program_case"),
-            "conditions" => element.ChildrenOrEmpty().Where(c => c.Tag is "condition" or "conditions"),
-            "program_case" => element.ChildrenOrEmpty().Where(c => c.Tag is "case_action" or "actions"),
-            "case_action" => element.ChildrenOrEmpty().Where(c => c.Tag == "action"),
+            "conditions" => element.Children.Where(c => c.Tag is "condition" or "conditions"),
+            "program_case" => element.Children.Where(c => c.Tag is "case_action" or "actions"),
+            "case_action" => element.Children.Where(c => c.Tag == "action"),
             _ => Enumerable.Empty<ProjectElement>(),
         };
 

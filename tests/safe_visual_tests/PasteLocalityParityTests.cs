@@ -73,12 +73,12 @@ public class PasteLocalityParityTests
         await harness.Session.AddProductAsync(localityId, product.ProductIdentifier);
         await harness.Session.AddEmptyFunctionBlockAsync(localityId);
         ProjectElement block = harness.Session.Current!.FindById(localityId)!
-            .ChildrenOrEmpty().First(c => c.Tag == "functionblock");
+            .Children.First(c => c.Tag == "functionblock");
         ElementId inPin = (await harness.Session.AddVariableAsync(
             block.FindChild("inputs")!.Id!.Value, "resource_input", "InA"))!.Value;
         // Re-read the room: every edit produces a new project, so a snapshot taken before them is stale.
         ElementId productPin = harness.Session.Current!.FindById(localityId)!
-            .ChildrenOrEmpty().First(c => c.Tag != "functionblock")
+            .Children.First(c => c.Tag != "functionblock")
             .Descendants().First(d => d.Tag == "dataline_input").Id!.Value;
         await harness.Session.LinkPinsAsync(productPin, inPin);
         int linksBefore = LinkHalves(harness.Session.Current!, localityId);

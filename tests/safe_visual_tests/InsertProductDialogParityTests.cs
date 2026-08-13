@@ -40,7 +40,7 @@ public class InsertProductDialogParityTests
     }
 
     private static int ProductCount(Project project) =>
-        project.Groups.Sum(g => g.ChildrenOrEmpty().Count(c => c.Tag.StartsWith("product_")));
+        project.Groups.Sum(g => g.Children.Count(c => c.Tag.StartsWith("product_")));
 
     [Test]
     public async Task InsertProduct_OpensTheProductDialog()

@@ -199,10 +199,14 @@ namespace Ihc.Vis.Tests
             GrammarDeclaration declaration = GrammarDeclaration.Create("r", hasElementDecl: true,
                 attrs: default);
 
+            // The factory used to have to normalize a default ImmutableArray by hand, or reads would throw.
+            // EquatableArray<T> makes default and empty the same value, so this holds by construction — and
+            // there is deliberately no IsDefault to assert against, since observing it would distinguish two
+            // values that equality says are identical.
             Assert.Multiple(() =>
             {
-                Assert.That(declaration.Attrs.IsDefault, Is.False);
                 Assert.That(declaration.Attrs.IsEmpty, Is.True);
+                Assert.That(declaration.Attrs.Count, Is.Zero, "a default instance reads as empty, it does not throw");
                 Assert.That(declaration, Is.EqualTo(GrammarDeclaration.ElementOnly("r")));
             });
         }

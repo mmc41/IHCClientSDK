@@ -80,20 +80,20 @@ namespace Ihc.Vis.Catalog
             var builder = new StringBuilder();
             string indent = new string(' ', depth * 2);
             string attrs = string.Join(" ",
-                element.AttrsOrEmpty().Select(a => $"{a.Name}=\"{a.Value}\""));
+                element.Attrs.Select(a => $"{a.Name}=\"{a.Value}\""));
             builder.Append(indent).Append('<').Append(element.Tag);
             if (attrs.Length > 0)
             {
                 builder.Append(' ').Append(attrs);
             }
-            if (element.ChildrenOrEmpty().IsEmpty)
+            if (element.Children.IsEmpty)
             {
                 builder.Append("/>\n");
             }
             else
             {
                 builder.Append(">\n");
-                foreach (ProjectElement child in element.ChildrenOrEmpty())
+                foreach (ProjectElement child in element.Children)
                 {
                     builder.Append(Dump(child, depth + 1));
                 }

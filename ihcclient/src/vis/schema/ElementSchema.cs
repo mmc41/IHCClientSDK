@@ -45,7 +45,7 @@ namespace Ihc.Vis.Schema
                     _ => AttrRender.Text,
                 },
                 attr.DecodedLiteral,
-                attr.EnumTokens);
+                attr.EnumTokens.AsImmutableArray());
         /// <summary>The declared schema for the named attribute, or <c>null</c> when this element type does not declare it.</summary>
         public AttrSchema? FindAttr(string name)
         {

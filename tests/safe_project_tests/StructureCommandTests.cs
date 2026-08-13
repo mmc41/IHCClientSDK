@@ -26,8 +26,8 @@ namespace Ihc.Vis.Tests
         private static (ElementId Product, ElementId SourceLoc, ElementId TargetLoc) PickProductAndTwoLocalities(Project project)
         {
             System.Collections.Generic.List<ProjectElement> groups = project.Groups.ToList();
-            ProjectElement source = groups.First(g => g.ChildrenOrEmpty().Any(c => ProductClassifier.IsProduct(c.Tag)));
-            ElementId product = source.ChildrenOrEmpty().First(c => ProductClassifier.IsProduct(c.Tag)).Id!.Value;
+            ProjectElement source = groups.First(g => g.Children.Any(c => ProductClassifier.IsProduct(c.Tag)));
+            ElementId product = source.Children.First(c => ProductClassifier.IsProduct(c.Tag)).Id!.Value;
             ElementId target = groups.First(g => g.Id != source.Id).Id!.Value;
             return (product, source.Id!.Value, target);
         }
@@ -120,7 +120,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             ProjectElement linked = project.Groups
-                .SelectMany(g => g.ChildrenOrEmpty().Where(c => ProductClassifier.IsProduct(c.Tag)))
+                .SelectMany(g => g.Children.Where(c => ProductClassifier.IsProduct(c.Tag)))
                 .First(p => p.DescendantsAndSelf().Any(d => d.Tag is "link_to_resource" or "link_from_resource"));
             ElementId product = linked.Id!.Value;
             ElementId currentParent = project.FindParent(product)!.Id!.Value;

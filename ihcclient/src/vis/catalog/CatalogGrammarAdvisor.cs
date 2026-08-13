@@ -67,7 +67,7 @@ namespace Ihc.Vis.Catalog
             // family's scene_resource is checked even when the grammar omits the declaration.
             if (view.TryGet(element.Tag) is { } schema)
             {
-                foreach ((string name, string value) in element.AttrsOrEmpty())
+                foreach ((string name, string value) in element.Attrs)
                 {
                     if (schema.IsIdRef(name) && value.Length > 0 && !ids.Contains(value))
                     {
@@ -78,7 +78,7 @@ namespace Ihc.Vis.Catalog
                 }
             }
 
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
+            foreach (ProjectElement child in element.Children)
             {
                 Walk(child, grammar, view, ids, findings);
             }
@@ -87,7 +87,7 @@ namespace Ihc.Vis.Catalog
         private static void AdviseAttrs(ProjectElement element, GrammarDeclaration declaration,
             ImmutableArray<ProjectValidationFinding>.Builder findings)
         {
-            foreach ((string name, string value) in element.AttrsOrEmpty())
+            foreach ((string name, string value) in element.Attrs)
             {
                 GrammarAttr? attr = declaration.FindAttr(name);
                 if (attr is null)

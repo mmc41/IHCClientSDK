@@ -107,7 +107,7 @@ namespace Ihc.Vis.Tests
             {
                 return element;
             }
-            if (element.Children.IsDefaultOrEmpty)
+            if (element.Children.IsEmpty)
             {
                 return null;
             }

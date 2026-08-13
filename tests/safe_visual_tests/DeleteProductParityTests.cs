@@ -27,11 +27,11 @@ public class DeleteProductParityTests
         await harness.Session.AddProductAsync(localityId, product.ProductIdentifier);
         await harness.Session.AddEmptyFunctionBlockAsync(localityId);
         ProjectElement block = harness.Session.Current!.FindById(localityId)!
-            .ChildrenOrEmpty().First(c => c.Tag == "functionblock");
+            .Children.First(c => c.Tag == "functionblock");
         ElementId inPin = (await harness.Session.AddVariableAsync(
             block.FindChild("inputs")!.Id!.Value, "resource_input", "InA"))!.Value;
         ProjectElement placed = harness.Session.Current!.FindById(localityId)!
-            .ChildrenOrEmpty().First(c => c.Tag != "functionblock");
+            .Children.First(c => c.Tag != "functionblock");
         ElementId productId = placed.Id!.Value;
         await harness.Session.LinkPinsAsync(placed.Descendants().First(d => d.Tag == "dataline_input").Id!.Value, inPin);
         int confirmsBefore = harness.Dialogs.ConfirmCalls;

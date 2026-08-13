@@ -83,7 +83,7 @@ public class TooltipTests
         {
             if (e.Tag == tag && e.Id is { } id)
                 return id;
-            if (FindTagged(e.ChildrenOrEmpty(), tag) is { } found)
+            if (FindTagged(e.Children, tag) is { } found)
                 return found;
         }
         return null;

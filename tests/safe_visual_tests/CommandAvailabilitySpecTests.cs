@@ -312,8 +312,8 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
         using var _1 = harness;
         var product = harness.ProjectService.GetAvailableProducts().First(p => p.Resources.Any(r => r.Tag == "dataline_input"));
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
-        ProjectElement placed = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().First(c => c.Tag.StartsWith("product_"));
-        ElementId catalogPin = placed.ChildrenOrEmpty().First(c => c.Tag == "dataline_input").Id!.Value;
+        ProjectElement placed = harness.Session.Current!.FindById(loc)!.Children.First(c => c.Tag.StartsWith("product_"));
+        ElementId catalogPin = placed.Children.First(c => c.Tag == "dataline_input").Id!.Value;
         ElementId deletableProduct = placed.Id!.Value;
 
         Availability pinBar = At(vm, "edit.delete", vm.Context with { Node = Node(catalogPin, TreeNodeKind.Pin, isPin: true) }, Surface.MenuBar);

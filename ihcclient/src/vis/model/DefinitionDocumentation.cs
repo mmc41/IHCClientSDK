@@ -43,8 +43,13 @@ namespace Ihc.Vis.Model
         // review C1: the synthesized record equality would compare Resources (an ImmutableDictionary, which has no
         // value Equals) BY REFERENCE, so two content-identical documentations compare unequal — and that propagates
         // to FunctionBlockDefinition/ProductDefinition, whose Documentation member feeds their record equality. Give
-        // this record content-based value equality (order-independent over the dictionary), the same guarantee
-        // ImmutableArrayValue gives ProjectElement/CatalogGrammar. Summary is Ordinal (help text is data, not culture).
+        // this record content-based value equality (order-independent over the dictionary). Summary is Ordinal
+        // (help text is data, not culture).
+        //
+        // DELIBERATE SURVIVOR: this is MAP equality, and no EquatableDictionary<TKey,TValue> exists — the ordered
+        // EquatableArray<T> and the unordered EquatableSet<T> both have the wrong semantics for a keyed lookup, so
+        // this pair stays by design rather than by oversight. Adding that wrapper is the one change that would
+        // retire it; until then, a member added to this record must still be added to both methods below.
         public bool Equals(DefinitionDocumentation? other) =>
             other is not null
             && string.Equals(Summary, other.Summary, StringComparison.Ordinal)

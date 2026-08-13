@@ -22,8 +22,8 @@ namespace Ihc.Vis.Model
     public sealed record ProjectElement(
         string Tag,
         ElementId? Id,
-        ImmutableArray<(string Name, string Value)> Attrs,
-        ImmutableArray<ProjectElement> Children)
+        EquatableArray<(string Name, string Value)> Attrs,
+        EquatableArray<ProjectElement> Children)
     {
         /// <summary>
         /// Builds an element with the <c>id</c> token leading the attribute bag (when <paramref name="id"/> is
@@ -51,9 +51,9 @@ namespace Ihc.Vis.Model
         /// The allocation-free scan the instance <see cref="GetAttribute(string)"/> and the readers/insert transform
         /// share — those hold a bag before an element is built, so they cannot use the instance form.
         /// </summary>
-        internal static string? GetAttribute(ImmutableArray<(string Name, string Value)> attrs, string name)
+        internal static string? GetAttribute(EquatableArray<(string Name, string Value)> attrs, string name)
         {
-            if (attrs.IsDefaultOrEmpty)
+            if (attrs.IsEmpty)
             {
                 return null;
             }
@@ -70,19 +70,22 @@ namespace Ihc.Vis.Model
         /// <summary>
         /// Returns a copy of a raw attribute bag with the named attribute set: replaced in place when present,
         /// appended at the end when absent — the bag-level peer of <see cref="WithAttribute"/> for callers that
-        /// hold a bag before an element is built (see <see cref="GetAttribute(ImmutableArray{ValueTuple{string, string}}, string)"/>).
+        /// hold a bag before an element is built (see <see cref="GetAttribute(EquatableArray{ValueTuple{string, string}}, string)"/>).
         /// </summary>
-        internal static ImmutableArray<(string Name, string Value)> SetAttribute(
-            ImmutableArray<(string Name, string Value)> attrs, string name, string value)
+        internal static EquatableArray<(string Name, string Value)> SetAttribute(
+            EquatableArray<(string Name, string Value)> attrs, string name, string value)
         {
-            for (int i = 0; i < attrs.Length; i++)
+            // The wrapper deliberately exposes no SetItem/Add, so the one conversion to the backing array
+            // lives here rather than at every caller.
+            ImmutableArray<(string Name, string Value)> bag = attrs.AsImmutableArray();
+            for (int i = 0; i < bag.Length; i++)
             {
-                if (attrs[i].Name == name)
+                if (bag[i].Name == name)
                 {
-                    return attrs.SetItem(i, (name, value));
+                    return bag.SetItem(i, (name, value));
                 }
             }
-            return attrs.Add((name, value));
+            return bag.Add((name, value));
         }
 
         /// <summary>
@@ -90,12 +93,12 @@ namespace Ihc.Vis.Model
         /// preserved) or, when absent, appended at the end.
         /// </summary>
         public ProjectElement WithAttribute(string name, string value) =>
-            this with { Attrs = SetAttribute(AttrsOrEmpty(), name, value) };
+            this with { Attrs = SetAttribute(Attrs, name, value) };
 
         /// <summary>Returns the first direct child with the given tag, or <c>null</c> when none.</summary>
         public ProjectElement? FindChild(string tag)
         {
-            foreach (ProjectElement child in ChildrenOrEmpty())
+            foreach (ProjectElement child in Children)
             {
                 if (child.Tag == tag)
                 {
@@ -105,13 +108,8 @@ namespace Ihc.Vis.Model
             return null;
         }
 
-        /// <summary>The children in document order, or an empty array when this element has none — the null-safe form of <see cref="Children"/>.</summary>
-        public ImmutableArray<ProjectElement> ChildrenOrEmpty() =>
-            Children.IsDefaultOrEmpty ? ImmutableArray<ProjectElement>.Empty : Children;
-
-        /// <summary>The attribute bag in registry order, or an empty array when this element has none — the null-safe form of <see cref="Attrs"/>.</summary>
-        public ImmutableArray<(string Name, string Value)> AttrsOrEmpty() =>
-            Attrs.IsDefaultOrEmpty ? ImmutableArray<(string, string)>.Empty : Attrs;
+        // ChildrenOrEmpty()/AttrsOrEmpty() are gone: EquatableArray<T> reads a default instance as empty, so
+        // Children and Attrs are already the null-safe form and a passthrough would only duplicate them.
 
         /// <summary>
         /// Every element below this one in document order (depth-first, pre-order), excluding this element itself.
@@ -148,7 +146,7 @@ namespace Ihc.Vis.Model
             {
                 return this;
             }
-            foreach (ProjectElement child in ChildrenOrEmpty())
+            foreach (ProjectElement child in Children)
             {
                 ProjectElement? found = child.FindDescendantOrSelf(match);
                 if (found is not null)
@@ -161,7 +159,7 @@ namespace Ihc.Vis.Model
 
         private static void Collect(ProjectElement element, List<ProjectElement> acc)
         {
-            if (element.Children.IsDefaultOrEmpty)
+            if (element.Children.IsEmpty)
             {
                 return;
             }
@@ -172,22 +170,11 @@ namespace Ihc.Vis.Model
             }
         }
 
-        /// <summary>
-        /// Structural (value) equality over the whole subtree. The synthesized record equality would compare
-        /// <see cref="Attrs"/>/<see cref="Children"/> by backing-array reference; this overload compares them by
-        /// content (recursing into children), so two elements built independently from the same data are equal.
-        /// </summary>
-        public bool Equals(ProjectElement? other) =>
-            other is not null
-            && Tag == other.Tag
-            && Id == other.Id
-            && ImmutableArrayValue.Equal(Attrs, other.Attrs)
-            && ImmutableArrayValue.Equal(Children, other.Children);
-
-        public override int GetHashCode() =>
-            HashCode.Combine(Tag, Id, ImmutableArrayValue.Hash(Attrs), ImmutableArrayValue.Hash(Children));
+        // Structural (value) equality over the whole subtree is the compiler's: EquatableArray<T> compares
+        // Attrs and Children by content, recursing into child elements, so two elements built independently
+        // from the same data are equal — and a member added later is covered without touching this file.
 
         public override string ToString() =>
-            $"ProjectElement(Tag={Tag}, Id={Id}, Attrs=[{(Attrs.IsDefaultOrEmpty ? 0 : Attrs.Length)}], Children=[{(Children.IsDefaultOrEmpty ? 0 : Children.Length)}])";
+            $"ProjectElement(Tag={Tag}, Id={Id}, Attrs=[{Attrs.Length}], Children=[{Children.Length}])";
     }
 }

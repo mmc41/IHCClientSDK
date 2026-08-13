@@ -307,7 +307,7 @@ internal sealed class ProgramAuthoringCoordinator(
         {
             if (block.FindChild(container) is not { } section)
                 continue;
-            foreach (ProjectElement pin in section.ChildrenOrEmpty())
+            foreach (ProjectElement pin in section.Children)
                 if (ProgramMethodCatalog.NumericVariableTags.Contains(pin.Tag) && pin.Id is { } pid)
                     yield return (project.NameOr(pin, pin.Tag), pid, pin.Tag);   // tag drives the F-108 opcode grid
         }
@@ -346,7 +346,7 @@ internal sealed class ProgramAuthoringCoordinator(
         {
             if (block.FindChild(container) is not { } section)
                 continue;
-            foreach (ProjectElement pin in section.ChildrenOrEmpty())
+            foreach (ProjectElement pin in section.Children)
                 if (pin.Id is { } pid && pid != exclude && ProgramMethodCatalog.ClassifyPin(pin.Tag) == type
                     && (type != ProgramPinType.Enum || HasSameEnumDefinition(armed, pin)))
                     yield return (project.NameOr(pin, pin.Tag), pid);
@@ -446,7 +446,7 @@ internal sealed class ProgramAuthoringCoordinator(
             && ElementId.TryParse(switchVar.GetAttribute("typedef"), out ElementId defId)
             && project.FindById(defId) is { } def)
         {
-            foreach (ProjectElement value in def.ChildrenOrEmpty())
+            foreach (ProjectElement value in def.Children)
             {
                 if (value.Tag == "enum_value")
                 {

@@ -151,7 +151,7 @@ namespace Ihc.Vis.Tests
             Project project = await Load("project3-KompleksWired.vis");
             ProjectEditor editor = project.Edit();
             ProjectElement owner = project.Root.Descendants().First(e =>
-                !e.Children.IsDefaultOrEmpty
+                !e.Children.IsEmpty
                 && e.Children.Any(c => c.Tag == "scenes" && c.GetAttribute("name") != "Scenarier"));
             ProjectElement room = FindRoom(project, owner);
             ProductRef product = editor.Group(room.GetAttribute("name")!).Product(owner.GetAttribute("name")!);
@@ -159,7 +159,7 @@ namespace Ihc.Vis.Tests
             product.RemoveScenes();
 
             ProjectElement ownerAfter = editor.ToProject().FindById(owner.Id!.Value)!;
-            Assert.That(ownerAfter.Children.IsDefaultOrEmpty || ownerAfter.Children.All(c => c.Tag != "scenes"),
+            Assert.That(ownerAfter.Children.IsEmpty || ownerAfter.Children.All(c => c.Tag != "scenes"),
                 Is.True, "every scenes container is removed regardless of its display name");
         }
 

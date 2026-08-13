@@ -35,7 +35,7 @@ public sealed class ProjectTreeProjector(Project project)
             isExpanded: true, elementId: programs?.Id) { Kind = TreeNodeKind.Programs };
         if (programs is not null)
         {
-            foreach (ProjectElement program in programs.ChildrenOrEmpty().Where(p => p.IsProgram))
+            foreach (ProjectElement program in programs.Children.Where(p => p.IsProgram))
             {
                 // IHC Visual opens the block and Programs containers on entry but leaves each authored Program closed.
                 // This is only the fresh-view default; same-view rebuilds restore the user's expansion state.
@@ -47,7 +47,7 @@ public sealed class ProjectTreeProjector(Project project)
                     var eventsNode = new TreeNodeViewModel(project.NameOr(events, "Hændelser"),
                         NodeIcons.For("events", null),
                         isExpanded: true, elementId: events.Id) { Kind = TreeNodeKind.Events };
-                    foreach (ProjectElement ev in events.ChildrenOrEmpty().Where(e => e.IsProgramEvent))
+                    foreach (ProjectElement ev in events.Children.Where(e => e.IsProgramEvent))
                         eventsNode.Children.Add(new TreeNodeViewModel(EventCommandLabel(ev),
                             NodeIcons.For(ev.Tag, null), elementId: ev.Id)
                             { Kind = TreeNodeKind.Event, CrossReferences = CrossReferencesOf(ev) });
@@ -72,7 +72,7 @@ public sealed class ProjectTreeProjector(Project project)
     // switches (case bodies deferred to US-031).
     private void RenderActionsInto(TreeNodeViewModel commandsNode, ProjectElement actions)
     {
-        foreach (ProjectElement child in actions.ChildrenOrEmpty())
+        foreach (ProjectElement child in actions.Children)
         {
             if (child.IsProgramCommand)
                 commandsNode.Children.Add(new TreeNodeViewModel(EventCommandLabel(child),
@@ -100,7 +100,7 @@ public sealed class ProjectTreeProjector(Project project)
             isExpanded: false, elementId: sub.Id) { Kind = TreeNodeKind.SubProgram };
         if (sub.FindChild("conditions") is { } conditions)
             node.Children.Add(BuildConditionsNode(conditions));
-        foreach (ProjectElement branch in sub.ChildrenOrEmpty().Where(a => a.IsActionsContainer))
+        foreach (ProjectElement branch in sub.Children.Where(a => a.IsActionsContainer))
         {
             bool isTrue = (project.View(branch).Effective("type") ?? "") == "_0x1";
             var branchNode = new TreeNodeViewModel(
@@ -120,7 +120,7 @@ public sealed class ProjectTreeProjector(Project project)
         var node = new TreeNodeViewModel("Betingelser", NodeIcons.For(or ? "conditions-or" : "conditions", null),
             isExpanded: true, elementId: conditions.Id)
             { IsOrGroup = or, Kind = nested ? TreeNodeKind.LogicGroup : TreeNodeKind.Conditions };
-        foreach (ProjectElement child in conditions.ChildrenOrEmpty())
+        foreach (ProjectElement child in conditions.Children)
         {
             if (child.IsCondition)
                 node.Children.Add(new TreeNodeViewModel(EventCommandLabel(child),
@@ -139,7 +139,7 @@ public sealed class ProjectTreeProjector(Project project)
         string switchName = ResolveOperandName(project.View(kase).Effective("link"));
         var node = new TreeNodeViewModel($"Case ({switchName})", NodeIcons.For("program_case", null),
             isExpanded: true, elementId: kase.Id) { Kind = TreeNodeKind.Case, CrossReferences = CrossReferencesOf(kase) };
-        foreach (ProjectElement child in kase.ChildrenOrEmpty())
+        foreach (ProjectElement child in kase.Children)
         {
             if (child.IsCaseValue)
             {
@@ -234,7 +234,7 @@ public sealed class ProjectTreeProjector(Project project)
         {
             string name = project.NameOr(group, "(uden navn)");
             var components = new List<ProjectElement>();
-            foreach (ProjectElement child in group.ChildrenOrEmpty())
+            foreach (ProjectElement child in group.Children)
             {
                 if ((child.Kind == ElementKind.FunctionBlock) == functions)
                     components.Add(child);
@@ -266,7 +266,7 @@ public sealed class ProjectTreeProjector(Project project)
             NodeIcons.For(component.Tag, project.View(component).Icon),
             elementId: component.Id, isUnlinked: unlinked)
             { Tooltip = BuildTooltip(component), Kind = TreeNodeKind.Product };
-        foreach (ProjectElement resource in component.ChildrenOrEmpty())
+        foreach (ProjectElement resource in component.Children)
         {
             if (resource.IsScenesContainer)
                 node.Children.Add(BuildScenesNode(resource));   // a product's scenario output (scene link target, US-024)
@@ -282,7 +282,7 @@ public sealed class ProjectTreeProjector(Project project)
     {
         var node = new TreeNodeViewModel(project.NameOr(scenes, "Scenarier"), "/Assets/scenario.svg",
             elementId: scenes.Id) { Kind = TreeNodeKind.Scenes };
-        foreach (ProjectElement member in scenes.ChildrenOrEmpty())
+        foreach (ProjectElement member in scenes.Children)
         {
             if (member.IsSceneMember)
                 node.Children.Add(BuildSceneMemberNode(member));
@@ -320,7 +320,7 @@ public sealed class ProjectTreeProjector(Project project)
         ProjectElement? product = project.FindParent(memberId) is { Id: { } scenesId }
             ? project.FindParent(scenesId)
             : null;
-        ProjectElement? shutterPin = product?.ChildrenOrEmpty().FirstOrDefault(c => c.Tag == pinTag);
+        ProjectElement? shutterPin = product?.Children.FirstOrDefault(c => c.Tag == pinTag);
         return shutterPin is not null ? project.View(shutterPin).Name : null;
     }
 
@@ -344,7 +344,7 @@ public sealed class ProjectTreeProjector(Project project)
             if (!programmingMode && container == "internalsettings")
                 continue;   // Internal variables is programming-mode-only (A-17)
             ProjectElement? holder = fb.FindChild(container);
-            if (!programmingMode && (holder is null || !holder.ChildrenOrEmpty().Any()))
+            if (!programmingMode && (holder is null || !holder.Children.Any()))
                 continue;   // configuration mode hides an empty/childless container (A-18)
             // The caption is the container's own stored name when it has one (the standard blocks name their
             // settings section "Indstillinger"); the table's label is the fallback for a container that leaves it
@@ -358,7 +358,7 @@ public sealed class ProjectTreeProjector(Project project)
             };
             if (holder is not null)
             {
-                foreach (ProjectElement pin in holder.ChildrenOrEmpty())
+                foreach (ProjectElement pin in holder.Children)
                     section.Children.Add(BuildPinNode(pin, inFunctionBlockVariableSection: true));
             }
             node.Children.Add(section);
@@ -428,7 +428,7 @@ public sealed class ProjectTreeProjector(Project project)
                 KindDetail = resource.Tag, Kind = TreeNodeKind.Pin,
             };
         // A linked pin reveals its follow-link / scene-link rows (US-022/025).
-        foreach (ProjectElement child in resource.ChildrenOrEmpty())
+        foreach (ProjectElement child in resource.Children)
         {
             if (child.IsLinkHalf)
                 node.Children.Add(BuildLinkNode(child));

@@ -76,7 +76,7 @@ namespace Ihc.Vis.Products
         /// surfaced entry's <see cref="ResourceSummary.Id"/>) and walks its children.</para>
         /// </summary>
         public IReadOnlyList<ResourceSummary> Resources =>
-            Body.ChildrenOrEmpty()
+            Body.Children
                 .Where(c => !ProductRows.IsStructuralChild(c.Tag))
                 .Select(c => new ResourceSummary(c.Tag, c.GetAttribute("name") ?? string.Empty, c.Id))
                 .ToArray();

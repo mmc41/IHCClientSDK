@@ -100,7 +100,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await LoadOracle();
             ProjectEditor editor = project.Edit();
-            ProjectElement group = project.Groups.First(g => !g.Children.IsDefaultOrEmpty);
+            ProjectElement group = project.Groups.First(g => !g.Children.IsEmpty);
             ElementId descendantId = group.Descendants().First(e => e.Id is not null).Id!.Value;
 
             Assert.Throws<InvalidOperationException>(() => editor.MoveSubtree(group.Id!.Value, descendantId),

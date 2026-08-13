@@ -101,7 +101,7 @@ namespace Ihc.Vis.FunctionBlocks
                 decodedBody = existing.Body,
                 ids = new IdAllocator(IdAllocator.MaxCounterPresent(existing.Body)),
             };
-            foreach ((string name, string value) in existing.Body.AttrsOrEmpty())
+            foreach ((string name, string value) in existing.Body.Attrs)
             {
                 if (name is "id" or "name" or "master_type" or "master_version" or "master_name")
                 {
@@ -114,7 +114,7 @@ namespace Ihc.Vis.FunctionBlocks
             // an explicit .Grammar(...) replaces the carried grammar; .ExtendGrammar(...) starts from it.
             builder.grammar = existing.Grammar;
             builder.sourceEncoding = existing.SourceEncoding;
-            builder.explicitCloseIds = existing.ExplicitCloseIds;   // review F1: else From(x).Build() drops the two-tag close set
+            builder.explicitCloseIds = existing.ExplicitCloseIds.AsImmutableHashSet();   // review F1: else From(x).Build() drops the two-tag close set
             builder.SeedDocumentation(existing.Documentation);
             return builder;
         }
@@ -443,7 +443,7 @@ namespace Ihc.Vis.FunctionBlocks
         private static ProjectElement DropEmptyDefaultAttrs(ProjectElement element)
         {
             var keptAttrs = ImmutableArray.CreateBuilder<(string, string)>();
-            foreach ((string name, string value) in element.AttrsOrEmpty())
+            foreach ((string name, string value) in element.Attrs)
             {
                 if (!(value.Length == 0 && name is "note" or "name"))
                 {
@@ -451,7 +451,7 @@ namespace Ihc.Vis.FunctionBlocks
                 }
             }
             var children = ImmutableArray.CreateBuilder<ProjectElement>();
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
+            foreach (ProjectElement child in element.Children)
             {
                 children.Add(DropEmptyDefaultAttrs(child));
             }
@@ -576,11 +576,11 @@ namespace Ihc.Vis.FunctionBlocks
             var newChildren = new List<ProjectElement>();
             newChildren.AddRange(enumDefs.Select(e => e.Materialize()));
             newChildren.AddRange(rawBodyChildren);
-            foreach (ProjectElement child in body.ChildrenOrEmpty())
+            foreach (ProjectElement child in body.Children)
             {
                 if (appended.TryGetValue(child.Tag, out IReadOnlyList<ProjectElement>? extra) && extra.Count > 0)
                 {
-                    newChildren.Add(child with { Children = child.ChildrenOrEmpty().Concat(extra).ToImmutableArray() });
+                    newChildren.Add(child with { Children = child.Children.Concat(extra).ToImmutableArray() });
                 }
                 else
                 {

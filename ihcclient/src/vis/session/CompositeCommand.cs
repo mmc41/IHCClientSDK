@@ -3,6 +3,7 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 using Ihc.Vis.Editing;
+using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
 
 namespace Ihc.Vis.Session
@@ -13,11 +14,12 @@ namespace Ihc.Vis.Session
     /// gesture is all-or-nothing — <see cref="Evaluate"/> passes only when every part passes against the pre-edit
     /// context, so a composite must be built from parts whose preconditions all hold before the first part runs.
     /// </summary>
-    public sealed record CompositeCommand(string Label, ImmutableArray<ProjectCommand> Parts) : ProjectCommand
+    public sealed record CompositeCommand(string Label, EquatableArray<ProjectCommand> Parts) : ProjectCommand
     {
-        /// <summary>Bundles the given parts under a single label (C# 13 params-span convenience over the array ctor).</summary>
-        public CompositeCommand(string label, params ReadOnlySpan<ProjectCommand> parts)
-            : this(label, ImmutableArray.Create(parts)) { }
+        // The former `params ReadOnlySpan<ProjectCommand>` convenience ctor is gone: EquatableArray<T> carries a
+        // collection builder, so `new CompositeCommand("x", [a, b])` reaches the primary constructor directly.
+        // Keeping both made every collection-expression call site ambiguous (CS0121) — the overload hazard the
+        // wrapper design set out to avoid, so the overload goes rather than the collection expression.
 
         internal override string Describe(Project project) => Label;
 

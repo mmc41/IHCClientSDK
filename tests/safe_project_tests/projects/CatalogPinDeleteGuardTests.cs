@@ -32,8 +32,8 @@ namespace Ihc.Vis.Tests
         private static (ProjectElement Product, ProjectElement Pin) PickProductAndCatalogPin(Project project)
         {
             ProjectElement product = project.Root.Descendants()
-                .First(e => ProductClassifier.IsProduct(e.Tag) && e.ChildrenOrEmpty().Any(c => IsPinTag(c.Tag)));
-            return (product, product.ChildrenOrEmpty().First(c => IsPinTag(c.Tag)));
+                .First(e => ProductClassifier.IsProduct(e.Tag) && e.Children.Any(c => IsPinTag(c.Tag)));
+            return (product, product.Children.First(c => IsPinTag(c.Tag)));
         }
 
         // A program node (an action row) that lives inside a locked (library) function block.

@@ -175,7 +175,7 @@ namespace Ihc.Vis.Tests
             FunctionBlockDefinition edited = reopened.Build();
 
             ProjectElement inputs = edited.Body.FindChild("inputs")!;
-            var names = inputs.ChildrenOrEmpty().Select(c => c.GetAttribute("name")).ToList();
+            var names = inputs.Children.Select(c => c.GetAttribute("name")).ToList();
             Assert.Multiple(() =>
             {
                 Assert.That(names, Does.Contain("Kip"), "the original input is preserved");

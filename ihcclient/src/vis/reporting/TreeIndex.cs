@@ -29,7 +29,7 @@ namespace Ihc.Vis.Reporting
             {
                 byId.TryAdd(id, element);   // first-wins, matching XPath id() on a well-formed unique-id tree
             }
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
+            foreach (ProjectElement child in element.Children)
             {
                 parents[child] = element;
                 Walk(child);
@@ -78,7 +78,7 @@ namespace Ihc.Vis.Reporting
         public IEnumerable<ProjectElement> LinkTargets(ProjectElement terminal)
         {
             string linkTag = terminal.Tag == "dataline_output" ? ReciprocalTags.FollowLinkToTag : ReciprocalTags.FollowLinkFromTag;
-            foreach (ProjectElement linkRow in terminal.ChildrenOrEmpty())
+            foreach (ProjectElement linkRow in terminal.Children)
             {
                 if (linkRow.Tag == linkTag && ById(linkRow.GetAttribute("link")) is { } target)
                 {

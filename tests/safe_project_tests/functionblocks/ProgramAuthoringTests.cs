@@ -49,7 +49,7 @@ namespace Ihc.Vis.Tests
         {
             foreach (ProjectElement g in p.Groups)
             {
-                if (g.Children.IsDefaultOrEmpty)
+                if (g.Children.IsEmpty)
                 {
                     continue;
                 }

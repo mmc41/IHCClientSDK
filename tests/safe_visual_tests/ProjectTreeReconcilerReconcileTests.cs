@@ -154,11 +154,11 @@ public class ProjectTreeReconcilerReconcileTests
         editor.Group("Living room").AddFunctionBlock(fbDef);
         Project mid = editor.ToProject();
         ProjectElement room = mid.Groups.First(g => g.GetAttribute("name") == "Living room");
-        ElementId scenePinId = room.ChildrenOrEmpty().First(c => c.Tag == "functionblock")
-            .FindChild("outputs")!.ChildrenOrEmpty()
+        ElementId scenePinId = room.Children.First(c => c.Tag == "functionblock")
+            .FindChild("outputs")!.Children
             .First(c => c.Tag == "resource_scene" && c.GetAttribute("name") == "Regulering").Id!.Value;
-        ElementId scenesId = room.ChildrenOrEmpty().First(c => c.Tag == "product_airlink")
-            .ChildrenOrEmpty().First(c => c.Tag == "scenes").Id!.Value;
+        ElementId scenesId = room.Children.First(c => c.Tag == "product_airlink")
+            .Children.First(c => c.Tag == "scenes").Id!.Value;
         editor.LinkScene(scenePinId, scenesId, SceneValue.Shutter(up: true));
         Project linked = editor.ToProject();
         await Task.CompletedTask;   // keep the established async builder shape; no awaited IO needed
@@ -201,11 +201,11 @@ public class ProjectTreeReconcilerReconcileTests
         editor.Group("Living room").AddFunctionBlock(fbDef);
         Project mid = editor.ToProject();
         ProjectElement room = mid.Groups.First(g => g.GetAttribute("name") == "Living room");
-        ElementId scenePinId = room.ChildrenOrEmpty().First(c => c.Tag == "functionblock")
-            .FindChild("outputs")!.ChildrenOrEmpty()
+        ElementId scenePinId = room.Children.First(c => c.Tag == "functionblock")
+            .FindChild("outputs")!.Children
             .First(c => c.Tag == "resource_scene" && c.GetAttribute("name") == "Regulering").Id!.Value;
-        ElementId scenesId = room.ChildrenOrEmpty().First(c => c.Tag == "product_airlink")
-            .ChildrenOrEmpty().First(c => c.Tag == "scenes").Id!.Value;
+        ElementId scenesId = room.Children.First(c => c.Tag == "product_airlink")
+            .Children.First(c => c.Tag == "scenes").Id!.Value;
         editor.LinkScene(scenePinId, scenesId, SceneValue.Shutter(up: true));
         Project linked = editor.ToProject();
 

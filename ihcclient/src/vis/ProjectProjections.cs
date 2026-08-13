@@ -34,7 +34,7 @@ namespace Ihc.Vis
 
     /// <summary>A read-only system data table (US-049): its name and its reference rows. These are the built-in
     /// (<c>typeid</c>-bearing) enum definitions — shown for reference, never edited.</summary>
-    public sealed record DataTableView(string Name, ImmutableArray<string> Rows);
+    public sealed record DataTableView(string Name, EquatableArray<string> Rows);
 
     /// <summary>One editable user-defined text (US-049): its element id token (for edit/delete) and its text.</summary>
     public sealed record UserText(string Id, string Text);
@@ -43,7 +43,7 @@ namespace Ihc.Vis
     /// ordered value labels, and whether it is a <c>typeid</c>-bearing built-in. IHC Visual shows a built-in as
     /// "<c>&lt;name&gt; [read only]</c>" and greys every mutation on it — <see cref="DisplayName"/> is that label, so
     /// the suffix is derived in ONE place and never stored in the project.</summary>
-    public sealed record EnumTypeView(string Name, bool IsReadOnly, ImmutableArray<string> Values)
+    public sealed record EnumTypeView(string Name, bool IsReadOnly, EquatableArray<string> Values)
     {
         /// <summary>What the type list shows: the stored name, plus IHC Visual's "[read only]" marker for a built-in.</summary>
         public string DisplayName => IsReadOnly ? Name + " [read only]" : Name;
@@ -70,11 +70,10 @@ namespace Ihc.Vis
     }
 
     /// <summary>The data-tables read model (US-049): the read-only system tables and the editable user-defined texts.</summary>
-    public sealed record DataTablesModel(ImmutableArray<DataTableView> SystemTables, ImmutableArray<UserText> UserTexts)
+    public sealed record DataTablesModel(EquatableArray<DataTableView> SystemTables, EquatableArray<UserText> UserTexts)
     {
         /// <summary>The empty model (no tables, no texts) — the projection for a closed/empty document.</summary>
-        public static DataTablesModel Empty { get; } =
-            new(ImmutableArray<DataTableView>.Empty, ImmutableArray<UserText>.Empty);
+        public static DataTablesModel Empty { get; } = new([], []);
     }
 
     /// <summary>One occupied module terminal (US-050): the decoded <c>line.terminal</c> address and the product
@@ -94,7 +93,7 @@ namespace Ihc.Vis
     /// each with the module documented on it (if any). The full slot inventory, not just the documented lines, so
     /// a reader sees which lines are still free.</summary>
     public sealed record DatalineModuleMap(
-        ImmutableArray<DatalineModule> InputModules, ImmutableArray<DatalineModule> OutputModules)
+        EquatableArray<DatalineModule> InputModules, EquatableArray<DatalineModule> OutputModules)
     {
         /// <summary>The map of a closed/empty document — every slot present, none in use.</summary>
         public static DatalineModuleMap Empty { get; } = ProjectProjections.BuildDatalineModuleMap([]);
@@ -103,11 +102,10 @@ namespace Ihc.Vis
     /// <summary>The Wired module address map (US-050): the addressed input-module and output-module terminals,
     /// read-only. Unaddressed terminals do not appear.</summary>
     public sealed record ModuleAddressMap(
-        ImmutableArray<ModuleAddressEntry> InputModules, ImmutableArray<ModuleAddressEntry> OutputModules)
+        EquatableArray<ModuleAddressEntry> InputModules, EquatableArray<ModuleAddressEntry> OutputModules)
     {
         /// <summary>The empty map (no addressed terminals) — the projection for a closed/empty document.</summary>
-        public static ModuleAddressMap Empty { get; } =
-            new(ImmutableArray<ModuleAddressEntry>.Empty, ImmutableArray<ModuleAddressEntry>.Empty);
+        public static ModuleAddressMap Empty { get; } = new([], []);
     }
 
     /// <summary>
@@ -148,9 +146,9 @@ namespace Ihc.Vis
                 var texts = ImmutableArray.CreateBuilder<UserText>();
                 if (project.Child("enum_definitions") is { } container)
                 {
-                    foreach (ProjectElement def in container.ChildrenOrEmpty().Where(c => c.Tag == "enum_definition"))
+                    foreach (ProjectElement def in container.Children.Where(c => c.Tag == "enum_definition"))
                     {
-                        List<ProjectElement> values = def.ChildrenOrEmpty().Where(v => v.Tag == "enum_value").ToList();
+                        List<ProjectElement> values = def.Children.Where(v => v.Tag == "enum_value").ToList();
                         ElementView defView = project.View(def);
                         if (defView.Name == UserTextsTableName)
                         {
@@ -181,7 +179,7 @@ namespace Ihc.Vis
                 var types = new List<string>();
                 if (project.Child("enum_definitions") is { } container)
                 {
-                    foreach (ProjectElement def in container.ChildrenOrEmpty().Where(c => c.Tag == "enum_definition"))
+                    foreach (ProjectElement def in container.Children.Where(c => c.Tag == "enum_definition"))
                     {
                         if (project.View(def).Name is { } name && name != UserTextsTableName)
                         {
@@ -215,7 +213,7 @@ namespace Ihc.Vis
                 var types = new List<EnumTypeView>();
                 if (project.Child("enum_definitions") is { } container)
                 {
-                    foreach (ProjectElement def in container.ChildrenOrEmpty().Where(c => c.Tag == "enum_definition"))
+                    foreach (ProjectElement def in container.Children.Where(c => c.Tag == "enum_definition"))
                     {
                         if (project.View(def).Name is not { } name || name == UserTextsTableName)
                         {
@@ -223,7 +221,7 @@ namespace Ihc.Vis
                         }
                         bool readOnly = (def.GetAttribute("typeid") ?? ElementId.NullToken) != ElementId.NullToken;
                         types.Add(new EnumTypeView(name, readOnly,
-                            def.ChildrenOrEmpty()
+                            def.Children
                                 .Where(v => v.Tag == "enum_value")
                                 .OrderBy(v => EnumValueIndex.Of(v))
                                 .Select(v => project.View(v).Name ?? string.Empty)
@@ -241,7 +239,7 @@ namespace Ihc.Vis
                 var names = new List<string>();
                 foreach (ProjectElement group in project.Groups)
                 {
-                    foreach (ProjectElement product in group.ChildrenOrEmpty())
+                    foreach (ProjectElement product in group.Children)
                     {
                         ElementView view = project.View(product);
                         if (view.IsUnlinkedWireless)
@@ -263,10 +261,10 @@ namespace Ihc.Vis
                 var outputs = new List<(int Line, int Terminal, ModuleAddressEntry Entry)>();
                 foreach (ProjectElement group in project.Groups)
                 {
-                    foreach (ProjectElement product in group.ChildrenOrEmpty())
+                    foreach (ProjectElement product in group.Children)
                     {
                         string productName = DisplayName(project.View(product), product);
-                        foreach (ProjectElement pin in product.ChildrenOrEmpty())
+                        foreach (ProjectElement pin in product.Children)
                         {
                             if (pin.Kind != ElementKind.DatalinePin)
                             {

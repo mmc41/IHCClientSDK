@@ -119,7 +119,7 @@ namespace Ihc.Vis.Tests
 
             var attributeValuesInBody =
                 new[] { documented.Body }.Concat(documented.Body.Descendants())
-                    .SelectMany(e => e.AttrsOrEmpty().Select(a => a.Value));
+                    .SelectMany(e => e.Attrs.Select(a => a.Value));
 
             Assert.Multiple(() =>
             {

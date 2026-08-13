@@ -26,7 +26,7 @@ namespace Ihc.Vis.Tests
         }
 
         private static ElementId FirstPin(Project project, ElementId fbId, string section) =>
-            project.FindById(fbId)!.FindChild(section)!.ChildrenOrEmpty().First(c => c.Id is not null).Id!.Value;
+            project.FindById(fbId)!.FindChild(section)!.Children.First(c => c.Id is not null).Id!.Value;
 
         [Test]
         public async Task LinkPins_SamePin_IsRefusedWithReason()
@@ -85,7 +85,7 @@ namespace Ihc.Vis.Tests
             ElementId output = FirstPin(session.Current!, fb1, "outputs");
             ElementId input = FirstPin(session.Current!, fb2, "inputs");
             session.Apply(new LinkPins(output, input));
-            ElementId linkRow = session.Current!.FindById(output)!.ChildrenOrEmpty()
+            ElementId linkRow = session.Current!.FindById(output)!.Children
                 .First(c => c.Tag == "link_from_resource").Id!.Value;
 
             EditOutcome outcome = session.Apply(new RemoveLink(linkRow));
@@ -93,9 +93,9 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
-                Assert.That(session.Current!.FindById(output)!.ChildrenOrEmpty().Any(c => c.Tag == "link_from_resource"),
+                Assert.That(session.Current!.FindById(output)!.Children.Any(c => c.Tag == "link_from_resource"),
                     Is.False, "the from-half is gone");
-                Assert.That(session.Current!.FindById(input)!.ChildrenOrEmpty().Any(c => c.Tag == "link_to_resource"),
+                Assert.That(session.Current!.FindById(input)!.Children.Any(c => c.Tag == "link_to_resource"),
                     Is.False, "and its reciprocal to-half cascaded");
             });
         }

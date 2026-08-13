@@ -28,7 +28,7 @@ namespace Ihc.Vis.Editing
                 found = true;
                 return map(element);
             }
-            if (element.Children.IsDefaultOrEmpty)
+            if (element.Children.IsEmpty)
             {
                 found = false;
                 return element;
@@ -52,7 +52,7 @@ namespace Ihc.Vis.Editing
 
         internal static ProjectElement RemoveById(ProjectElement element, ElementId id)
         {
-            if (element.Children.IsDefaultOrEmpty)
+            if (element.Children.IsEmpty)
             {
                 return element;
             }
@@ -74,11 +74,11 @@ namespace Ihc.Vis.Editing
 
         internal static ProjectElement ReplaceChildByTag(ProjectElement parent, string tag, ProjectElement replacement)
         {
-            if (parent.Children.IsDefaultOrEmpty)
+            if (parent.Children.IsEmpty)
             {
                 return parent;
             }
-            ImmutableArray<ProjectElement> children = parent.Children;
+            ImmutableArray<ProjectElement> children = parent.Children.AsImmutableArray();
             for (int i = 0; i < children.Length; i++)
             {
                 if (children[i].Tag == tag)
@@ -107,12 +107,12 @@ namespace Ihc.Vis.Editing
             return new ProjectElement(tag, id, bag.ToImmutable(), ImmutableArray<ProjectElement>.Empty);
         }
 
-        internal static ImmutableArray<ProjectElement> AppendTo(ImmutableArray<ProjectElement> children, ProjectElement child) =>
-            (children.IsDefaultOrEmpty ? ImmutableArray<ProjectElement>.Empty : children).Add(child);
+        internal static EquatableArray<ProjectElement> AppendTo(EquatableArray<ProjectElement> children, ProjectElement child) =>
+            children.AsImmutableArray().Add(child);
 
         internal static ProjectElement? FindParentOf(ProjectElement element, ElementId childId)
         {
-            if (element.Children.IsDefaultOrEmpty)
+            if (element.Children.IsEmpty)
             {
                 return null;
             }
@@ -138,7 +138,7 @@ namespace Ihc.Vis.Editing
             {
                 return true;
             }
-            foreach (ProjectElement child in element.ChildrenOrEmpty())
+            foreach (ProjectElement child in element.Children)
             {
                 if (BuildPath(child, targetId, chain))
                 {

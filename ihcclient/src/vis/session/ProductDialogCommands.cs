@@ -42,7 +42,7 @@ namespace Ihc.Vis.Session
     /// </summary>
     public sealed record ApplyProductDialog(
         ElementId ProductId,
-        ImmutableArray<ProductDialogEdit> Edits,
+        EquatableArray<ProductDialogEdit> Edits,
         ProductDialogWidgetAction? WidgetAction = null) : ProjectCommand
     {
         internal override string Describe(Project project) => "Rediger produkt";
@@ -54,7 +54,7 @@ namespace Ihc.Vis.Session
             {
                 return exists;
             }
-            if (Edits.IsDefaultOrEmpty)
+            if (Edits.IsEmpty)
             {
                 // OK without touching a field is an ordinary act — and the commonest one, since a just-inserted
                 // product raises its dialog. There is nothing to validate against, so the descriptor (a whole-
@@ -107,7 +107,7 @@ namespace Ihc.Vis.Session
 
         internal override void Execute(ProjectEditor editor)
         {
-            foreach (ProductDialogEdit edit in Edits.IsDefaultOrEmpty ? [] : Edits)
+            foreach (ProductDialogEdit edit in Edits)
             {
                 editor.Resolve(edit.Target, "felt").SetAttribute(edit.Attribute, Stored(editor, edit));
             }

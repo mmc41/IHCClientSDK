@@ -324,7 +324,7 @@ internal sealed class PropertiesDialogCoordinator(
     public async Task OpenSceneContainerAsync(ElementId scenesId, ProjectElement scenes)
     {
         var rows = new List<SceneContainerRow>();
-        foreach (ProjectElement member in scenes.ChildrenOrEmpty())
+        foreach (ProjectElement member in scenes.Children)
         {
             if (!member.IsSceneMember)
                 continue;
@@ -388,7 +388,7 @@ internal sealed class PropertiesDialogCoordinator(
         {
             return null;
         }
-        var states = def.ChildrenOrEmpty().Where(c => c.IsEnumValue)
+        var states = def.Children.Where(c => c.IsEnumValue)
             .Select(c => project.View(c).Name ?? string.Empty).ToList();
         return (project.View(def).Name ?? string.Empty, states);
     }

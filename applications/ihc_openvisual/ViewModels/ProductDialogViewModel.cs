@@ -23,7 +23,10 @@ public sealed partial class ProductDialogFieldViewModel : ObservableObject
     {
         _field = field;
         _value = field.Value ?? string.Empty;
-        Suggestions = field.SuggestionsOrEmpty;
+        // The wrapper already normalizes default to empty, so the old SuggestionsOrEmpty accessor is gone.
+        // Materialized back to ImmutableArray here because Suggestions is XAML-bound (ComboBox ItemsSource)
+        // and this keeps the binding's runtime type exactly what it was.
+        Suggestions = field.Suggestions.AsImmutableArray();
     }
 
     /// <summary>The Danish label, with a repeat's key already substituted.</summary>
@@ -283,7 +286,9 @@ public sealed class ProductDialogGroupViewModel
     public IReadOnlyList<ProductDialogRow> Rows { get; }
 
     /// <summary>Hand-written composite widgets that belong in this group (terminal grids, advanced dimmer).</summary>
-    public ImmutableArray<DialogWidgetKind> Widgets { get; }
+    /// <remarks>Consumed through the wrapper's own read surface — only the three <c>Has…</c> predicates above
+    /// touch it, never a binding, so there is nothing to materialize it for.</remarks>
+    public EquatableArray<DialogWidgetKind> Widgets { get; }
 }
 
 /// <summary>

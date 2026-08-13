@@ -20,7 +20,7 @@ namespace Ihc.Vis.Tests
         private static int LinkChildCount(Project project, ElementId id, string tag)
         {
             ProjectElement element = project.FindById(id)!;
-            return element.Children.IsDefaultOrEmpty ? 0 : element.Children.Count(c => c.Tag == tag);
+            return element.Children.IsEmpty ? 0 : element.Children.Count(c => c.Tag == tag);
         }
 
         [Test]

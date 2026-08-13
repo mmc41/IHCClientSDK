@@ -62,8 +62,7 @@ namespace Ihc.Vis.Io
 
             // Canonicalize each child, tracking whether any produced a NEW instance (a subtree that was not already
             // canonical). An unchanged child returns itself (below), so it stays reference-equal here.
-            ImmutableArray<ProjectElement> sourceChildren =
-                element.Children.IsDefaultOrEmpty ? ImmutableArray<ProjectElement>.Empty : element.Children;
+            ImmutableArray<ProjectElement> sourceChildren = element.Children.AsImmutableArray();
             bool anyChildRematerialized = false;
             ImmutableArray<ProjectElement> children;
             if (sourceChildren.IsEmpty)
@@ -88,7 +87,7 @@ namespace Ihc.Vis.Io
             // between the source and the committed snapshot, so a commit path-copies only what it changed and a
             // reference-equality diff can skip whole subtrees. The canonical FORM is byte-identical either way — only
             // fewer allocations; the W4-3 CsCheck property test pins the byte-equivalence.
-            bool attrsUnchanged = element.Attrs.IsDefaultOrEmpty
+            bool attrsUnchanged = element.Attrs.IsEmpty
                 ? canonAttrs.IsEmpty
                 : element.Attrs.SequenceEqual(canonAttrs);
             if (attrsUnchanged && !anyChildRematerialized)

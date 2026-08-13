@@ -94,7 +94,7 @@ namespace Ihc.Vis.Editing
         public ScenesRef Scenes()
         {
             ProjectElement product = editor.Require(Id);
-            List<ProjectElement> matches = product.ChildrenOrEmpty().Where(c => c.Tag == "scenes").ToList();
+            List<ProjectElement> matches = product.Children.Where(c => c.Tag == "scenes").ToList();
             if (matches.Count == 0)
             {
                 throw new InvalidOperationException(
@@ -152,7 +152,7 @@ namespace Ihc.Vis.Editing
         public void RemoveScenes()
         {
             ProjectElement product = editor.Require(Id);
-            List<ElementId> ids = product.ChildrenOrEmpty()
+            List<ElementId> ids = product.Children
                 .Where(c => c.Tag == "scenes" && c.Id is not null).Select(c => c.Id!.Value).ToList();
             if (ids.Count == 0)
             {

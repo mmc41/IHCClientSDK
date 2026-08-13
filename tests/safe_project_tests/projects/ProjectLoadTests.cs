@@ -84,7 +84,7 @@ namespace Ihc.Vis.Tests
         private static IEnumerable<ProjectElement> Descendants(ProjectElement root)
         {
             yield return root;
-            if (root.Children.IsDefaultOrEmpty)
+            if (root.Children.IsEmpty)
             {
                 yield break;
             }

@@ -496,7 +496,7 @@ public class SmokeTests : AvaloniaTestBase
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
-        var blocks = harness.Session.Current!.FindById(loc)!.ChildrenOrEmpty().Where(c => c.Tag == "functionblock").ToList();
+        var blocks = harness.Session.Current!.FindById(loc)!.Children.Where(c => c.Tag == "functionblock").ToList();
         var outA = (await harness.Session.AddVariableAsync(blocks[0].FindChild("outputs")!.Id!.Value, "resource_output", "OutA"))!.Value;
         var inB = (await harness.Session.AddVariableAsync(blocks[1].FindChild("inputs")!.Id!.Value, "resource_input", "InB"))!.Value;
         await harness.Session.LinkPinsAsync(outA, inB);

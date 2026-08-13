@@ -28,7 +28,7 @@ namespace Ihc.Vis.Tests
             Project before = session.Current!;
 
             EditOutcome outcome = session.Apply(
-                new CompositeCommand("Insert two localities", new AddLocality("Alpha"), new AddLocality("Beta")));
+                new CompositeCommand("Insert two localities", [new AddLocality("Alpha"), new AddLocality("Beta")]));
             bool couldUndoOnce = session.CanUndo;
             session.Undo();
 
@@ -56,7 +56,7 @@ namespace Ihc.Vis.Tests
             var missing = new ElementId(0x7FFFFF, 1);   // a counter far beyond project3's live id range
 
             EditOutcome outcome = session.Apply(new CompositeCommand("Bad gesture",
-                new AddLocality("Alpha"), new RenameLocality(missing, "x", "")));
+                [new AddLocality("Alpha"), new RenameLocality(missing, "x", "")]));
 
             Assert.Multiple(() =>
             {

@@ -47,11 +47,11 @@ namespace Ihc.Vis.Io
         /// <summary>Returns a copy of <paramref name="parent"/> with its first child of the given tag transformed.</summary>
         private static ProjectElement MapChild(ProjectElement parent, string tag, Func<ProjectElement, ProjectElement> map)
         {
-            if (parent.Children.IsDefaultOrEmpty)
+            if (parent.Children.IsEmpty)
             {
                 return parent;
             }
-            ImmutableArray<ProjectElement> children = parent.Children;
+            ImmutableArray<ProjectElement> children = parent.Children.AsImmutableArray();
             for (int i = 0; i < children.Length; i++)
             {
                 if (children[i].Tag == tag)

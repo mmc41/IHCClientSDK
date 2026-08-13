@@ -1,5 +1,4 @@
 #nullable enable
-using System;
 using System.Collections.Immutable;
 using Ihc.Vis.Model;
 
@@ -16,18 +15,16 @@ namespace Ihc.Vis.Products
     /// </summary>
     /// <param name="Title">The dialog's window title, in the per-family form the original uses.</param>
     /// <param name="Groups">The composed groups, in presentation order.</param>
-    public sealed record ProductDialogDescriptor(string Title, ImmutableArray<DialogDescriptorGroup> Groups)
+    public sealed record ProductDialogDescriptor(string Title, EquatableArray<DialogDescriptorGroup> Groups)
     {
+        // Equality is the compiler's: EquatableArray<T> compares its elements structurally, so every member
+        // declared here — and every member added later — is covered without a handwritten list.
+
         /// <summary>Every field of every group, flattened — the shape a write-back iterates.</summary>
+        /// <remarks>Computed, not stored, so it holds no equality significance of its own: two descriptors are
+        /// equal exactly when their groups are.</remarks>
         public ImmutableArray<DialogDescriptorField> AllFields =>
             [.. System.Linq.Enumerable.SelectMany(Groups, g => g.Fields)];
-
-        public bool Equals(ProductDialogDescriptor? other) =>
-            other is not null
-            && string.Equals(Title, other.Title, StringComparison.Ordinal)
-            && ImmutableArrayValue.Equal(Groups, other.Groups);
-
-        public override int GetHashCode() => HashCode.Combine(Title, ImmutableArrayValue.Hash(Groups));
     }
 
     /// <summary>One composed group: the preset's group with its parts resolved against the placed element.</summary>
@@ -40,26 +37,13 @@ namespace Ihc.Vis.Products
         string Id,
         string? Caption,
         int Columns,
-        ImmutableArray<DialogDescriptorField> Fields,
-        ImmutableArray<DialogWidgetKind> Widgets)
+        EquatableArray<DialogDescriptorField> Fields,
+        EquatableArray<DialogWidgetKind> Widgets)
     {
         /// <summary>Whether the columns read DOWN rather than across — the preset's
         /// <see cref="DialogGroupModel.ColumnMajor"/>, carried through so the renderer can honour it.
         /// A layout hint only: <see cref="Fields"/> stays in DECLARED order either way.</summary>
         public bool ColumnMajor { get; init; }
-
-        public bool Equals(DialogDescriptorGroup? other) =>
-            other is not null
-            && string.Equals(Id, other.Id, StringComparison.Ordinal)
-            && string.Equals(Caption, other.Caption, StringComparison.Ordinal)
-            && Columns == other.Columns
-            && ColumnMajor == other.ColumnMajor
-            && ImmutableArrayValue.Equal(Fields, other.Fields)
-            && ImmutableArrayValue.Equal(Widgets, other.Widgets);
-
-        public override int GetHashCode() =>
-            HashCode.Combine(Id, Caption, Columns, ColumnMajor,
-                ImmutableArrayValue.Hash(Fields), ImmutableArrayValue.Hash(Widgets));
     }
 
     /// <summary>
@@ -91,34 +75,15 @@ namespace Ihc.Vis.Products
         DialogValueRule? Rule,
         int? Minimum,
         int? Maximum,
-        ImmutableArray<string> Suggestions = default)
+        EquatableArray<string> Suggestions = default)
     {
+        // Equality is the compiler's. This record is why the convention exists: its handwritten Equals once
+        // omitted ColumnSpan, and every member added since had to be repeated into two more methods by hand.
+        // EquatableArray<string> makes Suggestions structurally comparable, which is all that stood in the way.
+        // Note that `Suggestions = default` needs no normalizing accessor: default IS empty for the wrapper.
+
         /// <summary>How many of the group's columns this field occupies — the preset's
         /// <see cref="DialogFieldModel.ColumnSpan"/>, clamped by the renderer to the group's width.</summary>
         public int ColumnSpan { get; init; } = 1;
-
-        /// <summary>The suggestions, never <c>default</c> — an empty array when the field offers none.</summary>
-        public ImmutableArray<string> SuggestionsOrEmpty =>
-            Suggestions.IsDefault ? ImmutableArray<string>.Empty : Suggestions;
-
-        public bool Equals(DialogDescriptorField? other) =>
-            other is not null
-            && string.Equals(AutomationId, other.AutomationId, StringComparison.Ordinal)
-            && string.Equals(Caption, other.Caption, StringComparison.Ordinal)
-            && Control == other.Control
-            && Target == other.Target
-            && string.Equals(Attribute, other.Attribute, StringComparison.Ordinal)
-            && string.Equals(Value, other.Value, StringComparison.Ordinal)
-            && ReadOnly == other.ReadOnly
-            && Equals(Rule, other.Rule)
-            && Minimum == other.Minimum
-            && Maximum == other.Maximum
-            && ColumnSpan == other.ColumnSpan
-            && ImmutableArrayValue.Equal(Suggestions, other.Suggestions);
-
-        public override int GetHashCode() =>
-            HashCode.Combine(
-                HashCode.Combine(AutomationId, Caption, Control, Target, Attribute, Value),
-                HashCode.Combine(ReadOnly, Rule, Minimum, Maximum, ColumnSpan, ImmutableArrayValue.Hash(Suggestions)));
     }
 }

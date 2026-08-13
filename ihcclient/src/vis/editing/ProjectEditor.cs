@@ -188,11 +188,11 @@ namespace Ihc.Vis.Editing
         {
             ArgumentNullException.ThrowIfNull(name);
             ProjectElement container = EnumDefinitionsContainer;
-            ProjectElement def = container.ChildrenOrEmpty()
+            ProjectElement def = container.Children
                 .FirstOrDefault(c => c.Tag == "enum_definition" && c.GetAttribute("name") == name)
                 ?? throw new InvalidOperationException(
                     $"The project has no enum definition named '{name}'; available definitions: " +
-                    $"({string.Join(" | ", container.ChildrenOrEmpty().Where(c => c.Tag == "enum_definition").Select(c => c.GetAttribute("name")))}).");
+                    $"({string.Join(" | ", container.Children.Where(c => c.Tag == "enum_definition").Select(c => c.GetAttribute("name")))}).");
             return ToEnumRef(def);
         }
 
@@ -213,23 +213,23 @@ namespace Ihc.Vis.Editing
             ProjectElement container = EnumDefinitionsContainer;
             // By parsed ElementId (not raw token text), the codebase's id-matching convention: a foreign file's
             // non-canonical spelling of the definition id must still resolve.
-            ProjectElement def = container.ChildrenOrEmpty()
+            ProjectElement def = container.Children
                 .FirstOrDefault(c => c.Id == definition.Id)
                 ?? throw new InvalidOperationException(
                     $"Enum definition '{definition.Typedef}' is no longer part of the project.");
             GuardEditableEnum(def, "edited");
 
-            int existing = def.ChildrenOrEmpty().Count(c => c.Tag == "enum_value");
+            int existing = def.Children.Count(c => c.Tag == "enum_value");
             var appended = ImmutableArray.CreateBuilder<ProjectElement>(values.Length);
             for (int i = 0; i < values.Length; i++)
             {
                 appended.Add(SimpleElement("enum_value", allocator.Allocate(TypeCode.RequireForTag("enum_value")),
                     ("name", values[i]), ("index", DecToken.Format(existing + i))));
             }
-            ProjectElement updated = def with { Children = def.ChildrenOrEmpty().Concat(appended).ToImmutableArray() };
+            ProjectElement updated = def with { Children = def.Children.Concat(appended).ToImmutableArray() };
             root = ReplaceChildByTag(root, EnumDefinitionsTag, container with
             {
-                Children = container.ChildrenOrEmpty().Select(c => ReferenceEquals(c, def) ? updated : c).ToImmutableArray(),
+                Children = container.Children.Select(c => ReferenceEquals(c, def) ? updated : c).ToImmutableArray(),
             });
             return ToEnumRef(updated);
         }
@@ -291,14 +291,14 @@ namespace Ihc.Vis.Editing
             // by document position would silently PERMUTE the enum's meaning — every resource keeps pointing at the
             // same value id while that value's ordinal moves. Document POSITIONS are left exactly as they were, so
             // only the index attributes differ.
-            var survivors = def.ChildrenOrEmpty()
+            var survivors = def.Children
                 .Where(v => v.Tag == "enum_value" && v.Id != valueId && v.Id is not null)
                 .OrderBy(EnumValueIndex.Of)
                 .Select((v, i) => (Id: v.Id!.Value, NewIndex: i))
                 .ToDictionary(p => p.Id, p => p.NewIndex);
 
             var kept = ImmutableArray.CreateBuilder<ProjectElement>();
-            foreach (ProjectElement child in def.ChildrenOrEmpty())
+            foreach (ProjectElement child in def.Children)
             {
                 if (child.Tag == "enum_value" && child.Id == valueId)
                     continue;
@@ -361,7 +361,7 @@ namespace Ihc.Vis.Editing
         /// the relabel and remove guards, which both address a value inside an already-resolved definition.</summary>
         private static void RequireEnumValue(ProjectElement def, ElementId valueId)
         {
-            if (!def.ChildrenOrEmpty().Any(v => v.Tag == "enum_value" && v.Id == valueId))
+            if (!def.Children.Any(v => v.Tag == "enum_value" && v.Id == valueId))
             {
                 throw new InvalidOperationException(
                     $"Enum definition '{def.GetAttribute("name")}' has no value with id {valueId.ToToken()}.");
@@ -393,7 +393,7 @@ namespace Ihc.Vis.Editing
         private static EnumDefinitionRef ToEnumRef(ProjectElement definition)
         {
             var values = ImmutableArray.CreateBuilder<(string, ElementId)>();
-            foreach (ProjectElement value in definition.ChildrenOrEmpty()
+            foreach (ProjectElement value in definition.Children
                          .Where(c => c.Tag == "enum_value")
                          .OrderBy(EnumValueIndex.Of))
             {
@@ -426,7 +426,7 @@ namespace Ihc.Vis.Editing
             ProjectElement container = EnumDefinitionsContainer;
             catalogEnumsNormalized = true;   // set once the container resolves, so any later call is a no-op (incl. the count==0 path)
 
-            var catalogEnums = container.ChildrenOrEmpty()
+            var catalogEnums = container.Children
                 .Where(c => c.Tag == "enum_definition"
                     && c.GetAttribute("typeid") is { } typeid && typeid != ElementId.NullToken)
                 .ToList();
@@ -444,7 +444,7 @@ namespace Ihc.Vis.Editing
             }
 
             var movedIds = catalogEnums.Select(e => e.GetAttribute("id")!).ToHashSet(StringComparer.Ordinal);
-            IEnumerable<ProjectElement> kept = container.ChildrenOrEmpty()
+            IEnumerable<ProjectElement> kept = container.Children
                 .Where(c => !(c.GetAttribute("id") is { } id && movedIds.Contains(id)));
             ProjectElement normalized = container with { Children = kept.Concat(reHoisted).ToImmutableArray() };
 
@@ -551,7 +551,7 @@ namespace Ihc.Vis.Editing
         public CaseRef Case(ElementId caseId)
         {
             ProjectElement kase = RequireTagged(caseId, "program_case");
-            ProjectElement elseBranch = kase.ChildrenOrEmpty().Last(c => c.Tag == "actions");
+            ProjectElement elseBranch = kase.Children.Last(c => c.Tag == "actions");
             return new CaseRef(this, caseId, elseBranch.Id!.Value);
         }
 
@@ -892,13 +892,13 @@ namespace Ihc.Vis.Editing
         private static (ElementId FromHalf, ElementId ToHalf)? FindReciprocalPair(ProjectElement fromEl,
             ProjectElement toEl, Func<string, bool> fromTag, string toTag)
         {
-            foreach (ProjectElement half in fromEl.ChildrenOrEmpty())
+            foreach (ProjectElement half in fromEl.Children)
             {
                 if (!fromTag(half.Tag) || half.Id is not { } fromHalfId)
                 {
                     continue;
                 }
-                foreach (ProjectElement partner in toEl.ChildrenOrEmpty())
+                foreach (ProjectElement partner in toEl.Children)
                 {
                     // Reciprocity by parsed ElementId (not raw token text), matching GetLinks / ResolveLinkOpposite /
                     // the DeleteById cascade: a foreign file's non-canonical spelling (leading zeros, case) of an
@@ -1001,7 +1001,7 @@ namespace Ihc.Vis.Editing
                 throw new InvalidOperationException($"{logRowId.ToToken()} is not a Logning 'Log …' row.");
             }
             System.Collections.Generic.List<ProjectElement> values =
-                def.ChildrenOrEmpty().Where(v => v.Tag == "enum_value").ToList();
+                def.Children.Where(v => v.Tag == "enum_value").ToList();
             ProjectElement? off = values.FirstOrDefault(v => v.GetAttribute("name") == "Off");
             ProjectElement? on = values.FirstOrDefault(v => v.GetAttribute("name") != "Off");
             if (off?.Id is not { } offId || on?.Id is not { } onId)
@@ -1136,14 +1136,14 @@ namespace Ihc.Vis.Editing
             foreach (ProjectElement element in source.DescendantsAndSelf())
             {
                 if (element.GetAttribute("typedef") is { } typedef && typedef != ElementId.NullToken && seen.Add(typedef)
-                    && container.ChildrenOrEmpty().FirstOrDefault(d => d.GetAttribute("id") == typedef) is { } def)
+                    && container.Children.FirstOrDefault(d => d.GetAttribute("id") == typedef) is { } def)
                 {
                     stubs.Add(def);
                 }
             }
             return stubs.Count == 0
                 ? source
-                : source with { Children = stubs.Concat(source.ChildrenOrEmpty()).ToImmutableArray() };
+                : source with { Children = stubs.Concat(source.Children).ToImmutableArray() };
         }
 
         /// <summary>
@@ -1205,17 +1205,17 @@ namespace Ihc.Vis.Editing
             ProjectElement node = Require(id);
             ProjectElement parent = FindParentOf(root, id)
                 ?? throw new InvalidOperationException($"Cannot reorder {id.ToToken()}: it has no parent.");
-            List<ProjectElement> sameTag = parent.ChildrenOrEmpty().Where(c => c.Tag == node.Tag).ToList();
+            List<ProjectElement> sameTag = parent.Children.Where(c => c.Tag == node.Tag).ToList();
             int clamped = Math.Clamp(index, 0, sameTag.Count - 1);
             // Translate the same-tag position to the absolute child index of the sibling currently sitting there.
-            int absolute = parent.ChildrenOrEmpty().ToList().FindIndex(c => c.Id == sameTag[clamped].Id);
+            int absolute = parent.Children.ToList().FindIndex(c => c.Id == sameTag[clamped].Id);
             return MoveSubtree(id, parent.Id!.Value, absolute);
         }
 
         private void InsertChildAt(ElementId parentId, ProjectElement child, int? index) =>
             Mutate(parentId, parent =>
             {
-                ImmutableArray<ProjectElement> children = parent.ChildrenOrEmpty();
+                ImmutableArray<ProjectElement> children = parent.Children.AsImmutableArray();
                 int at = index is { } i ? Math.Clamp(i, 0, children.Length) : children.Length;
                 return parent with { Children = children.Insert(at, child) };
             });
@@ -1255,7 +1255,7 @@ namespace Ihc.Vis.Editing
         {
             ProjectElement resource = Require(resourceId);
             var links = new List<LinkInfo>();
-            foreach (ProjectElement child in resource.ChildrenOrEmpty())
+            foreach (ProjectElement child in resource.Children)
             {
                 if (child.Tag is ReciprocalTags.FollowLinkFromTag or ReciprocalTags.FollowLinkToTag
                     && child.Id is { } rowId
@@ -1386,7 +1386,7 @@ namespace Ihc.Vis.Editing
                 {
                     builder[e.Tag] = CatalogDtdEmitter.RenderProjectBlock(declaration);
                 }
-                foreach (ProjectElement c in e.ChildrenOrEmpty())
+                foreach (ProjectElement c in e.Children)
                 {
                     Walk(c);
                 }
@@ -1402,7 +1402,7 @@ namespace Ihc.Vis.Editing
             IReadOnlyList<(string Name, string Value)> attrs)
         {
             ProjectElement parent = Require(parentId);
-            ProjectElement? existing = parent.ChildrenOrEmpty()
+            ProjectElement? existing = parent.Children
                 .FirstOrDefault(c => c.Tag == tag && c.GetAttribute("name") == name);
 
             if (existing is not null)
@@ -1443,11 +1443,11 @@ namespace Ihc.Vis.Editing
         internal void EnsureScenesBoundToFirstOutput(ElementId productId)
         {
             ProjectElement product = Require(productId);
-            if (product.ChildrenOrEmpty().Any(c => c.Tag == "scenes"))
+            if (product.Children.Any(c => c.Tag == "scenes"))
             {
                 return;   // the catalog deep-copy already provides the scenes container
             }
-            ProjectElement? output = product.ChildrenOrEmpty().FirstOrDefault(c => c.Tag == "dataline_output");
+            ProjectElement? output = product.Children.FirstOrDefault(c => c.Tag == "dataline_output");
             if (output?.Id is not { } outputId)
             {
                 return;   // nothing to bind scenes to
@@ -1466,7 +1466,7 @@ namespace Ihc.Vis.Editing
         internal ElementId? FindChildIdByName(ElementId parentId, Func<string, bool> tagMatch, string name)
         {
             ProjectElement parent = Require(parentId);
-            if (parent.Children.IsDefaultOrEmpty)
+            if (parent.Children.IsEmpty)
             {
                 return null;
             }
@@ -1558,7 +1558,7 @@ namespace Ihc.Vis.Editing
         internal ElementId RequireSoleChildId(ElementId parentId, string childTag)
         {
             ProjectElement parent = Require(parentId);
-            ImmutableArray<ProjectElement> matches = parent.ChildrenOrEmpty()
+            ImmutableArray<ProjectElement> matches = parent.Children
                 .Where(c => c.Tag == childTag).ToImmutableArray();
             if (matches.Length != 1)
             {
@@ -1576,7 +1576,7 @@ namespace Ihc.Vis.Editing
         private ElementId? FindGroupByName(string name)
         {
             ProjectElement? groups = root.FindChild(GroupsTag);
-            if (groups is null || groups.Children.IsDefaultOrEmpty)
+            if (groups is null || groups.Children.IsEmpty)
             {
                 return null;
             }
