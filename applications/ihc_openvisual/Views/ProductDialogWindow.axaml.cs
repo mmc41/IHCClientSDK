@@ -1,10 +1,7 @@
-﻿using System.Collections.Immutable;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.VisualTree;
 using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 using Ihc.Vis.Model;
@@ -50,23 +47,22 @@ public partial class ProductDialogWindow : ResultDialog<ProductDialogEdits>
 
     // Double-tapping a terminal row (US-012 [R3]) addresses it: apply the documentation, then signal the caller to
     // open the terminal-addressing sub-dialog for that terminal.
-    private void OnTerminalActivated(object? sender, TappedEventArgs e)
+    private void OnTerminalActivated(object? sender, TappedEventArgs e) => ConfigureSelected(sender);
+
+    private void OnConfigure(object? sender, RoutedEventArgs e) => ConfigureSelected(sender);
+
+    /// <summary>
+    /// Addresses the terminal selected in the grid the event came from — the list itself when a row was
+    /// double-tapped, the button's own section when <i>Konfigurer</i> was pressed. Both carry that section as
+    /// their DataContext, since Indgange and Udgange render from one template.
+    /// <para>The selection is the only source: the grids are pre-selected on open, so "nothing selected" means
+    /// the installer actively cleared it — configuring the first row anyway would address a terminal they did
+    /// not pick.</para>
+    /// </summary>
+    private void ConfigureSelected(object? sender)
     {
-        if (sender is ListBox { SelectedItem: ProductTerminal terminal })
-            ConfigureTerminal(terminal);
-    }
-
-    private void OnConfigureInput(object? sender, RoutedEventArgs e) => ConfigureSelected("InputsList");
-
-    private void OnConfigureOutput(object? sender, RoutedEventArgs e) => ConfigureSelected("OutputsList");
-
-    /// <summary>The selection is the only source: the grids are pre-selected on open, so "nothing selected" means
-    /// the installer actively cleared it — configuring the first row anyway would address a terminal they did not
-    /// pick.</summary>
-    private void ConfigureSelected(string listName)
-    {
-        ListBox? list = this.GetVisualDescendants().OfType<ListBox>().FirstOrDefault(l => l.Name == listName);
-        if (list?.SelectedItem is ProductTerminal terminal)
+        if (sender is Control { DataContext: ProductDialogTerminalGridViewModel grid }
+            && grid.SelectedRow is ProductTerminal terminal)
             ConfigureTerminal(terminal);
     }
 

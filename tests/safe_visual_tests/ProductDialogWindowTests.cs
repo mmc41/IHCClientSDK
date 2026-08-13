@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
@@ -259,8 +260,10 @@ public class ProductDialogWindowTests : AvaloniaTestBase
         ]);
         ProductDialogWindow window = Shown(viewModel);
 
-        ListBox? inputs = Named<ListBox>(window, "InputsList");
-        ListBox? outputs = Named<ListBox>(window, "OutputsList");
+        // Addressed by automation id, not by control name: the two grids render from one template and a name
+        // cannot be bound, so neither list carries one.
+        ListBox? inputs = WithId<ListBox>(window, "dlg.terminaler.indgange");
+        ListBox? outputs = WithId<ListBox>(window, "dlg.terminaler.udgange");
 
         Assert.Multiple(() =>
         {
@@ -350,8 +353,9 @@ public class ProductDialogWindowTests : AvaloniaTestBase
         });
     }
 
-    private static T? Named<T>(Window window, string name) where T : Control =>
-        window.GetVisualDescendants().OfType<T>().FirstOrDefault(c => c.Name == name);
+    private static T? WithId<T>(Window window, string automationId) where T : Control =>
+        window.GetVisualDescendants().OfType<T>()
+            .FirstOrDefault(c => AutomationProperties.GetAutomationId(c) == automationId);
 
     private static Button? ConfigureButton(Window window, string content) =>
         window.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => (b.Content as string) == content);

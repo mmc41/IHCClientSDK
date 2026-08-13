@@ -111,6 +111,67 @@ public sealed class ProductDialogRow(IReadOnlyList<ProductDialogFieldViewModel> 
     public int Cells { get; } = cells;
 }
 
+/// <summary>
+/// One of the two terminal grids of US-012 — <i>Indgange</i> or <i>Udgange</i>.
+///
+/// <para>The two sides differ only in their captions, their ids, their rows and which selection the
+/// <i>Konfigurer</i> button reads, so they are DATA and render from one template. Authored as a copy-paste
+/// pair they were nineteen lines differing in nine tokens, and the pair is what forced the button to recover
+/// its list by walking the visual tree for a hard-coded control name — a name cannot be bound (Avalonia:
+/// "once the element is added to a logical tree, its name cannot be changed"), so one shared template cannot
+/// give the two lists distinct names, and the handler reads this object instead.</para>
+///
+/// <para>The ids are spelled out rather than derived from the caption: they are the app's automation surface,
+/// and a driver's grep for <c>dlg.terminaler.konfigurerIndgang</c> has to find it.</para>
+/// </summary>
+public sealed partial class ProductDialogTerminalGridViewModel : ObservableObject
+{
+    private ProductDialogTerminalGridViewModel(
+        string name, string automationId, string buttonCaption, string buttonAutomationId,
+        IEnumerable<ProductTerminal> rows)
+    {
+        Name = name;
+        AutomationId = automationId;
+        ButtonCaption = buttonCaption;
+        ButtonAutomationId = buttonAutomationId;
+        Rows = new ObservableCollection<ProductTerminal>(rows);
+        // Pre-selected on open, which is what lets the Konfigurer route treat an EMPTY selection as "the
+        // installer cleared it" and address nothing, rather than falling back to the first row.
+        SelectedRow = Rows.FirstOrDefault();
+    }
+
+    public static ProductDialogTerminalGridViewModel ForInputs(IEnumerable<ProductTerminal> rows) =>
+        new("Indgange", "dlg.terminaler.indgange",
+            "Konfigurer indgang", "dlg.terminaler.konfigurerIndgang", rows);
+
+    public static ProductDialogTerminalGridViewModel ForOutputs(IEnumerable<ProductTerminal> rows) =>
+        new("Udgange", "dlg.terminaler.udgange",
+            "Konfigurer udgang", "dlg.terminaler.konfigurerUdgang", rows);
+
+    /// <summary>The side's name, and the list's accessible name — <c>Indgange</c> or <c>Udgange</c>.</summary>
+    public string Name { get; }
+
+    /// <summary>The vendor's caption, which spells out that a row is clicked to address it.</summary>
+    public string Caption => $"{Name} <klik for at konfigurere>";
+
+    public string AutomationId { get; }
+
+    public string ButtonCaption { get; }
+
+    public string ButtonAutomationId { get; }
+
+    public ObservableCollection<ProductTerminal> Rows { get; }
+
+    /// <summary>Whether this side has any terminals. An EMPTY grid is still drawn — with its Configure button
+    /// disabled — because an absent section reads as an unfinished dialog (US-012 MUST).</summary>
+    public bool HasRows => Rows.Count > 0;
+
+    /// <summary>The row <i>Konfigurer</i> addresses. Bound two-way, so it is the same selection the installer
+    /// sees; null means they cleared it.</summary>
+    [ObservableProperty]
+    public partial ProductTerminal? SelectedRow { get; set; }
+}
+
 /// <summary>One captioned (or uncaptioned) group of the generic dialog.</summary>
 public sealed class ProductDialogGroupViewModel
 {
@@ -127,8 +188,11 @@ public sealed class ProductDialogGroupViewModel
 
         if (HasTerminalGrids)
         {
-            Inputs = new ObservableCollection<ProductTerminal>(terminals.Where(t => !t.IsOutput));
-            Outputs = new ObservableCollection<ProductTerminal>(terminals.Where(t => t.IsOutput));
+            TerminalGrids =
+            [
+                ProductDialogTerminalGridViewModel.ForInputs(terminals.Where(t => !t.IsOutput)),
+                ProductDialogTerminalGridViewModel.ForOutputs(terminals.Where(t => t.IsOutput)),
+            ];
         }
         if (HasSettingsGrid)
         {
@@ -221,15 +285,16 @@ public sealed class ProductDialogGroupViewModel
     public bool HasAdvancedButton => Widgets.Contains(DialogWidgetKind.AdvancedDimmerButton);
 
     /// <summary>
-    /// This group, once, when it hosts the terminal grids — and nothing otherwise.
+    /// The two terminal grids when this group hosts them, and NOTHING otherwise.
     /// <para>The widget markup lives inside the per-group item template, so binding its visibility to a
     /// boolean would BUILD it for every group and hide all but one: several list boxes and buttons
-    /// carrying the same automation ids, of which only one is reachable. Driving it from a 0-or-1
-    /// collection means the non-hosting groups construct nothing at all. Same lesson as the field editors
+    /// carrying the same automation ids, of which only one is reachable. Driving it from a collection that
+    /// is empty for the other groups means they construct nothing at all. Same lesson as the field editors
     /// in T028 — hiding is not the same as not building.</para>
+    /// <para>Always BOTH sides when hosted, never only the populated one: a product with no outputs shows an
+    /// empty <i>Udgange</i> grid with its button disabled (US-012 MUST).</para>
     /// </summary>
-    public IReadOnlyList<ProductDialogGroupViewModel> TerminalSection =>
-        HasTerminalGrids ? [this] : [];
+    public IReadOnlyList<ProductDialogTerminalGridViewModel> TerminalGrids { get; } = [];
 
     /// <summary>The same 0-or-1 trick for the advanced-dimmer button, for the same reason.</summary>
     public IReadOnlyList<ProductDialogGroupViewModel> AdvancedSection =>
@@ -244,14 +309,6 @@ public sealed class ProductDialogGroupViewModel
 
     /// <summary>The configurable settings shown in that grid, in declared order.</summary>
     public ObservableCollection<ProductSetting> Settings { get; } = [];
-
-    public ObservableCollection<ProductTerminal> Inputs { get; } = [];
-
-    public ObservableCollection<ProductTerminal> Outputs { get; } = [];
-
-    public bool HasInputs => Inputs.Count > 0;
-
-    public bool HasOutputs => Outputs.Count > 0;
 
     /// <summary>The group box's title, or null for an uncaptioned run of fields (no box is drawn).</summary>
     public string? Caption { get; }

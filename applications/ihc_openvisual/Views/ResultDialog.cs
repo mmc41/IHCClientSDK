@@ -22,6 +22,11 @@ public abstract class ResultDialog<TResult> : Window where TResult : class
         Close();
     }
 
+    /// <summary>What the dialog would return — the seam the headless view tests read, since
+    /// <see cref="ShowDialogForResult"/> needs a modal loop they do not run. Null while nothing has been
+    /// accepted, which is also what a cancellation leaves behind.</summary>
+    internal TResult? AcceptedResult => _result;
+
     /// <summary>Shows the dialog modally over <paramref name="owner"/> and resolves to the recorded result, or
     /// <c>null</c> when the user cancelled.</summary>
     protected async Task<TResult?> ShowDialogForResult(Window owner)
