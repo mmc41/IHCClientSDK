@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -271,18 +270,12 @@ public sealed class ProjectWorkflow : IDisposable
     public IReadOnlyList<CatalogItem> GetFunctionBlockCatalogItems() => _service.GetFunctionBlockCatalogItems();
 
     /// <summary>
-    /// The catalog product an insert-menu leaf stands for, resolved by identifier AND display name.
-    /// <para>The name is not decoration: catalog identifiers are not unique (D22), and `_0x2102` is both
-    /// <c>LK FUGA Tryk 4 tast</c> and <c>LK OPUS Tryk 4 tast</c>. Resolving by identifier alone placed the FUGA
-    /// product when the installer chose OPUS (T046). The menu leaf already knows both, so it can say which.</para>
+    /// The catalog product an insert-menu leaf stands for, resolved by identifier AND display name — the name is
+    /// not decoration, since catalog identifiers are not unique (D22). The rule is the SDK's
+    /// (<c>ProjectAppService.ResolveProduct</c>); the menu leaf knows both halves, so it can say which.
     /// </summary>
-    public ProductDefinition? ResolveCatalogProduct(string productIdentifier, string displayName)
-    {
-        var byIdentifier = _service.GetAvailableProducts()
-            .Where(p => p.ProductIdentifier == productIdentifier).ToList();
-        return byIdentifier.FirstOrDefault(p => p.DisplayName == displayName)
-            ?? (byIdentifier.Count == 1 ? byIdentifier[0] : null);
-    }
+    public ProductDefinition? ResolveCatalogProduct(string productIdentifier, string displayName) =>
+        _service.ResolveProduct(productIdentifier, displayName);
 
     /// <summary>The composed properties dialog for a placed product — its groups, fields, current values, rules and
     /// write targets, all decided by the SDK. Empty when no project is open or the element composes no dialog.</summary>

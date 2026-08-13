@@ -314,8 +314,11 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(read.Dialog, Is.SameAs(builtInCode.Dialog), "one shared preset, reached by both paths");
-                Assert.That(read.Dialog.IsEmpty, Is.False, $"<{expectedRootTag}> has a preset");
+                Assert.That(ProductDialogPresets.ForRootTag(read.Body.Tag),
+                    Is.SameAs(ProductDialogPresets.ForRootTag(builtInCode.Body.Tag)),
+                    "one shared preset, reached by both paths");
+                Assert.That(ProductDialogPresets.ForRootTag(read.Body.Tag).IsEmpty, Is.False,
+                    $"<{expectedRootTag}> has a preset");
             });
         }
 

@@ -1,11 +1,13 @@
 #nullable enable
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
 
 namespace Ihc.Vis.Products
 {
@@ -24,27 +26,42 @@ namespace Ihc.Vis.Products
         public const string AutomationIdPrefix = "dlg";
 
         /// <summary>
-        /// The families whose dialog the original titles <c>"&lt;name&gt; Egenskaber"</c>. Every other family is
-        /// titled with the bare product name — measured across all 100 catalog products (2026-08-11), where only
-        /// the modem carries the suffix. A single rule would have been wrong for 99 or for 1.
-        /// </summary>
-        private static bool TitleTakesEgenskaberSuffix(string rootTag) => rootTag == "product_rs485_sms_modem";
-
-        /// <summary>
-        /// Composes the dialog for <paramref name="productId"/> in <paramref name="project"/>.
+        /// Composes the dialog of an ALREADY-RESOLVED placed product, selecting its preset from the element itself.
+        /// <para>THE compose door — both the read side (<c>GetProductDialog</c>) and the write-back
+        /// (<c>ApplyProductDialog</c>) come through here, which is what makes "the dialog is the contract" exact:
+        /// the descriptor a commit validates against is composed by the same expression that composed the one the
+        /// installer saw, so a future input to preset selection cannot reach one side only.</para>
         /// </summary>
         /// <param name="project">The project holding the placed product.</param>
-        /// <param name="productId">The placed product's element id.</param>
-        /// <param name="preset">Its family's preset, from <see cref="ProductDialogPresets.ForRootTag"/>.</param>
+        /// <param name="product">The placed product element.</param>
         /// <param name="displayName">The product's catalog type name — what the original titles the dialog with,
         /// rather than the element's possibly-renamed <c>name</c>.</param>
-        public static ProductDialogDescriptor Compose(
-            Project project, ElementId productId, ProductDialogModel preset, string displayName)
-        {
-            ProjectElement product = project.FindById(productId)
-                ?? throw new ArgumentException($"No element with id {productId.ToToken()}.", nameof(productId));
+        public static ProductDialogDescriptor ComposeFor(
+            Project project, ProjectElement product, string displayName) =>
+            Compose(project, product,
+                ProductDialogPresets.ForRootTag(product.Tag, product.GetAttribute("product_identifier")),
+                displayName);
 
-            string title = TitleTakesEgenskaberSuffix(product.Tag) ? displayName + " Egenskaber" : displayName;
+        /// <summary>
+        /// Composes the dialog for <paramref name="productId"/> in <paramref name="project"/> against an
+        /// explicitly supplied preset — the door a test uses to compose a product against a preset it did not
+        /// come with. Production composes through <see cref="ComposeFor"/>, which cannot disagree with itself.
+        /// </summary>
+        public static ProductDialogDescriptor Compose(
+            Project project, ElementId productId, ProductDialogModel preset, string displayName) =>
+            Compose(
+                project,
+                project.FindById(productId)
+                    ?? throw new ArgumentException($"No element with id {productId.ToToken()}.", nameof(productId)),
+                preset,
+                displayName);
+
+        private static ProductDialogDescriptor Compose(
+            Project project, ProjectElement product, ProductDialogModel preset, string displayName)
+        {
+            // The product's own subtree, walked ONCE: every presence gate, widget slot, repeat and binding below
+            // resolves against this list rather than re-materializing the subtree per question.
+            IReadOnlyList<ProjectElement> subtree = product.DescendantsAndSelf();
 
             // An unknown family still opens a dialog: the four attributes every known family declares, composed
             // from the same fragments. Insert is never blocked by a product the SDK has not met.
@@ -52,6 +69,11 @@ namespace Ihc.Vis.Products
             {
                 preset = MinimalFallback;
             }
+
+            // The title is the catalog TYPE name plus whatever suffix the family declares — the modem's
+            // " Egenskaber", and nothing for the other four. Read after the fallback swap, so an unknown family
+            // is titled by the same rule rather than by a special case.
+            string title = displayName + preset.TitleSuffix;
 
             // A locked product greys its NAME — and only its name. US-011: "Editability is gated by the placed
             // product's own `locked` attribute", said of the Name field; measured on every family, the original
@@ -64,6 +86,8 @@ namespace Ihc.Vis.Products
             bool lockedElement = project.SchemaView.TryGet(product.Tag)?.FindAttr("locked") is not null
                                  && project.View(product).Effective("locked") == "yes";
 
+            FrozenDictionary<string, ImmutableArray<string>> suggestions = GatherSuggestions(project, preset);
+
             var groups = new List<DialogDescriptorGroup>(preset.Groups.Length);
             foreach (DialogGroupModel group in preset.Groups)
             {
@@ -71,8 +95,7 @@ namespace Ihc.Vis.Products
                 // Checked before composing anything in it, so its fields are never resolved for a product that
                 // does not carry the tag — the alternative, letting each binding fail, renders identically but
                 // hides a mistyped tag from the descriptor gate (T119).
-                if (group.PresenceTag is { } required
-                    && !product.DescendantsAndSelf().Any(e => e.Tag == required))
+                if (group.PresenceTag is { } required && !subtree.Any(e => e.Tag == required))
                 {
                     continue;
                 }
@@ -85,17 +108,18 @@ namespace Ihc.Vis.Products
                     switch (part)
                     {
                         case DialogFieldModel field:
-                            if (Resolve(project, product, field.Binding) is { } resolved)
+                            if (Resolve(product, subtree, field.Binding) is { } resolved)
                             {
-                                fields.Add(ComposeField(project, group, field, resolved, lockedElement));
+                                fields.Add(ComposeField(
+                                    project, group, field, resolved, lockedElement, suggestions));
                             }
                             break;
 
                         case DialogRepeatModel repeat:
-                            fields.AddRange(ExpandRepeat(project, product, group, repeat, lockedElement));
+                            fields.AddRange(ExpandRepeat(project, subtree, group, repeat, lockedElement));
                             break;
 
-                        case DialogWidgetModel widget when AppliesTo(product, widget):
+                        case DialogWidgetModel widget when AppliesTo(subtree, widget):
                             widgets.Add(widget.Kind);
                             break;
                     }
@@ -147,11 +171,10 @@ namespace Ihc.Vis.Products
         // use resource_temperature, resource_humidity and resource_light). Unlike the terminal grids --
         // which the vendor shows ALWAYS, empty or not (US-012) -- it draws Indstillinger only where there
         // are settings, measured across the products that have none (T070).
-        private static bool AppliesTo(ProjectElement product, DialogWidgetModel widget) =>
+        private static bool AppliesTo(IReadOnlyList<ProjectElement> subtree, DialogWidgetModel widget) =>
             widget.Kind == DialogWidgetKind.SettingsGrid
-                ? product.DescendantsAndSelf().Any(IsSetting)
-                : widget.PresenceTag is not { } tag
-                  || product.DescendantsAndSelf().Any(e => e.Tag == tag);
+                ? subtree.Any(IsSetting)
+                : widget.PresenceTag is not { } tag || subtree.Any(e => e.Tag == tag);
 
         /// <summary>A configurable setting: a resource the catalog marked <c>setting="yes"</c>.</summary>
         internal static bool IsSetting(ProjectElement element) =>
@@ -159,7 +182,8 @@ namespace Ihc.Vis.Products
 
         private static DialogDescriptorField ComposeField(
             Project project, DialogGroupModel group, DialogFieldModel field,
-            (ProjectElement Element, string Attribute) resolved, bool lockedElement)
+            (ProjectElement Element, string Attribute) resolved, bool lockedElement,
+            FrozenDictionary<string, ImmutableArray<string>> suggestions)
         {
             (int? min, int? max) = NumericRange(project, resolved.Element, field.Control);
             return new DialogDescriptorField(
@@ -173,7 +197,10 @@ namespace Ihc.Vis.Products
                 field.Rule,
                 min,
                 max,
-                Suggestions(project, field.Control, resolved.Attribute))
+                field.Control == DialogControlKind.ComboSuggest
+                && suggestions.TryGetValue(resolved.Attribute, out ImmutableArray<string> offered)
+                    ? offered
+                    : ImmutableArray<string>.Empty)
             {
                 ColumnSpan = field.ColumnSpan,
             };
@@ -188,23 +215,52 @@ namespace Ihc.Vis.Products
         /// the work rather than of the workstation, and makes it reproducible in a test.</para>
         /// <para>Always an open combo: the list is a typing aid, never a constraint. A value used nowhere yet is
         /// still typeable, which is what keeps a suggestion list from silently becoming an enumeration.</para>
+        /// <para>Gathered in ONE pass over the project for ALL of the preset's suggesting attributes at once, keyed
+        /// by attribute. The modem offers seven such fields and a project walk materializes the whole tree, so
+        /// asking per field re-walked a 1300-element project seven times to open one dialog.</para>
         /// </summary>
-        private static ImmutableArray<string> Suggestions(Project project, DialogControlKind control, string attribute)
+        private static FrozenDictionary<string, ImmutableArray<string>> GatherSuggestions(
+            Project project, ProductDialogModel preset)
         {
-            if (control != DialogControlKind.ComboSuggest)
+            var wanted = new Dictionary<string, SortedSet<string>>(StringComparer.Ordinal);
+            foreach (DialogGroupModel group in preset.Groups)
             {
-                return ImmutableArray<string>.Empty;
+                foreach (DialogPartModel part in group.Parts)
+                {
+                    if (part is DialogFieldModel { Control: DialogControlKind.ComboSuggest } field
+                        && SuggestedAttribute(field.Binding) is { } attribute)
+                    {
+                        wanted[attribute] = new SortedSet<string>(StringComparer.Ordinal);
+                    }
+                }
             }
-            return
-            [
-                .. project.Root.DescendantsAndSelf()
-                    .Select(e => e.GetAttribute(attribute))
-                    .Where(v => !string.IsNullOrWhiteSpace(v))
-                    .Select(v => v!)
-                    .Distinct(StringComparer.Ordinal)
-                    .OrderBy(v => v, StringComparer.Ordinal),
-            ];
+
+            if (wanted.Count > 0)
+            {
+                foreach (ProjectElement element in project.Root.DescendantsAndSelf())
+                {
+                    foreach ((string attribute, SortedSet<string> values) in wanted)
+                    {
+                        string? value = element.GetAttribute(attribute);
+                        if (!string.IsNullOrWhiteSpace(value))
+                        {
+                            values.Add(value);
+                        }
+                    }
+                }
+            }
+
+            return wanted.ToFrozenDictionary(
+                entry => entry.Key, entry => ImmutableArray.CreateRange(entry.Value), StringComparer.Ordinal);
         }
+
+        /// <summary>The attribute a field's binding reads, whichever end of the product it sits on.</summary>
+        private static string? SuggestedAttribute(DialogBinding binding) => binding switch
+        {
+            DialogBinding.RootAttribute root => root.Name,
+            DialogBinding.DescendantAttribute descendant => descendant.Attribute,
+            _ => null,
+        };
 
         /// <summary>
         /// Expands a repeat over the element's matching DESCENDANTS, ordered by the numeric value of the key.
@@ -214,10 +270,10 @@ namespace Ihc.Vis.Products
         /// after slot 1.</para>
         /// </summary>
         private static IEnumerable<DialogDescriptorField> ExpandRepeat(
-            Project project, ProjectElement product, DialogGroupModel group, DialogRepeatModel repeat,
+            Project project, IReadOnlyList<ProjectElement> subtree, DialogGroupModel group, DialogRepeatModel repeat,
             bool lockedElement)
         {
-            foreach (ProjectElement item in product.DescendantsAndSelf()
+            foreach (ProjectElement item in subtree
                          .Where(e => e.Tag == repeat.DescendantTag && e.Id is not null)
                          .OrderBy(e => KeyOrder(e.GetAttribute(repeat.KeyAttribute))))
             {
@@ -243,11 +299,11 @@ namespace Ihc.Vis.Products
             int.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out int n) ? n : int.MaxValue;
 
         private static (ProjectElement Element, string Attribute)? Resolve(
-            Project project, ProjectElement product, DialogBinding binding) => binding switch
+            ProjectElement product, IReadOnlyList<ProjectElement> subtree, DialogBinding binding) => binding switch
             {
                 DialogBinding.RootAttribute root => (product, root.Name),
                 DialogBinding.DescendantAttribute d =>
-                    product.DescendantsAndSelf().FirstOrDefault(e => e.Tag == d.Tag && e.Id is not null) is { } found
+                    subtree.FirstOrDefault(e => e.Tag == d.Tag && e.Id is not null) is { } found
                         ? (found, d.Attribute)
                         : null,
                 _ => null,
@@ -267,10 +323,24 @@ namespace Ihc.Vis.Products
             {
                 return string.Empty;
             }
-            string? declaredDefault = project.SchemaView.TryGet(element.Tag)?.FindAttr(attribute)?.Default;
-            return effective is not null && effective == declaredDefault && IsNumeric(effective)
+            return effective is not null
+                   && effective == NumericDeclaredDefault(project.SchemaView, element, attribute)
                 ? string.Empty
                 : effective;
+        }
+
+        /// <summary>
+        /// The attribute's declared DTD default when that default is NUMERIC — the single datum the blank-at-default
+        /// read rule above and its write-side inverse (<c>ApplyProductDialog.Stored</c>) both key on. Null when the
+        /// attribute declares no default, or declares a non-numeric one.
+        /// <para>Shared deliberately: the two rules have to be exact inverses, or the value the installer was shown
+        /// is not the value that comes back. Stated twice, nothing structural kept them so.</para>
+        /// </summary>
+        internal static string? NumericDeclaredDefault(
+            ProjectSchemaView schema, ProjectElement element, string attribute)
+        {
+            string? declaredDefault = schema.TryGet(element.Tag)?.FindAttr(attribute)?.Default;
+            return declaredDefault is { Length: > 0 } && IsNumeric(declaredDefault) ? declaredDefault : null;
         }
 
         /// <summary>

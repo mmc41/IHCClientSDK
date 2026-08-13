@@ -23,14 +23,25 @@ namespace Ihc.Vis.Products
         /// <summary>True when the model declares no groups at all.</summary>
         public bool IsEmpty => Groups.IsDefaultOrEmpty;
 
+        /// <summary>
+        /// What the dialog's title appends to the product's catalog type name — empty for almost every family.
+        /// <para>Measured across all 100 catalog products (2026-08-11): only the modem titles itself
+        /// <c>"&lt;name&gt; Egenskaber"</c>; every other family is titled with the bare product name. A single rule
+        /// would have been wrong for 99 families or for 1, so it is DATA rather than a comparison in the composer:
+        /// a sixth family that titles differently is then a preset to author, not a composer to edit.</para>
+        /// </summary>
+        public string TitleSuffix { get; init; } = string.Empty;
+
         // A record compares an ImmutableArray member by its backing-array REFERENCE, so two independently
         // constructed but identical models would be unequal — the pitfall ProjectModelEqualityTests exists for.
         // ImmutableArrayValue restores the by-value semantics a record is expected to have, exactly as
         // ProjectElement and CatalogGrammar do.
         public bool Equals(ProductDialogModel? other) =>
-            other is not null && ImmutableArrayValue.Equal(Groups, other.Groups);
+            other is not null
+            && string.Equals(TitleSuffix, other.TitleSuffix, StringComparison.Ordinal)
+            && ImmutableArrayValue.Equal(Groups, other.Groups);
 
-        public override int GetHashCode() => ImmutableArrayValue.Hash(Groups);
+        public override int GetHashCode() => HashCode.Combine(TitleSuffix, ImmutableArrayValue.Hash(Groups));
 
         public override string ToString() => $"ProductDialogModel({Groups.Length} groups)";
     }

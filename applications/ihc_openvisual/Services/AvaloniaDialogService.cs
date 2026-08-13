@@ -182,9 +182,8 @@ public sealed class AvaloniaDialogService : IDialogService
     {
         if (Owner is null)
             return null;
-        ProductDialogResult? result =
-            await ProductDialogWindow.ShowAsync(Owner, new ProductDialogViewModel(descriptor, terminals, settings));
-        return result is null ? null : new ProductDialogEdits(result.Edits, result.WidgetAction);
+        return await ProductDialogWindow.ShowAsync(
+            Owner, new ProductDialogViewModel(descriptor, terminals, settings));
     }
 
     public async Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input)

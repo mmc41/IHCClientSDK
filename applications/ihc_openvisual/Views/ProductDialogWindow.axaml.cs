@@ -21,7 +21,7 @@ namespace ihc_openvisual.Views;
 /// <para>Returns the edits the installer actually made — an empty list when they pressed OK without touching
 /// anything, which is a COMMIT with nothing in it and never a cancellation. Cancel returns null.</para>
 /// </summary>
-public partial class ProductDialogWindow : ResultDialog<ProductDialogResult>
+public partial class ProductDialogWindow : ResultDialog<ProductDialogEdits>
 {
     public ProductDialogWindow()
     {
@@ -29,7 +29,7 @@ public partial class ProductDialogWindow : ResultDialog<ProductDialogResult>
     }
 
     /// <summary>Shows the dialog for a composed descriptor and resolves to the installer's edits, or null on Cancel.</summary>
-    public static Task<ProductDialogResult?> ShowAsync(Window owner, ProductDialogViewModel viewModel)
+    public static Task<ProductDialogEdits?> ShowAsync(Window owner, ProductDialogViewModel viewModel)
     {
         var window = new ProductDialogWindow { DataContext = viewModel, Title = viewModel.Title };
         return window.ShowDialogForResult(owner);
@@ -84,20 +84,8 @@ public partial class ProductDialogWindow : ResultDialog<ProductDialogResult>
         // value must not slip through the side door.
         if (!viewModel.TryCommit())
             return;
-        Accept(new ProductDialogResult(viewModel.PendingEdits, widgetAction));
+        // The edits are committed FIRST on every route, which is what makes stepping into a sub-dialog
+        // non-destructive.
+        Accept(new ProductDialogEdits(viewModel.PendingEdits, widgetAction));
     }
 }
-
-/// <summary>
-/// What the generic dialog produces: the edits to apply, and nothing else.
-/// <para>An EMPTY list is a valid, ordinary result — the installer accepted the dialog without changing anything.
-/// The caller must treat it as acceptance, not as a cancel, or an untouched OK would roll back a just-inserted
-/// product (T024).</para>
-/// </summary>
-/// <param name="Edits">The changed fields, already resolved to the elements they write.</param>
-/// <param name="WidgetAction">The composite the installer stepped into on their way out — a terminal row to
-/// address, or the advanced dimmer settings — or null for a plain OK. The edits are committed FIRST either way,
-/// which is what makes stepping into a sub-dialog non-destructive.</param>
-public sealed record ProductDialogResult(
-    ImmutableArray<ProductDialogEdit> Edits,
-    ProductDialogWidgetAction? WidgetAction = null);

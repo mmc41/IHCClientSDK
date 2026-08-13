@@ -28,14 +28,20 @@ namespace Ihc.Vis.Products
                 Widget("indstillinger", DialogWidgetKind.SettingsGrid));
 
         /// <summary>
+        /// The wired identity fields in their MEASURED order — stated once, because two presets show them: the
+        /// ordinary wired dialog and the one that appends the end-user-report checkbox to the same group.
+        /// </summary>
+        private static DialogFieldModel[] WiredIdentity { get; } =
+            [Navn(), Placering, Note, Kabeltype, Kabelnummer, Identifikationskode, Lysgruppe];
+
+        /// <summary>
         /// Wired data-line products — 73 of the 100 catalog entries, and the shape 74 of the 100 dialogs have.
         /// <para>Measured: one captioned group <i>Produkt egenskaber</i> laid out in two columns, reading
         /// Navn · Placering / Note / Kabeltype · Kabelnummer / Identifikationskode · Lysgruppe, followed by the
         /// terminal grids in their own captioned blocks.</para>
         /// </summary>
         public static ProductDialogModel Dataline { get; } = Dialog(
-            Group("identitet", "Produkt egenskaber", 2,
-                Navn(), Placering, Note, Kabeltype, Kabelnummer, Identifikationskode, Lysgruppe),
+            Group("identitet", "Produkt egenskaber", 2, WiredIdentity),
             WiredTerminals);
 
         /// <summary>
@@ -69,13 +75,12 @@ namespace Ihc.Vis.Products
         /// <para><b>Why a second preset rather than a flag on the field.</b> Preset selection is where a
         /// dialog's SHAPE is already chosen, and this is a shape difference; a per-field visibility flag would
         /// have added a second conditional vocabulary to the model for one field (D12).</para>
-        /// <para>The identity group is retyped because the checkbox is appended to it; the terminal group is
-        /// the SAME instance, which is what keeps the two presets from drifting below the fold.</para>
+        /// <para>The identity group is re-composed because the checkbox is appended to it — but from the SAME
+        /// <see cref="WiredIdentity"/> field list and the same terminal group instance, which is what keeps the
+        /// two presets from drifting below the fold.</para>
         /// </summary>
         public static ProductDialogModel DatalineEndUserReport { get; } = Dialog(
-            Group("identitet", "Produkt egenskaber", 2,
-                Navn(), Placering, Note, Kabeltype, Kabelnummer, Identifikationskode, Lysgruppe,
-                SlutbrugerRapport),
+            Group("identitet", "Produkt egenskaber", 2, [.. WiredIdentity, SlutbrugerRapport]),
             WiredTerminals);
 
         /// <summary>
@@ -126,12 +131,17 @@ namespace Ihc.Vis.Products
         /// opposite of the S0 device's two-column group, which reads across, so the direction is declared
         /// here rather than assumed by the renderer.</para>
         /// </summary>
+        /// <para>It is also the ONE family the original titles <c>"&lt;name&gt; Egenskaber"</c> rather than with the
+        /// bare product name (measured across all 100 products) — declared here, beside the rest of its shape.</para>
         public static ProductDialogModel Rs485SmsModem { get; } = Dialog(
             Group("identitet", "Modem egenskaber", 1,
                 Navn(readOnly: true), Note, Placering, Identifikationskode),
             Group("kabling", "Kabling", 1, ModemWires()),
             Group("indstillinger", "Indstillinger", 1, Pinkode),
-            GroupReadingDown("telefonnumre", "Telefon numre", 3, Telefonnumre));
+            GroupReadingDown("telefonnumre", "Telefon numre", 3, Telefonnumre)) with
+        {
+            TitleSuffix = " Egenskaber",
+        };
 
         /// <summary>
         /// The RS485 LED dimmer — the SMALLEST dialog in the catalog, at three fields (measured 2026-08-11:

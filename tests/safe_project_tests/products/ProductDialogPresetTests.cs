@@ -300,14 +300,15 @@ namespace Ihc.Vis.Tests
         [TestCase("product_rs485_sms_modem")]
         [TestCase("product_rs485_led_dimmer")]
         [TestCase("s0_device")]
-        public void EveryNamedBuilderFactory_CarriesItsFamilyPreset(string rootTag)
+        public void EveryNamedFamilyRootTag_ResolvesToAPreset(string rootTag)
         {
             ProductDefinition built = ProductDefinitionBuilder.Create(rootTag, "_0x1", "X").Build();
 
             Assert.Multiple(() =>
             {
-                Assert.That(built.Dialog, Is.SameAs(ProductDialogPresets.ForRootTag(rootTag)));
-                Assert.That(built.Dialog.IsEmpty, Is.False, $"{rootTag} has a preset");
+                Assert.That(built.Body.Tag, Is.EqualTo(rootTag), "the factory roots the product at that tag");
+                Assert.That(ProductDialogPresets.ForRootTag(built.Body.Tag).IsEmpty, Is.False,
+                    $"{rootTag} has a preset — so a product built this way composes its family dialog, not the fallback");
             });
         }
 
@@ -327,13 +328,12 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
-        /// THE gate of T020: a definition authored in code and the same family read from a <c>.def</c> carry the
-        /// same dialog. Both reference-identity AND value-equality are asserted — reference proves the two paths
-        /// share one lookup rather than each building their own, and value equality is what every other consumer
-        /// actually relies on (and what T017's custom equality exists for).
+        /// THE gate of T020: a definition authored in code and the same family read from a <c>.def</c> reach the
+        /// SAME preset instance — which is the claim that matters, since the lookup is keyed on the device-root tag
+        /// and the two construction paths must therefore agree on what that tag is.
         /// </summary>
         [Test]
-        public void ABuiltDefinitionAndACatalogReadDefinition_CarryTheSameDialog()
+        public void ABuiltDefinitionAndACatalogReadDefinition_ReachTheSamePreset()
         {
             ProductDefinition built = ProductDefinitionBuilder.Create("product_dataline", "_0x2101", "X").Build();
             ProductDefinition read = new BuiltInCatalog().Products
@@ -341,26 +341,27 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(read.Dialog, Is.SameAs(built.Dialog), "one shared preset instance, not two copies");
-                Assert.That(read.Dialog, Is.EqualTo(built.Dialog));
-                Assert.That(read.Dialog, Is.SameAs(ProductDialogPresets.Dataline));
+                Assert.That(ProductDialogPresets.ForRootTag(read.Body.Tag),
+                    Is.SameAs(ProductDialogPresets.ForRootTag(built.Body.Tag)),
+                    "one shared preset instance, not two copies");
+                Assert.That(ProductDialogPresets.ForRootTag(read.Body.Tag), Is.SameAs(ProductDialogPresets.Dataline));
             });
         }
 
         /// <summary>
-        /// Every catalog product resolves to the preset its root tag names — checked across all 100 rather than on
-        /// a sample, because a single family wired to the wrong preset would show the wrong dialog for every one of
-        /// its members.
+        /// Every catalog product's root tag is one the preset table KNOWS — checked across all 100 rather than on a
+        /// sample, because a family whose tag no preset names would silently compose the minimal fallback for every
+        /// one of its members, which looks like a working dialog with most of its fields missing.
         /// </summary>
         [Test]
-        public void EveryCatalogProduct_CarriesThePresetItsRootTagNames()
+        public void EveryCatalogProduct_ResolvesToARealPresetRatherThanTheFallback()
         {
-            var mismatched = new BuiltInCatalog().Products
-                .Where(p => !ReferenceEquals(p.Dialog, ProductDialogPresets.ForRootTag(p.Body.Tag)))
+            var unknown = new BuiltInCatalog().Products
+                .Where(p => ProductDialogPresets.ForRootTag(p.Body.Tag).IsEmpty)
                 .Select(p => $"{p.ProductIdentifier} <{p.Body.Tag}>")
                 .ToList();
 
-            Assert.That(mismatched, Is.Empty);
+            Assert.That(unknown, Is.Empty);
         }
 
         /// <summary>The dialog is metadata about a dialog, not project content: it must never reach the body.</summary>
@@ -371,7 +372,8 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(modem.Dialog.IsEmpty, Is.False, "precondition: it has one");
+                Assert.That(ProductDialogPresets.ForRootTag(modem.Body.Tag).IsEmpty, Is.False,
+                    "precondition: it has one");
                 Assert.That(modem.Body.DescendantsAndSelf().SelectMany(e => e.Attrs).Select(a => a.Name),
                     Does.Not.Contain("dialog"));
             });

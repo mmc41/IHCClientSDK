@@ -44,10 +44,17 @@ public class SettingsGridTests : AvaloniaTestBase
         ElementId placed = session.Apply(new AddProduct(locality,
             app.GetAvailableProducts().First(p => p.ProductIdentifier == productIdentifier))).Value;
 
-        ProjectElement element = session.Current!.FindById(placed)!;
-        ProductSetting[] settings = [.. new ProductView(session.Current!, element).Settings
-            .Select(s => new ProductSetting(s.Name, s.Note, s.Value))];
-        return (app.GetProductDialog(session.Current!, placed), settings);
+        // Built the way the coordinator builds them — from SettingElements, with the value through the app's own
+        // per-type formatter. Projecting the raw attributes instead would assert a row the dialog never renders.
+        Project current = session.Current!;
+        ProjectElement element = current.FindById(placed)!;
+        ProductSetting[] settings = [.. new ProductView(current, element).SettingElements
+            .Select(current.View)
+            .Select(view => new ProductSetting(
+                view.Name ?? string.Empty,
+                view.Note ?? string.Empty,
+                VariableValueFormat.For(view.Element.Tag, view.Effective) ?? string.Empty))];
+        return (app.GetProductDialog(current, placed), settings);
     }
 
     /// <summary>The descriptor declares the grid for a product that HAS settings.</summary>

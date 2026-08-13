@@ -55,18 +55,12 @@ namespace Ihc.Vis.Products
         /// </summary>
         public DefinitionDocumentation Documentation { get; init; } = DefinitionDocumentation.Empty;
 
-        /// <summary>
-        /// What this product's properties dialog contains — <b>programmatic-lookup only</b>, and, exactly like
-        /// <see cref="Documentation"/>, deliberately <b>not</b> part of the serialized <see cref="Body"/>: it is
-        /// never written into a project <c>.vis</c> or a catalog <c>.def</c>. That is what keeps the byte-fidelity
-        /// guarantee independent of anything the dialog layer decides.
-        /// <para>Resolved from the device-root tag by <see cref="ProductDialogPresets.ForRootTag"/> on every
-        /// construction path — the five builder factories, the open-world <c>Create</c>, and <c>CatalogReader</c> —
-        /// so a definition's dialog never depends on how the definition was obtained. Defaults to
-        /// <see cref="ProductDialogModel.Empty"/>, which is the open-world case: a family the SDK has never seen
-        /// still opens a dialog, composed as the minimal fallback.</para>
-        /// </summary>
-        public ProductDialogModel Dialog { get; init; } = ProductDialogModel.Empty;
+        // A product's dialog is deliberately NOT stored here. It is resolved where it is used —
+        // ProductDialogPresets.ForRootTag(tag, productIdentifier), reached through ProductDialogComposer.ComposeFor
+        // — from the PLACED ELEMENT, which is the only thing that can answer it: the identifier selects the shape
+        // for the one product carrying the end-user-report checkbox, and a placed element may name a product this
+        // catalog does not carry at all. A copy cached on the definition was a second answer to the same question
+        // that no production path read, and it had already drifted from the live one for that product.
 
         /// <summary>
         /// A decoded, read-only view of the product's direct resource children (I/O pins and family-specific

@@ -246,9 +246,6 @@ public sealed class ProductDialogGroupViewModel
 
     public ObservableCollection<ProductTerminal> Outputs { get; } = [];
 
-    /// <summary>Whether the grids have anything in them — an empty pair is not drawn at all, as before.</summary>
-    public bool HasAnyTerminal => Inputs.Count > 0 || Outputs.Count > 0;
-
     public bool HasInputs => Inputs.Count > 0;
 
     public bool HasOutputs => Outputs.Count > 0;

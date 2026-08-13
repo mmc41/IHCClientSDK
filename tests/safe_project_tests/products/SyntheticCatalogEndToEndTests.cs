@@ -57,8 +57,8 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(inserted.Status, Is.EqualTo(EditStatus.Committed), "the imported product inserts");
-                Assert.That(imported.Dialog, Is.SameAs(ProductDialogPresets.Dataline),
-                    "an imported definition carries its family preset, exactly as a built-in one does");
+                Assert.That(ProductDialogPresets.ForRootTag(imported.Body.Tag), Is.SameAs(ProductDialogPresets.Dataline),
+                    "an imported definition reaches its family preset, exactly as a built-in one does");
                 Assert.That(dialog.Title, Is.EqualTo(imported.DisplayName), "titled with its own catalog name");
                 Assert.That(applied.Status, Is.EqualTo(EditStatus.Committed));
                 Assert.That(session.Current!.FindById(id)!.GetAttribute("note"), Is.EqualTo("redigeret e2e"),
@@ -95,7 +95,8 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(unknown.Dialog.IsEmpty, Is.True, "it carries the EMPTY preset — the fallback's trigger");
+                Assert.That(ProductDialogPresets.ForRootTag(unknown.Body.Tag).IsEmpty, Is.True,
+                    "it resolves to the EMPTY preset — the fallback's trigger");
                 Assert.That(inserted.Status, Is.EqualTo(EditStatus.Committed),
                     "insert is never blocked by an unrecognised product");
                 Assert.That(dialog.AllFields.Select(f => f.Caption), Is.EqualTo(

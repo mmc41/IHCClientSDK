@@ -387,7 +387,7 @@ namespace Ihc.Vis.Tests
                 Assert.That(imported.Body.Tag, Is.EqualTo("product_unknown_family"),
                     "precondition: a root tag no preset knows");
                 Assert.That(ProductClassifier.Classify(imported.Body.Tag), Is.EqualTo(ProductFamily.Other));
-                Assert.That(imported.Dialog.IsEmpty, Is.True,
+                Assert.That(ProductDialogPresets.ForRootTag(imported.Body.Tag).IsEmpty, Is.True,
                     "an unrecognised family resolves to the empty preset — the fallback's entry condition");
             });
         }

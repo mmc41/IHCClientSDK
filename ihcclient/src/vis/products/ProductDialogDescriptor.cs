@@ -113,11 +113,12 @@ namespace Ihc.Vis.Products
             && Equals(Rule, other.Rule)
             && Minimum == other.Minimum
             && Maximum == other.Maximum
+            && ColumnSpan == other.ColumnSpan
             && ImmutableArrayValue.Equal(Suggestions, other.Suggestions);
 
         public override int GetHashCode() =>
             HashCode.Combine(
                 HashCode.Combine(AutomationId, Caption, Control, Target, Attribute, Value),
-                HashCode.Combine(ReadOnly, Rule, Minimum, Maximum, ImmutableArrayValue.Hash(Suggestions)));
+                HashCode.Combine(ReadOnly, Rule, Minimum, Maximum, ColumnSpan, ImmutableArrayValue.Hash(Suggestions)));
     }
 }

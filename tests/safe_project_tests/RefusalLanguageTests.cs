@@ -26,18 +26,12 @@ namespace Ihc.Vis.Tests
             @"(EditVerdict\.Refuse|EditRefusedException)\(\$?""(The |A |An |That |This |Not |No |is not |cannot |must |already |does not )",
             RegexOptions.Compiled);
 
+        // Tests run from bin/, so the SDK sources are located through the suite's one repo-root locator (anchored
+        // on the solution file) rather than a second walk anchored on a directory that could disagree with it.
         private static IEnumerable<string> SdkSources() =>
-            Directory.EnumerateFiles(SdkRoot(), "*.cs", SearchOption.AllDirectories);
-
-        // tests run from bin/, so walk up to the repo and back down into the SDK's vis layer.
-        private static string SdkRoot()
-        {
-            var dir = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
-            while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "ihcclient", "src", "vis")))
-                dir = dir.Parent;
-            Assert.That(dir, Is.Not.Null, "could not locate ihcclient/src/vis from the test directory");
-            return Path.Combine(dir!.FullName, "ihcclient", "src", "vis");
-        }
+            Directory.EnumerateFiles(
+                Path.Combine(TestRepository.RequireRoot(), "ihcclient", "src", "vis"),
+                "*.cs", SearchOption.AllDirectories);
 
         [Test]
         public void NoRefusalInTheSdkOpensWithAnEnglishSentence()

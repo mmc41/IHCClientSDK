@@ -377,10 +377,6 @@ namespace Ihc.Vis.Products
             {
                 Grammar = grammar,
                 Documentation = BuildDocumentation(),
-                // All five named factories and the open-world Create funnel through this one Build, so resolving
-                // the dialog here covers every builder path with one line — and makes it impossible to add a
-                // factory that forgets to.
-                Dialog = ProductDialogPresets.ForRootTag(rootTag),
             };
             // Stamp the From-carried physical SourceEncoding when one was carried, else keep the definition's default.
             return sourceEncoding is { } encoding ? definition with { SourceEncoding = encoding } : definition;

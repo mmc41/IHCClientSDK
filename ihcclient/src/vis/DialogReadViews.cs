@@ -100,38 +100,19 @@ namespace Ihc.Vis
         }
 
         /// <summary>
-        /// The product's configurable SETTINGS — the rows of the vendor's <i>Indstillinger</i> grid, in
-        /// declared order: a name, an explanatory note and the current value.
+        /// The product's configurable SETTING RESOURCES — the rows of the vendor's <i>Indstillinger</i> grid, in
+        /// declared order, each row's caller rendering the value its own way.
         /// <para>A setting is any resource the catalog marked <c>setting="yes"</c>, whatever its resource
         /// type: the six sensors that have them use <c>resource_temperature</c>, <c>resource_humidity</c>
         /// and <c>resource_light</c>. Keyed on the attribute rather than on a tag list, so a sensor type
         /// the SDK has not met still shows its settings (T070).</para>
-        /// <para>The value read is the <c>inivalue</c> the row displays, not a runtime reading.</para>
-        /// </summary>
-        public IEnumerable<(string Name, string Note, string Value)> Settings
-        {
-            get
-            {
-                Project project = Project;
-                return SettingElements.Select(e =>
-                {
-                    ElementView view = project.View(e);
-                    return (view.Name ?? string.Empty,
-                            view.Note ?? string.Empty,
-                            view.Effective("inivalue") ?? string.Empty);
-                });
-            }
-        }
-
-        /// <summary>
-        /// The setting RESOURCES themselves, for a caller that renders the value its own way.
-        /// <para>The GUI needs this: a calibration offset is shown as <c>0,0 °C</c>, not as the stored
-        /// <c>0.00</c>, and how a typed value is rendered is frontend presentation policy (ADR-002). The
-        /// SDK supplies the raw value in <see cref="Settings"/> and the elements here, and takes no view
-        /// on which the caller wants.</para>
+        /// <para>The ELEMENTS, not a projected row: a calibration offset is shown as <c>0,0 °C</c>, not as the
+        /// stored <c>0.00</c>, and how a typed value is rendered is frontend presentation policy (ADR-002). The
+        /// name and note come from <c>project.View(element)</c> as for any other element, so there is no second
+        /// projection of these three attributes to drift from the rendered grid.</para>
         /// </summary>
         public IEnumerable<ProjectElement> SettingElements =>
-            Element.DescendantsAndSelf().Where(e => e.GetAttribute("setting") == "yes");
+            Element.DescendantsAndSelf().Where(Products.ProductDialogComposer.IsSetting);
     }
 
     /// <summary>

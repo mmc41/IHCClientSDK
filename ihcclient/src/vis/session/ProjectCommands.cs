@@ -72,20 +72,19 @@ namespace Ihc.Vis
         /// (US-010), or null when no such product is in the catalog. The at-most-one-modem rule (US-013) is a separate
         /// pre-check — <see cref="WouldExceedModemLimit"/> — so the caller can surface it before applying.</summary>
         /// <summary>
-        /// Command to insert a catalog product by identifier — or null when the catalog has no such product,
-        /// <b>or when the identifier names more than one</b>.
-        /// <para>Refusing the ambiguous case is the point. Catalog identifiers are NOT unique (D22): `_0x2102`
-        /// is both <c>LK FUGA Tryk 4 tast</c> and <c>LK OPUS Tryk 4 tast</c>, and eight identifiers are shared
-        /// this way. This resolved with <c>FirstOrDefault</c>, so picking OPUS from the insert menu placed the
-        /// FUGA product — a different product with its own terminals, written into the project under the wrong
-        /// name and only noticed when its dialog said so (T046). A caller that means one of two must say which,
-        /// through the <see cref="AddProduct(Project, ElementId, ProductDefinition)"/> overload.</para>
+        /// Command to insert a catalog product by identifier — or null when the catalog has no such product, or
+        /// when the identifier names more than one and <paramref name="displayName"/> does not say which.
+        /// <para>The D22 ambiguity and why refusing it matters are stated once, at
+        /// <see cref="ProductCatalogLookup.Resolve"/>. Naming the product as well as its identifier is what lets
+        /// this door place the eight products that share one — a caller that has only the identifier still gets
+        /// the unambiguous case, and may otherwise resolve the product itself and use the
+        /// <see cref="AddProduct(Project, ElementId, ProductDefinition)"/> overload.</para>
         /// </summary>
-        public Session.AddProduct? AddProduct(Project project, ElementId localityId, string productIdentifier)
-        {
-            var matches = _catalog.Value.Products.Where(p => p.ProductIdentifier == productIdentifier).Take(2).ToList();
-            return matches.Count == 1 ? new Session.AddProduct(localityId, matches[0]) : null;
-        }
+        public Session.AddProduct? AddProduct(
+            Project project, ElementId localityId, string productIdentifier, string? displayName = null) =>
+            ProductCatalogLookup.Resolve(_catalog.Value.Products, productIdentifier, displayName) is { } definition
+                ? new Session.AddProduct(localityId, definition)
+                : null;
 
         /// <summary>Command to insert a catalog product the caller has already resolved — the unambiguous form,
         /// and the only one that can express which of two products sharing an identifier is meant (D22).</summary>

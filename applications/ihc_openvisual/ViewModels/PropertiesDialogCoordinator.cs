@@ -429,10 +429,10 @@ internal sealed class PropertiesDialogCoordinator(
             // displayed one, which is a display-interpretation concern and belongs on this side of the
             // boundary (ADR-002).
             IReadOnlyList<ProductSetting> settings = productView is { } sv
-                ? [.. sv.SettingElements.Select(e => new ProductSetting(
-                        project.View(e).Name ?? string.Empty,
-                        project.View(e).Note ?? string.Empty,
-                        VariableValueFormat.For(e.Tag, project.View(e).Effective) ?? string.Empty))]
+                ? [.. sv.SettingElements.Select(project.View).Select(view => new ProductSetting(
+                        view.Name ?? string.Empty,
+                        view.Note ?? string.Empty,
+                        VariableValueFormat.For(view.Element.Tag, view.Effective) ?? string.Empty))]
                 : [];
 
             ProductDialogEdits? result = await dialogs.EditProductDialogAsync(descriptor, terminals, settings);
@@ -522,12 +522,6 @@ internal sealed class PropertiesDialogCoordinator(
         }
         return used;
     }
-
-    /// <summary>Opens a placed product's documentation dialog — every family, through
-    /// <see cref="OpenComposedDialogAsync"/>. Returns <c>false</c> when the installer cancelled without committing
-    /// anything: the insert path needs that answer, because cancelling the dialog that opens as part of placing a
-    /// product means the product is not placed at all (US-011).</summary>
-    public Task<bool> OpenProductAsync(ElementId productId) => OpenComposedDialogAsync(productId);
 
     // The product's input/output terminals for the addressing grids (US-012): each terminal's name, its
     // vendor-formatted "Datalinie N.PP" address (blank when unassigned), cable colour and note. The typed PinView

@@ -12,9 +12,6 @@ namespace Ihc.Vis.Session
     // ---- Edit-payload records (fablerefac W2-6, moved down from the GUI dialogs — they are edit inputs, not
     //      presentation; their dialog *Input* counterparts stay GUI-side). ----
 
-    /// <summary>The edited product documentation (US-011/US-012): the fields the product properties dialog writes.
-    /// <c>Position</c> is the free-text <i>Placering</i> descriptor; the dialog carries no locality and never
-    /// re-parents (A-13/US-054).</summary>
     // ProductPropertiesResult and its UpdateProduct command are gone (T031), superseded by ApplyProductDialog.
     // A fixed record of "the fields the product dialog writes" could only ever describe ONE family's dialog: it
     // named Kabeltype and Lysgruppe, which the LED dimmer does not declare and the modem does not show, so every

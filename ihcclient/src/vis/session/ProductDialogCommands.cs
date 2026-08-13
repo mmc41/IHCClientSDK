@@ -54,26 +54,30 @@ namespace Ihc.Vis.Session
             {
                 return exists;
             }
+            if (Edits.IsDefaultOrEmpty)
+            {
+                // OK without touching a field is an ordinary act — and the commonest one, since a just-inserted
+                // product raises its dialog. There is nothing to validate against, so the descriptor (a whole-
+                // project compose) is never built for it.
+                return EditVerdict.Allow;
+            }
+
             ProjectElement product = context.Index.FindById(ProductId)!;
 
             // The dialog this product would show, composed against the pre-edit project: the authority on which
             // (element, attribute) pairs are writable fields and what each one accepts.
             //
-            // Composed from the element's OWN `product_identifier`, which is what the read side uses too — so
-            // the two agree field for field, including the one product whose dialog carries the end-user-report
-            // checkbox (T099). Getting that datum from the element rather than from a catalog is what keeps
-            // this exact: EditContext is the project and its index, and a command that had to be TOLD which
-            // fields exist would be a caller supplying its own contract.
+            // Through the SAME door the read side uses, which is what makes the two agree field for field —
+            // including the one product whose dialog carries the end-user-report checkbox (T099). A command that
+            // had to be TOLD which fields exist would be a caller supplying its own contract.
             var offered = ProductDialogComposer
-                .Compose(context.Project, ProductId,
-                    ProductDialogPresets.ForRootTag(product.Tag, product.GetAttribute("product_identifier")),
-                    product.Tag)
+                .ComposeFor(context.Project, product, product.Tag)
                 .AllFields
                 .ToDictionary(f => (f.Target, f.Attribute));
 
             var subtree = product.DescendantsAndSelf().Select(e => e.Id).Where(id => id is not null).ToHashSet();
 
-            foreach (ProductDialogEdit edit in Edits.IsDefaultOrEmpty ? [] : Edits)
+            foreach (ProductDialogEdit edit in Edits)
             {
                 if (context.Index.FindById(edit.Target) is null)
                 {
@@ -119,6 +123,8 @@ namespace Ihc.Vis.Session
         /// same rule as <c>IsNullOrEmpty(PinCode) ? "0" : PinCode</c>; stated here it is the family-independent
         /// version, keyed on what the schema declares rather than on a literal — and it went missing for exactly
         /// as long as it took to delete that command (T031).</para>
+        /// <para>Both directions read the declared default through the SAME helper, so the pair cannot drift into
+        /// two different ideas of which defaults count.</para>
         /// </summary>
         private static string Stored(ProjectEditor editor, ProductDialogEdit edit)
         {
@@ -127,10 +133,8 @@ namespace Ihc.Vis.Session
                 return edit.Value;
             }
             ProjectElement element = editor.Require(edit.Target);
-            string? declaredDefault = editor.SchemaView.TryGet(element.Tag)?.FindAttr(edit.Attribute)?.Default;
-            return declaredDefault is { Length: > 0 } && declaredDefault.All(char.IsAsciiDigit)
-                ? declaredDefault
-                : edit.Value;
+            return ProductDialogComposer.NumericDeclaredDefault(editor.SchemaView, element, edit.Attribute)
+                   ?? edit.Value;
         }
     }
 }

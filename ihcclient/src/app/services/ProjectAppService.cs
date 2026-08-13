@@ -623,29 +623,19 @@ namespace Ihc.Vis
 
                 // The dialog is titled with the product TYPE, as the original titles it — not with the element's
                 // own (possibly renamed) name. Falls back to the element's name for a product whose identifier the
-                // catalog CANNOT ANSWER FOR, which is two cases: an identifier it does not know (the open-world
-                // case) and an identifier it knows TWICE.
-                //
-                // The second is real: eight catalog identifiers name two products each (D22), so `_0x2102` is both
-                // LK FUGA and LK OPUS Tryk 4 tast, and no lookup by identifier can say which was placed. Taking
-                // the first match titled the OPUS product's dialog "LK FUGA Tryk 4 tast" (T046). The element's
-                // stored name is the better answer precisely because these products insert `locked`, which fixes
-                // that name to the type name.
-                string? identifier = product.GetAttribute("product_identifier");
-                var namedByIdentifier = identifier is null
-                    ? new System.Collections.Generic.List<ProductDefinition>()
-                    : catalog.Value.Products.Where(p => p.ProductIdentifier == identifier).Take(2).ToList();
+                // catalog CANNOT ANSWER FOR (unknown, or ambiguous per D22 — see ProductCatalogLookup.Resolve).
+                // The stored name is the better answer precisely because these products insert `locked`, which
+                // fixes that name to the type name.
+                string? storedName = project.View(product).Name;
                 string displayName =
-                    (namedByIdentifier.Count == 1 ? namedByIdentifier[0].DisplayName : null)
-                    ?? project.View(product).Name
+                    ResolveProduct(product.GetAttribute("product_identifier"), storedName)?.DisplayName
+                    ?? storedName
                     ?? product.Tag;
 
-                // The identifier also selects the dialog SHAPE, for the one product measured to carry the
-                // end-user-report checkbox (T099). Unlike the title it is taken straight from the element and
-                // needs no catalog: the write-back reads the same attribute and therefore composes the same
-                // dialog, which is what keeps "the dialog is the contract" exact for that field too.
-                ProductDialogDescriptor result = ProductDialogComposer.Compose(
-                    project, productId, ProductDialogPresets.ForRootTag(product.Tag, identifier), displayName);
+                // Composed through the SAME door the write-back uses, so the descriptor a commit validates against
+                // is the one the installer saw — including the identifier-selected shape carrying the end-user-
+                // report checkbox (T099).
+                ProductDialogDescriptor result = ProductDialogComposer.ComposeFor(project, product, displayName);
                 activity?.SetReturnValue(result.Groups.Length);
                 return result;
             });
@@ -703,9 +693,18 @@ namespace Ihc.Vis
         /// carry, and that is a fall back to the element's own name, not a failure.
         /// </summary>
         public CatalogItem? GetProductCatalogItem(string productIdentifier) =>
-            GetAvailableProducts().FirstOrDefault(p => p.ProductIdentifier == productIdentifier) is { } product
-                ? ToCatalogItem(product)
-                : null;
+            ResolveProduct(productIdentifier) is { } product ? ToCatalogItem(product) : null;
+
+        /// <summary>
+        /// The catalog product a caller means, from its <c>product_identifier</c> and — when it has one — the
+        /// display name that tells two products sharing an identifier apart (D22). Null when the catalog does not
+        /// carry the identifier, or carries it twice and <paramref name="displayName"/> does not decide.
+        /// <para>The one door for this question: an insert-menu leaf resolving what it stands for, and a placed
+        /// element resolving its own catalog type, are the same lookup and must not answer differently. The rule
+        /// itself lives at <see cref="ProductCatalogLookup.Resolve"/>.</para>
+        /// </summary>
+        public ProductDefinition? ResolveProduct(string? productIdentifier, string? displayName = null) =>
+            ProductCatalogLookup.Resolve(GetAvailableProducts(), productIdentifier, displayName);
 
         // The body's `name` carries the catalog's NN# ordering prefix, which DisplayName has had stripped — an
         // insert menu needs it to list its leaves in the catalog's own order rather than alphabetically.

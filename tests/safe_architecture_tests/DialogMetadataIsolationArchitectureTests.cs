@@ -119,8 +119,7 @@ namespace Ihc.Tests
             private static readonly ProductDialogModel Cached = ProductDialogPresets.Dataline;
 
             public static string Write(ProductDefinition definition) =>
-                definition.Dialog.Groups.Length + "/" + Cached.Groups.Length
-                + ProductDialogPresets.ForRootTag(definition.Body.Tag).IsEmpty;
+                Cached.Groups.Length + "/" + ProductDialogPresets.ForRootTag(definition.Body.Tag).IsEmpty;
         }
     }
 }
