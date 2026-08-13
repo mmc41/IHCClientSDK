@@ -112,7 +112,7 @@ namespace Ihc.Vis
         /// projection of these three attributes to drift from the rendered grid.</para>
         /// </summary>
         public IEnumerable<ProjectElement> SettingElements =>
-            Element.DescendantsAndSelf().Where(Products.ProductDialogComposer.IsSetting);
+            Element.DescendantsAndSelf().Where(Products.ProductDialogFragments.Setting.Matches);
     }
 
     /// <summary>

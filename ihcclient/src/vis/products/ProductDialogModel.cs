@@ -1,6 +1,8 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using Ihc.Vis.Model;
 
 namespace Ihc.Vis.Products
@@ -74,18 +76,17 @@ namespace Ihc.Vis.Products
         public bool ColumnMajor { get; init; }
 
         /// <summary>
-        /// A descendant tag the placed element must carry for this group to appear at all, or null for a group
-        /// every member of the family gets.
-        /// <para>The same mechanism <see cref="DialogWidgetModel.PresenceTag"/> gives a widget, lifted to a
-        /// group so that a run of ordinary FIELDS can be family-optional: the jalousi products' <i>Persienne
-        /// egenskaber</i> is two plain numbers that 22 of the 24 wireless products must not be offered (T119).
-        /// </para>
+        /// When this group appears at all — <see cref="DialogPresence.Always"/> for a group every member of the
+        /// family gets.
+        /// <para>The same <see cref="DialogPresence"/> vocabulary a widget slot uses, lifted to a group so that a
+        /// run of ordinary FIELDS can be family-optional: the jalousi products' <i>Persienne egenskaber</i> is two
+        /// plain numbers that 22 of the 24 wireless products must not be offered (T119).</para>
         /// <para><b>Declared, not inferred from whether the bindings resolve.</b> Leaving the fields to drop
         /// themselves would render the same dialog — and would make a MISTYPED tag indistinguishable from a
         /// deliberately absent one, which is precisely what the catalog-wide descriptor gate exists to catch
         /// (it treats an unresolved preset field as a defect, and it should).</para>
         /// </summary>
-        public string? PresenceTag { get; init; }
+        public DialogPresence Presence { get; init; } = DialogPresence.Always;
 
         public bool Equals(DialogGroupModel? other) =>
             other is not null
@@ -93,11 +94,11 @@ namespace Ihc.Vis.Products
             && string.Equals(Caption, other.Caption, StringComparison.Ordinal)
             && Columns == other.Columns
             && ColumnMajor == other.ColumnMajor
-            && string.Equals(PresenceTag, other.PresenceTag, StringComparison.Ordinal)
+            && Equals(Presence, other.Presence)
             && ImmutableArrayValue.Equal(Parts, other.Parts);
 
         public override int GetHashCode() =>
-            HashCode.Combine(Id, Caption, Columns, ColumnMajor, PresenceTag, ImmutableArrayValue.Hash(Parts));
+            HashCode.Combine(Id, Caption, Columns, ColumnMajor, Presence, ImmutableArrayValue.Hash(Parts));
 
         public override string ToString() =>
             $"DialogGroupModel({Id}, {Parts.Length} parts{(Caption is null ? "" : ", \"" + Caption + "\"")})";
@@ -178,12 +179,59 @@ namespace Ihc.Vis.Products
     /// </summary>
     /// <param name="Id">Stable identifier; the stem of the widget's automation id.</param>
     /// <param name="Kind">Which hand-written widget fills the slot.</param>
-    /// <param name="PresenceTag">A descendant tag that must exist on the placed element for the slot to render, or
-    /// null to render unconditionally.</param>
-    public sealed record DialogWidgetModel(
-        string Id,
-        DialogWidgetKind Kind,
-        string? PresenceTag = null) : DialogPartModel(Id);
+    public sealed record DialogWidgetModel(string Id, DialogWidgetKind Kind) : DialogPartModel(Id)
+    {
+        /// <summary>When this slot renders — <see cref="DialogPresence.Always"/> unless the preset says otherwise.
+        /// Consulted for EVERY kind: a slot's presence is what its preset declares, never a property of which
+        /// hand-written widget happens to fill it.</summary>
+        public DialogPresence Presence { get; init; } = DialogPresence.Always;
+    }
+
+    /// <summary>
+    /// When a group or a widget slot applies to a placed element — the ONE presence vocabulary, shared by both.
+    /// <para>Presence is DATA. The two rules the catalog actually needs are shaped differently — the advanced-dimmer
+    /// button is gated on a descendant TAG, the settings grid on a descendant MARKED <c>setting="yes"</c> whatever
+    /// its resource type — and answering the second from the widget's KIND meant a preset could state a rule for
+    /// that slot which was silently discarded. A third shape is a case added here, not a branch added to the
+    /// composer.</para>
+    /// </summary>
+    public abstract record DialogPresence
+    {
+        /// <summary>Whether the rule is satisfied by the placed product's own subtree (itself and its descendants).</summary>
+        public abstract bool IsPresentIn(IReadOnlyList<ProjectElement> subtree);
+
+        /// <summary>Present for every member of the family — what a slot declaring nothing gets.</summary>
+        public static DialogPresence Always { get; } = new Unconditional();
+
+        private sealed record Unconditional : DialogPresence
+        {
+            public override bool IsPresentIn(IReadOnlyList<ProjectElement> subtree) => true;
+        }
+
+        /// <summary>Present when the product carries a descendant with this tag.</summary>
+        public sealed record DescendantTag(string Tag) : DialogPresence
+        {
+            public override bool IsPresentIn(IReadOnlyList<ProjectElement> subtree) =>
+                subtree.Any(e => string.Equals(e.Tag, Tag, StringComparison.Ordinal));
+        }
+
+        /// <summary>
+        /// Present when the product carries a descendant whose <paramref name="Attribute"/> holds
+        /// <paramref name="Value"/> — a MARKER rather than a tag, which is what the settings grid needs: a setting
+        /// is any resource the catalog marked, and the six sensors that have them use three different resource
+        /// types (<c>resource_temperature</c>, <c>resource_humidity</c>, <c>resource_light</c>), so no tag names
+        /// the set.
+        /// </summary>
+        public sealed record DescendantMarked(string Attribute, string Value) : DialogPresence
+        {
+            /// <summary>Whether ONE element carries the marker — the same question per element, for a caller that
+            /// needs the matching elements themselves rather than whether any exist.</summary>
+            public bool Matches(ProjectElement element) =>
+                string.Equals(element.GetAttribute(Attribute), Value, StringComparison.Ordinal);
+
+            public override bool IsPresentIn(IReadOnlyList<ProjectElement> subtree) => subtree.Any(Matches);
+        }
+    }
 
     /// <summary>
     /// How a field is presented and edited. Five kinds, each with a measured consumer: the four D12 froze,

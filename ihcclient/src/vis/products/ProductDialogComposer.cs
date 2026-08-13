@@ -95,7 +95,7 @@ namespace Ihc.Vis.Products
                 // Checked before composing anything in it, so its fields are never resolved for a product that
                 // does not carry the tag — the alternative, letting each binding fail, renders identically but
                 // hides a mistyped tag from the descriptor gate (T119).
-                if (group.PresenceTag is { } required && !subtree.Any(e => e.Tag == required))
+                if (!group.Presence.IsPresentIn(subtree))
                 {
                     continue;
                 }
@@ -119,7 +119,7 @@ namespace Ihc.Vis.Products
                             fields.AddRange(ExpandRepeat(project, subtree, group, repeat, lockedElement));
                             break;
 
-                        case DialogWidgetModel widget when AppliesTo(subtree, widget):
+                        case DialogWidgetModel widget when widget.Presence.IsPresentIn(subtree):
                             widgets.Add(widget.Kind);
                             break;
                     }
@@ -163,22 +163,6 @@ namespace Ihc.Vis.Products
         /// </summary>
         private static bool GatedByLocked(DialogBinding binding) =>
             binding is DialogBinding.RootAttribute { Name: "name" };
-
-        // A widget slot renders when it names no presence tag, or when the element actually carries one.
-        //
-        // The settings grid is the exception, and its presence rule belongs to the KIND rather than to a
-        // tag: a setting is any resource marked `setting="yes"`, whatever its resource type (the sensors
-        // use resource_temperature, resource_humidity and resource_light). Unlike the terminal grids --
-        // which the vendor shows ALWAYS, empty or not (US-012) -- it draws Indstillinger only where there
-        // are settings, measured across the products that have none (T070).
-        private static bool AppliesTo(IReadOnlyList<ProjectElement> subtree, DialogWidgetModel widget) =>
-            widget.Kind == DialogWidgetKind.SettingsGrid
-                ? subtree.Any(IsSetting)
-                : widget.PresenceTag is not { } tag || subtree.Any(e => e.Tag == tag);
-
-        /// <summary>A configurable setting: a resource the catalog marked <c>setting="yes"</c>.</summary>
-        internal static bool IsSetting(ProjectElement element) =>
-            element.GetAttribute("setting") == "yes";
 
         private static DialogDescriptorField ComposeField(
             Project project, DialogGroupModel group, DialogFieldModel field,

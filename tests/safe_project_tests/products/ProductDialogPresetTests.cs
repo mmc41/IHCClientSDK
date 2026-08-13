@@ -73,7 +73,8 @@ namespace Ihc.Vis.Tests
                 // would have refused any family-optional field for ever.
                 Assert.That(
                     ProductDialogPresets.Airlink.Groups.Count(
-                        g => g.PresenceTag is null && g.Parts.OfType<DialogFieldModel>().Any()),
+                        g => ReferenceEquals(g.Presence, DialogPresence.Always)
+                             && g.Parts.OfType<DialogFieldModel>().Any()),
                     Is.EqualTo(1), "measured: every wireless product gets one Produkt egenskaber box");
                 Assert.That(identity.Caption, Is.EqualTo("Produkt egenskaber"));
                 Assert.That(FieldIds(identity), Is.EqualTo(
@@ -100,7 +101,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(widget.Kind, Is.EqualTo(DialogWidgetKind.AdvancedDimmerButton));
-                Assert.That(widget.PresenceTag, Is.EqualTo("dimmer_settings"),
+                Assert.That(widget.Presence, Is.EqualTo(new DialogPresence.DescendantTag("dimmer_settings")),
                     "gated, so a wireless push-button is not offered dimmer settings");
             });
         }

@@ -21,11 +21,11 @@ namespace Ihc.Vis.Products
         private static DialogGroupModel WiredTerminals { get; } =
             Group("terminaler", null, 1,
                 Widget("terminaler", DialogWidgetKind.TerminalGrids),
-                // Presence-gated by the KIND (any resource marked setting="yes"), so it reaches the six
-                // sensors that have calibration settings and none of the other 67 wired products -- which
-                // is what the vendor does: it draws Indstillinger only where there is something in it,
-                // unlike the two terminal grids it always shows (T070).
-                Widget("indstillinger", DialogWidgetKind.SettingsGrid));
+                // Gated on the SETTING marker, so it reaches the six sensors that have calibration settings
+                // and none of the other 67 wired products -- which is what the vendor does: it draws
+                // Indstillinger only where there is something in it, unlike the two terminal grids above,
+                // which it shows ALWAYS, empty or not (US-012/T070).
+                Widget("indstillinger", DialogWidgetKind.SettingsGrid, Setting));
 
         /// <summary>
         /// The wired identity fields in their MEASURED order — stated once, because two presets show them: the
@@ -114,10 +114,10 @@ namespace Ihc.Vis.Products
         public static ProductDialogModel Airlink { get; } = Dialog(
             Group("identitet", "Produkt egenskaber", 2,
                 Navn(), Placering, Note, Identifikationskode, Lysgruppe),
-            GroupPresentWhen("persienne", "Persienne egenskaber", 2, "shutter_settings",
+            GroupPresentWhen("persienne", "Persienne egenskaber", 2, Carrying("shutter_settings"),
                 VandringstidOp, VandringstidNed),
             Group("avanceret", null, 1,
-                Widget("avanceret", DialogWidgetKind.AdvancedDimmerButton, presenceTag: "dimmer_settings")));
+                Widget("avanceret", DialogWidgetKind.AdvancedDimmerButton, Carrying("dimmer_settings"))));
 
         /// <summary>
         /// The RS485 SMS modem — the largest dialog in the catalog, at 39 fields.

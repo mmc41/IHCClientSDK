@@ -493,6 +493,31 @@ namespace Ihc.Vis.Tests
             Assert.That(() => app.GetProductDialog(project, anyProduct.Id!.Value), Throws.Nothing);
         }
 
+        // ── widget presence is DATA, whatever the kind ──────────────────────────────────────────────
+
+        /// <summary>
+        /// A widget slot renders when its declared presence rule says so — for every kind, including the settings
+        /// grid. The composer used to answer the settings grid's presence from its KIND and never consult the rule
+        /// the preset supplied, so a rule stated for that slot was silently discarded: this composes a product that
+        /// HAS settings against a preset whose settings slot is gated on a tag the product does not carry, and the
+        /// slot must not appear.
+        /// </summary>
+        [Test]
+        public async Task AWidgetsDeclaredPresenceIsHonoured_EvenForTheSettingsGrid()
+        {
+            // A sensor with real settings — so the slot would appear if presence were answered from the kind.
+            (Project project, ElementId id) = await Placed("_0x2124");
+            ProductDialogModel gated = ProductDialogFragments.Dialog(
+                ProductDialogFragments.Group("terminaler", null, 1,
+                    ProductDialogFragments.Widget("indstillinger", DialogWidgetKind.SettingsGrid,
+                        ProductDialogFragments.Carrying("a_tag_this_product_does_not_have"))));
+
+            ProductDialogDescriptor composed = ProductDialogComposer.Compose(project, id, gated, "Føler");
+
+            Assert.That(composed.Groups.SelectMany(g => g.Widgets), Does.Not.Contain(DialogWidgetKind.SettingsGrid),
+                "the slot's own presence rule decides, not its kind");
+        }
+
         // ── an unresolved vendor resource key (T131) ────────────────────────────────────────────────
 
         /// <summary>

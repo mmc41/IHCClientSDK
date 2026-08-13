@@ -208,8 +208,7 @@ namespace Ihc.Vis.Tests
                 // so its fields are legitimately absent. Checked against the DECLARED gate, which is why that
                 // gate has to be declared — a group that let its fields drop themselves would be indistinguishable
                 // here from a preset naming a tag by mistake (T119).
-                if (group.PresenceTag is { } required
-                    && !product.DescendantsAndSelf().Any(e => e.Tag == required))
+                if (!group.Presence.IsPresentIn(product.DescendantsAndSelf()))
                 {
                     continue;
                 }

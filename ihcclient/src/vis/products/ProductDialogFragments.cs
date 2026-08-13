@@ -189,16 +189,32 @@ namespace Ihc.Vis.Products
             string id, string? caption, int columns, params DialogPartModel[] parts) =>
             new(id, caption, columns, [.. parts]) { ColumnMajor = true };
 
-        /// <summary>A group only the family members carrying <paramref name="presenceTag"/> are offered — see
-        /// <see cref="DialogGroupModel.PresenceTag"/>. A named constructor rather than an optional parameter on
+        /// <summary>A group only the family members satisfying <paramref name="presence"/> are offered — see
+        /// <see cref="DialogGroupModel.Presence"/>. A named constructor rather than an optional parameter on
         /// <see cref="Group"/>, so the gate is visible at the call site next to the fields it gates.</summary>
         public static DialogGroupModel GroupPresentWhen(
-            string id, string? caption, int columns, string presenceTag, params DialogPartModel[] parts) =>
-            new(id, caption, columns, [.. parts]) { PresenceTag = presenceTag };
+            string id, string? caption, int columns, DialogPresence presence, params DialogPartModel[] parts) =>
+            new(id, caption, columns, [.. parts]) { Presence = presence };
 
-        /// <summary>A slot for one of the hand-written composite widgets.</summary>
-        public static DialogWidgetModel Widget(string id, DialogWidgetKind kind, string? presenceTag = null) =>
-            new(id, kind, presenceTag);
+        /// <summary>A slot for one of the hand-written composite widgets, rendered whenever
+        /// <paramref name="presence"/> is satisfied — unconditionally when the preset states no rule.</summary>
+        public static DialogWidgetModel Widget(string id, DialogWidgetKind kind, DialogPresence? presence = null) =>
+            new(id, kind) { Presence = presence ?? DialogPresence.Always };
+
+        // ── Presence vocabulary: the two shapes the catalog needs, named for the call sites. ─────────────
+
+        /// <summary>Present only on the family members carrying a descendant with <paramref name="tag"/>.</summary>
+        public static DialogPresence Carrying(string tag) => new DialogPresence.DescendantTag(tag);
+
+        /// <summary>
+        /// A configurable SETTING: any resource the catalog marked <c>setting="yes"</c>, whatever its resource
+        /// type — the six sensors that have them use <c>resource_temperature</c>, <c>resource_humidity</c> and
+        /// <c>resource_light</c>, so no tag names the set (T070).
+        /// <para>Stated once, and used two ways: it gates the <i>Indstillinger</i> slot, and the same rule picks
+        /// the rows that go in it (<c>ProductView.SettingElements</c>). Two literals would let "what counts as a
+        /// setting" drift between the grid's presence and its contents.</para>
+        /// </summary>
+        public static readonly DialogPresence.DescendantMarked Setting = new("setting", "yes");
 
         /// <summary>Assembles a model from its groups. Named <c>Dialog</c>, not <c>Model</c>: the latter collides
         /// with the <c>Ihc.Vis.Model</c> namespace at every call site that imports these statically.</summary>
