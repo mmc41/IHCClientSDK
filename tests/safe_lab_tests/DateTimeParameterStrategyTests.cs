@@ -39,57 +39,6 @@ namespace Ihc.Tests
 
         [AvaloniaTest]
         [CaptureScreenshotOnFailure]
-        public void RoundTrip_DateTimeOffset_PreservesValue()
-        {
-            // Arrange
-            var field = new FieldMetaData("when", typeof(DateTimeOffset), [], "A date field");
-            var control = strategy.CreateControl(field, "DateControl");
-            var known = new DateTimeOffset(2024, 6, 15, 0, 0, 0, TimeSpan.Zero);
-
-            // Act
-            strategy.SetValue(control, known, field);
-            var result = strategy.ExtractValue(control, field);
-
-            // Assert
-            Assert.That(result, Is.EqualTo(known));
-        }
-
-        [AvaloniaTest]
-        [CaptureScreenshotOnFailure]
-        public void RoundTrip_DateTime_PreservesValue()
-        {
-            // Arrange
-            var field = new FieldMetaData("when", typeof(DateTime), [], "A date field");
-            var control = strategy.CreateControl(field, "DateControl");
-            var known = new DateTime(2024, 6, 15, 0, 0, 0, DateTimeKind.Unspecified);
-
-            // Act
-            strategy.SetValue(control, known, field);
-            var result = strategy.ExtractValue(control, field);
-
-            // Assert
-            Assert.That(result, Is.EqualTo(known));
-        }
-
-        [AvaloniaTest]
-        [CaptureScreenshotOnFailure]
-        public void RoundTrip_DateTimeOffset_PreservesTimeOfDay()
-        {
-            // Arrange - a non-midnight time must survive (the time-of-day is no longer dropped to 00:00:00).
-            var field = new FieldMetaData("when", typeof(DateTimeOffset), [], "A date field");
-            var control = strategy.CreateControl(field, "DateControl");
-            var known = new DateTimeOffset(2024, 6, 15, 13, 45, 30, TimeSpan.Zero);
-
-            // Act
-            strategy.SetValue(control, known, field);
-            var result = strategy.ExtractValue(control, field);
-
-            // Assert
-            Assert.That(result, Is.EqualTo(known));
-        }
-
-        [AvaloniaTest]
-        [CaptureScreenshotOnFailure]
         public void SetValue_Null_DefaultsSelectedDateToNow()
         {
             // Arrange

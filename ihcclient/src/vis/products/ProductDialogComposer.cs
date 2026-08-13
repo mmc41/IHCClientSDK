@@ -192,7 +192,7 @@ namespace Ihc.Vis.Products
                 field.Control,
                 resolved.Element.Id!.Value,
                 resolved.Attribute,
-                ReadValue(project, resolved.Element, resolved.Attribute),
+                ReadValue(project, resolved.Element, resolved.Attribute, field.HidesUnresolvedResourceKey),
                 field.ReadOnly || (lockedElement && GatedByLocked(field.Binding)),
                 field.Rule,
                 min,
@@ -285,7 +285,9 @@ namespace Ihc.Vis.Products
                     repeat.Control,
                     item.Id!.Value,
                     repeat.ValueAttribute,
-                    ReadValue(project, item, repeat.ValueAttribute),
+                    // A repeat expands over value-bearing descendants — the modem's phone numbers — and no
+                    // catalog ships a localisation key in one, so no repeat claims the rule.
+                    ReadValue(project, item, repeat.ValueAttribute, hidesUnresolvedResourceKey: false),
                     lockedElement,
                     repeat.Rule,
                     min,
@@ -316,10 +318,11 @@ namespace Ihc.Vis.Products
         /// for "no PIN", and rendering a literal 0 would read as a PIN of zero. The rule is expressed against the
         /// declared default rather than against the literal "0", so it stays right if a catalog changes it.</para>
         /// </summary>
-        private static string? ReadValue(Project project, ProjectElement element, string attribute)
+        private static string? ReadValue(
+            Project project, ProjectElement element, string attribute, bool hidesUnresolvedResourceKey)
         {
             string? effective = project.View(element).Effective(attribute);
-            if (attribute == "note" && IsUnresolvedResourceKey(effective))
+            if (hidesUnresolvedResourceKey && IsUnresolvedResourceKey(effective))
             {
                 return string.Empty;
             }
@@ -344,17 +347,16 @@ namespace Ihc.Vis.Products
         }
 
         /// <summary>
-        /// Whether a note is one of the vendor's own LOCALISATION KEYS rather than text to show.
-        /// <para>Exactly one catalog product has one: the S0 device's <c>.def</c> says
-        /// <c>note="PRODUCT_2315_NOTE"</c>, and nothing in the IHC Visual install resolves that key — so the
-        /// original's Note box is empty, while OpenVisual printed the token at the installer (T131). The key
-        /// is deliberately still WRITTEN: a vendor-authored <c>.vis</c> stores it verbatim, so hiding it is a
-        /// presentation rule and touching the stored value would break byte fidelity.</para>
+        /// Whether a value LOOKS like one of the vendor's own localisation keys rather than text to show. Asked
+        /// only of a field that declares it can hold one (<see cref="DialogFieldModel.HidesUnresolvedResourceKey"/>,
+        /// carried by the shared <c>Note</c> fragment) — shape alone never decides, because a documentation tag
+        /// like <c>A_1</c> is a legitimate value of exactly this shape.
+        /// <para>The key is deliberately still WRITTEN: a vendor-authored <c>.vis</c> stores it verbatim, so
+        /// hiding it is a presentation rule and touching the stored value would break byte fidelity.</para>
         /// <para><b>The predicate was measured, not guessed.</b> Across all 100 catalog notes exactly two are
         /// all-capitals — <c>PIR</c> and <c>PRODUCT_2315_NOTE</c> — and the separator is what tells a key from
-        /// prose. Keyed on shape rather than on the literal string so a second <c>.def</c> written to the same
-        /// convention is handled, and confined to <c>note</c> because that is where the catalog puts keys: a
-        /// documentation tag like <c>A_1</c> is a legitimate value of exactly this shape.</para>
+        /// prose. Keyed on shape rather than on the literal string, so a second <c>.def</c> written to the same
+        /// convention is handled.</para>
         /// </summary>
         private static bool IsUnresolvedResourceKey(string? value) =>
             value is { Length: > 0 }

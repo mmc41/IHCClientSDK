@@ -139,6 +139,17 @@ namespace Ihc.Vis.Products
         /// while sharing the same <c>Note</c>.</para>
         /// </summary>
         public int ColumnSpan { get; init; } = 1;
+
+        /// <summary>
+        /// Whether this field's stored value may be one of the vendor's own unresolved LOCALISATION KEYS rather
+        /// than text to show — in which case the composer shows it blank, as the original does.
+        /// <para>A property of the FIELD, not of a family or of an attribute name: it says "values of this field
+        /// can be keys", which is what makes the blanking rule metadata rather than a comparison inside the
+        /// composer. Declared on the shared <c>Note</c> fragment, so every family that shows a note inherits it
+        /// from one statement, and a field that is merely SHAPED like a key — a documentation tag such as
+        /// <c>A_1</c> — is never blanked, because its fragment does not claim this.</para>
+        /// </summary>
+        public bool HidesUnresolvedResourceKey { get; init; }
     }
 
     /// <summary>

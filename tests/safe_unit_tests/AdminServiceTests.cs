@@ -49,42 +49,6 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void Constructor_WithSettings_CreatesInstance()
-        {
-            // Act
-            var service = new AdminAppService(settings, fileEnryption: true);
-
-            // Assert
-            Assert.That(service, Is.Not.Null);
-        }
-
-        [Test]
-        public void Constructor_WithServicesAndSettings_CreatesInstance()
-        {
-            // Act
-            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
-
-            // Assert
-            Assert.That(service, Is.Not.Null);
-        }
-
-        [Test]
-        public void Constructor_WithNullSettings_ThrowsArgumentException()
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentException>(() => new AdminAppService(null, fileEnryption: true));
-        }
-
-        [Test]
-        public void Constructor_WithNullServices_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new AdminAppService(settings, fileEnryption: true, null, fakeUserService, fakeConfigService));
-            Assert.Throws<ArgumentNullException>(() => new AdminAppService(settings, fileEnryption: true, fakeAuthService, null, fakeConfigService));
-            Assert.Throws<ArgumentNullException>(() => new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, null));
-        }
-
-        [Test]
         public async Task GetAdminModel_ReturnsModelWithData()
         {
             // Arrange

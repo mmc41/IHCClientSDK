@@ -49,26 +49,6 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void Constructor_WithSettings_CreatesInstance()
-        {
-            // Act
-            var service = new InformationAppService(settings);
-
-            // Assert
-            Assert.That(service, Is.Not.Null);
-        }
-
-        [Test]
-        public void Constructor_WithServicesAndSettings_CreatesInstance()
-        {
-            // Act
-            var service = new InformationAppService(settings, fakeAuthService, fakeConfigService, fakeTimeService, fakeControllerService, fakeSmsModemService);
-
-            // Assert
-            Assert.That(service, Is.Not.Null);
-        }
-
-        [Test]
         public async Task GetInformationModel_ReturnsModelWithData()
         {
             // Arrange

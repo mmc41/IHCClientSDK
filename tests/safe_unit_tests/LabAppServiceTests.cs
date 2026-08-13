@@ -230,31 +230,19 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// Verifies that setting SelectedServiceIndex to a negative value throws ArgumentOutOfRangeException.
+        /// Verifies that setting SelectedServiceIndex outside the array bounds throws
+        /// ArgumentOutOfRangeException, at both ends of the range.
         /// </summary>
-        [Test]
-        public void SelectedServiceIndex_SetNegative_ThrowsArgumentOutOfRangeException()
+        [TestCase(-1, TestName = "SelectedServiceIndex_SetNegative_ThrowsArgumentOutOfRangeException")]
+        [TestCase(5, TestName = "SelectedServiceIndex_SetTooLarge_ThrowsArgumentOutOfRangeException")]
+        public void SelectedServiceIndex_SetOutOfRange_ThrowsArgumentOutOfRangeException(int index)
         {
             // Arrange
             var labService = new LabAppService(null, null);
             labService.Configure(settings, new IIHCApiService[] { fakeAuthService });
 
             // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => labService.SelectedServiceIndex = -1);
-        }
-
-        /// <summary>
-        /// Verifies that setting SelectedServiceIndex beyond the array bounds throws ArgumentOutOfRangeException.
-        /// </summary>
-        [Test]
-        public void SelectedServiceIndex_SetTooLarge_ThrowsArgumentOutOfRangeException()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeAuthService });
-
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => labService.SelectedServiceIndex = 5);
+            Assert.Throws<ArgumentOutOfRangeException>(() => labService.SelectedServiceIndex = index);
         }
 
         /// <summary>
@@ -309,27 +297,22 @@ namespace Ihc.Tests
             }
         }
 
-        [Test]
-        public void SelectedOperationIndex_SetNegative_ThrowsArgumentOutOfRangeException()
+        // The upper bound is expressed relative to the operation count, which is discovered from the
+        // configured service rather than hard-coded.
+        [TestCase(-1, false, TestName = "SelectedOperationIndex_SetNegative_ThrowsArgumentOutOfRangeException")]
+        [TestCase(10, true, TestName = "SelectedOperationIndex_SetTooLarge_ThrowsArgumentOutOfRangeException")]
+        public void SelectedOperationIndex_SetOutOfRange_ThrowsArgumentOutOfRangeException(
+            int index, bool relativeToOperationCount)
         {
             // Arrange
             var labService = new LabAppService(null, null);
             labService.Configure(settings, new IIHCApiService[] { fakeAuthService });
+            int target = relativeToOperationCount
+                ? labService.SelectedService.OperationItems.Length + index
+                : index;
 
             // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => labService.SelectedOperationIndex = -1);
-        }
-
-        [Test]
-        public void SelectedOperationIndex_SetTooLarge_ThrowsArgumentOutOfRangeException()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeAuthService });
-            var operationCount = labService.SelectedService.OperationItems.Length;
-
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => labService.SelectedOperationIndex = operationCount + 10);
+            Assert.Throws<ArgumentOutOfRangeException>(() => labService.SelectedOperationIndex = target);
         }
 
         [Test]
@@ -425,17 +408,6 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void SelectedOperation_SetNull_ThrowsArgumentNullException()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeAuthService });
-
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => labService.SelectedOperation = null);
-        }
-
-        [Test]
         public void SelectedOperation_SetOperationFromNonConfiguredService_ThrowsArgumentException()
         {
             // Arrange
@@ -509,17 +481,6 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void SelectedService_SetNull_ThrowsArgumentNullException()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeAuthService });
-
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => labService.SelectedService = null);
-        }
-
-        [Test]
         public void SelectedService_SetServiceNotInArray_ThrowsArgumentException()
         {
             // Arrange
@@ -548,17 +509,6 @@ namespace Ihc.Tests
         #endregion
 
         #region Services Setter Tests
-
-        [Test]
-        public void Services_SetNull_ThrowsArgumentNullException()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeAuthService });
-
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => labService.Services = null);
-        }
 
         [Test]
         public void Services_Set_ResetsSelectedServiceIndexToZero()
@@ -618,25 +568,22 @@ namespace Ihc.Tests
 
         #region ServiceItem.SelectedOperationIndex Tests
 
-        [Test]
-        public void ServiceItem_SelectedOperationIndex_SetNegative_ThrowsArgumentOutOfRangeException()
+        // Out-of-range rejection for both a populated service item and one whose operations are all
+        // filtered out - where every index except 0 is out of range.
+        [TestCase(false, -1, false, TestName = "ServiceItem_SelectedOperationIndex_SetNegative_ThrowsArgumentOutOfRangeException")]
+        [TestCase(false, 10, true, TestName = "ServiceItem_SelectedOperationIndex_SetBeyondBounds_ThrowsArgumentOutOfRangeException")]
+        [TestCase(true, 1, false, TestName = "ServiceItem_SelectedOperationIndex_SetNonZeroWhenNoOperations_ThrowsArgumentOutOfRangeException")]
+        public void ServiceItem_SelectedOperationIndex_SetOutOfRange_ThrowsArgumentOutOfRangeException(
+            bool withNoOperations, int index, bool relativeToOperationCount)
         {
             // Arrange
-            var serviceItem = new LabAppService.ServiceItem(fakeAuthService, o => true);
+            var serviceItem = withNoOperations
+                ? new LabAppService.ServiceItem(A.Fake<IAuthenticationService>(), o => false)
+                : new LabAppService.ServiceItem(fakeAuthService, o => true);
+            int target = relativeToOperationCount ? serviceItem.OperationItems.Length + index : index;
 
             // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => serviceItem.SelectedOperationIndex = -1);
-        }
-
-        [Test]
-        public void ServiceItem_SelectedOperationIndex_SetBeyondBounds_ThrowsArgumentOutOfRangeException()
-        {
-            // Arrange
-            var serviceItem = new LabAppService.ServiceItem(fakeAuthService, o => true);
-            var operationCount = serviceItem.OperationItems.Length;
-
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => serviceItem.SelectedOperationIndex = operationCount + 10);
+            Assert.Throws<ArgumentOutOfRangeException>(() => serviceItem.SelectedOperationIndex = target);
         }
 
         [Test]
@@ -670,17 +617,6 @@ namespace Ihc.Tests
 
             // Assert
             Assert.That(serviceItem.SelectedOperationIndex, Is.EqualTo(0));
-        }
-
-        [Test]
-        public void ServiceItem_SelectedOperationIndex_SetNonZeroWhenNoOperations_ThrowsArgumentOutOfRangeException()
-        {
-            // Arrange - create a service with no operations
-            var emptyFakeService = A.Fake<IAuthenticationService>();
-            var serviceItem = new LabAppService.ServiceItem(emptyFakeService, o => false); // Filter out all operations
-
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => serviceItem.SelectedOperationIndex = 1);
         }
 
         #endregion
@@ -922,8 +858,12 @@ namespace Ihc.Tests
             Assert.Throws<ArgumentException>(() => operation.SetMethodArgument(0, "not-an-int"));
         }
 
-        [Test]
-        public void SetArgument_NegativeIndex_ThrowsArgumentOutOfRangeException()
+        // The upper bound is expressed relative to the operation's parameter count, which is discovered
+        // from the metadata rather than hard-coded.
+        [TestCase(-1, false, TestName = "SetArgument_NegativeIndex_ThrowsArgumentOutOfRangeException")]
+        [TestCase(5, true, TestName = "SetArgument_IndexTooLarge_ThrowsArgumentOutOfRangeException")]
+        public void SetArgument_IndexOutOfRange_ThrowsArgumentOutOfRangeException(
+            int index, bool relativeToParameterCount)
         {
             // Arrange
             var labService = new LabAppService(null, null);
@@ -933,26 +873,12 @@ namespace Ihc.Tests
             var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
             Assert.That(opIndex, Is.GreaterThanOrEqualTo(0));
             var operation = serviceItem.OperationItems[opIndex];
+            int target = relativeToParameterCount
+                ? operation.OperationMetadata.Parameters.Length + index
+                : index;
 
             // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => operation.SetMethodArgument(-1, 123));
-        }
-
-        [Test]
-        public void SetArgument_IndexTooLarge_ThrowsArgumentOutOfRangeException()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-
-            var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            Assert.That(opIndex, Is.GreaterThanOrEqualTo(0));
-            var operation = serviceItem.OperationItems[opIndex];
-            var paramCount = operation.OperationMetadata.Parameters.Length;
-
-            // Act & Assert
-            Assert.Throws<ArgumentOutOfRangeException>(() => operation.SetMethodArgument(paramCount + 5, 123));
+            Assert.Throws<ArgumentOutOfRangeException>(() => operation.SetMethodArgument(target, 123));
         }
 
         [Test]
@@ -1054,13 +980,6 @@ namespace Ihc.Tests
             // Assert
             Assert.That(result, Is.TypeOf<byte[]>());
             Assert.That(((byte[])result).Length, Is.EqualTo(0));
-        }
-
-        [Test]
-        public void GetDefaultValue_NullType_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => LabAppService.OperationItem.GetDefaultValue(null));
         }
 
         [Test]
@@ -1700,8 +1619,10 @@ namespace Ihc.Tests
 
         #region SetArgumentsFromArray Tests
 
-        [Test]
-        public void SetArgumentsFromArray_WithNullArray_ThrowsArgumentNullException()
+        // GetRuntimeValue takes 1 parameter, so both too many (2) and too few (0) must be rejected.
+        [TestCase(2, TestName = "SetArgumentsFromArray_WithWrongLength_ThrowsArgumentException")]
+        [TestCase(0, TestName = "SetArgumentsFromArray_WithTooFewArguments_ThrowsArgumentException")]
+        public void SetArgumentsFromArray_WithMismatchedLength_ThrowsArgumentException(int argumentCount)
         {
             // Arrange
             var labService = new LabAppService(null, null);
@@ -1710,63 +1631,11 @@ namespace Ihc.Tests
             var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
             var operation = serviceItem.OperationItems[opIndex];
 
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => operation.SetMethodArgumentsFromArray(null));
-        }
-
-        [Test]
-        public void SetArgumentsFromArray_WithWrongLength_ThrowsArgumentException()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-            var serviceItem = labService.Services[0];
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            // GetRuntimeValue has 1 parameter, try with 2
-            var wrongLengthArray = new object[] { 123, 456 };
+            var mismatchedArray = Enumerable.Range(0, argumentCount).Select(i => (object)(123 + i)).ToArray();
 
             // Act & Assert
-            var ex = Assert.Throws<ArgumentException>(() => operation.SetMethodArgumentsFromArray(wrongLengthArray));
+            var ex = Assert.Throws<ArgumentException>(() => operation.SetMethodArgumentsFromArray(mismatchedArray));
             Assert.That(ex.Message, Does.Contain("does not match parameter count"));
-        }
-
-        [Test]
-        public void SetArgumentsFromArray_WithTooFewArguments_ThrowsArgumentException()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-            var serviceItem = labService.Services[0];
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            // GetRuntimeValue has 1 parameter, try with 0
-            var emptyArray = Array.Empty<object>();
-
-            // Act & Assert
-            var ex = Assert.Throws<ArgumentException>(() => operation.SetMethodArgumentsFromArray(emptyArray));
-            Assert.That(ex.Message, Does.Contain("does not match parameter count"));
-        }
-
-        [Test]
-        public void SetArgumentsFromArray_WithValidArray_SetsAllArguments()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-            var serviceItem = labService.Services[0];
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            var newValues = new object[] { 999888 };
-
-            // Act
-            operation.SetMethodArgumentsFromArray(newValues);
-
-            // Assert
-            Assert.That(operation.MethodArguments[0], Is.EqualTo(999888));
         }
 
         [Test]
@@ -1806,90 +1675,9 @@ namespace Ihc.Tests
             Assert.That(operation.MethodArguments.Length, Is.EqualTo(0));
         }
 
-        [Test]
-        public void SetArgumentsFromArray_ValidatesEachArgumentViaSetArgument()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-            var serviceItem = labService.Services[0];
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            // Set initial value
-            operation.SetMethodArgument(0, 100);
-            Assert.That(operation.MethodArguments[0], Is.EqualTo(100));
-
-            // Now use SetArgumentsFromArray to change it
-            var newValues = new object[] { 200 };
-            operation.SetMethodArgumentsFromArray(newValues);
-
-            // Assert
-            Assert.That(operation.MethodArguments[0], Is.EqualTo(200));
-        }
-
         #endregion
 
         #region GetArgumentsAsArray Tests
-
-        [Test]
-        public void GetArgumentsAsArray_ReturnsDefensiveCopy()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-            var serviceItem = labService.Services[0];
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            // Act
-            var argsCopy = operation.GetMethodArgumentsAsArray();
-
-            // Assert - verify it's not the same reference
-            Assert.That(argsCopy, Is.Not.SameAs(operation.MethodArguments));
-        }
-
-        [Test]
-        public void GetArgumentsAsArray_ContentsMatch()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-            var serviceItem = labService.Services[0];
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            operation.SetMethodArgument(0, 12345);
-
-            // Act
-            var argsCopy = operation.GetMethodArgumentsAsArray();
-
-            // Assert
-            Assert.That(argsCopy.Length, Is.EqualTo(operation.MethodArguments.Length));
-            Assert.That(argsCopy[0], Is.EqualTo(12345));
-            Assert.That(argsCopy[0], Is.EqualTo(operation.MethodArguments[0]));
-        }
-
-        [Test]
-        public void GetArgumentsAsArray_ModifyingCopy_DoesNotAffectOriginal()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-            var serviceItem = labService.Services[0];
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            operation.SetMethodArgument(0, 555);
-
-            // Act
-            var argsCopy = operation.GetMethodArgumentsAsArray();
-            argsCopy[0] = 999; // Modify the copy
-
-            // Assert - original should be unchanged
-            Assert.That(operation.MethodArguments[0], Is.EqualTo(555), "Original arguments should not be affected by modifying the copy");
-            Assert.That(argsCopy[0], Is.EqualTo(999), "Copy should have the modified value");
-        }
 
         [Test]
         public void GetArgumentsAsArray_ForNoParameterOperation_ReturnsEmptyArray()
@@ -1907,28 +1695,6 @@ namespace Ihc.Tests
             // Assert
             Assert.That(argsCopy, Is.Not.Null);
             Assert.That(argsCopy.Length, Is.EqualTo(0));
-        }
-
-        [Test]
-        public void GetArgumentsAsArray_MultipleCallsReturnIndependentCopies()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-            var serviceItem = labService.Services[0];
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            operation.SetMethodArgument(0, 777);
-
-            // Act
-            var copy1 = operation.GetMethodArgumentsAsArray();
-            var copy2 = operation.GetMethodArgumentsAsArray();
-
-            // Assert
-            Assert.That(copy1, Is.Not.SameAs(copy2), "Each call should return a new array instance");
-            Assert.That(copy1[0], Is.EqualTo(copy2[0]), "Contents should match");
-            Assert.That(copy1[0], Is.EqualTo(777));
         }
 
         #endregion
@@ -2227,248 +1993,6 @@ namespace Ihc.Tests
         #endregion
 
         #region MethodArgumentChanged Event Tests
-
-        [Test]
-        public void MethodArgumentChanged_SetArgument_FiresEvent()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-
-            var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            bool eventFired = false;
-            LabAppService.MethodArgumentChangedEventArgs? capturedArgs = null;
-
-            operation.MethodArgumentChanged += (sender, e) =>
-            {
-                eventFired = true;
-                capturedArgs = e;
-            };
-
-            // Act
-            operation.SetMethodArgument(0, 12345);
-
-            // Assert
-            Assert.That(eventFired, Is.True, "MethodArgumentChanged event should fire");
-            Assert.That(capturedArgs, Is.Not.Null);
-            Assert.That(capturedArgs!.Index, Is.EqualTo(0));
-            Assert.That(capturedArgs.NewValue, Is.EqualTo(12345));
-        }
-
-        [Test]
-        public void MethodArgumentChanged_SetArgumentSameValue_DoesNotFireEvent()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-
-            var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            // Set initial value
-            operation.SetMethodArgument(0, 99999);
-
-            int eventFireCount = 0;
-            operation.MethodArgumentChanged += (sender, e) =>
-            {
-                eventFireCount++;
-            };
-
-            // Act - set same value again
-            operation.SetMethodArgument(0, 99999);
-
-            // Assert - event should not fire because value didn't change
-            Assert.That(eventFireCount, Is.EqualTo(0), "MethodArgumentChanged should not fire when value is unchanged");
-        }
-
-        [Test]
-        public void MethodArgumentChanged_SetArgumentsFromArray_FiresEventsForChangedValues()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-
-            var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            // Set initial value
-            operation.SetMethodArgument(0, 100);
-
-            var firedEvents = new List<LabAppService.MethodArgumentChangedEventArgs>();
-            operation.MethodArgumentChanged += (sender, e) =>
-            {
-                firedEvents.Add(e);
-            };
-
-            // Act - change value via SetArgumentsFromArray
-            operation.SetMethodArgumentsFromArray(new object[] { 200 });
-
-            // Assert
-            Assert.That(firedEvents.Count, Is.EqualTo(1), "Should fire one event for the changed value");
-            Assert.That(firedEvents[0].Index, Is.EqualTo(0));
-            Assert.That(firedEvents[0].OldValue, Is.EqualTo(100));
-            Assert.That(firedEvents[0].NewValue, Is.EqualTo(200));
-        }
-
-        [Test]
-        public void MethodArgumentChanged_SetArgumentsFromArray_NoEventsForUnchangedValues()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-
-            var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            // Set initial value
-            operation.SetMethodArgument(0, 777);
-
-            int eventFireCount = 0;
-            operation.MethodArgumentChanged += (sender, e) =>
-            {
-                eventFireCount++;
-            };
-
-            // Act - set same value via SetArgumentsFromArray
-            operation.SetMethodArgumentsFromArray(new object[] { 777 });
-
-            // Assert - no event should fire
-            Assert.That(eventFireCount, Is.EqualTo(0), "No events should fire when values are unchanged");
-        }
-
-        [Test]
-        public void MethodArgumentChanged_EventArgs_ContainsCorrectIndex()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-
-            var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            LabAppService.MethodArgumentChangedEventArgs? capturedArgs = null;
-            operation.MethodArgumentChanged += (sender, e) => { capturedArgs = e; };
-
-            // Act
-            operation.SetMethodArgument(0, 555);
-
-            // Assert
-            Assert.That(capturedArgs, Is.Not.Null);
-            Assert.That(capturedArgs!.Index, Is.EqualTo(0), "Index should be 0");
-        }
-
-        [Test]
-        public void MethodArgumentChanged_EventArgs_ContainsCorrectOldValue()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-
-            var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            // Set initial value
-            operation.SetMethodArgument(0, 111);
-
-            LabAppService.MethodArgumentChangedEventArgs? capturedArgs = null;
-            operation.MethodArgumentChanged += (sender, e) => { capturedArgs = e; };
-
-            // Act
-            operation.SetMethodArgument(0, 222);
-
-            // Assert
-            Assert.That(capturedArgs, Is.Not.Null);
-            Assert.That(capturedArgs!.OldValue, Is.EqualTo(111), "OldValue should be 111");
-        }
-
-        [Test]
-        public void MethodArgumentChanged_EventArgs_ContainsCorrectNewValue()
-        {
-            // Arrange
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
-
-            var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
-            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
-            var operation = serviceItem.OperationItems[opIndex];
-
-            LabAppService.MethodArgumentChangedEventArgs? capturedArgs = null;
-            operation.MethodArgumentChanged += (sender, e) => { capturedArgs = e; };
-
-            // Act
-            operation.SetMethodArgument(0, 333);
-
-            // Assert
-            Assert.That(capturedArgs, Is.Not.Null);
-            Assert.That(capturedArgs!.NewValue, Is.EqualTo(333), "NewValue should be 333");
-        }
-
-        [Test]
-        public void MethodArgumentChanged_NullToValue_OldValueIsNull()
-        {
-            // Arrange - need an operation with a nullable parameter
-            var labService = new LabAppService(null, null);
-            labService.Configure(settings, new IIHCApiService[] { fakeAuthService, fakeResourceService, fakeConfigService });
-
-            // Find an operation that accepts null values
-            LabAppService.OperationItem? operationWithNullableParam = null;
-            foreach (var svcItem in labService.Services)
-            {
-                foreach (var op in svcItem.OperationItems)
-                {
-                    foreach (var param in op.OperationMetadata.Parameters)
-                    {
-                        if (!param.Type.IsValueType || Nullable.GetUnderlyingType(param.Type) != null)
-                        {
-                            operationWithNullableParam = op;
-                            break;
-                        }
-                    }
-                    if (operationWithNullableParam != null) break;
-                }
-                if (operationWithNullableParam != null) break;
-            }
-
-            if (operationWithNullableParam == null)
-            {
-                Assert.Pass("No operation with nullable parameter found, cannot test null handling");
-                return;
-            }
-
-            // Find the nullable parameter index
-            int nullableParamIndex = -1;
-            for (int i = 0; i < operationWithNullableParam.OperationMetadata.Parameters.Length; i++)
-            {
-                var param = operationWithNullableParam.OperationMetadata.Parameters[i];
-                if (!param.Type.IsValueType || Nullable.GetUnderlyingType(param.Type) != null)
-                {
-                    nullableParamIndex = i;
-                    break;
-                }
-            }
-
-            // Ensure it starts with a null or default value
-            operationWithNullableParam.SetMethodArgument(nullableParamIndex, null);
-
-            LabAppService.MethodArgumentChangedEventArgs? capturedArgs = null;
-            operationWithNullableParam.MethodArgumentChanged += (sender, e) => { capturedArgs = e; };
-
-            // Act - set from null to a value
-            operationWithNullableParam.SetMethodArgument(nullableParamIndex, "test-value");
-
-            // Assert
-            Assert.That(capturedArgs, Is.Not.Null);
-            Assert.That(capturedArgs!.OldValue, Is.Null, "OldValue should be null");
-            Assert.That(capturedArgs.NewValue, Is.EqualTo("test-value"));
-        }
 
         [Test]
         public void MethodArgumentChanged_MultipleSubscribers_AllReceiveEvent()

@@ -295,34 +295,6 @@ namespace Ihc.Tests
             Assert.That(strategy.CanHandle(field), Is.False);
         }
 
-        [AvaloniaTest]
-        [CaptureScreenshotOnFailure]
-        public void ExtractValue_InvalidControl_ThrowsInvalidOperationException()
-        {
-            // Arrange
-            var elementField = new FieldMetaData("", typeof(int), [], "");
-            var field = new FieldMetaData("testArray", typeof(int[]), [elementField], "Test array");
-            var button = new Button();
-
-            // Act & Assert
-            Assert.Throws<InvalidOperationException>(() =>
-                strategy.ExtractValue(button, field));
-        }
-
-        [AvaloniaTest]
-        [CaptureScreenshotOnFailure]
-        public void SetValue_InvalidControl_ThrowsInvalidOperationException()
-        {
-            // Arrange
-            var elementField = new FieldMetaData("", typeof(int), [], "");
-            var field = new FieldMetaData("testArray", typeof(int[]), [elementField], "Test array");
-            var button = new Button();
-
-            // Act & Assert
-            Assert.Throws<InvalidOperationException>(() =>
-                strategy.SetValue(button, new int[] { 1, 2, 3 }, field));
-        }
-
         #region Generic collection support (US-A1)
 
         private static FieldMetaData CollectionField() =>

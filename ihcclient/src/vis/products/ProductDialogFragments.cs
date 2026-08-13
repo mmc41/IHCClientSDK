@@ -23,13 +23,25 @@ namespace Ihc.Vis.Products
         public static readonly DialogFieldModel Placering =
             new("placering", "Placering", DialogControlKind.ComboSuggest, new DialogBinding.RootAttribute("position"));
 
+        /// <summary>
+        /// The free-text note — the ONE field whose stored value can be a vendor localisation KEY instead of
+        /// prose, so it is the one that declares <see cref="DialogFieldModel.HidesUnresolvedResourceKey"/>.
+        /// <para>Exactly one catalog product ships such a value: the S0 device's <c>.def</c> says
+        /// <c>note="PRODUCT_2315_NOTE"</c>, and nothing in the IHC Visual install resolves that key — so the
+        /// original's Note box is empty where OpenVisual printed the token at the installer (T131). Declared
+        /// HERE, on the shared fragment, rather than tested for by attribute name in the composer: every family
+        /// shows its note through this one instance, so one statement reaches all six presets and the open-world
+        /// fallback, and no other field can acquire the rule by being bound to something merely called
+        /// <c>note</c>. A documentation tag like <c>A_1</c> has the same SHAPE and is legitimate text, which is
+        /// why the claim belongs to the field rather than to the shape alone.</para>
+        /// </summary>
         // ColumnSpan 2: the vendor gives Note the WHOLE row in both the wired and the wireless dialog, so the
         // fields after it pair up beneath rather than beside it (measured on products 003/004/069, T038). The
         // span is clamped to the group's width, so it is inert in the modem's one-column identity block, which
         // shares this same fragment.
         public static readonly DialogFieldModel Note =
             new("note", "Note", DialogControlKind.ComboSuggest, new DialogBinding.RootAttribute("note"))
-            { ColumnSpan = 2 };
+            { ColumnSpan = 2, HidesUnresolvedResourceKey = true };
 
         public static readonly DialogFieldModel Identifikationskode =
             new("idkode", "Identifikationskode", DialogControlKind.ComboSuggest,

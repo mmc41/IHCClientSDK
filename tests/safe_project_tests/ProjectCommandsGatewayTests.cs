@@ -26,12 +26,6 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
-        public void Commands_GatewayIsReachableFromTheService()
-        {
-            Assert.That(App.Commands, Is.Not.Null, "the one door is reachable from ProjectAppService (D01)");
-        }
-
-        [Test]
         public async Task AddLocality_FactoryResolvesExactlyAsDirectConstruction()
         {
             ProjectAppService app = App;

@@ -312,6 +312,56 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // ── the localisation-key rule is carried by the FIELD, and reaches every family ──────────────
+
+        /// <summary>
+        /// The blank-an-unresolved-localisation-key rule reaches EVERY family's Note, not just the one product
+        /// that ships such a value — because all six presets show their note through the one shared fragment that
+        /// declares it. This is the pin on that reach: narrowing the rule to the S0 preset would leave the other
+        /// four families printing a raw token if a catalog ever gave them one, and no other test would notice.
+        /// </summary>
+        [TestCase("product_dataline")]
+        [TestCase("product_airlink")]
+        [TestCase("product_rs485_sms_modem")]
+        [TestCase("product_rs485_led_dimmer")]
+        [TestCase("s0_device")]
+        public void EveryFamilysNoteField_ClaimsTheLocalisationKeyRule(string rootTag)
+        {
+            DialogFieldModel note = ProductDialogPresets.ForRootTag(rootTag).Groups
+                .SelectMany(g => g.Parts).OfType<DialogFieldModel>()
+                .Single(f => f.Binding is DialogBinding.RootAttribute { Name: "note" });
+
+            Assert.That(note.HidesUnresolvedResourceKey, Is.True);
+        }
+
+        /// <summary>
+        /// And NO other field claims it. The rule blanks a value that merely LOOKS like a key — all-capitals with
+        /// an underscore — so a field that legitimately holds such text must not carry it: a documentation tag of
+        /// <c>A_1</c> is exactly that shape and is real installer input. Checked across every field of every
+        /// family, because the claim is a per-field init property that a new fragment could pick up silently.
+        /// </summary>
+        [Test]
+        public void NoFieldOtherThanTheNote_ClaimsTheLocalisationKeyRule()
+        {
+            string[] rootTags =
+            [
+                "product_dataline", "product_airlink", "product_rs485_sms_modem",
+                "product_rs485_led_dimmer", "s0_device",
+            ];
+
+            var overreaching = rootTags
+                .SelectMany(tag => ProductDialogPresets.ForRootTag(tag).Groups.SelectMany(g => g.Parts))
+                .OfType<DialogFieldModel>()
+                .Where(f => f.HidesUnresolvedResourceKey
+                            && f.Binding is not DialogBinding.RootAttribute { Name: "note" })
+                .Select(f => f.Id)
+                .Distinct()
+                .ToList();
+
+            Assert.That(overreaching, Is.Empty,
+                "only the note can hold a vendor localisation key — every other field's text is the installer's");
+        }
+
         /// <summary>
         /// A family the SDK has never seen still gets a model — the empty one, which the composer turns into the
         /// minimal fallback. Returning null here would make every consumer handle the open-world case separately.

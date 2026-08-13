@@ -28,14 +28,21 @@ namespace Ihc.Tests
                .Select(parts => string.Concat(parts));
 
         /// <summary>
-        /// Law: decrypting an encrypted string recovers the original, for any text.
+        /// Law: decrypting an encrypted string recovers the original, for any text - and the
+        /// ciphertext is never empty and never the plaintext itself (so a round-trip that "passes"
+        /// by not encrypting at all, or by producing nothing for the empty input, still fails).
         /// </summary>
         [Test]
         public void EncryptString_DecryptString_RoundTripsAnyText()
         {
             var cipher = new SimpleSecret(Passphrase);
             UnicodeText.Sample(plaintext =>
-                cipher.DecryptString(cipher.EncryptString(plaintext)) == plaintext);
+            {
+                string encrypted = cipher.EncryptString(plaintext);
+                return cipher.DecryptString(encrypted) == plaintext
+                    && encrypted.Length > 0
+                    && encrypted != plaintext;
+            });
         }
 
         /// <summary>

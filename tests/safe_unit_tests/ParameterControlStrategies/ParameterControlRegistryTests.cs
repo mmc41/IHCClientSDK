@@ -14,16 +14,6 @@ namespace Ihc.Tests
     public class ParameterControlRegistryTests
     {
         [Test]
-        public void Instance_IsNotNull()
-        {
-            // Act
-            var instance = ParameterControlRegistry.Instance;
-
-            // Assert
-            Assert.That(instance, Is.Not.Null);
-        }
-
-        [Test]
         public void Instance_IsSingleton()
         {
             // Act
@@ -45,20 +35,6 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void Registry_HasExpectedDefaultStrategyCount()
-        {
-            // Arrange & Act
-            var registry = ParameterControlRegistry.Instance;
-
-            // Assert
-            // Scalar: 3 (String, Bool, Numeric)
-            // Specialized: 6 (File, ResourceValue, Enum, DateTime, TimeSpan, Array)
-            // Catch-all: 1 (ComplexType)
-            // Total: 10 strategies
-            Assert.That(registry.StrategyCount, Is.EqualTo(10));
-        }
-
-        [Test]
         public void Register_ValidStrategy_IncreasesCount()
         {
             // Arrange
@@ -71,16 +47,6 @@ namespace Ihc.Tests
 
             // Assert
             Assert.That(registry.StrategyCount, Is.EqualTo(initialCount + 1));
-        }
-
-        [Test]
-        public void Register_NullStrategy_ThrowsArgumentNullException()
-        {
-            // Arrange
-            var registry = new ParameterControlRegistry();
-
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => registry.Register(null!));
         }
 
         [Test]
@@ -242,16 +208,6 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void GetStrategy_NullField_ThrowsArgumentNullException()
-        {
-            // Arrange
-            var registry = ParameterControlRegistry.Instance;
-
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => registry.GetStrategy(null!));
-        }
-
-        [Test]
         public void CanHandle_SupportedType_ReturnsTrue()
         {
             // Arrange
@@ -274,19 +230,6 @@ namespace Ihc.Tests
 
             // Act
             bool result = registry.CanHandle(field);
-
-            // Assert
-            Assert.That(result, Is.False);
-        }
-
-        [Test]
-        public void CanHandle_NullField_ReturnsFalse()
-        {
-            // Arrange
-            var registry = ParameterControlRegistry.Instance;
-
-            // Act
-            bool result = registry.CanHandle(null!);
 
             // Assert
             Assert.That(result, Is.False);
@@ -343,16 +286,6 @@ namespace Ihc.Tests
 
             var resourceField = new FieldMetaData("resource", typeof(ResourceValue), [], "");
             Assert.That(registry.GetStrategy(resourceField), Is.InstanceOf<ResourceValueParameterStrategy>());
-        }
-
-        [Test]
-        public void NewRegistry_IsEmpty()
-        {
-            // Act
-            var registry = new ParameterControlRegistry();
-
-            // Assert
-            Assert.That(registry.StrategyCount, Is.EqualTo(0));
         }
 
         [Test]

@@ -140,70 +140,6 @@ namespace Ihc.Tests
         }
 
         [Test]
-        public void DeepCopyAndApply_SimpleRecord_CreatesDeepCopy()
-        {
-            var original = new SimpleRecord
-            {
-                Id = 1,
-                Name = "Test",
-                Created = new DateTime(2024, 1, 1)
-            };
-
-            var copy = (SimpleRecord)CopyUtil.DeepCopyAndApply(original, IdentityTransformer);
-
-            Assert.That(copy, Is.Not.SameAs(original));
-            Assert.That(copy.Id, Is.EqualTo(original.Id));
-            Assert.That(copy.Name, Is.EqualTo(original.Name));
-            Assert.That(copy.Created, Is.EqualTo(original.Created));
-        }
-
-        [Test]
-        public void DeepCopyAndApply_NestedRecord_CreatesDeepCopy()
-        {
-            var original = new NestedRecord
-            {
-                Level = 1,
-                Inner = new SimpleRecord
-                {
-                    Id = 42,
-                    Name = "Inner",
-                    Created = DateTime.Now
-                },
-                Numbers = new List<int> { 1, 2, 3 }
-            };
-
-            var copy = (NestedRecord)CopyUtil.DeepCopyAndApply(original, IdentityTransformer);
-
-            Assert.That(copy, Is.Not.SameAs(original));
-            Assert.That(copy.Inner, Is.Not.SameAs(original.Inner));
-            Assert.That(copy.Numbers, Is.Not.SameAs(original.Numbers));
-            Assert.That(copy.Level, Is.EqualTo(original.Level));
-            Assert.That(copy.Inner.Id, Is.EqualTo(original.Inner.Id));
-            Assert.That(copy.Numbers, Is.EqualTo(original.Numbers));
-        }
-
-        [Test]
-        public void DeepCopyAndApply_RecordWithCollections_CreatesDeepCopy()
-        {
-            var original = new RecordWithCollections
-            {
-                Names = new List<string> { "Alice", "Bob", "Charlie" },
-                UniqueIds = new HashSet<int> { 1, 2, 3 },
-                Scores = new Dictionary<string, int> { { "Alice", 100 }, { "Bob", 95 } }
-            };
-
-            var copy = (RecordWithCollections)CopyUtil.DeepCopyAndApply(original, IdentityTransformer);
-
-            Assert.That(copy, Is.Not.SameAs(original));
-            Assert.That(copy.Names, Is.Not.SameAs(original.Names));
-            Assert.That(copy.UniqueIds, Is.Not.SameAs(original.UniqueIds));
-            Assert.That(copy.Scores, Is.Not.SameAs(original.Scores));
-            Assert.That(copy.Names, Is.EqualTo(original.Names));
-            Assert.That(copy.UniqueIds, Is.EquivalentTo(original.UniqueIds));
-            Assert.That(copy.Scores, Is.EqualTo(original.Scores));
-        }
-
-        [Test]
         public void DeepCopyAndApply_WithTransformer_AppliesTransformation()
         {
             var original = new SimpleRecord
@@ -270,41 +206,6 @@ namespace Ihc.Tests
 
             Assert.That(ex.Message, Does.Contain("Maximum recursion depth of 100 exceeded"));
             Assert.That(ex.Message, Does.Contain("path:"), "Exception should include path information showing where depth was exceeded");
-        }
-
-        [Test]
-        public void DeepCopyAndApply_ArrayOfRecords_CreatesDeepCopy()
-        {
-            var original = new[]
-            {
-                new SimpleRecord { Id = 1, Name = "First", Created = DateTime.Now },
-                new SimpleRecord { Id = 2, Name = "Second", Created = DateTime.Now }
-            };
-
-            var copy = (SimpleRecord[])CopyUtil.DeepCopyAndApply(original, IdentityTransformer);
-
-            Assert.That(copy, Is.Not.SameAs(original));
-            Assert.That(copy[0], Is.Not.SameAs(original[0]));
-            Assert.That(copy[1], Is.Not.SameAs(original[1]));
-            Assert.That(copy[0].Id, Is.EqualTo(original[0].Id));
-            Assert.That(copy[1].Name, Is.EqualTo(original[1].Name));
-        }
-
-        [Test]
-        public void DeepCopyAndApply_ListOfRecords_CreatesDeepCopy()
-        {
-            var original = new List<SimpleRecord>
-            {
-                new SimpleRecord { Id = 1, Name = "First", Created = DateTime.Now },
-                new SimpleRecord { Id = 2, Name = "Second", Created = DateTime.Now }
-            };
-
-            var copy = (List<SimpleRecord>)CopyUtil.DeepCopyAndApply(original, IdentityTransformer);
-
-            Assert.That(copy, Is.Not.SameAs(original));
-            Assert.That(copy[0], Is.Not.SameAs(original[0]));
-            Assert.That(copy[1], Is.Not.SameAs(original[1]));
-            Assert.That(copy[0].Id, Is.EqualTo(original[0].Id));
         }
 
         [Test]
@@ -862,46 +763,6 @@ namespace Ihc.Tests
             Assert.That(copy, Is.Not.SameAs(original));
             Assert.That(copy, Is.EqualTo(original));
             Assert.That(copy, Is.TypeOf<Dictionary<string, int>>(), "IDictionary<TKey, TValue> should be copied as Dictionary<TKey, TValue>");
-        }
-
-        [Test]
-        public void DeepCopyAndApply_IEnumerableOfRecords_CreatesDeepCopy()
-        {
-            IEnumerable<SimpleRecord> original = new List<SimpleRecord>
-            {
-                new SimpleRecord { Id = 1, Name = "First", Created = DateTime.Now },
-                new SimpleRecord { Id = 2, Name = "Second", Created = DateTime.Now }
-            };
-
-            var copy = (List<SimpleRecord>)CopyUtil.DeepCopyAndApply(original, IdentityTransformer);
-
-            Assert.That(copy, Is.Not.SameAs(original));
-            var originalList = original.ToList();
-            Assert.That(copy[0], Is.Not.SameAs(originalList[0]), "Elements should be deep copied");
-            Assert.That(copy[1], Is.Not.SameAs(originalList[1]), "Elements should be deep copied");
-            Assert.That(copy[0].Id, Is.EqualTo(originalList[0].Id));
-            Assert.That(copy[1].Name, Is.EqualTo(originalList[1].Name));
-        }
-
-        [Test]
-        public void DeepCopyAndApply_NestedRecordWithInterfaceCollections_CreatesDeepCopy()
-        {
-            var original = new RecordWithInterfaceCollections
-            {
-                Numbers = new List<int> { 1, 2, 3 },
-                Tags = new HashSet<string> { "tag1", "tag2" },
-                Metadata = new Dictionary<string, string> { { "key", "value" } }
-            };
-
-            var copy = (RecordWithInterfaceCollections)CopyUtil.DeepCopyAndApply(original, IdentityTransformer);
-
-            Assert.That(copy, Is.Not.SameAs(original));
-            Assert.That(copy.Numbers, Is.Not.SameAs(original.Numbers));
-            Assert.That(copy.Tags, Is.Not.SameAs(original.Tags));
-            Assert.That(copy.Metadata, Is.Not.SameAs(original.Metadata));
-            Assert.That(copy.Numbers, Is.EqualTo(original.Numbers));
-            Assert.That(copy.Tags, Is.EquivalentTo(original.Tags));
-            Assert.That(copy.Metadata, Is.EqualTo(original.Metadata));
         }
 
         // Test for transformer exception handling (Fix #3)

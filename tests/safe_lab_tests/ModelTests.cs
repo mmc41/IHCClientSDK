@@ -3,6 +3,7 @@ using FakeItEasy;
 using Ihc.App;
 using IhcLab;
 using System;
+using System.Collections.Generic;
 
 namespace Ihc.Tests
 {
@@ -28,8 +29,39 @@ namespace Ihc.Tests
             Assert.That(viewModel.IsWarningVisible, Is.False);
         }
 
-        [Test]
-        public void SetProperty_ShouldRaisePropertyChanged()
+        // The INPC law shared by the view-model's notifying setters: assigning the property raises
+        // PropertyChanged under that property's own name, and the value round-trips. One case per
+        // property, so a single property regressing is still an individually named failure.
+        private static IEnumerable<TestCaseData> PropertyChangedCases()
+        {
+            yield return new TestCaseData(
+                (Action<MainWindowViewModel>)(vm => vm.OperationDescription = "Test Description"),
+                nameof(MainWindowViewModel.OperationDescription),
+                (Func<MainWindowViewModel, object?>)(vm => vm.OperationDescription),
+                (object?)"Test Description")
+                .SetName("SetProperty_ShouldRaisePropertyChanged");
+
+            yield return new TestCaseData(
+                (Action<MainWindowViewModel>)(vm => vm.SelectedServiceIndex = 1),
+                nameof(MainWindowViewModel.SelectedServiceIndex),
+                (Func<MainWindowViewModel, object?>)(vm => vm.SelectedServiceIndex),
+                (object?)1)
+                .SetName("SelectedServiceIndex_Setter_ShouldRaisePropertyChanged");
+
+            yield return new TestCaseData(
+                (Action<MainWindowViewModel>)(vm => vm.SelectedOperationIndex = 1),
+                nameof(MainWindowViewModel.SelectedOperationIndex),
+                (Func<MainWindowViewModel, object?>)(vm => vm.SelectedOperationIndex),
+                (object?)1)
+                .SetName("SelectedOperationIndex_Setter_ShouldRaisePropertyChanged");
+        }
+
+        [TestCaseSource(nameof(PropertyChangedCases))]
+        public void Setter_ShouldRaisePropertyChanged(
+            Action<MainWindowViewModel> setProperty,
+            string expectedPropertyName,
+            Func<MainWindowViewModel, object?> readProperty,
+            object? expectedValue)
         {
             // Arrange
             var viewModel = new MainWindowViewModel();
@@ -37,25 +69,34 @@ namespace Ihc.Tests
             viewModel.PropertyChanged += (sender, e) => changedPropertyName = e.PropertyName;
 
             // Act
-            viewModel.OperationDescription = "Test Description";
+            setProperty(viewModel);
 
             // Assert
-            Assert.That(changedPropertyName, Is.EqualTo(nameof(MainWindowViewModel.OperationDescription)));
-            Assert.That(viewModel.OperationDescription, Is.EqualTo("Test Description"));
+            Assert.That(changedPropertyName, Is.EqualTo(expectedPropertyName));
+            Assert.That(readProperty(viewModel), Is.EqualTo(expectedValue));
         }
 
         [Test]
         public void LabAppService_Setter_ShouldSubscribeToEvents()
         {
-            // Arrange
+            // Arrange - assign FIRST, while the service still has no Services array. The ordering is
+            // load-bearing: the setter also populates the collections directly, so setting Services
+            // before the assignment would let this pass with every subscription removed.
             var viewModel = new MainWindowViewModel();
             var labAppService = new LabAppService(null, null);
-
-            // Act
             viewModel.LabAppService = labAppService;
+            Assert.That(viewModel.Services, Is.Empty, "nothing to populate from yet");
 
-            // Assert - verify that the LabAppService is set
-            Assert.That(viewModel.LabAppService, Is.SameAs(labAppService));
+            // Act - raise ServicesChanged, which is what the subscription exists for
+            labAppService.Services =
+            [
+                new LabAppService.ServiceItem(A.Fake<IAuthenticationService>(), o => true)
+            ];
+
+            // Assert - the handler ran. Without the subscription the collection stays empty, which is
+            // the regression the old Is.SameAs assertion could not see.
+            Assert.That(viewModel.Services, Has.Count.EqualTo(1),
+                "assigning LabAppService must subscribe OnServicesChanged");
         }
 
         [Test]
@@ -311,36 +352,6 @@ namespace Ihc.Tests
 
             // Assert
             Assert.That(viewModel.SelectedOperationIndex, Is.EqualTo(0));
-        }
-
-        [Test]
-        public void SelectedServiceIndex_Setter_ShouldRaisePropertyChanged()
-        {
-            // Arrange
-            var viewModel = new MainWindowViewModel();
-            string? changedPropertyName = null;
-            viewModel.PropertyChanged += (sender, e) => changedPropertyName = e.PropertyName;
-
-            // Act
-            viewModel.SelectedServiceIndex = 1;
-
-            // Assert
-            Assert.That(changedPropertyName, Is.EqualTo(nameof(MainWindowViewModel.SelectedServiceIndex)));
-        }
-
-        [Test]
-        public void SelectedOperationIndex_Setter_ShouldRaisePropertyChanged()
-        {
-            // Arrange
-            var viewModel = new MainWindowViewModel();
-            string? changedPropertyName = null;
-            viewModel.PropertyChanged += (sender, e) => changedPropertyName = e.PropertyName;
-
-            // Act
-            viewModel.SelectedOperationIndex = 1;
-
-            // Assert
-            Assert.That(changedPropertyName, Is.EqualTo(nameof(MainWindowViewModel.SelectedOperationIndex)));
         }
 
         // ========== Phase 0 Safety Net Tests (Event Handler Tests) ==========
