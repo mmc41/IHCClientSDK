@@ -81,7 +81,8 @@ namespace Ihc.Vis.Addressing
         /// <summary>
         /// The dotted <c>"dataline.bit"</c> display for an <c>address_dataline</c> token ("?" when unassigned or
         /// zero), replicating the vendor <c>get_address</c>: it reads only the first two hex digits and shows the
-        /// terminal per <see cref="TerminalLabel"/>.
+        /// terminal per <see cref="TerminalLabel"/>. The digits are read case-insensitively, as
+        /// <see cref="TryParse"/> reads them.
         /// </summary>
         public static string ToVendorLabel(string? token, bool isOutput)
         {
@@ -118,10 +119,13 @@ namespace Ihc.Vis.Addressing
 
         private const string Unknown = "?";
 
+        // Case-insensitive, matching the NumberStyles.HexNumber parse in TryParse: a token that parses
+        // must also label, whichever case its digits are written in.
         private static int HexDigit(char c) => c switch
         {
             >= '0' and <= '9' => c - '0',
             >= 'a' and <= 'f' => c - 'a' + 10,
+            >= 'A' and <= 'F' => c - 'A' + 10,
             _ => -1,
         };
     }

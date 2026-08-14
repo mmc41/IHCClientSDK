@@ -181,8 +181,12 @@ namespace Ihc.App
                 WLanSettings = wlan
             };
 
-            // Extra internal check that the model values fullfill constrains (should always be valid unless 
-            // the sdk has an internal error such as wrong contrains specified).
+            // Checks the model OBJECT, not the settings inside it. Validator.TryValidateObject does not recurse
+            // into complex properties, and MutableAdminModel declares no annotations of its own, so in practice
+            // this rejects only a null model: a controller that reports an over-long SMTP password or a missing
+            // [Required] netmask still loads. That is deliberate — the constraints on the nested blocks are
+            // enforced where they are APPLIED, by the leaf setters in ConfigurationService, and enforcing them
+            // here as well would refuse real controller data that loads today.
             ValidationHelper.ValidateDataAnnotations(model, nameof(model));
 
             return model;
@@ -213,7 +217,9 @@ namespace Ihc.App
                     // Make defensive copy to protect against concurrent mutation now and later
                     var modelCopy = model.Copy();
                     
-                    // Ensure valid input before we continue.
+                    // Reaches only the top-level object, exactly as in DoGetModel above: a nested value that
+                    // breaks its own [StringLength] or [Required] passes here, and is refused — or not — by the
+                    // leaf setter that applies it.
                     ValidationHelper.ValidateDataAnnotations(modelCopy, nameof(modelCopy));
 
                     // Make sure we are logged in.
@@ -348,7 +354,8 @@ namespace Ihc.App
         /// </summary>
         /// <param name="stream">The stream to read JSON from (caller is responsible for disposing)</param>
         /// <returns>MutableAdminModel deserialized from JSON with sensitive data decrypted if encryption is enabled</returns>
-        /// <exception cref="InvalidOperationException">Thrown when deserialization fails or returns null</exception>
+        /// <exception cref="ArgumentException">Thrown when the stream does not deserialize to a model, or when its
+        /// metadata is missing, names another type, or carries an incompatible major version</exception>
         /// <exception cref="System.Text.Json.JsonException">Thrown when JSON format is invalid</exception>
         public async Task<MutableAdminModel> LoadFromJson(Stream stream)
         {
@@ -369,12 +376,18 @@ namespace Ihc.App
                     if (adminModel == null)
                         throw new ArgumentException("Failed to deserialize AdminModel from JSON stream");
 
-                    string serializedTypeName = adminModel?.ModelMetadata.TypeFullName;
+                    // The metadata block is what the checks below read, and a file can simply not have one: it is
+                    // written from whatever the saved model carried, never stamped by SaveAsJson. Say so, rather
+                    // than dereferencing it and reporting a NullReferenceException for an ordinary bad input.
+                    if (adminModel.ModelMetadata == null)
+                        throw new ArgumentException("Missing model metadata");
+
+                    string serializedTypeName = adminModel.ModelMetadata.TypeFullName;
                     string expectedTypeName = typeof(MutableAdminModel).FullName;
                     if (serializedTypeName!=expectedTypeName)
                         throw new ArgumentException($"Type incompatiblitly. Got {serializedTypeName} but expected {expectedTypeName}");
 
-                    Version streamVersion = adminModel?.ModelMetadata?.Version;
+                    Version streamVersion = adminModel.ModelMetadata.Version;
                     if (streamVersion == null)
                         throw new ArgumentException("Missing version metadata");
 
@@ -405,7 +418,9 @@ namespace Ihc.App
                         return value;
                     });
 
-                    // Ensure json is valid.
+                    // Checks that the deserialized object exists, not the values inside it — see the note in
+                    // DoGetModel. A JSON file whose nested settings violate their annotations loads without
+                    // complaint; the type and version metadata checked above are what actually gate this path.
                     ValidationHelper.ValidateDataAnnotations(decryptedModel, nameof(decryptedModel));
 
                     activity?.SetReturnValue(decryptedModel.ToString(settings.LogSensitiveData));

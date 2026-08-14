@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Globalization;
+using CsCheck;
 
 namespace Ihc.Vis.Tests
 {
@@ -351,6 +353,67 @@ namespace Ihc.Vis.Tests
 
             Assert.That(light.GetAttribute("inivalue"), Is.EqualTo("12.5"),
                 "a value that would round is preserved verbatim, never mutated to 13");
+        }
+
+        /// <summary>The two authored-value cases above are single points on one law: reconciling precision may
+        /// change the TEXT but never the NUMBER. Either the value is re-emitted at the project's places (trailing
+        /// zeros padded or trimmed, which preserves it) or it is left exactly as authored (which also preserves
+        /// it); there is no third outcome, and in particular no rounding.
+        /// <para>The place counts are the registry's own: every fixed-point default in the project schema is
+        /// either <c>"0"</c> (resource_light and the rest of the integer family) or <c>"0.00"</c> (the seven
+        /// decimal-family attributes), so those two are what a generator can vary over. The authored text varies
+        /// far more widely — sign, leading zeros, and zero to six fraction digits, which is what reaches both the
+        /// reformat branch and the leave-verbatim branch.</para></summary>
+        private static readonly Gen<(string Tag, string Text)> AuthoredNumericAttr = Gen.Select(
+            Gen.OneOfConst("resource_light", "resource_temperature"),
+            Gen.Bool, Gen.Int[0, 3], Gen.Long[0, 99_999_999], Gen.Int[0, 6], Gen.Long[0, 999_999],
+            (tag, negative, pad, whole, places, fraction) =>
+                (tag, ComposeNumber(negative, pad, whole, places, fraction)));
+
+        private static readonly long[] PowersOfTen = { 1, 10, 100, 1_000, 10_000, 100_000, 1_000_000 };
+
+        private static string ComposeNumber(bool negative, int pad, long whole, int places, long fraction)
+        {
+            string digits = places == 0
+                ? string.Empty
+                : "." + (fraction % PowersOfTen[places]).ToString(CultureInfo.InvariantCulture).PadLeft(places, '0');
+            return (negative ? "-" : string.Empty) + new string('0', pad)
+                + whole.ToString(CultureInfo.InvariantCulture) + digits;
+        }
+
+        [Test]
+        public void Insert_PrecisionReconciliation_NeverChangesTheNumericValue()
+        {
+            const NumberStyles Style = NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint;
+            int rewrites = 0;
+
+            AuthoredNumericAttr.Sample(sample =>
+            {
+                ProjectElement body = Node("product_dataline", "_0x01",
+                    new[] { ("product_identifier", "_0x2139"), ("name", "Lux") },
+                    new[]
+                    {
+                        Node(sample.Tag, "_0x02", new[] { ("name", "R"), ("inivalue", sample.Text) },
+                            System.Array.Empty<ProjectElement>()),
+                    });
+
+                InsertResult result = InsertTransform.Insert(
+                    body, new IdAllocator(0x50), EmptyEnumDefinitions(), ProjectSchemaView.RegistryOnly);
+                string? written = result.InsertedRoot.FindChild(sample.Tag)!.GetAttribute("inivalue");
+                if (written != sample.Text)
+                {
+                    rewrites++;
+                }
+
+                decimal authored = decimal.Parse(sample.Text, Style, CultureInfo.InvariantCulture);
+                return written is not null
+                       && decimal.TryParse(written, Style, CultureInfo.InvariantCulture, out decimal stored)
+                       && stored == authored;
+            }, iter: 500, threads: 1);
+
+            Assert.That(rewrites, Is.GreaterThan(0),
+                "negative control: the law must hold because reformatting preserves the value, not because the "
+                + "transform never reformats anything");
         }
 
         private static ProjectElement SeededEnumDefinitions(params ProjectElement[] defs) =>

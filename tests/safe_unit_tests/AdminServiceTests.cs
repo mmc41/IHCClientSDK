@@ -2,6 +2,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using CsCheck;
 using Ihc;
 using Ihc.App;
 using FakeItEasy;
@@ -688,60 +689,396 @@ namespace Ihc.Tests
             };
         }
 
-        [Test]
-        public async Task SaveAndLoadJson_WithEncryptionEnabled_RoundTripSucceeds()
+        /// <summary>
+        /// The JSON round trip must return the model it was given — the WHOLE model, not the handful of fields a
+        /// hand-written assertion happens to name. A subset assertion cannot fail for a field it does not mention,
+        /// and the fields it would not mention are exactly the ones a serializer gets wrong: the ones carrying
+        /// characters a JSON writer has to escape.
+        ///
+        /// <para>So the values here are chosen to be hostile rather than realistic — quotes, backslashes, braces,
+        /// newlines and tabs, an embedded NUL, control characters, the Danish letters this SDK is full of, an
+        /// astral-plane emoji (a surrogate PAIR — a lone surrogate is not valid text and is not the engine's
+        /// problem), leading and trailing whitespace, and nulls — and every property of every block is filled,
+        /// including all 29 web-access flags. Comparison is by the records' own value equality, so a property
+        /// added to any of these types is covered the day it is added, without touching this test.</para>
+        /// </summary>
+        [TestCase(true)]
+        [TestCase(false)]
+        public void SaveAndLoadJson_PreservesTheWholeModel(bool fileEncryption)
         {
-            // Arrange
-            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
-            var originalModel = CreateTestAdminModel();
-            var stream = new System.IO.MemoryStream();
+            var service = new AdminAppService(
+                settings, fileEncryption, fakeAuthService, fakeUserService, fakeConfigService);
 
-            // Act - Save and then load
-            await service.SaveAsJson(originalModel, stream);
-            stream.Position = 0;
-            var loadedModel = await service.LoadFromJson(stream);
+            AdminModelGen.Sample(model =>
+            {
+                using var stream = new System.IO.MemoryStream();
+                service.SaveAsJson(model, stream).GetAwaiter().GetResult();
+                stream.Position = 0;
+                MutableAdminModel loaded = service.LoadFromJson(stream).GetAwaiter().GetResult();
 
-            // Assert - All properties should match
-            Assert.That(loadedModel, Is.Not.Null);
-            Assert.That(loadedModel.Users, Is.Not.Null);
-            Assert.That(loadedModel.Users.Count, Is.EqualTo(originalModel.Users.Count));
-
-            // Verify users
-            var originalAdmin = originalModel.Users.First(u => u.Username == "admin");
-            var loadedAdmin = loadedModel.Users.First(u => u.Username == "admin");
-            Assert.That(loadedAdmin.Password, Is.EqualTo(originalAdmin.Password));
-            Assert.That(loadedAdmin.Email, Is.EqualTo(originalAdmin.Email));
-
-            // Verify sensitive fields preserved
-            Assert.That(loadedModel.EmailControl.Pop3Password, Is.EqualTo(originalModel.EmailControl.Pop3Password));
-            Assert.That(loadedModel.SmtpSettings.Password, Is.EqualTo(originalModel.SmtpSettings.Password));
-            Assert.That(loadedModel.WLanSettings.Key, Is.EqualTo(originalModel.WLanSettings.Key));
-
-            // Verify non-sensitive fields
-            Assert.That(loadedModel.DnsServers.PrimaryDNS, Is.EqualTo(originalModel.DnsServers.PrimaryDNS));
-            Assert.That(loadedModel.NetworkSettings.IpAddress, Is.EqualTo(originalModel.NetworkSettings.IpAddress));
+                if (Mismatch(model, loaded) is { } difference)
+                {
+                    throw new AssertionException($"encryption={fileEncryption}: {difference}");
+                }
+                return true;
+            }, iter: 100, threads: 1);
         }
 
+        /// <summary>
+        /// A JSON file with no <c>ModelMetadata</c> block is refused the same way a file naming the wrong type or
+        /// carrying no version is: with an <see cref="ArgumentException"/> saying what is wrong. The metadata is
+        /// what this method gates on, so its absence is an ordinary rejection, not an internal failure — and a
+        /// caller can legitimately produce such a file, because <c>SaveAsJson</c> writes whatever metadata the
+        /// model carries rather than stamping its own.
+        /// </summary>
         [Test]
-        public async Task SaveAndLoadJson_WithEncryptionDisabled_RoundTripSucceeds()
+        public async Task LoadFromJson_WhenTheSavedModelCarriedNoMetadata_IsRefusedWithAnArgumentException()
         {
-            // Arrange
-            var service = new AdminAppService(settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
-            var originalModel = CreateTestAdminModel();
-            var stream = new System.IO.MemoryStream();
+            MutableAdminModel withoutMetadata = CreateTestAdminModel();
+            withoutMetadata.ModelMetadata = null;
+            var service = new AdminAppService(
+                settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
 
-            // Act - Save and then load
-            await service.SaveAsJson(originalModel, stream);
+            using var stream = new System.IO.MemoryStream();
+            await service.SaveAsJson(withoutMetadata, stream);
             stream.Position = 0;
-            var loadedModel = await service.LoadFromJson(stream);
 
-            // Assert - All properties should match
-            Assert.That(loadedModel, Is.Not.Null);
-            Assert.That(loadedModel.Users.Count, Is.EqualTo(originalModel.Users.Count));
-            Assert.That(loadedModel.EmailControl.Pop3Password, Is.EqualTo(originalModel.EmailControl.Pop3Password));
-            Assert.That(loadedModel.SmtpSettings.Password, Is.EqualTo(originalModel.SmtpSettings.Password));
-            Assert.That(loadedModel.WLanSettings.Key, Is.EqualTo(originalModel.WLanSettings.Key));
+            ArgumentException refusal = Assert.ThrowsAsync<ArgumentException>(
+                async () => await service.LoadFromJson(stream));
+            Assert.That(refusal.Message, Does.Contain("metadata"), "the refusal must name what is missing");
         }
+
+        /// <summary>The same for a file that never had the property at all — a hand-written or foreign JSON
+        /// document, which is the case that reaches this method from outside the SDK.</summary>
+        [Test]
+        public void LoadFromJson_WhenTheJsonHasNoMetadataProperty_IsRefusedWithAnArgumentException()
+        {
+            var service = new AdminAppService(
+                settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
+            using var stream = new System.IO.MemoryStream(
+                System.Text.Encoding.UTF8.GetBytes("{ \"Users\": [] }"));
+
+            ArgumentException refusal = Assert.ThrowsAsync<ArgumentException>(
+                async () => await service.LoadFromJson(stream));
+            Assert.That(refusal.Message, Does.Contain("metadata"));
+        }
+
+        // ----- what the three aggregate ValidateDataAnnotations calls actually reach -----
+        //
+        // All three (DoGetModel, Store, LoadFromJson) validate the top-level MutableAdminModel only:
+        // Validator.TryValidateObject does not recurse into complex properties and the model declares no
+        // annotations of its own. These tests pin that leniency at each of the three doors, so that if someone
+        // later makes validation recurse, the change announces itself here instead of in the field — where it would
+        // start refusing controller data and saved files that load today.
+
+        /// <summary>Values a nested block's own annotations forbid: the SMTP password is capped at 20 characters
+        /// and the netmask is [Required].</summary>
+        private static (SMTPSettings Smtp, NetworkSettings Network) IllegalNestedValues() =>
+            (new SMTPSettings { Hostname = "smtp.test.com", Password = new string('x', 40), Hostport = 465 },
+             new NetworkSettings { IpAddress = "192.168.1.100", Netmask = null, Gateway = "192.168.1.1" });
+
+        /// <summary>Whether a block passes its OWN annotations, checked directly. Every leniency test below asserts
+        /// this is false for the values it uses: if a cap were widened or dropped, these tests would otherwise keep
+        /// passing while pinning nothing at all.</summary>
+        private static bool PassesOwnAnnotations(object block) =>
+            System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
+                block,
+                new System.ComponentModel.DataAnnotations.ValidationContext(block),
+                new List<System.ComponentModel.DataAnnotations.ValidationResult>(),
+                validateAllProperties: true);
+
+        private static void AssertReallyIllegal(SMTPSettings smtp, NetworkSettings network) =>
+            Assert.Multiple(() =>
+            {
+                Assert.That(PassesOwnAnnotations(smtp), Is.False,
+                    "precondition: a 40-character password must break SMTPSettings' own [StringLength(20)]");
+                Assert.That(PassesOwnAnnotations(network), Is.False,
+                    "precondition: a null netmask must break NetworkSettings' own [Required]");
+            });
+
+        private void ArrangeController(SMTPSettings smtp, NetworkSettings network)
+        {
+            A.CallTo(() => fakeUserService.GetUsers(true))
+                .Returns(Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>()));
+            A.CallTo(() => fakeConfigService.GetEmailControlSettings())
+                .Returns(Task.FromResult(new EmailControlSettings { ServerIpAddress = "mail.test.com" }));
+            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(smtp));
+            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
+            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(network));
+            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
+            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
+        }
+
+        /// <summary>A controller reporting values its own annotations forbid is still readable — the check at the
+        /// end of DoGetModel does not reach them.</summary>
+        [Test]
+        public async Task GetModel_AcceptsControllerValuesThatBreakNestedAnnotations()
+        {
+            (SMTPSettings smtp, NetworkSettings network) = IllegalNestedValues();
+            AssertReallyIllegal(smtp, network);
+            ArrangeController(smtp, network);
+            var service = new AdminAppService(
+                settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
+
+            MutableAdminModel model = await service.GetModel();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(model.SmtpSettings.Password, Has.Length.EqualTo(40), "the over-long password is kept");
+                Assert.That(model.NetworkSettings.Netmask, Is.Null, "the missing [Required] netmask is kept");
+            });
+        }
+
+        /// <summary>Store's check has the same reach: it does not refuse a model whose nested values break their
+        /// annotations, so what reaches the controller is whatever the leaf setters accept.</summary>
+        [Test]
+        public async Task Store_DoesNotRefuseAModelThatBreaksNestedAnnotations()
+        {
+            (SMTPSettings smtp, NetworkSettings network) = IllegalNestedValues();
+            AssertReallyIllegal(smtp, network);
+            ArrangeController(new SMTPSettings { Hostname = "smtp.test.com" }, new NetworkSettings());
+            var service = new AdminAppService(
+                settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
+            MutableAdminModel model = await service.GetModel();
+            model.SmtpSettings = smtp;
+            model.NetworkSettings = network;
+
+            AdminAppService.ChangeInformation change = await service.Store(model);
+
+            Assert.That(change.ChangeCount, Is.GreaterThan(0), "the offending values were passed on, not rejected");
+            A.CallTo(() => fakeConfigService.SetSMTPSettings(smtp)).MustHaveHappened();
+        }
+
+        /// <summary>And so does the check after deserialization: a saved file whose nested settings break their
+        /// annotations loads, values intact.</summary>
+        [Test]
+        public async Task LoadFromJson_AcceptsAFileWhoseNestedValuesBreakAnnotations()
+        {
+            (SMTPSettings smtp, NetworkSettings network) = IllegalNestedValues();
+            AssertReallyIllegal(smtp, network);
+            MutableAdminModel model = CreateTestAdminModel();
+            model.SmtpSettings = smtp;
+            model.NetworkSettings = network;
+            var service = new AdminAppService(
+                settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
+
+            using var stream = new System.IO.MemoryStream();
+            await service.SaveAsJson(model, stream);
+            stream.Position = 0;
+            MutableAdminModel loaded = await service.LoadFromJson(stream);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(loaded.SmtpSettings.Password, Has.Length.EqualTo(40));
+                Assert.That(loaded.NetworkSettings.Netmask, Is.Null);
+            });
+        }
+
+        /// <summary>
+        /// The comparison above is only worth as much as its ability to notice a difference, and "compare the whole
+        /// model" is exactly the kind of claim that quietly degrades. This perturbs each block in turn and requires
+        /// the comparison to object to every one of them — and to stay silent for an untouched copy.
+        /// </summary>
+        [Test]
+        public void WholeModelComparison_NoticesADifferenceInEveryBlock()
+        {
+            MutableAdminModel model = CreateTestAdminModel();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(Mismatch(model, model.Copy()), Is.Null, "an untouched copy must compare equal");
+                Assert.That(Mismatch(model, model.Copy() with { Users = new HashSet<IhcUser>() }),
+                    Is.Not.Null, "a dropped user must be noticed");
+                Assert.That(Mismatch(model, model.Copy() with
+                {
+                    EmailControl = model.EmailControl with { Pop3Password = "changed" },
+                }), Is.Not.Null, "EmailControl");
+                Assert.That(Mismatch(model, model.Copy() with
+                {
+                    SmtpSettings = model.SmtpSettings with { Hostport = model.SmtpSettings.Hostport + 1 },
+                }), Is.Not.Null, "SmtpSettings");
+                Assert.That(Mismatch(model, model.Copy() with
+                {
+                    DnsServers = model.DnsServers with { SecondaryDNS = "changed" },
+                }), Is.Not.Null, "DnsServers");
+                Assert.That(Mismatch(model, model.Copy() with
+                {
+                    NetworkSettings = model.NetworkSettings with { HttpsPort = 1 },
+                }), Is.Not.Null, "NetworkSettings");
+                Assert.That(Mismatch(model, model.Copy() with
+                {
+                    WebAccess = model.WebAccess with { OpenapiUsed = !model.WebAccess.OpenapiUsed },
+                }), Is.Not.Null, "WebAccess — a single flag out of 29");
+                Assert.That(Mismatch(model, model.Copy() with
+                {
+                    WLanSettings = model.WLanSettings with { Key = "changed" },
+                }), Is.Not.Null, "WLanSettings");
+                Assert.That(Mismatch(model, model.Copy() with { ModelMetadata = null }),
+                    Is.Not.Null, "missing metadata");
+            });
+        }
+
+        /// <summary>Describes the first structural difference between a saved and a reloaded model, or null when
+        /// they agree.</summary>
+        private static string? Mismatch(MutableAdminModel original, MutableAdminModel loaded)
+        {
+            if (loaded is null)
+            {
+                return "the reloaded model is null";
+            }
+            if (original.Users is null != loaded.Users is null)
+            {
+                return $"Users presence: original {(original.Users is null ? "null" : "set")}, "
+                       + $"loaded {(loaded.Users is null ? "null" : "set")}";
+            }
+            if (original.Users is not null && !loaded.Users!.SetEquals(original.Users))
+            {
+                return $"Users differ: {original.Users.Count} saved, {loaded.Users!.Count} reloaded";
+            }
+            if (!Equals(original.EmailControl, loaded.EmailControl))
+            {
+                return "EmailControl differs";
+            }
+            if (!Equals(original.SmtpSettings, loaded.SmtpSettings))
+            {
+                return "SmtpSettings differs";
+            }
+            if (!Equals(original.DnsServers, loaded.DnsServers))
+            {
+                return "DnsServers differs";
+            }
+            if (!Equals(original.NetworkSettings, loaded.NetworkSettings))
+            {
+                return "NetworkSettings differs";
+            }
+            if (!Equals(original.WebAccess, loaded.WebAccess))
+            {
+                return "WebAccess differs";
+            }
+            if (!Equals(original.WLanSettings, loaded.WLanSettings))
+            {
+                return "WLanSettings differs";
+            }
+            // The metadata is stamped by the save, not carried from the caller's model, so it is checked for what
+            // it should say rather than compared.
+            if (loaded.ModelMetadata?.TypeFullName != typeof(MutableAdminModel).FullName)
+            {
+                return $"ModelMetadata names '{loaded.ModelMetadata?.TypeFullName}'";
+            }
+            return null;
+        }
+
+        // ----- generators -----
+
+        /// <summary>The text a subset assertion hides: JSON metacharacters, whitespace edges, control characters
+        /// including NUL, the Unicode line separators, Danish letters, and astral-plane characters. The control
+        /// characters are COMPUTED rather than written as literals, so the test source itself stays readable and
+        /// no editor or tool can quietly normalize them away.</summary>
+        private static readonly string[] HostileFragments =
+        {
+            "\"", "\\", "{", "}", "[", "]", ":", ",", "//", "/*",
+            "\n", "\r", "\t", "\b", "\f", " ", "  ",
+            Ch(0x0000), Ch(0x0001), Ch(0x001F), Ch(0x007F), Ch(0x00A0), Ch(0x2028), Ch(0x2029),
+            "æøå", "ÆØÅ", "é", "ß",
+            char.ConvertFromUtf32(0x1F600), char.ConvertFromUtf32(0x1F1E9),
+            "abc", "0", "-1", "null", "true", "",
+        };
+
+        /// <summary>One character by code point, for <see cref="HostileFragments"/>.</summary>
+        private static string Ch(int codePoint) => ((char)codePoint).ToString();
+
+        private static readonly Gen<string> HostileText =
+            Gen.OneOfConst(HostileFragments).Array[0, 4].Select(parts => string.Concat(parts));
+
+        /// <summary>Hostile text, or null — an absent value is its own round-trip case.</summary>
+        /// <summary>Hostile text, or null — an absent value is its own round-trip case. The null is produced by
+        /// mapping rather than <c>Gen.Const</c>, whose value and factory overloads are ambiguous for a null.</summary>
+        private static readonly Gen<string> MaybeText =
+            Gen.OneOf(HostileText, Gen.Bool.Select(_ => (string)null!));
+
+        private static readonly Gen<IhcUser> UserGen = Gen.Select(
+            MaybeText.Array[7, 7],
+            Gen.OneOfConst(IhcUserGroup.Administrators, IhcUserGroup.Users),
+            Gen.Long[0, 4_000_000_000],
+            Gen.Long[0, 4_000_000_000],
+            (text, group, created, login) => new IhcUser
+            {
+                Username = text[0], Password = text[1], Email = text[2], Firstname = text[3],
+                Lastname = text[4], Phone = text[5], Project = text[6], Group = group,
+                CreatedDate = DateTimeOffset.FromUnixTimeSeconds(created),
+                LoginDate = DateTimeOffset.FromUnixTimeSeconds(login),
+            });
+
+        private static readonly Gen<EmailControlSettings> EmailControlGen = Gen.Select(
+            MaybeText.Array[4, 4], Gen.Int[0, 65535].Array[2, 2], Gen.Bool.Array[2, 2],
+            (text, numbers, flags) => new EmailControlSettings
+            {
+                ServerIpAddress = text[0], Pop3Username = text[1], Pop3Password = text[2], EmailAddress = text[3],
+                ServerPortNumber = numbers[0], PollInterval = numbers[1],
+                RemoveEmailsAfterUsage = flags[0], Ssl = flags[1],
+            });
+
+        private static readonly Gen<SMTPSettings> SmtpGen = Gen.Select(
+            MaybeText.Array[4, 4], Gen.Int[0, 65535], Gen.Bool.Array[2, 2],
+            (text, port, flags) => new SMTPSettings
+            {
+                Hostname = text[0], Username = text[1], Password = text[2],
+                SendLowBatteryNotificationRecipient = text[3],
+                Hostport = port, Ssl = flags[0], SendLowBatteryNotification = flags[1],
+            });
+
+        private static readonly Gen<DNSServers> DnsGen = MaybeText.Array[2, 2]
+            .Select(text => new DNSServers { PrimaryDNS = text[0], SecondaryDNS = text[1] });
+
+        private static readonly Gen<NetworkSettings> NetworkGen = Gen.Select(
+            MaybeText.Array[3, 3], Gen.Int[0, 65535].Array[2, 2],
+            (text, ports) => new NetworkSettings
+            {
+                IpAddress = text[0], Netmask = text[1], Gateway = text[2],
+                HttpPort = ports[0], HttpsPort = ports[1],
+            });
+
+        private static readonly Gen<WLanSettings> WLanGen = Gen.Select(
+            MaybeText.Array[7, 7], Gen.Bool,
+            (text, enabled) => new WLanSettings
+            {
+                Enabled = enabled, Ssid = text[0], Key = text[1], SecurityType = text[2], EncryptionType = text[3],
+                IpAddress = text[4], Netmask = text[5], Gateway = text[6],
+            });
+
+        /// <summary>All 29 access flags, so none of them can silently fail to round-trip.</summary>
+        private static readonly Gen<WebAccessControl> WebAccessGen = Gen.Bool.Array[29, 29]
+            .Select(f => new WebAccessControl
+            {
+                UsbLoginRequired = f[0],
+                AdministratorUsb = f[1], AdministratorInternal = f[2], AdministratorExternal = f[3],
+                TreeviewUsb = f[4], TreeviewInternal = f[5], TreeviewExternal = f[6],
+                SceneviewUsb = f[7], SceneviewInternal = f[8], SceneviewExternal = f[9],
+                ScenedesignUsb = f[10], ScenedesignInternal = f[11], ScenedesignExternal = f[12],
+                ServerstatusUsb = f[13], ServerstatusInternal = f[14], ServerstatusExternal = f[15],
+                IhcvisualUsb = f[16], IhcvisualInternal = f[17], IhcvisualExternal = f[18],
+                OnlinedocumentationUsb = f[19], OnlinedocumentationInternal = f[20],
+                OnlinedocumentationExternal = f[21],
+                WebsceneviewUsb = f[22], WebsceneviewInternal = f[23], WebsceneviewExternal = f[24],
+                OpenapiUsb = f[25], OpenapiInternal = f[26], OpenapiExternal = f[27], OpenapiUsed = f[28],
+            });
+
+        private static readonly Gen<MutableAdminModel> AdminModelGen = Gen.Select(
+            UserGen.Array[0, 3], EmailControlGen, SmtpGen, DnsGen, NetworkGen, WebAccessGen, WLanGen,
+            (users, email, smtp, dns, network, webAccess, wlan) => new MutableAdminModel
+            {
+                // Stamped exactly as every real producer stamps it (GetModel does this), because SaveAsJson
+                // carries the caller's metadata rather than writing its own, and LoadFromJson refuses a file whose
+                // metadata does not name this model type.
+                ModelMetadata = ModelMetadata.Current(typeof(MutableAdminModel)),
+                Users = new HashSet<IhcUser>(users),
+                EmailControl = email,
+                SmtpSettings = smtp,
+                DnsServers = dns,
+                NetworkSettings = network,
+                WebAccess = webAccess,
+                WLanSettings = wlan,
+            });
 
         [Test]
         public async Task SaveAsJson_WithEncryptionEnabled_EncryptsSensitiveFieldsOnly()

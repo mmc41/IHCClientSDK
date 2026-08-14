@@ -161,15 +161,16 @@ namespace Ihc {
         public bool Enabled { get; init; }
 
         /// <summary>
-        /// SSID (network name) of the wireless network.
+        /// SSID (network name) of the wireless network. IEEE 802.11 allows up to 32 octets.
         /// </summary>
-        [StringLength(16, ErrorMessage = "Ssid length can't be more than 16.")]
+        [StringLength(32, ErrorMessage = "Ssid length can't be more than 32.")]
         public string Ssid { get; init; }
 
         /// <summary>
-        /// Wireless network password/key.
+        /// Wireless network password/key. A WPA2-PSK passphrase is 8–63 characters (64 would be the raw hex PSK),
+        /// so the limit is 63 — anything shorter refuses passphrases a real access point hands out.
         /// </summary>
-        [StringLength(16, ErrorMessage = "Key length can't be more than 16.")]
+        [StringLength(63, ErrorMessage = "Key length can't be more than 63.")]
         [SensitiveData]
         public string Key { get; init; }
 

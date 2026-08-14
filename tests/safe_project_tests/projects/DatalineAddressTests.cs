@@ -95,6 +95,53 @@ namespace Ihc.Vis.Tests
         public void ToVendorLabel_MatchesVendorFormula(string token, bool isOutput, string expected) =>
             Assert.That(DatalineAddress.ToVendorLabel(token, isOutput), Is.EqualTo(expected));
 
+        // ----- hex is case-insensitive, so the two decodes must not disagree on letter case -----
+
+        // TryParse reads the token with NumberStyles.HexNumber, which accepts either case. The vendor label
+        // must therefore read an uppercase token as the same address, not as unknown.
+        [TestCase("_0xA", false, "1.12")]
+        [TestCase("_0xA", true, "2.02")]
+        [TestCase("_0x1F", false, "2.17")]
+        [TestCase("_0xB", true, "2.03")]
+        [TestCase("_0x7C", true, "16.04")]
+        public void ToVendorLabel_UppercaseHex_DecodesLikeLowercase(string upperToken, bool isOutput, string expected)
+        {
+            string lowerToken = "_0x" + upperToken.Substring(3).ToLowerInvariant();
+            Assert.Multiple(() =>
+            {
+                Assert.That(DatalineAddress.ToVendorLabel(upperToken, isOutput), Is.EqualTo(expected));
+                Assert.That(DatalineAddress.ToVendorLabel(upperToken, isOutput),
+                    Is.EqualTo(DatalineAddress.ToVendorLabel(lowerToken, isOutput)), "letter case must not change the address");
+            });
+        }
+
+        // The type documents that TryParse and ToVendorLabel agree; they must do so for every token TryEncode
+        // can emit, in either letter case.
+        [Test]
+        public void ToVendorLabel_AgreesWithTryParse_ForUppercaseTokens()
+        {
+            Assert.Multiple(() =>
+            {
+                foreach (bool isOutput in new[] { false, true })
+                {
+                    int perLine = DatalineAddress.TerminalsPerLine(isOutput);
+                    for (int line = 1; line <= DatalineAddress.MaxDataLine(isOutput); line++)
+                    {
+                        for (int term = 1; term <= perLine; term++)
+                        {
+                            Assert.That(DatalineAddress.TryEncode(line, term, isOutput, out string token), Is.True);
+                            string upper = "_0x" + token.Substring(3).ToUpperInvariant();
+                            Assert.That(DatalineAddress.TryParse(upper, isOutput, out DatalineAddress addr), Is.True);
+                            Assert.That((addr.DataLine, addr.Terminal), Is.EqualTo((line, term)));
+                            Assert.That(DatalineAddress.ToVendorLabel(upper, isOutput),
+                                Is.EqualTo(DatalineAddress.ToVendorLabel(token, isOutput)),
+                                $"{upper} parses to {line}.{term} yet its label differs from {token}'s");
+                        }
+                    }
+                }
+            });
+        }
+
         // ----- A-12: a terminal address written onto a data-line pin survives a save/reload byte round-trip -----
 
         [Test]

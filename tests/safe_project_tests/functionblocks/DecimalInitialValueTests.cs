@@ -116,6 +116,30 @@ namespace Ihc.Vis.Tests
                 $"{tag}: 0.00 is the declared default and is not written");
         }
 
+        /// <summary>
+        /// A non-finite value is not a number this format can store: <c>inivalue</c> is declared CDATA, so nothing
+        /// downstream stops the text "NaN" or "Infinity" from being written into a <c>.vis</c> file that the
+        /// reference application would then have to read. The value is refused where the caller's mistake is, at
+        /// construction, so no such payload can exist to be written (D02).
+        /// </summary>
+        [TestCase(double.NaN)]
+        [TestCase(double.PositiveInfinity)]
+        [TestCase(double.NegativeInfinity)]
+        public void Decimal_NonFinite_IsRefusedAtConstruction(double value)
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.Throws<ArgumentOutOfRangeException>(() => ResourceInitialValue.OfDecimal(value),
+                    "the factory refuses it");
+                Assert.Throws<ArgumentOutOfRangeException>(
+                    () => new ResourceInitialValue(ResourceValueKind.Decimal, false, 0, 0, 0, 0, 0, Decimal: value),
+                    "and so does the record's own constructor, which is public");
+                Assert.Throws<ArgumentOutOfRangeException>(
+                    () => _ = ResourceInitialValue.None with { Kind = ResourceValueKind.Decimal, Decimal = value },
+                    "and so does a with-expression, the third way to reach the field");
+            });
+        }
+
         /// <summary>The payload is one flat record, so a new kind that leaked into another's write path would
         /// corrupt unrelated variables.</summary>
         [Test]

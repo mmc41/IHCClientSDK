@@ -41,6 +41,28 @@ namespace Ihc.Vis.Session
         ResourceValueKind Kind, bool Bool, long Number, int Hour, int Minute, int Second, int Millisecond,
         string Token = "", int Day = 0, int Month = 0, double Decimal = 0)
     {
+        private readonly double _decimal = Finite(Decimal);
+
+        /// <summary>
+        /// The real value of a <see cref="ResourceValueKind.Decimal"/> payload. A non-finite value (NaN or either
+        /// infinity) is refused here rather than downstream: <c>inivalue</c> is declared CDATA, so the writer would
+        /// otherwise store the text "NaN" or "Infinity" into the file, which is not a number the format — or the
+        /// reference application reading it back — can make sense of. Guarding the property rather than only the
+        /// <see cref="OfDecimal"/> factory closes the constructor and <c>with</c>-expression routes too, which are
+        /// public on a record.
+        /// </summary>
+        public double Decimal
+        {
+            get => _decimal;
+            init => _decimal = Finite(value);
+        }
+
+        private static double Finite(double value) =>
+            double.IsFinite(value)
+                ? value
+                : throw new ArgumentOutOfRangeException(nameof(Decimal), value,
+                    "A resource's initial value must be a finite number; NaN and infinity have no .vis representation.");
+
         /// <summary>The "no editable initial value" sentinel (date/decimal types/…): the write is a no-op.</summary>
         public static ResourceInitialValue None { get; } = new(ResourceValueKind.None, false, 0, 0, 0, 0, 0);
 
@@ -65,7 +87,9 @@ namespace Ihc.Vis.Session
 
         /// <summary>A real initial value for the two-decimal family (kW/kWh/W/Wh/floating-point/temperature/
         /// humidity): serialises as <c>inivalue</c> with exactly two fraction digits and a period, whatever
-        /// precision the type shows on screen and whatever culture the machine runs in (F-41/F-44).</summary>
+        /// precision the type shows on screen and whatever culture the machine runs in (F-41/F-44). Throws
+        /// <see cref="ArgumentOutOfRangeException"/> for a non-finite <paramref name="value"/> — see
+        /// <see cref="Decimal"/>.</summary>
         public static ResourceInitialValue OfDecimal(double value) =>
             None with { Kind = ResourceValueKind.Decimal, Decimal = value };
 
