@@ -15,10 +15,6 @@ namespace Ihc.Vis.Schema
         /// <summary>Throws when the element's bag carries an attribute its DTD block does not declare.</summary>
         public static void GuardNoUnknownAttributes(ProjectElement element, ElementSchema schema)
         {
-            if (element.Attrs.IsEmpty)
-            {
-                return;
-            }
             foreach ((string name, string _) in element.Attrs)
             {
                 if (schema.FindAttr(name) is null)
@@ -35,10 +31,6 @@ namespace Ihc.Vis.Schema
         public static void GuardTreeNoUnknownAttributes(ProjectElement element, ProjectSchemaView view)
         {
             GuardNoUnknownAttributes(element, view.Get(element.Tag));
-            if (element.Children.IsEmpty)
-            {
-                return;
-            }
             foreach (ProjectElement child in element.Children)
             {
                 GuardTreeNoUnknownAttributes(child, view);

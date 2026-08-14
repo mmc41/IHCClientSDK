@@ -68,35 +68,29 @@ namespace Ihc.Vis.Io
         // One bad character in a 200 KB project is a needle in a haystack — name the first offender.
         private static string LocateNonLatin1(ProjectElement element)
         {
-            if (!element.Attrs.IsEmpty)
+            foreach ((string name, string value) in element.Attrs)
             {
-                foreach ((string name, string value) in element.Attrs)
+                for (int i = 0; i < value.Length; i++)
                 {
-                    for (int i = 0; i < value.Length; i++)
+                    char c = value[i];
+                    if (!Latin1.Contains(c))
                     {
-                        char c = value[i];
-                        if (!Latin1.Contains(c))
-                        {
-                            // An astral char is a surrogate pair; combine the halves so the report names the real
-                            // scalar (U+1F600), not the lone high surrogate (U+D83D) iterated first.
-                            int scalar = char.IsHighSurrogate(c) && i + 1 < value.Length && char.IsLowSurrogate(value[i + 1])
-                                ? char.ConvertToUtf32(c, value[i + 1])
-                                : c;
-                            string id = element.Id is { } eid ? $" (id {eid.ToToken()})" : string.Empty;
-                            return $" First offender: attribute '{name}' on <{element.Tag}>{id} containing U+{scalar:X4}.";
-                        }
+                        // An astral char is a surrogate pair; combine the halves so the report names the real
+                        // scalar (U+1F600), not the lone high surrogate (U+D83D) iterated first.
+                        int scalar = char.IsHighSurrogate(c) && i + 1 < value.Length && char.IsLowSurrogate(value[i + 1])
+                            ? char.ConvertToUtf32(c, value[i + 1])
+                            : c;
+                        string id = element.Id is { } eid ? $" (id {eid.ToToken()})" : string.Empty;
+                        return $" First offender: attribute '{name}' on <{element.Tag}>{id} containing U+{scalar:X4}.";
                     }
                 }
             }
-            if (!element.Children.IsEmpty)
+            foreach (ProjectElement child in element.Children)
             {
-                foreach (ProjectElement child in element.Children)
+                string found = LocateNonLatin1(child);
+                if (found.Length > 0)
                 {
-                    string found = LocateNonLatin1(child);
-                    if (found.Length > 0)
-                    {
-                        return found;
-                    }
+                    return found;
                 }
             }
             return string.Empty;
@@ -127,12 +121,9 @@ namespace Ihc.Vis.Io
             {
                 order.Add(element.Tag);
             }
-            if (!element.Children.IsEmpty)
+            foreach (ProjectElement child in element.Children)
             {
-                foreach (ProjectElement child in element.Children)
-                {
-                    VisitPreorder(child, seen, order);
-                }
+                VisitPreorder(child, seen, order);
             }
         }
 

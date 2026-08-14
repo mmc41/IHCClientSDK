@@ -51,25 +51,19 @@ namespace Ihc.Vis.Io
                 return $" (first divergence at {path}: element <{expected.Tag}> re-read as <{actual.Tag}>)";
             }
             var actualAttrs = new Dictionary<string, string>(StringComparer.Ordinal);
-            if (!actual.Attrs.IsEmpty)
+            foreach ((string name, string value) in actual.Attrs)
             {
-                foreach ((string name, string value) in actual.Attrs)
-                {
-                    actualAttrs[name] = value;
-                }
+                actualAttrs[name] = value;
             }
-            if (!expected.Attrs.IsEmpty)
+            foreach ((string name, string value) in expected.Attrs)
             {
-                foreach ((string name, string value) in expected.Attrs)
+                if (!actualAttrs.Remove(name, out string? reread))
                 {
-                    if (!actualAttrs.Remove(name, out string? reread))
-                    {
-                        return $" (first divergence at {path}/<{expected.Tag}>: attribute '{name}'='{value}' is absent after re-parse)";
-                    }
-                    if (reread != value)
-                    {
-                        return $" (first divergence at {path}/<{expected.Tag}>: attribute '{name}' expected '{value}', re-read '{reread}')";
-                    }
+                    return $" (first divergence at {path}/<{expected.Tag}>: attribute '{name}'='{value}' is absent after re-parse)";
+                }
+                if (reread != value)
+                {
+                    return $" (first divergence at {path}/<{expected.Tag}>: attribute '{name}' expected '{value}', re-read '{reread}')";
                 }
             }
             if (actualAttrs.Count > 0)
@@ -77,8 +71,8 @@ namespace Ihc.Vis.Io
                 string extra = actualAttrs.Keys.First();
                 return $" (first divergence at {path}/<{expected.Tag}>: attribute '{extra}' appears only after re-parse)";
             }
-            int expectedCount = expected.Children.IsEmpty ? 0 : expected.Children.Length;
-            int actualCount = actual.Children.IsEmpty ? 0 : actual.Children.Length;
+            int expectedCount = expected.Children.Length;
+            int actualCount = actual.Children.Length;
             if (expectedCount != actualCount)
             {
                 return $" (first divergence at {path}/<{expected.Tag}>: {expectedCount} children re-read as {actualCount})";

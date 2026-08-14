@@ -19,7 +19,7 @@ namespace Ihc.Vis.Schema
     internal sealed record ElementSchema(
         string Tag,
         string CanonicalDtdBlock,
-        ImmutableArray<AttrSchema> Attrs)
+        EquatableArray<AttrSchema> Attrs)
     {
         /// <summary>The schema-view projection of one structured grammar declaration — attr-for-attr, with the
         /// default literal decoded to its logical value and the block text rendered in the <c>.vis</c>-side form
@@ -45,7 +45,7 @@ namespace Ihc.Vis.Schema
                     _ => AttrRender.Text,
                 },
                 attr.DecodedLiteral,
-                attr.EnumTokens.AsImmutableArray());
+                attr.EnumTokens);
         /// <summary>The declared schema for the named attribute, or <c>null</c> when this element type does not declare it.</summary>
         public AttrSchema? FindAttr(string name)
         {

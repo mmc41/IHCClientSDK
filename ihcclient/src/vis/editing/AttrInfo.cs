@@ -1,7 +1,4 @@
 #nullable enable
-using System;
-using System.Collections.Generic;
-
 using Ihc.Vis.Model;
 using Ihc.Vis.Schema;
 namespace Ihc.Vis.Editing
@@ -41,6 +38,6 @@ namespace Ihc.Vis.Editing
                     _ => AttrRequirement.Defaulted,
                 },
                 attr.Kind == AttrKind.Defaulted ? attr.Default : null,
-                attr.EnumValues);   // implicit, and default reads as empty — no normalizing ternary needed
+                attr.EnumValues);   // same type end to end, and default reads as empty — no normalizing ternary needed
     }
 }

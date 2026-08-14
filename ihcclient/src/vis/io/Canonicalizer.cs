@@ -1,6 +1,5 @@
 #nullable enable
 using System.Collections.Immutable;
-using System.Linq;
 
 using Ihc.Vis.Model;
 using Ihc.Vis.Schema;
@@ -44,7 +43,7 @@ namespace Ihc.Vis.Io
                 SchemaGuards.GuardNoUnknownAttributes(element, schema);
             }
 
-            var attrs = ImmutableArray.CreateBuilder<(string, string)>();
+            var attrs = ImmutableArray.CreateBuilder<(string Name, string Value)>();
             foreach (AttrSchema attr in schema.Attrs)
             {
                 string? value = element.GetAttribute(attr.Name);
@@ -58,7 +57,7 @@ namespace Ihc.Vis.Io
                 }
                 attrs.Add((attr.Name, value));
             }
-            ImmutableArray<(string, string)> canonAttrs = attrs.ToImmutable();
+            EquatableArray<(string Name, string Value)> canonAttrs = attrs.ToImmutable();
 
             // Canonicalize each child, tracking whether any produced a NEW instance (a subtree that was not already
             // canonical). An unchanged child returns itself (below), so it stays reference-equal here.
@@ -87,10 +86,7 @@ namespace Ihc.Vis.Io
             // between the source and the committed snapshot, so a commit path-copies only what it changed and a
             // reference-equality diff can skip whole subtrees. The canonical FORM is byte-identical either way — only
             // fewer allocations; the W4-3 CsCheck property test pins the byte-equivalence.
-            bool attrsUnchanged = element.Attrs.IsEmpty
-                ? canonAttrs.IsEmpty
-                : element.Attrs.SequenceEqual(canonAttrs);
-            if (attrsUnchanged && !anyChildRematerialized)
+            if (element.Attrs == canonAttrs && !anyChildRematerialized)
             {
                 return element;
             }

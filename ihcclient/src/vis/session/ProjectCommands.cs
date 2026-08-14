@@ -199,7 +199,7 @@ namespace Ihc.Vis
         /// from the app): the product is a modem and the project already holds one. The confirm <i>wording</i> stays
         /// GUI-side; this owns only the decision.</summary>
         public bool WouldExceedModemLimit(Project project, string productIdentifier) =>
-            _catalog.Value.Products.FirstOrDefault(p => p.ProductIdentifier == productIdentifier) is { } definition
+            ProductCatalogLookup.Resolve(_catalog.Value.Products, productIdentifier) is { } definition
             && ProductClassifier.IsModem(definition.Body.Tag) && HasModem(project);
 
         // Whether the project already contains a modem device root (the at-most-one-modem rule, US-013).

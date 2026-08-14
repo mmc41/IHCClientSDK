@@ -1,6 +1,5 @@
 #nullable enable
 using System;
-using System.Collections.Immutable;
 using System.IO;
 using System.Text;
 
@@ -74,12 +73,12 @@ namespace Ihc.Vis.Catalog
             ArgumentNullException.ThrowIfNull(definition);
             ArgumentNullException.ThrowIfNull(output);
             WriteDefinition(definition.Grammar, definition.Body, definition.SourceEncoding, output, layout,
-                definition.ExplicitCloseIds.AsImmutableHashSet());
+                definition.ExplicitCloseIds);
         }
 
         private static void WriteDefinition(CatalogGrammar grammar, ProjectElement body, CatalogTextEncoding encoding,
             Stream output, CatalogLayout layout = CatalogLayout.Catalog,
-            ImmutableHashSet<ElementId>? explicitCloseIds = null)
+            EquatableSet<ElementId> explicitCloseIds = default)
         {
             if (grammar is null || grammar.IsEmpty)
             {
@@ -96,7 +95,7 @@ namespace Ihc.Vis.Catalog
             string head = grammar.VerbatimHead ?? CatalogDtdEmitter.RenderHead(grammar, body.Tag, layout);
             var sb = new StringBuilder(head.Length + 512);
             sb.Append(head);
-            AppendElement(sb, body, depth: 0, layout, explicitCloseIds ?? ImmutableHashSet<ElementId>.Empty);
+            AppendElement(sb, body, depth: 0, layout, explicitCloseIds);
 
             byte[] preamble = encoding.Preamble();
             byte[] text;
@@ -129,7 +128,7 @@ namespace Ihc.Vis.Catalog
         }
 
         private static void AppendElement(StringBuilder sb, ProjectElement element, int depth, CatalogLayout layout,
-            ImmutableHashSet<ElementId> explicitCloseIds)
+            EquatableSet<ElementId> explicitCloseIds)
         {
             AppendIndent(sb, depth, layout);
             sb.Append('<').Append(element.Tag);

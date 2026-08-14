@@ -54,6 +54,26 @@ namespace Ihc.Vis.Schema
         /// </summary>
         public static bool IsHiddenFromTree(string tag, string? settingAttribute) =>
             tag is "airlink_shutter_up" or "airlink_shutter_down"
-            || string.Equals(settingAttribute, "yes", StringComparison.Ordinal);
+            || IsSetting(settingAttribute);
+
+        /// <summary>
+        /// The attribute a catalog marks a configurable SETTING resource with, and the value that marks it. Named
+        /// here rather than spelled at each reader: "what counts as a setting" is one vendor grammar fact, and it is
+        /// asked in three unrelated places — this class hides such a row from the tree, the product dialog gates its
+        /// <i>Indstillinger</i> slot on it, and the same rule picks the rows that go in the slot. Three literals
+        /// would let the grid's presence, its contents and the tree disagree about the same row.
+        /// </summary>
+        public const string SettingAttribute = "setting";
+
+        /// <inheritdoc cref="SettingAttribute"/>
+        public const string SettingValue = "yes";
+
+        /// <summary>
+        /// Whether a raw <see cref="SettingAttribute"/> value marks the resource as a configurable setting. Takes
+        /// the raw attribute (what <c>ProjectElement.GetAttribute("setting")</c> returns) and does no DTD
+        /// defaulting, so an absent attribute arrives as <c>null</c> and is correctly not a setting.
+        /// </summary>
+        public static bool IsSetting(string? settingAttribute) =>
+            string.Equals(settingAttribute, SettingValue, StringComparison.Ordinal);
     }
 }

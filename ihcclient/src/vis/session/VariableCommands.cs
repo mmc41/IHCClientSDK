@@ -41,6 +41,9 @@ namespace Ihc.Vis.Session
         ResourceValueKind Kind, bool Bool, long Number, int Hour, int Minute, int Second, int Millisecond,
         string Token = "", int Day = 0, int Month = 0, double Decimal = 0)
     {
+        // Not a redundant restatement of the `init` accessor: a record does NOT route a positional parameter
+        // through a property the record declares itself, so this initializer is the constructor's only path into
+        // the field (CS8907 if it goes). The accessor covers the `with`/object-initializer routes.
         private readonly double _decimal = Finite(Decimal);
 
         /// <summary>

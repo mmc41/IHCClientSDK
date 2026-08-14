@@ -1,5 +1,5 @@
 #nullable enable
-using System.Collections.Immutable;
+using Ihc.Vis.Model;
 
 namespace Ihc.Vis.Schema
 {
@@ -47,7 +47,7 @@ namespace Ihc.Vis.Schema
         AttrKind Kind,
         AttrRender Render,
         string Default,
-        ImmutableArray<string> EnumValues)
+        EquatableArray<string> EnumValues)
     {
         /// <summary>
         /// Whether the project serializer omits this attribute on write: declared with a default and carrying

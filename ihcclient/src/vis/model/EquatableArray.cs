@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace Ihc.Vis.Model
@@ -92,19 +93,14 @@ namespace Ihc.Vis.Model
         /// </summary>
         public static implicit operator EquatableArray<T>(ImmutableArray<T> items) => new EquatableArray<T>(items);
 
-        /// <summary>Order-sensitive, element-wise equality. <c>default</c> equals empty.</summary>
-        public bool Equals(EquatableArray<T> other)
-        {
-            ImmutableArray<T> mine = Items;
-            ImmutableArray<T> theirs = other.Items;
-            EqualityComparer<T> comparer = EqualityComparer<T>.Default;
-            bool equal = mine.Length == theirs.Length;
-            for (int i = 0; equal && i < mine.Length; i++)
-            {
-                equal = comparer.Equals(mine[i], theirs[i]);
-            }
-            return equal;
-        }
+        /// <summary>
+        /// Order-sensitive, element-wise equality over <see cref="EqualityComparer{T}.Default"/>. <c>default</c>
+        /// equals empty. Delegates to the <see cref="ImmutableArray{T}"/> overload rather than looping here, so a
+        /// value compared against a copy that still shares its backing array settles in O(1) on the array reference
+        /// — the common case after a path-copying commit, where most elements are new instances holding the same
+        /// children and attributes.
+        /// </summary>
+        public bool Equals(EquatableArray<T> other) => Items.SequenceEqual(other.Items);
 
         /// <inheritdoc/>
         public override bool Equals(object? obj) => obj is EquatableArray<T> other && Equals(other);

@@ -212,9 +212,12 @@ namespace Ihc.Vis.Products
         /// <c>resource_light</c>, so no tag names the set (T070).
         /// <para>Stated once, and used two ways: it gates the <i>Indstillinger</i> slot, and the same rule picks
         /// the rows that go in it (<c>ProductView.SettingElements</c>). Two literals would let "what counts as a
-        /// setting" drift between the grid's presence and its contents.</para>
+        /// setting" drift between the grid's presence and its contents. The marker itself is the model-layer
+        /// <see cref="Schema.ProductRows.SettingAttribute"/>, not a copy: the tree hides exactly the rows this
+        /// grid shows.</para>
         /// </summary>
-        public static readonly DialogPresence.DescendantMarked Setting = new("setting", "yes");
+        public static readonly DialogPresence.DescendantMarked Setting =
+            new(Schema.ProductRows.SettingAttribute, Schema.ProductRows.SettingValue);
 
         /// <summary>Assembles a model from its groups. Named <c>Dialog</c>, not <c>Model</c>: the latter collides
         /// with the <c>Ihc.Vis.Model</c> namespace at every call site that imports these statically.</summary>

@@ -156,10 +156,6 @@ namespace Ihc.Vis.Validation
                 }
             }
 
-            if (element.Attrs.IsEmpty)
-            {
-                return;
-            }
             foreach ((string name, string value) in element.Attrs)
             {
                 if (!Latin1.Contains(value))
@@ -182,7 +178,7 @@ namespace Ihc.Vis.Validation
                     findings.Error("idref-dangling", element,
                         $"dangling {name}='{value}' on '{element.Tag}' (no element has that id)");
                 }
-                if (!attr.EnumValues.IsDefaultOrEmpty && !attr.EnumValues.Contains(value))
+                if (!attr.EnumValues.IsEmpty && !attr.EnumValues.Contains(value))
                 {
                     findings.Error("attr-enum-range", element,
                         $"attribute {name}='{value}' on '{element.Tag}' is not one of ({string.Join(" | ", attr.EnumValues)})");
@@ -214,7 +210,7 @@ namespace Ihc.Vis.Validation
 
             // (2) programs may hold only program_simple.
             ProjectElement? programs = functionBlock.FindChild("programs");
-            if (programs is not null && !programs.Children.IsEmpty)
+            if (programs is not null)
             {
                 foreach (ProjectElement program in programs.Children)
                 {
@@ -229,10 +225,6 @@ namespace Ihc.Vis.Validation
             // (3) pin types are bound to their container (§6.3.1).
             foreach (ProjectElement container in children)
             {
-                if (container.Children.IsEmpty)
-                {
-                    continue;
-                }
                 foreach (ProjectElement child in container.Children)
                 {
                     string? required = PlacementRules.PinContainerFor(child.Tag);
@@ -269,7 +261,7 @@ namespace Ihc.Vis.Validation
             void Walk(ProjectElement element)
             {
                 ElementSchema? schema = view.TryGet(element.Tag);
-                if (schema is not null && !element.Attrs.IsEmpty)
+                if (schema is not null)
                 {
                     foreach ((string name, string value) in element.Attrs)
                     {
@@ -289,12 +281,9 @@ namespace Ihc.Vis.Validation
                 {
                     ValidateEmbeddedConstants(element, findings);
                 }
-                if (!element.Children.IsEmpty)
+                foreach (ProjectElement child in element.Children)
                 {
-                    foreach (ProjectElement child in element.Children)
-                    {
-                        Walk(child);
-                    }
+                    Walk(child);
                 }
             }
             Walk(functionBlock);
@@ -302,10 +291,6 @@ namespace Ihc.Vis.Validation
 
         private static void ValidateEmbeddedConstants(ProjectElement leaf, FindingCollector findings)
         {
-            if (leaf.Children.IsEmpty)
-            {
-                return;
-            }
             string referenceAttr = leaf.Tag == "case_action" ? "value" : "link2";
             foreach (ProjectElement child in leaf.Children)
             {
@@ -485,8 +470,8 @@ namespace Ihc.Vis.Validation
                 {
                     continue;
                 }
-                bool found = !definition.Children.IsEmpty
-                    && definition.Children.Any(v => v.Tag == "enum_value" && v.GetAttribute("id") == inivalue);
+                bool found = definition.Children.AsImmutableArray()
+                    .Any(v => v.Tag == "enum_value" && v.GetAttribute("id") == inivalue);
                 if (!found)
                 {
                     findings.Error("enum-inivalue", element,
@@ -557,10 +542,6 @@ namespace Ihc.Vis.Validation
 
         private static void ValidateContainment(ProjectElement parent, ProjectElement? grandParent, FindingCollector findings)
         {
-            if (parent.Children.IsEmpty)
-            {
-                return;
-            }
             foreach (ProjectElement child in parent.Children)
             {
                 if (!PlacementRules.CanInsert(parent.Tag, child.Tag, grandParent?.Tag))

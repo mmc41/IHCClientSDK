@@ -173,10 +173,10 @@ namespace Ihc.Vis.Products
                 Note));
 
         /// <summary>
-        /// THE preset lookup. Every path that produces a <see cref="ProductDefinition"/> — the five named builder
-        /// factories, the open-world <c>Create(rootTag, …)</c>, and <c>CatalogReader</c> reading a <c>.def</c> —
-        /// resolves its dialog through this one function, so a definition's shape never depends on how it was
-        /// obtained.
+        /// THE preset lookup, reached through the single compose door <c>ProductDialogComposer.ComposeFor</c> — so a
+        /// dialog's shape is decided by the PLACED element, never carried on the definition that produced it. (A
+        /// <see cref="ProductDefinition"/> used to cache its own resolved model; it no longer does, and re-adding
+        /// that cache would give the read side and the write-back two ways to disagree about one product.)
         /// <para>Keyed on the device-root TAG rather than on <see cref="ProductFamily"/>: the tag is what every
         /// construction path already has in hand, and it is what a <c>.def</c> carries. An unknown tag yields
         /// <see cref="ProductDialogModel.Empty"/> — the open-world case, which the composer turns into the minimal

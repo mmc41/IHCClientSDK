@@ -59,7 +59,7 @@ namespace Ihc.Vis.Editing
             ArgumentNullException.ThrowIfNull(name);
             ArgumentNullException.ThrowIfNull(value);
             AttrSchema attr = RequireWritableAttr(name);
-            if (!attr.EnumValues.IsDefaultOrEmpty && !attr.EnumValues.Contains(value))
+            if (!attr.EnumValues.IsEmpty && !attr.EnumValues.Contains(value))
             {
                 throw new ArgumentException(
                     $"'{value}' is not a permitted value for '{name}' on <{editor.Require(Id).Tag}>; " +

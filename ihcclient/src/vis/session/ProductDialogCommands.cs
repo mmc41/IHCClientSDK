@@ -1,5 +1,4 @@
 #nullable enable
-using System.Collections.Immutable;
 using System.Linq;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;

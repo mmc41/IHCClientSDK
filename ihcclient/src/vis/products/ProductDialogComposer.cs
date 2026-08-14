@@ -86,7 +86,7 @@ namespace Ihc.Vis.Products
             bool lockedElement = project.SchemaView.TryGet(product.Tag)?.FindAttr("locked") is not null
                                  && project.View(product).Effective("locked") == "yes";
 
-            FrozenDictionary<string, ImmutableArray<string>> suggestions = GatherSuggestions(project, preset);
+            FrozenDictionary<string, EquatableArray<string>> suggestions = GatherSuggestions(project, preset);
 
             var groups = new List<DialogDescriptorGroup>(preset.Groups.Length);
             foreach (DialogGroupModel group in preset.Groups)
@@ -167,7 +167,7 @@ namespace Ihc.Vis.Products
         private static DialogDescriptorField ComposeField(
             Project project, DialogGroupModel group, DialogFieldModel field,
             (ProjectElement Element, string Attribute) resolved, bool lockedElement,
-            FrozenDictionary<string, ImmutableArray<string>> suggestions)
+            FrozenDictionary<string, EquatableArray<string>> suggestions)
         {
             (int? min, int? max) = NumericRange(project, resolved.Element, field.Control);
             return new DialogDescriptorField(
@@ -181,10 +181,10 @@ namespace Ihc.Vis.Products
                 field.Rule,
                 min,
                 max,
+                // default IS empty for the wrapper, so a non-suggesting field needs no fallback of its own.
                 field.Control == DialogControlKind.ComboSuggest
-                && suggestions.TryGetValue(resolved.Attribute, out ImmutableArray<string> offered)
-                    ? offered
-                    : ImmutableArray<string>.Empty)
+                    ? suggestions.GetValueOrDefault(resolved.Attribute)
+                    : default)
             {
                 ColumnSpan = field.ColumnSpan,
             };
@@ -203,7 +203,7 @@ namespace Ihc.Vis.Products
         /// by attribute. The modem offers seven such fields and a project walk materializes the whole tree, so
         /// asking per field re-walked a 1300-element project seven times to open one dialog.</para>
         /// </summary>
-        private static FrozenDictionary<string, ImmutableArray<string>> GatherSuggestions(
+        private static FrozenDictionary<string, EquatableArray<string>> GatherSuggestions(
             Project project, ProductDialogModel preset)
         {
             var wanted = new Dictionary<string, SortedSet<string>>(StringComparer.Ordinal);
@@ -211,40 +211,36 @@ namespace Ihc.Vis.Products
             {
                 foreach (DialogPartModel part in group.Parts)
                 {
-                    if (part is DialogFieldModel { Control: DialogControlKind.ComboSuggest } field
-                        && SuggestedAttribute(field.Binding) is { } attribute)
+                    if (part is DialogFieldModel { Control: DialogControlKind.ComboSuggest } field)
                     {
-                        wanted[attribute] = new SortedSet<string>(StringComparer.Ordinal);
+                        wanted[field.Binding.AttributeName] = new SortedSet<string>(StringComparer.Ordinal);
                     }
                 }
             }
 
-            if (wanted.Count > 0)
+            // No suggesting field in the preset — four of the five families — so the project walk never starts.
+            if (wanted.Count == 0)
             {
-                foreach (ProjectElement element in project.Root.DescendantsAndSelf())
+                return FrozenDictionary<string, EquatableArray<string>>.Empty;
+            }
+
+            foreach (ProjectElement element in project.Root.DescendantsAndSelf())
+            {
+                foreach ((string attribute, SortedSet<string> values) in wanted)
                 {
-                    foreach ((string attribute, SortedSet<string> values) in wanted)
+                    string? value = element.GetAttribute(attribute);
+                    if (!string.IsNullOrWhiteSpace(value))
                     {
-                        string? value = element.GetAttribute(attribute);
-                        if (!string.IsNullOrWhiteSpace(value))
-                        {
-                            values.Add(value);
-                        }
+                        values.Add(value);
                     }
                 }
             }
 
             return wanted.ToFrozenDictionary(
-                entry => entry.Key, entry => ImmutableArray.CreateRange(entry.Value), StringComparer.Ordinal);
+                entry => entry.Key,
+                entry => (EquatableArray<string>)ImmutableArray.CreateRange(entry.Value),
+                StringComparer.Ordinal);
         }
-
-        /// <summary>The attribute a field's binding reads, whichever end of the product it sits on.</summary>
-        private static string? SuggestedAttribute(DialogBinding binding) => binding switch
-        {
-            DialogBinding.RootAttribute root => root.Name,
-            DialogBinding.DescendantAttribute descendant => descendant.Attribute,
-            _ => null,
-        };
 
         /// <summary>
         /// Expands a repeat over the element's matching DESCENDANTS, ordered by the numeric value of the key.

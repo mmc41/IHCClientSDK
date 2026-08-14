@@ -278,10 +278,25 @@ namespace Ihc.Vis.Products
         // third binding kind that no composer, renderer or write-back knows how to handle.
         private protected DialogBinding() { }
 
+        /// <summary>
+        /// WHICH attribute this binding names, whichever end of the product it sits on. A property of the binding
+        /// rather than a composer-side switch: a switch would answer with a silent default arm, so a third binding
+        /// kind would compile and quietly get no answer, where an abstract member cannot be left unimplemented.
+        /// </summary>
+        public abstract string AttributeName { get; }
+
         /// <summary>An attribute on the product's own root element.</summary>
-        public sealed record RootAttribute(string Name) : DialogBinding;
+        public sealed record RootAttribute(string Name) : DialogBinding
+        {
+            /// <inheritdoc/>
+            public override string AttributeName => Name;
+        }
 
         /// <summary>An attribute on the first descendant carrying <paramref name="Tag"/>.</summary>
-        public sealed record DescendantAttribute(string Tag, string Attribute = "value") : DialogBinding;
+        public sealed record DescendantAttribute(string Tag, string Attribute = "value") : DialogBinding
+        {
+            /// <inheritdoc/>
+            public override string AttributeName => Attribute;
+        }
     }
 }

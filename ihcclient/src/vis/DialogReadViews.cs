@@ -83,10 +83,6 @@ namespace Ihc.Vis
 
         public bool IsWireless => ProductClassifier.IsWireless(Element.Tag);
 
-        /// <summary>Whether this is a wireless product with an advanced dimmer configuration (US-015).</summary>
-        public bool IsWirelessDimmer =>
-            IsWireless && Element.FindDescendantOrSelf(e => e.Tag == "dimmer_settings") is not null;
-
         /// <summary>The product's input/output terminals (the addressing grids, US-012) as typed pin views.</summary>
         public IEnumerable<PinView> Terminals
         {

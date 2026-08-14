@@ -1,5 +1,4 @@
 #nullable enable
-using System;
 using System.Collections.Immutable;
 using System.Linq;
 
@@ -29,10 +28,8 @@ namespace Ihc.Vis.Validation
             {
                 return Success;
             }
-            ImmutableArray<string> errors = findings
-                .Where(f => f.Severity == ValidationSeverity.Error)
-                .Select(f => f.Message)
-                .ToImmutableArray();
+            EquatableArray<string> errors =
+                [.. findings.Where(f => f.Severity == ValidationSeverity.Error).Select(f => f.Message)];
             return new ProjectValidationResult(errors.IsEmpty, errors) { Findings = findings };
         }
 

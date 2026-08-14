@@ -77,15 +77,12 @@ namespace Ihc.Vis.Io
         internal static long MaxCounterPresent(ProjectElement element)
         {
             long max = element.Id is { } id ? id.Counter : 0;
-            if (!element.Children.IsEmpty)
+            foreach (ProjectElement child in element.Children)
             {
-                foreach (ProjectElement child in element.Children)
+                long childMax = MaxCounterPresent(child);
+                if (childMax > max)
                 {
-                    long childMax = MaxCounterPresent(child);
-                    if (childMax > max)
-                    {
-                        max = childMax;
-                    }
+                    max = childMax;
                 }
             }
             return max;
@@ -118,7 +115,7 @@ namespace Ihc.Vis.Io
         {
             long max = 0;
             ElementSchema? schema = view.TryGet(element.Tag);
-            if (schema is not null && !element.Attrs.IsEmpty)
+            if (schema is not null)
             {
                 foreach ((string name, string value) in element.Attrs)
                 {
@@ -129,15 +126,12 @@ namespace Ihc.Vis.Io
                     }
                 }
             }
-            if (!element.Children.IsEmpty)
+            foreach (ProjectElement child in element.Children)
             {
-                foreach (ProjectElement child in element.Children)
+                long childMax = MaxReferencedCounter(child, view);
+                if (childMax > max)
                 {
-                    long childMax = MaxReferencedCounter(child, view);
-                    if (childMax > max)
-                    {
-                        max = childMax;
-                    }
+                    max = childMax;
                 }
             }
             return max;

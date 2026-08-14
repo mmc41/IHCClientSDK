@@ -337,7 +337,7 @@ namespace Ihc.Vis.Editing
         {
             canonical = value;
             AttrSchema? attr = schema.FindAttr(attrName);
-            if (attr is null || attr.EnumValues.IsDefaultOrEmpty || attr.EnumValues.Contains(value))
+            if (attr is null || attr.EnumValues.IsEmpty || attr.EnumValues.Contains(value))
             {
                 return false;   // undeclared, not an enumerated attribute, or already an exact token
             }
@@ -444,16 +444,13 @@ namespace Ihc.Vis.Editing
         private static EquatableArray<(string Name, string Value)> StripMenuPrefixFromName(
             EquatableArray<(string Name, string Value)> attrs)
         {
-            ImmutableArray<(string Name, string Value)> bag = attrs.AsImmutableArray();
-            for (int i = 0; i < bag.Length; i++)
+            // Absent name → nothing to strip; SetAttribute would APPEND one, so the null check is not just a fast path.
+            if (ProjectElement.GetAttribute(attrs, "name") is not { } name)
             {
-                if (bag[i].Name == "name")
-                {
-                    string stripped = MenuPrefix.Strip(bag[i].Value);
-                    return stripped == bag[i].Value ? attrs : bag.SetItem(i, ("name", stripped));
-                }
+                return attrs;
             }
-            return attrs;
+            string stripped = MenuPrefix.Strip(name);
+            return stripped == name ? attrs : ProjectElement.SetAttribute(attrs, "name", stripped);
         }
 
         private static EquatableArray<ProjectElement> Concat(EquatableArray<ProjectElement> existing, List<ProjectElement> added) =>

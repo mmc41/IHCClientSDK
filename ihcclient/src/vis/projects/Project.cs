@@ -198,12 +198,15 @@ namespace Ihc.Vis.Projects
         /// navigation is resolved here against the tree (the read side of link navigation and far-end paths).
         /// </summary>
         public ProjectElement? FindParent(ElementId id) =>
-            Root.FindDescendantOrSelf(e => e.Children.Any(c => c.Id == id));
+            // The predicate runs once per node of a whole-tree walk, and this walk itself runs per node in a tree
+            // projection — so the inner scan goes through AsImmutableArray to reach the allocation-free
+            // ImmutableArray overload of Any rather than the boxing IEnumerable one.
+            Root.FindDescendantOrSelf(e => e.Children.AsImmutableArray().Any(c => c.Id == id));
 
         /// <summary>The <c>group</c> localities declared under <c>groups</c>.</summary>
         public IReadOnlyList<ProjectElement> Groups =>
-            Child("groups") is { } groups && !groups.Children.IsEmpty
-                ? groups.Children.Where(c => c.Tag == "group").ToImmutableArray()
+            Child("groups") is { } groups
+                ? groups.Children.AsImmutableArray().Where(c => c.Tag == "group").ToImmutableArray()
                 : ImmutableArray<ProjectElement>.Empty;
 
         public override string ToString() =>

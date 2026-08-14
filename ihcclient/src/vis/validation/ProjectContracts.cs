@@ -60,12 +60,9 @@ namespace Ihc.Vis.Validation
                         }
                     }
                 }
-                if (!element.Children.IsEmpty)
+                foreach (ProjectElement child in element.Children)
                 {
-                    foreach (ProjectElement child in element.Children)
-                    {
-                        Walk(child);
-                    }
+                    Walk(child);
                 }
             }
             Walk(project.Root);

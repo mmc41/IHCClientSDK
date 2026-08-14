@@ -74,10 +74,6 @@ namespace Ihc.Vis.Editing
 
         internal static ProjectElement ReplaceChildByTag(ProjectElement parent, string tag, ProjectElement replacement)
         {
-            if (parent.Children.IsEmpty)
-            {
-                return parent;
-            }
             ImmutableArray<ProjectElement> children = parent.Children.AsImmutableArray();
             for (int i = 0; i < children.Length; i++)
             {
@@ -112,10 +108,6 @@ namespace Ihc.Vis.Editing
 
         internal static ProjectElement? FindParentOf(ProjectElement element, ElementId childId)
         {
-            if (element.Children.IsEmpty)
-            {
-                return null;
-            }
             foreach (ProjectElement child in element.Children)
             {
                 if (child.Id == childId)

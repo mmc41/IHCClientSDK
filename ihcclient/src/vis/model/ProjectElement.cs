@@ -53,10 +53,6 @@ namespace Ihc.Vis.Model
         /// </summary>
         internal static string? GetAttribute(EquatableArray<(string Name, string Value)> attrs, string name)
         {
-            if (attrs.IsEmpty)
-            {
-                return null;
-            }
             foreach ((string Name, string Value) attr in attrs)
             {
                 if (attr.Name == name)
@@ -159,10 +155,6 @@ namespace Ihc.Vis.Model
 
         private static void Collect(ProjectElement element, List<ProjectElement> acc)
         {
-            if (element.Children.IsEmpty)
-            {
-                return;
-            }
             foreach (ProjectElement child in element.Children)
             {
                 acc.Add(child);

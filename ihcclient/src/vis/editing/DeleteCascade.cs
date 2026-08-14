@@ -93,9 +93,9 @@ namespace Ihc.Vis.Editing
                 ProjectElement mapped = e.GetAttribute("address_dataline") is null
                     ? e
                     : e with { Attrs = e.Attrs.Where(a => a.Name != "address_dataline").ToImmutableArray() };
-                return mapped.Children.Any()
-                    ? mapped with { Children = mapped.Children.Select(Strip).ToImmutableArray() }
-                    : mapped;
+                return mapped.Children.IsEmpty
+                    ? mapped
+                    : mapped with { Children = mapped.Children.AsImmutableArray().Select(Strip).ToImmutableArray() };
             }
             return Strip(source);
         }

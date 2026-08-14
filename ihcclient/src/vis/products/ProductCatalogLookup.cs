@@ -31,7 +31,9 @@ namespace Ihc.Vis.Products
             {
                 return null;
             }
-            var byIdentifier = products.Where(p => p.ProductIdentifier == productIdentifier).ToList();
+            // Take(2) is all the rule ever needs: one match decides, two are the ambiguous case, and no third
+            // match can change either answer — so the scan stops instead of materializing the whole catalog slice.
+            var byIdentifier = products.Where(p => p.ProductIdentifier == productIdentifier).Take(2).ToList();
             return (displayName is null ? null : byIdentifier.FirstOrDefault(p => p.DisplayName == displayName))
                    ?? (byIdentifier.Count == 1 ? byIdentifier[0] : null);
         }
