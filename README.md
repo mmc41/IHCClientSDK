@@ -126,7 +126,6 @@ All applications, utilities and examples are launched with `dotnet run --project
 | HTTP proxy recorder | Utility | `dotnet run --project utilities/ihc_httpproxyrecorder/ihc_httpproxyrecorder.csproj` |
 | Project download/upload | Utility | `dotnet run --project utilities/ihc_project_download_upload/ihc_ProjectDownloadUpload.csproj` |
 | Settings encrypt/decrypt | Utility | `dotnet run --project utilities/ihc_settings_encrypt/ihc_settings_encrypt.csproj -- encrypt ihcsettings.json` |
-| Catalog codegen (dev-time only) | Utility | `dotnet run --project utilities/ihc_catalog_codegen/ihc_catalog_codegen.csproj` |
 | Example 1 (read/write IO) | Example | `dotnet run --project examples/ihcclient_example1/example1.csproj` |
 | Example 2 | Example | `dotnet run --project examples/ihcclient_example2/example2.csproj` |
 
@@ -149,7 +148,6 @@ This project is hosted in a mono-repo containing the following sub-projects:
   * [IHC Http Proxy recorder](utilities/ihc_httpproxyrecorder/README.md) contains a simple http proxy useful for software (sdk) developers to investigate undocumented IHC controller API's.
   * [IHC Project download/upload](utilities/ihc_project_download_upload/README.md) contains a tool to download/upload project files.
   * [IHC Settings encrypt](utilities/ihc_settings_encrypt/README.md) contains a tool to encrypt/decrypt passwords in ihcsettings.json.
-  * [IHC catalog codegen](utilities/ihc_catalog_codegen/) contains a developer-time generator that decompiles a vendor IHC Visual component catalog into the C# sources embedded in the SDK's built-in catalog. Only needed when regenerating the catalog.
 * SDK tests:
   * [Safe unit tests](tests/safe_unit_tests/README.md) contains unit tests written in C# that do not access a controller.
   * [Safe project tests](tests/safe_project_tests/) contains tests for the `.vis` project-file engine, driven by committed oracle files. Does not access a controller.

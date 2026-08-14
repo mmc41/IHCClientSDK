@@ -188,7 +188,7 @@ the per-file backup obligation in §16.3 do not exist.
 - Migrate `ProjectElement`, the three grammar types, and `ProjectValidationResult`.
 - Convert grammar classes to sealed record classes without opening public construction or writable properties.
 - **Before converting**, run `rg -n "GrammarAttr|GrammarDeclaration|CatalogGrammar" ihcclient applications tests` filtered for `==`/`!=` usage: the conversion turns reference comparison into value comparison silently, with no compile error. Check the same three types for a custom `ToString()` and for diagnostic/report/assertion text that embeds one — records replace it.
-- Remove their now-redundant equality/hash implementations, and delete `ChildrenOrEmpty()`/`AttrsOrEmpty()` along with them (rewriting `IsDefaultOrEmpty` → `IsEmpty` at every call site). This is the bulk of the step's diff and reaches the GUI, the utilities (`ihc_catalog_codegen`'s two decompilers especially) and the tests.
+- Remove their now-redundant equality/hash implementations, and delete `ChildrenOrEmpty()`/`AttrsOrEmpty()` along with them (rewriting `IsDefaultOrEmpty` → `IsEmpty` at every call site). This is the bulk of the step's diff and reaches the GUI, the utilities and the tests.
 - Update builders, readers, writers, canonicalization, and validation call sites using collection expressions or `AsImmutableArray()` at concrete-array boundaries.
 - Completion: existing project-model equality tests pass; catalog grammar round-trip tests pass; equal independently built trees/grammars/results hash equally; factories still reject invalid grammar states; no `==` on a grammar type changed meaning unnoticed.
 
@@ -260,7 +260,7 @@ No external research or product-behavior change is required.
 | Attribute metadata | `AttrInfo.cs`, property-grid consumers | Low | Read-only collection surface changes without changing attribute behavior. |
 | Policy tests | `safe_architecture_tests` | Medium | Enforces future use and needs a positive control to avoid a vacuous test. |
 | Downstream GUI | `applications/ihc_openvisual`, `safe_visual_tests` | Medium | Compile-time type changes; no intended UI behavior change. |
-| Utilities | `ihc_catalog_codegen` (`ProductDecompiler`, `FunctionBlockDecompiler`), `ihc_lab` | Medium | Among the heaviest `.Children`/`.Attrs` consumers in the repo; covered by the solution build but easy to under-estimate. |
+| Utilities | `ihc_lab` | Medium | Among the heaviest `.Children`/`.Attrs` consumers in the repo; covered by the solution build but easy to under-estimate. |
 | Architecture documentation | `ARCHITECTURE.md` | Low | Records the cross-cutting value-collection convention; no product docs change. |
 
 ## 6. Potential Negative Effects

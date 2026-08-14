@@ -1,6 +1,6 @@
 ---
-version: 0.2.2
-last-updated: 2026-07-17
+version: 0.2.3
+last-updated: 2026-08-14
 status: draft
 ---
 
@@ -17,8 +17,9 @@ discoverable at a glance and the resource ID needed to cross-reference the contr
 products, product inputs/outputs, function blocks, and function-block pins); the tooltip's content (the
 node's documentation note and its IHC resource ID); and the always-on behaviour that shows the resource ID
 without holding a modifier key. **Scope excludes:** editing the note or the resource ID (that is the
-*Properties* dialog, E2–E5); tooltips on toolbar buttons, menus, or dialog controls; and the visual
-icon/state language (E12).
+*Properties* dialog, E2–E5); tooltips on toolbar buttons, menus, or dialog controls; the visual
+icon/state language (E12); the catalog's own description of what a node is, which US-078 (E17) adds to
+this same tooltip; and any description revealed while browsing an insert list, which is US-076 (E17).
 
 **Acceptance criteria (epic level):**
 - MUST: Hovering a tree node shows a tooltip containing that node's authored documentation note when one

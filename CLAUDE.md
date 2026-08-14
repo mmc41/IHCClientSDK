@@ -124,7 +124,6 @@ This is a .NET 10 mono-repository containing an unofficial SDK for IHC (Intellig
 - `utilities/ihc_httpproxyrecorder/` - HTTP proxy for debugging/investigating IHC API calls
 - `utilities/ihc_project_download_upload/` - Tool for downloading/uploading IHC project files
 - `utilities/ihc_settings_encrypt/` - Tool to encrypt/decrypt passwords in `ihcsettings.json` (AES-256-GCM)
-- `utilities/ihc_catalog_codegen/` - Developer-time generator that decompiles a vendor IHC Visual catalog into the SDK's built-in catalog C# sources (only needed when regenerating the catalog)
 
 ### SDK Architecture
 

@@ -1,24 +1,24 @@
 ---
-scope: Navigation hub for the IHC OpenVisual behavioural specification — epics E1–E16 and their user stories (US-NNN) with Given-When-Then acceptance criteria
+scope: Navigation hub for the IHC OpenVisual behavioural specification — epics E1–E17 and their user stories (US-NNN) with Given-When-Then acceptance criteria
 exclusions: No spec content lives here; behaviour is defined only in the story files. Excludes product.md and the reference docs (see ../INDEX.md)
 research_date: 2026-08-11
-latest_update: 2026-08-11 — hub created (16 story files indexed)
+latest_update: 2026-08-14 — E17 (integrated component help, US-075–US-079) added
 ---
 
-# OpenVisual User Stories (Epics E1–E16) Index
+# OpenVisual User Stories (Epics E1–E17) Index
 
 > Per-epic behavioural spec files for IHC OpenVisual: each file holds one epic's user stories with
 > Given-When-Then acceptance criteria — start here to find which epic owns a behaviour.
 
-**Total Documents:** 16 content files (plus this index)
+**Total Documents:** 17 content files (plus this index)
 
-Files are numbered by epic (`01-*.md` = E1 … `16-*.md` = E16). Each has YAML frontmatter
+Files are numbered by epic (`01-*.md` = E1 … `17-*.md` = E17). Each has YAML frontmatter
 (version, last-updated, status) and a scope note saying whether the epic is in scope,
 partly in scope, or out of scope.
 
 ## Quick Navigation
 
-- [Foundations & cross-cutting interaction](#foundations--cross-cutting-interaction) (6 docs)
+- [Foundations & cross-cutting interaction](#foundations--cross-cutting-interaction) (7 docs)
 - [Localities & products](#localities--products) (3 docs)
 - [Function blocks & logic](#function-blocks--logic) (3 docs)
 - [Outputs, controller & catalog exchange](#outputs-controller--catalog-exchange) (3 docs)
@@ -37,6 +37,7 @@ partly in scope, or out of scope.
 | [15-structural-editing.md](15-structural-editing.md) | E15 node-agnostic delete, move, reorder and copy-paste generalised over all node types | US-053–056, structural editing, containers, clipboard, node relocation | 414 |
 | [12-icon-language.md](12-icon-language.md) | E12 icon and colour vocabulary letting users read node type and state at a glance | US-046, icons, state colours, tree nodes, visual grammar | 118 |
 | [13-tooltips.md](13-tooltips.md) | E13 hover tooltips exposing node documentation notes and IHC resource IDs in both trees | US-047/048, tooltips, resource ID, documentation note | 110 |
+| [17-integrated-help.md](17-integrated-help.md) | E17 reading the catalog's own component and terminal descriptions where the installer chooses, identifies, documents and asks for help | US-075–079, catalog description, help action, insert lists, properties dialogs, hover | 268 |
 
 ### Localities & products
 
@@ -82,6 +83,7 @@ partly in scope, or out of scope.
 | Work on function blocks or their links | [05-function-blocks.md](05-function-blocks.md), [06-product-fb-links.md](06-product-fb-links.md), [07-fb-programming.md](07-fb-programming.md) |
 | Change reports or project verification output | [09-documentation.md](09-documentation.md) |
 | Change node icons, colours, or tooltips | [12-icon-language.md](12-icon-language.md), [13-tooltips.md](13-tooltips.md) |
+| Change what help or component descriptions the user can read | [17-integrated-help.md](17-integrated-help.md) (tooltip content also [13](13-tooltips.md)) |
 | Import catalogs or talk to the controller | [16-catalog-import.md](16-catalog-import.md), [10-controller-transfer.md](10-controller-transfer.md) |
 
 ### Epic → user stories owned
@@ -107,12 +109,13 @@ owned elsewhere. Ids in the files use U+2011 non-breaking hyphens — copy, don'
 | [14-edit-history.md](14-edit-history.md) | US-052 |
 | [15-structural-editing.md](15-structural-editing.md) | US-053–056 |
 | [16-catalog-import.md](16-catalog-import.md) | US-059–062 |
+| [17-integrated-help.md](17-integrated-help.md) | US-075–079 |
 
 ### Scope status at a glance
 
 | Status | Documents |
 | --- | --- |
-| In scope (foundational, cross-cutting) | [01](01-application-shell.md), [11](11-interaction-model.md), [12](12-icon-language.md), [13](13-tooltips.md), [14](14-edit-history.md), [15](15-structural-editing.md) |
+| In scope (foundational, cross-cutting) | [01](01-application-shell.md), [11](11-interaction-model.md), [12](12-icon-language.md), [13](13-tooltips.md), [14](14-edit-history.md), [15](15-structural-editing.md), [17](17-integrated-help.md) |
 | In scope (feature epics) | [02](02-localities.md), [03](03-datalinie-products.md), [05](05-function-blocks.md), [06](06-product-fb-links.md), [07](07-fb-programming.md), [16](16-catalog-import.md) |
 | Partly in scope | [04](04-wireless-products.md) (linking needs wireless API), [09](09-documentation.md) (data-table editing excluded), [10](10-controller-transfer.md) (dialogs need live controller) |
 | Out of scope | [08](08-simulation.md) |

@@ -129,7 +129,7 @@ exercise every discovered activation route and compare its resulting state.
   mechanism exists, never the machine-dependent contents
 - Quantitative timing and performance — but a user-visible freeze, missing progress or blocked
   interaction is UX behaviour (dimension 19), not a performance measurement
-- Branding, OpenVisual help, packaging and installation, about dialog
+- Branding, OpenVisual help (including unique context-sensitive help features), packaging and installation, about dialog
 - Clear IHC Visual bugs
 
 ## Verdict

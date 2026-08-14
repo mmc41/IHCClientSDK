@@ -2,22 +2,22 @@
 scope: Navigation hub for the IHC OpenVisual documentation — the product specification, the epic/user-story behavioural spec, vendor-alignment/verification docs, and icon references
 exclusions: These docs specify WHAT the app must do, not HOW (implementation) or WHEN (plans); no spec content lives in this hub
 research_date: 2026-08-11
-latest_update: 2026-08-11 — hub created (7 content files + stories/ sub-hub indexed)
+latest_update: 2026-08-14 — E17 (integrated component help) added under stories/
 ---
 
 # IHC OpenVisual Documentation Index
 
 > Specification and reference docs for the IHC OpenVisual desktop app: the product spec, the
-> E1–E16 user-story collection, vendor-comparison/verification ledgers, and the icon language.
+> E1–E17 user-story collection, vendor-comparison/verification ledgers, and the icon language.
 
-**Total Documents:** 7 content files here (plus this index), and 16 story files under `stories/`
+**Total Documents:** 7 content files here (plus this index), and 17 story files under `stories/`
 
 ## Collection Structure
 
 | Location | Contents | Entry point |
 | --- | --- | --- |
 | `docs/` (this directory) | Product spec, alignment/verification docs, icon references | this file |
-| `docs/stories/` | Behavioural spec: epics E1–E16 with user stories (US-NNN) and acceptance criteria | [stories/INDEX.md](stories/INDEX.md) |
+| `docs/stories/` | Behavioural spec: epics E1–E17 with user stories (US-NNN) and acceptance criteria | [stories/INDEX.md](stories/INDEX.md) |
 
 ## Document Index
 
@@ -74,5 +74,5 @@ latest_update: 2026-08-11 — hub created (7 content files + stories/ sub-hub in
 
 ## Related Collections
 
-- [stories/INDEX.md](stories/INDEX.md) — sub-hub for the E1–E16 user-story files (start there for any feature behaviour)
+- [stories/INDEX.md](stories/INDEX.md) — sub-hub for the E1–E17 user-story files (start there for any feature behaviour)
 - [../../../ARCHITECTURE.md](../../../ARCHITECTURE.md) — repo-wide layers and invariants (the HOW these docs deliberately omit)

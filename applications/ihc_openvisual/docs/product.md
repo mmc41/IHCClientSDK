@@ -100,6 +100,15 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   *Pinned by:* `AutomationCoverageTests`, `AccessibilityTests`.
 - Embedded stock catalog.
   *Pinned by:* `BuiltInCatalogProductDifferentialTests`, `BuiltInCatalogFunctionBlockDifferentialTests`.
+- **Component help is inline, not a separate document.** A catalog component can carry its own description
+  and a description per terminal, and IHC OpenVisual shows those texts where the installer is
+  working — while choosing a component to place, on a placed node, in that node's properties dialog, and on
+  request for the current selection — rather than leaving them in help files beside the catalog. The texts
+  are read-only catalog data and stay distinguishable from the installer's own documentation note, which
+  remains an editable project field. (Specified in FR-11.1 and E17, US-075–US-079; the exclusion below
+  narrows to the *help files* themselves.)
+  *No test:* the surface does not exist yet — this entry registers the intended difference and owes a
+  *Pinned by* marker when the behaviour lands.
 - Documentation reports render as self-contained static HTML that works in any modern browser, with optional enhanced variants and no dependency on a legacy browser component.
   *Pinned by:* `ReportSelfContainmentTests` (self-containment), `ReportHtmlOracleTests` (the bytes).
 - **The reports are chosen in the app, not in a browser page.** The original carries a single
@@ -525,7 +534,7 @@ taken on.
 
 **Functional Requirements**:
 
-- FR-11.1: Context-sensitive Danish help: one action (e.g. `F1`) opens the topic for the selected element/view; all-new, originally authored content.
+- FR-11.1: Context-sensitive Danish help: one action (e.g. `F1`) opens the topic for the selected element/view; all-new, originally authored content. The topic states what the selected element's catalog component is and what the selected terminal does — from the description the component itself carries — alongside the element's own documentation note, and states plainly when the component carries no description. The same component and terminal descriptions are readable where the installer chooses, identifies and documents a component, without being editable there (E17).
 - FR-11.2: Edit project-level information (project, customer, installer identity) stored in the file.
 - FR-11.3: Generate the **three documentation reports** — end-user functions (Funktionsdokumentation), installation (Installationsdokumentation) and function-block logic (Funktionsblok dokumentation) — each in **Standard** or **Fuld** mode and as **HTML** or **plain text**; each report has its own Documentation-menu entry opening the one shared picker pre-selected, with view-in-browser (printing is the browser's) and save-as actions. There are no report options beyond type × mode × format, and the output carries no navigation apparatus.
 - FR-11.4: **Fuld** mode is Standard plus additions only: the generation timestamp + programmer line, the Projekt identity block, inline `(ID …)` element ids at definition sites, the installation-only terminal-connections table, and a final **"Fejl i dokumentation"** section fed by the project verification checks — per locality → product → terminal, covering at least: unlinked terminal, missing identification code / light group / cable type / cable number / wire colour / placement / data-line address.
