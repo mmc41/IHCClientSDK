@@ -415,6 +415,163 @@ namespace Ihc.Tests
                 "the production assertion must reject the seeded calls, not merely expose raw call edges");
         }
 
+        // The EditOutcome members that hand over its Reason string. The getter is the everyday route; Deconstruct is
+        // the one that hands it over WITHOUT naming it, so a positional deconstruction reaching for Changes would
+        // otherwise carry the reason out of the chokepoint unremarked.
+        private static readonly IReadOnlyCollection<string> OutcomeReasonMemberNames =
+            new[] { "get_Reason", "Reason", "Deconstruct" };
+
+        // The only members that may read an EditOutcome's Reason: the one that decides whether it is user-facing,
+        // and the one that logs a failure's diagnostic. Both live on MainWindowViewModel — which is exactly why this
+        // is a MEMBER-level exemption and not a type-level one: the defect it pins was a sibling method OF THAT
+        // TYPE falling back to the reason for every non-committed status, so a type-scoped rule would have been
+        // green through the whole bug.
+        //
+        // Member names are literals because both are internal to ihc_openvisual, which opens its internals to
+        // safe_visual_tests alone; the TYPE is still typeof-anchored, so a rename of the class fails the compile
+        // here and a rename of either member fails the scan's own vacuity guard rather than passing silently.
+        private static readonly IReadOnlyCollection<MethodCallExemption> OutcomeReasonChokepoint =
+            new[]
+            {
+                new MethodCallExemption(typeof(global::ihc_openvisual.ViewModels.MainWindowViewModel).FullName!,
+                    "UserFacingRefusal"),
+                new MethodCallExemption(typeof(global::ihc_openvisual.ViewModels.MainWindowViewModel).FullName!,
+                    "ReportOutcomeAsync"),
+            };
+
+        /// <summary>
+        /// Which of an <c>EditOutcome</c>'s reasons may reach the installer has exactly one decision point:
+        /// <c>MainWindowViewModel.UserFacingRefusal</c>. Every other GUI member is forbidden to read
+        /// <c>Reason</c> at all.
+        ///
+        /// <para><c>Refused</c> and <c>Failed</c> both carry a non-null <c>Reason</c>, written in different
+        /// languages for different readers: a refusal is a rule the installer can act on and the SDK writes it in
+        /// Danish (FR-2.6 / D13), while a failure's reason is the engine's own exception message — an English
+        /// developer diagnostic naming element tags, attribute names and <c>_0x</c> ids. So the two must be told
+        /// apart by STATUS, and a caller reaching for "the reason, if there is one" silently gets both.</para>
+        ///
+        /// <para>Structural rather than behavioural on purpose. <c>OutcomeReasonTests</c> pins what the chokepoint
+        /// DECIDES; nothing there can pin that callers route through it, and the defect this exists to prevent was
+        /// precisely a caller that did not (<c>outcome.Reason ?? "…"</c> for every non-committed status). Armed by
+        /// <see cref="OutcomeReasonScan_IsArmed"/> over a seeded reader in this test assembly.</para>
+        /// </summary>
+        [Test]
+        public void OutcomeReason_IsReadOnlyAtTheChokepoint() =>
+            AssertDoesNotCallMembers(Gui, GuiRoot, typeof(global::Ihc.Vis.Session.EditOutcome).FullName!,
+                OutcomeReasonMemberNames, "an EditOutcome's Reason",
+                "only UserFacingRefusal may read an outcome's reason — a Failed reason is an English engine "
+                + "diagnostic and must not reach the installer",
+                OutcomeReasonChokepoint);
+
+        // Seeded violator for the control: reads the reason from a type that is not the chokepoint.
+        private static class SeededOutcomeReasonReader
+        {
+            public static string? Read(global::Ihc.Vis.Session.EditOutcome outcome) => outcome.Reason;
+        }
+
+        /// <summary>Positive control for <see cref="OutcomeReason_IsReadOnlyAtTheChokepoint"/>: pointed at the
+        /// seeded reader, the scan MUST see the property read and the production assertion MUST reject it —
+        /// otherwise the green result above means only that property reads are invisible to this scan.</summary>
+        [Test]
+        public void OutcomeReasonScan_IsArmed()
+        {
+            string testRoot = typeof(OpenVisualArchitectureTests).Namespace!;
+            var detected = MethodCallEdges(OwnTestAssembly.Value, testRoot)
+                .Where(edge => edge.TargetType == typeof(global::Ihc.Vis.Session.EditOutcome).FullName
+                               && OutcomeReasonMemberNames.Contains(edge.Member))
+                .Select(edge => edge.Member)
+                .Distinct()
+                .ToList();
+
+            Assert.That(detected, Is.Not.Empty,
+                "the scan must see the seeded Reason read — a property getter must appear as a call edge, or this rule watches nothing");
+
+            Assert.Throws<AssertionException>(() =>
+                AssertDoesNotCallMembers(OwnTestAssembly.Value, testRoot,
+                    typeof(global::Ihc.Vis.Session.EditOutcome).FullName!, OutcomeReasonMemberNames,
+                    "seeded probe", "seeded probe", OutcomeReasonChokepoint),
+                "the production assertion must reject a Reason read made outside the chokepoint");
+        }
+
+        // The GUI members that may put an exception's own message in front of the installer. Every one of them
+        // splices it as DETAIL under a Danish sentence naming the file and the operation that failed, where the
+        // exception is an IO or file-parse error whose text IS the actionable content ("file not found",
+        // "access denied"). A bare ex.Message as the whole message is not on this list and must not be added:
+        // that is the D01 leak — an English engine diagnostic standing alone on a Danish screen.
+        // The two logging entries are the opposite case: the log is where a diagnostic belongs.
+        private static readonly IReadOnlyCollection<MethodCallExemption> ExceptionMessageExemptions =
+            new[]
+            {
+                // Logged, not shown.
+                new MethodCallExemption("ihc_openvisual.Program", "CreateX11Options"),
+                new MethodCallExemption("ihc_openvisual.Views.HandlerGuard", "RunAsync"),
+                // Shown as detail under a Danish sentence naming the file/operation.
+                new MethodCallExemption("ihc_openvisual.Services.ProjectWorkflow", "OpenAsync"),
+                new MethodCallExemption("ihc_openvisual.Services.ProjectWorkflow", "SaveToAsync"),
+                new MethodCallExemption("ihc_openvisual.Services.ProjectWorkflow", "SaveFunctionBlockAsync"),
+                new MethodCallExemption("ihc_openvisual.Services.ProjectReportWorkflow", "ViewInBrowserAsync"),
+                new MethodCallExemption("ihc_openvisual.Services.ProjectReportWorkflow", "SaveAsAsync"),
+                new MethodCallExemption("ihc_openvisual.Services.CatalogImportWorkflow", "ImportFileAsync"),
+                new MethodCallExemption("ihc_openvisual.Services.CatalogImportWorkflow", "ImportFolderAsync"),
+            };
+
+        /// <summary>
+        /// The same rule as <see cref="OutcomeReason_IsReadOnlyAtTheChokepoint"/>, on the channel that carries far
+        /// more of this traffic: an exception's <c>Message</c> is an English developer diagnostic and must not
+        /// become user-facing text. The <c>Failed</c> branch of an edit outcome is only where the SDK hands one
+        /// over; a <c>catch</c> block is where the GUI meets the rest of them.
+        ///
+        /// <para>Written as a ban with a NAMED exemption per call site rather than a blanket allowance, because the
+        /// judgement is per site and cannot be derived: a message spliced under "Kunne ikke åbne '{path}':" is
+        /// carrying the actionable part of an IO failure, while the same message alone under a title is the leak.
+        /// The list is therefore the triage record — a new site must be reviewed onto it, which is the whole point.
+        /// The regression it pins is real: the app's universal command wrapper used to put <c>ex.Message</c> into
+        /// both the status bar and an "Uventet fejl" dialog, for every command in the app.</para>
+        ///
+        /// <para>Armed by <see cref="ExceptionMessageScan_IsArmed"/>.</para>
+        /// </summary>
+        [Test]
+        public void ExceptionMessages_DoNotBecomeUserFacingText() =>
+            AssertDoesNotCallMembers(Gui, GuiRoot, typeof(System.Exception).FullName!,
+                new[] { "get_Message", "Message" }, "an exception's Message",
+                "an exception message is an English developer diagnostic; it belongs in the log, or as named detail "
+                + "under a Danish sentence — never as the message the installer is shown",
+                ExceptionMessageExemptions);
+
+        // Seeded violator for the control.
+        private static class SeededExceptionMessageShower
+        {
+            public static string Show(System.Exception error) => error.Message;
+        }
+
+        /// <summary>Positive control for <see cref="ExceptionMessages_DoNotBecomeUserFacingText"/>.</summary>
+        [Test]
+        public void ExceptionMessageScan_IsArmed() =>
+            Assert.Throws<AssertionException>(() =>
+                AssertDoesNotCallMembers(OwnTestAssembly.Value, typeof(OpenVisualArchitectureTests).Namespace!,
+                    typeof(System.Exception).FullName!, new[] { "get_Message", "Message" },
+                    "seeded probe", "seeded probe", ExceptionMessageExemptions),
+                "the production assertion must reject the seeded exception-message read");
+
+        /// <summary>
+        /// Every exemption above must still name a real call site. An exemption that stops matching is not
+        /// harmless: it means the site was changed or renamed, and the entry now silently widens the rule for a
+        /// method that may not even exist — the failure mode any allowlist drifts into. Failing here forces the
+        /// list to be re-read at the moment it stops describing the code, which is the only moment anyone would.
+        /// </summary>
+        [Test]
+        public void EveryExceptionMessageExemption_StillNamesARealCallSite()
+        {
+            var actual = MethodCallEdges(Gui, GuiRoot)
+                .Where(edge => edge.TargetType == typeof(System.Exception).FullName && edge.Member == "get_Message")
+                .Select(edge => new MethodCallExemption(OutermostTypeName(edge.Origin), edge.OriginMember))
+                .ToHashSet();
+
+            Assert.That(ExceptionMessageExemptions.Where(exemption => !actual.Contains(exemption)), Is.Empty,
+                "these exemptions no longer match any call site — remove them, or correct the member name they "
+                + "were meant to name");
+        }
+
         /// <summary>
         /// The MVVM dependency direction: the view layer binds to view-models, never the reverse. View-models must
         /// not depend on the Avalonia view layer — the Views (windows/dialogs), custom Controls, or value Converters

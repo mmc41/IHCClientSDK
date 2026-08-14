@@ -18,17 +18,21 @@ namespace Ihc.Vis.Tests
             get { ElementId.TryParse("_0xdead01", out ElementId id); return id; }
         }
 
+        // A stale id is an expected condition, not an engine fault, so the miss is a REFUSAL carrying the caller's
+        // Danish noun — the same sentence EditContext.RequireExists composes on the Evaluate side, so a bundled
+        // gesture and a one-at-a-time sequence answer a stale id in one voice (see RefusalLanguageTests).
         [Test]
-        public async Task Resolve_LiveId_ReturnsHandle_AbsentId_ThrowsWithNoun()
+        public async Task Resolve_LiveId_ReturnsHandle_AbsentId_RefusesWithNoun()
         {
             ProjectEditor editor = await Editor();
             ElementId group = editor.ToProject().Groups.First().Id!.Value;
 
             Assert.Multiple(() =>
             {
-                Assert.That(editor.Resolve(group, "locality").Tag, Is.EqualTo("group"), "a live id resolves to its handle");
-                var ex = Assert.Throws<System.InvalidOperationException>(() => editor.Resolve(Absent, "widget"));
-                Assert.That(ex!.Message, Does.Contain("widget"), "the throw names the caller's noun");
+                Assert.That(editor.Resolve(group, "Lokaliteten").Tag, Is.EqualTo("group"), "a live id resolves to its handle");
+                var ex = Assert.Throws<Ihc.Vis.Session.EditRefusedException>(() => editor.Resolve(Absent, "Dimsen"));
+                Assert.That(ex!.Message, Is.EqualTo("Dimsen findes ikke længere."),
+                    "the refusal splices the caller's noun into the shared Danish sentence");
             });
         }
 

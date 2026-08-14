@@ -72,7 +72,7 @@ namespace Ihc.Vis.Session
             context.RequireTag(MemberId, "et relæ- eller dæmper-scenariemedlem", "scene_dimmer", "scene_relay");
         internal override void Execute(ProjectEditor editor)
         {
-            ElementRef handle = editor.Resolve(MemberId, "scene member");
+            ElementRef handle = editor.Resolve(MemberId, "Scenariemedlemmet");
             editor.SetSceneValue(MemberId, SceneValues.From(Result, handle.Tag == "scene_dimmer"));
         }
     }
@@ -83,7 +83,7 @@ namespace Ihc.Vis.Session
         internal override string Describe(Project project) => "Rediger scenarie container";
         internal override EditVerdict Evaluate(EditContext context) => context.RequireExists(ScenesId, "Scenarie-beholderen");
         internal override void Execute(ProjectEditor editor) =>
-            editor.Resolve(ScenesId, "scenes container").SetAttribute("note", Note);
+            editor.Resolve(ScenesId, "Scenarie-beholderen").SetAttribute("note", Note);
     }
 
     internal static class SceneValues

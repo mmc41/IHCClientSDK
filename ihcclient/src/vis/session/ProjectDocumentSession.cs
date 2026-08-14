@@ -166,13 +166,18 @@ namespace Ihc.Vis.Session
 
             if (_current is not { } current)
             {
-                return new EditOutcome(EditStatus.Refused, command.GetType().Name, "No project is open.", null);
+                // The SAME sentence CanApply answers this condition with (D13) — the two doors are asked the same
+                // question by the same GUI, so a hand-written second wording here would answer it in another voice
+                // (and, until this was fixed, in another LANGUAGE) depending only on which door happened to be used.
+                return new EditOutcome(EditStatus.Refused, command.GetType().Name, NoProjectOpenRefusal, null);
             }
             // Label resolves against the pre-edit project (D10): a rename shows the old name, a delete the doomed target.
             string label = command.Describe(current);
             if (baseVersion is { } expected && expected != _version)
             {
-                return new EditOutcome(EditStatus.Refused, label, "The project changed since this edit was prepared.", null);
+                // Danish, like every refusal: a Refused reason is forwarded to the installer verbatim (FR-2.6 / D13),
+                // so this is user-facing text that happens to live in the engine — not an internal diagnostic.
+                return new EditOutcome(EditStatus.Refused, label, StaleBaseVersionRefusal, null);
             }
             EditVerdict verdict = command.Evaluate(new EditContext(current, _index!));
             if (!verdict.Ok)
@@ -336,6 +341,13 @@ namespace Ihc.Vis.Session
         /// removes.
         /// </summary>
         public const string NoProjectOpenRefusal = "Der er ikke åbnet et projekt.";
+
+        /// <summary>
+        /// The optimistic-concurrency refusal: the edit was prepared against an older version than the one it is
+        /// being applied to. Named rather than inlined for the same reason as the sentence above — it is one
+        /// condition and must read as one sentence wherever it is answered.
+        /// </summary>
+        public const string StaleBaseVersionRefusal = "Projektet er ændret, siden denne redigering blev forberedt.";
 
         /// <summary>The command's legality verdict against the current project (cheap — no edit), for drag-over
         /// probes and menu gates.</summary>

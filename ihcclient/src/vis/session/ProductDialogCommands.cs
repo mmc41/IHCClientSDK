@@ -108,7 +108,7 @@ namespace Ihc.Vis.Session
         {
             foreach (ProductDialogEdit edit in Edits)
             {
-                editor.Resolve(edit.Target, "felt").SetAttribute(edit.Attribute, Stored(editor, edit));
+                editor.Resolve(edit.Target, "Feltet").SetAttribute(edit.Attribute, Stored(editor, edit));
             }
         }
 

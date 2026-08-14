@@ -585,16 +585,28 @@ namespace Ihc.Vis.Editing
         }
 
         /// <summary>
-        /// Resolves <paramref name="id"/> to a live <see cref="ElementRef"/> handle, or throws an
-        /// <see cref="InvalidOperationException"/> naming the missing <paramref name="noun"/> — the throwing
-        /// counterpart of <see cref="TryResolve"/> and the single require-or-throw resolver the id-addressed editing
-        /// guards route through (review theme 2). Pass the noun the caller means ("locality", "pin", "product") so a
-        /// stale id reads for that operation instead of a generic id miss.
+        /// Resolves <paramref name="id"/> to a live <see cref="ElementRef"/> handle, or REFUSES naming the missing
+        /// <paramref name="noun"/> — the throwing counterpart of <see cref="TryResolve"/> and the single
+        /// require-or-throw resolver the id-addressed editing guards route through (review theme 2).
+        /// <para>A stale id is an EXPECTED condition here, not an engine fault, so this raises
+        /// <see cref="Ihc.Vis.Session.EditRefusedException"/> (which the session maps to
+        /// <c>EditStatus.Refused</c>) rather than a plain exception (which it maps to <c>EditStatus.Failed</c>).
+        /// The reachable case is a bundled gesture: a <c>CompositeCommand</c> evaluates every part against the
+        /// PRE-EDIT project, so a part targeting what an earlier part deleted passes its legality check and only
+        /// misses HERE. Answering that with a failure would make the same installer mistake read as a bug when it
+        /// was bundled and as a refusal when it was not.</para>
+        /// <para><paramref name="noun"/> is DANISH, CAPITALIZED and in its definite form ("Elementet", "Klemmen"),
+        /// because it OPENS the very sentence <see cref="Ihc.Vis.Session.EditContext.RequireExists"/> composes and
+        /// the GUI forwards to the installer verbatim (FR-2.6 / D13) — the two channels must answer a stale id in
+        /// one voice, so pass the same noun the command hands <c>RequireExists</c>. Specifically NOT whatever the
+        /// command's <c>Evaluate</c> happens to pass: a command guarded by <c>RequireTag</c> gives that guard a
+        /// mid-sentence indefinite ("et program", for "Målet er ikke {noun}."), and reusing it here would read
+        /// "et program findes ikke længere." Both rules are pinned by <c>RefusalLanguageTests</c>.</para>
         /// </summary>
         internal ElementRef Resolve(ElementId id, string noun) =>
             TryResolve(id, out ElementRef? handle)
                 ? handle
-                : throw new InvalidOperationException($"The {noun} (id {id.ToToken()}) no longer exists.");
+                : throw new Ihc.Vis.Session.EditRefusedException($"{noun} findes ikke længere.");
 
         /// <summary>
         /// Resolves <paramref name="id"/> and asserts its tag is one of <paramref name="expectedTags"/>, returning the

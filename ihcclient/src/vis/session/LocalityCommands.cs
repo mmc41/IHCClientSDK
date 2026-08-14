@@ -30,7 +30,7 @@ namespace Ihc.Vis.Session
 
         internal override void Execute(ProjectEditor editor)
         {
-            ElementRef handle = editor.Resolve(Id, "element");
+            ElementRef handle = editor.Resolve(Id, "Elementet");
             handle.SetAttribute("name", Name);
             handle.SetAttribute("note", Note);
         }

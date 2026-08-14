@@ -208,20 +208,17 @@ namespace Ihc.Vis.Session
         internal override string Describe(Project project) => "Sæt starttilstand";
 
         internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireUnlockedTag(VariableId, "an enum variable", "resource_enum");   // T003
+            context.RequireUnlockedTag(VariableId, "en enumerator-variabel", "resource_enum");   // T003
 
         internal override void Execute(ProjectEditor editor)
         {
             EnumDefinitionRef definition = editor.EnumDefinition(TypeName);
-            if (StateIndex < 0 || StateIndex >= definition.Values.Count)
-            {
-                // A state that is not there is a caller error, not a silent no-op: writing nothing would leave the
-                // variable on its old state while the dialog reported success.
-                throw new System.InvalidOperationException(
-                    $"Enum type '{TypeName}' has no state at position {StateIndex}; it has {definition.Values.Count}.");
-            }
-            editor.Resolve(VariableId, "enum variable")
-                .SetAttribute("inivalue", definition.Values[StateIndex].Id.ToToken());
+            // A state that is not there is a caller error, not a silent no-op: writing nothing would leave the
+            // variable on its old state while the dialog reported success. Addressed through the SHARED positional
+            // resolver, so the miss is a Danish refusal like the two value commands' rather than the English
+            // engine failure a hand-rolled range check here used to produce for the very same condition.
+            ElementId state = EnumValueAddressing.At(definition, StateIndex);
+            editor.Resolve(VariableId, "Enumerator-variablen").SetAttribute("inivalue", state.ToToken());
         }
     }
 
@@ -290,14 +287,18 @@ namespace Ihc.Vis.Session
     }
 
     /// <summary>Turns the dialog's 0-based value POSITION into the value's id — the one place the positional
-    /// addressing the two value commands share becomes an id, so an out-of-range position refuses identically.</summary>
+    /// addressing the value commands and <see cref="SetEnumInitialState"/> share becomes an id, so an out-of-range
+    /// position refuses identically wherever it is met.</summary>
     internal static class EnumValueAddressing
     {
         internal static ElementId At(EnumDefinitionRef definition, int index) =>
             index >= 0 && index < definition.Values.Count
                 ? definition.Values[index].Id
+                // Word for word the sentence EnumTypeTarget.RequireValueAt composes on the Evaluate side: the two
+                // guard the same rule at the two ends of one command, so an out-of-range position must read the
+                // same whether the pre-edit check caught it or this one did.
                 : throw new EditRefusedException(
-                    $"Enumerator type '{definition.Typedef}' has no value at position {index}.");
+                    $"Enumeratortypen '{definition.Typedef}' har ingen værdi på plads {index}.");
     }
 
     /// <summary>

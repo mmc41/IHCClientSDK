@@ -324,7 +324,10 @@ public sealed class ProjectWorkflow : IDisposable
         {
             Ihc.ActivityExtensions.SetError(activity, ex);
             _logger.LogError(ex, "Failed to save function block {Id} to {Path}", functionBlockId.ToToken(), filePath);
-            await _dialogs.ShowMessageAsync(SaveFailedTitle, ex.Message);
+            // The engine's message is DETAIL under a Danish sentence naming what failed and to where — never the
+            // whole message on its own, which left the installer reading a bare English diagnostic under a title.
+            await _dialogs.ShowMessageAsync(SaveFailedTitle,
+                $"Kunne ikke gemme funktionsblokken '{name}' til '{filePath}':\n{ex.Message}");
             return false;
         }
         EditOutcome outcome = await ApplyAsync(

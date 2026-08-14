@@ -46,7 +46,24 @@ scope (D05) because the value-id reallocation semantics are unknown.
       case branches / inline enum constants.
 - [ ] Promote engine + UI tasks on that evidence (D05 lifts only then); update US-030.
 
-## 3. Standing constraints — do not reopen without new evidence
+## 3. Telemetry redaction defects (moved out of `ARCHITECTURE.md`, 2026-08-14)
+
+`ARCHITECTURE.md` states the *standing property* — redaction is call-site, not global, so trace data
+must be treated as sensitive. These are the *specific defects* behind that warning; they were being
+carried in the architecture doc, which is the wrong tracker for them.
+
+- [ ] `UserManagerService.GetUsers` applies its redaction conditional in the **opposite direction**
+      from its own comment — verify against `IhcSettings.LogSensitiveData` and fix (reproduce with a
+      test first, per the repo's bug workflow).
+- [ ] Configuration services attach **raw** WLAN/SMTP/email-control models to activity tags, and those
+      models' parameterless `ToString()` reveal secrets. Decide the fix shape: redacting `ToString()`
+      overrides, an `[SensitiveData]`-aware scrubber in `ActivityExtensions`, or tag-site redaction.
+- [ ] Hardening (separate, lower priority): the client plumbing accepts every HTTPS server certificate
+      through `DangerousAcceptAnyServerCertificateValidator`, so certificate identity is not
+      authenticated. This is documented as the controller trust boundary in `ARCHITECTURE.md`; decide
+      whether it stays deliberate (self-signed controller certs) or becomes opt-in.
+
+## 4. Standing constraints — do not reopen without new evidence
 
 - **Float-target ÷ is unauthorable** (F-107; the P7 manual rung was waived 2026-07-21). US-032 is
   final: division targets integers only. Reopen only if a new token source appears.

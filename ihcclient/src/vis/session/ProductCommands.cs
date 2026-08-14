@@ -98,7 +98,7 @@ namespace Ihc.Vis.Session
         }
         internal override void Execute(ProjectEditor editor)
         {
-            ElementRef handle = editor.Resolve(Id, "pin");
+            ElementRef handle = editor.Resolve(Id, "Klemmen");
             bool isOutput = handle.Tag == "dataline_output";
             if (!DatalineAddress.TryEncode(Result.DataLine, Result.Terminal, isOutput, out string addressToken))
             {

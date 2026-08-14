@@ -110,6 +110,104 @@ namespace Ihc.Tests
                 "the definition layer composes catalog definitions but must not reach back into live-session editing types");
 
         /// <summary>
+        /// The one sanctioned edge from the editing layer BACK UP to the session layer, pinned as an exact set.
+        /// <para>The session layer sits above editing — its commands take a <see cref="ProjectEditor"/> — so the two
+        /// are mutually dependent the moment editing names a session type, and no direction rule can be written
+        /// between them. Exactly one such reference is intended: the require-or-throw resolver raises
+        /// <see cref="EditRefusedException"/>, because a stale id met inside a command's <c>Execute</c> is an
+        /// expected condition the session must map to <c>Refused</c>, and a plain exception would map to
+        /// <c>Failed</c> instead. Anything else the editing layer starts reaching for up there is layering drift.</para>
+        /// <para>Asserted as two-way set equality, not as a ban with an exemption: dropping the edge (by moving the
+        /// exception down to a layer both can see, which is the alternative to keeping the cycle) must be a
+        /// deliberate edit here, and adding a second one must fail. Nothing else in this fixture would notice
+        /// either — the layering rules run downward, and this edge runs the other way.</para>
+        /// </summary>
+        [Test]
+        public void EditingLayer_ReachesTheSessionLayer_OnlyForTheRefusalException()
+        {
+            var reached = DependencyEdges(Sdk, Editing)
+                .Select(edge => edge.Target)
+                .Where(target => target.StartsWith(Session + ".", StringComparison.Ordinal))
+                .Select(OutermostTypeName)
+                .Distinct()
+                .ToList();
+
+            Assert.That(reached, Is.EquivalentTo(new[] { typeof(EditRefusedException).FullName }),
+                $"'{Editing}' may name exactly one type from '{Session}' — {nameof(EditRefusedException)}, which "
+                + "makes a deep guard's stale-id miss a refusal instead of a failure. Any other edge is the "
+                + "editing/session cycle widening unnoticed; if the edge is gone, move this assertion rather than delete it");
+        }
+
+        /// <summary>
+        /// A command's <c>Execute</c> may raise exactly one exception type of its own: <see cref="EditRefusedException"/>.
+        ///
+        /// <para>The two statuses are decided by the exception type — the session maps
+        /// <see cref="EditRefusedException"/> to <c>Refused</c> and everything else to <c>Failed</c> — and the two
+        /// are read by different people in different languages: a refusal is a Danish sentence forwarded to the
+        /// installer verbatim, a failure an English diagnostic for the log. So the choice of exception type inside
+        /// an <c>Execute</c> body IS the choice of audience, which is far too easy to make by accident with a
+        /// reflexive <c>throw new InvalidOperationException(...)</c>.</para>
+        ///
+        /// <para>What makes this reachable rather than theoretical is the composite: a <c>CompositeCommand</c>
+        /// evaluates every part against the PRE-EDIT project, so a part invalidated by an earlier part passes its
+        /// legality check and misses only here. The same installer mistake would then read as an engine bug when
+        /// bundled and as a refusal when applied one part at a time. The rule covers the <c>Execute</c> body itself
+        /// — deep helpers it calls are out of scope, which is where the engine's own genuine faults live.</para>
+        ///
+        /// <para>Armed by <see cref="ExecuteBodyExceptionScan_IsArmed"/>: the sanctioned construction must be
+        /// observed, so a scan that stopped seeing <c>newobj</c> edges cannot read as compliance.</para>
+        /// </summary>
+        [Test]
+        public void CommandExecuteBodies_RaiseOnlyTheRefusalException()
+        {
+            var raised = ExceptionsConstructedInExecuteBodies(Sdk, Session).ToList();
+
+            Assert.That(raised.Select(edge => edge.TargetType), Does.Contain(typeof(EditRefusedException).FullName),
+                "the scan must observe the sanctioned refusal raised from a command's Execute — otherwise it is "
+                + "seeing no constructions at all and its verdict is meaningless");
+
+            Assert.That(raised.Where(edge => edge.TargetType != typeof(EditRefusedException).FullName), Is.Empty,
+                "an Execute body may only refuse: any other exception maps the miss to Failed, which answers the "
+                + "installer with an English engine diagnostic instead of the Danish sentence the same mistake gets "
+                + "when the command is applied on its own — offenders: "
+                + string.Join("; ", raised
+                    .Where(edge => edge.TargetType != typeof(EditRefusedException).FullName)
+                    .Select(edge => $"{edge.Origin}.{edge.OriginMember} -> {edge.TargetType}")));
+        }
+
+        // Every exception constructed inside a member named Execute in the given namespace subtree.
+        private static IEnumerable<(string Origin, string OriginMember, string TargetType)> ExceptionsConstructedInExecuteBodies(
+            Architecture arch, string namespaceRoot) =>
+            ConstructorCallEdgesWithOrigin(arch, namespaceRoot)
+                .Where(edge => edge.OriginMember == "Execute" && IsExceptionType(edge.TargetType));
+
+        // Resolved rather than matched on a "*Exception" name: the SDK's own types come from its assembly, the BCL's
+        // resolve by full name, and the assignability check is then exact instead of conventional.
+        private static bool IsExceptionType(string typeFullName) =>
+            (typeof(ProjectAppService).Assembly.GetType(typeFullName) ?? Type.GetType(typeFullName)) is { } type
+            && typeof(Exception).IsAssignableFrom(type);
+
+        // Seeded violator for the control. Deliberately NOT a real ProjectCommand — this fixture is off ihcclient's
+        // InternalsVisibleTo list on purpose, so the abstract Execute cannot be overridden here. The scan matches on
+        // the member NAME, so a plain Execute body carries the same shape and proves the same detection.
+        private static class SeededExecuteBody
+        {
+            public static void Execute() => throw new InvalidOperationException("seeded engine fault");
+        }
+
+        /// <summary>Positive control for <see cref="CommandExecuteBodies_RaiseOnlyTheRefusalException"/>: the same
+        /// scan pointed at this assembly must report the seeded <c>InvalidOperationException</c> — proving it sees
+        /// constructions inside an <c>Execute</c> body rather than passing because it sees none.</summary>
+        [Test]
+        public void ExecuteBodyExceptionScan_IsArmed() =>
+            Assert.That(
+                ExceptionsConstructedInExecuteBodies(ArchitectureModels.ArchitectureTests.Value,
+                        typeof(IhcClientArchitectureTests).Namespace!)
+                    .Select(edge => edge.TargetType),
+                Does.Contain(typeof(InvalidOperationException).FullName),
+                "the scan must report the seeded non-refusal exception raised from an Execute body");
+
+        /// <summary>
         /// The mutating/IO layers the read-only reporting boundary forbids: the editing engine, the
         /// session command runner, and the IO serializer. Anchored to a representative public type per namespace.
         /// </summary>

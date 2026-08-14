@@ -73,7 +73,7 @@ namespace Ihc.Vis.Session
                 (not DeleteKind.NotDeletable, _) => EditVerdict.Allow,
                 (_, null) => context.RequireExists(Id, "Noden"),
                 _ => EditVerdict.Refuse(ProjectEditor.DeletionRefusalReason(context.Project.Root, Id)
-                    ?? "This element cannot be deleted."),   // catalog pin / locked block, else a structural container
+                    ?? "Dette element kan ikke slettes."),   // catalog pin / locked block, else a structural container
             };
         internal override void Execute(ProjectEditor editor) =>
             editor.DeleteById(Id, Cascade ? DeleteReferencePolicy.CascadeReferences : DeleteReferencePolicy.Strict);

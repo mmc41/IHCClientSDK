@@ -320,11 +320,24 @@ namespace Ihc.Tests
 
         public static IReadOnlyList<(string Origin, string Target)> ConstructorCallEdges(
             Architecture arch, string fromNamespaceRoot) =>
+            ConstructorCallEdgesWithOrigin(arch, fromNamespaceRoot)
+                .Select(edge => (edge.Origin, Target: edge.TargetType))
+                .Distinct()
+                .ToList();
+
+        /// <summary>The same constructor edges, keeping the MEMBER the <c>newobj</c> was written in — for rules
+        /// that hold inside one method rather than across a whole type. Origin members are normalised the same way
+        /// <see cref="MethodCallEdges"/> normalises them, so a construction written inside an async body or lambda
+        /// is still attributed to the method a reader sees.</summary>
+        public static IReadOnlyList<(string Origin, string OriginMember, string TargetType)> ConstructorCallEdgesWithOrigin(
+            Architecture arch, string fromNamespaceRoot) =>
             OwnTypes(arch, fromNamespaceRoot)
                 .SelectMany(t => t.Dependencies.OfType<MethodCallDependency>(),
-                    (t, call) => (Origin: t.FullName, Member: call.TargetMember))
+                    (t, call) => (Origin: t.FullName, OriginMember: call.OriginMember.Name, Member: call.TargetMember))
                 .Where(edge => edge.Member is MethodMember { MethodForm: MethodForm.Constructor })
-                .Select(edge => (edge.Origin, Target: edge.Member.DeclaringType.FullName))
+                .Select(edge => (edge.Origin,
+                    OriginMember: AuthoredMemberName(edge.Origin, edge.OriginMember),
+                    TargetType: edge.Member.DeclaringType.FullName))
                 .Distinct()
                 .ToList();
 

@@ -63,7 +63,7 @@ internal sealed class ProjectReportWorkflow(
         {
             ActivityExtensions.SetError(activity, ex);
             logger.LogError(ex, "Failed to generate the {Kind} {Mode} report for browser view", kind, mode);
-            await dialogs.ShowMessageAsync(ReportFailedTitle, ex.Message);
+            await dialogs.ShowMessageAsync(ReportFailedTitle, $"Rapporten kunne ikke vises:\n{ex.Message}");
         }
     }
 
@@ -93,7 +93,7 @@ internal sealed class ProjectReportWorkflow(
         {
             ActivityExtensions.SetError(activity, ex);
             logger.LogError(ex, "Failed to save the {Kind} {Mode} report", kind, mode);
-            await dialogs.ShowMessageAsync(ReportFailedTitle, ex.Message);
+            await dialogs.ShowMessageAsync(ReportFailedTitle, $"Rapporten kunne ikke gemmes:\n{ex.Message}");
         }
     }
 

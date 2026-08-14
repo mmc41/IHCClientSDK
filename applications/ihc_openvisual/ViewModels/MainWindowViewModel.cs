@@ -497,13 +497,37 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     internal const string EditFailedMessage =
         "Redigeringen kunne ikke gennemføres på grund af en intern fejl. Ændringen blev ikke gemt.";
 
+    /// <summary>The title and sentence <see cref="RunAsync"/> answers an unhandled command exception with. Fixed
+    /// Danish text rather than the exception's own message, for the reason <see cref="UserFacingRefusal"/> gives:
+    /// an engine diagnostic belongs in the log, not on the installer's screen.</summary>
+    internal const string UnexpectedErrorTitle = "Uventet fejl";
+
+    internal const string UnexpectedErrorMessage =
+        "Handlingen kunne ikke gennemføres på grund af en intern fejl. Detaljerne er skrevet til loggen.";
+
+    /// <summary>The generic that stands in wherever a non-committed outcome has no sentence this app may show —
+    /// deliberately not <see cref="EditFailedMessage"/>, which <see cref="ReportOutcomeAsync"/> has already put in
+    /// front of the installer by the time a still-open dialog needs this.</summary>
+    internal const string EditRejectedMessage = "Handlingen blev afvist.";
+
+    /// <summary>
+    /// The sentence an outcome may put in front of the installer, or null when it has none. The ONE place that
+    /// decides it, because the decision is easy to get wrong: <c>Refused</c> and <c>Failed</c> BOTH carry a
+    /// non-null <c>Reason</c>, so a caller reaching for "the reason, if there is one" silently gets the failure
+    /// diagnostic too. Only a refusal qualifies — it is a rule the installer can act on and the SDK writes it in
+    /// Danish (FR-2.6 / D13), whereas a failure's reason is the engine's own exception message, an English
+    /// developer diagnostic naming element tags, attribute names and <c>_0x</c> ids.
+    /// </summary>
+    internal static string? UserFacingRefusal(EditOutcome outcome) =>
+        outcome.Status == EditStatus.Refused ? outcome.Reason : null;
+
     private async Task<EditOutcome> ReportOutcomeAsync(EditOutcome outcome, string? successStatus)
     {
         switch (outcome.Status)
         {
             case EditStatus.Committed when successStatus is not null: StatusText = successStatus; break;
             // Refused: the SDK's reason IS the user-facing sentence (Danish since T015) — shown verbatim.
-            case EditStatus.Refused when outcome.Reason is not null: StatusText = outcome.Reason; break;
+            case EditStatus.Refused when UserFacingRefusal(outcome) is { } refusal: StatusText = refusal; break;
             // Failed: the reason is an ENGINE EXCEPTION message — a developer diagnostic, in English, naming
             // element tags and attribute names. Showing it put untranslated internals in front of the installer,
             // so it is logged and one fixed Danish sentence is shown instead. A refusal is a rule the installer
@@ -1931,7 +1955,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             ApplyEnumTypeOperationAsync)));
 
     /// <summary>Turns one enumerator-manager button press into its command and applies it. Returns null when it
-    /// committed, otherwise the refusal sentence — the dialog cannot show a reason it is not handed.</summary>
+    /// committed, otherwise the refusal sentence — the dialog cannot show a reason it is not handed. An outcome
+    /// that did not merely refuse hands over the generic instead: its reason is an engine diagnostic that
+    /// <see cref="ReportOutcomeAsync"/> has already logged and answered with its own Danish sentence.</summary>
     private async Task<string?> ApplyEnumTypeOperationAsync(EnumTypeManagerOperation operation)
     {
         if (_session.Current is not { } project)
@@ -1962,7 +1988,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         EditOutcome outcome = await _session.ApplyAsync(command);
         await ReportOutcomeAsync(outcome, status);
-        return outcome.Status == EditStatus.Committed ? null : outcome.Reason ?? "Handlingen blev afvist.";
+        return outcome.Status == EditStatus.Committed ? null : UserFacingRefusal(outcome) ?? EditRejectedMessage;
     }
 
     // PG-4: inserts a variable of an EXISTING enumerator type — references its def-id, authoring NO new type (the "Ny…"
@@ -2000,8 +2026,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             Ihc.ActivityExtensions.SetError(activity, ex);
             _logger.LogError(ex, "Command {Operation} failed", operation);
-            StatusText = $"Fejl: {ex.Message}";
-            await _dialogs.ShowMessageAsync("Uventet fejl", ex.Message);
+            // Same rule as a Failed edit outcome (D01): the exception message is an English developer diagnostic
+            // naming element tags, attribute names and _0x ids, so it goes to the log and the installer gets one
+            // fixed Danish sentence. This is the widest instance of that channel — every command routes through
+            // here — and it is the one place that cannot name what failed, since it catches for all of them.
+            StatusText = UnexpectedErrorMessage;
+            await _dialogs.ShowMessageAsync(UnexpectedErrorTitle, UnexpectedErrorMessage);
         }
     }
 
