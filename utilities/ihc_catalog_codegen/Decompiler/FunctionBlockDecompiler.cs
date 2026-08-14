@@ -167,23 +167,13 @@ namespace Ihc.Vis.CatalogCodegen
         }
 
         // Bakes the block's syn_en documentation as programmatic-lookup-only head calls (out-of-Body, so it does not
-        // affect self-verify). Per-resource entries are emitted key-sorted so the generated source is diff-stable.
+        // affect self-verify), through the shared lowering rule the product decompiler uses too.
         private void EmitDocumentation(DefinitionDocumentation? documentation)
         {
-            if (documentation is null || documentation.IsEmpty)
+            foreach ((Action<FunctionBlockDefinitionBuilder> apply, string render) in
+                     DefinitionDocumentationCalls.For<FunctionBlockDefinitionBuilder>(documentation))
             {
-                return;
-            }
-            if (documentation.Summary is { } summary)
-            {
-                Head(b => b.Documentation(summary), $".Documentation({CSharpLiteral.Quote(summary)})");
-            }
-            foreach (KeyValuePair<string, string> entry in documentation.Resources.OrderBy(e => e.Key, StringComparer.Ordinal))
-            {
-                string resourceName = entry.Key;
-                string text = entry.Value;
-                Head(b => b.Documentation(resourceName, text),
-                    $".Documentation({CSharpLiteral.Quote(resourceName)}, {CSharpLiteral.Quote(text)})");
+                Head(apply, render);
             }
         }
 

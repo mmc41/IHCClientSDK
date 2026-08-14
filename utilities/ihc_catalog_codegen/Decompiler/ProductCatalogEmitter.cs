@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 
 using Ihc.Vis.Catalog;
+using Ihc.Vis.Model;
 
 namespace Ihc.Vis.CatalogCodegen
 {
@@ -17,7 +18,8 @@ namespace Ihc.Vis.CatalogCodegen
 
     /// <summary>
     /// Renders the committed <c>BuiltInCatalog.Products.g.cs</c> from the vendor product catalog. Each <c>.def</c>
-    /// is decompiled to a <see cref="ProductRecipe"/> and self-verified (<see cref="SelfVerify"/>); the coordinated
+    /// is decompiled to a <see cref="ProductRecipe"/> (with its <c>syn_en*.md</c> documentation attached, exactly as
+    /// on the function-block side) and self-verified (<see cref="SelfVerify"/>); the coordinated
     /// publish pipeline in <c>Program.RunEmit</c> renders and writes all three generated files only when every
     /// component of both sweeps verified. Products are ordered exactly as <c>CatalogDiscovery</c> scans them
     /// (path-sorted, ordinal), so the generated registration reproduces the install-dir last-wins semantics over
@@ -44,11 +46,12 @@ namespace Ihc.Vis.CatalogCodegen
                 string name = Path.GetFileName(path);
                 string categoryPath = Path.GetDirectoryName(Path.GetRelativePath(productsDir, path)) ?? string.Empty;
                 ProductSource source = CatalogSourceFile.ReadProduct(path, categoryPath);
+                DefinitionDocumentation? documentation = CatalogDocReader.ForDefinitionFile(path, synEnOnly: true);
                 ProductRecipe recipe;
                 try
                 {
                     recipe = ProductDecompiler.Decompile(
-                        source.Definition.Body, source.Blocks, source.Definition.DisplayName, categoryPath);
+                        source.Definition.Body, source.Blocks, source.Definition.DisplayName, categoryPath, documentation);
                     recipe.BakeSourceFidelity(source);   // strict grammar parse — throws on an out-of-envelope header
                 }
                 catch (Exception ex) when (ex is DecompileNotSupportedException or CatalogFormatException)

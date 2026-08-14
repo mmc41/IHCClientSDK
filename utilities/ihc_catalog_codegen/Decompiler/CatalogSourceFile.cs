@@ -16,7 +16,8 @@ namespace Ihc.Vis.CatalogCodegen
     /// <see cref="Blocks"/> and its raw <see cref="FileBytes"/>. The <see cref="Definition"/> is the exact component the
     /// install-dir path yields, so it is the authoritative target the decompiled recipe must reproduce; the
     /// <see cref="Blocks"/> are the grammar the self-verify normalizes both sides against; the <see cref="FileBytes"/>
-    /// are what the byte-fidelity gate compares the re-emitted definition to.
+    /// are what the byte-fidelity gate compares the re-emitted definition to. Documentation is attached separately
+    /// (from the sibling <c>syn_en*.md</c>), so it does not ride on <see cref="Definition"/> here.
     /// </summary>
     internal sealed record ProductSource(ProductDefinition Definition, ImmutableDictionary<string, string> Blocks,
         byte[] FileBytes);

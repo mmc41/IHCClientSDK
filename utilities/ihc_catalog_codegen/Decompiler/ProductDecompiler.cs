@@ -35,10 +35,11 @@ namespace Ihc.Vis.CatalogCodegen
     {
         /// <summary>Decompiles <paramref name="body"/> (parsed against <paramref name="blocks"/>, the file's inline DTD)
         /// into a builder recipe, tagging it with the discovered <paramref name="displayName"/> (menu-prefix stripped)
-        /// and <paramref name="categoryPath"/>. Throws <see cref="DecompileNotSupportedException"/> for constructs this
-        /// stage does not yet reverse.</summary>
+        /// and <paramref name="categoryPath"/>, and optionally baking <paramref name="documentation"/> (parsed from the
+        /// sibling <c>syn_en*.md</c>) as programmatic-lookup-only <c>.Documentation(..)</c> calls. Throws
+        /// <see cref="DecompileNotSupportedException"/> for constructs this stage does not yet reverse.</summary>
         public static ProductRecipe Decompile(ProjectElement body, ImmutableDictionary<string, string> blocks,
-            string displayName, string categoryPath)
+            string displayName, string categoryPath, DefinitionDocumentation? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(body);
             ProjectSchemaView grammar = ProjectSchemaView.For(blocks);
@@ -65,6 +66,8 @@ namespace Ihc.Vis.CatalogCodegen
                 }
                 recipe.Calls.Add(RootCall(name, value));
             }
+
+            AppendDocumentationCalls(recipe, documentation);
 
             if (BodyIsFluentExpressible(body))
             {
@@ -134,6 +137,21 @@ namespace Ihc.Vis.CatalogCodegen
                 }
             }
             return sceneResource == lastAddable;
+        }
+
+        // ---- documentation (programmatic-lookup only) ----
+
+        // Bakes the product's syn_en documentation through the shared lowering rule (the same one the function-block
+        // decompiler uses, so the two kinds emit identical documentation source). The help text lives entirely outside
+        // the serialized Body — it reaches neither the .def nor a .vis — so it cannot move a single byte and the
+        // self-verify gate is untouched by it.
+        private static void AppendDocumentationCalls(ProductRecipe recipe, DefinitionDocumentation? documentation)
+        {
+            foreach ((Action<ProductDefinitionBuilder> apply, string render) in
+                     DefinitionDocumentationCalls.For<ProductDefinitionBuilder>(documentation))
+            {
+                recipe.Calls.Add(new FluentCall(apply, render));
+            }
         }
 
         // ---- body-child dispatch ----

@@ -39,7 +39,7 @@ namespace Ihc.Vis.CatalogCodegen
                 string name = Path.GetFileName(path);
                 string categoryPath = Path.GetDirectoryName(Path.GetRelativePath(functionBlocksDir, path)) ?? string.Empty;
                 FunctionBlockSource source = CatalogSourceFile.ReadFunctionBlock(path, categoryPath);
-                DefinitionDocumentation? documentation = FunctionBlockDocReader.ForFunctionBlock(path, synEnOnly: true);
+                DefinitionDocumentation? documentation = CatalogDocReader.ForDefinitionFile(path, synEnOnly: true);
                 FunctionBlockRecipe recipe;
                 try
                 {

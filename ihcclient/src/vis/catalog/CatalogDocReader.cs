@@ -5,35 +5,36 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Text;
 
-using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Model;
 
 namespace Ihc.Vis.Catalog
 {
     /// <summary>
     /// Parses a synthetic English help document (<c>syn_en*.md</c>) — the de-branded companion the IHC Visual install
-    /// ships next to each <c>FunctionBlocks\*.ifb</c> — into the programmatic-lookup-only
-    /// <see cref="DefinitionDocumentation"/> a code-authored block carries. The document shape is a fixed, trivially
-    /// parseable convention: a level-1 heading (<c># display name</c>, kept for reference but not part of the summary),
-    /// then a leading prose paragraph (the block <see cref="DefinitionDocumentation.Summary"/>), then
-    /// <c>**Inputs**</c>/<c>**Outputs**</c>/… sections whose bullets read <c>- **resource name** — help text</c> and map
-    /// to the per-resource text keyed by resource display name (<see cref="DefinitionDocumentation.Resources"/>).
+    /// ships next to a catalog definition file (a <c>FunctionBlocks\*.ifb</c> block or a <c>Products\*.def</c> product)
+    /// — into the programmatic-lookup-only <see cref="DefinitionDocumentation"/> a code-authored definition carries.
+    /// The document shape is a fixed, trivially parseable convention: a level-1 heading (<c># display name</c>, kept
+    /// for reference but not part of the summary), then a leading prose paragraph (the definition
+    /// <see cref="DefinitionDocumentation.Summary"/>), then <c>**Inputs**</c>/<c>**Outputs**</c>/… sections whose
+    /// bullets read <c>- **resource name** — help text</c> and map to the per-resource text keyed by resource display
+    /// name (<see cref="DefinitionDocumentation.Resources"/>).
     /// </summary>
     /// <remarks>
     /// The vendor also ships a copyrighted <c>{base}.md</c>; this reader uses <b>only</b> the synthetic
-    /// <c>syn_en{base}.md</c> for the embedded catalog (see <see cref="ForFunctionBlock"/>'s <c>synEnOnly</c> gate). The
-    /// produced documentation rides on the in-memory definition for a GUI to surface and is never serialized into a
-    /// project <c>.vis</c> or an <c>.ifb</c> — it has zero byte-fidelity impact and is verified by a separate equality
-    /// oracle, not the body self-verify.
+    /// <c>syn_en{base}.md</c> for the embedded catalog (see <see cref="ForDefinitionFile"/>'s <c>synEnOnly</c> gate).
+    /// The produced documentation rides on the in-memory definition for a GUI to surface and is never serialized into
+    /// a project <c>.vis</c>, an <c>.ifb</c> or a <c>.def</c> — it has zero byte-fidelity impact and is verified by a
+    /// separate equality oracle, not the body self-verify. Nothing here is definition-kind-specific: the document
+    /// shape and the sibling naming convention are the same for a block and a product, so one reader serves both.
     /// </remarks>
-    public static class FunctionBlockDocReader
+    public static class CatalogDocReader
     {
         // The characters a bullet uses to separate the bold resource name from its help text, tried longest/most
         // specific first: em dash and en dash (the syn_en convention), then a spaced ASCII hyphen (a lenient fallback).
         private static readonly string[] Separators = { " — ", " – ", " - " };
 
         /// <summary>Parses help-document <paramref name="markdown"/> into a <see cref="DefinitionDocumentation"/>:
-        /// the leading paragraph becomes the block summary, and each <c>- **name** — text</c> bullet under any
+        /// the leading paragraph becomes the definition summary, and each <c>- **name** — text</c> bullet under any
         /// <c>**section**</c> heading becomes a per-resource entry keyed by <c>name</c>. Missing sections are tolerated
         /// (an empty document yields <see cref="DefinitionDocumentation.Empty"/>).</summary>
         public static DefinitionDocumentation Parse(string markdown)
@@ -69,7 +70,7 @@ namespace Ihc.Vis.Catalog
                     }
                     continue;
                 }
-                // Prose before the first section header is the block summary (paragraphs joined by a single space).
+                // Prose before the first section header is the definition summary (paragraphs joined by a single space).
                 if (summary.Length > 0)
                 {
                     summary.Append(' ');
@@ -83,14 +84,15 @@ namespace Ihc.Vis.Catalog
                 : new DefinitionDocumentation(summaryText, resources.ToImmutable());
         }
 
-        /// <summary>Probes for the help document sibling of the function-block file at <paramref name="ifbPath"/> and
-        /// parses it: the synthetic <c>syn_en{base}.md</c> is tried first, then — unless <paramref name="synEnOnly"/> —
-        /// the vendor <c>{base}.md</c> (used only for a caller's own components, never the copyrighted install catalog).
+        /// <summary>Probes for the help document sibling of the catalog definition file at
+        /// <paramref name="catalogFilePath"/> (a <c>.ifb</c> block or a <c>.def</c> product) and parses it: the
+        /// synthetic <c>syn_en{base}.md</c> is tried first, then — unless <paramref name="synEnOnly"/> — the vendor
+        /// <c>{base}.md</c> (used only for a caller's own components, never the copyrighted install catalog).
         /// Returns <c>null</c> when no sibling exists.</summary>
-        public static DefinitionDocumentation? ForFunctionBlock(string ifbPath, bool synEnOnly = false)
+        public static DefinitionDocumentation? ForDefinitionFile(string catalogFilePath, bool synEnOnly = false)
         {
-            ArgumentNullException.ThrowIfNull(ifbPath);
-            foreach (string candidate in SiblingCandidates(ifbPath, synEnOnly))
+            ArgumentNullException.ThrowIfNull(catalogFilePath);
+            foreach (string candidate in SiblingCandidates(catalogFilePath, synEnOnly))
             {
                 if (File.Exists(candidate))
                 {
@@ -100,12 +102,13 @@ namespace Ihc.Vis.Catalog
             return null;
         }
 
-        // The help-document sibling paths for an .ifb, in probe order: the synthetic "syn_en{base}.md" (prefix naming,
-        // e.g. FunctionBlocks\...\1.1.01.ifb -> syn_en1.1.01.md), then the vendor "{base}.md" fallback.
-        private static IEnumerable<string> SiblingCandidates(string ifbPath, bool synEnOnly)
+        // The help-document sibling paths for a definition file, in probe order: the synthetic "syn_en{base}.md"
+        // (prefix naming, e.g. FunctionBlocks\...\1.1.01.ifb -> syn_en1.1.01.md, Products\...\product2101.def ->
+        // syn_enproduct2101.md), then the vendor "{base}.md" fallback.
+        private static IEnumerable<string> SiblingCandidates(string catalogFilePath, bool synEnOnly)
         {
-            string directory = Path.GetDirectoryName(ifbPath) ?? string.Empty;
-            string baseName = Path.GetFileNameWithoutExtension(ifbPath);
+            string directory = Path.GetDirectoryName(catalogFilePath) ?? string.Empty;
+            string baseName = Path.GetFileNameWithoutExtension(catalogFilePath);
             yield return Path.Combine(directory, "syn_en" + baseName + ".md");
             if (!synEnOnly)
             {

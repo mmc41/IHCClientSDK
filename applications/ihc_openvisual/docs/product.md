@@ -303,7 +303,7 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   pinned by `SaveBackupParityTests`.
 - Editing rapport data tables
   *Pinned by:* `DataTableStoreTests` — the tables survive only as suggestion memory; nothing lists or edits them.
-- Product help.
+- Product help files (there is however extended context sensitive help).
   *No test:* an absence with no surface to exercise.
 
 ## What This Product Is Not

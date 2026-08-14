@@ -21,7 +21,7 @@ namespace Ihc.Vis.Tests
     /// structurally equal without reading the configured reference directory.</item>
     /// <item><b>Favorites / by-name</b> — the four favorites that duplicate a master_type are all listed, with the
     /// real-category copy winning the last-wins lookup; blocks resolve by display name.</item>
-    /// <item><b>Documentation</b> — each block carries the syn_en help text baked into the generated source
+    /// <item><b>Documentation</b> — every block carries Danish help text baked into the generated source
     /// (reference-independent; a reference catalog need not ship any <c>.md</c> help documents).</item>
     /// </list>
     /// </summary>
@@ -113,23 +113,23 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
-        public void EveryBlock_CarriesBakedSynEnDocumentation_WithoutReferenceCatalog()
+        public void EveryBlock_CarriesBakedDanishDocumentation_WithoutReferenceCatalog()
         {
             ICatalog catalog = new BuiltInCatalog();
 
-            // The syn_en help text is baked into the generated source, so no reference catalog is read.
+            // The Danish help text is baked into the generated source, so no reference catalog is read.
             FunctionBlockDefinition kip = catalog.FunctionBlock("1.1.01");
             Assert.Multiple(() =>
             {
-                Assert.That(kip.Documentation.IsEmpty, Is.False, "1.1.01 carries baked syn_en documentation");
+                Assert.That(kip.Documentation.IsEmpty, Is.False, "1.1.01 carries baked documentation");
                 Assert.That(kip.Documentation.Summary, Is.Not.Null.And.Not.Empty);
                 Assert.That(kip.Documentation.Resources, Is.Not.Empty, "per-pin help is baked in");
             });
 
-            // The vast majority of blocks have a syn_en sibling, so most carry a summary.
+            // Every block is documented — the non-vendor AutoProof block included.
             int documented = catalog.FunctionBlocks.Count(b => b.Documentation.Summary is { Length: > 0 });
-            Assert.That(documented, Is.GreaterThan(catalog.FunctionBlocks.Count / 2),
-                "most blocks carry baked documentation");
+            Assert.That(documented, Is.EqualTo(catalog.FunctionBlocks.Count),
+                "every block carries a baked summary");
         }
 
     }

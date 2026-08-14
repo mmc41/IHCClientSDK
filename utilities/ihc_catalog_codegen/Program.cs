@@ -5,6 +5,9 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
+using Ihc.Vis.Catalog;
+using Ihc.Vis.Model;
+
 namespace Ihc.Vis.CatalogCodegen
 {
     /// <summary>
@@ -240,11 +243,15 @@ namespace Ihc.Vis.CatalogCodegen
                 string name = Path.GetFileName(path);
                 string categoryPath = Path.GetDirectoryName(Path.GetRelativePath(dir, path)) ?? string.Empty;
                 ProductSource source = CatalogSourceFile.ReadProduct(path, categoryPath);
+                // Probe the sibling help document exactly as the emit path does, so --preview shows the
+                // .Documentation(..) calls the generated factory would carry (they are outside Body, so the
+                // verdict below is unaffected either way).
+                DefinitionDocumentation? documentation = CatalogDocReader.ForDefinitionFile(path, synEnOnly: true);
                 ProductRecipe recipe;
                 try
                 {
                     recipe = ProductDecompiler.Decompile(
-                        source.Definition.Body, source.Blocks, source.Definition.DisplayName, categoryPath);
+                        source.Definition.Body, source.Blocks, source.Definition.DisplayName, categoryPath, documentation);
                 }
                 catch (DecompileNotSupportedException ex)
                 {
@@ -305,10 +312,11 @@ namespace Ihc.Vis.CatalogCodegen
                 string name = Path.GetFileName(path);
                 string categoryPath = Path.GetDirectoryName(Path.GetRelativePath(dir, path)) ?? string.Empty;
                 FunctionBlockSource source = CatalogSourceFile.ReadFunctionBlock(path, categoryPath);
+                DefinitionDocumentation? documentation = CatalogDocReader.ForDefinitionFile(path, synEnOnly: true);
                 FunctionBlockRecipe recipe;
                 try
                 {
-                    recipe = FunctionBlockDecompiler.Decompile(source.Definition, source.Blocks);
+                    recipe = FunctionBlockDecompiler.Decompile(source.Definition, source.Blocks, documentation);
                 }
                 catch (DecompileNotSupportedException ex)
                 {

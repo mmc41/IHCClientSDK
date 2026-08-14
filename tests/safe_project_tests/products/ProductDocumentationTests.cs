@@ -130,6 +130,35 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // The same guarantee one layer out, on the real serializer rather than on Body alone: what the catalog
+        // generator bakes into a product factory must not be able to change a single byte of the .def it re-emits.
+        // Reads a committed synthetic oracle (so the definition carries a real grammar + source encoding the writer
+        // needs), writes it documented and undocumented, and compares the bytes.
+        [Test]
+        public void WritingADocumentedProduct_ProducesTheSameDefBytes_AsWritingItUndocumented()
+        {
+            byte[] file = System.IO.File.ReadAllBytes(
+                TestData.PathOf("products", "synthetic", "synthetic_9f01_input.def"));
+            using var reading = new System.IO.MemoryStream(file, writable: false);
+            ProductDefinition bare = CatalogReader.ReadProduct(reading);
+            ProductDefinition documented = bare with
+            {
+                Documentation = new DefinitionDocumentation(
+                    "PRODUCT-HELP-SENTINEL",
+                    ImmutableDictionary<string, string>.Empty.Add("Tryk", "PIN-HELP-SENTINEL")),
+            };
+
+            Assert.That(WriteDef(documented), Is.EqualTo(WriteDef(bare)),
+                "help metadata is programmatic-lookup only — it never reaches the serialized .def");
+        }
+
+        private static byte[] WriteDef(ProductDefinition definition)
+        {
+            using var buffer = new System.IO.MemoryStream();
+            CatalogFileWriter.Write(definition, buffer);
+            return buffer.ToArray();
+        }
+
         [Test]
         public void Documentation_ParticipatesInDefinitionEquality()
         {
