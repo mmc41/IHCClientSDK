@@ -114,7 +114,7 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Manuel betjening af trådløse produkter og relæer: én indgang kipper udgangen, mens et tastepar giver adskilt tænd og sluk; scenarier og pulser følger udgangens tilstand, og timerindgangene slukker selv, hvis der ikke slukkes i tide.")
+                .Documentation("Betjener trådløse produkter og relæer manuelt: én indgang kipper udgangen, mens et tastepar giver adskilt tænd og sluk; scenarier og pulser følger udgangens tilstand, og timerindgangene slukker selv, hvis der ikke slukkes i tide.")
                 .Documentation("Kip", "skifter udgangen til modsat tilstand")
                 .Documentation("Kip med timer", "kipper udgangen og starter timeren")
                 .Documentation("OFF puls", "kort puls hver gang udgangen slukker")
@@ -367,13 +367,14 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Betjener en trådløs eller busbaseret lysdæmper med én eller to taster: kort tryk tænder, slukker eller henter et niveau, langt tryk regulerer, mens et langt tryk på Høj eller Lav i stedet gemmer det aktuelle niveau – og natdrift starter lyset lavt.")
-                .Documentation("Høj", "henter højt niveau; langt tryk gemmer det aktuelle")
+                .Documentation("Betjener en trådløs eller busbaseret lysdæmper med én eller to taster: kort tryk tænder, slukker eller henter et niveau, langt tryk regulerer, og Høj eller Lav gemmer kun et niveau, mens dæmperen er tændt – natdrift starter lyset lavt.")
+                .Documentation("Høj", "kort tryk henter højt; langt gemmer")
                 .Documentation("Højt niveau", "scenarie med det høje niveau og rampetid")
-                .Documentation("Lav ", "henter lavt niveau; langt tryk gemmer det aktuelle")
+                .Documentation("Lav ", "kort tryk henter lavt; langt gemmer")
                 .Documentation("Lavt niveau", "scenarie med det lave niveau og rampetid")
+                .Documentation("Lys niveau ", "link fra produktets lysniveau")
                 .Documentation("Lysdæmper tændt", "statusvisning til diode og Viewer")
-                .Documentation("Natdrift", "tvinger lyset ned på lavt niveau om natten; et langt tryk regulerer alligevel op")
+                .Documentation("Natdrift", "kort tryk tænder lavt; langt regulerer op")
                 .Documentation("Sluk/regulér ned  ", "slukker, eller regulerer ned ved langt tryk")
                 .Documentation("Touch ", "kort tryk tænder/slukker, langt tryk regulerer")
                 .Documentation("Tænd/regulér op", "tænder, eller regulerer op ved langt tryk");
@@ -819,9 +820,9 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Tænder lys eller relæ på bevægelse og kan stadig betjenes med tryk: indstillingerne afgør, om PIR selv tænder eller kun holder efterløbet i gang, skumring kan være betingelse, og en spærring kobler al automatik fra.")
+                .Documentation("Tænder lys eller relæ på bevægelse og kan stadig betjenes med tryk: indstillingerne afgør, om PIR selv tænder eller kun holder efterløbet i gang, skumring kan være en betingelse, og en spærring kobler al automatik fra.")
                 .Documentation("Kip", "skifter udgangen; PIR holdes tilbage lige efter sluk")
-                .Documentation("Manuelt betjent", "viser at PIR er overstyret; blinker ved manuel sluk")
+                .Documentation("Manuelt betjent", "viser PIR-overstyring; blinker efter manuel sluk")
                 .Documentation("Natdrift", "begrænser PIR om natten efter indstillingen")
                 .Documentation("OFF puls", "kort puls hver gang udgangen slukker")
                 .Documentation("ON puls", "kort puls hver gang udgangen tænder")
@@ -1160,7 +1161,7 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Manuel betjening af trådløse produkter og relæer: én indgang kipper udgangen, mens et tastepar giver adskilt tænd og sluk; scenarier og pulser følger udgangens tilstand, og timerindgangene slukker selv, hvis der ikke slukkes i tide.")
+                .Documentation("Betjener trådløse produkter og relæer manuelt: én indgang kipper udgangen, mens et tastepar giver adskilt tænd og sluk; scenarier og pulser følger udgangens tilstand, og timerindgangene slukker selv, hvis der ikke slukkes i tide.")
                 .Documentation("Kip", "skifter udgangen til modsat tilstand")
                 .Documentation("Kip med timer", "kipper udgangen og starter timeren")
                 .Documentation("OFF puls", "kort puls hver gang udgangen slukker")
@@ -1473,10 +1474,10 @@ namespace Ihc.Vis.Catalog
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
                 .Documentation("Lader en udgang spejle en indgang – enten direkte eller omvendt, valgt i indstillingen; hvert skift giver desuden en kort puls og et scenarie.")
                 .Documentation("Indgang", "signalet der følges eller vendes")
-                .Documentation("OFF Puls", "kort puls når udgangen går off")
-                .Documentation("ON Puls", "kort puls når udgangen går on")
-                .Documentation("Scenarie Sluk", "hentes når udgangen går off")
-                .Documentation("Scenarie Tænd", "hentes når udgangen går on")
+                .Documentation("OFF Puls", "kort puls når udgangen slukker")
+                .Documentation("ON Puls", "kort puls når udgangen tænder")
+                .Documentation("Scenarie Sluk", "hentes når udgangen slukker")
+                .Documentation("Scenarie Tænd", "hentes når udgangen tænder")
                 .Documentation("Udgang for Følg / Invertering ", "resultatet: samme eller modsat indgangen");
             var g0 = b.AddEnumDefinition("Tilstand for udgang").AddValue("Følg - Som indgang", 0).AddValue("Invertering - modsat indgang", 1);
             var r0 = b.AddInput("resource_input", "Indgang", r => r.Icon("_0x36").Note("(Udfyldes af installatøren)"));
@@ -1541,13 +1542,13 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Styrer ni lysgrupper fra en Bang & Olufsen IR-fjernbetjening: lighttasterne vælger gruppe – de øverste i kombination – og pil op/ned regulerer den valgte.")
-                .Documentation("Tryk 11 fra IR fjernbetjening (Light + Store)", "vælger gruppe 1")
-                .Documentation("Tryk 12 fra IR fjernbetjening (Light + 1)", "vælger gruppe 2")
-                .Documentation("Tryk 13 fra IR fjernbetjening (Light + 2)", "vælger gruppe 3")
-                .Documentation("Tryk 14 fra IR fjernbetjening (Light + 3)", "vælger gruppe 4")
-                .Documentation("Tryk 15 fra IR fjernbetjening Light + 4)", "vælger gruppe 5")
-                .Documentation("Tryk 16 fra IR fjernbetjening (Light + 5)", "vælger gruppe 6")
+                .Documentation("Styrer ni lysgrupper fra en Bang & Olufsen IR-fjernbetjening: LIGHT-tasterne vælger gruppe – 6-9 i kombination – og pil op/ned regulerer den valgte.")
+                .Documentation("Tryk 11 fra IR fjernbetjening (Light + Store)", "kombinerer til gruppe 6-9")
+                .Documentation("Tryk 12 fra IR fjernbetjening (Light + 1)", "gruppe 1 eller 6")
+                .Documentation("Tryk 13 fra IR fjernbetjening (Light + 2)", "gruppe 2 eller 7")
+                .Documentation("Tryk 14 fra IR fjernbetjening (Light + 3)", "gruppe 3 eller 8")
+                .Documentation("Tryk 15 fra IR fjernbetjening Light + 4)", "gruppe 4 eller 9")
+                .Documentation("Tryk 16 fra IR fjernbetjening (Light + 5)", "gruppe 5")
                 .Documentation("Tryk 7 fra IR fjernbetjening (Light + ^)", "pil op")
                 .Documentation("Tryk 8 fra IR fjernbetjening (Light + v)", "pil ned")
                 .Documentation("Udgang 1 - Ned / Sluk", "gruppe 1 ned")
@@ -1834,7 +1835,7 @@ namespace Ihc.Vis.Catalog
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
                 .Documentation("Vælger om udgangen skal kippe ved hvert tryk eller blot følge indgangen.")
-                .Documentation("Indgang", "aktiverer blokken")
+                .Documentation("Indgang", "signalet der kippes eller følges")
                 .Documentation("Udgang", "kipper eller følger");
             var g0 = b.AddEnumDefinition("Vælg funktion").AddValue("Touch", 1).AddValue("Kip", 0);
             var r0 = b.AddInput("resource_input", "Indgang", r => r.Icon("_0x36").Note("(Udfyldes af installatøren)"));
@@ -1883,6 +1884,7 @@ namespace Ihc.Vis.Catalog
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
                 .Documentation("Tænder lys efter det målte lysniveau: udgangen går til når niveauet falder under setpunktet minus hysteresen, og fra igen når det stiger over setpunktet plus hysteresen; ind- og udkobling kan forsinkes, så kortvarige lysglimt ikke tæller.")
+                .Documentation("Lys", "målt lysniveau fra luxsensoren")
                 .Documentation("Udgang", "styrer lyset til og fra");
             var r0 = b.AddInput("resource_light", "Lys", r => r.Note("Forbindes til luxsensor").Inivalue("500.00"));
             var r1 = b.AddOutput("resource_output", "Udgang", r => r.Icon("_0x39").Note("Forbindes til komponent som ønskes styres"));
@@ -1967,7 +1969,9 @@ namespace Ihc.Vis.Catalog
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
                 .Documentation("Holder rummet på et fast luxniveau ved at regulere en trådløs lysdæmper: når blokken er startet, køres niveauet op eller ned, til målingen ligger inden for hysteresen omkring setpunktet; reguleringstempoet følger timeren for opdatering.")
-                .Documentation("Tænd", "starter reguleringen, f.eks. fra en kip- eller urblok");
+                .Documentation("Lys", "målt lysniveau fra luxsensoren")
+                .Documentation("Lys niveau", "styrer lysdæmperen op og ned")
+                .Documentation("Tænd", "starter regulering fra kip- eller urblok");
             var r0 = b.AddInput("resource_light", "Lys", r => r.Note("Forbindes til luxsensor"));
             var r1 = b.AddInput("resource_input", "Tænd", r => r.Icon("_0x36").Note("Forbindes til udgang som skal aktivere funktionsblokken.\r\nF.eks. kipblok eller urblok"));
             var r2 = b.AddOutput("resource_light_level", "Lys niveau", r => r.Note("Lys niveau forbindes til lys niveau på wireless lysdæmper.\r\nDet er denne udgang som styrer lysdæmperen op og ned.").Inivalue("20"));
@@ -2070,14 +2074,15 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Betjener en fortrådet lysdæmper af typen 400 UNI IHC/SA med én eller to taster: kort tryk tænder og slukker, langt tryk regulerer, og to niveauer kan gemmes og hentes igen – dæmperen skal dog sidde i projektet som et 2-tast produkt og være sat til Mode B.")
-                .Documentation("Høj", "henter højt niveau; langt tryk gemmer det aktuelle")
+                .Documentation("Betjener en fortrådet lysdæmper af typen 400 UNI IHC/SA med én eller to taster: kort tryk tænder og slukker, langt tryk regulerer, og to niveauer kan gemmes, mens dæmperen er tændt – produktet skal oprettes med to taster i Mode B.")
+                .Documentation("Høj", "kort tryk henter højt; langt gemmer")
                 .Documentation("Højt niveau - Memory 2", "forbindes til dæmperens klemme 4")
-                .Documentation("Lav ", "henter lavt niveau; langt tryk gemmer det aktuelle")
+                .Documentation("Lav ", "kort tryk henter lavt; langt gemmer")
                 .Documentation("Lavt niveau - Memory 1", "forbindes til dæmperens klemme 3")
                 .Documentation("Lysdæmper tændt", "statusvisning til diode og Viewer")
-                .Documentation("Natdrift", "tvinger lyset ned på lavt niveau om natten; et langt tryk regulerer alligevel op")
-                .Documentation("Sluk/regulér ned", "slukker eller regulerer ned; udgang til klemme 2")
+                .Documentation("Natdrift", "kort tryk tænder lavt; langt regulerer op")
+                .Documentation("Sluk/regulér ned", "udgang til dæmperens klemme 2")
+                .Documentation("Sluk/regulér ned  ", "kort tryk slukker; langt regulerer ned")
                 .Documentation("Touch ", "kort tryk tænder/slukker, langt tryk regulerer")
                 .Documentation("Tænd/regulér op", "tænder eller regulerer op; udgang til klemme 1");
             var g0 = b.AddEnumDefinition("Dimmer status").AddValue("Sidste niveau", 0).AddValue("Slukket", 1).AddValue("Lav", 3).AddValue("Høj", 4).AddValue("Lav er gemt", 5).AddValue("Høj er gemt", 6).AddValue("Reguléret", 2).AddValue("Regulérer op", 7).AddValue("Regulérer ned", 8);
@@ -2501,13 +2506,14 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Betjener en trådløs eller busbaseret lysdæmper med én eller to taster: kort tryk tænder, slukker eller henter et niveau, langt tryk regulerer, mens et langt tryk på Høj eller Lav i stedet gemmer det aktuelle niveau – og natdrift starter lyset lavt.")
-                .Documentation("Høj", "henter højt niveau; langt tryk gemmer det aktuelle")
+                .Documentation("Betjener en trådløs eller busbaseret lysdæmper med én eller to taster: kort tryk tænder, slukker eller henter et niveau, langt tryk regulerer, og Høj eller Lav gemmer kun et niveau, mens dæmperen er tændt – natdrift starter lyset lavt.")
+                .Documentation("Høj", "kort tryk henter højt; langt gemmer")
                 .Documentation("Højt niveau", "scenarie med det høje niveau og rampetid")
-                .Documentation("Lav ", "henter lavt niveau; langt tryk gemmer det aktuelle")
+                .Documentation("Lav ", "kort tryk henter lavt; langt gemmer")
                 .Documentation("Lavt niveau", "scenarie med det lave niveau og rampetid")
+                .Documentation("Lys niveau ", "link fra produktets lysniveau")
                 .Documentation("Lysdæmper tændt", "statusvisning til diode og Viewer")
-                .Documentation("Natdrift", "tvinger lyset ned på lavt niveau om natten; et langt tryk regulerer alligevel op")
+                .Documentation("Natdrift", "kort tryk tænder lavt; langt regulerer op")
                 .Documentation("Sluk/regulér ned  ", "slukker, eller regulerer ned ved langt tryk")
                 .Documentation("Touch ", "kort tryk tænder/slukker, langt tryk regulerer")
                 .Documentation("Tænd/regulér op", "tænder, eller regulerer op ved langt tryk");
@@ -2953,14 +2959,15 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Styrer en trådløs eller busbaseret lysdæmper efter både tilstedeværelse og manuel betjening: PIR og skumring tænder og slukker automatisk med efterløb, mens taster og app kan overstyre; to niveauer kan gemmes, og en spærring sætter al automatik ud af kraft.")
-                .Documentation("Høj", "henter højt niveau; langt tryk gemmer det aktuelle")
+                .Documentation("Styrer en trådløs eller busbaseret lysdæmper efter både tilstedeværelse og manuel betjening: PIR og skumring tænder og slukker automatisk med efterløb, mens taster og app kan overstyre; to niveauer kan gemmes, når dæmperen er tændt, og en spærring standser automatikken.")
+                .Documentation("Høj", "kort tryk henter højt; langt gemmer")
                 .Documentation("Højt niveau", "scenarie med det høje niveau og rampetid")
-                .Documentation("Lav ", "henter lavt niveau; langt tryk gemmer det aktuelle")
+                .Documentation("Lav ", "kort tryk henter lavt; langt gemmer")
                 .Documentation("Lavt niveau", "scenarie med det lave niveau og rampetid")
+                .Documentation("Lys niveau ", "link fra produktets lysniveau")
                 .Documentation("Lysdæmper tændt", "statusvisning til diode og Viewer")
-                .Documentation("Manuelt betjent ", "viser at PIR er overstyret; blinker ved manuel sluk")
-                .Documentation("Natdrift", "tænder kun lavt om natten; et langt tryk regulerer alligevel op")
+                .Documentation("Manuelt betjent ", "viser PIR-overstyring; blinker efter manuel sluk")
+                .Documentation("Natdrift", "kort tryk tænder lavt; langt regulerer op")
                 .Documentation("PIR", "tilstedeværelse fra bevægelsessensor")
                 .Documentation("Skumring", "mørkesignal fra skumrings- eller luxsensor")
                 .Documentation("Sluk", "scenarie der slukker med valgt rampetid")
@@ -3815,17 +3822,18 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Styrer en fortrådet lysdæmper efter tilstedeværelse og manuel betjening: PIR og skumring klarer det automatiske med efterløb, taster kan overstyre, og to niveauer kan gemmes; udgangene forbindes til dæmperens fire klemmer.")
-                .Documentation("Høj", "henter højt niveau; langt tryk gemmer det aktuelle")
+                .Documentation("Styrer en fortrådet 400 UNI IHC/SA-lysdæmper efter tilstedeværelse og manuel betjening: PIR og skumring styrer automatikken med efterløb, taster kan overstyre, og to niveauer kan gemmes, når dæmperen er tændt; produktet skal oprettes med to taster i Mode B.")
+                .Documentation("Høj", "kort tryk henter højt; langt gemmer")
                 .Documentation("Højt niveau - Memory 2", "forbindes til dæmperens klemme 4")
-                .Documentation("Lav ", "henter lavt niveau; langt tryk gemmer det aktuelle")
+                .Documentation("Lav ", "kort tryk henter lavt; langt gemmer")
                 .Documentation("Lavt niveau - Memory 1", "forbindes til dæmperens klemme 3")
                 .Documentation("Lysdæmper tændt", "statusvisning til diode og Viewer")
-                .Documentation("Manuelt betjent ", "viser at PIR er overstyret; blinker ved manuel sluk")
-                .Documentation("Natdrift", "tænder kun lavt om natten; et langt tryk regulerer alligevel op")
+                .Documentation("Manuelt betjent ", "viser PIR-overstyring; blinker efter manuel sluk")
+                .Documentation("Natdrift", "kort tryk tænder lavt; langt regulerer op")
                 .Documentation("PIR", "tilstedeværelse fra bevægelsessensor")
                 .Documentation("Skumring", "mørkesignal fra skumrings- eller luxsensor")
-                .Documentation("Sluk/regulér ned", "slukker eller regulerer ned; udgang til klemme 2")
+                .Documentation("Sluk/regulér ned", "udgang til dæmperens klemme 2")
+                .Documentation("Sluk/regulér ned  ", "kort tryk slukker; langt regulerer ned")
                 .Documentation("Spærring", "spærrer al automatik, mens den er aktiv")
                 .Documentation("Touch ", "kort tryk tænder/slukker, langt tryk regulerer")
                 .Documentation("Tænd/regulér op", "tænder eller regulerer op; udgang til klemme 1");
@@ -4600,6 +4608,7 @@ namespace Ihc.Vis.Catalog
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
                 .Documentation("Bestemmer om de to kanaler i en IHC LED Dimmer skal følges ad: en til/fra-indgang – typisk en magnetkontakt ved et gardin – sætter synkroniseringsflaget, som indstillingen kan vende om.")
+                .Documentation("Channel sync", "synkroniseringsflaget til dimmerens to kanaler")
                 .Documentation("Indgang", "til/fra-signal fra føler eller anden blok");
             var g0 = b.AddEnumDefinition("Inversion").AddValue("ON", 0).AddValue("OFF", 1);
             var r0 = b.AddInput("resource_input", "Indgang", r => r.Icon("_0x36").Note("Based on state and changes on this Input, \"Channel sync\" enumerator output will change state accordingly.").Attribute("note-2", "For example magnetcontact"));
@@ -4837,11 +4846,11 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Styrer lys og ventilator i samme rum fra tryk og PIR: tre tilstande afgør, om ventilatoren kører under tilstedeværelse, kun når lyset er tændt, eller først bagefter – og glemmer man at slukke, tager PIR både lys og ventilator.")
+                .Documentation("Styrer lys og ventilator i samme rum fra tryk og PIR: tre tilstande afgør, om ventilatoren kører under tilstedeværelse, kun med tændt lys eller først bagefter – ved glemt sluk standser PIR til sidst begge dele.")
                 .Documentation("KIP", "kipper lyset")
                 .Documentation("Lys (også til kontrollys)", "lysudgang, også til kontrollampe")
                 .Documentation("PIR", "bevægelse, der styrer ventilatorens tid")
-                .Documentation("Sluk", "slukker lyset; langt tryk tager også ventilatoren")
+                .Documentation("Sluk", "kort tryk slukker lys; over 750 ms begge")
                 .Documentation("Tænd", "tænder lyset")
                 .Documentation("Ventilator", "forbindes til ventilatoren");
             var g0 = b.AddEnumDefinition("Ventilator kører").AddValue("3. Ventilator kører ikke ved tilstedeværelse - derefter efterløb!", 2).AddValue("1. Ventilator kører ved tilstedeværelse - derefter efterløb!", 0).AddValue("2. Ventilator kører ved tilstedeværelse - Hvis der er lys - derefter efterløb!", 1);
@@ -5092,8 +5101,8 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Styrer en ventilator på bad eller toilet fra én knap: ét tryk giver den korte tid, to hurtige tryk den lange, og et langt tryk kører konstant – mens PIR forlænger tiden, så længe der er nogen i rummet.")
-                .Documentation("Diode", "blinker én eller to gange efter valgt tid; lyser fast ved konstant drift")
+                .Documentation("Styrer en ventilator fra én knap: ét tryk vælger kort tid, to tryk inden 1,5 sekund vælger lang tid, og et tryk over 1,5 sekund giver konstant drift, mens PIR forlænger kørslen.")
+                .Documentation("Diode", "blinker efter valg; lyser fast ved konstant drift")
                 .Documentation("Indgang for tryk", "ét, to eller langt tryk vælger driftstiden")
                 .Documentation("PIR", "tilstedeværelse, der forlænger driften; type vælges i indstillingerne")
                 .Documentation("Sluk", "slukker ventilatoren uanset tilstand")
@@ -5277,6 +5286,8 @@ namespace Ihc.Vis.Catalog
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
                 .Documentation("Kører ventilationen efter fugten i rummet: med én føler måles rummet alene, med to sammenlignes rummet med resten af huset, og udgangen går til, når grænsen overskrides; manuel drift kan overstyre i et stykke tid.")
+                .Documentation("Fugtighed", "målt fugt i rummet")
+                .Documentation("Fugtighed reference", "målt fugt uden for rummet")
                 .Documentation("Indikering af manuel drift", "lyser under manuel overstyring")
                 .Documentation("Sluk", "stopper ventilationen")
                 .Documentation("Tænd", "starter manuel drift")
@@ -5366,6 +5377,7 @@ namespace Ihc.Vis.Catalog
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
                 .Documentation("Ventilerer efter dugpunktet, som fugtføleren selv beregner: udgangen går til over setpunktet plus hysteresen og fra igen under setpunktet minus hysteresen – altså modsat en varmestyring, som blokken derfor ikke kan erstatte.")
+                .Documentation("Dugpunkt", "beregnet dugpunkt fra fugtsensoren")
                 .Documentation("Udgang", "styrer ventilationen til og fra");
             var r0 = b.AddInput("resource_temperature", "Dugpunkt", r => r.Note("Forbindes til dugpunkt på fugtsensor").Inivalue("20.00"));
             var r1 = b.AddOutput("resource_output", "Udgang", r => r.Icon("_0x39").Note("Forbindes til komponent som ønskes styret"));
@@ -5424,9 +5436,9 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Tænder lys eller relæ på bevægelse og kan stadig betjenes med tryk: indstillingerne afgør, om PIR selv tænder eller kun holder efterløbet i gang, skumring kan være betingelse, og en spærring kobler al automatik fra.")
+                .Documentation("Tænder lys eller relæ på bevægelse og kan stadig betjenes med tryk: indstillingerne afgør, om PIR selv tænder eller kun holder efterløbet i gang, skumring kan være en betingelse, og en spærring kobler al automatik fra.")
                 .Documentation("Kip", "skifter udgangen; PIR holdes tilbage lige efter sluk")
-                .Documentation("Manuelt betjent", "viser at PIR er overstyret; blinker ved manuel sluk")
+                .Documentation("Manuelt betjent", "viser PIR-overstyring; blinker efter manuel sluk")
                 .Documentation("Natdrift", "begrænser PIR om natten efter indstillingen")
                 .Documentation("OFF puls", "kort puls hver gang udgangen slukker")
                 .Documentation("ON puls", "kort puls hver gang udgangen tænder")
@@ -5773,10 +5785,11 @@ namespace Ihc.Vis.Catalog
                 .Documentation("Kip - Konstant ", "kort tryk låser på højt; næste tryk frigiver")
                 .Documentation("Lavt niveau", "scenarie for det lave niveau")
                 .Documentation("Lavt niveau - Memory 1", "forbindes til dæmperens klemme 3")
-                .Documentation("Magnetkontakt", "dørkontakt, der spærrer efterløbet")
+                .Documentation("Magnetkontakt", "spærrer efterløbet og tænder ved mørke")
                 .Documentation("PIR", "bevægelse, der hæver til højt niveau")
                 .Documentation("Skumring", "mørke er betingelse for tænding")
-                .Documentation("Sluk", "slukker, eller frigiver konstant-tændingen")
+                .Documentation("Sluk", "kort tryk frigiver; over ét sekund slukker")
+                .Documentation("Sluk ", "udgang der slukker; skal forbindes")
                 .Documentation("Tilbagemelding", "produktets faktiske tilstand; hindrer gentagne scenariekald")
                 .Documentation("Tænd - Konstant", "låser lyset på højt niveau")
                 .Documentation("Ur", "tidsvindue, hvor lyset må være tændt");
@@ -6028,9 +6041,9 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Dæmper en overfølsom PIR, så utilsigtede udslag ikke slår igennem: signalet sendes først videre, når indgangen har været aktiv et vist antal gange inden for et tidsrum eller har holdt sig aktiv længe nok.")
+                .Documentation("Dæmper en overfølsom PIR, så utilsigtede udslag ikke slår igennem: signalet sendes først videre, når indgangen har været aktiv et vist antal gange inden for et tidsrum eller har holdt sig aktiv længe nok; anbefales ikke til alarmbrug.")
                 .Documentation("Indgang for pir", "det rå signal fra føleren")
-                .Documentation("Pir Udgang", "det filtrerede signal; kan sættes som NO eller NC");
+                .Documentation("Pir Udgang", "filtreret signal med valgbar NO/NC-logik");
             var g0 = b.AddEnumDefinition("Set Pir udgang til No/Nc").AddValue("No - Normal open", 0).AddValue("Nc - Normal could ", 1);
             var r0 = b.AddInput("resource_input", "Indgang for pir", r => r.Icon("_0x36").Note("Vigtigt !\r\nDenne PIR skal være en pulserende PIR, ikke en med et stående udgang ved detektion.\r\nÆldre PIR typer er typisk pulserende. \r\nNogle PIR typer kan instilles til at være pulserende.\r\n(Udfyldes af installatøren)"));
             var r1 = b.AddOutput("resource_output", "Pir Udgang", r => r.Icon("_0x39"));
@@ -6412,7 +6425,7 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("")
                 .InternalVariablesNote("")
                 .ProgramsNote("")
-                .Documentation("Ugeur med syv tænd/sluk-ure, hvor hver ugedag tildeles sit eget – eller slet intet – så hverdag og weekend kan køre forskelligt; et tidspunkt på 00:00:00 tæller som slået fra, så midnat skrives 23:59:59.")
+                .Documentation("Ugeur med syv tænd/sluk-ure, hvor hver ugedag vælger sit eget eller intet; 00:00:00 deaktiverer et tidspunkt, så sluk ved midnat angives som 23:59:59 og tænd som 00:00:01.")
                 .Documentation("Manuel kip af udgang", "vender udgangen indtil næste urtidspunkt")
                 .Documentation("Manuel sluk", "slukker udgangen")
                 .Documentation("Manuel tænd", "tænder udgangen")
@@ -7283,7 +7296,7 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Kører persiennemotorer automatisk, hvor op og ned er låst mod hinanden og lamelvinklen kan justeres: signalerne har en fast rangorden, så alarm, vind og regn altid går forud for tryk, ur og solsensor.")
+                .Documentation("Kører persiennemotorer automatisk, hvor op og ned er låst mod hinanden og lamelvinklen kan justeres: alarm, vind og regn går forud for tryk, ur og solsensor; ved 12/24 V-motorer skal 4.1.09 forskyde gruppestart, hvis forsyningen ikke tåler samtidig indkobling.")
                 .Documentation("Alarm hæv", "hæver ubetinget; højeste prioritet")
                 .Documentation("Alarm sænk", "sænker ubetinget; næsthøjeste prioritet")
                 .Documentation("Gruppebetjeningstryk hæv", "gruppetryk, hæver")
@@ -8022,7 +8035,7 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Kører jalousimotorer automatisk, hvor op og ned er låst mod hinanden: signalerne har en fast rangorden, så alarm ligger øverst, dernæst tryktasterne, og først derefter vind, skumring, ur og sol.")
+                .Documentation("Kører jalousimotorer automatisk, hvor op og ned er låst mod hinanden: alarm går forud for tryktaster og dernæst vind, skumring, ur og sol; ved 12/24 V-motorer skal 4.1.09 forskyde gruppestart, hvis forsyningen ikke tåler samtidig indkobling.")
                 .Documentation("Alarm hæv", "hæver ubetinget; højeste prioritet")
                 .Documentation("Alarm sænk", "sænker ubetinget; næsthøjeste prioritet")
                 .Documentation("Gruppebetjeningstryk hæv", "gruppetryk, hæver")
@@ -8037,7 +8050,7 @@ namespace Ihc.Vis.Catalog
                 .Documentation("Solsensor", "sol sænker jalousiet et stykke")
                 .Documentation("Tillad trykfunktion", "giver tryktasterne lov; on som standard")
                 .Documentation("Ur for lukketid", "sænker jalousiet i lukketiden")
-                .Documentation("Vindmåler", "blæst hæver jalousiet");
+                .Documentation("Vindmåler", "blæst sænker jalousiet");
             var g0 = b.AddEnumDefinition("Persienne tilstand").AddValue("Persienne er oppe", 2).AddValue("Persienne er nede", 1).AddValue("Persienne er stoppet", 3).AddValue("Persienne er halvt nede", 0).AddValue("Persienne på vej ned", 5).AddValue("Persienne på vej op", 6).AddValue("Persienne stepper op", 8).AddValue("Persienne stepper ned", 7).AddValue("Persienne på vej halvt ned", 4);
             var g1 = b.AddEnumDefinition("Persienne komando").AddValue("Persienne kør op", 3).AddValue("Persienne kør ned", 2).AddValue("Persienne kør halvt ned", 1).AddValue("Step persienne op", 6).AddValue("Step persienne ned", 5).AddValue("Persienne stop", 4).AddValue("Neutral", 0);
             var r0 = b.AddInput("resource_input", "Alarm hæv", r => r.Icon("_0x36").Note("Indgang har højeste prioritet.\r\n(Udfyldes af installatøren)"));
@@ -9092,7 +9105,7 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Samler flere signaler: udgangen er on, så snart hver enkelt indgang er on.")
+                .Documentation("Samler flere signaler: udgangen er on, når hver indgang er on; ubrugte indgange forbindes ikke.")
                 .Documentation("Indgang 1", "skal være on")
                 .Documentation("Indgang 10", "skal være on")
                 .Documentation("Indgang 2", "skal være on")
@@ -9416,7 +9429,7 @@ namespace Ihc.Vis.Catalog
                 .Documentation("Tæller driftstid i timer, mens indgangen er tændt – f.eks. brændetimer på en lyskilde – og tænder en indikering, når grænsen er nået.")
                 .Documentation("Indgang", "tæller op, mens den er on")
                 .Documentation("Indikation", "lyser når grænsen er nået")
-                .Documentation("Reset", "langt tryk nulstiller tællerne");
+                .Documentation("Reset", "tryk over ét sekund nulstiller tællerne");
             var r0 = b.AddInput("resource_input", "Indgang", r => r.Icon("_0x36").Note("Når denne indgang er \"ON\" tæller tiden op.\r\n(Udfyldes af installatøren)"));
             var r1 = b.AddInput("resource_input", "Reset", r => r.Icon("_0x36").Note("Aktiveres ved et langt tryk.\r\nSkal holdes inde i  >1sek før \"Reset\" udføres.\r\n(Udfyldes af installatøren)"));
             var r2 = b.AddOutput("resource_output", "Indikation", r => r.Backup().Icon("_0x39").Note("Denne udgang kan bruges til en Diode, der indikerer at \"Set-punktet\" er opnået.\r\nDenne kan ligeledes anvendes til at sende en mail til værkfører eller elektriker om f.eks. \"Det er tid til at skifte lysrør\""));
@@ -9518,7 +9531,7 @@ namespace Ihc.Vis.Catalog
                 .Documentation("Tæller driftstid og viser totalen som år, måneder og dage – f.eks. brændetimer på en lyskilde – og tænder en indikering, når grænsen er nået.")
                 .Documentation("Indgang hvor timer skal registreres", "tæller op, mens den er on")
                 .Documentation("Indikation", "lyser når grænsen er nået")
-                .Documentation("Reset !", "langt tryk nulstiller tællerne");
+                .Documentation("Reset !", "tryk over ét sekund nulstiller tællerne");
             var r0 = b.AddInput("resource_input", "Indgang hvor timer skal registreres", r => r.Icon("_0x36").Note("Når  indgang er ON vil Brændtimer tælle op\r\n(Udfyldes af installatøren)"));
             var r1 = b.AddInput("resource_input", "Reset !", r => r.Icon("_0x36").Note("Aktiveres ved et langt tryk.\r\nSkal holdes inde i  >1sek før \"Reset\" udføres.\r\n(Udfyldes af installatøren)"));
             var r2 = b.AddOutput("resource_output", "Indikation", r => r.Backup().Icon("_0x39").Note("Denne udgang kan bruges til en Diode, der indikerer at \"Set-punktet\" er opnået.\r\nDenne kan ligeledes anvendes til at sende en mail til værkfører eller elektriker om f.eks. \"Det er tid til at skifte lysrør\""));
@@ -9745,7 +9758,7 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Kobler fem udgange ind og ud efter hinanden med en fast forsinkelse mellem hvert trin.")
+                .Documentation("Kobler fem udgange ind og ud efter hinanden med samme indstillede forsinkelse mellem trinnene.")
                 .Documentation("Start forsinkelsesblok", "starter og stopper kæden")
                 .Documentation("Udgang 1", "skifter først")
                 .Documentation("Udgang 2", "skifter et trin senere")
@@ -9893,7 +9906,7 @@ namespace Ihc.Vis.Catalog
                 .Documentation("Indgang 7", "signal der logges")
                 .Documentation("Indgang 8", "signal der logges")
                 .Documentation("Indgang 9", "signal der logges")
-                .Documentation("Reset", "langt tryk rydder loggen");
+                .Documentation("Reset", "tryk over ét sekund rydder loggen");
             var g0 = b.AddEnumDefinition("Indgang aktiveret !").AddValue("Indgang 1 - ON", 1).AddValue("Indgang 2 - ON", 3).AddValue("Indgang 3 - ON", 5).AddValue("Indgang 4 - ON", 7).AddValue("Indgang 5 - ON", 9).AddValue("Indgang 6 - ON", 11).AddValue("Indgang 7 - ON", 13).AddValue("Indgang 8 - ON", 15).AddValue("Indgang 9 - ON", 17).AddValue("Indgang 10 - ON", 19).AddValue("Ingen aktive", 0).AddValue("Indgang 1 - OFF", 2).AddValue("Indgang 2 - OFF", 4).AddValue("Indgang 3 - OFF", 6).AddValue("Indgang 4 - OFF", 8).AddValue("Indgang 5 - OFF", 10).AddValue("Indgang 6 - OFF", 12).AddValue("Indgang 7 - OFF", 14).AddValue("Indgang 8 - OFF", 16).AddValue("Indgang 9 - OFF", 18).AddValue("Indgang 10 - OFF", 20);
             var g1 = b.AddEnumDefinition("Overskrivning").AddValue("Ja", 0).AddValue("Nej", 1);
             var g2 = b.AddEnumDefinition("Log").AddValue("ON", 0).AddValue("OFF", 1).AddValue("ON og OFF", 2);
@@ -10395,7 +10408,7 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Udvider fjernbetjeningen ud over otte knapper: et shift-tryk lægger knap 1-7 om på et andet sæt udgange og scenarier.")
+                .Documentation("Giver knap 1-7 et skiftelag.")
                 .Documentation("Knap 1", "udgang 1")
                 .Documentation("Knap 2", "udgang 2")
                 .Documentation("Knap 3", "udgang 3")
@@ -10405,28 +10418,28 @@ namespace Ihc.Vis.Catalog
                 .Documentation("Knap 7", "udgang 7")
                 .Documentation("Knap 8 - Shift", "skifter lag")
                 .Documentation(" Puls - Sluk alt", "sluk alt")
-                .Documentation("Scenarie - Sluk alt", "sluk alt")
-                .Documentation("Scenarie 10 (3)", "shiftet")
-                .Documentation("Scenarie 11(4)", "shiftet")
-                .Documentation("Scenarie 12 (5)", "shiftet")
-                .Documentation("Scenarie 13 (6)", "shiftet")
-                .Documentation("Scenarie 14 (7)", "shiftet")
-                .Documentation("Scenarie 8 (1)", "shiftet")
-                .Documentation("Scenarie 9 (2)", "shiftet")
-                .Documentation("Udgang 1", "følger")
-                .Documentation("Udgang 10 (3)", "shiftet")
-                .Documentation("Udgang 11 (4)", "shiftet")
-                .Documentation("Udgang 12 (5)", "shiftet")
-                .Documentation("Udgang 13 (6)", "shiftet")
-                .Documentation("Udgang 14 (7)", "shiftet")
-                .Documentation("Udgang 2", "følger")
-                .Documentation("Udgang 3", "følger")
-                .Documentation("Udgang 4", "følger")
-                .Documentation("Udgang 5", "følger")
-                .Documentation("Udgang 6", "følger")
-                .Documentation("Udgang 7", "følger")
-                .Documentation("Udgang 8 (1)", "shiftet")
-                .Documentation("Udgang 9 (2)", "shiftet");
+                .Documentation("Scenarie - Sluk alt", "scenarie sluk alt")
+                .Documentation("Scenarie 10 (3)", "henter shiftscenariet")
+                .Documentation("Scenarie 11(4)", "henter shiftscenariet")
+                .Documentation("Scenarie 12 (5)", "henter shiftscenariet")
+                .Documentation("Scenarie 13 (6)", "henter shiftscenariet")
+                .Documentation("Scenarie 14 (7)", "henter shiftscenariet")
+                .Documentation("Scenarie 8 (1)", "henter shiftscenariet")
+                .Documentation("Scenarie 9 (2)", "henter shiftscenariet")
+                .Documentation("Udgang 1", "følger knappen")
+                .Documentation("Udgang 10 (3)", "følger shiftknappen")
+                .Documentation("Udgang 11 (4)", "følger shiftknappen")
+                .Documentation("Udgang 12 (5)", "følger shiftknappen")
+                .Documentation("Udgang 13 (6)", "følger shiftknappen")
+                .Documentation("Udgang 14 (7)", "følger shiftknappen")
+                .Documentation("Udgang 2", "følger knappen")
+                .Documentation("Udgang 3", "følger knappen")
+                .Documentation("Udgang 4", "følger knappen")
+                .Documentation("Udgang 5", "følger knappen")
+                .Documentation("Udgang 6", "følger knappen")
+                .Documentation("Udgang 7", "følger knappen")
+                .Documentation("Udgang 8 (1)", "følger shiftknappen")
+                .Documentation("Udgang 9 (2)", "følger shiftknappen");
             var g0 = b.AddEnumDefinition("Shift periode").AddValue("1 Tryk", 0).AddValue("Efterregulering", 1);
             var r0 = b.AddInput("resource_input", "Knap 1", r => r.Icon("_0x36").Note("Forbindes til Fjernbetjeningens \"Tryk 1\"\r\n(Udfyldes af installatøren)"));
             var r1 = b.AddInput("resource_input", "Knap 2", r => r.Icon("_0x36").Note("Forbindes til Fjernbetjeningens \"Tryk 2\"\r\n(Udfyldes af installatøren)"));
@@ -10775,9 +10788,9 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Tæller pulser fra en el- eller vandmåler og gemmer forbruget måned for måned i et helt år; antal pulser pr. enhed og målerens aktuelle visning sættes i indstillingerne, og pulsen skal vare mindst 50 ms.")
+                .Documentation("Tæller pulser fra en el- eller vandmåler og gemmer månedsforbrug i et år; hver puls kræver mindst 50 ms on og 100 ms pause, og ændring af pulser pr. enhed nulstiller alle tællere.")
                 .Documentation("Puls indgang", "pulssignalet fra måleren")
-                .Documentation("Reset", "langt tryk nulstiller alle tællere");
+                .Documentation("Reset", "tryk over tre sekunder nulstiller alle tællere");
             var r0 = b.AddInput("resource_input", "Puls indgang", r => r.Icon("_0x36").Note("Puls længde skal være > 50 ms"));
             var r1 = b.AddInput("resource_input", "Reset", r => r.Icon("_0x36").Note("Ved et langt tryk > 3 sek. resettes \"Måned til dato\" samt. \"Jan-Dec\""));
             var r2 = b.AddOutput("resource_date", "Dags Dato", r => r.Icon("_0x29").Note("Viser dags dato.").Attribute("year", "2000").Attribute("month", "1").Attribute("day", "1"));
@@ -11441,7 +11454,7 @@ namespace Ihc.Vis.Catalog
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
                 .Documentation("Kører kun cirkulationspumpen, når nogen nærmer sig en varmtvandshane, og kun hvis den ikke lige har kørt – det sparer både varme og vand.")
-                .Documentation("Indgang for PIR", "bevægelse ved hanen starter pumpen")
+                .Documentation("Indgang for PIR", "samlet signal fra PIR ved alle varmtvandshaner")
                 .Documentation("Udgang til cirkulationspumpe for varmt vand", "styrer pumpen");
             var r0 = b.AddInput("resource_input", "Indgang for PIR", r => r.Icon("_0x36").Note("Aktiverer cirkulationspumpe hvis ikke denne har kørt inden for de sidste 30 min.\r\n(Udfyldes af installatøren)"));
             var r1 = b.AddOutput("resource_output", "Udgang til cirkulationspumpe for varmt vand", r => r.Icon("_0x39"));
@@ -11493,11 +11506,12 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Ét panel sætter driftformen for hele varmeanlægget på én gang – beboet, ubeboet eller frostsikring – og et langt tryk starter i stedet en kort test, hvor ventilerne tvinges op uanset rumtemperatur.")
+                .Documentation("Vælger beboet, ubeboet eller frostsikring for hele varmeanlægget; hold over 1,5 sekund starter en test, der kun åbner NC-telestater og stadig respekterer maksimal gulvtemperatur.")
+                .Documentation("Driftform", "valgt driftform til varmestyringsblokkene")
                 .Documentation("Indgang Beboet", "vælger beboet; langt tryk starter test")
                 .Documentation("Indgang Frostsikring", "vælger frostsikring; langt tryk starter test")
                 .Documentation("Indgang Ubeboet", "vælger ubeboet; langt tryk starter test")
-                .Documentation("Indgang for start af ventilmotion", "motionerer ventiler og pumpe")
+                .Documentation("Indgang for start af ventilmotion", "motionerer kun vandanlæg via pumpestyringsblokken")
                 .Documentation("Indgang til aktivering og deaktivering af aut. skift til beboet", "slår automatisk skift til beboet til og fra")
                 .Documentation("Indgang til aktivering og deaktivering af aut. skift til frostsikring", "slår automatisk skift til frostsikring til og fra")
                 .Documentation("Indgang til aktivering og deaktivering af aut. skift til ubeboet", "slår automatisk skift til ubeboet til og fra")
@@ -12071,7 +12085,7 @@ namespace Ihc.Vis.Catalog
                 .Documentation("Vælger mellem nat-, dag- og normaltemperatur til varmestyringen, enten efter ur eller manuelt; bemærk at blokken som udgangspunkt kører konstant på normaltemperatur, så urdrift skal slås til, før tidspunkterne gælder.")
                 .Documentation("Dag- eller nattemperatur", "on når enten dag eller nat gælder")
                 .Documentation("Dagtemperatur", "on i dagperioden")
-                .Documentation("Helligdag eller fridag", "on når fridagsindgangen er aktiv")
+                .Documentation("Helligdag eller fridag", "fri-/helligdag aktiv; dagtemperatur bortfalder")
                 .Documentation("Konstant", "slår konstantdrift til")
                 .Documentation("Konstant / urdrift", "skifter mellem konstant og urdrift")
                 .Documentation("Konstant dagtemperatur", "vælger dagtemperatur i konstantdrift")
@@ -12354,14 +12368,19 @@ namespace Ihc.Vis.Catalog
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsName("Varmeapplikation:")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Avanceret varmestyring for et rum, der vælger setpunkt ud fra driftform, ur og eventuel gæste- eller overstyring, måler på rum- og gulvføler efter behov, og holder varmen tilbage, mens en dør eller et vindue står åbent.")
+                .Documentation("Avanceret varmestyring for et rum, der vælger setpunkt efter driftform, ur og gæste- eller overstyring, bruger rum- og gulvføler efter reguleringsform og vælger ubeboet-setpunktet ved åbent vindue; elektrisk gulvvarme kræver altid gulvføler.")
                 .Documentation("Alarm - Sensorfejl ", "melder følerfejl og stopper varmen")
                 .Documentation("Dagtemperatur", "vælger dagsetpunktet")
+                .Documentation("Driftform", "beboet, ubeboet eller frostsikring fra betjeningspanelet")
+                .Documentation("Gulvets aktuelle setpunkt", "det gældende setpunkt for gulvet")
+                .Documentation("Gulvtemperatur", "målt gulvtemperatur fra gulvføleren")
                 .Documentation("Gæstetilstand", "holder dagsetpunktet for gæster")
-                .Documentation("Magnetkontakt (f.eks dør ell. vindue) NC.", "åbent vindue standser varmekaldet")
+                .Documentation("Magnetkontakt (f.eks dør ell. vindue) NC.", "åbent vindue vælger ubeboet-setpunktet")
                 .Documentation("Nattemperatur", "vælger natsetpunktet")
                 .Documentation("Overstyring", "sætter setpunktet manuelt")
                 .Documentation("Pumpestyring", "kald til pumpestyringsblokken")
+                .Documentation("Rummets aktuelle setpunkt", "det gældende setpunkt for rummet")
+                .Documentation("Rumtemperatur", "målt rumtemperatur fra termostaten")
                 .Documentation("Sensor fejl", "lyser ved fejl på føleren")
                 .Documentation("Sommertilstand", "kobler varmen fra om sommeren")
                 .Documentation("Telestat / Varme", "styrer telestat eller varmerelæ");
@@ -13199,10 +13218,13 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Enkel varmestyring for ét rum, der kun måler rumtemperaturen: driftformen kommer fra betjeningspanelet, og en urindgang kan sænke setpunktet i bestemte timer.")
+                .Documentation("Enkel rumvarmestyring med kun én føler for rumtemperatur, hvor driftform og ur vælger setpunkt; elektrisk gulvvarme kræver gulvføler ved selve temperatursensoren.")
+                .Documentation("Aktuelt setpunkt", "det setpunkt der styres efter")
                 .Documentation("Alarm - Sensorfejl ", "melder følerfejl og stopper varmen")
+                .Documentation("Driftform", "beboet, ubeboet eller frostsikring fra betjeningspanelet")
+                .Documentation("Rumtemperatur ind", "målt rumtemperatur fra termostaten")
                 .Documentation("Telestat / Varme", "styrer telestat eller varmerelæ")
-                .Documentation("Ur", "sænker setpunktet i urets periode");
+                .Documentation("Ur", "vælger ur-setpunktet i beboet drift");
             var g0 = b.AddEnumDefinition("Driftstilstand DK - 3").AddValue("Beboet", 0).AddValue("Ubeboet", 1).AddValue("Frostsikring", 2).AddValue("Gæster", 3).AddValue("Ventilmotion", 5).AddValue("Test", 4);
             var r0 = b.AddInput("resource_temperature", "Rumtemperatur ind", r => r.Note("Forbindes til udgangen rumtemperatur på termostaten. \r\nViser den aktuelle temperatur i rummet.\r\n").Inivalue("21.00").Attribute("udf", "#I01#"));
             var r1 = b.AddInput("resource_input", "Alarm - Sensorfejl ", r => r.Icon("_0x36").Note("Forbindes til Alarm på termostaten.\r\nOn hvis der er fejl i kommunikation med temperatursensor. \r\nOpvarmningen afbrydes og udgangen sensorfejl skifter til on.\r\n(Udfyldes af installatøren)\r\n"));
@@ -13361,8 +13383,9 @@ namespace Ihc.Vis.Catalog
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
                 .Documentation("Logger en termostats temperatur time for time over et døgn: enten løbende, så de seneste 24 timer altid står i loggen, eller én gang, hvorefter den stopper; skifter man undervejs til løbende, ryddes loggen.")
                 .Documentation("Betingelse", "logning kører kun, mens den er on")
-                .Documentation("Reset", "langt tryk rydder loggen")
-                .Documentation("Sidste Temperatur", "den senest loggede værdi");
+                .Documentation("Reset", "tryk over ét sekund rydder loggen")
+                .Documentation("Sidste Temperatur", "den senest loggede værdi")
+                .Documentation("Temperatur - in", "termostaten der logges");
             var g0 = b.AddEnumDefinition("Overskrivning").AddValue("Ja", 0).AddValue("Nej", 1);
             var r0 = b.AddInput("resource_temperature", "Temperatur - in", r => r.Inivalue("21.00"));
             var r1 = b.AddInput("resource_input", "Betingelse", r => r.Icon("_0x36").Note("Hvis denne \"betingelse\" er \"OFF\" vil der ikke blive logget\r\n(Udfyldes af installatøren)").Inivalue("on"));
@@ -13720,7 +13743,12 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Bruges til indregulering: gemmer de seneste 20 temperaturændringer fra én valgt føler, og selv om fem følere kan tilsluttes, logges der kun fra den, indstillingen peger på.");
+                .Documentation("Bruges til indregulering: gemmer de seneste 20 temperaturændringer fra én valgt føler, og selv om fem følere kan tilsluttes, logges der kun fra den, indstillingen peger på.")
+                .Documentation("Temperatur ind. 1.", "mulig føler; kun den valgte logges")
+                .Documentation("Temperatur ind. 2.", "mulig føler; kun den valgte logges")
+                .Documentation("Temperatur ind. 3.", "mulig føler; kun den valgte logges")
+                .Documentation("Temperatur ind. 4.", "mulig føler; kun den valgte logges")
+                .Documentation("Temperatur ind. 5.", "mulig føler; kun den valgte logges");
             var g0 = b.AddEnumDefinition("Vælg temp. føler til log.").AddValue("Føler 1.", 0).AddValue("Føler 2.", 1).AddValue("Føler 3.", 2).AddValue("Føler 4.", 3).AddValue("Føler 5.", 4);
             var r0 = b.AddInput("resource_temperature", "Temperatur ind. 1.");
             var r1 = b.AddInput("resource_temperature", "Temperatur ind. 2.");
@@ -13865,11 +13893,12 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Holder øje med den højeste og laveste temperatur en føler har vist, med tidspunkt for hver, og kan slå alarm i begge retninger; store spring filtreres fra, og loggen kan tændes og slukkes udefra.")
+                .Documentation("Holder øje med en følers højeste og laveste temperatur med tidspunkt for hver og kan slå alarm i begge retninger; store spring filtreres fra, loggen kan styres udefra, og ændring af filtergrænsen nulstiller den.")
                 .Documentation("Alarm Høj", "on over den høje grænse")
                 .Documentation("Alarm Lav", "on under den lave grænse")
                 .Documentation("Log Aktiv", "logning kører kun, mens den er on")
-                .Documentation("Reset", "kort tryk rydder min og maks");
+                .Documentation("Reset", "kort tryk rydder min og maks")
+                .Documentation("Temperatur", "føleren der overvåges");
             var r0 = b.AddInput("resource_input", "Log Aktiv", r => r.Icon("_0x36").Note("Denne skal være \"ON\" for at funktionsblokken er aktiv.\r\n(Udfyldes af installatøren)").Inivalue("on").Attribute("udf", "#I01#"));
             var r1 = b.AddInput("resource_temperature", "Temperatur", r => r.Note("Indsæt en temperatur sensorer der ønskes log på").Inivalue("20.00").Attribute("udf", "#I02#"));
             var r2 = b.AddInput("resource_input", "Reset", r => r.Icon("_0x36").Note("Reset log.\r\n(Udfyldes af installatøren)").Attribute("udf", "#I03#"));
@@ -14118,10 +14147,12 @@ namespace Ihc.Vis.Catalog
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsName("Programmer.  2015.10.07 DSC")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Kobler IHC sammen med et Nilan-ventilationsanlæg, så blæsertrin og temperatur kan følge husets tilstand: styreformen afgør, om IHC styrer automatisk, manuelt eller lader anlæggets eget panel råde, mens driftformen vælger varme, køl eller automatisk skift.")
-                .Documentation("Driftform: Automatisk", "lader anlægget selv skifte")
-                .Documentation("Driftform: Køl", "vælger køling")
-                .Documentation("Driftform: Varme", "vælger opvarmning")
+                .Documentation("Styrer et Nilan CTS-602 via blok 5.4.02 og den krævede PLC/gateway; IHC kan vælge blæsertrin, temperatur og varme/køl automatisk eller manuelt, mens panelstyring overlader betjeningen til Nilan-panelet.")
+                .Documentation("Driftform", "beboet, ubeboet eller frostsikring fra betjeningspanelet")
+                .Documentation("Driftform: Automatisk", "automatisk varme/køl; kun manuelt med begge flader")
+                .Documentation("Driftform: Køl", "køling; kun manuelt og med køleflade")
+                .Documentation("Driftform: Varme", "opvarmning; kun manuelt og med varmeflade")
+                .Documentation("Hustilstand", "hjemme, ude eller nat fra hustilstandsblokken")
                 .Documentation("Indgang Stop", "standser anlægget i manuel styring")
                 .Documentation("Indgang Trin 1.", "blæsertrin 1")
                 .Documentation("Indgang Trin 2.", "blæsertrin 2")
@@ -14129,11 +14160,11 @@ namespace Ihc.Vis.Catalog
                 .Documentation("Indgang Trin 4.", "blæsertrin 4")
                 .Documentation("Indgang dør- / vinduesstyring (NC)", "åben dør eller vindue skruer ned")
                 .Documentation("Indgang fri-/ helligdag", "holder fridagens tidsplan")
-                .Documentation("Indgang gæstetilstand", "hæver trinnet for gæster")
-                .Documentation("Indgang hygrostat", "fugt tvinger højt trin")
-                .Documentation("Indgang nødstop (NC)", "stopper anlægget øjeblikkeligt")
-                .Documentation("Styreform: IHC automatisk styret", "IHC styrer efter husets tilstand")
-                .Documentation("Styreform: IHC manuelt styret", "IHC styrer efter trykkene")
+                .Documentation("Indgang gæstetilstand", "vælger trin 3 i hjemme-/dagdrift")
+                .Documentation("Indgang hygrostat", "vælger fugttrin 4 dag/aften, 2 om natten")
+                .Documentation("Indgang nødstop (NC)", "stopper anlægget, undtagen ved panelstyring")
+                .Documentation("Styreform: IHC automatisk styret", "styrer automatisk efter husets tilstand")
+                .Documentation("Styreform: IHC manuelt styret", "styrer manuelt efter trykkene")
                 .Documentation("Styreform: Panelstyret", "anlæggets eget panel styrer")
                 .Documentation("Udgang driftform: automatisk:  køl/varme", "on ved automatisk skift")
                 .Documentation("Udgang driftform: køl", "on ved køling")
@@ -14142,7 +14173,8 @@ namespace Ihc.Vis.Catalog
                 .Documentation("Udgang styreform: IHC automatisk", "on i IHC-automatik")
                 .Documentation("Udgang styreform: IHC manuel", "on i IHC-manuel")
                 .Documentation("Udgang styreform: Panelstyret", "on ved panelstyring")
-                .Documentation("Udgang ventilation", "on når anlægget kører");
+                .Documentation("Udgang ventilation", "on når anlægget kører")
+                .Documentation("Udv. temperatur ind:", "udetemperatur til frost- og kondensbeskyttelse");
             var g0 = b.AddEnumDefinition("Driftstilstand DK - 3").AddValue("Beboet", 0).AddValue("Ubeboet", 1).AddValue("Frostsikring", 2).AddValue("Gæster", 3).AddValue("Ventilmotion", 5).AddValue("Test", 4);
             var g1 = b.AddEnumDefinition("Driftstilstand DK - Varmeblok").AddValue("Ubeboet", 1).AddValue("Beboet", 0).AddValue("Frostsikring", 2).AddValue("Test", 3).AddValue("Ventilmotion", 4);
             var g2 = b.AddEnumDefinition("Ventilations drift form manuel").AddValue("Varme", 0).AddValue("Køl", 1).AddValue("Automatisk", 2).AddValue("Ikke aktiv", 3);
@@ -14752,7 +14784,11 @@ namespace Ihc.Vis.Catalog
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsName("Programmer 2013.08.19")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Bindeled mellem ventilationsstyringen og et Nilan-anlæg: sender temperatur, blæsertrin, styreform og nødstop videre gennem en PLC-gateway, og kræver fire brugerdefinerede udgangsprodukter til de fire udgange.")
+                .Documentation("Bindeled mellem ventilationsstyringen og et Nilan CTS-602-anlæg: sender temperatur, blæsertrin, styreform og driftform gennem PLC-gatewayen og kræver fire brugerdefinerede udgangsprodukter.")
+                .Documentation("1. Ventilations temp.", "temperatur fra ventilationsstyringen")
+                .Documentation("2. Ventilations drift trin", "blæsertrin fra ventilationsstyringen")
+                .Documentation("3. Ventilations styreform", "styreform fra ventilationsstyringen")
+                .Documentation("4. Ventilations drift form", "driftform fra ventilationsstyringen")
                 .Documentation("Indgang fra PLC for update", "opdateringssignal fra gatewayen")
                 .Documentation("Udgang 1. til PLC indgang 0.", "data til gatewayen")
                 .Documentation("Udgang 2. til PLC indgang 1.", "data til gatewayen")
@@ -14955,9 +14991,10 @@ namespace Ihc.Vis.Catalog
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
                 .Documentation("Holder styr på, om huset er hjemme, ude eller i nattilstand, og giver tilstanden videre til ventilationsstyringen, så anlægget kan køre efter den.")
-                .Documentation("Hjemme / Dag", "skifter til hjemme, f.eks. når alarmen slås fra")
+                .Documentation("Hjemme / Dag", "vælger hjemmetilstand ved frakoblet alarm")
                 .Documentation("Hjemme / Nat", "skifter til nat, f.eks. fra et godnattryk")
-                .Documentation("Ikke hjemme", "skifter til ude, f.eks. når alarmen slås til");
+                .Documentation("Hustilstand", "husets tilstand til ventilationsstyringen")
+                .Documentation("Ikke hjemme", "vælger udetilstand ved tilkoblet alarm");
             var g0 = b.AddEnumDefinition("Hustilstand").AddValue("Hjemme", 0).AddValue("Nat - mørkt", 2).AddValue("Ikke hjemme", 3).AddValue("Nat - lyst", 1);
             var r0 = b.AddInput("resource_input", "Hjemme / Dag", r => r.Icon("_0x36").Note("Aktiveres når tilstand skal skifte til tilstanden hjemme / dag.\r\nF.eks. ved frakobling af alarm, tryk på velkommen hjem eller ved skift til dag- fra nattilstand (kan ske på tryk eller ur for skift til dag), Ved skift til dag - husk spæring når alarm er tilkoblet.\r\n(Udfyldes af installatøren)"));
             var r1 = b.AddInput("resource_input", "Ikke hjemme", r => r.Icon("_0x36").Note("Aktiveres når tilstand skal skifte til tilstanden ikke hjemme.\r\nF.eks. ved tilkobling af alarm eller tryk på slukalt\r\n(Udfyldes af installatøren)"));
@@ -15003,7 +15040,7 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Bruger et almindeligt tastatur med fire til seks tryk som kodelås: første tryk åbner et kort indtastningsvindue, og rammes koden i tide, skifter alarmens tilstand.")
+                .Documentation("Bruger et almindeligt tastatur med fire til seks tryk som kodelås: første tryk åbner et kort indtastningsvindue, og indtastes den korrekte kode i tide, skifter alarmens tilstand.")
                 .Documentation("Indgang for tast 1", "tast i koden")
                 .Documentation("Indgang for tast 2", "tast i koden")
                 .Documentation("Indgang for tast 3", "tast i koden")
@@ -15213,7 +15250,7 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Oversætter LK-kodetastaturets tre ledninger til seks brugerkoder og et sabotagesignal: en korrekt kode skifter alarmens tilstand, koderne kan begrænses til bestemte tider, og en spærreindgang kan forhindre tilkobling – f.eks. hvis en dør står åben.")
+                .Documentation("Oversætter LK-kodetastaturets tre signalledninger til seks koder og en sabotagepuls: kode 1 er altid aktiv, kode 2-6 kan uden for deres tidsrum kun tilkoble, spærreindgangen kan blokere tilkobling, den fysiske sabotagekreds skal fortrådes særskilt, og blokken er overflødig sammen med tyverialarmblokken.")
                 .Documentation("Indgang 1 fra kodetastatur", "tastaturets grå ledning")
                 .Documentation("Indgang 2 fra kodetastatur", "tastaturets violette ledning")
                 .Documentation("Indgang 3 fra kodetastatur", "tastaturets blå ledning")
@@ -15525,17 +15562,17 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Deler LK-kodetastaturets seks brugerkoder ud på hver sit udgangspar, så koderne kan styre forskellige ting: hver kode skifter sin egen udgang og giver en puls, og en spærreindgang tillader kun frakobling.")
+                .Documentation("Fordeler LK-kodetastaturets seks koder på hvert sit udgangspar: kode 1 er altid aktiv, kode 2-6 kan uden for deres tidsrum kun sætte udgangen on, spærreindgangen kan blokere tilkobling, den fysiske sabotagekreds skal fortrådes særskilt, og blokken er overflødig sammen med tyverialarmblokken.")
                 .Documentation("Indgang 1 fra kodetastatur", "tastaturets grå ledning")
                 .Documentation("Indgang 2 fra kodetastatur", "tastaturets violette ledning")
                 .Documentation("Indgang 3 fra kodetastatur", "tastaturets blå ledning")
                 .Documentation("Indgang for spærring af tilkobling", "spærrer tilkobling; kun frakobling er mulig")
                 .Documentation("Udgang for brugerkode 1", "skiftes af kode 1; uden tidsgrænse")
-                .Documentation("Udgang for brugerkode 2", "skiftes af kode 2")
-                .Documentation("Udgang for brugerkode 3", "skiftes af kode 3")
-                .Documentation("Udgang for brugerkode 4", "skiftes af kode 4")
-                .Documentation("Udgang for brugerkode 5", "skiftes af kode 5")
-                .Documentation("Udgang for brugerkode 6", "skiftes af kode 6")
+                .Documentation("Udgang for brugerkode 2", "kipper i aktivperioden; ellers kun on")
+                .Documentation("Udgang for brugerkode 3", "kipper i aktivperioden; ellers kun on")
+                .Documentation("Udgang for brugerkode 4", "kipper i aktivperioden; ellers kun on")
+                .Documentation("Udgang for brugerkode 5", "kipper i aktivperioden; ellers kun on")
+                .Documentation("Udgang for brugerkode 6", "kipper i aktivperioden; ellers kun on")
                 .Documentation("Udgang for puls brugerkode 1", "puls ved kode 1")
                 .Documentation("Udgang for puls brugerkode 2", "puls ved kode 2")
                 .Documentation("Udgang for puls brugerkode 3", "puls ved kode 3")
@@ -15853,7 +15890,7 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Testblok, der kun bruges til at kontrollere forbindelsen mellem LK-kodetastaturet og controlleren: taster man en kode, skal netop den tilhørende udgang skifte – gør en anden det, er ledningerne byttet om.")
+                .Documentation("Tester LK-kodetastaturets tre signalledninger, seks kodeudgange og afmonteringssabotage; den separate rød/grønne sabotagekreds skal også prøves i ServiceView, og en forkert kodeudgang afslører ombyttede ledninger.")
                 .Documentation("Indgang 1 fra kodetastatur", "forbindes til tastaturets udgang 1")
                 .Documentation("Indgang 2 fra kodetastatur", "forbindes til tastaturets udgang 2")
                 .Documentation("Indgang 3 fra kodetastatur", "forbindes til tastaturets udgang 3")
@@ -16079,7 +16116,7 @@ namespace Ihc.Vis.Catalog
                 .Documentation("Indgang 2 fra LK kodetastatur", "tastaturets udgang 2")
                 .Documentation("Indgang 3 fra LK kodetastatur", "tastaturets udgang 3")
                 .Documentation("Indikering af alarm", "viser hvad der udløste alarmen; blinker efter følernummer")
-                .Documentation("Magnetkontakt i forbikoblerzone", "dørkontakt i den forbikoblede zone")
+                .Documentation("Magnetkontakt i forbikoblerzone", "dørkontakt i zonen; udelades ved udendørs tastatur")
                 .Documentation("Magnetkontakter på døre og vinduer", "sløjfen af dør- og vindueskontakter")
                 .Documentation("Magnetkontaktkreds/skalsikring tilkoblet", "on når skalsikringen er tilkoblet")
                 .Documentation("Magnetkontaktsløjfe åben", "on når sløjfen er brudt")
@@ -16089,7 +16126,7 @@ namespace Ihc.Vis.Catalog
                 .Documentation("Overfaldstryk", "udløser alarm uanset tilkobling")
                 .Documentation("PIR 1", "bevægelsesføler i et rum")
                 .Documentation("PIR 10", "bevægelsesføler i et rum")
-                .Documentation("PIR 11 i forbikoblerzone", "føler i den forbikoblede zone; skal passeres inden indgangstiden udløber")
+                .Documentation("PIR 11 i forbikoblerzone", "føler i zonen; udelades ved udendørs tastatur")
                 .Documentation("PIR 2", "bevægelsesføler i et rum")
                 .Documentation("PIR 3", "bevægelsesføler i et rum")
                 .Documentation("PIR 4", "bevægelsesføler i et rum")
@@ -16107,7 +16144,7 @@ namespace Ihc.Vis.Catalog
                 .Documentation("Styresignal fra enhed for til- og frakobling af Totalalarm", "puls kipper hele alarmen")
                 .Documentation("Styresignal fra enhed for til- og frakobling af magnetkontaktkreds", "puls kipper skalsikringen alene")
                 .Documentation("Styresignal fra enhed for tilkobling af Totalalarm", "puls tilkobler hele alarmen")
-                .Documentation("Styresignal fra til- og frakoblingsenhed af sabotagekreds", "slår sabotagekredsen til")
+                .Documentation("Styresignal fra til- og frakoblingsenhed af sabotagekreds", "aktiverer ved on; deaktiverer ved off")
                 .Documentation("Tilkobling af alarm ok", "on når alarmen kan tilkobles")
                 .Documentation("Timer indgangstid aktiv", "on mens indgangstiden løber")
                 .Documentation("Timer udgangstid aktiv", "on mens udgangstiden løber")
@@ -17250,36 +17287,36 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Samler røg-, gas-, vand- og elalarm i én blok: de indendørs lydgivere går altid i gang, mens en indgang bestemmer, om alarmen også skal ud på den udendørs lydgiver og modemet, og en kvittering sætter den pågældende føler på pause et stykke tid, så f.eks. mados ikke straks udløser alarm igen.")
+                .Documentation("Overvåger uafbrudt røg, gas, vand og strøm og styrer ventiler, kontaktor, lydgivere og modem; resetindgangene kvitterer og forbikobler den enkelte alarm midlertidigt, mens ekstern overvågning vælger udendørs varsling.")
                 .Documentation("Backupindikering", "on når anlægget kører på backup")
                 .Documentation("Ekstern lydgiver - røg og gas", "udendørs sirene ved røg og gas")
                 .Documentation("Gas-Magnetventil", "lukker kun ved gasudslip")
-                .Documentation("Gas-Magnetventil der lukker ved røgudvikling", "lukker også ved røg; må ikke bruges sammen med den anden gasventil")
+                .Documentation("Gas-Magnetventil der lukker ved røgudvikling", "lukker ved gas/røg; brug ikke begge gasudgange")
                 .Documentation("IHC-modem - El", "melder elfejl til modemet")
                 .Documentation("IHC-modem - Gas", "melder gasalarm til modemet")
                 .Documentation("IHC-modem - Røg", "melder røgalarm til modemet")
                 .Documentation("IHC-modem - Vand", "melder vandalarm til modemet")
                 .Documentation("Indgang for ekstern overvågning aktiv", "sender også alarmen ud og til modemet")
-                .Documentation("Indgang for gassensor", "gasføler")
+                .Documentation("Indgang for gassensor", "modtager NO-signal fra højst én gasføler")
                 .Documentation("Indgang for reset af gasindikering", "kvitterer og sætter gasføleren på pause")
                 .Documentation("Indgang for reset af indikering af elalarm", "kvitterer elalarmen")
                 .Documentation("Indgang for reset af røgindikering", "kvitterer og sætter røgføleren på pause")
                 .Documentation("Indgang for reset af vandindikering", "kvitterer og sætter vandføleren på pause")
-                .Documentation("Indgang for røgsensor", "røgføler")
-                .Documentation("Indgang for vandsensor", "vandføler")
-                .Documentation("Indgang fra backup 12V OK", "12V-backup melder klar")
-                .Documentation("Indgang fra backup 24V OK", "24V-backup melder klar")
+                .Documentation("Indgang for røgsensor", "modtager NC-signal fra røgføler")
+                .Documentation("Indgang for vandsensor", "modtager NC-signal fra vandføler")
+                .Documentation("Indgang fra backup 12V OK", "melder 12 V-backup klar")
+                .Documentation("Indgang fra backup 24V OK", "melder 24 V-backup klar")
                 .Documentation("Indikering af alarm - El", "lyser ved elalarm")
                 .Documentation("Indikering af alarm - Gas", "lyser ved gasalarm")
                 .Documentation("Indikering af alarm - Røg", "lyser ved røgalarm")
                 .Documentation("Indikering af alarm - Vand", "lyser ved vandalarm")
-                .Documentation("Indikering på lydgiver at røg-,  gas- eller vandalarm genindkobles", "kort bip når pausen er slut og føleren er fri")
+                .Documentation("Indikering på lydgiver at røg-,  gas- eller vandalarm genindkobles", "bipper efter pause, hvis føleren er fri")
                 .Documentation("Intern lydgiver - elalarm", "indendørs sirene ved elalarm")
                 .Documentation("Intern lydgiver - røg og gas", "indendørs sirene ved røg og gas")
                 .Documentation("Intern lydgiver - vand", "indendørs sirene ved vandalarm")
-                .Documentation("Kontaktor for sluk af del af el-forsyningen.", "normalt on; afbryder en del af strømmen ved røg")
+                .Documentation("Kontaktor for sluk af del af el-forsyningen.", "normalt tændt; afbryder strøm ved røg")
                 .Documentation("Overstyring af lys", "tænder lyset ved røg eller gas")
-                .Documentation("Reset af røgsensor", "kortslutter forsyningen, så røgføleren nulstilles")
+                .Documentation("Reset af røgsensor", "afbryder kort den fælles forsyning og nulstiller følerne")
                 .Documentation("Udgang for afstilling af modem", "afstiller modemets melding")
                 .Documentation("Udgang for indikering af forbikoblet gasalarm", "lyser mens gasalarmen er på pause")
                 .Documentation("Udgang for indikering af forbikoblet røgalarm", "lyser mens røgalarmen er på pause")
@@ -17665,10 +17702,10 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Får huset til at virke beboet: én udgang holder et fast lys, mens fire andre tænder og slukker i tilfældig rytme, så længe skumring og ur tillader det – undlad dog at koble udendørslys til, og vælg i indstillingerne, hvad lyset skal gøre, når simuleringen stopper.")
+                .Documentation("Simulerer beboelse med ét fast og fire skiftende lys, når skumring og ur tillader det; udendørslys må ikke bruges, ved pulsudgange skal både tænd og sluk forbindes, og indstillingen vælger sluttilstanden.")
                 .Documentation("Indgang for kip af simulering", "kipper simuleringen")
                 .Documentation("Indgang for start/stop af simulering", "slår simuleringen til og fra; højeste prioritet")
-                .Documentation("Indgang skumringsrelæ", "mørke er betingelse; springes over hvis den ikke forbindes")
+                .Documentation("Indgang skumringsrelæ", "kræver mørke; ignoreres uden forbindelse")
                 .Documentation("Indgang ur", "tidsvindue; springes over hvis den ikke forbindes")
                 .Documentation("Indikering af hjemmesimulering aktiv", "lyser når simuleringen er slået til")
                 .Documentation("Indikering af hjemmesimulering er startet", "lyser når den faktisk kører")
@@ -17985,10 +18022,10 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Udløser overfaldsalarm, når to tryk holdes inde samtidig, så alarmen ikke går ved et uheld; virker ikke med trådløse tryk, der kun sender ét signal ad gangen.")
+                .Documentation("Udløser overfaldsalarm efter to sekunders samtidigt tryk; trådløse tryk virker ikke, fordi de kun sender ét signal ad gangen.")
                 .Documentation("Tryk ØH", "det højre tryk")
                 .Documentation("Tryk ØV", "det venstre tryk")
-                .Documentation("Udgang til alarmblok", "puls til alarmblokkens overfaldsindgang");
+                .Documentation("Udgang til alarmblok", "sender en 250 ms overfaldspuls");
             var r0 = b.AddInput("resource_input", "Tryk ØV", r => r.Icon("_0x36").Note("Tryk Venstre og Højre aktiverer overfaldsalarm\r\n(Udfyldes af installatøren)"));
             var r1 = b.AddInput("resource_input", "Tryk ØH", r => r.Icon("_0x36").Note("Tryk Venstre og Højre aktiverer overfaldsalarm\r\n(Udfyldes af installatøren)"));
             var r2 = b.AddOutput("resource_output", "Udgang til alarmblok", r => r.Icon("_0x39").Note("Forbindes til alarmblok, Indgang for overfald"));
@@ -18041,17 +18078,17 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Håndterer røgalarmen alene – skal der også gas, vand og el med, bruges den store sikkerhedsblok i stedet: overvågningen kører altid, men en indgang bestemmer, om alarmen kun høres indendørs eller også går ud og til modemet, og en kvittering sætter føleren på pause, så røgen kan nå at lette.")
+                .Documentation("Overvåger uafbrudt en røgsensors NC-signal og styrer lydgivere, modem og lys; reset kvitterer og forbikobler røgalarmen midlertidigt, mens forsyningsudgangen nulstiller sensoren.")
                 .Documentation("Ekstern lydgiver", "udendørs sirene")
                 .Documentation("IHC-modem - Røg", "melder røgalarm til modemet")
                 .Documentation("Indgang for ekstern overvågning aktiv", "sender også alarmen ud og til modemet")
                 .Documentation("Indgang for reset af røgindikering", "kvitterer og sætter føleren på pause")
-                .Documentation("Indgang for røgsensor", "røgføler")
+                .Documentation("Indgang for røgsensor", "modtager NC-signal fra røgføler")
                 .Documentation("Indikering af alarm - Røg", "lyser ved røgalarm")
-                .Documentation("Indikering på lydgiver at alarm genindkobles", "kort bip når pausen er slut")
+                .Documentation("Indikering på lydgiver at alarm genindkobles", "bipper efter pause, hvis røgen er væk")
                 .Documentation("Intern lydgiver", "indendørs sirene")
                 .Documentation("Overstyring af lys", "tænder lyset under alarm")
-                .Documentation("Reset af røgsensor", "kortslutter forsyningen, så føleren nulstilles")
+                .Documentation("Reset af røgsensor", "afbryder kort den fælles forsyning og nulstiller følerne")
                 .Documentation("Udgang for afstilling af modem", "afstiller modemets melding")
                 .Documentation("Udgang for indikering af forbikoblet røgalarm", "lyser mens alarmen er på pause");
             var r0 = b.AddInput("resource_input", "Indgang for røgsensor", r => r.Icon("_0x36").Note("Indgang for overvågning af røgudvikling (NC).\r\n(Udfyldes af installatøren)").Inivalue("on"));
@@ -18183,8 +18220,8 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Får en lydgiver eller lampe til at pulsere i et fast mønster, så længe startindgangen er tændt – f.eks. som varsel om vandlækage – og bruges den til lys, skal begge tider være mindst et sekund.")
-                .Documentation("Indgang for start lydblok", "starter mønstret; ved slut kører cyklussen færdig")
+                .Documentation("Pulserer en lydgiver eller lampe i et fast mønster, mens start er on; ved lys skal begge tider være mindst ét sekund, lyskilden skal tåle hurtig kobling, og fælles lydgiver kræver prioriteringsblok 4.1.07.")
+                .Documentation("Indgang for start lydblok", "starter mønstret; afslutter først igangværende cyklus")
                 .Documentation("Lydgiver", "forbindes til lydgiver eller lampe")
                 .Documentation("Puls - Off", "følger slukket-fasen; kan styre andre blokke")
                 .Documentation("Puls - On", "følger tændt-fasen; kan styre andre blokke");
@@ -18254,8 +18291,8 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Giver et mere sammensat mønster end den simple pulsblok: to serier af pulser med hver sin takt, adskilt af en lang pause, og det gentages, så længe startindgangen er tændt; til lys skal tiderne være mindst et sekund.")
-                .Documentation("Indgang for start lydblok", "starter mønstret; ved slut kører cyklussen færdig")
+                .Documentation("Danner to pulsserier med hver sin takt og en lang pause, mens start er on; ved lys skal tiderne være mindst ét sekund, og lyskilden skal tåle hurtig kobling.")
+                .Documentation("Indgang for start lydblok", "starter mønstret; afslutter først igangværende cyklus")
                 .Documentation("Lydgiver", "forbindes til lydgiver eller lampe")
                 .Documentation("Puls - Off", "følger slukket-fasen; kan styre andre blokke")
                 .Documentation("Puls - On", "følger tændt-fasen; kan styre andre blokke");
@@ -18379,8 +18416,8 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Gentager en serie på et valgt antal pulser og holder derefter en lang pause, så længe startindgangen er tændt; til lys skal tiderne være mindst et sekund.")
-                .Documentation("Indgang for start lydblok", "starter mønstret; ved slut kører cyklussen færdig")
+                .Documentation("Gentager et valgt antal pulser og derefter en lang pause, mens start er on; ved lys skal tiderne være mindst ét sekund, og lyskilden skal tåle hurtig kobling.")
+                .Documentation("Indgang for start lydblok", "starter mønstret; afslutter først igangværende cyklus")
                 .Documentation("Lydgiver", "forbindes til lydgiver eller lampe")
                 .Documentation("Puls - Off", "følger slukket-fasen; kan styre andre blokke")
                 .Documentation("Puls - On", "følger tændt-fasen; kan styre andre blokke");
@@ -18479,7 +18516,11 @@ namespace Ihc.Vis.Catalog
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
                 .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Viser controllerens tid og dato i vieweren og husker sidste genstart; klokkeslættet opdateres hvert sekund, dato og ugedag kun én gang i døgnet.");
+                .Documentation("Viser controllerens tid og dato i vieweren og husker sidste genstart; klokkeslættet opdateres hvert sekund, dato og ugedag kun én gang i døgnet.")
+                .Documentation("Dato", "dagens dato")
+                .Documentation("Sidst genstartet", "tid og dato for genstart")
+                .Documentation("Tidspunkt", "aktuelt klokkeslæt")
+                .Documentation("Ugedag", "dagens navn");
             var r0 = b.AddOutput("resource_date", "Dato", r => r.Icon("_0x29").Attribute("year", "2000").Attribute("month", "1").Attribute("day", "1").Attribute("udf", "#O01#"));
             var r1 = b.AddOutput("resource_weekday", "Ugedag", r => r.Icon("_0x2c").Attribute("udf", "#O02#"));
             var r2 = b.AddOutput("resource_time", "Tidspunkt", r => r.Icon("_0x2f").Attribute("hour", "0").Attribute("minute", "0").Attribute("second", "0").Attribute("udf", "#O03#"));
@@ -18659,8 +18700,9 @@ namespace Ihc.Vis.Catalog
                 .OutputsNote("Variablene i denne gruppering er output fra funktionsblokken")
                 .SettingsNote("Variablene i denne gruppering er indstillinger til funktionsblokken")
                 .InternalVariablesNote("Variablene i denne gruppe er private variable til funktionsblokken")
-                .ProgramsNote("Gruppering af funktionblokkens programmer")
-                .Documentation("Slukker et rum fra ét signal: et tryk på indgangen giver en kort puls på slukkeudgangen og henter samtidig slukkescenariet.")
+                .ProgramsNote("Gruppering af funktionblokkens programmer");
+
+            b.Documentation("Slukker et rum fra ét signal: et tryk på indgangen giver en kort puls på slukkeudgangen og henter samtidig slukkescenariet.")
                 .Documentation("Indgang", "starter sluk af rummet")
                 .Documentation("Scenarie", "scenarie der slukker rummet")
                 .Documentation("Timer", "bestemmer pulsens længde")
