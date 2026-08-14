@@ -141,8 +141,8 @@ namespace Ihc.Vis.FunctionBlocks
         }
 
         // Authors from the RAW catalog body: suppresses the per-type resource default stamping (icon + #REQUIRED value
-        // initials) so a decompiled block reproduces its .ifb byte-for-byte — the decompiler supplies every attribute
-        // verbatim in file order, and the file's DTD defaults are re-materialized on insert. The code generator calls
+        // initials) so a raw-bodied block reproduces its .ifb byte-for-byte — every attribute is supplied
+        // verbatim in file order, and the file's DTD defaults are re-materialized on insert. Catalog authoring calls
         // this; hand authors do not (they need the stamping, having no catalog template).
         internal FunctionBlockDefinitionBuilder SuppressResourceDefaults()
         {
@@ -411,7 +411,7 @@ namespace Ihc.Vis.FunctionBlocks
                     : isEmptyTemplate ? MaterializeEmptyTemplate()
                     : MaterializeBody();
 
-                // A catalog-decompiled block reproduces its raw .ifb, which never writes an empty note="" (unlike a
+                // A raw-bodied block reproduces its .ifb, which never writes an empty note="" (unlike a
                 // product .def) — it rides the note CDATA "" default. The structural/program builders stamp a default
                 // (often empty) note on containers and program-graph nodes; strip those empty notes so the body matches
                 // the file byte-for-byte (the insert transform re-derives them from the block's DTD when needed).
@@ -438,7 +438,7 @@ namespace Ihc.Vis.FunctionBlocks
 
         // Recursively removes empty note="" and name="" attributes: an .ifb rides those CDATA "" DTD defaults rather
         // than writing them (verified: no vendor .ifb writes note="" or name="", unlike a product .def). Applied only
-        // for catalog-decompiled blocks, where the raw file body is the fidelity target; the structural/program
+        // for raw-bodied blocks, where the raw file body is the fidelity target; the structural/program
         // builders stamp a default (often empty) note/name that this strips so the body matches the file.
         private static ProjectElement DropEmptyDefaultAttrs(ProjectElement element)
         {
@@ -603,7 +603,7 @@ namespace Ihc.Vis.FunctionBlocks
         // the tail MaterializeBody and MaterializeDecoded share.
         private ProjectElement ApplyIdentityAndRootAttrs(ProjectElement root)
         {
-            // Catalog-decompiled (SuppressResourceDefaults): the decompiler already added EVERY root attribute —
+            // Raw-bodied (SuppressResourceDefaults): EVERY root attribute was already added —
             // name, master_*, locked, icon, note — to rootAttrs in the file's own order (which is not constant across
             // the corpus, e.g. 1.2.07 writes master_name early), so emit them verbatim. Hand-authored blocks fall
             // through to the canonical vendor ordering below.
@@ -665,9 +665,9 @@ namespace Ihc.Vis.FunctionBlocks
             ElementId id = ids.Allocate(TypeCode.RequireForTag(tag));
             ProjectElement resource = FbGrammar.Node(tag, id, new[] { ("name", name) }, NoChildren);
             // Hand-authored resources get the vendor's per-type presentation/value defaults (icon + #REQUIRED value
-            // initials) stamped, since there is no catalog template to supply them. A catalog-decompiled block
+            // initials) stamped, since there is no catalog template to supply them. A raw-bodied block
             // (SuppressResourceDefaults) is authored from the RAW .ifb body instead — every attribute already arrives
-            // verbatim in file order from the decompiler, so stamping would inject them at the wrong position.
+            // verbatim in file order, so stamping would inject them at the wrong position.
             if (stampResourceDefaults)
             {
                 foreach ((string attrName, string attrValue) in ResourceMaterialization.NewResourceDefaults(tag))

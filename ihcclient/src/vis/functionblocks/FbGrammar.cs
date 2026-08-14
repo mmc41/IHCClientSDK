@@ -87,7 +87,7 @@ namespace Ihc.Vis.FunctionBlocks
 
         // The display name IHC Visual composes from a block's master identity: bare name for a keyless user block,
         // "{type}. {name}" for a versionless stock block, else "{type}.{version}. {name}". The builder stamps this by
-        // default and the decompiler recomputes it to decide whether a .DisplayName(..) override is needed, so both must
+        // default, and any caller deciding whether a .DisplayName(..) override is needed recomputes it, so both must
         // read from this one formula.
         public static string ComposeDisplayName(string? masterType, string? masterVersion, string masterName) =>
             string.IsNullOrEmpty(masterType) ? masterName

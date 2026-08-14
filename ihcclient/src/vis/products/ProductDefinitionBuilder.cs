@@ -442,11 +442,10 @@ namespace Ihc.Vis.Products
             return Set(attribute, addressToken);
         }
 
-        // The family-to-attribute resolution Address uses — internal so the catalog decompiler recognises the
+        // The family-to-attribute resolution Address uses — internal so catalog authoring can recognise the
         // attribute .Address would produce for a resource's family without re-encoding this map. Total over the
         // families: null marks one with NO single address attribute (rs485 channels are addressed by
-        // channel/channel_id), which .Address rejects and the decompiler's comparison never matches, leaving
-        // those to render as ordinary .Attribute calls.
+        // channel/channel_id), which .Address rejects, leaving those to render as ordinary .Attribute calls.
         internal static string? AddressAttributeFor(string tag) =>
             tag.StartsWith("dataline_", StringComparison.Ordinal) ? "address_dataline"
             : tag.StartsWith("airlink_", StringComparison.Ordinal) ? "address_channel"
