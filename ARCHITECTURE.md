@@ -247,7 +247,7 @@ Browsing wants immutability and cheap snapshots; editing wants mutation. The spl
 
 | Pattern | Layer | Where it lives | Problem it solves |
 |---------|-------|----------------|-------------------|
-| Command | SDK | `ProjectCommand` + the per-family records (`src/vis/session/`) | Turns every mutation into a labelled, self-checking, undoable object, so one pipeline (evaluate → execute → commit) serves menus, keyboard, drag-and-drop and scripted callers alike. |
+| Command | SDK | `ProjectCommand` + the per-family records (`src/vis/session/`) | Turns every mutation into a labelled, self-checking, undoable object, so one pipeline (evaluate → execute → commit) serves menus, keyboard, drag-and-drop and one-shot in-process callers alike. Commands are deliberately **not** serializable: there is no macro/scripting surface and no command journal, so history is in-memory only and a crash loses the unsaved session. |
 | Composite command | SDK | `CompositeCommand` | A cascading gesture commits as one snapshot and one history entry. All-or-nothing, and the cost of that is a real constraint: every part is evaluated against the **pre-edit** project, never against what the parts before it produced, so a bundle is only valid for parts whose preconditions do not depend on an earlier part having run. Bundling `[Delete(x), Rename(x)]` is the shape of the mistake -- both parts check clean, and the miss surfaces only inside `Execute`, discarding the whole bundle where a one-at-a-time sequence would have committed the delete. The two routes agree on the resulting project exactly when the parts are independent; `CompositeCommandMetamorphicTests` pins that over randomized sequences. |
 
 ### 4. Identity that survives tree rebuilds
