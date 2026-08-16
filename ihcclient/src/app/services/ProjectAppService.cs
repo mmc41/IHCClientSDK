@@ -721,7 +721,7 @@ namespace Ihc.Vis
         /// Imports one catalog component file at runtime so it resolves and inserts alongside the built-ins: a
         /// <c>.ifb</c> is read as a function block, any other extension (<c>.def</c>) as a product, via the same
         /// encoding/DTD-default/inline-DTD handling as install discovery
-        /// (<see cref="CatalogReader.ReadProduct(string, DefinitionDocumentation?)"/>). The imported component shadows a
+        /// (<see cref="CatalogReader.ReadProduct(string, HelpDocument?)"/>). The imported component shadows a
         /// built-in with the same key (imported-wins) and appears in <see cref="GetAvailableProducts"/> /
         /// <see cref="GetAvailableFunctionBlocks"/>. Pass <paramref name="documentationProbe"/> (e.g.
         /// <see cref="ReadSiblingDocumentation"/>) to attach help metadata from a sibling file; it maps the component
@@ -735,9 +735,10 @@ namespace Ihc.Vis
             {
                 string? summary = documentationProbe?.Invoke(path);
                 // The optional summary documentation is the same for either component kind — build it once (T028).
-                DefinitionDocumentation? documentation = summary is null
+                // Summary only: the probe yields prose about the component, never per-resource bullets.
+                HelpDocument? documentation = summary is null
                     ? null
-                    : new DefinitionDocumentation(summary, ImmutableDictionary<string, string>.Empty);
+                    : new HelpDocument(summary, ImmutableDictionary<string, string>.Empty);
                 if (Path.GetExtension(path).Equals(".ifb", StringComparison.OrdinalIgnoreCase))
                 {
                     catalog.Value.Import(CatalogReader.ReadFunctionBlock(path, documentation));

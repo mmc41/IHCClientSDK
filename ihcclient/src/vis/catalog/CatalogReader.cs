@@ -42,15 +42,15 @@ namespace Ihc.Vis.Catalog
         /// scanned one. <see cref="ProductDefinition.CategoryPath"/> is empty (a standalone file has no catalog-tree
         /// category); pass <paramref name="documentation"/> to attach programmatic help metadata (the D3 doc-probe hook).
         /// </summary>
-        public static ProductDefinition ReadProduct(string path, DefinitionDocumentation? documentation = null)
+        public static ProductDefinition ReadProduct(string path, HelpDocument? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(path);
             return ParseCatalogFile(path, () => BuildProduct(File.ReadAllBytes(path), string.Empty, documentation));
         }
 
         /// <summary>Reads a product catalog file from a stream into a <see cref="ProductDefinition"/>; see
-        /// <see cref="ReadProduct(string, DefinitionDocumentation?)"/>.</summary>
-        public static ProductDefinition ReadProduct(Stream stream, DefinitionDocumentation? documentation = null)
+        /// <see cref="ReadProduct(string, HelpDocument?)"/>.</summary>
+        public static ProductDefinition ReadProduct(Stream stream, HelpDocument? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(stream);
             return BuildProduct(XmlProlog.ReadAllBytes(stream), string.Empty, documentation);
@@ -62,7 +62,7 @@ namespace Ihc.Vis.Catalog
         /// handling as <see cref="CatalogDiscovery"/>; <see cref="FunctionBlockDefinition.CategoryPath"/> is empty.
         /// Pass <paramref name="documentation"/> to attach programmatic help metadata (the D3 doc-probe hook).
         /// </summary>
-        public static FunctionBlockDefinition ReadFunctionBlock(string path, DefinitionDocumentation? documentation = null)
+        public static FunctionBlockDefinition ReadFunctionBlock(string path, HelpDocument? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(path);
             return ParseCatalogFile(path, () => BuildFunctionBlock(File.ReadAllBytes(path), string.Empty, documentation));
@@ -88,8 +88,8 @@ namespace Ihc.Vis.Catalog
         }
 
         /// <summary>Reads a function-block catalog file from a stream into a <see cref="FunctionBlockDefinition"/>; see
-        /// <see cref="ReadFunctionBlock(string, DefinitionDocumentation?)"/>.</summary>
-        public static FunctionBlockDefinition ReadFunctionBlock(Stream stream, DefinitionDocumentation? documentation = null)
+        /// <see cref="ReadFunctionBlock(string, HelpDocument?)"/>.</summary>
+        public static FunctionBlockDefinition ReadFunctionBlock(Stream stream, HelpDocument? documentation = null)
         {
             ArgumentNullException.ThrowIfNull(stream);
             return BuildFunctionBlock(XmlProlog.ReadAllBytes(stream), string.Empty, documentation);
@@ -99,7 +99,7 @@ namespace Ihc.Vis.Catalog
         // CatalogDiscovery's install-dir scan (which supplies the tree-relative CategoryPath). Keeping identifier/
         // display-name extraction + InlineDtd capture here means an imported instance is byte-for-byte the same shape
         // as a scanned one.
-        internal static ProductDefinition BuildProduct(byte[] bytes, string categoryPath, DefinitionDocumentation? documentation)
+        internal static ProductDefinition BuildProduct(byte[] bytes, string categoryPath, HelpDocument? documentation)
         {
             ProjectElement body = Read(bytes);
             string identifier = body.GetAttribute("product_identifier") ?? string.Empty;
@@ -109,10 +109,12 @@ namespace Ihc.Vis.Catalog
                 Grammar = CatalogDtdParser.ParseLenient(CatalogDtdParser.CaptureHeadText(bytes)),
                 SourceEncoding = CatalogTextEncodingExtensions.Classify(bytes),
             };
-            return documentation is null ? definition : definition with { Documentation = documentation };
+            return documentation is null
+                ? definition
+                : definition with { Documentation = HelpDocumentResolver.ForProduct(documentation, body) };
         }
 
-        internal static FunctionBlockDefinition BuildFunctionBlock(byte[] bytes, string categoryPath, DefinitionDocumentation? documentation)
+        internal static FunctionBlockDefinition BuildFunctionBlock(byte[] bytes, string categoryPath, HelpDocument? documentation)
         {
             ProjectElement body = Read(bytes);
             string masterType = body.GetAttribute("master_type") ?? string.Empty;
@@ -124,7 +126,9 @@ namespace Ihc.Vis.Catalog
                 Grammar = CatalogDtdParser.ParseLenient(CatalogDtdParser.CaptureHeadText(bytes)),
                 SourceEncoding = CatalogTextEncodingExtensions.Classify(bytes),
             };
-            return documentation is null ? definition : definition with { Documentation = documentation };
+            return documentation is null
+                ? definition
+                : definition with { Documentation = HelpDocumentResolver.ForBlock(documentation, body) };
         }
 
         internal static ProjectElement Read(Stream stream)

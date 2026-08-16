@@ -49,8 +49,11 @@ namespace Ihc.Vis.Products
         /// Human-readable help metadata for this product and its resources — <b>programmatic-lookup only</b>, and
         /// deliberately <b>not</b> part of the serialized <see cref="Body"/>: it is never written into a project
         /// <c>.vis</c> or a product catalog <c>.def</c>. Defaults to <see cref="DefinitionDocumentation.Empty"/> (what
-        /// catalog discovery yields, since a <c>.def</c> carries no help text). Authored via
-        /// <see cref="DefinitionBuilderBase{TSelf}.Documentation(string)"/> and its by-name overload; see
+        /// catalog discovery yields, since a <c>.def</c> carries no help text). The summary is authored via
+        /// <see cref="DefinitionBuilderBase{TSelf}.Documentation(string)"/>; per-resource text is authored ON the
+        /// resource — <see cref="ProductResourceDefBuilder.Documentation"/> inside the
+        /// <c>AddInput</c>/<c>AddOutput</c>/<c>AddResource</c> configurator, or
+        /// <see cref="ProductDefinitionBuilder.RawChild(ProjectElement,string)"/> for a spliced one; see
         /// <see cref="DefinitionDocumentation"/>.
         /// </summary>
         public DefinitionDocumentation Documentation { get; init; } = DefinitionDocumentation.Empty;
@@ -77,8 +80,10 @@ namespace Ihc.Vis.Products
         /// </summary>
         public IReadOnlyList<ResourceSummary> Resources =>
             Body.Children
-                .Where(c => !ProductRows.IsStructuralChild(c.Tag))
-                .Select(c => new ResourceSummary(c.Tag, c.GetAttribute("name") ?? string.Empty, c.Id))
+                .Select((c, index) => (Child: c, Index: index))
+                .Where(e => !ProductRows.IsStructuralChild(e.Child.Tag))
+                .Select(e => new ResourceSummary(e.Child.Tag, e.Child.GetAttribute("name") ?? string.Empty, e.Child.Id,
+                                                 Documentation.ForKey(ResourceDocKey.ForProduct(e.Index))))
                 .ToArray();
 
         public override string ToString() =>

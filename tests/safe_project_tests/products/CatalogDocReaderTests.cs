@@ -10,7 +10,7 @@ namespace Ihc.Vis.Tests
     /// sibling-doc probe (F2), which serves <b>both</b> catalog definition kinds: a function block's <c>.ifb</c> and a
     /// product's <c>.def</c>. Parses fixed synthetic markdown samples (de-branded stand-ins for the vendor
     /// <c>syn_en*.md</c> shape) so the tests carry no copyrighted text; asserts the definition-level Summary and the
-    /// per-resource text keyed by resource display name, plus tolerance for a missing section and the probe order.
+    /// per-resource text keyed by resource display name (the reader's own, name-keyed HelpDocument), plus tolerance for a missing section and the probe order.
     /// </summary>
     public class CatalogDocReaderTests
     {
@@ -43,7 +43,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void Parse_Summary_IsFirstParagraphAfterHeading()
         {
-            DefinitionDocumentation doc = CatalogDocReader.Parse(Sample);
+            HelpDocument doc = CatalogDocReader.Parse(Sample);
 
             Assert.That(doc.Summary,
                 Is.EqualTo("Manual on/off control for a single output, toggled by one push button."));
@@ -52,22 +52,22 @@ namespace Ihc.Vis.Tests
         [Test]
         public void Parse_Resources_KeyedByDisplayName_AcrossSections()
         {
-            DefinitionDocumentation doc = CatalogDocReader.Parse(Sample);
+            HelpDocument doc = CatalogDocReader.Parse(Sample);
 
             Assert.Multiple(() =>
             {
-                Assert.That(doc.ForResource("Tryk"), Is.EqualTo("toggles the output on or off on each press"));
-                Assert.That(doc.ForResource("Tvangssluk"), Is.EqualTo("forces the output off"));
-                Assert.That(doc.ForResource("Lampe"), Is.EqualTo("the controlled on/off output"));
-                Assert.That(doc.ForResource("ON puls"), Is.EqualTo("short pulse when switching on"));
-                Assert.That(doc.Resources, Has.Count.EqualTo(4));
+                Assert.That(doc.ForName("Tryk"), Is.EqualTo("toggles the output on or off on each press"));
+                Assert.That(doc.ForName("Tvangssluk"), Is.EqualTo("forces the output off"));
+                Assert.That(doc.ForName("Lampe"), Is.EqualTo("the controlled on/off output"));
+                Assert.That(doc.ForName("ON puls"), Is.EqualTo("short pulse when switching on"));
+                Assert.That(doc.ByName, Has.Count.EqualTo(4));
             });
         }
 
         [Test]
         public void Parse_HeadingIsNotPartOfSummary()
         {
-            DefinitionDocumentation doc = CatalogDocReader.Parse(Sample);
+            HelpDocument doc = CatalogDocReader.Parse(Sample);
 
             Assert.That(doc.Summary, Does.Not.Contain("Toggle lamp"));
         }
@@ -78,12 +78,12 @@ namespace Ihc.Vis.Tests
             const string summaryOnly =
                 "# 2.1.01.a. Clock\r\n\r\nA plain block with prose but no pin lists.\r\n";
 
-            DefinitionDocumentation doc = CatalogDocReader.Parse(summaryOnly);
+            HelpDocument doc = CatalogDocReader.Parse(summaryOnly);
 
             Assert.Multiple(() =>
             {
                 Assert.That(doc.Summary, Is.EqualTo("A plain block with prose but no pin lists."));
-                Assert.That(doc.Resources, Is.Empty);
+                Assert.That(doc.ByName, Is.Empty);
             });
         }
 
@@ -101,12 +101,12 @@ namespace Ihc.Vis.Tests
                 "- **A** – en dash text\r\n" +
                 "- **B** - hyphen text\r\n";
 
-            DefinitionDocumentation doc = CatalogDocReader.Parse(mixed);
+            HelpDocument doc = CatalogDocReader.Parse(mixed);
 
             Assert.Multiple(() =>
             {
-                Assert.That(doc.ForResource("A"), Is.EqualTo("en dash text"));
-                Assert.That(doc.ForResource("B"), Is.EqualTo("hyphen text"));
+                Assert.That(doc.ForName("A"), Is.EqualTo("en dash text"));
+                Assert.That(doc.ForName("B"), Is.EqualTo("hyphen text"));
             });
         }
 
@@ -119,7 +119,7 @@ namespace Ihc.Vis.Tests
             // A vendor .md sibling exists too, but syn_en must win (copyright).
             File.WriteAllText(dir.File("1.1.01.md"), "# vendor\r\n\r\nVendor copyrighted prose.\r\n");
 
-            DefinitionDocumentation? doc = CatalogDocReader.ForDefinitionFile(dir.File("1.1.01.ifb"), synEnOnly: true);
+            HelpDocument? doc = CatalogDocReader.ForDefinitionFile(dir.File("1.1.01.ifb"), synEnOnly: true);
 
             Assert.That(doc, Is.Not.Null);
             Assert.That(doc!.Summary,
@@ -136,15 +136,15 @@ namespace Ihc.Vis.Tests
             File.WriteAllText(dir.File("product2101.def"), "<product_dataline/>");
             File.WriteAllText(dir.File("syn_enproduct2101.md"), ProductSample);
 
-            DefinitionDocumentation? doc = CatalogDocReader.ForDefinitionFile(dir.File("product2101.def"), synEnOnly: true);
+            HelpDocument? doc = CatalogDocReader.ForDefinitionFile(dir.File("product2101.def"), synEnOnly: true);
 
             Assert.That(doc, Is.Not.Null);
             Assert.Multiple(() =>
             {
                 Assert.That(doc!.Summary,
                     Is.EqualTo("Opdigtet produkthjælp: en trykkontakt med to taster i eksemplet."));
-                Assert.That(doc.ForResource("Tryk (venstre)"), Is.EqualTo("venstre tast i eksemplet"));
-                Assert.That(doc.ForResource("Tryk (højre)"), Is.EqualTo("højre tast i eksemplet"));
+                Assert.That(doc.ForName("Tryk (venstre)"), Is.EqualTo("venstre tast i eksemplet"));
+                Assert.That(doc.ForName("Tryk (højre)"), Is.EqualTo("højre tast i eksemplet"));
             });
         }
 

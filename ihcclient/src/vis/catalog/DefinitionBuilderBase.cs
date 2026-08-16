@@ -89,24 +89,27 @@ namespace Ihc.Vis.Catalog
             return Self;
         }
 
-        /// <summary>Attaches documentation text to a resource identified by its display <paramref name="resourceName"/>
-        /// (the key <see cref="DefinitionDocumentation.ForResource"/> looks it up by) — the name-keyed overload, for a
-        /// caller with help text keyed by pin name. Programmatic-lookup-only; never serialized. Contrast the resource
-        /// configurators' <c>Note</c> methods, which set the resource's serialized <c>note</c> attribute: <c>Note</c>
-        /// is project data, <c>Documentation</c> is help.
-        /// <para>The same text can be authored on the resource itself — <c>Documentation</c> on the configurator
-        /// passed to <c>AddInput</c>/<c>AddOutput</c>/… — which spells the name once instead of repeating it as a key.
-        /// Both forms write this map, last call wins.</para></summary>
-        public TSelf Documentation(string resourceName, string documentation)
-        {
-            ArgumentNullException.ThrowIfNull(resourceName);
-            resourceDocs[resourceName] = documentation;
-            return Self;
-        }
+        // Per-resource help has exactly ONE authoring door: the resource itself — Documentation on the configurator
+        // passed to AddInput/AddOutput/AddSetting/AddInternalVariable/AddResource, or the product builder's
+        // RawChild(child, documentation) for a resource spliced in through the raw-subtree escape hatch.
+        // The retired name-keyed Documentation(resourceName, text) overload repeated the name as a string key, so a
+        // typo bound the text to nothing and failed silently; keying off the resource being added makes that
+        // impossible by construction.
 
-        // Records a per-resource doc by name — the seam a concrete builder's by-handle Documentation overload uses.
-        private protected void SetResourceDoc(string resourceName, string documentation) =>
-            resourceDocs[resourceName] = documentation;
+        // Records a per-resource doc under the position key ResourceDocKey minted for the resource being added — the
+        // seam every concrete builder's resource-add path routes through. A position is occupied by exactly one
+        // resource, so a second write to the same key is never a legitimate re-documentation: it means a builder
+        // computed the key wrong (typically an offset it failed to seed), which would otherwise silently discard one
+        // pin's help text — the very failure per-position keying exists to remove. Throw instead.
+        private protected void SetResourceDoc(string key, string documentation)
+        {
+            if (!resourceDocs.TryAdd(key, documentation))
+            {
+                throw new InvalidOperationException(
+                    $"Two resources were documented under the same position key '{key}'. A position identifies one " +
+                    "resource, so this is a key-minting bug in the builder, not a duplicate authoring call.");
+            }
+        }
 
         // Seeds summary + per-resource docs from an existing definition (the From(...) round-trip path).
         private protected void SeedDocumentation(DefinitionDocumentation documentation)

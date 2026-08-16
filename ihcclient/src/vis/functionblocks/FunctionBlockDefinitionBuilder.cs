@@ -63,6 +63,12 @@ namespace Ihc.Vis.FunctionBlocks
         private readonly List<ProjectElement> outputs = new();
         private readonly List<ProjectElement> settings = new();
         private readonly List<ProjectElement> internalVars = new();
+
+        // How many children each standard container ALREADY holds in a From()-seeded body. SpliceAuthoredOnto appends
+        // the authored resources after those, so an authored resource's position in the built container — and hence
+        // its ResourceDocKey — is offset by this count. Empty (all zero) for a from-scratch builder; without it a pin
+        // added to a reopened block would claim the seeded first pin's help key.
+        private readonly Dictionary<string, int> decodedContainerCounts = new(StringComparer.Ordinal);
         private readonly List<FbEnumDefRef> enumDefs = new();
         private readonly List<ProjectElement> rawBodyChildren = new();
         private readonly List<FbProgramBuilder> programs = new();
@@ -115,6 +121,10 @@ namespace Ihc.Vis.FunctionBlocks
             builder.grammar = existing.Grammar;
             builder.sourceEncoding = existing.SourceEncoding;
             builder.explicitCloseIds = existing.ExplicitCloseIds.AsImmutableHashSet();   // review F1: else From(x).Build() drops the two-tag close set
+            foreach (string containerTag in ResourceContainerTags)
+            {
+                builder.decodedContainerCounts[containerTag] = existing.Body.FindChild(containerTag)?.Children.Length ?? 0;
+            }
             builder.SeedDocumentation(existing.Documentation);
             return builder;
         }
@@ -243,45 +253,45 @@ namespace Ihc.Vis.FunctionBlocks
         // ---- resources → containers (each returns a handle for program wiring) ----
 
         /// <summary>Adds a <c>resource_input</c> pin under <c>inputs</c>; returns its handle.</summary>
-        public FbResourceHandle AddInput(string name) => AddResourceTo(inputs, "resource_input", name, null);
+        public FbResourceHandle AddInput(string name) => AddResourceTo(inputs, "inputs", "resource_input", name, null);
 
         /// <summary>Adds a <c>resource_input</c> pin under <c>inputs</c> and configures it — the tag-free short form
         /// with a configurator, so a default-typed pin can carry its note/icon and its help
         /// <see cref="FbResourceDefBuilder.Documentation"/> without the caller spelling the tag. Returns its handle.</summary>
         public FbResourceHandle AddInput(string name, Action<FbResourceDefBuilder> configure) =>
-            AddResourceTo(inputs, "resource_input", name, configure);
+            AddResourceTo(inputs, "inputs", "resource_input", name, configure);
 
         /// <summary>Adds an input of an explicit type <paramref name="tag"/> under <c>inputs</c> (value types are legal
         /// there too); <paramref name="configure"/> sets type-specific attributes and the resource's help
         /// <see cref="FbResourceDefBuilder.Documentation"/>. Returns its handle.</summary>
         public FbResourceHandle AddInput(string tag, string name, Action<FbResourceDefBuilder>? configure = null) =>
-            AddResourceTo(inputs, tag, name, configure);
+            AddResourceTo(inputs, "inputs", tag, name, configure);
 
         /// <summary>Adds a <c>resource_output</c> pin under <c>outputs</c>; returns its handle.</summary>
-        public FbResourceHandle AddOutput(string name) => AddResourceTo(outputs, "resource_output", name, null);
+        public FbResourceHandle AddOutput(string name) => AddResourceTo(outputs, "outputs", "resource_output", name, null);
 
         /// <summary>Adds a <c>resource_output</c> pin under <c>outputs</c> and configures it — the tag-free short form
         /// with a configurator (see <see cref="AddInput(string,Action{FbResourceDefBuilder})"/>). Returns its handle.</summary>
         public FbResourceHandle AddOutput(string name, Action<FbResourceDefBuilder> configure) =>
-            AddResourceTo(outputs, "resource_output", name, configure);
+            AddResourceTo(outputs, "outputs", "resource_output", name, configure);
 
         /// <summary>Adds an output of an explicit type <paramref name="tag"/> under <c>outputs</c>;
         /// <paramref name="configure"/> sets type-specific attributes and the resource's help
         /// <see cref="FbResourceDefBuilder.Documentation"/>. Returns its handle.</summary>
         public FbResourceHandle AddOutput(string tag, string name, Action<FbResourceDefBuilder>? configure = null) =>
-            AddResourceTo(outputs, tag, name, configure);
+            AddResourceTo(outputs, "outputs", tag, name, configure);
 
         /// <summary>Adds a value variable of type <paramref name="tag"/> (e.g. <c>resource_timer</c>,
         /// <c>resource_enum</c>) under <c>settings</c>; <paramref name="configure"/> sets its value and its help
         /// <see cref="FbResourceDefBuilder.Documentation"/>. Returns its handle.</summary>
         public FbResourceHandle AddSetting(string tag, string name, Action<FbResourceDefBuilder>? configure = null) =>
-            AddResourceTo(settings, tag, name, configure);
+            AddResourceTo(settings, "settings", tag, name, configure);
 
         /// <summary>Adds a private value variable of type <paramref name="tag"/> under <c>internalsettings</c>;
         /// <paramref name="configure"/> sets its value and its help
         /// <see cref="FbResourceDefBuilder.Documentation"/>. Returns its handle.</summary>
         public FbResourceHandle AddInternalVariable(string tag, string name, Action<FbResourceDefBuilder>? configure = null) =>
-            AddResourceTo(internalVars, tag, name, configure);
+            AddResourceTo(internalVars, "internalsettings", tag, name, configure);
 
         /// <summary>
         /// Authors an <c>enum_definition</c> embedded in the block body and returns a typed handle to it — the
@@ -312,28 +322,10 @@ namespace Ihc.Vis.FunctionBlocks
         }
 
         // ---- documentation (help metadata; programmatic-lookup only, never serialized) ----
-        // The block-level Documentation(string) and the name-keyed Documentation(string, string) live on the shared
-        // DefinitionBuilderBase; only the FB-specific by-handle overload stays here.
-        // Per-resource text is ALSO authorable on the resource itself — FbResourceDefBuilder.Documentation inside the
-        // AddInput/AddOutput/AddSetting/AddInternalVariable configurator — which needs neither a name key nor a handle
-        // variable. All three forms write the same map (last call wins), so a caller converts one resource at a time.
-
-        /// <summary>
-        /// Attaches documentation text to one resource — the input/output/setting/variable identified by its
-        /// <paramref name="resource"/> handle — the per-pin help a vendor <c>*.md</c> lists under "Indgange"/"Udgange".
-        /// Like the block-level <see cref="DefinitionBuilderBase{TSelf}.Documentation(string)"/> overload this is
-        /// <b>programmatic-lookup-only</b> metadata: it surfaces on <see cref="FunctionBlockDefinition.Documentation"/>
-        /// (looked up by the resource's display name via <see cref="DefinitionDocumentation.ForResource"/>) and is never
-        /// serialized into <see cref="FunctionBlockDefinition.Body"/> or an <c>.ifb</c>. Contrast
-        /// <see cref="FbResourceDefBuilder.Note"/>, which sets the resource's serialized <c>note</c> attribute:
-        /// <c>Note</c> is project data, <c>Documentation</c> is help. Returns this for chaining.
-        /// </summary>
-        public FunctionBlockDefinitionBuilder Documentation(FbResourceHandle resource, string documentation)
-        {
-            ArgumentNullException.ThrowIfNull(resource);
-            SetResourceDoc(resource.Name, documentation);
-            return this;
-        }
+        // The block-level Documentation(string) summary lives on the shared DefinitionBuilderBase. Per-resource help
+        // has one door and one door only: FbResourceDefBuilder.Documentation inside the
+        // AddInput/AddOutput/AddSetting/AddInternalVariable configurator, which needs neither a name key nor a handle
+        // variable. The retired by-handle and name-keyed overloads were second doors onto the same map.
 
         // ---- escape hatch ----
 
@@ -571,10 +563,10 @@ namespace Ihc.Vis.FunctionBlocks
         {
             var appended = new Dictionary<string, IReadOnlyList<ProjectElement>>(StringComparer.Ordinal)
             {
-                ["inputs"] = inputs,
-                ["outputs"] = outputs,
-                ["settings"] = settings,
-                ["internalsettings"] = internalVars,
+                [ResourceContainerTags[0]] = inputs,
+                [ResourceContainerTags[1]] = outputs,
+                [ResourceContainerTags[2]] = settings,
+                [ResourceContainerTags[3]] = internalVars,
             };
             if (forBuild)
             {
@@ -681,7 +673,11 @@ namespace Ihc.Vis.FunctionBlocks
             return root;
         }
 
-        private FbResourceHandle AddResourceTo(List<ProjectElement> container, string tag, string name,
+        // The four standard resource containers, in the order the vendor body declares them. Shared by the From()
+        // offset seeding and SpliceAuthoredOnto so "which containers hold resources" is answered once.
+        internal static readonly string[] ResourceContainerTags = { "inputs", "outputs", "settings", "internalsettings" };
+
+        private FbResourceHandle AddResourceTo(List<ProjectElement> container, string containerTag, string tag, string name,
             Action<FbResourceDefBuilder>? configure)
         {
             var configurator = new FbResourceDefBuilder();
@@ -703,12 +699,13 @@ namespace Ihc.Vis.FunctionBlocks
             {
                 resource = resource.WithAttribute(attrName, attrValue);
             }
-            // The one place that has both the resource name and the text authored on it: route documentation to the
-            // definition-level map (never to an attribute), so the configurator form, the by-handle overload and the
-            // name-keyed overload all land in the same dictionary and stay interchangeable.
+            // The one place that has both the resource and the text authored on it: route documentation to the
+            // definition-level map, keyed by the position this very call is appending to — never to an attribute.
+            // The offset makes that position the one in the BUILT container, not just in the authored tail.
             if (configurator.DocumentationText is { } documentation)
             {
-                SetResourceDoc(name, documentation);
+                int position = decodedContainerCounts.GetValueOrDefault(containerTag) + container.Count;
+                SetResourceDoc(ResourceDocKey.ForBlock(containerTag, position), documentation);
             }
             container.Add(resource);
             return new FbResourceHandle(name, id);
@@ -855,14 +852,14 @@ namespace Ihc.Vis.FunctionBlocks
         public FbResourceDefBuilder Note(string note) => Set("note", note);
 
         /// <summary>Attaches this resource's documentation text — <b>programmatic-lookup-only</b> help metadata that
-        /// surfaces on the built definition's <see cref="FunctionBlockDefinition.Documentation"/> (keyed by the
-        /// resource's display name, read back with <see cref="DefinitionDocumentation.ForResource"/>) and is never
-        /// serialized into the body or an <c>.ifb</c>. The name-free peer of
-        /// <see cref="FunctionBlockDefinitionBuilder.Documentation(FbResourceHandle,string)"/> and of
-        /// <see cref="DefinitionBuilderBase{TSelf}.Documentation(string,string)"/>: authored here the resource name is
-        /// spelled once, at the add, so it cannot drift from the pin it documents. Contrast <see cref="Note"/>, which
-        /// sets the resource's serialized <c>note</c> attribute: <c>Note</c> is project data, <c>Documentation</c> is
-        /// help. Documenting one resource name twice keeps the LAST call, whichever form wrote it.</summary>
+        /// is read back off the pin itself, on <see cref="ResourceSummary.Documentation"/> of the built definition's
+        /// <see cref="FunctionBlockDefinition.Inputs"/>/<see cref="FunctionBlockDefinition.Outputs"/>/
+        /// <see cref="FunctionBlockDefinition.Settings"/>/<see cref="FunctionBlockDefinition.InternalVariables"/>
+        /// projections, and is never serialized into the body or an <c>.ifb</c>. This is the <b>only</b> door for
+        /// per-resource help on a block: authored here the text belongs to <i>this</i> pin, so a sibling sharing its
+        /// display name (block 1.4.03 has both a <c>"Sluk"</c> input and a <c>"Sluk"</c> output) documents itself
+        /// independently. Contrast <see cref="Note"/>, which sets the resource's serialized <c>note</c> attribute:
+        /// <c>Note</c> is project data, <c>Documentation</c> is help.</summary>
         public FbResourceDefBuilder Documentation(string documentation)
         {
             this.documentation = documentation;

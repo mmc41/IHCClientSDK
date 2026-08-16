@@ -12,12 +12,13 @@ namespace Ihc.Vis.Catalog
     /// <summary>
     /// Parses a synthetic English help document (<c>syn_en*.md</c>) — the de-branded companion the IHC Visual install
     /// ships next to a catalog definition file (a <c>FunctionBlocks\*.ifb</c> block or a <c>Products\*.def</c> product)
-    /// — into the programmatic-lookup-only <see cref="DefinitionDocumentation"/> a code-authored definition carries.
+    /// — into a <see cref="HelpDocument"/> — the name-keyed intermediate a definition's position-keyed
+    /// <see cref="DefinitionDocumentation"/> is resolved from, since a bullet can only name its resource.
     /// The document shape is a fixed, trivially parseable convention: a level-1 heading (<c># display name</c>, kept
     /// for reference but not part of the summary), then a leading prose paragraph (the definition
-    /// <see cref="DefinitionDocumentation.Summary"/>), then <c>**Inputs**</c>/<c>**Outputs**</c>/… sections whose
+    /// <see cref="HelpDocument.Summary"/>), then <c>**Inputs**</c>/<c>**Outputs**</c>/… sections whose
     /// bullets read <c>- **resource name** — help text</c> and map to the per-resource text keyed by resource display
-    /// name (<see cref="DefinitionDocumentation.Resources"/>).
+    /// name (<see cref="HelpDocument.ByName"/>).
     /// </summary>
     /// <remarks>
     /// The vendor also ships a copyrighted <c>{base}.md</c>; this reader uses <b>only</b> the synthetic
@@ -33,11 +34,11 @@ namespace Ihc.Vis.Catalog
         // specific first: em dash and en dash (the syn_en convention), then a spaced ASCII hyphen (a lenient fallback).
         private static readonly string[] Separators = { " — ", " – ", " - " };
 
-        /// <summary>Parses help-document <paramref name="markdown"/> into a <see cref="DefinitionDocumentation"/>:
+        /// <summary>Parses help-document <paramref name="markdown"/> into a <see cref="HelpDocument"/>:
         /// the leading paragraph becomes the definition summary, and each <c>- **name** — text</c> bullet under any
         /// <c>**section**</c> heading becomes a per-resource entry keyed by <c>name</c>. Missing sections are tolerated
-        /// (an empty document yields <see cref="DefinitionDocumentation.Empty"/>).</summary>
-        public static DefinitionDocumentation Parse(string markdown)
+        /// (an empty document yields <see cref="HelpDocument.Empty"/>).</summary>
+        public static HelpDocument Parse(string markdown)
         {
             ArgumentNullException.ThrowIfNull(markdown);
             string[] lines = markdown.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
@@ -80,8 +81,8 @@ namespace Ihc.Vis.Catalog
 
             string? summaryText = summary.Length > 0 ? summary.ToString() : null;
             return summaryText is null && resources.Count == 0
-                ? DefinitionDocumentation.Empty
-                : new DefinitionDocumentation(summaryText, resources.ToImmutable());
+                ? HelpDocument.Empty
+                : new HelpDocument(summaryText, resources.ToImmutable());
         }
 
         /// <summary>Probes for the help document sibling of the catalog definition file at
@@ -89,7 +90,7 @@ namespace Ihc.Vis.Catalog
         /// synthetic <c>syn_en{base}.md</c> is tried first, then — unless <paramref name="synEnOnly"/> — the vendor
         /// <c>{base}.md</c> (used only for a caller's own components, never the copyrighted install catalog).
         /// Returns <c>null</c> when no sibling exists.</summary>
-        public static DefinitionDocumentation? ForDefinitionFile(string catalogFilePath, bool synEnOnly = false)
+        public static HelpDocument? ForDefinitionFile(string catalogFilePath, bool synEnOnly = false)
         {
             ArgumentNullException.ThrowIfNull(catalogFilePath);
             foreach (string candidate in SiblingCandidates(catalogFilePath, synEnOnly))

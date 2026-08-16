@@ -5,7 +5,8 @@ namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// Exercises the programmatic-lookup-only <see cref="DefinitionDocumentation"/> help metadata carried on a
-    /// <see cref="FunctionBlockDefinition"/>: the block's overview text plus a per-resource text keyed by display name
+    /// <see cref="FunctionBlockDefinition"/>: the block's overview text plus one text per resource, read back off the
+    /// pin through <see cref="ResourceSummary.Documentation"/>
     /// (a shape modeled on, but not copied from, a vendor <c>FunctionBlocks\*.md</c> help file — the sample strings here
     /// are synthetic), and — the load-bearing guarantee — that attaching it
     /// leaves the serialized <see cref="FunctionBlockDefinition.Body"/> untouched, so it never reaches a project
@@ -35,13 +36,16 @@ namespace Ihc.Vis.Tests
             new FunctionBlockDefinition(
                 "1.1.01", "e", "Kip tænd sluk", "1.1.01.e. Kip tænd sluk", "00. Foretrukne", body ?? ToggleBody());
 
-        // Synthetic, self-authored help text  — only its shape matches one.
+        // Synthetic, self-authored help text  — only its shape matches one. Keyed by POSITION (the first input, the
+        // first output) through the same minter the projection reads with: a display name identifies no single pin.
         private static DefinitionDocumentation Documented(string summary) =>
             new DefinitionDocumentation(
                 summary,
                 ImmutableDictionary<string, string>.Empty
-                    .Add("Kip", "Opdigtet hjælpetekst: denne indgang skifter udgangens tilstand i eksemplet.")
-                    .Add("Udgang", "Opdigtet hjælpetekst: eksemplets udgangssignal."));
+                    .Add(ResourceDocKey.ForBlock("inputs", 0),
+                         "Opdigtet hjælpetekst: denne indgang skifter udgangens tilstand i eksemplet.")
+                    .Add(ResourceDocKey.ForBlock("outputs", 0),
+                         "Opdigtet hjælpetekst: eksemplets udgangssignal."));
 
         [Test]
         public void Empty_HasNoBlockTextAndNoResourceText()
@@ -52,21 +56,22 @@ namespace Ihc.Vis.Tests
             {
                 Assert.That(empty.IsEmpty, Is.True);
                 Assert.That(empty.Summary, Is.Null);
-                Assert.That(empty.ForResource("Kip"), Is.Null);
+                Assert.That(empty.Resources, Is.Empty);
             });
         }
 
         [Test]
-        public void ForResource_ReturnsText_ForDocumentedName_AndNull_ForUndocumented()
+        public void EachResourceGetsItsOwnText_AndAnUndocumentedOneGetsNone()
         {
-            DefinitionDocumentation doc = Documented("Block help.");
+            FunctionBlockDefinition def = ToggleDefinition() with { Documentation = Documented("Block help.") };
 
             Assert.Multiple(() =>
             {
-                Assert.That(doc.IsEmpty, Is.False);
-                Assert.That(doc.ForResource("Kip"),
+                Assert.That(def.Documentation.IsEmpty, Is.False);
+                Assert.That(def.Inputs[0].Documentation,
                     Is.EqualTo("Opdigtet hjælpetekst: denne indgang skifter udgangens tilstand i eksemplet."));
-                Assert.That(doc.ForResource("Sluk"), Is.Null, "an undocumented resource has no text");
+                Assert.That(def.Inputs[1].Documentation, Is.Null, "an undocumented resource has no text");
+                Assert.That(def.Settings[0].Documentation, Is.Null, "nor does one in another container");
             });
         }
 
@@ -85,19 +90,19 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
-        public void Definition_CarriesDocumentation_LookedUpByProjectionName()
+        public void Definition_CarriesDocumentation_ReadOffTheProjection()
         {
-            // The intended GUI flow: iterate the Inputs/Outputs projections, then look the help text up by the same
-            // display name — no placeholder id tokens on the caller.
+            // The intended GUI flow: iterate the Inputs/Outputs projections and render each pin's own help text — the
+            // caller handles neither a name key nor a placeholder id token.
             FunctionBlockDefinition def = ToggleDefinition() with { Documentation = Documented("Block help.") };
 
             Assert.Multiple(() =>
             {
                 Assert.That(def.Documentation.Summary, Is.EqualTo("Block help."));
                 Assert.That(def.Inputs.Select(i => i.Name), Does.Contain("Kip"));
-                Assert.That(def.Documentation.ForResource("Kip"),
+                Assert.That(def.Inputs.Single(i => i.Name == "Kip").Documentation,
                     Is.EqualTo("Opdigtet hjælpetekst: denne indgang skifter udgangens tilstand i eksemplet."));
-                Assert.That(def.Documentation.ForResource(def.Outputs[0].Name),
+                Assert.That(def.Outputs[0].Documentation,
                     Is.EqualTo("Opdigtet hjælpetekst: eksemplets udgangssignal."));
             });
         }
@@ -114,8 +119,8 @@ namespace Ihc.Vis.Tests
                 Documentation = new DefinitionDocumentation(
                     "BLOCK-HELP-SENTINEL",
                     ImmutableDictionary<string, string>.Empty
-                        .Add("Kip", "KIP-HELP-SENTINEL")
-                        .Add("Udgang", "UDGANG-HELP-SENTINEL")),
+                        .Add(ResourceDocKey.ForBlock("inputs", 0), "KIP-HELP-SENTINEL")
+                        .Add(ResourceDocKey.ForBlock("outputs", 0), "UDGANG-HELP-SENTINEL")),
             };
 
             var attributeValuesInBody =

@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
@@ -89,10 +90,10 @@ namespace Ihc.Vis.Tests
                 Assert.That(tryk.Documentation.Summary, Is.Not.Null.And.Not.Empty);
                 Assert.That(tryk.Documentation.Resources, Is.Not.Empty, "per-resource help is baked in");
 
-                // Per-resource text is keyed by the resource's display name, so a GUI looks it up by that name.
-                string firstResource = tryk.Resources[0].Name;
-                Assert.That(tryk.Documentation.ForResource(firstResource), Is.Not.Null.And.Not.Empty,
-                    $"'{firstResource}' has per-resource help reachable by display name");
+                // Per-resource text arrives ON the resource, so a GUI binds it straight off the projection.
+                ResourceSummary firstResource = tryk.Resources[0];
+                Assert.That(firstResource.Documentation, Is.Not.Null.And.Not.Empty,
+                    $"'{firstResource.Name}' carries its own per-resource help");
             });
 
             // Every product is documented — the duplicate product_identifier entries included, since the
@@ -102,5 +103,38 @@ namespace Ihc.Vis.Tests
                 "every product carries a baked summary");
         }
 
+        /// <summary>
+        /// A baked help text that no resource hands back is silently invisible — the GUI's per-pin help panel simply
+        /// shows nothing. A position key cannot be misspelled the way the retired name key could, but it can still
+        /// point past the resources (a builder offset bug, or a <c>syn_en*.md</c> bullet naming a pin the <c>.def</c>
+        /// does not have), so the invariant stays worth pinning. The twin of the function-block catalog's check.
+        /// </summary>
+        [Test]
+        public void EveryPerResourceDocumentationEntry_ReachesAResourceOfItsProduct()
+        {
+            ICatalog catalog = new BuiltInCatalog();
+
+            var unreachable = new List<string>();
+            int entries = 0;
+            foreach (ProductDefinition product in catalog.Products)
+            {
+                int baked = product.Documentation.Resources.Count;
+                int onResources = product.Resources.Count(r => r.Documentation is not null);
+                entries += baked;
+                if (baked != onResources)
+                {
+                    unreachable.Add($"{product.DisplayName}: {baked} baked, {onResources} reach a resource");
+                }
+            }
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(unreachable, Is.Empty, "every baked help text is handed back by the resource it documents");
+                // A deliberate documentation change updates this number; a silent loss does not. 400, not the 394 of
+                // the name-keyed era: the two Beolink products each have four pins called "Not in use" that one entry
+                // used to cover by name, and each now holds its own.
+                Assert.That(entries, Is.EqualTo(400), "the baked per-resource help entries");
+            });
+        }
     }
 }

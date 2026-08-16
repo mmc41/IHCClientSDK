@@ -73,8 +73,10 @@ namespace Ihc.Vis.FunctionBlocks
         /// Human-readable help metadata for this block and its pins — <b>programmatic-lookup only</b>, and deliberately
         /// <b>not</b> part of the serialized <see cref="Body"/>: it is never written into a project <c>.vis</c> or a
         /// function-block description <c>.ifb</c>. Defaults to <see cref="DefinitionDocumentation.Empty"/> (what
-        /// catalog discovery yields, since an <c>.ifb</c> carries no help text). Authored via
-        /// <see cref="DefinitionBuilderBase{TSelf}.Documentation(string)"/> and the builder's by-handle overload; see
+        /// catalog discovery yields, since an <c>.ifb</c> carries no help text). The summary is authored via
+        /// <see cref="DefinitionBuilderBase{TSelf}.Documentation(string)"/>; per-resource text is authored ON the
+        /// resource — <see cref="FbResourceDefBuilder.Documentation"/> inside the
+        /// <c>AddInput</c>/<c>AddOutput</c>/<c>AddSetting</c>/<c>AddInternalVariable</c> configurator; see
         /// <see cref="DefinitionDocumentation"/>.
         /// </summary>
         public DefinitionDocumentation Documentation { get; init; } = DefinitionDocumentation.Empty;
@@ -95,7 +97,8 @@ namespace Ihc.Vis.FunctionBlocks
         private IReadOnlyList<ResourceSummary> Container(string container) =>
             Body.FindChild(container) is { } holder
                 ? holder.Children
-                        .Select(c => new ResourceSummary(c.Tag, c.GetAttribute("name") ?? string.Empty, c.Id))
+                        .Select((c, index) => new ResourceSummary(c.Tag, c.GetAttribute("name") ?? string.Empty, c.Id,
+                                                                  Documentation.ForKey(ResourceDocKey.ForBlock(container, index))))
                         .ToArray()
                 : Array.Empty<ResourceSummary>();
 

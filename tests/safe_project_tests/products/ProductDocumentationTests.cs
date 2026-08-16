@@ -39,8 +39,8 @@ namespace Ihc.Vis.Tests
             new DefinitionDocumentation(
                 summary,
                 ImmutableDictionary<string, string>.Empty
-                    .Add("Tryk (venstre)", "Opdigtet hjælpetekst: venstre tast skifter udgangens tilstand i eksemplet.")
-                    .Add("Udgang", "Opdigtet hjælpetekst: eksemplets udgangssignal."));
+                    .Add(ResourceDocKey.ForProduct(0), "Opdigtet hjælpetekst: venstre tast skifter udgangens tilstand i eksemplet.")
+                    .Add(ResourceDocKey.ForProduct(2), "Opdigtet hjælpetekst: eksemplets udgangssignal."));
 
         [Test]
         public void Empty_HasNoProductTextAndNoResourceText()
@@ -51,21 +51,21 @@ namespace Ihc.Vis.Tests
             {
                 Assert.That(empty.IsEmpty, Is.True);
                 Assert.That(empty.Summary, Is.Null);
-                Assert.That(empty.ForResource("Tryk (venstre)"), Is.Null);
+                Assert.That(empty.Resources, Is.Empty);
             });
         }
 
         [Test]
-        public void ForResource_ReturnsText_ForDocumentedName_AndNull_ForUndocumented()
+        public void EachResourceGetsItsOwnText_AndAnUndocumentedOneGetsNone()
         {
-            DefinitionDocumentation doc = Documented("Product help.");
+            ProductDefinition def = PushButtonDefinition() with { Documentation = Documented("Product help.") };
 
             Assert.Multiple(() =>
             {
-                Assert.That(doc.IsEmpty, Is.False);
-                Assert.That(doc.ForResource("Tryk (venstre)"),
+                Assert.That(def.Documentation.IsEmpty, Is.False);
+                Assert.That(def.Resources[0].Documentation,
                     Is.EqualTo("Opdigtet hjælpetekst: venstre tast skifter udgangens tilstand i eksemplet."));
-                Assert.That(doc.ForResource("Tryk (højre)"), Is.Null, "an undocumented resource has no text");
+                Assert.That(def.Resources[1].Documentation, Is.Null, "an undocumented resource has no text");
             });
         }
 
@@ -84,19 +84,20 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
-        public void Definition_CarriesDocumentation_LookedUpByProjectionName()
+        public void Definition_CarriesDocumentation_ReadOffTheProjection()
         {
-            // The intended GUI flow: iterate the Resources projection, then look the help text up by the same display
-            // name — no placeholder id tokens on the caller.
+            // The intended GUI flow: iterate the Resources projection and render each resource's own help text — the
+            // caller handles neither a name key nor a placeholder id token. The structural <scenes> child sits between
+            // the documented output and the end of the body, so this also pins that filtering it out shifts nothing.
             ProductDefinition def = PushButtonDefinition() with { Documentation = Documented("Product help.") };
 
             Assert.Multiple(() =>
             {
                 Assert.That(def.Documentation.Summary, Is.EqualTo("Product help."));
                 Assert.That(def.Resources.Select(r => r.Name), Does.Contain("Tryk (venstre)"));
-                Assert.That(def.Documentation.ForResource("Tryk (venstre)"),
+                Assert.That(def.Resources.Single(r => r.Name == "Tryk (venstre)").Documentation,
                     Is.EqualTo("Opdigtet hjælpetekst: venstre tast skifter udgangens tilstand i eksemplet."));
-                Assert.That(def.Documentation.ForResource(def.Resources.First(r => r.Tag == "dataline_output").Name),
+                Assert.That(def.Resources.Single(r => r.Tag == "dataline_output").Documentation,
                     Is.EqualTo("Opdigtet hjælpetekst: eksemplets udgangssignal."));
             });
         }
@@ -113,8 +114,8 @@ namespace Ihc.Vis.Tests
                 Documentation = new DefinitionDocumentation(
                     "PRODUCT-HELP-SENTINEL",
                     ImmutableDictionary<string, string>.Empty
-                        .Add("Tryk (venstre)", "VENSTRE-HELP-SENTINEL")
-                        .Add("Udgang", "UDGANG-HELP-SENTINEL")),
+                        .Add(ResourceDocKey.ForProduct(0), "VENSTRE-HELP-SENTINEL")
+                        .Add(ResourceDocKey.ForProduct(2), "UDGANG-HELP-SENTINEL")),
             };
 
             var attributeValuesInBody =

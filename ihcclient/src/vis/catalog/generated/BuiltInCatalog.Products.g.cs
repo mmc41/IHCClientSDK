@@ -214,7 +214,8 @@ namespace Ihc.Vis.Catalog
                         ElRaw("dimmer_setting_fade_rate_up", new[] { ("id", "_0x33") }),
                         ElRaw("dimmer_setting_fade_rate_down", new[] { ("id", "_0x34") }),
                         ElRaw("dimmer_setting_dimming_rate", new[] { ("id", "_0x35") }),
-                        ElRaw("dimmer_setting_load_mode", new[] { ("id", "_0x36") }))))
+                        ElRaw("dimmer_setting_load_mode", new[] { ("id", "_0x36") }))),
+                        "Kanal 1's egenskabsknude; højreklik → Egenskaber giver kanalens driftsparametre.")
                     .RawChild(ElRaw("rs485_led_dimmer_channel", new[] { ("icon", "_0x86"), ("id", "_0x50"), ("product_identifier", "_0x4410"), ("name", "LED Dimmer kanal 2"), ("channel", "_0x01"), ("channel_id", "") },
                     ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x58"), ("name", "Tænd / Regulér op"), ("address_channel", "_0x01") }),
                     ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x59"), ("name", "Sluk / Regulér ned"), ("address_channel", "_0x01") }),
@@ -231,7 +232,8 @@ namespace Ihc.Vis.Catalog
                         ElRaw("dimmer_setting_fade_rate_up", new[] { ("id", "_0x63") }),
                         ElRaw("dimmer_setting_fade_rate_down", new[] { ("id", "_0x64") }),
                         ElRaw("dimmer_setting_dimming_rate", new[] { ("id", "_0x65") }),
-                        ElRaw("dimmer_setting_load_mode", new[] { ("id", "_0x66") }))))
+                        ElRaw("dimmer_setting_load_mode", new[] { ("id", "_0x66") }))),
+                        "Kanal 2's egenskabsknude med samme parametersæt som kanal 1.")
                     .Documentation(
                         "LED-lysdæmper på RS-485 med to uafhængige kanaler à 200 VA til IHCVisual controller 3 (820B1600 eller senere); " +
                         "hver kanal har egne dæmper-, status- og fejlressourcer." +
@@ -255,8 +257,6 @@ namespace Ihc.Vis.Catalog
                         "– Øverst: 230 V forsyning og belastning pr. kanal; nederst: 24 V forsyning og skærmet RS-485-kabel ved 115,2 kbps. Over 10 m kabel forbindes skærmen til strømforsyningens 0 V.\n" +
                         "– Bussen skal termineres i enden: placér SMS-modemet sidst, hvis det findes, eller montér en standard RTERM på ca. 120 Ω.\n" +
                         "– 36 mm DIN-modul. Linkes i IHC Visual under Controller → Link/test LK IHC Wireless produkter & Bus produkter: klik Link, hold begge knapper inde til de blinker (ca. 3 s), og vælg kanal inden 30 s. Unlink sker samme sted.")
-                    .Documentation("LED Dimmer kanal 1", "Kanal 1's egenskabsknude; højreklik → Egenskaber giver kanalens driftsparametre.")
-                    .Documentation("LED Dimmer kanal 2", "Kanal 2's egenskabsknude med samme parametersæt som kanal 1.")
                     .Grammar(BuiltInCatalogGrammar.G_1567de87)
                     .Build();
             return definition with
@@ -883,9 +883,9 @@ namespace Ihc.Vis.Catalog
                     .AddInput("Light + 0", i => i.Documentation("Puls-indgang; typisk sluk."))
                     .AddInput("Light + Play", i => i.Documentation("Puls-indgang; typisk tænd (svarer til Beo4's Light + GO)."))
                     .AddInput("Not in use", i => i.Documentation("Fire pladser på Beo4-kortets farvetast-positioner; kan ikke aktiveres fra Beolink 1000."))
-                    .AddInput("Not in use")
-                    .AddInput("Not in use")
-                    .AddInput("Not in use")
+                    .AddInput("Not in use", i => i.Documentation("Fire pladser på Beo4-kortets farvetast-positioner; kan ikke aktiveres fra Beolink 1000."))
+                    .AddInput("Not in use", i => i.Documentation("Fire pladser på Beo4-kortets farvetast-positioner; kan ikke aktiveres fra Beolink 1000."))
+                    .AddInput("Not in use", i => i.Documentation("Fire pladser på Beo4-kortets farvetast-positioner; kan ikke aktiveres fra Beolink 1000."))
                     .AddInput("Light + ^", i => i.Documentation("Følg-indgang; typisk regulér op (langt tryk dæmper)."))
                     .AddInput("Light + v", i => i.Documentation("Følg-indgang; typisk regulér ned (langt tryk dæmper)."))
                     .AddInput("Light + Pil venstre", i => i.Documentation("Følg-indgang; typisk persienne/jalousi ned."))
@@ -928,9 +928,9 @@ namespace Ihc.Vis.Catalog
                     .AddInput("0", i => i.Documentation("Puls-indgang; typisk sluk."))
                     .AddInput("Play", i => i.Documentation("Puls-indgang; typisk tænd."))
                     .AddInput("Not in use", i => i.Documentation("Fire pladser på Beo4-kortets farvetast-positioner (Grøn/Gul/Blå/Rød); kan ikke aktiveres fra Beolink 5000."))
-                    .AddInput("Not in use")
-                    .AddInput("Not in use")
-                    .AddInput("Not in use")
+                    .AddInput("Not in use", i => i.Documentation("Fire pladser på Beo4-kortets farvetast-positioner (Grøn/Gul/Blå/Rød); kan ikke aktiveres fra Beolink 5000."))
+                    .AddInput("Not in use", i => i.Documentation("Fire pladser på Beo4-kortets farvetast-positioner (Grøn/Gul/Blå/Rød); kan ikke aktiveres fra Beolink 5000."))
+                    .AddInput("Not in use", i => i.Documentation("Fire pladser på Beo4-kortets farvetast-positioner (Grøn/Gul/Blå/Rød); kan ikke aktiveres fra Beolink 5000."))
                     .AddInput("^", i => i.Documentation("Følg-indgang; typisk regulér op (langt tryk dæmper)."))
                     .AddInput("v", i => i.Documentation("Følg-indgang; typisk regulér ned (langt tryk dæmper)."))
                     .AddInput("Pil venstre", i => i.Documentation("Følg-indgang; typisk persienne/jalousi ned."))
@@ -3055,10 +3055,14 @@ namespace Ihc.Vis.Catalog
                     .Name("Mobil stikkontakt dimmer")
                     .Note("")
                     .Attribute("icon", "_0x88")
-                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x02"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x03"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x05"), ("name", "Lys niveau"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x06"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }))
+                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x02"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }),
+                        "Tænder dæmperudgangen; fastholdt signal regulerer lysniveauet op.")
+                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x03"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }),
+                        "Slukker dæmperudgangen; fastholdt signal regulerer lysniveauet ned.")
+                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x05"), ("name", "Lys niveau"), ("address_channel", "_0x01") }),
+                        "Dæmperens lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x06"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }),
+                        "Status fra dæmperen: ON når lysdæmperen er tændt.")
                     .RawChild(ElRaw("scenes", new[] { ("id", "_0x07"), ("name", "Scenarier/regulering"), ("scene_resource", "_0x05") }))
                     .RawChild(ElRaw("dimmer_settings", new[] { ("id", "_0x11") },
                     ElRaw("dimmer_setting_minimum_value", new[] { ("id", "_0x12") }),
@@ -3086,10 +3090,6 @@ namespace Ihc.Vis.Catalog
                         "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
                         "\n\nRegistrering\n" +
                         "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Avanceret-dialogen indeholder dæmperens driftsparametre (se Indstillinger), ikke linkningen — se fællesvejledningen 019D904122.")
-                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt.")
-                    .Documentation("Lys niveau", "Dæmperens lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
-                    .Documentation("Sluk / regulér ned", "Slukker dæmperudgangen; fastholdt signal regulerer lysniveauet ned.")
-                    .Documentation("Tænd / regulér op", "Tænder dæmperudgangen; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_b5ead9ca)
                     .Build();
             return definition with
@@ -3108,10 +3108,14 @@ namespace Ihc.Vis.Catalog
                     .Name("Lampeudtag dimmer")
                     .Note("")
                     .Attribute("icon", "_0x86")
-                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x02"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x03"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x05"), ("name", "Lys niveau"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x06"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }))
+                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x02"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }),
+                        "Tænder dæmperudgangen; fastholdt signal regulerer lysniveauet op.")
+                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x03"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }),
+                        "Slukker dæmperudgangen; fastholdt signal regulerer lysniveauet ned.")
+                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x05"), ("name", "Lys niveau"), ("address_channel", "_0x01") }),
+                        "Dæmperens lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x06"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }),
+                        "Status fra dæmperen: ON når lysdæmperen er tændt, også ved lokal betjening.")
                     .RawChild(ElRaw("scenes", new[] { ("id", "_0x07"), ("name", "Scenarier/regulering"), ("scene_resource", "_0x05") }))
                     .RawChild(ElRaw("dimmer_settings", new[] { ("id", "_0x11") },
                     ElRaw("dimmer_setting_minimum_value", new[] { ("id", "_0x12") }),
@@ -3139,10 +3143,6 @@ namespace Ihc.Vis.Catalog
                         "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
                         "\n\nRegistrering\n" +
                         "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Avanceret-dialogen indeholder dæmperens driftsparametre (se Indstillinger), ikke linkningen — se fællesvejledningen 019D904122. Programmeringsknapper og lysdiode sidder bag afdækningen, som afmonteres.")
-                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt, også ved lokal betjening.")
-                    .Documentation("Lys niveau", "Dæmperens lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
-                    .Documentation("Sluk / regulér ned", "Slukker dæmperudgangen; fastholdt signal regulerer lysniveauet ned.")
-                    .Documentation("Tænd / regulér op", "Tænder dæmperudgangen; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_b5ead9ca)
                     .Build();
             return definition with
@@ -3161,10 +3161,14 @@ namespace Ihc.Vis.Catalog
                     .Name("Dimmer Universal")
                     .Note("")
                     .Attribute("icon", "_0x86")
-                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x02"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x03"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x05"), ("name", "Lys niveau"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x06"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }))
+                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x02"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }),
+                        "Tænder dæmperudgangen; fastholdt signal regulerer lysniveauet op.")
+                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x03"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }),
+                        "Slukker dæmperudgangen; fastholdt signal regulerer lysniveauet ned.")
+                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x05"), ("name", "Lys niveau"), ("address_channel", "_0x01") }),
+                        "Dæmperens lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x06"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }),
+                        "Status fra dæmperen: ON når lysdæmperen er tændt.")
                     .RawChild(ElRaw("scenes", new[] { ("id", "_0x07"), ("name", "Scenarier/regulering"), ("scene_resource", "_0x05") }))
                     .RawChild(ElRaw("dimmer_settings", new[] { ("id", "_0x11") },
                     ElRaw("dimmer_setting_minimum_value", new[] { ("id", "_0x12") }),
@@ -3192,10 +3196,6 @@ namespace Ihc.Vis.Catalog
                         "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
                         "\n\nRegistrering\n" +
                         "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Avanceret-dialogen indeholder dæmperens driftsparametre (se Indstillinger), ikke linkningen — se fællesvejledningen 019D904122. Programmeringsknapper og lysdiode sidder bag afdækningen, som afmonteres; lysdæmperen skal være tilsluttet både spænding og belastning for at kunne programmeres og linkes.")
-                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt.")
-                    .Documentation("Lys niveau", "Dæmperens lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
-                    .Documentation("Sluk / regulér ned", "Slukker dæmperudgangen; fastholdt signal regulerer lysniveauet ned.")
-                    .Documentation("Tænd / regulér op", "Tænder dæmperudgangen; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_b5ead9ca)
                     .Build();
             return definition with
@@ -3253,14 +3253,22 @@ namespace Ihc.Vis.Catalog
                     .Name("02#Kombi dimmer 4 tast")
                     .Note("")
                     .Attribute("icon", "_0x85")
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x02"), ("name", "Tryk (øverst venstre)"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x03"), ("name", "Tryk (øverst højre)"), ("address_channel", "_0x02") }))
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x04"), ("name", "Tryk (nederst venstre)"), ("address_channel", "_0x03") }))
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x05"), ("name", "Tryk (nederst højre)"), ("address_channel", "_0x04") }))
-                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x06"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x07"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x09"), ("name", "Lys niveau"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x0a"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }))
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x02"), ("name", "Tryk (øverst venstre)"), ("address_channel", "_0x01") }),
+                        "Trådløs trykkanal 1 (sender); kan programmeres frit.")
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x03"), ("name", "Tryk (øverst højre)"), ("address_channel", "_0x02") }),
+                        "Trådløs trykkanal 2 (sender); kan programmeres frit.")
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x04"), ("name", "Tryk (nederst venstre)"), ("address_channel", "_0x03") }),
+                        "Trådløs trykkanal 3 (sender); kan programmeres frit.")
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x05"), ("name", "Tryk (nederst højre)"), ("address_channel", "_0x04") }),
+                        "Trådløs trykkanal 4 (sender); kan programmeres frit.")
+                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x06"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }),
+                        "Tænder dæmperudgangen; fastholdt signal regulerer lysniveauet op.")
+                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x07"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }),
+                        "Slukker dæmperudgangen; fastholdt signal regulerer lysniveauet ned.")
+                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x09"), ("name", "Lys niveau"), ("address_channel", "_0x01") }),
+                        "Dæmperens lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x0a"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }),
+                        "Status fra dæmperen: ON når lysdæmperen er tændt, også ved lokal betjening.")
                     .RawChild(ElRaw("scenes", new[] { ("id", "_0x0b"), ("name", "Scenarier/regulering"), ("scene_resource", "_0x09") }))
                     .RawChild(ElRaw("dimmer_settings", new[] { ("id", "_0x11") },
                     ElRaw("dimmer_setting_minimum_value", new[] { ("id", "_0x12") }),
@@ -3289,14 +3297,6 @@ namespace Ihc.Vis.Catalog
                         "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
                         "\n\nRegistrering\n" +
                         "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Produktets Avanceret-dialog indeholder dæmperens driftsparametre (se Indstillinger), ikke linkningen. Fremgangsmåden er fælles for alle IHC Wireless-modtagere — se fællesvejledningen 019D904122: afdækningen vippes af for at nå programmeringsknap og lysdiode, og enheden skal have spænding og belastning tilsluttet under linkningen.")
-                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt, også ved lokal betjening.")
-                    .Documentation("Lys niveau", "Dæmperens lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
-                    .Documentation("Sluk / regulér ned", "Slukker dæmperudgangen; fastholdt signal regulerer lysniveauet ned.")
-                    .Documentation("Tryk (nederst højre)", "Trådløs trykkanal 4 (sender); kan programmeres frit.")
-                    .Documentation("Tryk (nederst venstre)", "Trådløs trykkanal 3 (sender); kan programmeres frit.")
-                    .Documentation("Tryk (øverst højre)", "Trådløs trykkanal 2 (sender); kan programmeres frit.")
-                    .Documentation("Tryk (øverst venstre)", "Trådløs trykkanal 1 (sender); kan programmeres frit.")
-                    .Documentation("Tænd / regulér op", "Tænder dæmperudgangen; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_0eb73e78)
                     .Build();
             return definition with
@@ -3317,12 +3317,18 @@ namespace Ihc.Vis.Catalog
                     .Attribute("icon", "_0x96")
                     .RawChild(ElRaw("enum_definition", new[] { ("id", "_0x40"), ("typeid", "_0x10") },
                     ElRaw("enum_value", new[] { ("id", "_0x41"), ("typeid", "_0x11") })))
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x02"), ("name", "Tryk (venstre)"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x03"), ("name", "Tryk (højre)"), ("address_channel", "_0x02") }))
-                    .RawChild(ElRaw("airlink_shutter_lock", new[] { ("id", "_0x04"), ("name", "Lås"), ("note", "Tilstand af lokal lås (read-only)"), ("address_channel", "_0x03") }))
-                    .RawChild(ElRaw("airlink_shutter_up", new[] { ("id", "_0x05"), ("name", "Op"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_shutter_down", new[] { ("id", "_0x06"), ("name", "Ned"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("resource_enum", new[] { ("id", "_0x07"), ("name", "Tilstand"), ("typedef", "_0x40"), ("inivalue", "_0x41") }))
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x02"), ("name", "Tryk (venstre)"), ("address_channel", "_0x01") }),
+                        "Trådløs trykkanal 1 (sender); styrer altid også den lokale persienne.")
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x03"), ("name", "Tryk (højre)"), ("address_channel", "_0x02") }),
+                        "Trådløs trykkanal 2 (sender); styrer altid også den lokale persienne.")
+                    .RawChild(ElRaw("airlink_shutter_lock", new[] { ("id", "_0x04"), ("name", "Lås"), ("note", "Tilstand af lokal lås (read-only)"), ("address_channel", "_0x03") }),
+                        "Tilstand af den lokale lås (read-only); programmet kan fx blokere fjernstyring, når låsen er aktiv.")
+                    .RawChild(ElRaw("airlink_shutter_up", new[] { ("id", "_0x05"), ("name", "Op"), ("address_channel", "_0x01") }),
+                        "Aktiverer stigeudgangen (persienne op).")
+                    .RawChild(ElRaw("airlink_shutter_down", new[] { ("id", "_0x06"), ("name", "Ned"), ("address_channel", "_0x01") }),
+                        "Aktiverer faldeudgangen (persienne ned).")
+                    .RawChild(ElRaw("resource_enum", new[] { ("id", "_0x07"), ("name", "Tilstand"), ("typedef", "_0x40"), ("inivalue", "_0x41") }),
+                        "Persiennens tilstandsressource (enum); sættes også af scenarier.")
                     .RawChild(ElRaw("scenes", new[] { ("id", "_0x08"), ("name", "Scenarier/regulering"), ("scene_resource", "_0x07") }))
                     .RawChild(ElRaw("shutter_settings", new[] { ("id", "_0x11") },
                     ElRaw("shutter_setting_travel_time_up", new[] { ("id", "_0x12") }),
@@ -3341,12 +3347,6 @@ namespace Ihc.Vis.Catalog
                         "– Vandringstid fra top til bund [sekunder] (shutter_setting_travel_time_down): køretid ned, 0–240 sek., standard 120." +
                         "\n\nRegistrering\n" +
                         "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Produktet har ingen Avanceret-dialog — se fællesvejledningen 019D904122.")
-                    .Documentation("Lås", "Tilstand af den lokale lås (read-only); programmet kan fx blokere fjernstyring, når låsen er aktiv.")
-                    .Documentation("Ned", "Aktiverer faldeudgangen (persienne ned).")
-                    .Documentation("Op", "Aktiverer stigeudgangen (persienne op).")
-                    .Documentation("Tilstand", "Persiennens tilstandsressource (enum); sættes også af scenarier.")
-                    .Documentation("Tryk (højre)", "Trådløs trykkanal 2 (sender); styrer altid også den lokale persienne.")
-                    .Documentation("Tryk (venstre)", "Trådløs trykkanal 1 (sender); styrer altid også den lokale persienne.")
                     .Grammar(BuiltInCatalogGrammar.G_a077a7dc)
                     .Build();
             return definition with
@@ -3367,13 +3367,20 @@ namespace Ihc.Vis.Catalog
                     .Attribute("icon", "_0x96")
                     .RawChild(ElRaw("enum_definition", new[] { ("id", "_0x40"), ("typeid", "_0x10") },
                     ElRaw("enum_value", new[] { ("id", "_0x41"), ("typeid", "_0x11") })))
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x02"), ("name", "Tryk (øverst venstre)"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x03"), ("name", "Tryk (øverst højre)"), ("address_channel", "_0x02") }))
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x04"), ("name", "Tryk (nederst venstre)"), ("address_channel", "_0x03") }))
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x05"), ("name", "Tryk (nederst højre)"), ("address_channel", "_0x04") }))
-                    .RawChild(ElRaw("airlink_shutter_up", new[] { ("id", "_0x06"), ("name", "Op"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_shutter_down", new[] { ("id", "_0x07"), ("name", "Ned"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("resource_enum", new[] { ("id", "_0x08"), ("name", "Tilstand"), ("typedef", "_0x40"), ("inivalue", "_0x41") }))
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x02"), ("name", "Tryk (øverst venstre)"), ("address_channel", "_0x01") }),
+                        "Trådløs trykkanal 1 (sender); styrer altid også den lokalt tilsluttede persienne.")
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x03"), ("name", "Tryk (øverst højre)"), ("address_channel", "_0x02") }),
+                        "Trådløs trykkanal 2 (sender); styrer altid også den lokalt tilsluttede persienne.")
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x04"), ("name", "Tryk (nederst venstre)"), ("address_channel", "_0x03") }),
+                        "Trådløs trykkanal 3 (sender); kan programmeres frit.")
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x05"), ("name", "Tryk (nederst højre)"), ("address_channel", "_0x04") }),
+                        "Trådløs trykkanal 4 (sender); kan programmeres frit.")
+                    .RawChild(ElRaw("airlink_shutter_up", new[] { ("id", "_0x06"), ("name", "Op"), ("address_channel", "_0x01") }),
+                        "Aktiverer stigeudgangen (persienne op).")
+                    .RawChild(ElRaw("airlink_shutter_down", new[] { ("id", "_0x07"), ("name", "Ned"), ("address_channel", "_0x01") }),
+                        "Aktiverer faldeudgangen (persienne ned).")
+                    .RawChild(ElRaw("resource_enum", new[] { ("id", "_0x08"), ("name", "Tilstand"), ("typedef", "_0x40"), ("inivalue", "_0x41") }),
+                        "Persiennens tilstandsressource (enum); sættes også af scenarier.")
                     .RawChild(ElRaw("scenes", new[] { ("id", "_0x09"), ("name", "Scenarier/regulering"), ("scene_resource", "_0x08") }))
                     .RawChild(ElRaw("shutter_settings", new[] { ("id", "_0x11") },
                     ElRaw("shutter_setting_travel_time_up", new[] { ("id", "_0x12") }),
@@ -3392,13 +3399,6 @@ namespace Ihc.Vis.Catalog
                         "– Vandringstid fra top til bund [sekunder] (shutter_setting_travel_time_down): køretid ned, 0–240 sek., standard 120." +
                         "\n\nRegistrering\n" +
                         "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Produktet har ingen Avanceret-dialog — se fællesvejledningen 019D904122.")
-                    .Documentation("Ned", "Aktiverer faldeudgangen (persienne ned).")
-                    .Documentation("Op", "Aktiverer stigeudgangen (persienne op).")
-                    .Documentation("Tilstand", "Persiennens tilstandsressource (enum); sættes også af scenarier.")
-                    .Documentation("Tryk (nederst højre)", "Trådløs trykkanal 4 (sender); kan programmeres frit.")
-                    .Documentation("Tryk (nederst venstre)", "Trådløs trykkanal 3 (sender); kan programmeres frit.")
-                    .Documentation("Tryk (øverst højre)", "Trådløs trykkanal 2 (sender); styrer altid også den lokalt tilsluttede persienne.")
-                    .Documentation("Tryk (øverst venstre)", "Trådløs trykkanal 1 (sender); styrer altid også den lokalt tilsluttede persienne.")
                     .Grammar(BuiltInCatalogGrammar.G_c9356ede)
                     .Build();
             return definition with
@@ -3417,10 +3417,14 @@ namespace Ihc.Vis.Catalog
                     .Name("02#1-10v converter - Lampeudtag dimmer")
                     .Note("Denne IHC 1-10v converter styres af en IHC wireless dimmer LR")
                     .Attribute("icon", "_0x86")
-                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x02"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x03"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x05"), ("name", "Lys niveau"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x06"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }))
+                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x02"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }),
+                        "Tænder; fastholdt signal regulerer lysniveauet op.")
+                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x03"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }),
+                        "Slukker; fastholdt signal regulerer lysniveauet ned.")
+                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x05"), ("name", "Lys niveau"), ("address_channel", "_0x01") }),
+                        "Lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x06"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }),
+                        "Status fra dæmperen: ON når lysdæmperen er tændt.")
                     .RawChild(ElRaw("scenes", new[] { ("id", "_0x07"), ("name", "Scenarier/regulering"), ("scene_resource", "_0x05") }))
                     .RawChild(ElRaw("dimmer_settings", new[] { ("id", "_0x11") },
                     ElRaw("dimmer_setting_minimum_value", new[] { ("id", "_0x12") }),
@@ -3448,10 +3452,6 @@ namespace Ihc.Vis.Catalog
                         "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
                         "\n\nTilslutning\n" +
                         "– Dimmerens regulerede udgang føres til converterens klemme 20, og klemme 17 fører 230 V tilbage som forsyning til dimmeren. Converteren forsynes med 230 V (klemme 16/18) og driver armaturets 1–10 V-styring (klemme 1–2) og 230 V-forsyning (klemme 12/19). Maks. 100 m mellem dimmer og converter; maks. 200 m på 1–10 V-udgangen.")
-                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt.")
-                    .Documentation("Lys niveau", "Lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
-                    .Documentation("Sluk / regulér ned", "Slukker; fastholdt signal regulerer lysniveauet ned.")
-                    .Documentation("Tænd / regulér op", "Tænder; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_a9b7d32a)
                     .Build();
             return definition with
@@ -3470,10 +3470,14 @@ namespace Ihc.Vis.Catalog
                     .Name("01#1-10v converter - Dimmer Universal")
                     .Note("Denne IHC 1-10v converter styres af en IHC wireless dimmer LR")
                     .Attribute("icon", "_0x86")
-                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x02"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x03"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x05"), ("name", "Lys niveau"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x06"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }))
+                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x02"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }),
+                        "Tænder; fastholdt signal regulerer lysniveauet op.")
+                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x03"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }),
+                        "Slukker; fastholdt signal regulerer lysniveauet ned.")
+                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x05"), ("name", "Lys niveau"), ("address_channel", "_0x01") }),
+                        "Lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x06"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }),
+                        "Status fra dæmperen: ON når lysdæmperen er tændt.")
                     .RawChild(ElRaw("scenes", new[] { ("id", "_0x07"), ("name", "Scenarier/regulering"), ("scene_resource", "_0x05") }))
                     .RawChild(ElRaw("dimmer_settings", new[] { ("id", "_0x11") },
                     ElRaw("dimmer_setting_minimum_value", new[] { ("id", "_0x12") }),
@@ -3501,10 +3505,6 @@ namespace Ihc.Vis.Catalog
                         "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
                         "\n\nTilslutning\n" +
                         "– Dimmerens regulerede udgang føres til converterens klemme 20, og klemme 17 fører 230 V tilbage som forsyning til dimmeren. Converteren forsynes med 230 V (klemme 16/18) og driver armaturets 1–10 V-styring (klemme 1–2) og 230 V-forsyning (klemme 12/19). Maks. 100 m mellem dimmer og converter; maks. 200 m på 1–10 V-udgangen.")
-                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt.")
-                    .Documentation("Lys niveau", "Lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
-                    .Documentation("Sluk / regulér ned", "Slukker; fastholdt signal regulerer lysniveauet ned.")
-                    .Documentation("Tænd / regulér op", "Tænder; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_a9b7d32a)
                     .Build();
             return definition with
@@ -3523,14 +3523,22 @@ namespace Ihc.Vis.Catalog
                     .Name("03#1-10v converter - Kombi dimmer 4 tast")
                     .Note("Denne IHC 1-10v converter styres af en IHC wireless dimmer LR")
                     .Attribute("icon", "_0x85")
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x02"), ("name", "Tryk (øverst venstre)"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x03"), ("name", "Tryk (øverst højre)"), ("address_channel", "_0x02") }))
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x04"), ("name", "Tryk (nederst venstre)"), ("address_channel", "_0x03") }))
-                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x05"), ("name", "Tryk (nederst højre)"), ("address_channel", "_0x04") }))
-                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x06"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x07"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x09"), ("name", "Lys niveau"), ("address_channel", "_0x01") }))
-                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x0a"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }))
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x02"), ("name", "Tryk (øverst venstre)"), ("address_channel", "_0x01") }),
+                        "Trådløs trykkanal 1 (sender); kan programmeres frit.")
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x03"), ("name", "Tryk (øverst højre)"), ("address_channel", "_0x02") }),
+                        "Trådløs trykkanal 2 (sender); kan programmeres frit.")
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x04"), ("name", "Tryk (nederst venstre)"), ("address_channel", "_0x03") }),
+                        "Trådløs trykkanal 3 (sender); kan programmeres frit.")
+                    .RawChild(ElRaw("airlink_input", new[] { ("id", "_0x05"), ("name", "Tryk (nederst højre)"), ("address_channel", "_0x04") }),
+                        "Trådløs trykkanal 4 (sender); kan programmeres frit.")
+                    .RawChild(ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x06"), ("name", "Tænd / regulér op"), ("address_channel", "_0x01") }),
+                        "Tænder; fastholdt signal regulerer lysniveauet op.")
+                    .RawChild(ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x07"), ("name", "Sluk / regulér ned"), ("address_channel", "_0x01") }),
+                        "Slukker; fastholdt signal regulerer lysniveauet ned.")
+                    .RawChild(ElRaw("airlink_dimming", new[] { ("id", "_0x09"), ("name", "Lys niveau"), ("address_channel", "_0x01") }),
+                        "Lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .RawChild(ElRaw("light_indication", new[] { ("id", "_0x0a"), ("name", "Lys indikering"), ("note", "'On' når lysdæmperen er tændt") }),
+                        "Status fra dæmperen: ON når lysdæmperen er tændt.")
                     .RawChild(ElRaw("scenes", new[] { ("id", "_0x0b"), ("name", "Scenarier/regulering"), ("scene_resource", "_0x09") }))
                     .RawChild(ElRaw("dimmer_settings", new[] { ("id", "_0x11") },
                     ElRaw("dimmer_setting_minimum_value", new[] { ("id", "_0x12") }),
@@ -3559,14 +3567,6 @@ namespace Ihc.Vis.Catalog
                         "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
                         "\n\nTilslutning\n" +
                         "– Dimmerens regulerede udgang føres til converterens klemme 20, og klemme 17 fører 230 V tilbage som forsyning til dimmeren. Converteren forsynes med 230 V (klemme 16/18) og driver armaturets 1–10 V-styring (klemme 1–2) og 230 V-forsyning (klemme 12/19). Maks. 100 m mellem dimmer og converter; maks. 200 m på 1–10 V-udgangen.")
-                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt.")
-                    .Documentation("Lys niveau", "Lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
-                    .Documentation("Sluk / regulér ned", "Slukker; fastholdt signal regulerer lysniveauet ned.")
-                    .Documentation("Tryk (nederst højre)", "Trådløs trykkanal 4 (sender); kan programmeres frit.")
-                    .Documentation("Tryk (nederst venstre)", "Trådløs trykkanal 3 (sender); kan programmeres frit.")
-                    .Documentation("Tryk (øverst højre)", "Trådløs trykkanal 2 (sender); kan programmeres frit.")
-                    .Documentation("Tryk (øverst venstre)", "Trådløs trykkanal 1 (sender); kan programmeres frit.")
-                    .Documentation("Tænd / regulér op", "Tænder; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_f9fc5c54)
                     .Build();
             return definition with
@@ -3813,17 +3813,28 @@ namespace Ihc.Vis.Catalog
                     .Note("PRODUCT_2315_NOTE")
                     .Attribute("icon", "_0x99")
                     .Attribute("ticks", "100")
-                    .AddResource("W", "Instantaneous power")
-                    .AddResource("W", "Avg. power/last hour")
-                    .AddResource("W", "Max power during past 24 hrs")
-                    .AddResource("W", "Min power during past 24 hrs")
-                    .AddResource("kWh", "Consumption", r => r.Attribute("accessibility", "readwrite"))
-                    .AddResource("kWh", "Consumption in the last hour")
-                    .AddResource("kWh", "Consumption in the last day")
-                    .AddResource("kWh", "Consumption in the last week")
-                    .AddResource("kWh", "Consumption in the last month")
-                    .AddResource("kWh", "Consumption in the last year")
-                    .AddResource("resource_date", "Invoicing year start date", r => r.Attribute("year", "2000").Attribute("month", "1").Attribute("day", "1"))
+                    .AddResource("W", "Instantaneous power", r => r.Documentation(
+                        "Øjebliksforbrug i W."))
+                    .AddResource("W", "Avg. power/last hour", r => r.Documentation(
+                        "Gennemsnitseffekt den seneste time, i W."))
+                    .AddResource("W", "Max power during past 24 hrs", r => r.Documentation(
+                        "Højeste effekt inden for de seneste 24 timer, i W."))
+                    .AddResource("W", "Min power during past 24 hrs", r => r.Documentation(
+                        "Laveste effekt inden for de seneste 24 timer, i W."))
+                    .AddResource("kWh", "Consumption", r => r.Attribute("accessibility", "readwrite")
+                        .Documentation("Akkumuleret forbrug i kWh; kan både læses og skrives af programmet."))
+                    .AddResource("kWh", "Consumption in the last hour", r => r.Documentation(
+                        "Forbrug den seneste time, i kWh."))
+                    .AddResource("kWh", "Consumption in the last day", r => r.Documentation(
+                        "Forbrug det seneste døgn, i kWh."))
+                    .AddResource("kWh", "Consumption in the last week", r => r.Documentation(
+                        "Forbrug den seneste uge, i kWh."))
+                    .AddResource("kWh", "Consumption in the last month", r => r.Documentation(
+                        "Forbrug den seneste måned, i kWh."))
+                    .AddResource("kWh", "Consumption in the last year", r => r.Documentation(
+                        "Forbrug det seneste år, i kWh."))
+                    .AddResource("resource_date", "Invoicing year start date", r => r.Attribute("year", "2000").Attribute("month", "1").Attribute("day", "1")
+                        .Documentation("Startdato for afregningsåret; def'ens standard er 1/1-2000. Skrivbar fra programmet."))
                     .Documentation(
                         "Energimåler tilsluttet controllerens S0-pulsindgang, som tæller pulser og omregner dem til " +
                         "effekt- og forbrugsværdier, programmet kan læse." +
@@ -3839,17 +3850,6 @@ namespace Ihc.Vis.Catalog
                         "\n\nTilslutning\n" +
                         "– Måleren er en passiv to-klemmet enhed med optokobler- eller reed-relæudgang og skal forsynes eksternt; den forbindes til controllerens S0-indgang. Def'ens cable_colour_plus/cable_colour_minus er ledningsfarverne for henholdsvis S0+ og S0−.\n" +
                         "– Pulsenheder findes i to klasser: klasse A til lange forbindelser (maks. 27 V DC, ON-strøm 10–27 mA) og klasse B til korte forbindelser med lavt forbrug (maks. 15 V DC, ON-strøm 2–15 mA). ON-pulsen varer 30 ms, og der er mindst 30 ms mellem to pulser.")
-                    .Documentation("Avg. power/last hour", "Gennemsnitseffekt den seneste time, i W.")
-                    .Documentation("Consumption", "Akkumuleret forbrug i kWh; kan både læses og skrives af programmet.")
-                    .Documentation("Consumption in the last day", "Forbrug det seneste døgn, i kWh.")
-                    .Documentation("Consumption in the last hour", "Forbrug den seneste time, i kWh.")
-                    .Documentation("Consumption in the last month", "Forbrug den seneste måned, i kWh.")
-                    .Documentation("Consumption in the last week", "Forbrug den seneste uge, i kWh.")
-                    .Documentation("Consumption in the last year", "Forbrug det seneste år, i kWh.")
-                    .Documentation("Instantaneous power", "Øjebliksforbrug i W.")
-                    .Documentation("Invoicing year start date", "Startdato for afregningsåret; def'ens standard er 1/1-2000. Skrivbar fra programmet.")
-                    .Documentation("Max power during past 24 hrs", "Højeste effekt inden for de seneste 24 timer, i W.")
-                    .Documentation("Min power during past 24 hrs", "Laveste effekt inden for de seneste 24 timer, i W.")
                     .Grammar(BuiltInCatalogGrammar.G_624b316c)
                     .Build();
             return definition with

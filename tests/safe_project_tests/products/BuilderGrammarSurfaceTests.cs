@@ -53,7 +53,6 @@ namespace Ihc.Vis.Tests
             ["DefinitionBuilderBase`1.Grammar(CatalogGrammar)"] = Verb.NonEmitting,
             ["DefinitionBuilderBase`1.ExtendGrammar(Action`1)"] = Verb.NonEmitting,
             ["DefinitionBuilderBase`1.Documentation(String)"] = Verb.NonEmitting,
-            ["DefinitionBuilderBase`1.Documentation(String,String)"] = Verb.NonEmitting,
             ["DefinitionBuilderBase`1.Attribute(String,String)"] = Verb.NonEmitting,   // M7: the raw root-attribute escape hatch moved to the shared base
 
             // ---- ProductDefinitionBuilder ----
@@ -79,6 +78,7 @@ namespace Ihc.Vis.Tests
             ["ProductDefinitionBuilder.AddScenes(String)"] = Verb.Closed(new[] { "scenes" }, AllProductFamilies),
             ["ProductDefinitionBuilder.AddResource(String,String,Action`1)"] = Verb.Dynamic,
             ["ProductDefinitionBuilder.RawChild(ProjectElement)"] = Verb.Dynamic,
+            ["ProductDefinitionBuilder.RawChild(ProjectElement,String)"] = Verb.Dynamic,   // same splice, plus the spliced element's help text
             ["ProductDefinitionBuilder.Validate()"] = Verb.NonEmitting,
             ["ProductDefinitionBuilder.Build()"] = Verb.NonEmitting,
 
@@ -125,7 +125,6 @@ namespace Ihc.Vis.Tests
             ["FunctionBlockDefinitionBuilder.AddEnumDefinition(String)"] = Verb.Closed(new[] { "enum_definition" }),
             ["FunctionBlockDefinitionBuilder.AddEnumDefinition(String,String)"] = Verb.Closed(new[] { "enum_definition" }),
             ["FunctionBlockDefinitionBuilder.Program(String)"] = Verb.Closed(new[] { "program_simple", "events", "actions" }),
-            ["FunctionBlockDefinitionBuilder.Documentation(FbResourceHandle,String)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.RawChild(ProjectElement)"] = Verb.Dynamic,
             ["FunctionBlockDefinitionBuilder.Validate()"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.Build()"] = Verb.NonEmitting,

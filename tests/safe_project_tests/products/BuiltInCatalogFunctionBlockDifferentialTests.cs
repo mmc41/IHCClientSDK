@@ -132,5 +132,44 @@ namespace Ihc.Vis.Tests
                 "every block carries a baked summary");
         }
 
+        /// <summary>
+        /// A baked help text that no pin hands back is silently invisible — the GUI's per-pin help panel simply shows
+        /// nothing. Since the key is the pin's position, a text is reachable exactly when a pin surfaces it, so
+        /// counting the two sides catches both an unreachable entry and a pin that lost its text.
+        /// </summary>
+        [Test]
+        public void EveryPerResourceDocumentationEntry_ReachesAPinOfItsBlock()
+        {
+            ICatalog catalog = new BuiltInCatalog();
+
+            var unreachable = new List<string>();
+            var undocumented = new List<string>();
+            int entries = 0;
+            foreach (FunctionBlockDefinition block in catalog.FunctionBlocks)
+            {
+                int baked = block.Documentation.Resources.Count;
+                int onPins = block.Inputs.Concat(block.Outputs).Concat(block.Settings).Concat(block.InternalVariables)
+                    .Count(pin => pin.Documentation is not null);
+                entries += baked;
+                if (baked != onPins)
+                {
+                    unreachable.Add($"{block.DisplayName}: {baked} baked, {onPins} reach a pin");
+                }
+                if (baked == 0)
+                {
+                    undocumented.Add(block.DisplayName);
+                }
+            }
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(unreachable, Is.Empty, "every baked help text is handed back by the pin it documents");
+                Assert.That(undocumented, Is.Empty, "every block carries per-resource help, not only a summary");
+                // A deliberate documentation change updates this number; a silent loss does not. 709, not the 697 of
+                // the name-keyed era: the 12 pins that shared a sibling's display name now hold their own entry.
+                Assert.That(entries, Is.EqualTo(709), "the baked per-resource help entries");
+            });
+        }
+
     }
 }

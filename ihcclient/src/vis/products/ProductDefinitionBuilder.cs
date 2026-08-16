@@ -37,8 +37,8 @@ namespace Ihc.Vis.Products
     /// family's standard grammar preset; <see cref="DefinitionBuilderBase{TSelf}.Grammar(CatalogGrammar)"/> replaces it
     /// wholesale and <see cref="DefinitionBuilderBase{TSelf}.ExtendGrammar(System.Action{CatalogGrammarBuilder})"/>
     /// add-or-replaces single declarations (body verbs never mutate the grammar). The escape hatches —
-    /// <see cref="Attribute"/>, <see cref="AddResource"/>, <see cref="RawChild"/> plus an <c>ExtendGrammar</c>
-    /// declaration — cover exotic/open-world families so any product is authorable from code.
+    /// <see cref="Attribute"/>, <see cref="AddResource"/>, <see cref="RawChild(ProjectElement)"/> plus an
+    /// <c>ExtendGrammar</c> declaration — cover exotic/open-world families so any product is authorable from code.
     /// <para><b>Opaque tokens (address / icon / product-identifier):</b> these are per-family, fidelity-critical wire
     /// tokens taken verbatim. A GUI does not invent them — it enumerates the legal vocabulary from the catalog seam
     /// (<see cref="Ihc.Vis.Catalog.ICatalog"/>, typically the SDK-embedded <c>BuiltInCatalog</c>) and binds pickers
@@ -249,12 +249,10 @@ namespace Ihc.Vis.Products
         }
 
         // ---- documentation (help metadata; programmatic-lookup only, never serialized) ----
-        // Both the product-level Documentation(string) and the name-keyed Documentation(string, string) live on the
-        // shared DefinitionBuilderBase — a product keys per-resource docs by name (no handle), which is exactly the
-        // base's name-keyed overload; the function-block side adds a by-FbResourceHandle overload on top.
-        // Per-resource text is ALSO authorable on the resource itself — ProductResourceDefBuilder.Documentation inside
-        // the AddInput/AddOutput/AddResource configurator — which spells the name once instead of repeating it as a
-        // key. Both forms write the same map (last call wins), so a caller can convert one resource at a time.
+        // The product-level Documentation(string) summary lives on the shared DefinitionBuilderBase. Per-resource help
+        // is authored on the resource: ProductResourceDefBuilder.Documentation inside the AddInput/AddOutput/
+        // AddResource configurator, or RawChild(child, documentation) for a resource that has to come in through the
+        // raw-subtree escape hatch. Either way the name is spelled once, at the add — never repeated as a string key.
 
         // ---- escape hatches (exotic families / open world) ----
 
@@ -276,12 +274,11 @@ namespace Ihc.Vis.Products
             {
                 resource = resource.WithAttribute(attrName, attrValue);
             }
-            // The one place that has both the resource name and the text authored on it: route documentation to the
-            // definition-level map (never to an attribute), so the configurator form and the name-keyed overload land
-            // in the same dictionary and stay interchangeable.
+            // The one place that has both the resource and the text authored on it: route documentation to the
+            // definition-level map, keyed by the position this very call is appending to — never to an attribute.
             if (configurator.DocumentationText is { } documentation)
             {
-                SetResourceDoc(name, documentation);
+                SetResourceDoc(ResourceDocKey.ForProduct(children.Count), documentation);
             }
             children.Add(resource);
             lastResourceId = id;
@@ -295,6 +292,34 @@ namespace Ihc.Vis.Products
             ArgumentNullException.ThrowIfNull(child);
             children.Add(ids.MintMissingIds(child));
             return this;
+        }
+
+        /// <summary>Splices a pre-built subtree exactly as <see cref="RawChild(ProjectElement)"/> does and attaches
+        /// <paramref name="documentation"/> as that element's help text — the raw-subtree peer of
+        /// <see cref="ProductResourceDefBuilder.Documentation"/>, for a resource authored through the escape hatch
+        /// (a pinned id, a family-specific attribute order) rather than through <see cref="AddResource"/>. The text is
+        /// keyed by the <b>position</b> this call splices the child into, so it belongs to that resource alone even
+        /// when a sibling carries the same name or — as Controller Link's outputs do — the same pinned id. A null
+        /// <paramref name="documentation"/> is rejected (splicing an undocumented child is
+        /// <see cref="RawChild(ProjectElement)"/>, so this overload silently documenting nothing would be the exact
+        /// failure mode it exists to remove), as is a structural child, whose text nothing could ever read back.
+        /// <b>Programmatic-lookup-only</b> like every other documentation form: it surfaces on
+        /// <see cref="ProductDefinition.Resources"/> and never reaches the body or a <c>.def</c>. Returns this.</summary>
+        public ProductDefinitionBuilder RawChild(ProjectElement child, string documentation)
+        {
+            ArgumentNullException.ThrowIfNull(child);
+            ArgumentNullException.ThrowIfNull(documentation);
+            if (ProductRows.IsStructuralChild(child.Tag))
+            {
+                throw new ArgumentException(
+                    $"<{child.Tag}> is a structural child, not a resource, so it never surfaces in " +
+                    $"{nameof(ProductDefinition)}.{nameof(ProductDefinition.Resources)} and its help text could never " +
+                    $"be read back. Splice it with {nameof(RawChild)}(child).",
+                    nameof(child));
+            }
+            // Keyed BEFORE the splice: the position this child is about to take is children.Count.
+            SetResourceDoc(ResourceDocKey.ForProduct(children.Count), documentation);
+            return RawChild(child);
         }
 
         // Grammar(CatalogGrammar) and ExtendGrammar(Action<CatalogGrammarBuilder>) live on DefinitionBuilderBase.
@@ -483,13 +508,13 @@ namespace Ihc.Vis.Products
         public ProductResourceDefBuilder Note(string note) => Set("note", note);
 
         /// <summary>Attaches this resource's documentation text — <b>programmatic-lookup-only</b> help metadata that
-        /// surfaces on the built definition's <see cref="ProductDefinition.Documentation"/> (keyed by the resource's
-        /// display name, read back with <see cref="DefinitionDocumentation.ForResource"/>) and is never serialized
-        /// into the body or a <c>.def</c>. The name-free peer of
-        /// <see cref="DefinitionBuilderBase{TSelf}.Documentation(string,string)"/>: authored here the resource name is
-        /// spelled once, at the add, so it cannot drift from the pin it documents. Contrast <see cref="Note"/>, which
-        /// sets the resource's serialized <c>note</c> attribute: <c>Note</c> is project data, <c>Documentation</c> is
-        /// help. Documenting one resource name twice keeps the LAST call, whichever form wrote it.</summary>
+        /// is read back off the resource itself, on <see cref="ResourceSummary.Documentation"/> of the built
+        /// definition's <see cref="ProductDefinition.Resources"/> projection, and is never serialized into the body or
+        /// a <c>.def</c>. The door for per-resource help on an added resource (its peer for a spliced one is
+        /// <see cref="ProductDefinitionBuilder.RawChild(ProjectElement,string)"/>): authored here the text belongs to
+        /// <i>this</i> resource, so a sibling sharing its display name (Beolink1000 has four pins called
+        /// <c>"Not in use"</c>) documents itself independently. Contrast <see cref="Note"/>, which sets the resource's
+        /// serialized <c>note</c> attribute: <c>Note</c> is project data, <c>Documentation</c> is help.</summary>
         public ProductResourceDefBuilder Documentation(string documentation)
         {
             this.documentation = documentation;

@@ -46,9 +46,15 @@ namespace Ihc.Vis.Tests
                 .VendorMaster();
 
             // Resources land in their fixed containers; each add returns a handle used to wire the program graph.
-            FbResourceHandle kip = builder.AddInput("Kip");
-            FbResourceHandle sluk = builder.AddInput("Sluk");
-            FbResourceHandle udgang = builder.AddOutput("Udgang");
+            // Per-pin documentation metadata (programmatic-lookup only — never serialized into Body or an .ifb) is
+            // authored on the resource itself, so the pin name is spelled once. The text is synthetic/illustrative.
+            // Distinct from Note(), which sets the serialized 'note' attribute.
+            FbResourceHandle kip = builder.AddInput("Kip",
+                r => r.Documentation("Opdigtet hjælpetekst: denne indgang skifter udgangens tilstand i eksemplet."));
+            FbResourceHandle sluk = builder.AddInput("Sluk",
+                r => r.Documentation("Opdigtet hjælpetekst: denne indgang nulstiller udgangen i eksemplet."));
+            FbResourceHandle udgang = builder.AddOutput("Udgang",
+                r => r.Documentation("Opdigtet hjælpetekst: eksemplets udgangssignal."));
             FbResourceHandle timer = builder.AddSetting("resource_timer", "Timer", r => r.TimerHms(0, 3, 0));
 
             // Program graph: two triggers, then a sub-program with one condition and true/false action branches.
@@ -62,15 +68,9 @@ namespace Ihc.Vis.Tests
             sub.WhenTrue.AddAction("Sluk lys", udgang, method: "_0xdc");
             sub.WhenFalse.AddAction("Tænd lys", udgang, method: "_0xda", link2: timer);
 
-            // Documentation metadata (programmatic-lookup only — never serialized into Body or an .ifb): the block's
-            // help prose plus a per-pin description. The text is synthetic/illustrative. Distinct
-            // from Note(), which sets the serialized 'note' attribute.
-            builder
-                .Documentation("Eksempelblok: styrer en udgang ud fra sine indgange. Denne hjælpetekst er opdigtet " +
-                               "og stammer ikke fra nogen leverandør.")
-                .Documentation(kip, "Opdigtet hjælpetekst: denne indgang skifter udgangens tilstand i eksemplet.")
-                .Documentation(sluk, "Opdigtet hjælpetekst: denne indgang nulstiller udgangen i eksemplet.")
-                .Documentation(udgang, "Opdigtet hjælpetekst: eksemplets udgangssignal.");
+            // The block-level help prose (the same programmatic-lookup-only metadata, one level up).
+            builder.Documentation("Eksempelblok: styrer en udgang ud fra sine indgange. Denne hjælpetekst er opdigtet " +
+                                  "og stammer ikke fra nogen leverandør.");
 
             FunctionBlockDefinition toggleBlock = builder.Build();
 
@@ -82,7 +82,7 @@ namespace Ihc.Vis.Tests
                 Assert.That(toggleBlock.Body.Tag, Is.EqualTo("functionblock"));
                 // The help metadata is read back for programmatic lookup — off the definition, not the serialized body.
                 Assert.That(toggleBlock.Documentation.Summary, Does.StartWith("Eksempelblok"));
-                Assert.That(toggleBlock.Documentation.ForResource("Kip"),
+                Assert.That(toggleBlock.Inputs.Single(r => r.Name == "Kip").Documentation,
                     Is.EqualTo("Opdigtet hjælpetekst: denne indgang skifter udgangens tilstand i eksemplet."));
             });
         }
@@ -215,9 +215,9 @@ namespace Ihc.Vis.Tests
 
         // ---- documentation authored ON the resource (the configurator form) ----
 
-        // The name-keyed Documentation("Kip", …) repeats the resource name as a string key, so a typo binds the text
-        // to nothing and fails silently. The configurator form spells the name once, at the add — and must work for
-        // all four containers, since a block documents settings and internal variables too.
+        // The retired name-keyed Documentation("Kip", …) repeated the resource name as a string key, so a typo bound
+        // the text to nothing and failed silently. The configurator form spells the name once, at the add — and must
+        // work for all four containers, since a block documents settings and internal variables too.
         [Test]
         public void DocumentationOnTheResource_CoversAllFourContainers_AndLeavesBodyUntouched()
         {
@@ -240,10 +240,10 @@ namespace Ihc.Vis.Tests
             FunctionBlockDefinition block = documented.Build();
             Assert.Multiple(() =>
             {
-                Assert.That(block.Documentation.ForResource("Kip"), Is.EqualTo("skifter udgangen til modsat tilstand"));
-                Assert.That(block.Documentation.ForResource("Udgang"), Is.EqualTo("udgangens aktuelle tilstand"));
-                Assert.That(block.Documentation.ForResource("Timer"), Is.EqualTo("timerens hviletid"));
-                Assert.That(block.Documentation.ForResource("Intern"), Is.EqualTo("blokkens private flag"));
+                Assert.That(block.Inputs.Single().Documentation, Is.EqualTo("skifter udgangen til modsat tilstand"));
+                Assert.That(block.Outputs.Single().Documentation, Is.EqualTo("udgangens aktuelle tilstand"));
+                Assert.That(block.Settings.Single().Documentation, Is.EqualTo("timerens hviletid"));
+                Assert.That(block.InternalVariables.Single().Documentation, Is.EqualTo("blokkens private flag"));
                 Assert.That(block.Body, Is.EqualTo(bare.Build().Body),
                     "help text is programmatic-lookup only — the serialized body is exactly what it was without it");
             });
@@ -262,29 +262,102 @@ namespace Ihc.Vis.Tests
             FunctionBlockDefinition block = builder.Build();
             Assert.Multiple(() =>
             {
-                Assert.That(block.Documentation.ForResource(kip.Name), Is.EqualTo("skifter udgangen"));
-                Assert.That(block.Documentation.ForResource(udgang.Name), Is.EqualTo("udgangens tilstand"));
+                Assert.That(block.Inputs.Single(r => r.Name == kip.Name).Documentation, Is.EqualTo("skifter udgangen"));
+                Assert.That(block.Outputs.Single(r => r.Name == udgang.Name).Documentation, Is.EqualTo("udgangens tilstand"));
                 Assert.That(block.Body.FindChild("inputs")!.Children.Single().Tag, Is.EqualTo("resource_input"),
                     "the short form still emits the default pin type");
             });
         }
 
-        // The phase-in guarantee: the configurator form and the existing by-handle form are interchangeable, so a
-        // call site can be converted one resource at a time.
+        // ---- every pin owns its help text (US: per-resource independence) ----
+        //
+        // A display name does not identify a pin: the vendor catalog really does name an input and an output the same
+        // thing (block 1.4.03 has both a "Sluk" input and a "Sluk" scene output), and they are different things that
+        // deserve different descriptions. Help text is therefore read OFF THE PIN — the projection carries it — and
+        // documenting one pin must leave every other pin alone, whatever it is called.
+
         [Test]
-        public void DocumentationOnTheResource_AndByHandle_ProduceTheSameDocumentation()
+        public void DocumentationOnSameNamedPins_InDifferentContainers_StaysIndependent()
         {
-            FunctionBlockDefinitionBuilder onResource = FunctionBlockDefinitionBuilder
-                .Create("1.1.01", "e", "Kip").VendorMaster();
-            onResource.AddInput("Kip", r => r.Documentation("skifter udgangen"));
+            FunctionBlockDefinitionBuilder builder = FunctionBlockDefinitionBuilder
+                .Create("1.4.03", "a", "Udendørslys").VendorMaster();
+            builder.AddInput("Sluk", r => r.Documentation("indgangen: slukker udgangen"));
+            builder.AddOutput("resource_scene", "Sluk", r => r.Documentation("udgangen: scenariet der hentes ved sluk"));
 
-            FunctionBlockDefinitionBuilder byHandle = FunctionBlockDefinitionBuilder
-                .Create("1.1.01", "e", "Kip").VendorMaster();
-            FbResourceHandle kip = byHandle.AddInput("Kip");
-            byHandle.Documentation(kip, "skifter udgangen");
+            FunctionBlockDefinition block = builder.Build();
 
-            Assert.That(onResource.Build().Documentation, Is.EqualTo(byHandle.Build().Documentation),
-                "the two authoring forms are interchangeable");
+            Assert.Multiple(() =>
+            {
+                Assert.That(block.Inputs.Single().Documentation, Is.EqualTo("indgangen: slukker udgangen"));
+                Assert.That(block.Outputs.Single().Documentation,
+                    Is.EqualTo("udgangen: scenariet der hentes ved sluk"),
+                    "the output's text is its own — the same-named input must not overwrite it");
+            });
+        }
+
+        [Test]
+        public void DocumentationOnSameNamedPins_InTheSameContainer_StaysIndependent()
+        {
+            // Block 8.1.01 really carries two outputs both named "Sidst genstartet"; the name cannot separate them.
+            FunctionBlockDefinitionBuilder builder = FunctionBlockDefinitionBuilder
+                .Create("8.1.01", "", "Controller").VendorMaster();
+            builder.AddOutput("Sidst genstartet", r => r.Documentation("den første: tidspunktet"));
+            builder.AddOutput("Sidst genstartet", r => r.Documentation("den anden: årsagen"));
+
+            FunctionBlockDefinition block = builder.Build();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(block.Outputs[0].Documentation, Is.EqualTo("den første: tidspunktet"));
+                Assert.That(block.Outputs[1].Documentation, Is.EqualTo("den anden: årsagen"));
+            });
+        }
+
+        [Test]
+        public void DocumentationOnEveryPin_IsIndependentAcrossAllFourContainers()
+        {
+            // One name, four containers: whichever pin is documented last must not claim the other three's text.
+            FunctionBlockDefinitionBuilder builder = FunctionBlockDefinitionBuilder
+                .Create("1.1.01", "e", "Kip").VendorMaster();
+            builder.AddInput("Fælles", r => r.Documentation("indgangens tekst"));
+            builder.AddOutput("Fælles", r => r.Documentation("udgangens tekst"));
+            builder.AddSetting("resource_timer", "Fælles", r => r.TimerHms(0, 1, 0).Documentation("indstillingens tekst"));
+            builder.AddInternalVariable("resource_flag", "Fælles", r => r.Documentation("den private variabels tekst"));
+
+            FunctionBlockDefinition block = builder.Build();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(block.Inputs.Single().Documentation, Is.EqualTo("indgangens tekst"));
+                Assert.That(block.Outputs.Single().Documentation, Is.EqualTo("udgangens tekst"));
+                Assert.That(block.Settings.Single().Documentation, Is.EqualTo("indstillingens tekst"));
+                Assert.That(block.InternalVariables.Single().Documentation, Is.EqualTo("den private variabels tekst"));
+            });
+        }
+
+        // A pin added to a From()-reopened block lands at the END of the decoded container. Its help text must attach
+        // to that pin — not to whichever pin already sat at the position the fresh builder would have used.
+        [Test]
+        public void DocumentationOnAPinAddedAfterFrom_LeavesTheSeededPinsTextIntact()
+        {
+            FunctionBlockDefinitionBuilder original = FunctionBlockDefinitionBuilder
+                .Create("1.1.01", "e", "Kip").VendorMaster();
+            original.AddInput("Kip", r => r.Documentation("den oprindelige indgangs tekst"));
+            original.AddOutput("Udgang", r => r.Documentation("den oprindelige udgangs tekst"));
+
+            FunctionBlockDefinitionBuilder reopened = FunctionBlockDefinitionBuilder.From(original.Build());
+            reopened.AddInput("Ny indgang", r => r.Documentation("den tilføjede indgangs tekst"));
+
+            FunctionBlockDefinition block = reopened.Build();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(block.Inputs.Select(r => r.Name), Is.EqualTo(new[] { "Kip", "Ny indgang" }));
+                Assert.That(block.Inputs[0].Documentation, Is.EqualTo("den oprindelige indgangs tekst"),
+                    "the seeded pin keeps its own text");
+                Assert.That(block.Inputs[1].Documentation, Is.EqualTo("den tilføjede indgangs tekst"));
+                Assert.That(block.Outputs.Single().Documentation, Is.EqualTo("den oprindelige udgangs tekst"));
+            });
         }
     }
 }
