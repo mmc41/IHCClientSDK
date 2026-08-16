@@ -158,7 +158,11 @@ namespace Ihc.Vis.FunctionBlocks
         /// <summary>Sets whether the block is locked (<c>locked="yes"</c>).</summary>
         public FunctionBlockDefinitionBuilder Locked(bool locked = true) => SetRoot("locked", locked ? "yes" : "no");
 
-        /// <summary>Sets the block note.</summary>
+        /// <summary>Sets the block's <c>note</c> attribute — the <b>serialized</b> note carried on the definition root
+        /// and written out to the <c>.ifb</c> and any project <c>.vis</c> the block is placed in. Contrast
+        /// <see cref="DefinitionBuilderBase{TSelf}.Documentation(string)"/>, which attaches the block's help text as
+        /// programmatic-lookup-only metadata that never reaches a file: <c>Note</c> is project data,
+        /// <c>Documentation</c> is help.</summary>
         public FunctionBlockDefinitionBuilder Note(string note) => SetRoot("note", note);
 
         // Attribute(name, value) — the raw root-attribute escape hatch (e.g. the block icon) — lives on DefinitionBuilderBase (M7).
@@ -241,26 +245,41 @@ namespace Ihc.Vis.FunctionBlocks
         /// <summary>Adds a <c>resource_input</c> pin under <c>inputs</c>; returns its handle.</summary>
         public FbResourceHandle AddInput(string name) => AddResourceTo(inputs, "resource_input", name, null);
 
+        /// <summary>Adds a <c>resource_input</c> pin under <c>inputs</c> and configures it — the tag-free short form
+        /// with a configurator, so a default-typed pin can carry its note/icon and its help
+        /// <see cref="FbResourceDefBuilder.Documentation"/> without the caller spelling the tag. Returns its handle.</summary>
+        public FbResourceHandle AddInput(string name, Action<FbResourceDefBuilder> configure) =>
+            AddResourceTo(inputs, "resource_input", name, configure);
+
         /// <summary>Adds an input of an explicit type <paramref name="tag"/> under <c>inputs</c> (value types are legal
-        /// there too); <paramref name="configure"/> sets type-specific attributes. Returns its handle.</summary>
+        /// there too); <paramref name="configure"/> sets type-specific attributes and the resource's help
+        /// <see cref="FbResourceDefBuilder.Documentation"/>. Returns its handle.</summary>
         public FbResourceHandle AddInput(string tag, string name, Action<FbResourceDefBuilder>? configure = null) =>
             AddResourceTo(inputs, tag, name, configure);
 
         /// <summary>Adds a <c>resource_output</c> pin under <c>outputs</c>; returns its handle.</summary>
         public FbResourceHandle AddOutput(string name) => AddResourceTo(outputs, "resource_output", name, null);
 
+        /// <summary>Adds a <c>resource_output</c> pin under <c>outputs</c> and configures it — the tag-free short form
+        /// with a configurator (see <see cref="AddInput(string,Action{FbResourceDefBuilder})"/>). Returns its handle.</summary>
+        public FbResourceHandle AddOutput(string name, Action<FbResourceDefBuilder> configure) =>
+            AddResourceTo(outputs, "resource_output", name, configure);
+
         /// <summary>Adds an output of an explicit type <paramref name="tag"/> under <c>outputs</c>;
-        /// <paramref name="configure"/> sets type-specific attributes. Returns its handle.</summary>
+        /// <paramref name="configure"/> sets type-specific attributes and the resource's help
+        /// <see cref="FbResourceDefBuilder.Documentation"/>. Returns its handle.</summary>
         public FbResourceHandle AddOutput(string tag, string name, Action<FbResourceDefBuilder>? configure = null) =>
             AddResourceTo(outputs, tag, name, configure);
 
         /// <summary>Adds a value variable of type <paramref name="tag"/> (e.g. <c>resource_timer</c>,
-        /// <c>resource_enum</c>) under <c>settings</c>; <paramref name="configure"/> sets its value. Returns its handle.</summary>
+        /// <c>resource_enum</c>) under <c>settings</c>; <paramref name="configure"/> sets its value and its help
+        /// <see cref="FbResourceDefBuilder.Documentation"/>. Returns its handle.</summary>
         public FbResourceHandle AddSetting(string tag, string name, Action<FbResourceDefBuilder>? configure = null) =>
             AddResourceTo(settings, tag, name, configure);
 
         /// <summary>Adds a private value variable of type <paramref name="tag"/> under <c>internalsettings</c>;
-        /// <paramref name="configure"/> sets its value. Returns its handle.</summary>
+        /// <paramref name="configure"/> sets its value and its help
+        /// <see cref="FbResourceDefBuilder.Documentation"/>. Returns its handle.</summary>
         public FbResourceHandle AddInternalVariable(string tag, string name, Action<FbResourceDefBuilder>? configure = null) =>
             AddResourceTo(internalVars, tag, name, configure);
 
@@ -295,6 +314,9 @@ namespace Ihc.Vis.FunctionBlocks
         // ---- documentation (help metadata; programmatic-lookup only, never serialized) ----
         // The block-level Documentation(string) and the name-keyed Documentation(string, string) live on the shared
         // DefinitionBuilderBase; only the FB-specific by-handle overload stays here.
+        // Per-resource text is ALSO authorable on the resource itself — FbResourceDefBuilder.Documentation inside the
+        // AddInput/AddOutput/AddSetting/AddInternalVariable configurator — which needs neither a name key nor a handle
+        // variable. All three forms write the same map (last call wins), so a caller converts one resource at a time.
 
         /// <summary>
         /// Attaches documentation text to one resource — the input/output/setting/variable identified by its
@@ -302,7 +324,9 @@ namespace Ihc.Vis.FunctionBlocks
         /// Like the block-level <see cref="DefinitionBuilderBase{TSelf}.Documentation(string)"/> overload this is
         /// <b>programmatic-lookup-only</b> metadata: it surfaces on <see cref="FunctionBlockDefinition.Documentation"/>
         /// (looked up by the resource's display name via <see cref="DefinitionDocumentation.ForResource"/>) and is never
-        /// serialized into <see cref="FunctionBlockDefinition.Body"/> or an <c>.ifb</c>. Returns this for chaining.
+        /// serialized into <see cref="FunctionBlockDefinition.Body"/> or an <c>.ifb</c>. Contrast
+        /// <see cref="FbResourceDefBuilder.Note"/>, which sets the resource's serialized <c>note</c> attribute:
+        /// <c>Note</c> is project data, <c>Documentation</c> is help. Returns this for chaining.
         /// </summary>
         public FunctionBlockDefinitionBuilder Documentation(FbResourceHandle resource, string documentation)
         {
@@ -679,6 +703,13 @@ namespace Ihc.Vis.FunctionBlocks
             {
                 resource = resource.WithAttribute(attrName, attrValue);
             }
+            // The one place that has both the resource name and the text authored on it: route documentation to the
+            // definition-level map (never to an attribute), so the configurator form, the by-handle overload and the
+            // name-keyed overload all land in the same dictionary and stay interchangeable.
+            if (configurator.DocumentationText is { } documentation)
+            {
+                SetResourceDoc(name, documentation);
+            }
             container.Add(resource);
             return new FbResourceHandle(name, id);
         }
@@ -803,6 +834,9 @@ namespace Ihc.Vis.FunctionBlocks
     public sealed class FbResourceDefBuilder
     {
         private readonly List<(string Name, string Value)> attrs = new();
+        // Deliberately NOT in attrs: documentation is programmatic-lookup-only help metadata, harvested by
+        // AddResourceTo into the definition's DefinitionDocumentation — never an attribute of the serialized element.
+        private string? documentation;
 
         internal FbResourceDefBuilder()
         {
@@ -810,8 +844,30 @@ namespace Ihc.Vis.FunctionBlocks
 
         internal IReadOnlyList<(string Name, string Value)> Attributes => attrs;
 
-        /// <summary>Sets the resource note.</summary>
+        // The help text authored on this resource, or null when none — the second thing AddResourceTo reads back.
+        internal string? DocumentationText => documentation;
+
+        /// <summary>Sets the resource's <c>note</c> attribute — the <b>serialized</b> installer-facing text: it is
+        /// written into the body and out to the <c>.ifb</c> and any project <c>.vis</c> the block is placed in, and
+        /// the GUI shows it in the pin's properties dialog. Contrast <see cref="Documentation"/>, which attaches help
+        /// text <i>about</i> the resource as programmatic-lookup-only metadata that never reaches a file. Rule of
+        /// thumb: <c>Note</c> is project data, <c>Documentation</c> is help.</summary>
         public FbResourceDefBuilder Note(string note) => Set("note", note);
+
+        /// <summary>Attaches this resource's documentation text — <b>programmatic-lookup-only</b> help metadata that
+        /// surfaces on the built definition's <see cref="FunctionBlockDefinition.Documentation"/> (keyed by the
+        /// resource's display name, read back with <see cref="DefinitionDocumentation.ForResource"/>) and is never
+        /// serialized into the body or an <c>.ifb</c>. The name-free peer of
+        /// <see cref="FunctionBlockDefinitionBuilder.Documentation(FbResourceHandle,string)"/> and of
+        /// <see cref="DefinitionBuilderBase{TSelf}.Documentation(string,string)"/>: authored here the resource name is
+        /// spelled once, at the add, so it cannot drift from the pin it documents. Contrast <see cref="Note"/>, which
+        /// sets the resource's serialized <c>note</c> attribute: <c>Note</c> is project data, <c>Documentation</c> is
+        /// help. Documenting one resource name twice keeps the LAST call, whichever form wrote it.</summary>
+        public FbResourceDefBuilder Documentation(string documentation)
+        {
+            this.documentation = documentation;
+            return this;
+        }
 
         /// <summary>Marks the resource value as backed-up (<c>backup="yes"</c>).</summary>
         public FbResourceDefBuilder Backup(bool backup = true) => Set("backup", backup ? "yes" : "no");

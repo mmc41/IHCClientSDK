@@ -212,5 +212,79 @@ namespace Ihc.Vis.Tests
                 Assert.That(reopened, Is.Not.Null);
             });
         }
+
+        // ---- documentation authored ON the resource (the configurator form) ----
+
+        // The name-keyed Documentation("Kip", …) repeats the resource name as a string key, so a typo binds the text
+        // to nothing and fails silently. The configurator form spells the name once, at the add — and must work for
+        // all four containers, since a block documents settings and internal variables too.
+        [Test]
+        public void DocumentationOnTheResource_CoversAllFourContainers_AndLeavesBodyUntouched()
+        {
+            FunctionBlockDefinitionBuilder documented = FunctionBlockDefinitionBuilder
+                .Create("1.1.01", "e", "Kip tænd sluk").VendorMaster();
+            documented.AddInput("resource_input", "Kip", r => r.Icon("_0x36").Note("Tænd/sluk.")
+                .Documentation("skifter udgangen til modsat tilstand"));
+            documented.AddOutput("resource_output", "Udgang", r => r.Documentation("udgangens aktuelle tilstand"));
+            documented.AddSetting("resource_timer", "Timer", r => r.TimerHms(0, 3, 0).Documentation("timerens hviletid"));
+            documented.AddInternalVariable("resource_flag", "Intern", r => r.Documentation("blokkens private flag"));
+
+            // The same block authored without the help text — the body must be indistinguishable.
+            FunctionBlockDefinitionBuilder bare = FunctionBlockDefinitionBuilder
+                .Create("1.1.01", "e", "Kip tænd sluk").VendorMaster();
+            bare.AddInput("resource_input", "Kip", r => r.Icon("_0x36").Note("Tænd/sluk."));
+            bare.AddOutput("resource_output", "Udgang");
+            bare.AddSetting("resource_timer", "Timer", r => r.TimerHms(0, 3, 0));
+            bare.AddInternalVariable("resource_flag", "Intern");
+
+            FunctionBlockDefinition block = documented.Build();
+            Assert.Multiple(() =>
+            {
+                Assert.That(block.Documentation.ForResource("Kip"), Is.EqualTo("skifter udgangen til modsat tilstand"));
+                Assert.That(block.Documentation.ForResource("Udgang"), Is.EqualTo("udgangens aktuelle tilstand"));
+                Assert.That(block.Documentation.ForResource("Timer"), Is.EqualTo("timerens hviletid"));
+                Assert.That(block.Documentation.ForResource("Intern"), Is.EqualTo("blokkens private flag"));
+                Assert.That(block.Body, Is.EqualTo(bare.Build().Body),
+                    "help text is programmatic-lookup only — the serialized body is exactly what it was without it");
+            });
+        }
+
+        // The tag-free short form is the one a hand author reaches for first; it takes a configurator too, so
+        // documenting a default-typed pin never forces the caller to spell "resource_input".
+        [Test]
+        public void ShortFormAddInputAndAddOutput_TakeAConfigurator_SoDocumentationNeedsNoTag()
+        {
+            FunctionBlockDefinitionBuilder builder = FunctionBlockDefinitionBuilder
+                .Create("1.1.01", "e", "Kip tænd sluk").VendorMaster();
+            FbResourceHandle kip = builder.AddInput("Kip", r => r.Documentation("skifter udgangen"));
+            FbResourceHandle udgang = builder.AddOutput("Udgang", r => r.Documentation("udgangens tilstand"));
+
+            FunctionBlockDefinition block = builder.Build();
+            Assert.Multiple(() =>
+            {
+                Assert.That(block.Documentation.ForResource(kip.Name), Is.EqualTo("skifter udgangen"));
+                Assert.That(block.Documentation.ForResource(udgang.Name), Is.EqualTo("udgangens tilstand"));
+                Assert.That(block.Body.FindChild("inputs")!.Children.Single().Tag, Is.EqualTo("resource_input"),
+                    "the short form still emits the default pin type");
+            });
+        }
+
+        // The phase-in guarantee: the configurator form and the existing by-handle form are interchangeable, so a
+        // call site can be converted one resource at a time.
+        [Test]
+        public void DocumentationOnTheResource_AndByHandle_ProduceTheSameDocumentation()
+        {
+            FunctionBlockDefinitionBuilder onResource = FunctionBlockDefinitionBuilder
+                .Create("1.1.01", "e", "Kip").VendorMaster();
+            onResource.AddInput("Kip", r => r.Documentation("skifter udgangen"));
+
+            FunctionBlockDefinitionBuilder byHandle = FunctionBlockDefinitionBuilder
+                .Create("1.1.01", "e", "Kip").VendorMaster();
+            FbResourceHandle kip = byHandle.AddInput("Kip");
+            byHandle.Documentation(kip, "skifter udgangen");
+
+            Assert.That(onResource.Build().Documentation, Is.EqualTo(byHandle.Build().Documentation),
+                "the two authoring forms are interchangeable");
+        }
     }
 }

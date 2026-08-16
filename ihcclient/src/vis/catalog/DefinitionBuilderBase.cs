@@ -81,7 +81,8 @@ namespace Ihc.Vis.Catalog
 
         /// <summary>Attaches the definition-level documentation summary — <b>programmatic-lookup-only</b> metadata
         /// (surfaces on the definition's <c>Documentation</c>); it is never serialized into the body or a
-        /// <c>.def</c>/<c>.ifb</c>. Contrast the builders' <c>Note</c> methods, which set the serialized attribute.</summary>
+        /// <c>.def</c>/<c>.ifb</c>. Contrast the builders' <c>Note</c> methods, which set the serialized <c>note</c>
+        /// attribute: <c>Note</c> is project data, <c>Documentation</c> is help.</summary>
         public TSelf Documentation(string documentation)
         {
             docSummary = documentation;
@@ -90,7 +91,12 @@ namespace Ihc.Vis.Catalog
 
         /// <summary>Attaches documentation text to a resource identified by its display <paramref name="resourceName"/>
         /// (the key <see cref="DefinitionDocumentation.ForResource"/> looks it up by) — the name-keyed overload, for a
-        /// caller with help text keyed by pin name. Programmatic-lookup-only; never serialized.</summary>
+        /// caller with help text keyed by pin name. Programmatic-lookup-only; never serialized. Contrast the resource
+        /// configurators' <c>Note</c> methods, which set the resource's serialized <c>note</c> attribute: <c>Note</c>
+        /// is project data, <c>Documentation</c> is help.
+        /// <para>The same text can be authored on the resource itself — <c>Documentation</c> on the configurator
+        /// passed to <c>AddInput</c>/<c>AddOutput</c>/… — which spells the name once instead of repeating it as a key.
+        /// Both forms write this map, last call wins.</para></summary>
         public TSelf Documentation(string resourceName, string documentation)
         {
             ArgumentNullException.ThrowIfNull(resourceName);

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Model;
@@ -73,6 +74,32 @@ namespace Ihc.Vis.Tests
 
             Assert.That(reloaded.Equals(built), Is.True,
                 "the inserted product round-trips structurally without reading the reference catalog");
+        }
+
+        [Test]
+        public void EveryProduct_CarriesBakedDanishDocumentation_WithoutReferenceCatalog()
+        {
+            ICatalog catalog = new BuiltInCatalog();
+
+            // The Danish help text is baked into the generated source, so no reference catalog is read.
+            ProductDefinition tryk = catalog.Product("_0x2101");
+            Assert.Multiple(() =>
+            {
+                Assert.That(tryk.Documentation.IsEmpty, Is.False, "_0x2101 carries baked documentation");
+                Assert.That(tryk.Documentation.Summary, Is.Not.Null.And.Not.Empty);
+                Assert.That(tryk.Documentation.Resources, Is.Not.Empty, "per-resource help is baked in");
+
+                // Per-resource text is keyed by the resource's display name, so a GUI looks it up by that name.
+                string firstResource = tryk.Resources[0].Name;
+                Assert.That(tryk.Documentation.ForResource(firstResource), Is.Not.Null.And.Not.Empty,
+                    $"'{firstResource}' has per-resource help reachable by display name");
+            });
+
+            // Every product is documented — the duplicate product_identifier entries included, since the
+            // catalog registers each .def separately and each carries its own help text.
+            int documented = catalog.Products.Count(p => p.Documentation.Summary is { Length: > 0 });
+            Assert.That(documented, Is.EqualTo(catalog.Products.Count),
+                "every product carries a baked summary");
         }
 
     }

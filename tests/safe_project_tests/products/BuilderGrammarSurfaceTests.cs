@@ -86,6 +86,7 @@ namespace Ihc.Vis.Tests
             ["ProductResourceDefBuilder.Address(String)"] = Verb.NonEmitting,
             ["ProductResourceDefBuilder.CableColour(String)"] = Verb.NonEmitting,
             ["ProductResourceDefBuilder.Note(String)"] = Verb.NonEmitting,
+            ["ProductResourceDefBuilder.Documentation(String)"] = Verb.NonEmitting,   // help metadata on the resource — never serialized, emits nothing
             ["ProductResourceDefBuilder.Backup(Boolean)"] = Verb.NonEmitting,
             ["ProductResourceDefBuilder.Icon(String)"] = Verb.NonEmitting,
             ["ProductResourceDefBuilder.Attribute(String,String)"] = Verb.NonEmitting,
@@ -114,8 +115,10 @@ namespace Ihc.Vis.Tests
             ["FunctionBlockDefinitionBuilder.InternalVariablesName(String)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.ProgramsName(String)"] = Verb.NonEmitting,
             ["FunctionBlockDefinitionBuilder.AddInput(String)"] = Verb.Closed(new[] { "resource_input" }),
+            ["FunctionBlockDefinitionBuilder.AddInput(String,Action`1)"] = Verb.Closed(new[] { "resource_input" }),    // tag-free short form + configurator
             ["FunctionBlockDefinitionBuilder.AddInput(String,String,Action`1)"] = Verb.Dynamic,
             ["FunctionBlockDefinitionBuilder.AddOutput(String)"] = Verb.Closed(new[] { "resource_output" }),
+            ["FunctionBlockDefinitionBuilder.AddOutput(String,Action`1)"] = Verb.Closed(new[] { "resource_output" }),  // tag-free short form + configurator
             ["FunctionBlockDefinitionBuilder.AddOutput(String,String,Action`1)"] = Verb.Dynamic,
             ["FunctionBlockDefinitionBuilder.AddSetting(String,String,Action`1)"] = Verb.Dynamic,
             ["FunctionBlockDefinitionBuilder.AddInternalVariable(String,String,Action`1)"] = Verb.Dynamic,
@@ -129,6 +132,7 @@ namespace Ihc.Vis.Tests
 
             // ---- FbResourceDefBuilder (attribute setters only) ----
             ["FbResourceDefBuilder.Note(String)"] = Verb.NonEmitting,
+            ["FbResourceDefBuilder.Documentation(String)"] = Verb.NonEmitting,   // help metadata on the resource — never serialized, emits nothing
             ["FbResourceDefBuilder.Backup(Boolean)"] = Verb.NonEmitting,
             ["FbResourceDefBuilder.Icon(String)"] = Verb.NonEmitting,
             ["FbResourceDefBuilder.Inivalue(String)"] = Verb.NonEmitting,

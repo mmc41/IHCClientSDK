@@ -161,6 +161,23 @@ namespace Ihc.Vis.Catalog
                     ElRaw("sms_modem_phonenumber", new[] { ("id", "_0x48"), ("address", "28") }),
                     ElRaw("sms_modem_phonenumber", new[] { ("id", "_0x49"), ("address", "29") }),
                     ElRaw("sms_modem_phonenumber", new[] { ("id", "_0x4a"), ("address", "30") })))
+                    .Documentation(
+                        "RS485 SMS modem til IHC-systemet: sender beskeder til op til 30 telefonnumre og sikres med PIN-kode. " +
+                        "Konfigureres via produktdialogen — produktet har ingen ind-/udgangsressourcer." +
+                        "\n\nAnvendelse\n" +
+                        "SMS-beskeder til og fra IHC-systemet — modemmet sidder på controllerens RS-485-bus og omsætter beskeder til signaler til/fra de forbundne moduler. " +
+                        "Modemet er en intelligent styreenhed og kan bruges uden controller (stand-alone med indbygget varmestyring for 2 zoner), sender automatisk besked ved strømudfald og har indbygget batteribackup. " +
+                        "Kan desuden betjenes fra en app til iPhone/Android." +
+                        "\n\nVirkemåde\n" +
+                        "– Ingen programressourcer; al konfiguration ligger i produktdialogen (SMS Modem Egenskaber): PIN-kode, 30 telefonnumre og RS-485-kablingens ledningsfarver.\n" +
+                        "– Telefonnumrene ligger i tre grupper à ti (adresse 1–30); dialogen viser dem fortløbende som Nummer 1–Nummer 30." +
+                        "\n\nIndstillinger\n" +
+                        "– Pin Kode (sms_modem_pincode) — modemets PIN-kode, 0–9999, standard 1234.\n" +
+                        "– Telefonnummer (sms_modem_phonenumber) — ét af de 30 numre (adresse 1–30), som modemet kan sende til; udfyldes i dialogens Telefon numre-felter.\n" +
+                        "– Numrene ligger i grupperne Telephone numbers #1-#10, #11-#20 og #21-#30, der i dialogen hedder Nummer 1–10, Nummer 11–20 og Nummer 21–30." +
+                        "\n\nTilslutning\n" +
+                        "– Forbindes til controllerens RS-485-bus og 24 V-forsyning; dialogens Kabling-gruppe dokumenterer ledningsfarver for 0V, 24V, RS485 minus og plus.\n" +
+                        "– Fire ledere: to til forsyning (24 V, 0 V), to til RS-485-kommunikation (RS485+, RS485−).")
                     .Grammar(BuiltInCatalogGrammar.G_49662bbb)
                     .Build();
             return definition with
@@ -179,7 +196,8 @@ namespace Ihc.Vis.Catalog
                     .Attribute("serialnumber", "")
                     .Note("LK IHC RS485 produkter")
                     .Attribute("icon", "_0x86")
-                    .AddResource("resource_flag", "Kanal synkronisering", r => r.Attribute("inivalue", "off"))
+                    .AddResource("resource_flag", "Kanal synkronisering", r => r.Attribute("inivalue", "off")
+                        .Documentation("Flag, der synkroniserer de to kanalers udgange til samme værdi."))
                     .RawChild(ElRaw("rs485_led_dimmer_channel", new[] { ("icon", "_0x86"), ("id", "_0x20"), ("product_identifier", "_0x4410"), ("name", "LED Dimmer kanal 1"), ("channel", "_0x00"), ("channel_id", "") },
                     ElRaw("airlink_dimmer_increase", new[] { ("id", "_0x28"), ("name", "Tænd / Regulér op"), ("address_channel", "_0x01") }),
                     ElRaw("airlink_dimmer_decrease", new[] { ("id", "_0x29"), ("name", "Sluk / Regulér ned"), ("address_channel", "_0x01") }),
@@ -214,6 +232,31 @@ namespace Ihc.Vis.Catalog
                         ElRaw("dimmer_setting_fade_rate_down", new[] { ("id", "_0x64") }),
                         ElRaw("dimmer_setting_dimming_rate", new[] { ("id", "_0x65") }),
                         ElRaw("dimmer_setting_load_mode", new[] { ("id", "_0x66") }))))
+                    .Documentation(
+                        "LED-lysdæmper på RS-485 med to uafhængige kanaler à 200 VA til IHCVisual controller 3 (820B1600 eller senere); " +
+                        "hver kanal har egne dæmper-, status- og fejlressourcer." +
+                        "\n\nAnvendelse\n" +
+                        "Dæmpning af LED-lamper og andre ohmske/kapacitive belastninger (2–200 W/VA pr. kanal; RL LED-mode 2–20 VA) — ohmsk og kapacitiv må ikke blandes på samme kanal, men kanalerne kan belastes forskelligt. " +
+                        "RS-485-bussen understøtter op til 32 komponenter. Kan også betjenes lokalt med de to frontknapper." +
+                        "\n\nVirkemåde\n" +
+                        "– To kanal-underelementer, hver med det fulde dæmper-ressourcesæt (som Wireless-dæmperne): Tænd / Regulér op og Sluk / Regulér ned styrer kanalen, Lys niveau sætter niveauet direkte, og Lys indikering er ON, når kanalen er tændt.\n" +
+                        "– Programmet læser fejlstatus pr. kanal: Fejl - Overstrøm (overbelastet/kortsluttet udgang), Fejl - Overspænding, Fejl - Overophedning og Fejl - Belastnings fejl (belastning frakoblet eller uden for specifikation).\n" +
+                        "– Ved længere strømafbrydelse huskes tændt/slukket ikke; kanalerne tænder på indstillet niveau (fabriksindstilling 100 %).\n" +
+                        "– Scenarier tilknyttet Scenarier/regulering sætter kanalens Lys niveau." +
+                        "\n\nIndstillinger\n" +
+                        "Pr. kanal (gemmes i dimmeren, indstilles i IHC Visual):\n" +
+                        "– Min. lysniveau (dimmer_setting_minimum_value) — nederste reguleringsgrænse, % (0–100, standard 22).\n" +
+                        "– Maks. lysniveau (dimmer_setting_maximum_value) — øverste reguleringsgrænse, % (0–100, standard 100).\n" +
+                        "– Rampetid op (dimmer_setting_fade_rate_up) — soft-tænd-tid, ms (200–60.000, standard 700).\n" +
+                        "– Rampetid ned (dimmer_setting_fade_rate_down) — soft-sluk-tid, ms (200–60.000, standard 700).\n" +
+                        "– Reguleringstid (dimmer_setting_dimming_rate) — manuel rampetid, ms (2.000–10.000, standard 5.000).\n" +
+                        "– Driftstilstand (dimmer_setting_load_mode) — belastningskarakteristik: auto, rc eller rl_led; def'ens standard er rc (vejledningen angiver Auto detection)." +
+                        "\n\nTilslutning\n" +
+                        "– Øverst: 230 V forsyning og belastning pr. kanal; nederst: 24 V forsyning og skærmet RS-485-kabel ved 115,2 kbps. Over 10 m kabel forbindes skærmen til strømforsyningens 0 V.\n" +
+                        "– Bussen skal termineres i enden: placér SMS-modemet sidst, hvis det findes, eller montér en standard RTERM på ca. 120 Ω.\n" +
+                        "– 36 mm DIN-modul. Linkes i IHC Visual under Controller → Link/test LK IHC Wireless produkter & Bus produkter: klik Link, hold begge knapper inde til de blinker (ca. 3 s), og vælg kanal inden 30 s. Unlink sker samme sted.")
+                    .Documentation("LED Dimmer kanal 1", "Kanal 1's egenskabsknude; højreklik → Egenskaber giver kanalens driftsparametre.")
+                    .Documentation("LED Dimmer kanal 2", "Kanal 2's egenskabsknude med samme parametersæt som kanal 1.")
                     .Grammar(BuiltInCatalogGrammar.G_1567de87)
                     .Build();
             return definition with
@@ -231,8 +274,23 @@ namespace Ihc.Vis.Catalog
                     .Name("01#LK FUGA Tryk 2 tast")
                     .Note("Tryk med 2 SL")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (venstre)")
-                    .AddInput("Tryk (højre)")
+                    .AddInput("Tryk (venstre)", i => i.Documentation(
+                        "Sluttekontakt i tangentens venstre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddInput("Tryk (højre)", i => i.Documentation(
+                        "Sluttekontakt i tangentens højre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .Documentation(
+                        "Svagstrømstryk med to separate sluttekontakter i en LK FUGA-indsats; " +
+                        "bruges som betjeningstryk." +
+                        "\n\nAnvendelse\n" +
+                        "Til betjening af elektronikbaserede styringer med små styrestrømme og præcise sluttefunktioner. " +
+                        "Én tangent med adskilte sluttefunktioner i venstre og højre side (to tryk i alt). " +
+                        "Det mindste af de rene FUGA-svagstrømstryk — ønskes flere tryk, se 4 tast eller 6 tast; ønskes lokal indikering, se 2 tast 1 diode." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2).\n" +
+                        "– Ingen udgangsressourcer — ønskes lokal statusvisning, vælg en diodevariant (2, 4 eller 6 tast)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul (fx 120B1010).\n" +
+                        "– Skrueklemmer på bagsiden til tilslutning og sløjfning af svagstrømsledninger.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -250,10 +308,27 @@ namespace Ihc.Vis.Catalog
                     .Name("02#LK FUGA Tryk 4 tast")
                     .Note("Tryk med 4 SL")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (øverst venstre)")
-                    .AddInput("Tryk (øverst højre)")
-                    .AddInput("Tryk (nederst venstre)")
-                    .AddInput("Tryk (nederst højre)")
+                    .AddInput("Tryk (øverst venstre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents venstre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddInput("Tryk (øverst højre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents højre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddInput("Tryk (nederst venstre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents venstre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddInput("Tryk (nederst højre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents højre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .Documentation(
+                        "Svagstrømstryk med fire separate sluttekontakter i en LK FUGA-indsats; " +
+                        "bruges som betjeningstryk." +
+                        "\n\nAnvendelse\n" +
+                        "Til betjening af elektronikbaserede styringer med små styrestrømme og præcise sluttefunktioner. " +
+                        "To tangenter, hver med adskilte sluttefunktioner i venstre og højre side (fire tryk i alt). " +
+                        "Ønskes lokal indikering, se 4 tast 2 dioder; rækker to tryk, se 2 tast." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2).\n" +
+                        "– Ingen udgangsressourcer — ønskes lokal statusvisning, vælg en diodevariant (2, 4 eller 6 tast)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul (fx 120B1010).\n" +
+                        "– Skrueklemmer på bagsiden til tilslutning og sløjfning af svagstrømsledninger.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -271,12 +346,32 @@ namespace Ihc.Vis.Catalog
                     .Name("03#LK FUGA Tryk 6 tast")
                     .Note("Tryk med 6 SL")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (øverst venstre)")
-                    .AddInput("Tryk (øverst højre)")
-                    .AddInput("Tryk (midt venstre)")
-                    .AddInput("Tryk (midt højre)")
-                    .AddInput("Tryk (nederst venstre)")
-                    .AddInput("Tryk (nederst højre)")
+                    .AddInput("Tryk (øverst venstre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents venstre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddInput("Tryk (øverst højre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents højre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddInput("Tryk (midt venstre)", i => i.Documentation(
+                        "Sluttekontakt i midterste tangents venstre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddInput("Tryk (midt højre)", i => i.Documentation(
+                        "Sluttekontakt i midterste tangents højre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddInput("Tryk (nederst venstre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents venstre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddInput("Tryk (nederst højre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents højre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .Documentation(
+                        "Svagstrømstryk med seks separate sluttekontakter i en LK FUGA-indsats; " +
+                        "bruges som betjeningstryk." +
+                        "\n\nAnvendelse\n" +
+                        "Til betjening af elektronikbaserede styringer med små styrestrømme og præcise sluttefunktioner. " +
+                        "Tre tangenter, hver med adskilte sluttefunktioner i venstre og højre side (seks tryk i alt) — familiens største betjeningsflade. " +
+                        "Ønskes lokal indikering, se 6 tast 3 dioder." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2).\n" +
+                        "– Ingen udgangsressourcer — ønskes lokal statusvisning, vælg en diodevariant (2, 4 eller 6 tast)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul (fx 120B1010).\n" +
+                        "– Skrueklemmer på bagsiden til tilslutning og sløjfning af svagstrømsledninger.\n" +
+                        "– Indsatsen 507DA503 monteres uden ripper i LK FUGA teknisk ramme; ripperne fjernes før montering.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -294,9 +389,24 @@ namespace Ihc.Vis.Catalog
                     .Name("04#LK FUGA Tryk 2 tast 1 diode")
                     .Note("Tryk med 2 SL og 1 dioder")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (venstre)")
-                    .AddInput("Tryk (højre)")
-                    .AddOutput("LED", o => o.Attribute("type", "led"))
+                    .AddInput("Tryk (venstre)", i => i.Documentation(
+                        "Sluttekontakt i tangentens venstre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddInput("Tryk (højre)", i => i.Documentation(
+                        "Sluttekontakt i tangentens højre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddOutput("LED", o => o.Attribute("type", "led")
+                        .Documentation("Lysdiode i tangenten; selvstændig udgang (type=\"led\"), der tændes fra programmet, typisk som kontrollampe for den styrede udgang, eller forsynes fast som ledelys. Følger ikke automatisk trykkene — forbind den til samme funktionsblok som udgangen. 24 V DC, ca. 1 mA. Startværdi off med backup (tilstanden gendannes efter spændingssvigt)."))
+                    .Documentation(
+                        "Svagstrømstryk med to separate sluttekontakter og én lysdiode i en LK FUGA-indsats; " +
+                        "bruges som betjeningstryk, og dioden kan vise status fra programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Til betjening af elektronikbaserede styringer med små styrestrømme og præcise sluttefunktioner. " +
+                        "Én tangent med adskilte sluttefunktioner i venstre og højre side (to tryk i alt) og en lysdiode. " +
+                        "Vælges frem for det rene 2 tast, når der også ønskes lokal indikering — dioden kan bruges som kontrollampe styret fra programmet eller som ledelys, der forsynes fast." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul (fx 120B1010), dioden til en udgang på et 24 V udgangsmodul (120B1021) — eller forsynes fast som ledelys.\n" +
+                        "– Bagsiden har skrueklemmer til tilslutning og sløjfning af svagstrømsledninger.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -314,12 +424,31 @@ namespace Ihc.Vis.Catalog
                     .Name("05#LK FUGA Tryk 4 tast 2 dioder")
                     .Note("Tryk med 4 SL og 2 dioder")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (øverst venstre)")
-                    .AddInput("Tryk (øverst højre)")
-                    .AddInput("Tryk (nederst venstre)")
-                    .AddInput("Tryk (nederst højre)")
-                    .AddOutput("LED (øverst)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (nederst)", o => o.Attribute("type", "led"))
+                    .AddInput("Tryk (øverst venstre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents venstre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddInput("Tryk (øverst højre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents højre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddInput("Tryk (nederst venstre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents venstre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddInput("Tryk (nederst højre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents højre side; ON mens der trykkes. 1–50 mA ved 5–24 V DC."))
+                    .AddOutput("LED (øverst)", o => o.Attribute("type", "led")
+                        .Documentation("Lysdiode i øverste tangent; selvstændig udgang (type=\"led\"), der tændes fra programmet, typisk som kontrollampe for udgangen. Følger ikke automatisk trykkene — forbind den til samme funktionsblok som udgangen. 24 V DC, ca. 1 mA. Startværdi off med backup (tilstanden gendannes efter spændingssvigt)."))
+                    .AddOutput("LED (nederst)", o => o.Attribute("type", "led")
+                        .Documentation("Lysdiode i nederste tangent; selvstændig udgang (type=\"led\"), der tændes fra programmet, typisk som kontrollampe for udgangen. Følger ikke automatisk trykkene — forbind den til samme funktionsblok som udgangen. 24 V DC, ca. 1 mA. Startværdi off med backup (tilstanden gendannes efter spændingssvigt)."))
+                    .Documentation(
+                        "Svagstrømstryk med fire sluttekontakter og to lysdioder i en LK FUGA-indsats; " +
+                        "bruges som betjeningstryk, og dioderne kan vise status fra programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Til betjening af elektronikbaserede styringer med små styrestrømme og præcise sluttefunktioner. " +
+                        "To tangenter, hver med adskilte sluttefunktioner i venstre og højre side (fire tryk) og en lysdiode. " +
+                        "Vælges frem for de rene tryk (2, 4 og 6 tast), når der ønskes lokal indikering." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2).\n" +
+                        "– Ønskes indbygget statusvisning, se Statustryk 4 tast 4 dioder." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul (fx 120B1010), dioderne til et 24 V udgangsmodul (120B1021) — eller forsynes fast som ledelys.\n" +
+                        "– Bagsiden har skrueklemmer til tilslutning og sløjfning af svagstrømsledninger.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -337,15 +466,40 @@ namespace Ihc.Vis.Catalog
                     .Name("06#LK FUGA Tryk 6 tast 3 dioder")
                     .Note("Tryk med 6 SL og 3 dioder")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (øverst venstre)")
-                    .AddInput("Tryk (øverst højre)")
-                    .AddInput("Tryk (midt venstre)")
-                    .AddInput("Tryk (midt højre)")
-                    .AddInput("Tryk (nederst venstre)")
-                    .AddInput("Tryk (nederst højre)")
-                    .AddOutput("LED (øverst)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (midten)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (nederst)", o => o.Attribute("type", "led"))
+                    .AddInput("Tryk (øverst venstre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents venstre side; ON mens der trykkes."))
+                    .AddInput("Tryk (øverst højre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents højre side; ON mens der trykkes."))
+                    .AddInput("Tryk (midt venstre)", i => i.Documentation(
+                        "Sluttekontakt i midterste tangents venstre side; ON mens der trykkes."))
+                    .AddInput("Tryk (midt højre)", i => i.Documentation(
+                        "Sluttekontakt i midterste tangents højre side; ON mens der trykkes."))
+                    .AddInput("Tryk (nederst venstre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents venstre side; ON mens der trykkes."))
+                    .AddInput("Tryk (nederst højre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents højre side; ON mens der trykkes."))
+                    .AddOutput("LED (øverst)", o => o.Attribute("type", "led")
+                        .Documentation("Lysdiode i øverste tangent; selvstændig udgang (type=\"led\"), der tændes fra programmet, typisk som kontrollampe for den styrede udgang, eller forsynes fast som ledelys. Følger ikke automatisk trykkene."))
+                    .AddOutput("LED (midten)", o => o.Attribute("type", "led")
+                        .Documentation("Lysdiode i midterste tangent; selvstændig udgang (type=\"led\"), der tændes fra programmet, typisk som kontrollampe for den styrede udgang, eller forsynes fast som ledelys. Følger ikke automatisk trykkene."))
+                    .AddOutput("LED (nederst)", o => o.Attribute("type", "led")
+                        .Documentation("Lysdiode i nederste tangent; selvstændig udgang (type=\"led\"), der tændes fra programmet, typisk som kontrollampe for den styrede udgang, eller forsynes fast som ledelys. Følger ikke automatisk trykkene."))
+                    .Documentation(
+                        "Svagstrømstryk med seks separate sluttekontakter og tre lysdioder i en LK FUGA-indsats; " +
+                        "bruges som betjeningstryk, og dioderne kan vise status fra programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Til betjening af elektronikbaserede styringer med små styrestrømme og præcise sluttefunktioner. " +
+                        "Tre tangenter, hver med adskilte sluttefunktioner i venstre og højre side (seks tryk i alt) og en lysdiode. " +
+                        "Vælges frem for det rene 6 tast, når der også ønskes lokal indikering — dioderne kan bruges som kontrollamper styret fra programmet eller som ledelys, der forsynes fast." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2).\n" +
+                        "– Skal en diode vise en udgangs status, forbindes den til samme funktionsblok som udgangen.\n" +
+                        "– Udgangenes startværdi er off, og de er omfattet af backup (tilstanden gendannes efter spændingssvigt)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul (fx 120B1010); kontakterne er specificeret til 1–50 mA ved 5–24 V DC.\n" +
+                        "– Dioderne (24 V DC, ca. 1 mA) forbindes til udgange på et 24 V udgangsmodul (120B1021) — eller forsynes fast som ledelys.\n" +
+                        "– Bagsiden har skrueklemmer til tilslutning og sløjfning af svagstrømsledninger.\n" +
+                        "– Indsatsen 507DA513 monteres uden ripper i LK FUGA teknisk ramme; ripperne fjernes før montering.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -363,14 +517,37 @@ namespace Ihc.Vis.Catalog
                     .Name("09#LK FUGA Statustryk 4 tast 4 dioder")
                     .Note("Statustryk 4 tast, 2 røde dioder og 2 grønne")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (øverst venstre)")
-                    .AddInput("Tryk (øverst højre)")
-                    .AddInput("Tryk (nederst venstre)")
-                    .AddInput("Tryk (nederst højre)")
-                    .AddOutput("Rød LED (øverst venstre)", o => o.Attribute("type", "led"))
-                    .AddOutput("Grøn LED (øverst højre)", o => o.Attribute("type", "led"))
-                    .AddOutput("Rød LED (nederst venstre)", o => o.Attribute("type", "led"))
-                    .AddOutput("Grøn LED (nederst højre)", o => o.Attribute("type", "led"))
+                    .AddInput("Tryk (øverst venstre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents venstre side; ON mens der trykkes."))
+                    .AddInput("Tryk (øverst højre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents højre side; ON mens der trykkes."))
+                    .AddInput("Tryk (nederst venstre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents venstre side; ON mens der trykkes."))
+                    .AddInput("Tryk (nederst højre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents højre side; ON mens der trykkes."))
+                    .AddOutput("Rød LED (øverst venstre)", o => o.Attribute("type", "led")
+                        .Documentation("Rød lysdiode, klemme ØV; selvstændig udgang (type=\"led\"), der styres fra programmet, typisk som alarmtilstands-indikator. Følger ikke automatisk trykkene."))
+                    .AddOutput("Grøn LED (øverst højre)", o => o.Attribute("type", "led")
+                        .Documentation("Grøn lysdiode, klemme ØH; selvstændig udgang (type=\"led\"), der styres fra programmet, typisk som alarmtilstands-indikator. Følger ikke automatisk trykkene."))
+                    .AddOutput("Rød LED (nederst venstre)", o => o.Attribute("type", "led")
+                        .Documentation("Rød lysdiode, klemme NV; selvstændig udgang (type=\"led\"), der styres fra programmet, typisk som alarmtilstands-indikator. Følger ikke automatisk trykkene."))
+                    .AddOutput("Grøn LED (nederst højre)", o => o.Attribute("type", "led")
+                        .Documentation("Grøn lysdiode, klemme NH; selvstændig udgang (type=\"led\"), der styres fra programmet, typisk som alarmtilstands-indikator. Følger ikke automatisk trykkene."))
+                    .Documentation(
+                        "Alarm-statustryk med fire sluttekontakter og fire lysdioder (to røde, to grønne) i en LK FUGA-indsats; " +
+                        "bruges til til-/frakobling af IHC Control Alarm." +
+                        "\n\nAnvendelse\n" +
+                        "Som statustryk for til- og frakobling af IHC Control Alarm-anlæg. " +
+                        "De fire dioder indikerer alarmanlæggets tilstand, fx tyverialarm, ventilation, røgalarm, garageport, gasalarm, udvendigt lys, lokalalarm eller cirkulationspumpe. " +
+                        "Samme fysiske indsats kan alternativt fortrådes som betjeningstryk med færre tryk — se 2 tast 4 dioder og 3 tast 3 dioder." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene — til alarm typisk blokkene i sikringsmapperne, ellers fx Kip tænd sluk (1.1.01).\n" +
+                        "– Udgangenes startværdi er off, og de er omfattet af backup (tilstanden gendannes efter spændingssvigt)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul, dioderne til et 24 V udgangsmodul.\n" +
+                        "– Ledningsterminalerne er mærket ØV/ØH/NV/NH (Øverst/Nederst, Venstre/Højre) som i IHC Visual; venstre side er røde dioder, højre side grønne.\n" +
+                        "– Tryk og lysdioder har separate klemmer med hver sin fælles 0-klemme og kan derfor forsynes fra to forskellige SELV-strømforsyninger.\n" +
+                        "– Indsatsen (1½ modul) monteres uden ripper i LK FUGA teknisk ramme.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -388,12 +565,32 @@ namespace Ihc.Vis.Catalog
                     .Name("07#LK FUGA Betjeningstryk 2 tast 4 dioder")
                     .Note("Betjeningstryk med 2 SL og 4 dioder")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (øverst)")
-                    .AddInput("Tryk (nederst)")
-                    .AddOutput("LED (øverst venstre)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (øverst højre)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (nederst venstre)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (nederst højre)", o => o.Attribute("type", "led"))
+                    .AddInput("Tryk (øverst)", i => i.Documentation(
+                        "Øverste tangent som ét samlet tryk; ON mens der trykkes."))
+                    .AddInput("Tryk (nederst)", i => i.Documentation(
+                        "Nederste tangent som ét samlet tryk; ON mens der trykkes."))
+                    .AddOutput("LED (øverst venstre)", o => o.Attribute("type", "led")
+                        .Documentation("Rød lysdiode, klemme ØV; selvstændig udgang (type=\"led\"), der styres frit fra programmet. Følger ikke automatisk trykkene — forbind den til udgangens funktionsblok, hvis den skal vise status."))
+                    .AddOutput("LED (øverst højre)", o => o.Attribute("type", "led")
+                        .Documentation("Grøn lysdiode, klemme ØH; selvstændig udgang (type=\"led\"), der styres frit fra programmet. Følger ikke automatisk trykkene — forbind den til udgangens funktionsblok, hvis den skal vise status."))
+                    .AddOutput("LED (nederst venstre)", o => o.Attribute("type", "led")
+                        .Documentation("Rød lysdiode, klemme NV; selvstændig udgang (type=\"led\"), der styres frit fra programmet. Følger ikke automatisk trykkene — forbind den til udgangens funktionsblok, hvis den skal vise status."))
+                    .AddOutput("LED (nederst højre)", o => o.Attribute("type", "led")
+                        .Documentation("Grøn lysdiode, klemme NH; selvstændig udgang (type=\"led\"), der styres frit fra programmet. Følger ikke automatisk trykkene — forbind den til udgangens funktionsblok, hvis den skal vise status."))
+                    .Documentation(
+                        "Alarm-statustrykket 507D6530 fortrådet som betjeningstryk med to tryk og fire lysdioder; " +
+                        "hver tangent virker som ét tryk." +
+                        "\n\nAnvendelse\n" +
+                        "Vælges når statustryk-indsatsen skal bruges som almindeligt betjeningstryk med to tryk (én pr. tangent) og fire frit programmerbare dioder — fx to funktioner med fuld diode-indikering. " +
+                        "Skal alle fire kontakter bruges enkeltvis, vælg Statustryk 4 tast 4 dioder." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2).\n" +
+                        "– Udgangenes startværdi er off, og de er omfattet af backup (tilstanden gendannes efter spændingssvigt)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul, dioderne til et 24 V udgangsmodul.\n" +
+                        "– Ledningsterminalerne er mærket ØV/ØH/NV/NH som i IHC Visual.\n" +
+                        "– Tryk og lysdioder har separate klemmer med hver sin fælles 0-klemme og kan derfor forsynes fra to forskellige SELV-strømforsyninger.\n" +
+                        "– Indsatsen (1½ modul) monteres uden ripper i LK FUGA teknisk ramme.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -411,12 +608,32 @@ namespace Ihc.Vis.Catalog
                     .Name("08#LK FUGA Betjeningstryk 3 tast 3 dioder")
                     .Note("Betjeningstryk med 3 SL og 3 dioder")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (øverst)")
-                    .AddInput("Tryk (midt)")
-                    .AddInput("Tryk (nederst)")
-                    .AddOutput("LED (øverst)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (midten)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (nederst)", o => o.Attribute("type", "led"))
+                    .AddInput("Tryk (øverst)", i => i.Documentation(
+                        "Øverste tryk i 3-tryks-fortrådningen; ON mens der trykkes."))
+                    .AddInput("Tryk (midt)", i => i.Documentation(
+                        "Midterste tryk i 3-tryks-fortrådningen; ON mens der trykkes."))
+                    .AddInput("Tryk (nederst)", i => i.Documentation(
+                        "Nederste tryk i 3-tryks-fortrådningen; ON mens der trykkes."))
+                    .AddOutput("LED (øverst)", o => o.Attribute("type", "led")
+                        .Documentation("Lysdiode; selvstændig udgang (type=\"led\"), der styres frit fra programmet, typisk som kontrollampe. Følger ikke automatisk trykkene — forbind den til udgangens funktionsblok, hvis den skal vise status."))
+                    .AddOutput("LED (midten)", o => o.Attribute("type", "led")
+                        .Documentation("Lysdiode; selvstændig udgang (type=\"led\"), der styres frit fra programmet, typisk som kontrollampe. Følger ikke automatisk trykkene — forbind den til udgangens funktionsblok, hvis den skal vise status."))
+                    .AddOutput("LED (nederst)", o => o.Attribute("type", "led")
+                        .Documentation("Lysdiode; selvstændig udgang (type=\"led\"), der styres frit fra programmet, typisk som kontrollampe. Følger ikke automatisk trykkene — forbind den til udgangens funktionsblok, hvis den skal vise status."))
+                    .Documentation(
+                        "Alarm-statustrykket 507D6530 fortrådet som betjeningstryk med tre tryk og tre lysdioder; " +
+                        "endnu en fortrådningsvariant af samme indsats." +
+                        "\n\nAnvendelse\n" +
+                        "Vælges når statustryk-indsatsen bruges som betjeningstryk med tre separate tryk og tre frit programmerbare dioder. " +
+                        "Samme indsats fås også som Statustryk 4 tast 4 dioder og Betjeningstryk 2 tast 4 dioder." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2).\n" +
+                        "– Udgangenes startværdi er off, og de er omfattet af backup (tilstanden gendannes efter spændingssvigt)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul, dioderne til et 24 V udgangsmodul.\n" +
+                        "– Ledningsterminalerne er mærket ØV/ØH/NV/NH som i IHC Visual; fordelingen på klemmerne fremgår kun af def'en.\n" +
+                        "– Tryk og lysdioder har separate klemmer med hver sin fælles 0-klemme og kan derfor forsynes fra to forskellige SELV-strømforsyninger.\n" +
+                        "– Indsatsen (1½ modul) monteres uden ripper i LK FUGA teknisk ramme.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -434,10 +651,29 @@ namespace Ihc.Vis.Catalog
                     .Name("01#LK OPUS Tryk 4 tast")
                     .Note("Tryk med 4 SL")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (øverst venstre)")
-                    .AddInput("Tryk (øverst højre)")
-                    .AddInput("Tryk (nederst venstre)")
-                    .AddInput("Tryk (nederst højre)")
+                    .AddInput("Tryk (øverst venstre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents venstre side; ON mens der trykkes."))
+                    .AddInput("Tryk (øverst højre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents højre side; ON mens der trykkes."))
+                    .AddInput("Tryk (nederst venstre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents venstre side; ON mens der trykkes."))
+                    .AddInput("Tryk (nederst højre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents højre side; ON mens der trykkes."))
+                    .Documentation(
+                        "Svagstrømstryk med fire separate sluttekontakter i en OPUS 66-indsats; " +
+                        "bruges som betjeningstryk." +
+                        "\n\nAnvendelse\n" +
+                        "Til betjening af elektronikbaserede styringer med små styrestrømme og præcise sluttefunktioner — OPUS 66-designudgaven af 4-tast-trykket (FUGA-udgaven hedder LK FUGA Tryk 4 tast). " +
+                        "To tangenter, hver med adskilte sluttefunktioner i venstre og højre side (fire tryk i alt). " +
+                        "Tangenterne kan mærkes med symboler via medfølgende labels." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2).\n" +
+                        "– En tangent kan vendes 180°, så et tryk midt på tangenten påvirker begge mikrokontakter samtidig; vejledningen viser installation som 4-tryk eller 2-tryk.\n" +
+                        "– Ingen udgangsressourcer — ønskes dioder, se Tryk 4 tast 4 dioder." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul; kontakterne er specificeret til 1–50 mA ved 5–24 V DC SELV.\n" +
+                        "– Svagstrømsledere tilsluttes forfra i skæreklemmer med det medfølgende værktøj (montagebit).\n" +
+                        "– Ledningsterminalerne er mærket ØV/ØH/NV/NH (Øverst/Nederst, Venstre/Højre); mikrokontakterne har separate klemmer med fælles 0-klemme.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -455,14 +691,38 @@ namespace Ihc.Vis.Catalog
                     .Name("02#LK OPUS Tryk 4 tast 4 dioder")
                     .Note("Tryk med 4 SL og 4 dioder")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (øverst venstre)")
-                    .AddInput("Tryk (øverst højre)")
-                    .AddInput("Tryk (nederst venstre)")
-                    .AddInput("Tryk (nederst højre)")
-                    .AddOutput("LED (øverst venstre)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (øverst højre)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (nederst venstre)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (nederst højre)", o => o.Attribute("type", "led"))
+                    .AddInput("Tryk (øverst venstre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents venstre side; ON mens der trykkes."))
+                    .AddInput("Tryk (øverst højre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents højre side; ON mens der trykkes."))
+                    .AddInput("Tryk (nederst venstre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents venstre side; ON mens der trykkes."))
+                    .AddInput("Tryk (nederst højre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents højre side; ON mens der trykkes."))
+                    .AddOutput("LED (øverst venstre)", o => o.Attribute("type", "led")
+                        .Documentation("Rød lysdiode, klemme ØV; selvstændig udgang (type=\"led\"), der tændes fra programmet, typisk som kontrollampe. Følger ikke automatisk trykkene."))
+                    .AddOutput("LED (øverst højre)", o => o.Attribute("type", "led")
+                        .Documentation("Rød lysdiode, klemme ØH; selvstændig udgang (type=\"led\"), der tændes fra programmet, typisk som kontrollampe. Følger ikke automatisk trykkene."))
+                    .AddOutput("LED (nederst venstre)", o => o.Attribute("type", "led")
+                        .Documentation("Rød lysdiode, klemme NV; selvstændig udgang (type=\"led\"), der tændes fra programmet, typisk som kontrollampe. Følger ikke automatisk trykkene."))
+                    .AddOutput("LED (nederst højre)", o => o.Attribute("type", "led")
+                        .Documentation("Rød lysdiode, klemme NH; selvstændig udgang (type=\"led\"), der tændes fra programmet, typisk som kontrollampe. Følger ikke automatisk trykkene."))
+                    .Documentation(
+                        "Svagstrømstryk med fire separate sluttekontakter og fire lysdioder i en OPUS 66-indsats; " +
+                        "bruges som betjeningstryk, og dioderne kan vise status fra programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Til betjening af elektronikbaserede styringer med små styrestrømme og præcise sluttefunktioner. " +
+                        "To tangenter, hver med adskilte sluttefunktioner i venstre og højre side (fire tryk i alt) og en rød lysdiode ved hver kontakt. " +
+                        "Vælges frem for det rene OPUS Tryk 4 tast, når der også ønskes lokal indikering." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2).\n" +
+                        "– En tangent kan vendes 180°, så et tryk midt på tangenten påvirker begge mikrokontakter samtidig; vejledningen viser installation som 4-, 2- eller 1-tryk.\n" +
+                        "– Skal en diode vise en udgangs status, forbindes den til samme funktionsblok som udgangen.\n" +
+                        "– Udgangenes startværdi er off, og de er omfattet af backup (tilstanden gendannes efter spændingssvigt)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul, dioderne til et 24 V udgangsmodul.\n" +
+                        "– Svagstrømsledere tilsluttes forfra i skæreklemmer med den medfølgende montagebit.\n" +
+                        "– Ledningsterminalerne er mærket ØV/ØH/NV/NH; tryk og lysdioder har separate klemmer med hver sin fælles 0-klemme og kan derfor forsynes fra to forskellige SELV-strømforsyninger.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -480,14 +740,37 @@ namespace Ihc.Vis.Catalog
                     .Name("04#LK OPUS Statustryk 4 tast 4 dioder")
                     .Note("Statustryk 4 tast, 2 røde dioder og 2 grønne")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (øverst venstre)")
-                    .AddInput("Tryk (øverst højre)")
-                    .AddInput("Tryk (nederst venstre)")
-                    .AddInput("Tryk (nederst højre)")
-                    .AddOutput("LED (øverst venstre)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (øverst højre)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (nederst venstre)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (nederst højre)", o => o.Attribute("type", "led"))
+                    .AddInput("Tryk (øverst venstre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents venstre side; ON mens der trykkes."))
+                    .AddInput("Tryk (øverst højre)", i => i.Documentation(
+                        "Sluttekontakt i øverste tangents højre side; ON mens der trykkes."))
+                    .AddInput("Tryk (nederst venstre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents venstre side; ON mens der trykkes."))
+                    .AddInput("Tryk (nederst højre)", i => i.Documentation(
+                        "Sluttekontakt i nederste tangents højre side; ON mens der trykkes."))
+                    .AddOutput("LED (øverst venstre)", o => o.Attribute("type", "led")
+                        .Documentation("Rød lysdiode, klemme ØV; selvstændig udgang (type=\"led\"), der styres fra programmet, typisk som alarmtilstands-indikator. Følger ikke automatisk trykkene."))
+                    .AddOutput("LED (øverst højre)", o => o.Attribute("type", "led")
+                        .Documentation("Grøn lysdiode, klemme ØH; selvstændig udgang (type=\"led\"), der styres fra programmet, typisk som alarmtilstands-indikator. Følger ikke automatisk trykkene."))
+                    .AddOutput("LED (nederst venstre)", o => o.Attribute("type", "led")
+                        .Documentation("Rød lysdiode, klemme NV; selvstændig udgang (type=\"led\"), der styres fra programmet, typisk som alarmtilstands-indikator. Følger ikke automatisk trykkene."))
+                    .AddOutput("LED (nederst højre)", o => o.Attribute("type", "led")
+                        .Documentation("Grøn lysdiode, klemme NH; selvstændig udgang (type=\"led\"), der styres fra programmet, typisk som alarmtilstands-indikator. Følger ikke automatisk trykkene."))
+                    .Documentation(
+                        "Alarm-statustryk med fire sluttekontakter og fire lysdioder (to røde, to grønne) i en OPUS 66-indsats; " +
+                        "bruges til til-/frakobling af IHC Control Alarm." +
+                        "\n\nAnvendelse\n" +
+                        "Som statustryk for til- og frakobling af IHC Control Alarm-anlæg — OPUS 66-designudgaven af FUGA-statustrykket. " +
+                        "De fire dioder indikerer alarmanlæggets tilstand, fx tyverialarm, røgalarm, gasalarm eller lokalalarm. " +
+                        "Samme indsats kan fortrådes som betjeningstryk med to tryk — se OPUS Betjeningstryk 2 tast 4 dioder." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene — til alarm typisk blokkene i sikringsmapperne, ellers fx Kip tænd sluk (1.1.01).\n" +
+                        "– Udgangenes startværdi er off, og de er omfattet af backup (tilstanden gendannes efter spændingssvigt)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul, dioderne til et 24 V udgangsmodul.\n" +
+                        "– Ledningsterminalerne er mærket ØV/ØH/NV/NH som i IHC Visual; venstre side er røde dioder, højre side grønne.\n" +
+                        "– Svagstrømsledere tilsluttes forfra i skæreklemmer med den medfølgende montagebit.\n" +
+                        "– Tryk og lysdioder har separate klemmer med hver sin fælles 0-klemme og kan derfor forsynes fra to forskellige SELV-strømforsyninger.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -505,12 +788,33 @@ namespace Ihc.Vis.Catalog
                     .Name("03#LK OPUS Betjeningstryk 2 tast 4 dioder")
                     .Note("Betjeningstryk med 2 SL og 4 dioder")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (øverst)")
-                    .AddInput("Tryk (nederst)")
-                    .AddOutput("LED (øverst venstre)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (øverst højre)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (nederst venstre)", o => o.Attribute("type", "led"))
-                    .AddOutput("LED (nederst højre)", o => o.Attribute("type", "led"))
+                    .AddInput("Tryk (øverst)", i => i.Documentation(
+                        "Øverste tangent som ét samlet tryk; ON mens der trykkes."))
+                    .AddInput("Tryk (nederst)", i => i.Documentation(
+                        "Nederste tangent som ét samlet tryk; ON mens der trykkes."))
+                    .AddOutput("LED (øverst venstre)", o => o.Attribute("type", "led")
+                        .Documentation("Rød lysdiode, klemme ØV; styres frit fra programmet. Følger ikke automatisk trykkene."))
+                    .AddOutput("LED (øverst højre)", o => o.Attribute("type", "led")
+                        .Documentation("Grøn lysdiode, klemme ØH; styres frit fra programmet. Følger ikke automatisk trykkene."))
+                    .AddOutput("LED (nederst venstre)", o => o.Attribute("type", "led")
+                        .Documentation("Rød lysdiode, klemme NV; styres frit fra programmet. Følger ikke automatisk trykkene."))
+                    .AddOutput("LED (nederst højre)", o => o.Attribute("type", "led")
+                        .Documentation("Grøn lysdiode, klemme NH; styres frit fra programmet. Følger ikke automatisk trykkene."))
+                    .Documentation(
+                        "OPUS-alarm-statustrykket 507N6010 fortrådet som betjeningstryk med to tryk og fire lysdioder; " +
+                        "hver tangent virker som ét tryk." +
+                        "\n\nAnvendelse\n" +
+                        "Vælges når OPUS-statustryk-indsatsen bruges som almindeligt betjeningstryk med to tryk (én pr. tangent) og fire frit programmerbare dioder. " +
+                        "Skal alle fire kontakter bruges enkeltvis, vælg OPUS Statustryk 4 tast 4 dioder." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2).\n" +
+                        "– Dioderne er selvstændige udgange (type=\"led\"); skal en diode vise en udgangs status, forbindes den til samme funktionsblok som udgangen.\n" +
+                        "– Udgangenes startværdi er off, og de er omfattet af backup (tilstanden gendannes efter spændingssvigt)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul, dioderne til et 24 V udgangsmodul.\n" +
+                        "– Ledningsterminalerne er mærket ØV/ØH/NV/NH; dette er 2-tryks-fortrådningen af indsatsen.\n" +
+                        "– Svagstrømsledere tilsluttes forfra i skæreklemmer med den medfølgende montagebit.\n" +
+                        "– Tryk og lysdioder har separate klemmer med hver sin fælles 0-klemme og kan derfor forsynes fra to forskellige SELV-strømforsyninger.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -528,22 +832,37 @@ namespace Ihc.Vis.Catalog
                     .Name("Beolink 4")
                     .Note("IR fjernbetjening med 16 indgange")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Light + 0")
-                    .AddInput("Light + GO")
-                    .AddInput("Light + Grøn")
-                    .AddInput("Light + Gul")
-                    .AddInput("Light + Blå")
-                    .AddInput("Light + Rød")
-                    .AddInput("Light + ^")
-                    .AddInput("Light + v")
-                    .AddInput("Light + Pil venstre")
-                    .AddInput("Light + Pil Højre")
-                    .AddInput("Light + Store")
-                    .AddInput("Light + 1")
-                    .AddInput("Light + 2")
-                    .AddInput("Light + 3")
-                    .AddInput("Light + 4")
-                    .AddInput("Light + 5")
+                    .AddInput("Light + 0", i => i.Documentation("Puls-indgang; typisk sluk."))
+                    .AddInput("Light + GO", i => i.Documentation("Puls-indgang; typisk tænd."))
+                    .AddInput("Light + Grøn", i => i.Documentation("Følg-indgang; farvetast, typisk scenarie."))
+                    .AddInput("Light + Gul", i => i.Documentation("Følg-indgang; farvetast, typisk scenarie."))
+                    .AddInput("Light + Blå", i => i.Documentation("Følg-indgang; farvetast, typisk scenarie."))
+                    .AddInput("Light + Rød", i => i.Documentation("Følg-indgang; farvetast, typisk scenarie."))
+                    .AddInput("Light + ^", i => i.Documentation("Følg-indgang; typisk regulér op (langt tryk dæmper)."))
+                    .AddInput("Light + v", i => i.Documentation("Følg-indgang; typisk regulér ned (langt tryk dæmper)."))
+                    .AddInput("Light + Pil venstre", i => i.Documentation("Følg-indgang; typisk persienne/jalousi ned."))
+                    .AddInput("Light + Pil Højre", i => i.Documentation("Følg-indgang; typisk persienne/jalousi op."))
+                    .AddInput("Light + Store", i => i.Documentation("Puls-indgang; indgår også i kombinationerne Light + 6–9."))
+                    .AddInput("Light + 1", i => i.Documentation("Puls-indgang; typisk scenarie 1."))
+                    .AddInput("Light + 2", i => i.Documentation("Puls-indgang; typisk scenarie 2."))
+                    .AddInput("Light + 3", i => i.Documentation("Puls-indgang; typisk scenarie 3."))
+                    .AddInput("Light + 4", i => i.Documentation("Puls-indgang; typisk scenarie 4."))
+                    .AddInput("Light + 5", i => i.Documentation("Puls-indgang; typisk scenarie 5."))
+                    .Documentation(
+                        "Tastaturkort for Bang & Olufsen Beo4-fjernbetjeningen med 16 indgange; " +
+                        "trykkene modtages af IHC IR-modtageren for B&O (FUGA 16 kanal)." +
+                        "\n\nAnvendelse\n" +
+                        "Når en B&O-fjernbetjening (Beo4/Beo5) skal styre belysning og brugsgenstande i IHC-anlægget. " +
+                        "IR-modtageren forstår kun tryk i Light mode; hvert Light-tryk optræder som en selvstændig indgang i programmet. " +
+                        "Modtageren forbindes direkte til en inputport på controlleren og er dermed et decentralt inputmodul." +
+                        "\n\nVirkemåde\n" +
+                        "– Hver indgang aktiveres, når den tilhørende Light-tastekombination modtages.\n" +
+                        "– Puls-taster giver et kort signal til scenarier, kip mv.; Følg-taster holder indgangen aktiv, så længe tasten holdes — fx til lysdæmpning (1.2).\n" +
+                        "– Ud over de 16 indgange dækker tast-til-input-tabellen kombinationerne Light + 6–9 (Store + 1–4) og Beo Nøglering." +
+                        "\n\nTilslutning\n" +
+                        "– IR-modtageren 506D6501 forbindes direkte til en inputport på IHC controlleren; adresseringen bestemmes af modtagerens ledningstilslutning.\n" +
+                        "– Op til 8 modtagere kan serieforbindes; maks. 300 m kabel, dog maks. 100 m mellem komponenterne. Anbefalet kabel: IHC LINK-10 NOPOVIC (5×2×0,6 mm).\n" +
+                        "– Modtageren må ikke placeres i direkte sollys/kunstlys; hold afstand til plasma-tv (0–3 m uegnet).")
                     .Grammar(BuiltInCatalogGrammar.G_a42a487c)
                     .Build();
             return definition with
@@ -561,22 +880,34 @@ namespace Ihc.Vis.Catalog
                     .Name("Beolink1000")
                     .Note("IR fjernbetjening med 12 indgange")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Light + 0")
-                    .AddInput("Light + Play")
+                    .AddInput("Light + 0", i => i.Documentation("Puls-indgang; typisk sluk."))
+                    .AddInput("Light + Play", i => i.Documentation("Puls-indgang; typisk tænd (svarer til Beo4's Light + GO)."))
+                    .AddInput("Not in use", i => i.Documentation("Fire pladser på Beo4-kortets farvetast-positioner; kan ikke aktiveres fra Beolink 1000."))
                     .AddInput("Not in use")
                     .AddInput("Not in use")
                     .AddInput("Not in use")
-                    .AddInput("Not in use")
-                    .AddInput("Light + ^")
-                    .AddInput("Light + v")
-                    .AddInput("Light + Pil venstre")
-                    .AddInput("Light + Pil Højre")
-                    .AddInput("Light + Store")
-                    .AddInput("Light + 1")
-                    .AddInput("Light + 2")
-                    .AddInput("Light + 3")
-                    .AddInput("Light + 4")
-                    .AddInput("Light + 5")
+                    .AddInput("Light + ^", i => i.Documentation("Følg-indgang; typisk regulér op (langt tryk dæmper)."))
+                    .AddInput("Light + v", i => i.Documentation("Følg-indgang; typisk regulér ned (langt tryk dæmper)."))
+                    .AddInput("Light + Pil venstre", i => i.Documentation("Følg-indgang; typisk persienne/jalousi ned."))
+                    .AddInput("Light + Pil Højre", i => i.Documentation("Følg-indgang; typisk persienne/jalousi op."))
+                    .AddInput("Light + Store", i => i.Documentation("Puls-indgang."))
+                    .AddInput("Light + 1", i => i.Documentation("Puls-indgang; typisk scenarie 1."))
+                    .AddInput("Light + 2", i => i.Documentation("Puls-indgang; typisk scenarie 2."))
+                    .AddInput("Light + 3", i => i.Documentation("Puls-indgang; typisk scenarie 3."))
+                    .AddInput("Light + 4", i => i.Documentation("Puls-indgang; typisk scenarie 4."))
+                    .AddInput("Light + 5", i => i.Documentation("Puls-indgang; typisk scenarie 5."))
+                    .Documentation(
+                        "Tastaturkort for Bang & Olufsen Beolink 1000-fjernbetjeningen med 12 anvendelige indgange; " +
+                        "trykkene modtages af IHC IR-modtageren for B&O." +
+                        "\n\nAnvendelse\n" +
+                        "Som Beo4-tastaturkortet, men for den ældre Beolink 1000-håndsender: styring af belysning og brugsgenstande via IR-modtageren, der forbindes direkte til en inputport på IHC controlleren. " +
+                        "Def'en har 16 indgangspladser, men de fire, der på Beo4-kortet er farvetasterne (Grøn/Gul/Blå/Rød), hedder her Not in use, så kun 12 kanaler er anvendelige." +
+                        "\n\nVirkemåde\n" +
+                        "– Hver indgang aktiveres, når den tilhørende Light-tastekombination modtages.\n" +
+                        "– Puls-taster giver et kort signal til scenarier, kip mv.; Følg-taster holder indgangen aktiv, så længe tasten holdes — fx til lysdæmpning (1.2)." +
+                        "\n\nTilslutning\n" +
+                        "– IR-modtageren 506D6501 forbindes direkte til en inputport på IHC controlleren; adresseringen bestemmes af modtagerens ledningstilslutning.\n" +
+                        "– Op til 8 modtagere kan serieforbindes; maks. 300 m kabel, dog maks. 100 m mellem komponenterne. Anbefalet kabel: IHC LINK-10 NOPOVIC (5×2×0,6 mm).")
                     .Grammar(BuiltInCatalogGrammar.G_a42a487c)
                     .Build();
             return definition with
@@ -594,22 +925,34 @@ namespace Ihc.Vis.Catalog
                     .Name("Beolink5000")
                     .Note("IR fjernbetjening med 12 indgange")
                     .Attribute("icon", "_0x85")
-                    .AddInput("0")
-                    .AddInput("Play")
+                    .AddInput("0", i => i.Documentation("Puls-indgang; typisk sluk."))
+                    .AddInput("Play", i => i.Documentation("Puls-indgang; typisk tænd."))
+                    .AddInput("Not in use", i => i.Documentation("Fire pladser på Beo4-kortets farvetast-positioner (Grøn/Gul/Blå/Rød); kan ikke aktiveres fra Beolink 5000."))
                     .AddInput("Not in use")
                     .AddInput("Not in use")
                     .AddInput("Not in use")
-                    .AddInput("Not in use")
-                    .AddInput("^")
-                    .AddInput("v")
-                    .AddInput("Pil venstre")
-                    .AddInput("Pil Højre")
-                    .AddInput("Store")
-                    .AddInput("1")
-                    .AddInput("2")
-                    .AddInput("3")
-                    .AddInput("4")
-                    .AddInput("5")
+                    .AddInput("^", i => i.Documentation("Følg-indgang; typisk regulér op (langt tryk dæmper)."))
+                    .AddInput("v", i => i.Documentation("Følg-indgang; typisk regulér ned (langt tryk dæmper)."))
+                    .AddInput("Pil venstre", i => i.Documentation("Følg-indgang; typisk persienne/jalousi ned."))
+                    .AddInput("Pil Højre", i => i.Documentation("Følg-indgang; typisk persienne/jalousi op."))
+                    .AddInput("Store", i => i.Documentation("Puls-indgang."))
+                    .AddInput("1", i => i.Documentation("Puls-indgang; typisk scenarie 1."))
+                    .AddInput("2", i => i.Documentation("Puls-indgang; typisk scenarie 2."))
+                    .AddInput("3", i => i.Documentation("Puls-indgang; typisk scenarie 3."))
+                    .AddInput("4", i => i.Documentation("Puls-indgang; typisk scenarie 4."))
+                    .AddInput("5", i => i.Documentation("Puls-indgang; typisk scenarie 5."))
+                    .Documentation(
+                        "Tastaturkort for Bang & Olufsen Beolink 5000-fjernbetjeningen med 12 anvendelige indgange; " +
+                        "trykkene modtages af IHC IR-modtageren for B&O." +
+                        "\n\nAnvendelse\n" +
+                        "Som Beo4-tastaturkortet, men for Beolink 5000-håndsenderen: styring af belysning og brugsgenstande via IR-modtageren, der forbindes direkte til en inputport på IHC controlleren. " +
+                        "Som på Beolink 1000 er farvetasternes fire kanaler ikke tilgængelige, så der er 12 anvendelige indgange; tastenavnene er her uden \"Light +\"-præfiks." +
+                        "\n\nVirkemåde\n" +
+                        "– Hver indgang aktiveres, når det tilhørende tastetryk modtages (tryk i Light mode).\n" +
+                        "– Puls-taster giver et kort signal til scenarier, kip mv.; Følg-taster holder indgangen aktiv, så længe tasten holdes — fx til lysdæmpning (1.2)." +
+                        "\n\nTilslutning\n" +
+                        "– IR-modtageren 506D6501 forbindes direkte til en inputport på IHC controlleren; adresseringen bestemmes af modtagerens ledningstilslutning.\n" +
+                        "– Op til 8 modtagere kan serieforbindes; maks. 300 m kabel, dog maks. 100 m mellem komponenterne. Anbefalet kabel: IHC LINK-10 NOPOVIC (5×2×0,6 mm).")
                     .Grammar(BuiltInCatalogGrammar.G_a42a487c)
                     .Build();
             return definition with
@@ -627,22 +970,54 @@ namespace Ihc.Vis.Catalog
                     .Name("07#IR fjernbetjening - 16 Tryk")
                     .Note("IR fjernbetjening med 16 indgange")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk 1", i => i.Note("Puls (Beo4 = Light + 0)"))
-                    .AddInput("Tryk 2", i => i.Note("Puls (Beo4 = Light + Go)"))
-                    .AddInput("Tryk 3", i => i.Note("Følg (Beo4 = Light + Grøn)"))
-                    .AddInput("Tryk 4", i => i.Note("Følg (Beo4 = Light + Gul)"))
-                    .AddInput("Tryk 5", i => i.Note("Følg (Beo4 = Light + Blå)"))
-                    .AddInput("Tryk 6", i => i.Note("Følg (Beo4 = Light + Rød)"))
-                    .AddInput("Tryk 7", i => i.Note("Følg (Beo4 = Light + ^)"))
-                    .AddInput("Tryk 8", i => i.Note("Følg (Beo4 = Light + v)"))
-                    .AddInput("Tryk 9", i => i.Note("Følg (Beo4 = Light + <<)"))
-                    .AddInput("Tryk 10", i => i.Note("Følg (Beo4 = Light + >>)"))
-                    .AddInput("Tryk 11", i => i.Note("(Puls Beo4 = Light + Store)"))
-                    .AddInput("Tryk 12", i => i.Note("(Puls Beo4 = Light + 1)"))
-                    .AddInput("Tryk 13", i => i.Note("(Puls Beo4 = Light + 2)"))
-                    .AddInput("Tryk 14", i => i.Note("(Puls Beo4 = Light + 3)"))
-                    .AddInput("Tryk 15", i => i.Note("(Puls Beo4 = Light + 4)"))
-                    .AddInput("Tryk 16", i => i.Note("(Puls Beo4 = Light + 5)"))
+                    .AddInput("Tryk 1", i => i.Note("Puls (Beo4 = Light + 0)")
+                        .Documentation("Puls-indgang (Beo4-ækvivalent: Light + 0)."))
+                    .AddInput("Tryk 2", i => i.Note("Puls (Beo4 = Light + Go)")
+                        .Documentation("Puls-indgang (Beo4-ækvivalent: Light + Go)."))
+                    .AddInput("Tryk 3", i => i.Note("Følg (Beo4 = Light + Grøn)")
+                        .Documentation("Følg-indgang (Beo4-ækvivalent: Light + Grøn)."))
+                    .AddInput("Tryk 4", i => i.Note("Følg (Beo4 = Light + Gul)")
+                        .Documentation("Følg-indgang (Beo4-ækvivalent: Light + Gul)."))
+                    .AddInput("Tryk 5", i => i.Note("Følg (Beo4 = Light + Blå)")
+                        .Documentation("Følg-indgang (Beo4-ækvivalent: Light + Blå)."))
+                    .AddInput("Tryk 6", i => i.Note("Følg (Beo4 = Light + Rød)")
+                        .Documentation("Følg-indgang (Beo4-ækvivalent: Light + Rød)."))
+                    .AddInput("Tryk 7", i => i.Note("Følg (Beo4 = Light + ^)")
+                        .Documentation("Følg-indgang (Beo4-ækvivalent: Light + ^)."))
+                    .AddInput("Tryk 8", i => i.Note("Følg (Beo4 = Light + v)")
+                        .Documentation("Følg-indgang (Beo4-ækvivalent: Light + v)."))
+                    .AddInput("Tryk 9", i => i.Note("Følg (Beo4 = Light + <<)")
+                        .Documentation("Følg-indgang (Beo4-ækvivalent: Light + <<)."))
+                    .AddInput("Tryk 10", i => i.Note("Følg (Beo4 = Light + >>)")
+                        .Documentation("Følg-indgang (Beo4-ækvivalent: Light + >>)."))
+                    .AddInput("Tryk 11", i => i.Note("(Puls Beo4 = Light + Store)")
+                        .Documentation("Puls-indgang (Beo4-ækvivalent: Light + Store)."))
+                    .AddInput("Tryk 12", i => i.Note("(Puls Beo4 = Light + 1)")
+                        .Documentation("Puls-indgang (Beo4-ækvivalent: Light + 1)."))
+                    .AddInput("Tryk 13", i => i.Note("(Puls Beo4 = Light + 2)")
+                        .Documentation("Puls-indgang (Beo4-ækvivalent: Light + 2)."))
+                    .AddInput("Tryk 14", i => i.Note("(Puls Beo4 = Light + 3)")
+                        .Documentation("Puls-indgang (Beo4-ækvivalent: Light + 3)."))
+                    .AddInput("Tryk 15", i => i.Note("(Puls Beo4 = Light + 4)")
+                        .Documentation("Puls-indgang (Beo4-ækvivalent: Light + 4)."))
+                    .AddInput("Tryk 16", i => i.Note("(Puls Beo4 = Light + 5)")
+                        .Documentation("Puls-indgang (Beo4-ækvivalent: Light + 5)."))
+                    .Documentation(
+                        "LK's egen 16-kanals IR-fjernbetjening til det ældre IHC IR-system; " +
+                        "de 16 tryk modtages af OPUS66 IHC IR-modtageren." +
+                        "\n\nAnvendelse\n" +
+                        "Fjernstyring af belysning og brugsgenstande i det ældre IHC IR-system: håndsender og OPUS66-modtager udgør et 16-kanals fjernbetjeningssystem. " +
+                        "Modtageren forbindes direkte til en inputport på controlleren og er dermed et decentralt inputmodul. " +
+                        "Håndsenderen er ikke B&O-kompatibel — til det nye system, se IR fjernbetjening - 8 Tryk." +
+                        "\n\nVirkemåde\n" +
+                        "– Hvert tryk er en selvstændig indgang i programmet; Puls-tryk giver et kort signal (scenarier, kip mv.), mens Følg-tryk holder indgangen aktiv, så længe tasten holdes — fx til lysdæmpning.\n" +
+                        "– Beo4-ækvivalenten er angivet pr. tryk, så programmering kan genbruges på tværs af IR-systemerne.\n" +
+                        "– Modtagerens vandrette tangent kan betjenes i hver side og har samme funktion som kanal 1 og 2 på fjernbetjeningen." +
+                        "\n\nTilslutning\n" +
+                        "– OPUS66 IR-modtageren forbindes direkte til en inputport på IHC controlleren; adresseringen bestemmes af modtagerens ledningstilslutning.\n" +
+                        "– Op til 8 IR-modtagere kan serieforbindes for at sikre modtageforhold i større lokaler.\n" +
+                        "– Svagstrømsledere tilsluttes via skæreklemme med den vedlagte montage-bit; anbefalet kabel IHC LINK NOPOVIC.\n" +
+                        "– Modtageren må ikke placeres i direkte sollys eller kunstigt lys.")
                     .Grammar(BuiltInCatalogGrammar.G_a42a487c)
                     .Build();
             return definition with
@@ -660,14 +1035,28 @@ namespace Ihc.Vis.Catalog
                     .Name("06#IR fjernbetjening - 8 Tryk")
                     .Note("IR fjernbetjening med 8 indgange")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk 1")
-                    .AddInput("Tryk 2")
-                    .AddInput("Tryk 3")
-                    .AddInput("Tryk 4")
-                    .AddInput("Tryk 5")
-                    .AddInput("Tryk 6")
-                    .AddInput("Tryk 7")
-                    .AddInput("Tryk 8")
+                    .AddInput("Tryk 1", i => i.Documentation("Puls-indgang (Beo4-ækvivalent: Light + 0)."))
+                    .AddInput("Tryk 2", i => i.Documentation("Puls-indgang (Beo4-ækvivalent: Light + GO)."))
+                    .AddInput("Tryk 3", i => i.Documentation("Kontinuert/Følg-indgang (Beo4-ækvivalent: Light + grøn)."))
+                    .AddInput("Tryk 4", i => i.Documentation("Kontinuert/Følg-indgang (Beo4-ækvivalent: Light + gul)."))
+                    .AddInput("Tryk 5", i => i.Documentation("Kontinuert/Følg-indgang (Beo4-ækvivalent: Light + blå)."))
+                    .AddInput("Tryk 6", i => i.Documentation("Kontinuert/Følg-indgang (Beo4-ækvivalent: Light + rød)."))
+                    .AddInput("Tryk 7", i => i.Documentation("Kontinuert/Følg-indgang (Beo4-ækvivalent: Light + ^)."))
+                    .AddInput("Tryk 8", i => i.Documentation("Kontinuert/Følg-indgang (Beo4-ækvivalent: Light + v)."))
+                    .Documentation(
+                        "LK IHC Control IR-fjernbetjening med 8 taster (B&O-kompatibelt sendesystem); " +
+                        "trykkene modtages af en B&O-kompatibel IR-modtager." +
+                        "\n\nAnvendelse\n" +
+                        "Fjernstyring af funktioner i IHC-systemet med en LK-håndsender. " +
+                        "Fjernbetjeningen benytter samme sendesystem som B&O's Beo4 og rettes direkte mod den ønskede modtager (fx FUGA IR-modtageren 506D6501). " +
+                        "Tasterne leveres som løse symboltaster, der klikkes på, så symbolet afspejler funktionen." +
+                        "\n\nVirkemåde\n" +
+                        "– Fjernbetjeningen indsættes som komponent i IHC Visual, hvorefter de otte tryk kan bruges frit i programmeringen; tastnummeret svarer til den databit, der er ON ved signalering.\n" +
+                        "– Puls-tryk sender ét signal (scenarier, kip mv.); Følg-tryk repeterer signalet, så længe tasten holdes — fx til lysdæmpning (1.2).\n" +
+                        "– Den blå lysdiode blinker kortvarigt ved tast 1–2 og blinker, så længe signalet udsendes, ved tast 3–8." +
+                        "\n\nTilslutning\n" +
+                        "– Kræver en B&O-kompatibel IR-modtager, fx FUGA-modtageren 506D6501, som forbindes direkte til en inputport på IHC controlleren.\n" +
+                        "– Batterier: 2 stk. AAA (LR03) Alkaline; isættes før brug.")
                     .Grammar(BuiltInCatalogGrammar.G_a42a487c)
                     .Build();
             return definition with
@@ -685,7 +1074,19 @@ namespace Ihc.Vis.Catalog
                     .Name("Mini Modul 1 tryk")
                     .Attribute("loced", "no")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk")
+                    .AddInput("Tryk", i => i.Documentation("Sluttekontakt; ON mens der trykkes."))
+                    .Documentation(
+                        "Lille svagstrømstryk (25 × 25 mm) med ét tryk til montage direkte på underlag; " +
+                        "bruges hvor et FUGA/OPUS-tryk er for stort." +
+                        "\n\nAnvendelse\n" +
+                        "Til svagstrømsinstallationer, hvor transformer, kiprelæer og styremoduler sidder i gruppetavlen. " +
+                        "Trykpladen kan skiftes til en med lampe, hvis der ønskes ledelys; modulet kan bruges som rent ledelys ved at klippe 4 mm af kontaktfjedrene (trykfunktionen ophæves)." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykket forbindes til et 24 V indgangsmodul.\n" +
+                        "– De afisolerede ledningsender placeres under fjederklemmerne i soklen; ved sløjfning kun to ledere (maks. Ø 0,7 mm), snoet om hinanden.\n" +
+                        "– Soklen fastgøres med træskruer (maks. størrelse 4) og må kun monteres på ikke-brændbare overflader; kabelhul i væg maks. Ø 15 mm.")
                     .Grammar(BuiltInCatalogGrammar.G_9ad2f0dd)
                     .Build();
             return definition with
@@ -703,8 +1104,20 @@ namespace Ihc.Vis.Catalog
                     .Name("Mini Modul 2 tryk")
                     .Attribute("loced", "no")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (Øverst)")
-                    .AddInput("Tryk (Nederst)")
+                    .AddInput("Tryk (Øverst)", i => i.Documentation("Sluttekontakt, øverste tryk; ON mens der trykkes."))
+                    .AddInput("Tryk (Nederst)", i => i.Documentation("Sluttekontakt, nederste tryk; ON mens der trykkes."))
+                    .Documentation(
+                        "Lille svagstrømstryk med to tryk til montage direkte på underlag; " +
+                        "bruges hvor et FUGA/OPUS-tryk er for stort." +
+                        "\n\nAnvendelse\n" +
+                        "Til svagstrømsinstallationer med transformer, kiprelæer og styremoduler i gruppetavlen — som Mini Modul 1 tryk, men med to tryk. " +
+                        "Trykpladerne kan skiftes til trykplader med lampe for ledelys." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul.\n" +
+                        "– De afisolerede ledningsender placeres under fjederklemmerne i soklen; ved sløjfning kun to ledere (maks. Ø 0,7 mm), snoet om hinanden.\n" +
+                        "– Soklen fastgøres med træskruer (maks. størrelse 4) og må kun monteres på ikke-brændbare overflader.")
                     .Grammar(BuiltInCatalogGrammar.G_64613d55)
                     .Build();
             return definition with
@@ -722,9 +1135,21 @@ namespace Ihc.Vis.Catalog
                     .Name("Mini Modul 3 tryk")
                     .Attribute("loced", "no")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Tryk (Øverst)")
-                    .AddInput("Tryk (Midt)")
-                    .AddInput("Tryk (Nederst)")
+                    .AddInput("Tryk (Øverst)", i => i.Documentation("Sluttekontakt, øverste tryk; ON mens der trykkes."))
+                    .AddInput("Tryk (Midt)", i => i.Documentation("Sluttekontakt, midterste tryk; ON mens der trykkes."))
+                    .AddInput("Tryk (Nederst)", i => i.Documentation("Sluttekontakt, nederste tryk; ON mens der trykkes."))
+                    .Documentation(
+                        "Lille svagstrømstryk med tre tryk til montage direkte på underlag; " +
+                        "bruges hvor et FUGA/OPUS-tryk er for stort." +
+                        "\n\nAnvendelse\n" +
+                        "Til svagstrømsinstallationer med transformer, kiprelæer og styremoduler i gruppetavlen — som Mini Modul 1 tryk, men med tre tryk. " +
+                        "Trykpladerne kan skiftes til trykplader med lampe for ledelys." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene (1.2)." +
+                        "\n\nTilslutning\n" +
+                        "– Trykkene forbindes til et 24 V indgangsmodul.\n" +
+                        "– De afisolerede ledningsender placeres under fjederklemmerne i soklen; ved sløjfning kun to ledere (maks. Ø 0,7 mm), snoet om hinanden.\n" +
+                        "– Soklen fastgøres med træskruer (maks. størrelse 4) og må kun monteres på ikke-brændbare overflader.")
                     .Grammar(BuiltInCatalogGrammar.G_6fd88895)
                     .Build();
             return definition with
@@ -742,7 +1167,22 @@ namespace Ihc.Vis.Catalog
                     .Name("11#Magnetkontaktsæt")
                     .Note("Magnetkontaktsæt")
                     .Attribute("icon", "_0x83")
-                    .AddInput("Indgang", i => i.Attribute("inivalue", "on"))
+                    .AddInput("Indgang", i => i.Attribute("inivalue", "on")
+                        .Documentation("NC-magnetkontakt: ON så længe døren/vinduet er lukket, OFF når magneten fjernes ved åbning — eller ved ledningsbrud, hvilket gør kredsen fejlsikker. Startværdi on."))
+                    .Documentation(
+                        "Magnetkontakt (NC) til skalsikring i IHC Control Alarm, planforsænket i dør- eller vindueskarm; " +
+                        "ON når døren/vinduet er lukket." +
+                        "\n\nAnvendelse\n" +
+                        "Som del af skalsikringen i IHC Control Alarm-anlæg: kontaktsæt monteres på vindues- og døråbninger, optimalt samtlige i stueplan. " +
+                        "Magneten monteres i det bevægelige element, relæenheden i karmen; installationen skal være skjult udefra. " +
+                        "Må ikke monteres tæt på jernbeslag eller i magnetisk ledende metal. " +
+                        "Kan planforsænket montering ikke lade sig gøre, bruges påbygningssættet 120B1252." +
+                        "\n\nVirkemåde\n" +
+                        "– Bruges typisk i alarm- og overvågningsprogrammering; kablet indeholder også to ledere til sabotagesløjfen, som føres til en Sabotagekreds." +
+                        "\n\nTilslutning\n" +
+                        "– Relæenhedens to ledere forbindes til et 24 V indgangsmodul; kablets to øvrige ledere er til sabotagesløjfen.\n" +
+                        "– Relæenheden leveres med 2 m kabel (Ø 3,2 mm, 4 × 0,14 mm²); hulmål Ø 10 mm, magnet dybde min. 38 mm, relædel dybde min. 40 mm.\n" +
+                        "– Sløjfning af flere kontaktsæt og sabotagekredse sker via sløjfeindsatsen 507D6515/120B1255.")
                     .Grammar(BuiltInCatalogGrammar.G_f4e897b5)
                     .Build();
             return definition with
@@ -760,8 +1200,25 @@ namespace Ihc.Vis.Catalog
                     .Name("14#Røgsensor")
                     .Note("Røgsensor")
                     .Attribute("icon", "_0x83")
-                    .AddInput("Indgang", i => i.Attribute("inivalue", "on"))
-                    .AddOutput("Forsyning", o => o.Attribute("inivalue", "on"))
+                    .AddInput("Indgang", i => i.Attribute("inivalue", "on")
+                        .Documentation("Alarmsignal fra relæsoklen; programmet udløser alarm ved røg. Startværdi on."))
+                    .AddOutput("Forsyning", o => o.Attribute("inivalue", "on")
+                        .Documentation("Udgang, der styrer sensorens spændingsforsyning; kortvarig afbrydelse afstiller alarmen, og det programmeres på et betjeningstryk (obligatorisk). Startværdi on."))
+                    .Documentation(
+                        "Optisk røgsensor uden intern lydgiver til IHC Control Alarm; " +
+                        "alarmsignalet læses som en indgang, og forsyningen styres af en udgang, så alarmen kan afstilles." +
+                        "\n\nAnvendelse\n" +
+                        "Registrering af røgudvikling: som minimum placeres en sensor mellem soverum og mulige brandkilder (køkken, garage, ildsteder), og gerne en ud for hvert sovested. " +
+                        "Sensoren har ingen intern lydgiver og skal tilsluttes Lydgiver intern — og gerne Lydgiver ekstern. " +
+                        "Røgsensoren skal installeres med Backup modul for at opfylde bygningsreglementet for småhuse, § 4.3.10. " +
+                        "Til forurenede miljøer (garage/værksted) bruges den optisk/termiske variant FFS06724621." +
+                        "\n\nVirkemåde\n" +
+                        "– Programmet reagerer typisk ved at aktivere lydgivere, tænde redningsvejsbelysning og slukke øvrige 230 V-udgange.\n" +
+                        "– Detektorens lysdiode: slukket = normal tilstand, rød = alarm." +
+                        "\n\nTilslutning\n" +
+                        "– Alarmsignalet føres fra relæsoklens kontakt til et IHC Input 24 V d.c./3 mA-modul, mens Forsyning adresseres på et IHC Output 24 V-modul, der forsyner soklens 24 V/0 V-klemmer; selve forsyningen kommer fra IHC-systemet via Alarm backupmodulet.\n" +
+                        "– Røgsensoren kan kun anvendes sammen med relæsokkel type FFS06724020; soklen kan gøres låsende, så sensoren ikke kan fjernes uden værktøj.\n" +
+                        "– I den ældre generation parallelkobles op til 10 røgmeldere (NO), så den første, der aktiveres, udløser alarmen; kabling med IHC-Link Nopovic 3×2 og batteriadapter.")
                     .Grammar(BuiltInCatalogGrammar.G_f4e897b5)
                     .Build();
             return definition with
@@ -779,8 +1236,25 @@ namespace Ihc.Vis.Catalog
                     .Name("15#Gassensor")
                     .Note("Gassensor med to indgange. NC og NO")
                     .Attribute("icon", "_0x83")
-                    .AddInput("Indgang NC", i => i.Attribute("inivalue", "on"))
-                    .AddInput("Indgang NO", i => i.Attribute("inivalue", "off"))
+                    .AddInput("Indgang NC", i => i.Attribute("inivalue", "on")
+                        .Documentation("Brydekontakt (klemme 1 og 3); ON i normaltilstand, bryder ved gasalarm — kredsen er dermed også overvåget mod ledningsbrud. Startværdi on."))
+                    .AddInput("Indgang NO", i => i.Attribute("inivalue", "off")
+                        .Documentation("Sluttekontakt (klemme 1 og 2); åben i normaltilstand, slutter ved gasalarm. Det er NO-funktionen, vejledningen viser tilsluttet 24 V inputmodulet. Startværdi off."))
+                    .Documentation(
+                        "IHC Control Alarm gassensor mod udslip af naturgas, flaskegas og bygas; " +
+                        "to indgange i programmet, en NC- og en NO-kontakt." +
+                        "\n\nAnvendelse\n" +
+                        "Placeres indendørs i tørre rum med fare for gasudslip, fx fyrrum eller bryggers: ved naturgas (metan) og bygas i loftet, ved flaskegas (propan/butan) 0,5–1 m over gulvet. " +
+                        "Anvendes sammen med Magnetventil NC, gas, der lukkes ved alarm. " +
+                        "Sensoren skal tilsluttes minimum to interne lydgivere (Lydgiver intern) — og alarmen bør sendes ud af bygningen via et IHC Control Voice Modem." +
+                        "\n\nVirkemåde\n" +
+                        "– Ved gasudslip udsender sensoren en høj hyletone, og den røde lysdiode blinker — før der opstår eksplosionsfare. Programmet reagerer ved at lukke magnetventilen og aktivere lydgivere.\n" +
+                        "– Ved tilslutning udfører sensoren en selvtest (hyletone + rød diode i 4–6 sek.); konstant gul diode betyder klar.\n" +
+                        "– Sensoren bliver håndvarm ved normal drift og kan reagere på dampe fra stærke rengøringsmidler." +
+                        "\n\nTilslutning\n" +
+                        "– Alarmudgangen (NO, klemme 1 og 2) forbindes til et 24 V inputmodul; NC-funktionen ligger mellem klemme 1 og 3.\n" +
+                        "– Forsyning: 12 V DC fra IHC backupmodulet eller den medfølgende transformer (2 m ledning til en 230 V stikkontakt).\n" +
+                        "– Leveres med monteringsbeslag, skruer og rawlplugs; afprøves ugentligt med lightergas hen over føleren.")
                     .Grammar(BuiltInCatalogGrammar.G_f4e897b5)
                     .Build();
             return definition with
@@ -798,7 +1272,20 @@ namespace Ihc.Vis.Catalog
                     .Name("16#Vandsensor")
                     .Note("Vandsensor")
                     .Attribute("icon", "_0x83")
-                    .AddInput("Indgang", i => i.Attribute("inivalue", "on"))
+                    .AddInput("Indgang", i => i.Attribute("inivalue", "on")
+                        .Documentation("Læksensorens alarmudgang (NC); ON i normaltilstand, OFF ved detekteret vand. Startværdi on."))
+                    .Documentation(
+                        "Læksensor til forebyggelse af vandskader, fx i drypbakke under opvaske-/vaskemaskine; " +
+                        "alarmudgangen læses som én indgang." +
+                        "\n\nAnvendelse\n" +
+                        "Til forebyggelse af vandskader: sensoren monteres fx på en drypbakke under opvaske-/vaskemaskinen, ved ventilationsanlæg på loft eller vandafgreninger i bryggers. " +
+                        "Skumpuder til fastklæbning på gulvet er påmonteret." +
+                        "\n\nVirkemåde\n" +
+                        "– Sensoren er aktivt forsynet (10,8–30 V DC) og signalerer detekteret vand på sin alarmudgang.\n" +
+                        "– Bruges typisk i alarm- og varslingsprogrammering, evt. sammen med Magnetventil NO til brugsvand, så vandet lukkes ved lækage." +
+                        "\n\nTilslutning\n" +
+                        "– Sensoren har et fast 2 m kabel med 3-polet DIN-stik, der via et OPUS/LK FUGA audioudtag (508N6517 / 508D6116) forbindes til et IHC inputmodul, fx et LK IHC Control 24/3 inputmodul i en dåse med samlemuffer.\n" +
+                        "– Benforbindelser: ben 1 (brun) til 24 V, ben 2 (sort) alarmudgang, ben 3 (blå) 0 V.")
                     .Grammar(BuiltInCatalogGrammar.G_f4e897b5)
                     .Build();
             return definition with
@@ -816,7 +1303,21 @@ namespace Ihc.Vis.Catalog
                     .Name("03#PIR")
                     .Note("PIR")
                     .Attribute("icon", "_0x83")
-                    .AddInput("Tilstedeværelses indikering")
+                    .AddInput("Tilstedeværelses indikering", i => i.Documentation(
+                        "Puls ved bevægelse i synsfeltet; bruges til at starte en timer i programmet — PIR'en har ikke indbygget timer."))
+                    .Documentation(
+                        "Bevægelsesmelder (PIR) til 24 V-styringssystemer som IHC Control; " +
+                        "giver en puls, når en person bevæger sig ind i synsfeltet." +
+                        "\n\nAnvendelse\n" +
+                        "Automatisk lysstyring og tilstedeværelsesdetektering indendørs. " +
+                        "507D6311 (90°) monteres i normal afbryderhøjde i LK FUGA 1-modul dåser og underlag. " +
+                        "Sensoren kan reagere på genstande med hurtige temperaturskift (aircondition, ventilation, varmeapparater, sollys og reflekser)." +
+                        "\n\nVirkemåde\n" +
+                        "– Timerfunktionen ligger i programmet, typisk i blokkene i 1.4 PIR og Timer.\n" +
+                        "– Følsomheden kan indstilles fra 4 til 10 meter, og lysniveauet (10–1000 lux) kan indstilles på sensoren, så den fx kun reagerer i mørke." +
+                        "\n\nTilslutning\n" +
+                        "– Installationen udføres som 3-leder: 24 V, 0 V og PIR-udgang; udgangen forbindes til et 24 V indgangsmodul.\n" +
+                        "– Sensoren har dobbelte skrueløse klemmer (én stiv leder pr. hul).")
                     .Grammar(BuiltInCatalogGrammar.G_314c48d2)
                     .Build();
             return definition with
@@ -834,7 +1335,22 @@ namespace Ihc.Vis.Catalog
                     .Name("05#PIR alarm")
                     .Note("PIR med én indgang")
                     .Attribute("icon", "_0x83")
-                    .AddInput("Alarm detektion", i => i.Attribute("inivalue", "on"))
+                    .AddInput("Alarm detektion", i => i.Attribute("inivalue", "on")
+                        .Documentation("NC-alarmrelæ; ON i normaltilstand, bryder ved bevægelse — eller ved kabelbrud, så kredsen er fejlsikker. Startværdi on."))
+                    .Documentation(
+                        "Alarm-PIR (12 V fra backupmodulet) til bevægelsesdetektion i IHC Control Alarm-anlæg; " +
+                        "én NC-indgang i programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Bevægelsesdetektion i alarmanlægget — kun indendørs brug. " +
+                        "Placeres uforstyrret af varme-/ventilationsanlæg; 820B1263 monteres i 2,0–2,6 m højde, mens 120B1261 skal sidde min. 2,2 m over gulv for immunitet over for husdyr under 20 kg (immunitetsafstand 2 m). " +
+                        "820B1263 detekterer med både infrarøde stråler og mikrobølger; begge modeller har sabotagesikring, der udløses, hvis den fjernes eller åbnes med magt." +
+                        "\n\nVirkemåde\n" +
+                        "– Programmeres typisk, så OFF udløser alarm, når anlægget er tilkoblet (fx via Kodetastatur); sabotagekontakten føres til en Sabotagekreds.\n" +
+                        "– Lysdioden i fronten kan afhængigt af indstilling vise registreret bevægelse under test." +
+                        "\n\nTilslutning\n" +
+                        "– Alarmrelæet forbindes til et 24 V indgangsmodul.\n" +
+                        "– Forsyning: 12 V DC fra Backup modul.\n" +
+                        "– 120B1261: klemrække øverst i kapslingen, følsomhed via DIP-switche, separat NC sabotagekontakt; kan ved plan- eller 45°-montage sabotagesikres med en ekstra skrue.")
                     .Grammar(BuiltInCatalogGrammar.G_f4e897b5)
                     .Build();
             return definition with
@@ -852,8 +1368,22 @@ namespace Ihc.Vis.Catalog
                     .Name("04#PIR med skumringsrelæ")
                     .Note("PIR med to indgange")
                     .Attribute("icon", "_0x83")
-                    .AddInput("Tilstedeværelses indikering")
-                    .AddInput("Skumring", i => i.Attribute("inivalue", "on"))
+                    .AddInput("Tilstedeværelses indikering", i => i.Documentation(
+                        "Bevægelsesudgangen (terminal 1); giver en puls ved bevægelse i synsfeltet og bruges til at starte timerblokke i programmet."))
+                    .AddInput("Skumring", i => i.Attribute("inivalue", "on")
+                        .Documentation("Skumringsrelæet (terminal 4), open collector aktiv lav; ON når lysniveauet er under det indstillede niveau, så programmet fx kun tænder lys ved bevægelse i mørke. Startværdi on."))
+                    .Documentation(
+                        "PIR-sensor med to udgange til programmet: bevægelsesdetektering og separat skumringssignal; " +
+                        "180°-FUGA-PIR'en med skumringsrelæ." +
+                        "\n\nAnvendelse\n" +
+                        "Automatisk lysstyring, hvor både bevægelse og dagslysniveau skal indgå: beregnet til indendørs brug i IHC-systemet, monteret i 2,15 m højde med frit udsyn. " +
+                        "Sensoren aktiveres af genstande med hurtige temperaturskift (aircondition, ventilation, varmeapparater, kraftige lyskilder)." +
+                        "\n\nVirkemåde\n" +
+                        "– Fire drejeknapper under afdækningen indstiller følsomhed, lysniveau, lysniveaustyring af bevægelsesudgangen og dækningsområde.\n" +
+                        "– Timerfunktionen ligger i programmet, typisk i blokkene i 1.4 PIR og Timer." +
+                        "\n\nTilslutning\n" +
+                        "– Svagstrømsledningen føres til de 4 skæreklemmer: terminal 1 = bevægelsesudgang, terminal 2 = 24 V, terminal 3 = 0 V, terminal 4 = skumringsrelæ.\n" +
+                        "– Begge udgange forbindes til et 24 V indgangsmodul. Anbefalet kabel: IHC LINK-10 NOPOVIC.")
                     .Grammar(BuiltInCatalogGrammar.G_314c48d2)
                     .Build();
             return definition with
@@ -871,7 +1401,21 @@ namespace Ihc.Vis.Catalog
                     .Name("09#Skumringsrelæ")
                     .Note("Skumringssensor")
                     .Attribute("icon", "_0x83")
-                    .AddInput("Skumring", i => i.Attribute("inivalue", "on"))
+                    .AddInput("Skumring", i => i.Attribute("inivalue", "on")
+                        .Documentation("Aktiv når lysniveauet er under den indstillede lux-værdi (potentiometer, 2–200 lux); transistorudgangen trækker med et 0 V-signal. Typisk betingelse for udelys. Startværdi on."))
+                    .Documentation(
+                        "Skumringssensor til automatisk lysstyring efter det omgivende lysniveau; " +
+                        "indgangen aktiveres, når lyset falder under den indstillede lux-værdi." +
+                        "\n\nAnvendelse\n" +
+                        "Automatisk lysstyring af fx parkeringspladser, gangstier og indgangsbelysning afhængigt af det omgivende lysniveau. " +
+                        "Skumringsrelæet placeres, så det ikke udsættes for direkte sollys/lyskilder. " +
+                        "Skal dagslyset i stedet styre et lysniveau trinløst (dæmpere/1–10 V), bruges IHC Solsensoren 820B6305, der giver et PWM-signal, ikke en indgang." +
+                        "\n\nVirkemåde\n" +
+                        "– Indbygget hysterese (30–40 %) og tidsforsinkelse (ON op til ca. 1 min, OFF op til ca. 30 sek.) forhindrer blafren.\n" +
+                        "– En diodeindikering viser dagslysets øjeblikkelige lux-niveau under justering, uafhængigt af tidsforsinkelsen." +
+                        "\n\nTilslutning\n" +
+                        "– Udgangssignalet forbindes direkte til en indgang på et 24 V inputmodul; to klemmer til strømforsyning, én til udgangssignal.\n" +
+                        "– Anbefalet kabel til data og 24 V: IHC LINK 10 NOPOVIC; maks. 100 m.")
                     .Grammar(BuiltInCatalogGrammar.G_314c48d2)
                     .Build();
             return definition with
@@ -889,10 +1433,27 @@ namespace Ihc.Vis.Catalog
                     .Name("12#Kodetastatur")
                     .Note("Kodetastatur til adgangskontrol")
                     .Attribute("icon", "_0x85")
-                    .AddOutput("LK IHC Status", o => o.Backup().CableColour("Hvid"))
-                    .AddInput("Udgang 1", i => i.CableColour("Blå"))
-                    .AddInput("Udgang 2", i => i.CableColour("Violet"))
-                    .AddInput("Udgang 3", i => i.CableColour("Grå"))
+                    .AddOutput("LK IHC Status", o => o.Backup().CableColour("Hvid")
+                        .Documentation("Statussignal fra programmet (hvid leder, via 24 V outputmodul); styrer tastaturets røde/grønne dioder. Omfattet af backup."))
+                    .AddInput("Udgang 1", i => i.CableColour("Blå")
+                        .Documentation("Tastaturets udgang 1 (blå leder); læses af programmet via 24 V inputmodul."))
+                    .AddInput("Udgang 2", i => i.CableColour("Violet")
+                        .Documentation("Tastaturets udgang 2 (violet leder); læses af programmet via 24 V inputmodul."))
+                    .AddInput("Udgang 3", i => i.CableColour("Grå")
+                        .Documentation("Tastaturets udgang 3 (grå leder); læses af programmet via 24 V inputmodul."))
+                    .Documentation(
+                        "Kodetastatur (IP55) til IHC Control Alarm: til-/frakobling af alarmen udefra, forbikobling eller styring af elektrisk dørlås; " +
+                        "tre udgange læses som indgange." +
+                        "\n\nAnvendelse\n" +
+                        "Aktivering og deaktivering af alarmen udefra, forbikobling i forbikoblerzone eller styring af elektromagnetisk dørlås — funktionerne programmeres i controlleren, og LK har forprogrammerede funktionsblokke i IHC Visual, hvor tastaturets ind- og udgange forbindes direkte. " +
+                        "Monteres på dørkarm, ydervæg eller FUGA 2-modul indmuringsdåse. " +
+                        "Term IHC Controller kan ikke anvendes med IHC Control Alarm-konceptet." +
+                        "\n\nVirkemåde\n" +
+                        "– Tastaturet rummer 7 femcifrede koder (6 brugerkoder + 1 masterkode) og har tastaturlås ved kodegætning; en indbygget lydgiver kvitterer akustisk for korrekt/ukorrekt indtastning.\n" +
+                        "– Op til 14 tastaturer kan sammenkobles; bruger- og masterkoder overføres automatisk til alle tilsluttede tastaturer." +
+                        "\n\nTilslutning\n" +
+                        "– Tastaturet leveres med 4 m faststøbt IHC Link-10-kabel. Lederfarver: Orange/Sort = 24 V forsyning; Blå, Violet, Grå = udgange til 24 V inputmodul; Hvid = indgang fra 24 V outputmodul; Gul/Brun = kommunikation mellem tastaturer; Grøn/Rød = sabotage.\n" +
+                        "– Alle tilledninger er sikret mod kortslutning og fejlpolarisering.")
                     .Grammar(BuiltInCatalogGrammar.G_314c48d2)
                     .Build();
             return definition with
@@ -909,7 +1470,20 @@ namespace Ihc.Vis.Catalog
                     .CategoryPath("Datalinie produkter\\01#Input")
                     .Name("13#Sabotagekreds")
                     .Attribute("icon", "_0x83")
-                    .AddInput("Indgang (NC)", i => i.Attribute("inivalue", "on"))
+                    .AddInput("Indgang (NC)", i => i.Attribute("inivalue", "on")
+                        .Documentation("Sabotagesløjfen; ON så længe alle sabotagekontakter er lukkede og ledningsvejen ubrudt, OFF når en afdækning afmonteres eller et kabel klippes. Startværdi on."))
+                    .Documentation(
+                        "NC-sabotagesløjfe i IHC Control Alarm-installationen, typisk via sløjfeindsatsens sabotagekontakt; " +
+                        "indgangen er ON, når sløjfen er ubrudt." +
+                        "\n\nAnvendelse\n" +
+                        "Overvågning af alarminstallationens integritet: sløjfeindsatsen forbinder typisk to magnetkontaktsæt med sabotagekreds og bruges til sløjfning af IHC Control Alarm-installationer. " +
+                        "Sabotagekontakten aktiveres, når afdækningen afmonteres, og magnetkontaktsættenes ekstra ledere indgår i samme sløjfe." +
+                        "\n\nVirkemåde\n" +
+                        "– Programmeres typisk, så OFF udløser alarm/varsling, uanset om anlægget er tilkoblet." +
+                        "\n\nTilslutning\n" +
+                        "– Sløjfen forbindes til et 24 V indgangsmodul.\n" +
+                        "– Sløjfeindsatsen har 10 skæreklemmer til sløjfning (N1–N10), 2 skæreklemmer til sabotageswitchen (SI og SII) og 6 skrueklemmer (F1–F6) til sabotagesløjfe og magnetkontaktkredse; 6 brydepunkter (B1–B6) brydes med bor Ø 4–5 mm efter behov.\n" +
+                        "– Eksempel på kombination: to Nopovic 10-kabler + Nopovic 6 med to magnetkontaktsæt på F4/F5 og F5/F6 og sabotagesløjfer på F1/F2 og F2/F3.")
                     .Grammar(BuiltInCatalogGrammar.G_f4e897b5)
                     .Build();
             return definition with
@@ -926,7 +1500,17 @@ namespace Ihc.Vis.Catalog
                     .CategoryPath("Datalinie produkter\\01#Input")
                     .Name("08#Ringetryk")
                     .Attribute("icon", "_0x85")
-                    .AddInput("Indgang")
+                    .AddInput("Indgang", i => i.Documentation("Ringetrykkets sluttekontakt; ON mens der trykkes."))
+                    .Documentation(
+                        "Almindeligt ringetryk (sluttekontakt) forbundet til en 24 V IHC-indgang; " +
+                        "generisk rolle uden LK-varenummer." +
+                        "\n\nAnvendelse\n" +
+                        "Når et dørklokketryk skal indgå i programmet — fx til at lade IHC styre ringeklokken/lydgiveren, undertrykke ringning på bestemte tidspunkter eller bruge trykket til andre funktioner. " +
+                        "Vælg dette produkt frem for et FUGA/OPUS-tryk, når trykket sidder selvstændigt ved døren." +
+                        "\n\nVirkemåde\n" +
+                        "– Forbindes typisk til en lydgiver (Lydgiver intern eller Lydgiver ekstern) via programmet, evt. med tidsstyring eller puls-forlængelse i en funktionsblok." +
+                        "\n\nTilslutning\n" +
+                        "– Trykket forbindes til et 24 V indgangsmodul; se indgangsmodulets vejledning for klemmer og ledningsføring.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -944,8 +1528,22 @@ namespace Ihc.Vis.Catalog
                     .Name("17#Backup modul")
                     .Note("Backup modul til IHC Control i tilfælde af strømsvigt")
                     .Attribute("icon", "_0x83")
-                    .AddInput("12 V ok", i => i.Attribute("inivalue", "on").Note("On hvis ok"))
-                    .AddInput("24 V ok", i => i.Attribute("inivalue", "on").Note("On hvis ok"))
+                    .AddInput("12 V ok", i => i.Attribute("inivalue", "on").Note("On hvis ok")
+                        .Documentation("ON når 12 V-forsyningen (gassensor, PIR alarm 12 V) er i orden; OFF hvis grenen falder ud, så programmet kan varsle fejlen. Klemme 9. Startværdi on."))
+                    .AddInput("24 V ok", i => i.Attribute("inivalue", "on").Note("On hvis ok")
+                        .Documentation("ON når 24 V-forsyningen (controller, moduler, lydgivere) er i orden; OFF hvis grenen falder ud, så programmet kan varsle fejlen. Klemme 10. Startværdi on."))
+                    .Documentation(
+                        "Backupmodul med 12 V-akkumulator, der holder IHC Control Alarm fuldt funktionsdygtigt ved strømsvigt; " +
+                        "to overvågningsindgange i programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Akkumulatoren holder alarmanlægget fuldt funktionsdygtigt, selv om nettets elforsyning falder ud — obligatorisk ved røgsensorer i nybyggeri (bygningsreglementet for småhuse, § 4.3.10). " +
+                        "Backupmodulet holder hele tiden akkumulatoren opladet til fuld kapacitet (12 V, 2,2 Ah). " +
+                        "Kan kun anvendes med 72 W IHC-strømforsyning." +
+                        "\n\nVirkemåde\n" +
+                        "– Ved netudfald forsyner akkumulatoren anlægget. Ved maksimal belastning angives 39 minutter efter 0 års driftstid, 37 minutter efter 2 år og 27 minutter efter 5 år (alle ved 25 °C); den faktiske backuptid beregnes med LK's Beregningsskema for IHC Control Alarm Backup." +
+                        "\n\nTilslutning\n" +
+                        "– Forsynes med 24 V fra 72 W IHC-strømforsyningen; leverer 24 V til IHC Controller, Voice Modem, 24 V input-/outputmoduler og lydgivere samt 12 V til gassensor og PIR alarm 12 V.\n" +
+                        "– Overvågningsudgangene forbindes til et IHC Input 24 V d.c./3 mA-modul; IHC Input 24 V d.c./24 mA frarådes udtrykkeligt sammen med backupmodulet.")
                     .Grammar(BuiltInCatalogGrammar.G_f4e897b5)
                     .Build();
             return definition with
@@ -963,13 +1561,33 @@ namespace Ihc.Vis.Catalog
                     .Name("10#Temperatur sensor")
                     .Note("Temperatur sensor med rum- og gulvføler")
                     .Attribute("icon", "_0x83")
-                    .AddResource("resource_temperature", "Rumtemperatur", r => r.Note("").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Gulvtemperatur", r => r.Note("Valgfri ekstern gulvføler").Attribute("accessibility", "read"))
-                    .AddResource("resource_input", "Alarm", r => r.Note("Høj ved fejl").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Kalibrering af rumføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes"))
-                    .AddResource("resource_temperature", "Kalibrering af gulvføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes"))
+                    .AddResource("resource_temperature", "Rumtemperatur", r => r.Note("").Attribute("accessibility", "read")
+                        .Documentation("Målt rumtemperatur fra den indbyggede føler; læse-ressource, der opdateres fra sensoren."))
+                    .AddResource("resource_temperature", "Gulvtemperatur", r => r.Note("Valgfri ekstern gulvføler").Attribute("accessibility", "read")
+                        .Documentation("Målt gulvtemperatur fra den valgfri eksterne gulvføler (120C1010); læse-ressource."))
+                    .AddResource("resource_input", "Alarm", r => r.Note("Høj ved fejl").Attribute("accessibility", "read")
+                        .Documentation("Fejlsignal; høj ved fejl på sensoren."))
+                    .AddResource("resource_temperature", "Kalibrering af rumføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes")
+                        .Documentation("Indstilling: offset fra målt rumtemperatur, standard 0,0 °C."))
+                    .AddResource("resource_temperature", "Kalibrering af gulvføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes")
+                        .Documentation("Indstilling: offset fra målt gulvtemperatur, standard 0,0 °C."))
                     .RawChild(ElRaw("settings", new[] { ("id", "_0x09"), ("name", "Indstillinger"), ("note", "Produkt indstillinger") },
                     ElRaw("dataline_input", new[] { ("id", "_0x10"), ("name", "Temperatur sensor indgang") })))
+                    .Documentation(
+                        "Klimastyringssensor i LK FUGA, der måler rumtemperatur og (med ekstra føler) gulvtemperatur; " +
+                        "målingerne læses i programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Temperaturmåling i rum og/eller gulv til IHC Control-systemet, typisk til gulvvarme-/klimastyring. " +
+                        "Planforsænket montage i dåse eller på underlag i 1,5–1,8 m højde. Gulvtemperatur kræver gulvføler (120C1010). " +
+                        "Ønskes målingerne logget, vælges Temperatur sensor med logning (samme hardware — logning er et tilvalg i IHC Visual)." +
+                        "\n\nVirkemåde\n" +
+                        "– Måleresultaterne konverteres til sekvenser af ON/OFF-signaler på BIT-klemmen — programmet ser dem som færdige temperaturværdier.\n" +
+                        "– Temperatur sensor indgang er adressen på det Input 24/3-modul, som BIT-klemmen er forbundet til." +
+                        "\n\nIndstillinger\n" +
+                        "Kalibrering af rum- og gulvføler sættes i produktdialogens Indstillinger-gitter." +
+                        "\n\nTilslutning\n" +
+                        "– Klemmer som mærket på sensoren: 24V = 24 V DC, 0V = 0 V, BIT = bitstream-udgang, 1 og 2 = gulvføler.\n" +
+                        "– BIT-klemmen forbindes til en indgang på et IHC Control Input 24/3-modul; hver sensor kræver sin egen indgang. Anbefalet kabel: IHC Link-10 NOPOVIC, maks. 100 m.")
                     .Grammar(BuiltInCatalogGrammar.G_f96c6303)
                     .Build();
             return definition with
@@ -989,15 +1607,34 @@ namespace Ihc.Vis.Catalog
                     .Attribute("icon", "_0x83")
                     .RawChild(ElRaw("enum_definition", new[] { ("id", "_0x50"), ("typeid", "_0x16") },
                     ElRaw("enum_value", new[] { ("id", "_0x51"), ("typeid", "_0x17") })))
-                    .AddResource("resource_temperature", "Rumtemperatur", r => r.Note("").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Gulvtemperatur", r => r.Note("Valgfri ekstern gulvføler").Attribute("accessibility", "read"))
-                    .AddResource("resource_input", "Alarm", r => r.Note("Høj ved fejl").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Kalibrering af rumføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes"))
-                    .AddResource("resource_temperature", "Kalibrering af gulvføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes"))
-                    .AddResource("resource_enum", "Log Rumtemperatur", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51"))
-                    .AddResource("resource_enum", "Log Gulvtemperatur", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51"))
+                    .AddResource("resource_temperature", "Rumtemperatur", r => r.Note("").Attribute("accessibility", "read")
+                        .Documentation("Målt rumtemperatur fra den indbyggede føler; læse-ressource, der opdateres fra sensoren."))
+                    .AddResource("resource_temperature", "Gulvtemperatur", r => r.Note("Valgfri ekstern gulvføler").Attribute("accessibility", "read")
+                        .Documentation("Målt gulvtemperatur fra den valgfri eksterne gulvføler (120C1010); læse-ressource."))
+                    .AddResource("resource_input", "Alarm", r => r.Note("Høj ved fejl").Attribute("accessibility", "read")
+                        .Documentation("Fejlsignal; høj ved fejl på sensoren."))
+                    .AddResource("resource_temperature", "Kalibrering af rumføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes")
+                        .Documentation("Indstilling: offset fra målt rumtemperatur, standard 0,0 °C."))
+                    .AddResource("resource_temperature", "Kalibrering af gulvføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes")
+                        .Documentation("Indstilling: offset fra målt gulvtemperatur, standard 0,0 °C."))
+                    .AddResource("resource_enum", "Log Rumtemperatur", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51")
+                        .Documentation("Enum-ressource, der vælger logningen af rumtemperaturmålingen."))
+                    .AddResource("resource_enum", "Log Gulvtemperatur", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51")
+                        .Documentation("Enum-ressource, der vælger logningen af gulvtemperaturmålingen."))
                     .RawChild(ElRaw("settings", new[] { ("id", "_0x09"), ("name", "Indstillinger"), ("note", "Produkt indstillinger") },
                     ElRaw("dataline_input", new[] { ("id", "_0x10"), ("name", "Temperatur sensor indgang") })))
+                    .Documentation(
+                        "Temperatursensoren 507D6531 med logning slået til i IHC Visual; " +
+                        "samme hardware som Temperatur sensor, men med logningsressourcer for rum- og gulvtemperatur." +
+                        "\n\nAnvendelse\n" +
+                        "Som Temperatur sensor, når temperaturmålingerne også skal logges af controlleren — fx til analyse af rum- og gulvtemperaturens forløb. " +
+                        "Logning vælges ved indsættelse i IHC Visual; hardwaren er identisk." +
+                        "\n\nVirkemåde\n" +
+                        "– Temperatur sensor indgang er adressen på det Input 24/3-modul, som sensorens BIT-klemme er forbundet til." +
+                        "\n\nIndstillinger\n" +
+                        "Kalibrering af rum- og gulvføler sættes i produktdialogens Indstillinger-gitter." +
+                        "\n\nTilslutning\n" +
+                        "– Klemmerne er mærket 24V, 0V, BIT, 1 og 2, hvor 1 og 2 er gulvføleren; BIT forbindes til egen indgang på et Input 24/3-modul.")
                     .Grammar(BuiltInCatalogGrammar.G_3bed940d)
                     .Build();
             return definition with
@@ -1015,13 +1652,33 @@ namespace Ihc.Vis.Catalog
                     .Name("Fugt / Temperatur sensor")
                     .Note("Sensor for fugt og temperatur")
                     .Attribute("icon", "_0x83")
-                    .AddResource("resource_humidity_level", "Fugt", r => r.Note("0-100% RH").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Temperatur", r => r.Note("Rumtemperatur").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Dugpunkt", r => r.Note("Beregnet værdi på baggrund af fugt og temperatur").Attribute("accessibility", "read"))
-                    .AddResource("resource_input", "Alarm", r => r.Note("Høj ved fejl").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Kalibrering af temperaturføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes"))
+                    .AddResource("resource_humidity_level", "Fugt", r => r.Note("0-100% RH").Attribute("accessibility", "read")
+                        .Documentation("Målt relativ luftfugtighed, 0–100 % RH; læse-ressource."))
+                    .AddResource("resource_temperature", "Temperatur", r => r.Note("Rumtemperatur").Attribute("accessibility", "read")
+                        .Documentation("Målt rumtemperatur fra den indbyggede føler; læse-ressource."))
+                    .AddResource("resource_temperature", "Dugpunkt", r => r.Note("Beregnet værdi på baggrund af fugt og temperatur").Attribute("accessibility", "read")
+                        .Documentation("Beregnet dugpunktstemperatur ud fra fugt og temperatur; læse-ressource."))
+                    .AddResource("resource_input", "Alarm", r => r.Note("Høj ved fejl").Attribute("accessibility", "read")
+                        .Documentation("Fejlsignal; høj ved fejl på sensoren."))
+                    .AddResource("resource_temperature", "Kalibrering af temperaturføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes")
+                        .Documentation("Indstilling: offset fra målt temperatur, standard 0,0 °C."))
                     .RawChild(ElRaw("settings", new[] { ("id", "_0x10"), ("name", "Indstillinger") },
                     ElRaw("dataline_input", new[] { ("id", "_0x11"), ("name", "Fugt / Temperatur sensor") })))
+                    .Documentation(
+                        "Klimastyringssensor i LK FUGA, der måler fugtniveau og rumtemperatur og beregner dugpunktet; " +
+                        "målingerne læses i programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Fugt- og temperaturmåling til IHC Control — fx til ventilationsstyring eller kondensbeskyttelse via dugpunktet. " +
+                        "Planforsænket montage i dåse eller på underlag i 1,5–1,8 m højde. " +
+                        "Ønskes målingerne logget, vælges Fugt / Temperatur sensor med logning (samme hardware)." +
+                        "\n\nVirkemåde\n" +
+                        "– Måleresultaterne konverteres til sekvenser af ON/OFF-signaler på BIT-klemmen — programmet ser dem som færdige måleværdier.\n" +
+                        "– Indgangen Fugt / Temperatur sensor er adressen på det Input 24/3-modul, som BIT-klemmen er forbundet til." +
+                        "\n\nIndstillinger\n" +
+                        "Kalibrering af temperaturføler sættes i produktdialogens Indstillinger-gitter." +
+                        "\n\nTilslutning\n" +
+                        "– Klemmemærkning: 24V = 24 V DC, 0V = 0 V, BIT = bitstream-udgang.\n" +
+                        "– BIT-klemmen forbindes til en indgang på et IHC Control Input 24/3-modul; hver sensor kræver sin egen indgang. Anbefalet kabel: IHC LINK 10 NOPOVIC, maks. 100 m.")
                     .Grammar(BuiltInCatalogGrammar.G_55b07244)
                     .Build();
             return definition with
@@ -1039,12 +1696,31 @@ namespace Ihc.Vis.Catalog
                     .Name("Lux / Temperatur sensor")
                     .Note("Sensor for måling af lysniveau og temperatur")
                     .Attribute("icon", "_0x83")
-                    .AddResource("resource_light", "Lys", r => r.Note("0-60.000 Lux").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Temperatur", r => r.Note("Rumtemperatur").Attribute("accessibility", "read"))
-                    .AddResource("resource_input", "Alarm", r => r.Note("Høj ved fejl").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Kalibrering af temperaturføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes"))
+                    .AddResource("resource_light", "Lys", r => r.Note("0-60.000 Lux").Attribute("accessibility", "read")
+                        .Documentation("Målt lysniveau, 0–60.000 lux; læse-ressource, der opdateres fra sensoren."))
+                    .AddResource("resource_temperature", "Temperatur", r => r.Note("Rumtemperatur").Attribute("accessibility", "read")
+                        .Documentation("Målt rumtemperatur fra den indbyggede føler; læse-ressource, der opdateres fra sensoren."))
+                    .AddResource("resource_input", "Alarm", r => r.Note("Høj ved fejl").Attribute("accessibility", "read")
+                        .Documentation("Fejlsignal; høj ved fejl på sensoren."))
+                    .AddResource("resource_temperature", "Kalibrering af temperaturføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes")
+                        .Documentation("Indstilling: offset fra målt temperatur, standard 0,0 °C."))
                     .RawChild(ElRaw("settings", new[] { ("id", "_0x10"), ("name", "Indstillinger") },
                     ElRaw("dataline_input", new[] { ("id", "_0x11"), ("name", "Lux / Temperatur sensor") })))
+                    .Documentation(
+                        "Klimastyringssensor i LK FUGA, der måler lysniveau (lux) og rumtemperatur; " +
+                        "målingerne læses i programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Lux- og temperaturmåling til IHC Control — fx dagslysafhængig lysstyring med præcise lux-værdier frem for et skumringsrelæ. " +
+                        "Planforsænket montage i dåse eller på underlag i 1,5–1,8 m højde; kan også monteres i Opus 74 adaptordæksel med membran (520M5301). " +
+                        "Skal målingerne logges, vælges Lux / Temperatur sensor med logning (samme hardware)." +
+                        "\n\nVirkemåde\n" +
+                        "– Måleresultaterne konverteres til sekvenser af ON/OFF-signaler på BIT-klemmen — programmet ser dem som færdige måleværdier.\n" +
+                        "– Indgangen Lux / Temperatur sensor er adressen på det Input 24/3-modul, som BIT-klemmen er forbundet til." +
+                        "\n\nIndstillinger\n" +
+                        "Kalibrering af temperaturføler sættes i produktdialogens Indstillinger-gitter." +
+                        "\n\nTilslutning\n" +
+                        "– Klemmemærkning: 24V = 24 V DC, 0V = 0 V, BIT = bitstream-udgang.\n" +
+                        "– BIT-klemmen forbindes til en indgang på et IHC Control Input 24/3-modul; hver sensor kræver sin egen indgang. Anbefalet kabel: IHC LINK 10 NOPOVIC, maks. 100 m.")
                     .Grammar(BuiltInCatalogGrammar.G_d46341ce)
                     .Build();
             return definition with
@@ -1064,16 +1740,36 @@ namespace Ihc.Vis.Catalog
                     .Attribute("icon", "_0x83")
                     .RawChild(ElRaw("enum_definition", new[] { ("id", "_0x50"), ("typeid", "_0x16") },
                     ElRaw("enum_value", new[] { ("id", "_0x51"), ("typeid", "_0x17") })))
-                    .AddResource("resource_humidity_level", "Fugt", r => r.Note("0-100% RH").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Temperatur", r => r.Note("Rumtemperatur").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Dugpunkt", r => r.Note("Beregnet værdi på baggrund af fugt og temperatur").Attribute("accessibility", "read"))
-                    .AddResource("resource_input", "Alarm", r => r.Note("Høj ved fejl").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Kalibrering af temperaturføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes"))
-                    .AddResource("resource_enum", "Log Fugt", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51"))
-                    .AddResource("resource_enum", "Log Temperatur", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51"))
-                    .AddResource("resource_enum", "Log Dugpunkt", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51"))
+                    .AddResource("resource_humidity_level", "Fugt", r => r.Note("0-100% RH").Attribute("accessibility", "read")
+                        .Documentation("Målt relativ luftfugtighed, 0–100 % RH; læse-ressource."))
+                    .AddResource("resource_temperature", "Temperatur", r => r.Note("Rumtemperatur").Attribute("accessibility", "read")
+                        .Documentation("Målt rumtemperatur fra den indbyggede føler; læse-ressource."))
+                    .AddResource("resource_temperature", "Dugpunkt", r => r.Note("Beregnet værdi på baggrund af fugt og temperatur").Attribute("accessibility", "read")
+                        .Documentation("Beregnet dugpunktstemperatur ud fra fugt og temperatur; læse-ressource."))
+                    .AddResource("resource_input", "Alarm", r => r.Note("Høj ved fejl").Attribute("accessibility", "read")
+                        .Documentation("Fejlsignal; høj ved fejl på sensoren."))
+                    .AddResource("resource_temperature", "Kalibrering af temperaturføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes")
+                        .Documentation("Indstilling: offset fra målt temperatur, standard 0,0 °C."))
+                    .AddResource("resource_enum", "Log Fugt", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51")
+                        .Documentation("Enum-ressource, der vælger logningen af fugtmålingen."))
+                    .AddResource("resource_enum", "Log Temperatur", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51")
+                        .Documentation("Enum-ressource, der vælger logningen af temperaturmålingen."))
+                    .AddResource("resource_enum", "Log Dugpunkt", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51")
+                        .Documentation("Enum-ressource, der vælger logningen af dugpunktsberegningen."))
                     .RawChild(ElRaw("settings", new[] { ("id", "_0x10"), ("name", "Indstillinger") },
                     ElRaw("dataline_input", new[] { ("id", "_0x11"), ("name", "Fugt / Temperatur sensor") })))
+                    .Documentation(
+                        "Fugt-/temperatursensoren 507D6532 med logning slået til i IHC Visual; " +
+                        "samme hardware som uden logning, med logningsressourcer for fugt, temperatur og dugpunkt." +
+                        "\n\nAnvendelse\n" +
+                        "Som Fugt / Temperatur sensor, når målingerne også skal logges af controlleren — fx til analyse af fugtforhold og kondensrisiko over tid. " +
+                        "Logning vælges ved indsættelse i IHC Visual; hardwaren er identisk." +
+                        "\n\nVirkemåde\n" +
+                        "– Indgangen Fugt / Temperatur sensor er adressen på det Input 24/3-modul, som BIT-klemmen er forbundet til." +
+                        "\n\nIndstillinger\n" +
+                        "Kalibrering af temperaturføler sættes i produktdialogens Indstillinger-gitter." +
+                        "\n\nTilslutning\n" +
+                        "– Klemmemærkning: 24V, 0V og BIT; BIT forbindes til en separat indgang på et Input 24/3-modul.")
                     .Grammar(BuiltInCatalogGrammar.G_6f63eee0)
                     .Build();
             return definition with
@@ -1093,14 +1789,32 @@ namespace Ihc.Vis.Catalog
                     .Attribute("icon", "_0x83")
                     .RawChild(ElRaw("enum_definition", new[] { ("id", "_0x50"), ("typeid", "_0x16") },
                     ElRaw("enum_value", new[] { ("id", "_0x51"), ("typeid", "_0x17") })))
-                    .AddResource("resource_light", "Lys", r => r.Note("0-60.000 Lux").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Temperatur", r => r.Note("Rumtemperatur").Attribute("accessibility", "read"))
-                    .AddResource("resource_input", "Alarm", r => r.Note("Høj ved fejl").Attribute("accessibility", "read"))
-                    .AddResource("resource_temperature", "Kalibrering af temperaturføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes"))
-                    .AddResource("resource_enum", "Log Lys", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51"))
-                    .AddResource("resource_enum", "Log Temperatur", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51"))
+                    .AddResource("resource_light", "Lys", r => r.Note("0-60.000 Lux").Attribute("accessibility", "read")
+                        .Documentation("Målt lysniveau, 0–60.000 lux; læse-ressource."))
+                    .AddResource("resource_temperature", "Temperatur", r => r.Note("Rumtemperatur").Attribute("accessibility", "read")
+                        .Documentation("Målt rumtemperatur fra den indbyggede føler; læse-ressource."))
+                    .AddResource("resource_input", "Alarm", r => r.Note("Høj ved fejl").Attribute("accessibility", "read")
+                        .Documentation("Fejlsignal; høj ved fejl på sensoren."))
+                    .AddResource("resource_temperature", "Kalibrering af temperaturføler", r => r.Note("Offset fra målt temperatur").Attribute("inivalue", "0.00").Attribute("setting", "yes")
+                        .Documentation("Indstilling: offset fra målt temperatur, standard 0,0 °C."))
+                    .AddResource("resource_enum", "Log Lys", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51")
+                        .Documentation("Enum-ressource, der vælger logningen af lysmålingen."))
+                    .AddResource("resource_enum", "Log Temperatur", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51")
+                        .Documentation("Enum-ressource, der vælger logningen af temperaturmålingen."))
                     .RawChild(ElRaw("settings", new[] { ("id", "_0x10"), ("name", "Indstillinger") },
                     ElRaw("dataline_input", new[] { ("id", "_0x11"), ("name", "Lux / Temperatur sensor") })))
+                    .Documentation(
+                        "Lux-/temperatursensoren 507D6533 med logning slået til i IHC Visual; " +
+                        "samme hardware som uden logning, med logningsressourcer for lys og temperatur." +
+                        "\n\nAnvendelse\n" +
+                        "Som Lux / Temperatur sensor, når målingerne også skal logges af controlleren — fx til analyse af dagslysforløb og temperatur over tid. " +
+                        "Logning vælges ved indsættelse i IHC Visual; hardwaren er identisk." +
+                        "\n\nVirkemåde\n" +
+                        "– Indgangen Lux / Temperatur sensor er adressen på det Input 24/3-modul, som BIT-klemmen er forbundet til." +
+                        "\n\nIndstillinger\n" +
+                        "Kalibrering af temperaturføler sættes i produktdialogens Indstillinger-gitter." +
+                        "\n\nTilslutning\n" +
+                        "– Klemmemærkning: 24V, 0V og BIT; BIT forbindes til egen indgang på et Input 24/3-modul.")
                     .Grammar(BuiltInCatalogGrammar.G_8e0b434f)
                     .Build();
             return definition with
@@ -1118,7 +1832,19 @@ namespace Ihc.Vis.Catalog
                     .Name("05#Diode")
                     .Attribute("loced", "no")
                     .Attribute("icon", "_0x85")
-                    .AddOutput("Lampe")
+                    .AddOutput("Lampe", o => o.Documentation(
+                        "Udgangsressource: programmet tænder og slukker lampen, typisk som kontrollampe for en styret udgang eller som programstyret ledelys."))
+                    .Documentation(
+                        "Mini Modul med symbolet \"lys\" og separat lampe: en lille diode-/lampeenhed til montage direkte på underlag; " +
+                        "lampen styres som én udgang." +
+                        "\n\nAnvendelse\n" +
+                        "Til svagstrømsinstallationer med transformer, kiprelæer og styremoduler i gruppetavlen — som kontrollampe eller programstyret ledelys. " +
+                        "Samme serie som Mini Modul-trykkene." +
+                        "\n\nVirkemåde\n" +
+                        "– Modulet har én udgangsressource, Lampe." +
+                        "\n\nTilslutning\n" +
+                        "– Lampen forbindes til en udgang på et 24 V udgangsmodul.\n" +
+                        "– De afisolerede ledningsender placeres under fjederklemmerne i soklen; ved sløjfning kun to ledere (maks. Ø 0,7 mm).")
                     .Grammar(BuiltInCatalogGrammar.G_26aa6061)
                     .Build();
             return definition with
@@ -1136,8 +1862,18 @@ namespace Ihc.Vis.Catalog
                     .Name("02#Stikkontakt")
                     .Note("")
                     .Attribute("icon", "_0x88")
-                    .AddOutput("Udgang")
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Relæudgangen, stikkontakten er koblet på; ON = kontakt tændt. Startværdi off, omfattet af backup (tilstanden gendannes efter spændingssvigt)."))
                     .AddScenes()
+                    .Documentation(
+                        "Generisk udgangsrolle: en stikkontakt koblet på en udgang på et IHC udgangsmodul; " +
+                        "intet LK-varenummer." +
+                        "\n\nAnvendelse\n" +
+                        "Når en stikkontakt skal tændes og slukkes fra programmet — fx til standby-forbrug, tidsstyring eller sluk-alt — ved at koble kontaktens forsyning over et udgangsrelæ (typisk 230 V-modulet 120B1020: maks. 10 A pr. relæ, dog maks. 10 A pr. gruppe af 4 relæer og 20 A i alt pr. modul)." +
+                        "\n\nVirkemåde\n" +
+                        "– Scenarier er produktets scenarietilknytning: scenarier tilknyttet her sætter udgangen." +
+                        "\n\nTilslutning\n" +
+                        "– Stikkontaktens forsyning føres over en udgang på et udgangsmodul (230 V-modulet for 230 V-kontakter); se modulets dokumentation for grupper, sikring og belastning.")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1155,8 +1891,20 @@ namespace Ihc.Vis.Catalog
                     .Name("01#Lampeudtag")
                     .Note("")
                     .Attribute("icon", "_0x86")
-                    .AddOutput("Udgang")
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Relæudgangen, lampestedet er koblet på; ON = lys tændt. Startværdi off, omfattet af backup (tilstanden gendannes efter spændingssvigt)."))
                     .AddScenes()
+                    .Documentation(
+                        "Generisk udgangsrolle: et lampested koblet på en udgang på et udgangsmodul; " +
+                        "intet LK-varenummer — dokumentationen er udgangsmodulernes." +
+                        "\n\nAnvendelse\n" +
+                        "Når et lampeudtag skal tændes og slukkes fra programmet — det almindeligste IHC-udgangsprodukt til lysstyring med tryk, PIR og scenarier. " +
+                        "Skal lyset dæmpes, bruges i stedet en dæmper fra 03#Dimmer eller 1–10 V-produkterne." +
+                        "\n\nVirkemåde\n" +
+                        "– Typisk styret af Kip tænd sluk (1.1.01) eller PIR-/timerblokkene i 1.4 PIR og Timer.\n" +
+                        "– Scenarier er produktets scenarietilknytning: scenarier tilknyttet her sætter udgangen." +
+                        "\n\nTilslutning\n" +
+                        "– Lampestedets forsyning føres over en udgang på et udgangsmodul (typisk 230 V-modulet 120B1020: maks. 10 A pr. relæ, dog maks. 10 A pr. gruppe af 4 relæer og 20 A i alt pr. modul).")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1173,8 +1921,23 @@ namespace Ihc.Vis.Catalog
                     .CategoryPath("Datalinie produkter\\02#Output")
                     .Name("15#Lydgiver intern")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang 80 dB")
-                    .AddOutput("Udgang 102 dB")
+                    .AddOutput("Udgang 80 dB", o => o.Documentation(
+                        "Aktiverer det lave lydniveau (80 dBA ved 1 m); programmet bruger det fx til kvittering."))
+                    .AddOutput("Udgang 102 dB", o => o.Documentation(
+                        "Aktiverer det høje lydniveau (102 dBA ved 1 m); programmet bruger det fx til alarm."))
+                    .Documentation(
+                        "Indendørs alarm-lydgiver i LK FUGA/OPUS-indsats med to 24 V-tilslutninger og dermed to lydniveauer (80 og 102 dBA); " +
+                        "hvert niveau styres som sin egen udgang." +
+                        "\n\nAnvendelse\n" +
+                        "Akustisk alarmgiver for IHC Control Alarm — en røgsensor bør tilsluttes minimum tre interne lydgivere, og en gassensor skal tilsluttes minimum to, så lydsignalet kan høres over hele huset. " +
+                        "Afgiver toner med højt lydtryk; montering i børne- og soveværelser frarådes. " +
+                        "Er lydniveauet for kraftigt, kan et FUGA-blænddæksel monteres i stedet for den perforerede afdækning." +
+                        "\n\nVirkemåde\n" +
+                        "– Lydgiveren har to 24 V-tilslutninger, og programmet vælger niveauet.\n" +
+                        "– Op til 20 lydgivere kan parallelkobles på én 24 V-udgang, så hele huset dækkes af samme programlogik." +
+                        "\n\nTilslutning\n" +
+                        "– De to tilslutninger forbindes til udgange på et 24 V udgangsmodul; sløjfning maks. 2 ledere af samme dimension.\n" +
+                        "– Monteres i dåse for indmuring/indstøbning/isætning forfra eller i udvendigt underlag.")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1192,7 +1955,21 @@ namespace Ihc.Vis.Catalog
                     .Name("16#Lydgiver ekstern")
                     .Note("")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang")
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Aktiverer sirenen: programmet tænder udgangen ved alarm, og sirenen afspiller det DIP-switch-valgte lydbillede."))
+                    .Documentation(
+                        "Udendørs alarmsirene (IP65) til IHC Control Alarm med indbygget sabotagekontakt og 32 valgbare lydbilleder; " +
+                        "styres som én udgang." +
+                        "\n\nAnvendelse\n" +
+                        "Udvendig varsling — fx så tyverialarm eller røgalarm også høres udenfor. " +
+                        "Monteres udvendigt og helst skjult, bedst højt oppe i ly af et tagudhæng; bag en inddækning eller inde på et loft mistes en del af lydtrykket." +
+                        "\n\nVirkemåde\n" +
+                        "– Lydbilledet vælges med DIP-switche (32 muligheder); V-switchen skifter lydniveauet ±10 dB.\n" +
+                        "– Den indbyggede sabotagekontakt (24 V DC / 24 mA) føres til alarmens Sabotagekreds, så fjernelse af sirenen registreres." +
+                        "\n\nTilslutning\n" +
+                        "– Forsynes med 9–29 V DC fra en Output 24 V-udgang.\n" +
+                        "– Kablet føres frem til midten af montagebunden, der fastgøres med to skruer; lederne monteres i de indbyggede klemmerækker.\n" +
+                        "– Sabotagekontakten forbindes til sabotagesløjfen.")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1210,7 +1987,19 @@ namespace Ihc.Vis.Catalog
                     .Name("13#Magnetventil NC")
                     .Note("")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang NC", o => o.Attribute("inivalue", "on"))
+                    .AddOutput("Udgang NC", o => o.Attribute("inivalue", "on")
+                        .Documentation("Ventilspolens forsyning; ON = ventil åben, OFF (alarm/strømsvigt) = gas lukket. Programmet holder udgangen aktiv i normal drift (startværdi on) og slukker den ved alarm; strømsvigt lukker dermed også ventilen (fejlsikkert)."))
+                    .Documentation(
+                        "Magnetventil til gas (NC — lukket uden spænding), der lukker hovedgasforsyningen ved gasudslip eller røgudvikling; " +
+                        "styres som én udgang." +
+                        "\n\nAnvendelse\n" +
+                        "Lukning af hovedgasforsyningen ved gasudslip og/eller røgudvikling — ventilen reagerer via IHC-systemet på alarmsignal fra Gassensor eller Røgsensor. " +
+                        "Monteres efter gasmåleren med pilen i strømretningen; spolen anbefales lodret opad." +
+                        "\n\nVirkemåde\n" +
+                        "– Ventilen er NC (Normally Closed): den er lukket, når spolen er spændingsfri." +
+                        "\n\nTilslutning\n" +
+                        "– Spolen forsynes med 230 V fra en 230 V Output-udgang (klemme 1 og 2, midterben til jord); stikkets indsats kan drejes 4×90°, så ledningsretningen kan vælges.\n" +
+                        "– Rør og fittings skal være renset før montage; gevind tætnes iht. Gasreglementet.")
                     .Grammar(BuiltInCatalogGrammar.G_83f5f1dd)
                     .Build();
             return definition with
@@ -1228,7 +2017,19 @@ namespace Ihc.Vis.Catalog
                     .Name("14#Magnetventil NO")
                     .Note("")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang NO")
+                    .AddOutput("Udgang NO", o => o.Documentation(
+                        "Ventilspolens forsyning; OFF = vand åbent (normal), ON = vandet lukket. Programmet aktiverer udgangen for at lukke vandet; startværdi off."))
+                    .Documentation(
+                        "Magnetventil til brugsvand (NO — åben uden spænding), der lukker hovedvandforsyningen ved fx vandalarm; " +
+                        "styres som én udgang." +
+                        "\n\nAnvendelse\n" +
+                        "Lukning af hovedvandforsyningen til bygningen — typisk styret af Vandsensor, så vandet lukkes ved lækage, eller efter tidsplan/bortrejse. " +
+                        "Ventilen er beregnet til vandforbrug op til 7 m³/time." +
+                        "\n\nVirkemåde\n" +
+                        "– Ventilen er NO (Normally Open): den er åben, når spolen er spændingsfri, så normal vandforsyning ikke kræver strøm." +
+                        "\n\nTilslutning\n" +
+                        "– Spolen forsynes med 230 V fra en 230 V Output-udgang (klemme 1 og 2 + jord).\n" +
+                        "– Ventilen har ¾″ RG i begge ender; indsatsen i klemkassen kan drejes til lodret og vandret stilling.")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1246,14 +2047,29 @@ namespace Ihc.Vis.Catalog
                     .Name("03#Output 1-10V")
                     .Note("Output 1-10V modul")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Bit 1")
-                    .AddOutput("Bit 2")
-                    .AddOutput("Bit 3")
-                    .AddOutput("Bit 4")
-                    .AddOutput("Bit 5")
-                    .AddOutput("Bit 6")
-                    .AddOutput("Bit 7")
-                    .AddOutput("Bit 8")
+                    .AddOutput("Bit 1", o => o.Documentation("Kort: soft tænd. Lang: regulering op til 100 %."))
+                    .AddOutput("Bit 2", o => o.Documentation("Kort: soft sluk. Lang: regulering ned til 0 %."))
+                    .AddOutput("Bit 3", o => o.Documentation("Kort: går til niveauet i memory 1. Lang: gemmer det aktuelle niveau i memory 1."))
+                    .AddOutput("Bit 4", o => o.Documentation("Kort: går til niveauet i memory 2. Lang: gemmer det aktuelle niveau i memory 2."))
+                    .AddOutput("Bit 5", o => o.Documentation("Kort: touch tænd/sluk. Lang: touch-regulering op/ned."))
+                    .AddOutput("Bit 6", o => o.Documentation("Kort: tænder i 15 min. og genstarter timeren. Lang: tænder kun, mens signalet er ON."))
+                    .AddOutput("Bit 7", o => o.Documentation("Kort: relæ, 15-min.-timer og solstyring. Lang: relæet er sluttet, mens signalet er ON."))
+                    .AddOutput("Bit 8", o => o.Documentation("Kort: slutter relæet og aktiverer solstyring. Lang: aktiverer solstyring uden at slutte relæet."))
+                    .Documentation(
+                        "Output 1-10 V-modulet: analog 1–10 V-styring af elektroniske forkoblinger og dæmpere plus en 230 V-relæudgang; " +
+                        "programmet styrer modulet via otte datalinie-bit." +
+                        "\n\nAnvendelse\n" +
+                        "Styring af elektroniske komponenter med 1–10 V-styreindgang, fx lysstofrørsarmaturer med elektroniske forkoblingsenheder eller LK's 1000W LR/600CR-dimmer. " +
+                        "Modulet betjenes via IHC-datalinje fra en udgang på controlleren, et inputmodul eller en FUGA IR-modtager." +
+                        "\n\nVirkemåde\n" +
+                        "– Modulet modtager et 16-bit signal fra datalinien, men bruger kun 8 bit: klemmen Data bruger bit 1–8, klemmen 11-18 bruger bit 11–18.\n" +
+                        "– Korte tryk tænder/slukker lyset; lange tryk regulerer lysniveauet op/ned. To hukommelsesværdier lagres ved lange tryk, og skift mellem lysniveauer sker i kontinuerte overgange.\n" +
+                        "– Indbygget PIR-funktion tænder lyset i 15 min. ved aktivering af en FUGA-/OPUS-PIR og kan kombineres med en solsensor (820B6305), så dagslyset styrer niveauet.\n" +
+                        "– Pil-klemmen sender hele signalet videre til andre 1–10 V-moduler (fx 3-fasede lysstyringer); op til 6 moduler kan seriekobles." +
+                        "\n\nTilslutning\n" +
+                        "– Datalinien forbindes til klemmen Data eller 11-18. Anbefalet kabel: IHC LINK 10 NOPOVIC, maks. 100 m.\n" +
+                        "– Udgange: 1–10 V analog (maks. 50 mA, SELV-adskilt), potentialfri relækontakt (maks. 10 A ved 230 V AC) samt forsyning til solsensor.\n" +
+                        "– Rampetider vælges med konfigurationsklemmen: uforbundet ≈ 0,8 s soft-tænd / 5 s ramping; forbundet til 24 V ≈ 6,5 s / 20 s.")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1271,7 +2087,17 @@ namespace Ihc.Vis.Catalog
                     .Name("07#Dørlås")
                     .Note("")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang")
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Udgangen, dørlåsen er koblet på; relæudgang på 230 V-modulet, PNP-transistorudgang (maks. 500 mA) på 24 V-modulet. Aktiverer låsen; startværdi off, omfattet af backup (tilstanden gendannes efter spændingssvigt)."))
+                    .Documentation(
+                        "Generisk udgangsrolle: en elektrisk/elektromagnetisk dørlås koblet på en udgang på et udgangsmodul; " +
+                        "intet LK-varenummer — dokumentationen er udgangsmodulernes." +
+                        "\n\nAnvendelse\n" +
+                        "Når en dørlås skal styres fra programmet — fx åbning fra et tryk, tidsstyret låsning eller aktivering/deaktivering via Kodetastatur, hvis datablad nævner styring af elektromagnetisk dørlås som typisk anvendelse." +
+                        "\n\nVirkemåde\n" +
+                        "– Puls- eller niveaustyring programmeres med funktionsblokke efter låsens type." +
+                        "\n\nTilslutning\n" +
+                        "– Låsens forsyning føres over en udgang på et udgangsmodul (24 V- eller 230 V-modulet efter låsens spænding).")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1289,7 +2115,17 @@ namespace Ihc.Vis.Catalog
                     .Name("06#Ringeklokke")
                     .Note("")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang")
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Udgangen, ringeklokken er koblet på; relæudgang på 230 V-modulet, PNP-transistorudgang (maks. 500 mA) på 24 V-modulet. Aktiverer klokken; startværdi off, omfattet af backup (tilstanden gendannes efter spændingssvigt)."))
+                    .Documentation(
+                        "Generisk udgangsrolle: en ringeklokke koblet på en udgang på et udgangsmodul; " +
+                        "intet LK-varenummer — dokumentationen er udgangsmodulernes." +
+                        "\n\nAnvendelse\n" +
+                        "Når ringeklokken skal styres fra programmet i stedet for direkte af trykket — fx så ringningen kan undertrykkes på bestemte tidspunkter, forlænges eller kombineres med lydgivere andre steder." +
+                        "\n\nVirkemåde\n" +
+                        "– Forbindes typisk i programmet til Ringetryk, evt. med tids- eller pulslogik i en funktionsblok." +
+                        "\n\nTilslutning\n" +
+                        "– Klokkens forsyning føres over en udgang på et udgangsmodul (24 V- eller 230 V-modulet efter klokkens spænding).")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1307,7 +2143,18 @@ namespace Ihc.Vis.Catalog
                     .Name("07#Telestat")
                     .Note("")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang")
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Udgangen, telestaten forsynes fra; ON = ventil aktiveret (varme). På 24 V-modulet er det en transistorudgang, maks. 500 mA. Startværdi off, omfattet af backup (tilstanden gendannes efter spændingssvigt)."))
+                    .Documentation(
+                        "Generisk udgangsrolle: en telestat (termisk ventilaktuator til varmestyring) koblet på en udgang på et udgangsmodul; " +
+                        "intet LK-varenummer — dokumentationen er udgangsmodulernes." +
+                        "\n\nAnvendelse\n" +
+                        "Varmestyring: telestaten åbner/lukker en varmeventil, og programmet styrer den ud fra fx en Temperatur sensor. Kataloget nævner telestater som en typisk belastning på 24 V-udgangsmodulet 120B1021." +
+                        "\n\nVirkemåde\n" +
+                        "– Termostatlogik programmeres med funktionsblokke ud fra en temperatursensor." +
+                        "\n\nTilslutning\n" +
+                        "– Telestaten forbindes til en udgang på et udgangsmodul (typisk 24 V-modulet 120B1021, eller 230 V-modulet efter telestatens spænding).\n" +
+                        "– Hver telestat skal tilsluttes en separat udgang, og hver udgang må maks. belastes med 500 mA — vær opmærksom på telestatens startstrøm (jf. principdiagrammet 019D898121_01 for IHC Control Varmestyring).")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1325,8 +2172,18 @@ namespace Ihc.Vis.Catalog
                     .Name("12#Cirkulationspumpe")
                     .Note("")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang")
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Relæudgangen, pumpen er koblet på; ON = pumpe i drift. Startværdi off, omfattet af backup (tilstanden gendannes efter spændingssvigt)."))
                     .AddScenes()
+                    .Documentation(
+                        "Generisk udgangsrolle: en cirkulationspumpe koblet på en udgang på et udgangsmodul; " +
+                        "intet LK-varenummer — dokumentationen er udgangsmodulernes." +
+                        "\n\nAnvendelse\n" +
+                        "Når en cirkulationspumpe (varme/brugsvand) skal styres fra programmet — fx tidsstyring, behovsstyring eller betjening/indikering fra et statustryk, hvis vejledning nævner pumpen blandt de typiske anvendelser." +
+                        "\n\nVirkemåde\n" +
+                        "– Scenarier er produktets scenarietilknytning: scenarier tilknyttet her sætter udgangen." +
+                        "\n\nTilslutning\n" +
+                        "– Pumpens forsyning føres over en udgang på et udgangsmodul (230 V- eller 400 V-modulet efter pumpens forsyning).")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1344,8 +2201,18 @@ namespace Ihc.Vis.Catalog
                     .Name("11#Ventilator")
                     .Note("")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang")
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Relæudgangen, ventilatoren er koblet på; ON = ventilator i drift. Startværdi off, omfattet af backup (tilstanden gendannes efter spændingssvigt)."))
                     .AddScenes()
+                    .Documentation(
+                        "Generisk udgangsrolle: en ventilator koblet på en udgang på et udgangsmodul; " +
+                        "intet LK-varenummer — dokumentationen er udgangsmodulernes." +
+                        "\n\nAnvendelse\n" +
+                        "Når en ventilator skal styres fra programmet — fx efterløb i baderum, fugtstyret udluftning med Fugt / Temperatur sensor eller kombineret lys-/ventilationsstyring med blokkene i \"1.3 Lys og ventilation\"." +
+                        "\n\nVirkemåde\n" +
+                        "– Scenarier er produktets scenarietilknytning: scenarier tilknyttet her sætter udgangen." +
+                        "\n\nTilslutning\n" +
+                        "– Ventilatorens forsyning føres over en udgang på et udgangsmodul (230 V- eller 400 V-modulet efter forsyningen).")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1363,7 +2230,18 @@ namespace Ihc.Vis.Catalog
                     .Name("08#Vandvarmer")
                     .Note("")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang")
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Relæudgangen, vandvarmeren er koblet på; ON = opvarmning. Startværdi off, omfattet af backup (tilstanden gendannes efter spændingssvigt)."))
+                    .Documentation(
+                        "Generisk udgangsrolle: en vandvarmer koblet på en udgang på et udgangsmodul; " +
+                        "intet LK-varenummer — dokumentationen er udgangsmodulernes." +
+                        "\n\nAnvendelse\n" +
+                        "Når en elektrisk vandvarmer skal styres fra programmet — fx tidsstyret opvarmning uden for spidsbelastning eller afbrydelse ved bortrejse." +
+                        "\n\nVirkemåde\n" +
+                        "– Tidslogik programmeres med funktionsblokke." +
+                        "\n\nTilslutning\n" +
+                        "– Vandvarmerens forsyning føres over en udgang på et udgangsmodul (230 V-modulet, eller 400 V-modulet 120B1027 ved trefaset forsyning).\n" +
+                        "– Bemærk modulets belastningsgrænser: på 230 V-modulet maks. 10 A pr. relæ, dog maks. 10 A pr. gruppe af 4 relæer og 20 A i alt pr. modul.")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1381,7 +2259,17 @@ namespace Ihc.Vis.Catalog
                     .Name("09#El-radiator")
                     .Note("")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang")
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Relæudgangen, el-radiatoren er koblet på; ON = opvarmning. Startværdi off, omfattet af backup (tilstanden gendannes efter spændingssvigt)."))
+                    .Documentation(
+                        "Generisk udgangsrolle: en el-radiator koblet på en udgang på et udgangsmodul; " +
+                        "intet LK-varenummer — dokumentationen er udgangsmodulernes og termostatvejledningernes." +
+                        "\n\nAnvendelse\n" +
+                        "Når en el-radiator skal styres fra programmet — fx natsænkning, tidsstyring eller termostatstyring ud fra en Temperatur sensor. De linkede vejledninger beskriver selvstændige LK FUGA-termostater til direkte 230 V-regulering (97586_02: 106D0300-serien til elvarme; 97585_02: 106D0308 med gulvføler) — de er ikke IHC-produkter." +
+                        "\n\nVirkemåde\n" +
+                        "– Termostat- og sænkningslogik programmeres med funktionsblokke." +
+                        "\n\nTilslutning\n" +
+                        "– Radiatorens forsyning føres over en udgang på et udgangsmodul (typisk 230 V-modulet 120B1020: maks. 10 A pr. relæ, dog maks. 10 A pr. gruppe af 4 relæer og 20 A i alt pr. modul).")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1399,7 +2287,18 @@ namespace Ihc.Vis.Catalog
                     .Name("10#El-gulvvarme")
                     .Note("")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang")
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Relæudgangen, gulvvarmen er koblet på; ON = opvarmning. Startværdi off, omfattet af backup (tilstanden gendannes efter spændingssvigt)."))
+                    .Documentation(
+                        "Generisk udgangsrolle: et el-gulvvarmeelement koblet på en udgang på et udgangsmodul; " +
+                        "intet LK-varenummer — dokumentationen er udgangsmodulernes." +
+                        "\n\nAnvendelse\n" +
+                        "Når el-gulvvarme skal styres fra programmet — typisk termostatstyring med gulvføler via Temperatur sensor (gulvføler 120C1010) og natsænkning." +
+                        "\n\nVirkemåde\n" +
+                        "– Termostatlogik med gulvtemperatur programmeres med funktionsblokke." +
+                        "\n\nTilslutning\n" +
+                        "– Gulvvarmens forsyning føres over en udgang på et udgangsmodul (230 V- eller 400 V-modulet efter belastningen).\n" +
+                        "– Bemærk modulets belastningsgrænser: på 230 V-modulet maks. 10 A pr. relæ, dog maks. 10 A pr. gruppe af 4 relæer og 20 A i alt pr. modul.")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1417,10 +2316,25 @@ namespace Ihc.Vis.Catalog
                     .Name("04#Output 1-10V IHC/SA")
                     .Note("Output 1-10V IHC/SA modul")
                     .Attribute("icon", "_0x86")
-                    .AddOutput("Tænd / regulér op")
-                    .AddOutput("Sluk / regulér ned")
-                    .AddOutput("Memory 1")
-                    .AddOutput("Memory 2")
+                    .AddOutput("Tænd / regulér op", o => o.Documentation(
+                        "ON/OFF-styresignal til dæmperens tænd/op-indgang."))
+                    .AddOutput("Sluk / regulér ned", o => o.Documentation(
+                        "ON/OFF-styresignal til dæmperens sluk/ned-indgang."))
+                    .AddOutput("Memory 1", o => o.Documentation(
+                        "ON/OFF-styresignal til dæmperens første memory-indgang."))
+                    .AddOutput("Memory 2", o => o.Documentation(
+                        "ON/OFF-styresignal til dæmperens anden memory-indgang."))
+                    .Documentation(
+                        "Logisk IHC/SA-dæmperprofil med fire styresignaler: tænd/regulér op, sluk/regulér ned og to memory-signaler. " +
+                        "Den fysiske dæmper og udgangsmodulet fastlægges ikke af def'en." +
+                        "\n\nAnvendelse\n" +
+                        "Når en fysisk IHC/SA-dæmpers styreklemmer skal repræsenteres som fire ON/OFF-udgange i programmet. Vælg udgangsmodul og fortrådning efter den konkrete dæmper: kataloget angiver 24/230 V-styring for nogle modeller og potentialfri relækontakter for andre." +
+                        "\n\nVirkemåde\n" +
+                        "– Styresignalerne forbindes typisk til en lysdæmperblok i \"1.2 Lysdæmpning\".\n" +
+                        "– Def'en fastlægger ressourceinventar samt startværdi off og backup yes for alle fire udgange (DTD-standard); puls-/holdesemantik afhænger af den tilsluttede IHC/SA-dæmper og skal tages fra dens vejledning." +
+                        "\n\nTilslutning\n" +
+                        "– Forbind de fire logiske udgange til den konkrete IHC/SA-dæmpers styreklemmer via et kompatibelt IHC-udgangsmodul.\n" +
+                        "– Def'en angiver ingen spænding eller modulvariant; følg dæmperens vejledning. Tilslut ikke LK IHC Converter 1-10 V (820B1224), som kilderne reserverer til Wireless-dæmpere.")
                     .Grammar(BuiltInCatalogGrammar.G_314c48d2)
                     .Build();
             return definition with
@@ -1437,10 +2351,26 @@ namespace Ihc.Vis.Catalog
                     .CategoryPath("Datalinie produkter\\03#Dimmer")
                     .Name("04#UniDimmer touch")
                     .Attribute("icon", "_0x86")
-                    .AddOutput("Touch")
-                    .AddOutput("Sluk")
-                    .AddOutput("Memory 1")
-                    .AddOutput("Memory 2")
+                    .AddOutput("Touch", o => o.Documentation(
+                        "Driver dimmerens betjeningsklemme i mode A (fabriksindstilling): kort signal tænder/slukker, fastholdt signal regulerer op/ned — retningen skifter, hver gang signalet slippes."))
+                    .AddOutput("Sluk", o => o.Documentation(
+                        "Slukker lyset; slukker altid."))
+                    .AddOutput("Memory 1", o => o.Documentation(
+                        "Kort signal fremkalder gemt niveau 1; meget langt signal (>3 sek.) gemmer det aktuelle niveau (fabriksindstilling 50 %)."))
+                    .AddOutput("Memory 2", o => o.Documentation(
+                        "Kort signal fremkalder gemt niveau 2; meget langt signal (>3 sek.) gemmer det aktuelle niveau (fabriksindstilling 100 %)."))
+                    .Documentation(
+                        "Universallysdæmperen 400 UNI IHC/SA i touch-betjening (mode A): " +
+                        "én styreledning betjener tænd/sluk og regulering, plus separat sluk og to memory-niveauer." +
+                        "\n\nAnvendelse\n" +
+                        "Universel lysdæmpning af ohmske, kapacitive og induktive belastninger (40–400 W; kapacitiv og induktiv må ikke blandes) — glødepærer, 230 V halogen og halogen med jernkerne- eller elektronisk transformer. Kan bruges stand-alone eller sammen med IHC Control. CFL-sparepærer, lysstofrør og LED må ikke tilsluttes. Ønskes 2-tast-betjening, vælg UniDimmer 2-tast betjent." +
+                        "\n\nVirkemåde\n" +
+                        "– Programforbindes typisk til en lysdæmperblok i \"1.2 Lysdæmpning\".\n" +
+                        "– Ved strømafbrydelse husker dimmeren tændt/slukket-tilstand og indstillinger; mindste lysniveau kan justeres, og der er elektronisk overbelastningssikring." +
+                        "\n\nTilslutning\n" +
+                        "– Styreklemmerne (12–30 V AC/DC forneden) drives fra udgange på et 24 V IHC udgangsmodul; maks. 300 m på svagstrømsindgangene.\n" +
+                        "– 230 V-klemmerne foroven: nul, fase, belastning samt 230 V 1-tryks betjening.\n" +
+                        "– DIN-skinnemontage, 36 mm.")
                     .Grammar(BuiltInCatalogGrammar.G_314c48d2)
                     .Build();
             return definition with
@@ -1458,10 +2388,25 @@ namespace Ihc.Vis.Catalog
                     .Name("05#UniDimmer 2-tast betjent")
                     .Note("")
                     .Attribute("icon", "_0x86")
-                    .AddOutput("Tænd / regulér op")
-                    .AddOutput("Sluk / regulér ned")
-                    .AddOutput("Memory 1")
-                    .AddOutput("Memory 2")
+                    .AddOutput("Tænd / regulér op", o => o.Documentation(
+                        "Mode B: kort signal tænder; fastholdt signal regulerer lysniveauet op."))
+                    .AddOutput("Sluk / regulér ned", o => o.Documentation(
+                        "Mode B: kort signal slukker; fastholdt signal regulerer lysniveauet ned."))
+                    .AddOutput("Memory 1", o => o.Documentation(
+                        "Kort signal fremkalder gemt niveau 1; meget langt signal (>3 sek.) gemmer det aktuelle niveau (fabriksindstilling 50 %)."))
+                    .AddOutput("Memory 2", o => o.Documentation(
+                        "Kort signal fremkalder gemt niveau 2; meget langt signal (>3 sek.) gemmer det aktuelle niveau (fabriksindstilling 100 %)."))
+                    .Documentation(
+                        "Universallysdæmperen 400 UNI IHC/SA i 2-tast-betjening (mode B): separate op-/ned-styreledninger plus to memory-niveauer. " +
+                        "Samme hardware som UniDimmer touch." +
+                        "\n\nAnvendelse\n" +
+                        "Som UniDimmer touch, men når betjeningen skal være 2-tast (én tast for tænd/op, én for sluk/ned) — fx med et 2-tast FUGA-tryk. Universaldæmper 40–400 W til gløde-/halogen med jernkerne- eller elektronisk transformer; CFL, lysstofrør og LED må ikke tilsluttes." +
+                        "\n\nVirkemåde\n" +
+                        "– Programforbindes typisk til op-/ned-udgangene på en lysdæmperblok i \"1.2 Lysdæmpning\".\n" +
+                        "– Ved strømafbrydelse husker dimmeren tændt/slukket-tilstand og indstillinger." +
+                        "\n\nTilslutning\n" +
+                        "– Styreklemmerne (12–30 V AC/DC forneden) drives fra udgange på et 24 V IHC udgangsmodul; mode B vælges jf. dimmerens vejledning.\n" +
+                        "– DIN-skinnemontage, 36 mm; 230 V-klemmer foroven.")
                     .Grammar(BuiltInCatalogGrammar.G_314c48d2)
                     .Build();
             return definition with
@@ -1479,8 +2424,21 @@ namespace Ihc.Vis.Catalog
                     .Name("01#Dimmer touch")
                     .Note("")
                     .Attribute("icon", "_0x86")
-                    .AddOutput("Touch")
-                    .AddOutput("Sluk")
+                    .AddOutput("Touch", o => o.Documentation(
+                        "1-tryks betjening: kort signal tænder lyset på niveauet fra før sluk og slukker igen; fastholdt signal regulerer trinløst op og ned — slip, når niveauet passer."))
+                    .AddOutput("Sluk", o => o.Documentation(
+                        "Slukker lyset; slukker altid."))
+                    .Documentation(
+                        "Bagkantdæmperen IHC Dimmer 350 CR i 1-tryks (touch-)betjening: " +
+                        "én styreledning betjener tænd/sluk og trinløs regulering, plus separat sluk." +
+                        "\n\nAnvendelse\n" +
+                        "Dæmpning af 230 V glødelamper, halogen og lavvolthalogen med elektronisk transformer (også kombinationer) — bagkantstyring; jernkernetransformere må ikke anvendes (brug UniDimmer touch). Kan bruges stand-alone. CFL/LED garanteres ikke. Ønskes 2-tast-betjening, vælg Dimmer 2-tast betjent." +
+                        "\n\nVirkemåde\n" +
+                        "– Programforbindes typisk til en lysdæmperblok i \"1.2 Lysdæmpning\".\n" +
+                        "– Ved strømafbrydelse mister dæmperen hukommelsen og tænder på højeste niveau, indtil lysniveauet er indstillet igen." +
+                        "\n\nTilslutning\n" +
+                        "– Styreindgangene (10–28 V AC/DC SELV og/eller 230 V-fase) drives fra udgange på et IHC udgangsmodul; maks. 300 m på svagstrømsindgangen, 100 m på 230 V-styreindgangen.\n" +
+                        "– DIN-skinnemontage, 36 mm; udgangen er kortslutningssikker.")
                     .Grammar(BuiltInCatalogGrammar.G_314c48d2)
                     .Build();
             return definition with
@@ -1498,8 +2456,23 @@ namespace Ihc.Vis.Catalog
                     .Name("02#Dimmer 2-tast betjent")
                     .Note("")
                     .Attribute("icon", "_0x86")
-                    .AddOutput("Tænd / regulér op")
-                    .AddOutput("Sluk / regulér ned")
+                    .AddOutput("Tænd / regulér op", o => o.Documentation(
+                        "Klemme 1: kort signal tænder lyset på det tidligere niveau; fastholdt signal regulerer lysniveauet op."))
+                    .AddOutput("Sluk / regulér ned", o => o.Documentation(
+                        "Klemme 3: kort signal slukker; fastholdt signal regulerer lysniveauet ned."))
+                    .Documentation(
+                        "Bagkantdæmperen IHC Dimmer 350 CR i 2-tast-betjening: separate op-/ned-styreledninger. " +
+                        "Samme hardware som Dimmer touch." +
+                        "\n\nAnvendelse\n" +
+                        "Som Dimmer touch, men med 2-tast-betjening — datasheetets 2-kontakt-betjening: højre tangent tænder/regulerer op, venstre slukker/regulerer ned. Bagkantdæmper til glødelamper, 230 V halogen og elektronisk transformer; jernkernetransformere må ikke anvendes." +
+                        "\n\nVirkemåde\n" +
+                        "– Programforbindes typisk til op-/ned-udgangene på en lysdæmperblok i \"1.2 Lysdæmpning\".\n" +
+                        "– Ved strømafbrydelse mister dæmperen hukommelsen og tænder på højeste niveau, indtil lysniveauet er indstillet igen." +
+                        "\n\nTilslutning\n" +
+                        "– Styreindgangene er klemme 1 (tænd / regulér op) og klemme 3 (sluk / regulér ned), 10–28 V AC/DC (SELV) med fælles nul på klemme 2; de aktiveres med 24 V DC fra et IHC Output 24-modul. Maks. 300 m ledning på svagstrømsindgangene.\n" +
+                        "– 2-tast-betjening vælges ved at montere en lus på maks. 5 cm mellem klemme L og klemme 5.\n" +
+                        "– 230 V-styringen på klemme 6 kan iflg. vejledning 98069_02 kun anvendes ved 1-tast-betjening (touch) og gælder derfor ikke dette produkt.\n" +
+                        "– DIN-skinnemontage, 36 mm; udgangen er kortslutningssikker.")
                     .Grammar(BuiltInCatalogGrammar.G_314c48d2)
                     .Build();
             return definition with
@@ -1517,8 +2490,22 @@ namespace Ihc.Vis.Catalog
                     .Name("03#Dimmer 350LR/600CR/1000LR")
                     .Note("")
                     .Attribute("icon", "_0x86")
-                    .AddOutput("Touch")
-                    .AddOutput("Udgang for 230V")
+                    .AddOutput("Touch", o => o.Documentation(
+                        "Driver dimmerens lavvolts-betjeningsklemme: kort tryk (< 0,4 s) tænder/slukker, langt tryk regulerer op/ned."))
+                    .AddOutput("Udgang for 230V", o => o.Documentation(
+                        "230 V 1-tryks betjeningsindgang (skal være samme fase som L) på IHC/SA-modellen, drevet fra et 230 V-udgangsmodul; bruges, når betjeningen sker med 230 V i stedet for lavvolt."))
+                    .Documentation(
+                        "Dimmerfamilien 350 LR / 600 CR / 1000 LR med touch-betjening og 230 V-betjeningsindgang. " +
+                        "Nuværende dokumenteret model er 1000 LR IHC/SA (820B1231)." +
+                        "\n\nAnvendelse\n" +
+                        "Lysdæmpning af ohmske og induktive belastninger — 230 V gløde-/halogenlamper og lavvolthalogen med jernkerne- eller ringkernetransformer, 60–1000 W (1000 LR). Kapacitive belastninger må ikke tilsluttes; CFL-sparepærer, lysstofrør og LED må ikke tilsluttes. Kan bruges stand-alone eller sammen med IHC Control." +
+                        "\n\nVirkemåde\n" +
+                        "– Programforbindes typisk til en lysdæmperblok i \"1.2 Lysdæmpning\".\n" +
+                        "– Ved strømafbrydelse husker 1000 LR IHC/SA tændt/slukket-tilstand og indstillinger; den har desuden memory-klemmer og valgbar mode A/B ved direkte fortrådning (se vejledningen)." +
+                        "\n\nTilslutning\n" +
+                        "– På 1000 LR IHC/SA (820B1231): lavvolts-styreklemmerne (12–30 V AC/DC) drives fra et 24 V IHC udgangsmodul, og 230 V-betjeningen fra et 230 V-udgangsmodul.\n" +
+                        "– På familiens øvrige modeller 600 CR (120B1247) og 1000 LR (120B1244) kan der ifølge LK-kataloget udelukkende bruges 400 V- eller 1-10 V-udgangsmodulet, hvor modulets potentialefri relæfunktion benyttes — 24 V- og 230 V-udgangsmoduler kan kun bruges sammen med 350 CR/350 LR/400 UNI.\n" +
+                        "– 230 V-klemrækken (nul, fase, belastning) skal altid vende opad; DIN-skinnemontage.")
                     .Grammar(BuiltInCatalogGrammar.G_314c48d2)
                     .Build();
             return definition with
@@ -1537,7 +2524,18 @@ namespace Ihc.Vis.Catalog
                     .Note("")
                     .Locked(false)
                     .Attribute("icon", "_0x87")
-                    .AddInput("Indgang")
+                    .AddInput("Indgang", i => i.Documentation(
+                        "Produktets indgangsressource; semantikken (puls/niveau, NC/NO) bestemmes af det tilsluttede udstyr og fortolkes af programmets funktionsblokke."))
+                    .Documentation(
+                        "Skabelon til eget indgangsprodukt: én indgang, frit navn. " +
+                        "Bruges til udstyr, der ikke findes i produktkataloget." +
+                        "\n\nAnvendelse\n" +
+                        "Når en vilkårlig kontakt eller sensor skal på en IHC-indgang, uden at der findes et passende katalogprodukt — hjælpen beskriver mappen Generelle som stedet for de brugerdefinerede ind- og udgangsprodukter. I modsætning til katalogprodukterne er Navn redigerbart (locked=\"no\"), så produktet kan navngives efter det faktiske udstyr." +
+                        "\n\nVirkemåde\n" +
+                        "– Skal indgangen logges af controlleren, brug i stedet Brugerdefineret indgangsprodukt med logning." +
+                        "\n\nTilslutning\n" +
+                        "– Udstyret forbindes til et IHC indgangsmodul.\n" +
+                        "– Dialogens Inkluder produktet i slutbruger rapport styrer, om produktet medtages i rapporten.")
                     .Grammar(BuiltInCatalogGrammar.G_20207f0e)
                     .Build();
             return definition with
@@ -1556,8 +2554,18 @@ namespace Ihc.Vis.Catalog
                     .Note("")
                     .Locked(false)
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang")
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Produktets udgangsressource; styrer det tilsluttede udstyr. Startværdi off, omfattet af backup."))
                     .AddScenes()
+                    .Documentation(
+                        "Skabelon til eget udgangsprodukt med scenarietilknytning: én udgang plus et scenariepunkt. " +
+                        "Bruges til udstyr, der ikke findes i produktkataloget." +
+                        "\n\nAnvendelse\n" +
+                        "Når en vilkårlig belastning skal styres fra en IHC-udgang og kunne indgå i scenarier — fx et lampested uden passende katalogprodukt, der skal med i lys-scenarierne. Navn er redigerbart (locked=\"no\"), så produktet kan navngives efter det faktiske udstyr." +
+                        "\n\nVirkemåde\n" +
+                        "– Scenarier er produktets scenarietilknytning: scenarier tilknyttet her sætter udgangen." +
+                        "\n\nTilslutning\n" +
+                        "– Udstyret forbindes til et IHC udgangsmodul.")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1576,7 +2584,17 @@ namespace Ihc.Vis.Catalog
                     .Note("")
                     .Locked(false)
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Udgang")
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Produktets udgangsressource; styrer det tilsluttede udstyr. Startværdi off, omfattet af backup (tilstanden gendannes efter spændingssvigt)."))
+                    .Documentation(
+                        "Skabelon til eget udgangsprodukt: én udgang, frit navn. " +
+                        "Bruges til udstyr, der ikke findes i produktkataloget." +
+                        "\n\nAnvendelse\n" +
+                        "Når en vilkårlig belastning skal styres fra en IHC-udgang, uden at der findes et passende katalogprodukt — hjælpen beskriver mappen Generelle som stedet for de brugerdefinerede ind- og udgangsprodukter. Navn er redigerbart (locked=\"no\"), så produktet kan navngives efter det faktiske udstyr." +
+                        "\n\nVirkemåde\n" +
+                        "– Skal udgangen kunne indgå i scenarier, brug varianten med scenarie; skal den logges, varianten med logning." +
+                        "\n\nTilslutning\n" +
+                        "– Udstyret forbindes til et IHC udgangsmodul (24 V / 230 V / 400 V efter belastningen).")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -1597,8 +2615,19 @@ namespace Ihc.Vis.Catalog
                     .Attribute("icon", "_0x87")
                     .RawChild(ElRaw("enum_definition", new[] { ("id", "_0x50"), ("typeid", "_0x16") },
                     ElRaw("enum_value", new[] { ("id", "_0x51"), ("typeid", "_0x17") })))
-                    .AddInput("Indgang")
-                    .AddResource("resource_enum", "Log Indgang", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51"))
+                    .AddInput("Indgang", i => i.Documentation(
+                        "Indgangsressourcen, der logges; linkes i programmet til det signal, der skal logges."))
+                    .AddResource("resource_enum", "Log Indgang", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51").Documentation(
+                        "Logningsbetingelsen (enum): højreklik på ressourcen og vælg Kun ændringer, Hver time, Dagligt, Ugentlig eller Hver måned."))
+                    .Documentation(
+                        "Skabelon til eget indgangsprodukt, hvis indgang kan logges af controlleren: " +
+                        "én indgang plus en logningsressource." +
+                        "\n\nAnvendelse\n" +
+                        "Hjælpen beskriver fremgangsmåden: for at logge en ind- eller udgang indsættes et \"Brugerdefineret ind- eller udgangsprodukt med logning\", som derefter linkes til den indgang (eller ON/OFF-variabel), der ønskes logget. Logningen skrives til et SD-kort i controlleren; loggen aflæses i ServiceView og hentes som csv-/txt-fil med knappen Eksport logfil." +
+                        "\n\nVirkemåde\n" +
+                        "– Navn er redigerbart (locked=\"no\"), så produktet kan navngives efter det faktiske udstyr." +
+                        "\n\nTilslutning\n" +
+                        "– Bruges produktet til programintern logning (link til en variabel), kræves ingen adresse; ellers forbindes udstyret til et IHC indgangsmodul som for Brugerdefineret indgangsprodukt.")
                     .Grammar(BuiltInCatalogGrammar.G_43b9a320)
                     .Build();
             return definition with
@@ -1619,8 +2648,19 @@ namespace Ihc.Vis.Catalog
                     .Attribute("icon", "_0x84")
                     .RawChild(ElRaw("enum_definition", new[] { ("id", "_0x50"), ("typeid", "_0x16") },
                     ElRaw("enum_value", new[] { ("id", "_0x51"), ("typeid", "_0x17") })))
-                    .AddOutput("Udgang")
-                    .AddResource("resource_enum", "Log Udgang", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51"))
+                    .AddOutput("Udgang", o => o.Documentation(
+                        "Udgangsressourcen, der logges; linkes i programmet til det signal, der skal logges."))
+                    .AddResource("resource_enum", "Log Udgang", r => r.Attribute("typedef", "_0x50").Attribute("inivalue", "_0x51").Documentation(
+                        "Logningsbetingelsen (enum): højreklik på ressourcen og vælg Kun ændringer, Hver time, Dagligt, Ugentlig eller Hver måned."))
+                    .Documentation(
+                        "Skabelon til eget udgangsprodukt, hvis udgang kan logges af controlleren: " +
+                        "én udgang plus en logningsressource." +
+                        "\n\nAnvendelse\n" +
+                        "Hjælpen viser eksemplet med logning af en dørlås forsynet via en stikkontakt: der indsættes en \"Stikkontakt\" og et \"Brugerdefineret udgangsprodukt med logning\", som linkes til den udgang, der ønskes logget. Loggen aflæses i ServiceView." +
+                        "\n\nVirkemåde\n" +
+                        "– Navn er redigerbart (locked=\"no\"), så produktet kan navngives efter det faktiske udstyr." +
+                        "\n\nTilslutning\n" +
+                        "– Bruges produktet til programintern logning (link til en anden udgang), kræves ingen adresse; ellers forbindes udstyret til et IHC udgangsmodul som for Brugerdefineret udgangsprodukt.")
                     .Grammar(BuiltInCatalogGrammar.G_295e9042)
                     .Build();
             return definition with
@@ -1639,8 +2679,20 @@ namespace Ihc.Vis.Catalog
                     .Name("01#Tryk 2 tast")
                     .Note("")
                     .Attribute("icon", "_0x85")
-                    .AddResource("airlink_input", "Tryk (venstre)", r => r.Address("_0x01"))
-                    .AddResource("airlink_input", "Tryk (højre)", r => r.Address("_0x02"))
+                    .AddResource("airlink_input", "Tryk (venstre)", r => r.Address("_0x01").Documentation(
+                        "Trådløs trykkanal 1 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (højre)", r => r.Address("_0x02").Documentation(
+                        "Trådløs trykkanal 2 (sender); kan programmeres frit."))
+                    .Documentation(
+                        "IHC Wireless batteritryk med én tangent (to trådløse trykkanaler) i LK FUGA. " +
+                        "Batteridrevet sender — kanalerne programmeres frit i programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Trådløs betjening af lamper og andet elektrisk udstyr, hvor der ikke kan trækkes ledning — batteritrykket monteres i dåse, med træskruer, eller limes/klistres fast. Kan bruges standalone med Control/Scenarie Links direkte mod Wireless-modtagere eller kobles til IHC Controlleren for avanceret programmering. Tangenten kan aktiveres i begge sider." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene i \"1.2 Lysdæmpning\".\n" +
+                        "– Al standalone Wireless-programmering slettes automatisk, når komponenten linkes til IHC Controlleren." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-sender og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Programmeringsknapper og lysdioder sidder bag den øverste tangent, som afmonteres. Der medleveres tænd/sluk- og op/ned-tangenter samt tangentafdækning.")
                     .Grammar(BuiltInCatalogGrammar.G_3e4f2dc2)
                     .Build();
             return definition with
@@ -1659,10 +2711,24 @@ namespace Ihc.Vis.Catalog
                     .Name("02#Tryk 4 tast")
                     .Note("")
                     .Attribute("icon", "_0x85")
-                    .AddResource("airlink_input", "Tryk (øverst venstre)", r => r.Address("_0x01"))
-                    .AddResource("airlink_input", "Tryk (øverst højre)", r => r.Address("_0x02"))
-                    .AddResource("airlink_input", "Tryk (nederst venstre)", r => r.Address("_0x03"))
-                    .AddResource("airlink_input", "Tryk (nederst højre)", r => r.Address("_0x04"))
+                    .AddResource("airlink_input", "Tryk (øverst venstre)", r => r.Address("_0x01").Documentation(
+                        "Trådløs trykkanal 1 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (øverst højre)", r => r.Address("_0x02").Documentation(
+                        "Trådløs trykkanal 2 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (nederst venstre)", r => r.Address("_0x03").Documentation(
+                        "Trådløs trykkanal 3 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (nederst højre)", r => r.Address("_0x04").Documentation(
+                        "Trådløs trykkanal 4 (sender); kan programmeres frit."))
+                    .Documentation(
+                        "IHC Wireless batteritryk med to tangenter (fire trådløse trykkanaler) i LK FUGA. " +
+                        "Batteridrevet sender — kanalerne programmeres frit i programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Som Tryk 2 tast, men med to tangenter og fire trykkanaler — fx flere lampesteder eller scenarier fra ét tryk. Kan bruges standalone med Control/Scenarie Links eller kobles til IHC Controlleren." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene i \"1.2 Lysdæmpning\".\n" +
+                        "– Al standalone Wireless-programmering slettes automatisk, når komponenten linkes til IHC Controlleren." +
+                        "\n\nRegistrering\n" +
+                        "Senderen linkes fra menuen Controller → Link Wireless-produkter; serienummeret vises dér skrivebeskyttet efter linkning. Programmeringsknapper og lysdioder sidder bag den øverste tangent, som afmonteres — se fællesvejledningen 019D904122.")
                     .Grammar(BuiltInCatalogGrammar.G_3e4f2dc2)
                     .Build();
             return definition with
@@ -1681,12 +2747,28 @@ namespace Ihc.Vis.Catalog
                     .Name("03#Tryk 6 tast")
                     .Note("")
                     .Attribute("icon", "_0x85")
-                    .AddResource("airlink_input", "Tryk (øverst venstre)", r => r.Address("_0x01"))
-                    .AddResource("airlink_input", "Tryk (øverst højre)", r => r.Address("_0x02"))
-                    .AddResource("airlink_input", "Tryk (midt venstre)", r => r.Address("_0x03"))
-                    .AddResource("airlink_input", "Tryk (midt højre)", r => r.Address("_0x04"))
-                    .AddResource("airlink_input", "Tryk (nederst venstre)", r => r.Address("_0x05"))
-                    .AddResource("airlink_input", "Tryk (nederst højre)", r => r.Address("_0x06"))
+                    .AddResource("airlink_input", "Tryk (øverst venstre)", r => r.Address("_0x01").Documentation(
+                        "Trådløs trykkanal 1 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (øverst højre)", r => r.Address("_0x02").Documentation(
+                        "Trådløs trykkanal 2 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (midt venstre)", r => r.Address("_0x03").Documentation(
+                        "Trådløs trykkanal 3 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (midt højre)", r => r.Address("_0x04").Documentation(
+                        "Trådløs trykkanal 4 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (nederst venstre)", r => r.Address("_0x05").Documentation(
+                        "Trådløs trykkanal 5 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (nederst højre)", r => r.Address("_0x06").Documentation(
+                        "Trådløs trykkanal 6 (sender); kan programmeres frit."))
+                    .Documentation(
+                        "IHC Wireless batteritryk med tre tangenter (seks trådløse trykkanaler) i LK FUGA. " +
+                        "Batteridrevet sender — kanalerne programmeres frit i programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Som Tryk 2 tast, men med tre tangenter og seks trykkanaler — familiens største betjeningsflade, fx flere lampesteder og scenarier fra ét tryk. Kan bruges standalone med Control/Scenarie Links eller kobles til IHC Controlleren. Bemærk montagen uden ripper i teknisk ramme for 505DA003 (jf. vejledning 019D906721_02)." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene, fx Kip tænd sluk (1.1.01) eller lysdæmperblokkene i \"1.2 Lysdæmpning\".\n" +
+                        "– Al standalone Wireless-programmering slettes automatisk, når komponenten linkes til IHC Controlleren." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-sender og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Programmeringsknapper og lysdioder sidder bag den øverste tangent, som afmonteres. Der medleveres 2 tænd/sluk-tangenter, 2 op/ned-tangenter og 2 dækbjælker.")
                     .Grammar(BuiltInCatalogGrammar.G_3e4f2dc2)
                     .Build();
             return definition with
@@ -1705,14 +2787,32 @@ namespace Ihc.Vis.Catalog
                     .Name("05#Fjernbetjening")
                     .Note("")
                     .Attribute("icon", "_0x85")
-                    .AddResource("airlink_input", "Tryk 1", r => r.Address("_0x01"))
-                    .AddResource("airlink_input", "Tryk 2", r => r.Address("_0x02"))
-                    .AddResource("airlink_input", "Tryk 3", r => r.Address("_0x03"))
-                    .AddResource("airlink_input", "Tryk 4", r => r.Address("_0x04"))
-                    .AddResource("airlink_input", "Tryk 5", r => r.Address("_0x05"))
-                    .AddResource("airlink_input", "Tryk 6", r => r.Address("_0x06"))
-                    .AddResource("airlink_input", "Tryk 7", r => r.Address("_0x07"))
-                    .AddResource("airlink_input", "Tryk 8", r => r.Address("_0x08"))
+                    .AddResource("airlink_input", "Tryk 1", r => r.Address("_0x01").Documentation(
+                        "Trådløs senderkanal 1; kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk 2", r => r.Address("_0x02").Documentation(
+                        "Trådløs senderkanal 2; kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk 3", r => r.Address("_0x03").Documentation(
+                        "Trådløs senderkanal 3; kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk 4", r => r.Address("_0x04").Documentation(
+                        "Trådløs senderkanal 4; kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk 5", r => r.Address("_0x05").Documentation(
+                        "Trådløs senderkanal 5; kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk 6", r => r.Address("_0x06").Documentation(
+                        "Trådløs senderkanal 6; kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk 7", r => r.Address("_0x07").Documentation(
+                        "Trådløs senderkanal 7; kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk 8", r => r.Address("_0x08").Documentation(
+                        "Trådløs senderkanal 8; kan programmeres frit."))
+                    .Documentation(
+                        "IHC Wireless håndholdt fjernbetjening med 8 betjeningstryk (trådløse senderkanaler). " +
+                        "Produktet er udgået; def'en understøtter eksisterende installationer." +
+                        "\n\nAnvendelse\n" +
+                        "Mobil trådløs betjening af Wireless-modtagere og controller-programmering — 98530_05 omtaler \"Fjernbetjeninger med 8 og 4 betjeningstryk\" som systemets mobile sendere. Kan bruges standalone med Control/Scenarie Links eller sammen med IHC Controlleren." +
+                        "\n\nVirkemåde\n" +
+                        "– Kanalerne kan bruges frit i programmet — fx tænd/sluk, dæmpning og scenarier.\n" +
+                        "– Al standalone Wireless-programmering slettes automatisk, når komponenten linkes til IHC Controlleren." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-sender og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Stand alone-programmering (Control/Scenarie Links) er beskrevet i fællesvejledningen 019D904122 og i vejledningen vedlagt fjernbetjeningen (jf. 98530_05).")
                     .Grammar(BuiltInCatalogGrammar.G_3e4f2dc2)
                     .Build();
             return definition with
@@ -1731,10 +2831,23 @@ namespace Ihc.Vis.Catalog
                     .Name("04#Nøglering")
                     .Note("")
                     .Attribute("icon", "_0x85")
-                    .AddResource("airlink_input", "Tryk 1 (øverst)", r => r.Address("_0x01"))
-                    .AddResource("airlink_input", "Tryk 2 (nederst)", r => r.Address("_0x02"))
-                    .AddResource("airlink_input", "Tryk 3 (venstre)", r => r.Address("_0x03"))
-                    .AddResource("airlink_input", "Tryk 4 (højre)", r => r.Address("_0x04"))
+                    .AddResource("airlink_input", "Tryk 1 (øverst)", r => r.Address("_0x01").Documentation(
+                        "Trådløs senderkanal 1; kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk 2 (nederst)", r => r.Address("_0x02").Documentation(
+                        "Trådløs senderkanal 2; kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk 3 (venstre)", r => r.Address("_0x03").Documentation(
+                        "Trådløs senderkanal 3; kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk 4 (højre)", r => r.Address("_0x04").Documentation(
+                        "Trådløs senderkanal 4; kan programmeres frit."))
+                    .Documentation(
+                        "IHC Wireless nøglerings-fjernbetjening med 4 tryk (trådløse senderkanaler). " +
+                        "Produktet er udgået; def'en understøtter eksisterende installationer." +
+                        "\n\nAnvendelse\n" +
+                        "Mobil trådløs betjening i lommeformat — 98530_05 omtaler systemets mobile sendere som \"Fjernbetjeninger med 8 og 4 betjeningstryk\"; nøgleringen er 4-tryks-modellen. Typisk til sluk-alt/tænd-velkomst ved døren eller panikfunktioner. Kan bruges standalone med Control/Scenarie Links eller sammen med IHC Controlleren." +
+                        "\n\nVirkemåde\n" +
+                        "– Al standalone Wireless-programmering slettes automatisk, når komponenten linkes til IHC Controlleren." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-sender og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Stand alone-programmering (Control/Scenarie Links) er beskrevet i fællesvejledningen 019D904122.")
                     .Grammar(BuiltInCatalogGrammar.G_3e4f2dc2)
                     .Build();
             return definition with
@@ -1753,10 +2866,24 @@ namespace Ihc.Vis.Catalog
                     .Name("06#Puck input")
                     .Note("")
                     .Attribute("icon", "_0x85")
-                    .AddResource("airlink_input", "Indgang 1", r => r.Address("_0x01"))
-                    .AddResource("airlink_input", "Indgang 2", r => r.Address("_0x02"))
-                    .AddResource("airlink_input", "Indgang 3", r => r.Address("_0x03"))
-                    .AddResource("airlink_input", "Indgang 4", r => r.Address("_0x04"))
+                    .AddResource("airlink_input", "Indgang 1", r => r.Address("_0x01").Documentation(
+                        "Trådløs indgangskanal 1; kan programmeres frit."))
+                    .AddResource("airlink_input", "Indgang 2", r => r.Address("_0x02").Documentation(
+                        "Trådløs indgangskanal 2; kan programmeres frit."))
+                    .AddResource("airlink_input", "Indgang 3", r => r.Address("_0x03").Documentation(
+                        "Trådløs indgangskanal 3; kan programmeres frit."))
+                    .AddResource("airlink_input", "Indgang 4", r => r.Address("_0x04").Documentation(
+                        "Trådløs indgangskanal 4; kan programmeres frit."))
+                    .Documentation(
+                        "IHC Wireless puck-senderenhed med fire indgangskanaler til indbygning. " +
+                        "Produktet er udgået; def'en understøtter eksisterende installationer." +
+                        "\n\nAnvendelse\n" +
+                        "Til indbygning i egne løsninger og produkter, som derefter kan bruges i IHC Control-systemet: puck-senderen har fire input, som hver skal forbindes til et pulstryk — kontakttryk (fastholdte kontakter) kan ikke anvendes. Kan bruges standalone med Control/Scenarie Links eller sammen med IHC Controlleren." +
+                        "\n\nVirkemåde\n" +
+                        "– Kanalerne kan bruges frit i programmet som almindelige indgange.\n" +
+                        "– Al standalone Wireless-programmering slettes automatisk, når komponenten linkes til IHC Controlleren." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-sender og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Stand alone-programmering (Control/Scenarie Links) er beskrevet i fællesvejledningen 019D904122.")
                     .Grammar(BuiltInCatalogGrammar.G_3e4f2dc2)
                     .Build();
             return definition with
@@ -1775,8 +2902,19 @@ namespace Ihc.Vis.Catalog
                     .Name("02#Stikkontakt")
                     .Note("Trykkene styrer stikkontakten direkte")
                     .Attribute("icon", "_0x88")
-                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x01"))
+                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x01").Documentation(
+                        "Relæet i stikkontakten; ON = kontakt tændt. Startværdi off, omfattet af backup."))
                     .AddScenes()
+                    .Documentation(
+                        "IHC Wireless stikkontakt (1½ modul FUGA) med indbygget relæmodtager. " +
+                        "Udgangen styres trådløst fra programmet; tangenten er kun til lokal tænd/sluk." +
+                        "\n\nAnvendelse\n" +
+                        "Hvor tilsluttede brugsgenstande ønskes fjernbetjent trådløst — fx standerlamper og andet stikkontakt-udstyr. Kan bruges standalone med simple links til andre Wireless-komponenter eller kobles til IHC Controlleren (Visual 2 eller nyere) for avanceret programmering." +
+                        "\n\nVirkemåde\n" +
+                        "– Scenarier er produktets scenarietilknytning: scenarier tilknyttet her sætter udgangen.\n" +
+                        "– Tangenten på fronten er kun til lokal tænd/sluk; jf. def'ens note styrer trykkene stikkontakten direkte." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført — se fællesvejledningen 019D904122. Programmeringsknapper og lysdiode sidder bag tangenten, som afmonteres.")
                     .Grammar(BuiltInCatalogGrammar.G_0abfeba5)
                     .Build();
             return definition with
@@ -1795,8 +2933,18 @@ namespace Ihc.Vis.Catalog
                     .Name("01#Lampeudtag")
                     .Note("")
                     .Attribute("icon", "_0x86")
-                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x01"))
+                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x01").Documentation(
+                        "Relæet i lampeudtaget; ON = lys tændt. Startværdi off, omfattet af backup."))
                     .AddScenes()
+                    .Documentation(
+                        "IHC Wireless lampeudtag med relæ (rund, Ø 80 mm) — en trådløs tænding til loft- og væglampesteder. " +
+                        "Udgangen styres trådløst fra programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Hvor et lampested ønskes fjernbetjent trådløst — fx ved renovering uden nye ledninger. Kan bruges standalone med simple links til andre Wireless-komponenter eller kobles til IHC Controlleren (Visual 2 eller nyere). Passer på underlag 503R6410 samt loft-/vægdåser (dog ikke PL 35/16 mm); klemme til mellemledning til passive lampeudtag på bagsiden." +
+                        "\n\nVirkemåde\n" +
+                        "– Scenarier er produktets scenarietilknytning: scenarier tilknyttet her sætter udgangen." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført — se fællesvejledningen 019D904122. Programmeringsknapper og lysdiode sidder bag afdækningen, som afmonteres.")
                     .Grammar(BuiltInCatalogGrammar.G_17f224bb)
                     .Build();
             return definition with
@@ -1815,8 +2963,20 @@ namespace Ihc.Vis.Catalog
                     .Name("03#Modtager relæ")
                     .Note("")
                     .Attribute("icon", "_0x86")
-                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x01"))
+                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x01").Documentation(
+                        "Relæudgangen; ON = belastning tændt. Startværdi off, omfattet af backup."))
                     .AddScenes()
+                    .Documentation(
+                        "IHC Wireless relæmodtager (1 modul FUGA) — en trådløs tænd/sluk-udgang uden lokal betjening. " +
+                        "Udgangen styres trådløst fra programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Hvor der ønskes en tænding, som kan fjernbetjenes trådløst — relæet skjules i en dåse eller på underlag. Ved LED/CFL på universalrelæet 505D6505 kræves en ohmsk grundlast på mindst 6 W; allround-modellen 505D6515 er velegnet til de fleste boligbelastninger inkl. LED/CFL-sparepærer (op til 100 W i alt). Kan bruges standalone eller med IHC Controlleren (Visual 2 eller nyere)." +
+                        "\n\nVirkemåde\n" +
+                        "– Scenarier er produktets scenarietilknytning: scenarier tilknyttet her sætter udgangen.\n" +
+                        "– Begge modeller kan ved levering kun fjernbetjenes (ingen betjening på fronten); ønskes lokal betjening, købes en wireless tangent (530D6001) og en FUGA afdækning 44 × 26 (530D6037).\n" +
+                        "– Begge modeller husker tændt/slukket-tilstanden ved strømafbrydelse." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført — se fællesvejledningen 019D904122. Programmeringsknapper og lysdiode sidder bag afdækningen, som afmonteres.")
                     .Grammar(BuiltInCatalogGrammar.G_17f224bb)
                     .Build();
             return definition with
@@ -1835,8 +2995,18 @@ namespace Ihc.Vis.Catalog
                     .Name("05#Mobil stikkontakt relæ")
                     .Note("")
                     .Attribute("icon", "_0x88")
-                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x01"))
+                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x01").Documentation(
+                        "Relæet i den mobile stikkontakt; ON = tændt. Programmet tænder/slukker den tilsluttede belastning; startværdi off, omfattet af backup."))
                     .AddScenes()
+                    .Documentation(
+                        "IHC Wireless mobil (flytbar) stikkontakt med indbygget relæmodtager. " +
+                        "Produktet er udgået; def'en understøtter eksisterende installationer." +
+                        "\n\nAnvendelse\n" +
+                        "Flytbar trådløs tænding: enheden sættes i en almindelig stikkontakt, og den tilsluttede brugsgenstand kan derefter fjernbetjenes. Kan bruges standalone med Control/Scenarie Links eller sammen med IHC Controlleren." +
+                        "\n\nVirkemåde\n" +
+                        "– Scenarier er produktets scenarietilknytning: scenarier tilknyttet her sætter udgangen." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført — se fællesvejledningen 019D904122.")
                     .Grammar(BuiltInCatalogGrammar.G_0abfeba5)
                     .Build();
             return definition with
@@ -1855,8 +3025,18 @@ namespace Ihc.Vis.Catalog
                     .Name("04#Puck relæ")
                     .Note("")
                     .Attribute("icon", "_0x86")
-                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x01"))
+                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x01").Documentation(
+                        "Puck-relæet; ON = belastning tændt. Programmet tænder/slukker den tilsluttede belastning; startværdi off, omfattet af backup."))
                     .AddScenes()
+                    .Documentation(
+                        "IHC Wireless puck-relæmodtager til indbygning — en skjult trådløs tænd/sluk-udgang. " +
+                        "Produktet er udgået; def'en understøtter eksisterende installationer." +
+                        "\n\nAnvendelse\n" +
+                        "Skjult trådløs tænding i puck-format — indbygges fx bag et eksisterende lampested eller i en dåse, hvor en synlig modtager ikke ønskes. Kan bruges standalone med Control/Scenarie Links eller sammen med IHC Controlleren." +
+                        "\n\nVirkemåde\n" +
+                        "– Scenarier er produktets scenarietilknytning: scenarier tilknyttet her sætter udgangen." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført — se fællesvejledningen 019D904122.")
                     .Grammar(BuiltInCatalogGrammar.G_17f224bb)
                     .Build();
             return definition with
@@ -1887,6 +3067,29 @@ namespace Ihc.Vis.Catalog
                     ElRaw("dimmer_setting_fade_rate_down", new[] { ("id", "_0x15") }),
                     ElRaw("dimmer_setting_dimming_rate", new[] { ("id", "_0x16") }),
                     ElRaw("dimmer_setting_load_mode", new[] { ("id", "_0x17") })))
+                    .Documentation(
+                        "IHC Wireless mobil (flytbar) stikkontakt med indbygget lysdæmper. " +
+                        "Produktet er udgået; def'en understøtter eksisterende installationer." +
+                        "\n\nAnvendelse\n" +
+                        "Flytbar trådløs lysdæmpning: enheden sættes i en almindelig stikkontakt, og den tilsluttede lampe kan derefter dæmpes trådløst. Kan bruges standalone med Control/Scenarie Links eller sammen med IHC Controlleren." +
+                        "\n\nVirkemåde\n" +
+                        "– Dæmperen styres typisk fra en lysdæmperblok i \"1.2 Lysdæmpning\" eller ved at sætte Lys niveau direkte.\n" +
+                        "– Driftsparametrene under Indstillinger gemmes i selve enheden.\n" +
+                        "– Scenarier/regulering er dæmperens scenarietilknytning; scenarier sætter Lys niveau." +
+                        "\n\nIndstillinger\n" +
+                        "– Min. lysniveau (dimmer_setting_minimum_value): nederste reguleringsgrænse i % (0–100, standard 22).\n" +
+                        "– Maks. lysniveau (dimmer_setting_maximum_value): øverste reguleringsgrænse i % (0–100, standard 100).\n" +
+                        "– Rampetid op (dimmer_setting_fade_rate_up): tid for optænding til niveau, i ms (200–60.000, standard 700).\n" +
+                        "– Rampetid ned (dimmer_setting_fade_rate_down): tid for nedtoning/sluk, i ms (200–60.000, standard 700).\n" +
+                        "– Reguleringstid (dimmer_setting_dimming_rate): tid for gennemløb af reguleringsområdet, i ms (2.000–10.000, standard 5.000).\n" +
+                        "– Driftstilstand (dimmer_setting_load_mode): auto (standard), rl = forkantstyring, rc = bagkantstyring.\n" +
+                        "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Avanceret-dialogen indeholder dæmperens driftsparametre (se Indstillinger), ikke linkningen — se fællesvejledningen 019D904122.")
+                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt.")
+                    .Documentation("Lys niveau", "Dæmperens lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .Documentation("Sluk / regulér ned", "Slukker dæmperudgangen; fastholdt signal regulerer lysniveauet ned.")
+                    .Documentation("Tænd / regulér op", "Tænder dæmperudgangen; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_b5ead9ca)
                     .Build();
             return definition with
@@ -1917,6 +3120,29 @@ namespace Ihc.Vis.Catalog
                     ElRaw("dimmer_setting_fade_rate_down", new[] { ("id", "_0x15") }),
                     ElRaw("dimmer_setting_dimming_rate", new[] { ("id", "_0x16") }),
                     ElRaw("dimmer_setting_load_mode", new[] { ("id", "_0x17") })))
+                    .Documentation(
+                        "IHC Wireless lampeudtag med indbygget 250 W universallysdæmper (rund, Ø 80 mm). " +
+                        "Dæmperen styres trådløst fra programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Hvor et lampested ønskes dæmpet trådløst — fx ved renovering uden nye ledninger. Universaldæmper til glødepærer og 230 V halogen samt halogen med jernkerne- eller elektronisk transformer (ikke blandet); LED se lk.dk/dimmertool. Passer på underlag 503R6410 samt loft-/vægdåser (dog ikke PL 35/16 mm). Kan bruges standalone eller med IHC Controlleren (Visual 2 eller nyere)." +
+                        "\n\nVirkemåde\n" +
+                        "– Dæmperen styres typisk fra en lysdæmperblok i \"1.2 Lysdæmpning\" eller ved at sætte Lys niveau direkte.\n" +
+                        "– Driftsparametrene under Indstillinger gemmes i selve enheden.\n" +
+                        "– Scenarier/regulering er dæmperens scenarietilknytning; scenarier sætter Lys niveau." +
+                        "\n\nIndstillinger\n" +
+                        "– Min. lysniveau (dimmer_setting_minimum_value): nederste reguleringsgrænse i % (0–100, standard 22).\n" +
+                        "– Maks. lysniveau (dimmer_setting_maximum_value): øverste reguleringsgrænse i % (0–100, standard 100).\n" +
+                        "– Rampetid op (dimmer_setting_fade_rate_up): tid for optænding til niveau, i ms (200–60.000, standard 700).\n" +
+                        "– Rampetid ned (dimmer_setting_fade_rate_down): tid for nedtoning/sluk, i ms (200–60.000, standard 700).\n" +
+                        "– Reguleringstid (dimmer_setting_dimming_rate): tid for gennemløb af reguleringsområdet, i ms (2.000–10.000, standard 5.000).\n" +
+                        "– Driftstilstand (dimmer_setting_load_mode): auto (standard), rl = forkantstyring (jernkerne), rc = bagkantstyring (elektronisk trafo).\n" +
+                        "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Avanceret-dialogen indeholder dæmperens driftsparametre (se Indstillinger), ikke linkningen — se fællesvejledningen 019D904122. Programmeringsknapper og lysdiode sidder bag afdækningen, som afmonteres.")
+                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt, også ved lokal betjening.")
+                    .Documentation("Lys niveau", "Dæmperens lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .Documentation("Sluk / regulér ned", "Slukker dæmperudgangen; fastholdt signal regulerer lysniveauet ned.")
+                    .Documentation("Tænd / regulér op", "Tænder dæmperudgangen; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_b5ead9ca)
                     .Build();
             return definition with
@@ -1947,6 +3173,29 @@ namespace Ihc.Vis.Catalog
                     ElRaw("dimmer_setting_fade_rate_down", new[] { ("id", "_0x15") }),
                     ElRaw("dimmer_setting_dimming_rate", new[] { ("id", "_0x16") }),
                     ElRaw("dimmer_setting_load_mode", new[] { ("id", "_0x17") })))
+                    .Documentation(
+                        "IHC Wireless 250 W universallysdæmper-modtager (1 modul FUGA) uden lokal betjening. " +
+                        "Dæmperen styres trådløst fra programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Hvor der ønskes trådløs lysdæmpning fra en skjult modtager i dåse eller på underlag — dæmperen kan kun fjernbetjenes (ingen betjening på fronten). Universaldæmper til glødelamper og halogen med jernkerne- eller elektronisk transformer (ikke blandet); CFL/LED garanteres ikke, og ikke-dæmpbare lyskilder må ikke tilsluttes. Kan bruges standalone eller med IHC Controlleren (Visual 2 eller nyere)." +
+                        "\n\nVirkemåde\n" +
+                        "– Dæmperen styres typisk fra en lysdæmperblok i \"1.2 Lysdæmpning\" eller ved at sætte Lys niveau direkte.\n" +
+                        "– Driftsparametrene under Indstillinger gemmes i selve enheden.\n" +
+                        "– Scenarier/regulering er dæmperens scenarietilknytning; scenarier sætter Lys niveau." +
+                        "\n\nIndstillinger\n" +
+                        "– Min. lysniveau (dimmer_setting_minimum_value): nederste reguleringsgrænse i % (0–100, standard 22).\n" +
+                        "– Maks. lysniveau (dimmer_setting_maximum_value): øverste reguleringsgrænse i % (0–100, standard 100).\n" +
+                        "– Rampetid op (dimmer_setting_fade_rate_up): tid for optænding til niveau, i ms (200–60.000, standard 700).\n" +
+                        "– Rampetid ned (dimmer_setting_fade_rate_down): tid for nedtoning/sluk, i ms (200–60.000, standard 700).\n" +
+                        "– Reguleringstid (dimmer_setting_dimming_rate): tid for gennemløb af reguleringsområdet, i ms (2.000–10.000, standard 5.000).\n" +
+                        "– Driftstilstand (dimmer_setting_load_mode): auto (standard), rl = forkantstyring (jernkerne), rc = bagkantstyring (elektronisk trafo).\n" +
+                        "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Avanceret-dialogen indeholder dæmperens driftsparametre (se Indstillinger), ikke linkningen — se fællesvejledningen 019D904122. Programmeringsknapper og lysdiode sidder bag afdækningen, som afmonteres; lysdæmperen skal være tilsluttet både spænding og belastning for at kunne programmeres og linkes.")
+                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt.")
+                    .Documentation("Lys niveau", "Dæmperens lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .Documentation("Sluk / regulér ned", "Slukker dæmperudgangen; fastholdt signal regulerer lysniveauet ned.")
+                    .Documentation("Tænd / regulér op", "Tænder dæmperudgangen; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_b5ead9ca)
                     .Build();
             return definition with
@@ -1965,12 +3214,27 @@ namespace Ihc.Vis.Catalog
                     .Name("01#Kombi relæ 4 tast")
                     .Note("")
                     .Attribute("icon", "_0x85")
-                    .AddResource("airlink_input", "Tryk (øverst venstre)", r => r.Address("_0x01"))
-                    .AddResource("airlink_input", "Tryk (øverst højre)", r => r.Address("_0x02"))
-                    .AddResource("airlink_input", "Tryk (nederst venstre)", r => r.Address("_0x03"))
-                    .AddResource("airlink_input", "Tryk (nederst højre)", r => r.Address("_0x04"))
-                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x01"))
+                    .AddResource("airlink_input", "Tryk (øverst venstre)", r => r.Address("_0x01").Documentation(
+                        "Trådløs trykkanal 1 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (øverst højre)", r => r.Address("_0x02").Documentation(
+                        "Trådløs trykkanal 2 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (nederst venstre)", r => r.Address("_0x03").Documentation(
+                        "Trådløs trykkanal 3 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (nederst højre)", r => r.Address("_0x04").Documentation(
+                        "Trådløs trykkanal 4 (sender); kan programmeres frit."))
+                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x01").Documentation(
+                        "Relæudgangen; ON = belastning tændt. Programmet tænder/slukker belastningen; startværdi off, omfattet af backup."))
                     .AddScenes()
+                    .Documentation(
+                        "IHC Wireless kombienhed: 4-tast betjeningstryk (sender) og relæudgang (modtager) i samme FUGA-indsats. " +
+                        "Tryk og relæ programmeres uafhængigt af hinanden." +
+                        "\n\nAnvendelse\n" +
+                        "Hvor der ønskes trådløst betjeningstryk og tænd/sluk-udgang i ét produkt — fx som erstatning for en eksisterende afbryder. Ved LED/CFL på kombirelæet 505D6503 kræves en ohmsk grundlast på mindst 6 W; allround-modellen 505D6513 tåler de fleste boligbelastninger inkl. LED/CFL (op til 100 W i alt). Kan bruges standalone eller med IHC Controlleren (Visual 2 eller nyere). Ønskes dæmper i stedet, se Kombi dimmer 4 tast." +
+                        "\n\nVirkemåde\n" +
+                        "– De fire tryk kan bruges frit i programmet — også til at styre andet end enhedens eget relæ.\n" +
+                        "– Scenarier er produktets scenarietilknytning: scenarier tilknyttet her sætter udgangen." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført — se fællesvejledningen 019D904122. Programmeringsknapper og lysdiode sidder bag de øverste tangenter, som afmonteres.")
                     .Grammar(BuiltInCatalogGrammar.G_6437bed0)
                     .Build();
             return definition with
@@ -2005,6 +3269,34 @@ namespace Ihc.Vis.Catalog
                     ElRaw("dimmer_setting_fade_rate_down", new[] { ("id", "_0x15") }),
                     ElRaw("dimmer_setting_dimming_rate", new[] { ("id", "_0x16") }),
                     ElRaw("dimmer_setting_load_mode", new[] { ("id", "_0x17") })))
+                    .Documentation(
+                        "IHC Wireless kombienhed: 4-tast betjeningstryk (sender) og 250 W universallysdæmper (modtager) i samme FUGA-indsats. " +
+                        "Tryk og dæmperudgang programmeres uafhængigt af hinanden." +
+                        "\n\nAnvendelse\n" +
+                        "Hvor der ønskes kombineret trådløst betjeningstryk og lysdæmpning i ét produkt — fx som erstatning for en eksisterende afbryder ved renovering (kun fase og mellemledning, ingen nul). Universaldæmper til glødepærer og 12 V halogen med jernkerne- eller elektronisk transformer (ikke blandet) samt visse dæmpbare LED-pærer (se lk.dk/dimmertool). Ikke-dæmpbare belastninger må ikke tilsluttes. Kan også bruges standalone uden controller." +
+                        "\n\nVirkemåde\n" +
+                        "– De fire tryk kan bruges frit i programmet — også til at styre andet end enhedens egen dæmper.\n" +
+                        "– Dæmperen styres typisk fra op-/ned-udgangene på en lysdæmperblok i \"1.2 Lysdæmpning\" eller ved at sætte Lys niveau direkte.\n" +
+                        "– Driftsparametrene under Indstillinger gemmes i selve enheden og bevares ved sletning af programmering eller omprogrammering til standalone.\n" +
+                        "– Scenarier/regulering er dæmperens scenarietilknytning; scenarier sætter Lys niveau." +
+                        "\n\nIndstillinger\n" +
+                        "– Min. lysniveau (dimmer_setting_minimum_value): nederste reguleringsgrænse i % (0–100, standard 22); forhindrer at lyskilden dæmpes helt ud eller flimrer.\n" +
+                        "– Maks. lysniveau (dimmer_setting_maximum_value): øverste reguleringsgrænse i % (0–100, standard 100).\n" +
+                        "– Rampetid op (dimmer_setting_fade_rate_up): tid for optænding til niveau, i ms (200–60.000, standard 700).\n" +
+                        "– Rampetid ned (dimmer_setting_fade_rate_down): tid for nedtoning/sluk, i ms (200–60.000, standard 700).\n" +
+                        "– Reguleringstid (dimmer_setting_dimming_rate): tid for gennemløb af hele reguleringsområdet ved fastholdt betjening, i ms (2.000–10.000, standard 5.000).\n" +
+                        "– Driftstilstand (dimmer_setting_load_mode): auto (automatisk valg, standard), rl = forkantstyring (ohmsk last/jernkernetransformer), rc = bagkantstyring (elektronisk transformer).\n" +
+                        "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Produktets Avanceret-dialog indeholder dæmperens driftsparametre (se Indstillinger), ikke linkningen. Fremgangsmåden er fælles for alle IHC Wireless-modtagere — se fællesvejledningen 019D904122: afdækningen vippes af for at nå programmeringsknap og lysdiode, og enheden skal have spænding og belastning tilsluttet under linkningen.")
+                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt, også ved lokal betjening.")
+                    .Documentation("Lys niveau", "Dæmperens lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .Documentation("Sluk / regulér ned", "Slukker dæmperudgangen; fastholdt signal regulerer lysniveauet ned.")
+                    .Documentation("Tryk (nederst højre)", "Trådløs trykkanal 4 (sender); kan programmeres frit.")
+                    .Documentation("Tryk (nederst venstre)", "Trådløs trykkanal 3 (sender); kan programmeres frit.")
+                    .Documentation("Tryk (øverst højre)", "Trådløs trykkanal 2 (sender); kan programmeres frit.")
+                    .Documentation("Tryk (øverst venstre)", "Trådløs trykkanal 1 (sender); kan programmeres frit.")
+                    .Documentation("Tænd / regulér op", "Tænder dæmperudgangen; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_0eb73e78)
                     .Build();
             return definition with
@@ -2035,6 +3327,26 @@ namespace Ihc.Vis.Catalog
                     .RawChild(ElRaw("shutter_settings", new[] { ("id", "_0x11") },
                     ElRaw("shutter_setting_travel_time_up", new[] { ("id", "_0x12") }),
                     ElRaw("shutter_setting_travel_time_down", new[] { ("id", "_0x13") })))
+                    .Documentation(
+                        "IHC Wireless persiennestyring med to konfigurerbare tryk samt lokal lås (skjult). " +
+                        "Op-/ned-udgange og persiennetilstand programmeres fra controlleren." +
+                        "\n\nAnvendelse\n" +
+                        "Trådløs styring af gardiner og persienner med en asynkronmotor med endestop — enheden er kombineret sender/modtager med to lokale tryk og en skjult lokal lås. Kan bruges standalone (udgangene slukker automatisk efter 120 sek.) eller sammen med IHC Controlleren, hvor køretiden kan sættes — def'en tillader 0–240 sek. (databladet skriver 1–240 sek.)." +
+                        "\n\nVirkemåde\n" +
+                        "– Trykkene sidder på den øverste tangent, som ifølge vejledningen altid også styrer den lokalt tilsluttede persienne; programmet kan ikke frigøre dem fra den funktion.\n" +
+                        "– Ved et kort tryk opretholdes hæve-/sænkefølgen i 2 minutter.\n" +
+                        "– Scenarier/regulering sætter Tilstand fra scenarier." +
+                        "\n\nIndstillinger\n" +
+                        "– Vandringstid fra bund til top [sekunder] (shutter_setting_travel_time_up): køretid op, 0–240 sek., standard 120.\n" +
+                        "– Vandringstid fra top til bund [sekunder] (shutter_setting_travel_time_down): køretid ned, 0–240 sek., standard 120." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Produktet har ingen Avanceret-dialog — se fællesvejledningen 019D904122.")
+                    .Documentation("Lås", "Tilstand af den lokale lås (read-only); programmet kan fx blokere fjernstyring, når låsen er aktiv.")
+                    .Documentation("Ned", "Aktiverer faldeudgangen (persienne ned).")
+                    .Documentation("Op", "Aktiverer stigeudgangen (persienne op).")
+                    .Documentation("Tilstand", "Persiennens tilstandsressource (enum); sættes også af scenarier.")
+                    .Documentation("Tryk (højre)", "Trådløs trykkanal 2 (sender); styrer altid også den lokale persienne.")
+                    .Documentation("Tryk (venstre)", "Trådløs trykkanal 1 (sender); styrer altid også den lokale persienne.")
                     .Grammar(BuiltInCatalogGrammar.G_a077a7dc)
                     .Build();
             return definition with
@@ -2066,6 +3378,27 @@ namespace Ihc.Vis.Catalog
                     .RawChild(ElRaw("shutter_settings", new[] { ("id", "_0x11") },
                     ElRaw("shutter_setting_travel_time_up", new[] { ("id", "_0x12") }),
                     ElRaw("shutter_setting_travel_time_down", new[] { ("id", "_0x13") })))
+                    .Documentation(
+                        "IHC Wireless persiennestyring med fire konfigurerbare tryk. " +
+                        "Op-/ned-udgange og persiennetilstand programmeres fra controlleren." +
+                        "\n\nAnvendelse\n" +
+                        "Trådløs styring af gardiner og persienner med en asynkronmotor med endestop — enheden er kombineret sender/modtager med fire lokale tryk, så både persiennen og andre enheder kan fjernbetjenes fra samme indsats. Kan bruges standalone (udgangene slukker automatisk efter 120 sek.) eller sammen med IHC Controlleren, hvor køretiden kan sættes — def'en tillader 0–240 sek. (databladet skriver 1–240 sek.)." +
+                        "\n\nVirkemåde\n" +
+                        "– Øverste tangent (kanal 1–2) styrer ifølge vejledningen altid også den lokalt tilsluttede persienne; kun nederste tangent (kanal 3–4) er fri for den binding — også til at styre andet end enhedens egen persienne.\n" +
+                        "– Ved et kort tryk opretholdes hæve-/sænkefølgen i 2 minutter.\n" +
+                        "– Scenarier/regulering sætter Tilstand fra scenarier." +
+                        "\n\nIndstillinger\n" +
+                        "– Vandringstid fra bund til top [sekunder] (shutter_setting_travel_time_up): køretid op, 0–240 sek., standard 120.\n" +
+                        "– Vandringstid fra top til bund [sekunder] (shutter_setting_travel_time_down): køretid ned, 0–240 sek., standard 120." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført. Produktet har ingen Avanceret-dialog — se fællesvejledningen 019D904122.")
+                    .Documentation("Ned", "Aktiverer faldeudgangen (persienne ned).")
+                    .Documentation("Op", "Aktiverer stigeudgangen (persienne op).")
+                    .Documentation("Tilstand", "Persiennens tilstandsressource (enum); sættes også af scenarier.")
+                    .Documentation("Tryk (nederst højre)", "Trådløs trykkanal 4 (sender); kan programmeres frit.")
+                    .Documentation("Tryk (nederst venstre)", "Trådløs trykkanal 3 (sender); kan programmeres frit.")
+                    .Documentation("Tryk (øverst højre)", "Trådløs trykkanal 2 (sender); styrer altid også den lokalt tilsluttede persienne.")
+                    .Documentation("Tryk (øverst venstre)", "Trådløs trykkanal 1 (sender); styrer altid også den lokalt tilsluttede persienne.")
                     .Grammar(BuiltInCatalogGrammar.G_c9356ede)
                     .Build();
             return definition with
@@ -2096,6 +3429,29 @@ namespace Ihc.Vis.Catalog
                     ElRaw("dimmer_setting_fade_rate_down", new[] { ("id", "_0x15") }),
                     ElRaw("dimmer_setting_dimming_rate", new[] { ("id", "_0x16") }),
                     ElRaw("dimmer_setting_load_mode", new[] { ("id", "_0x17") })))
+                    .Documentation(
+                        "Lampeudtag-dimmeren (505D6102) brugt som driver for en LK IHC Converter 1-10 V (820B1224), der regulerer armaturer med 1–10 V-forkoblinger. " +
+                        "Def'en svarer til den i 03#Dimmer, men har LR-mode som standard og sit eget navn og note." +
+                        "\n\nAnvendelse\n" +
+                        "Når armaturer med analoge 1–10 V-forkoblinger (fx lysstofrør) skal dæmpes trådløst: dimmerens regulerede udgang forbindes til converteren, som leverer 1–10 V-styresignalet og kobler armaturets 230 V via sit potentialfrie relæ, mærket 10 A for resistiv last; andre belastninger dimensioneres efter vejledningens belastningsskema. Def'ens note: \"Denne IHC 1-10v converter styres af en IHC wireless dimmer LR\". Converteren må maks. belastes med 50 mA på 1–10 V-udgangen." +
+                        "\n\nVirkemåde\n" +
+                        "– Som den primære dimmer-def, men den regulerede belastning er converterens 1–10 V-armaturer.\n" +
+                        "– Driftstilstand har i denne def standard rl (forkantstyring/LR-mode) — dimmeren skal være konfigureret til LR-mode for at fungere med converteren (jf. convertervejledningen). De øvrige indstillinger er som i den primære dokumentation.\n" +
+                        "– Scenarier/regulering er scenarietilknytningen; scenarier sætter Lys niveau." +
+                        "\n\nIndstillinger\n" +
+                        "– Min. lysniveau (dimmer_setting_minimum_value): nederste reguleringsgrænse i % (0–100, standard 22).\n" +
+                        "– Maks. lysniveau (dimmer_setting_maximum_value): øverste reguleringsgrænse i % (0–100, standard 100).\n" +
+                        "– Rampetid op (dimmer_setting_fade_rate_up): tid for optænding til niveau, i ms (200–60.000, standard 700).\n" +
+                        "– Rampetid ned (dimmer_setting_fade_rate_down): tid for nedtoning/sluk, i ms (200–60.000, standard 700).\n" +
+                        "– Reguleringstid (dimmer_setting_dimming_rate): tid for gennemløb af reguleringsområdet, i ms (2.000–10.000, standard 5.000).\n" +
+                        "– Driftstilstand (dimmer_setting_load_mode): her standard rl (forkantstyring/LR), som converteren kræver; auto og rc er de øvrige værdier.\n" +
+                        "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
+                        "\n\nTilslutning\n" +
+                        "– Dimmerens regulerede udgang føres til converterens klemme 20, og klemme 17 fører 230 V tilbage som forsyning til dimmeren. Converteren forsynes med 230 V (klemme 16/18) og driver armaturets 1–10 V-styring (klemme 1–2) og 230 V-forsyning (klemme 12/19). Maks. 100 m mellem dimmer og converter; maks. 200 m på 1–10 V-udgangen.")
+                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt.")
+                    .Documentation("Lys niveau", "Lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .Documentation("Sluk / regulér ned", "Slukker; fastholdt signal regulerer lysniveauet ned.")
+                    .Documentation("Tænd / regulér op", "Tænder; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_a9b7d32a)
                     .Build();
             return definition with
@@ -2126,6 +3482,29 @@ namespace Ihc.Vis.Catalog
                     ElRaw("dimmer_setting_fade_rate_down", new[] { ("id", "_0x15") }),
                     ElRaw("dimmer_setting_dimming_rate", new[] { ("id", "_0x16") }),
                     ElRaw("dimmer_setting_load_mode", new[] { ("id", "_0x17") })))
+                    .Documentation(
+                        "Universaldimmer-modtageren (505D6103) brugt som driver for en LK IHC Converter 1-10 V (820B1224), der regulerer armaturer med 1–10 V-forkoblinger. " +
+                        "Def'en svarer til den i 03#Dimmer, men har LR-mode som standard og sit eget navn og note." +
+                        "\n\nAnvendelse\n" +
+                        "Når armaturer med analoge 1–10 V-forkoblinger skal dæmpes trådløst fra en skjult modtager: dimmerens regulerede udgang forbindes til converteren, som leverer 1–10 V-styresignalet og kobler armaturets 230 V via sit potentialfrie relæ, mærket 10 A for resistiv last; andre belastninger dimensioneres efter vejledningens belastningsskema. Def'ens note: \"Denne IHC 1-10v converter styres af en IHC wireless dimmer LR\". Converteren må maks. belastes med 50 mA på 1–10 V-udgangen." +
+                        "\n\nVirkemåde\n" +
+                        "– Som den primære dimmer-def, men den regulerede belastning er converterens 1–10 V-armaturer.\n" +
+                        "– Driftstilstand har i denne def standard rl (forkantstyring/LR-mode) — dimmeren skal være konfigureret til LR-mode for at fungere med converteren (jf. convertervejledningen). De øvrige indstillinger er som i den primære dokumentation.\n" +
+                        "– Scenarier/regulering er scenarietilknytningen; scenarier sætter Lys niveau." +
+                        "\n\nIndstillinger\n" +
+                        "– Min. lysniveau (dimmer_setting_minimum_value): nederste reguleringsgrænse i % (0–100, standard 22).\n" +
+                        "– Maks. lysniveau (dimmer_setting_maximum_value): øverste reguleringsgrænse i % (0–100, standard 100).\n" +
+                        "– Rampetid op (dimmer_setting_fade_rate_up): tid for optænding til niveau, i ms (200–60.000, standard 700).\n" +
+                        "– Rampetid ned (dimmer_setting_fade_rate_down): tid for nedtoning/sluk, i ms (200–60.000, standard 700).\n" +
+                        "– Reguleringstid (dimmer_setting_dimming_rate): tid for gennemløb af reguleringsområdet, i ms (2.000–10.000, standard 5.000).\n" +
+                        "– Driftstilstand (dimmer_setting_load_mode): her standard rl (forkantstyring/LR), som converteren kræver; auto og rc er de øvrige værdier.\n" +
+                        "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
+                        "\n\nTilslutning\n" +
+                        "– Dimmerens regulerede udgang føres til converterens klemme 20, og klemme 17 fører 230 V tilbage som forsyning til dimmeren. Converteren forsynes med 230 V (klemme 16/18) og driver armaturets 1–10 V-styring (klemme 1–2) og 230 V-forsyning (klemme 12/19). Maks. 100 m mellem dimmer og converter; maks. 200 m på 1–10 V-udgangen.")
+                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt.")
+                    .Documentation("Lys niveau", "Lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .Documentation("Sluk / regulér ned", "Slukker; fastholdt signal regulerer lysniveauet ned.")
+                    .Documentation("Tænd / regulér op", "Tænder; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_a9b7d32a)
                     .Build();
             return definition with
@@ -2160,6 +3539,34 @@ namespace Ihc.Vis.Catalog
                     ElRaw("dimmer_setting_fade_rate_down", new[] { ("id", "_0x15") }),
                     ElRaw("dimmer_setting_dimming_rate", new[] { ("id", "_0x16") }),
                     ElRaw("dimmer_setting_load_mode", new[] { ("id", "_0x17") })))
+                    .Documentation(
+                        "Kombi-dimmeren (505D6101) brugt som driver for en LK IHC Converter 1-10 V (820B1224), der regulerer armaturer med 1–10 V-forkoblinger. " +
+                        "Def'en svarer til den i 04#Kombi, men har LR-mode som standard og sit eget navn og note." +
+                        "\n\nAnvendelse\n" +
+                        "Når armaturer med analoge 1–10 V-forkoblinger skal dæmpes trådløst, og der samtidig ønskes et lokalt 4-tast betjeningstryk: kombienhedens dæmperudgang driver converteren, som leverer 1–10 V-styresignalet og kobler armaturets 230 V via sit potentialfrie relæ, mærket 10 A for resistiv last; andre belastninger dimensioneres efter vejledningens belastningsskema. Def'ens note: \"Denne IHC 1-10v converter styres af en IHC wireless dimmer LR\"." +
+                        "\n\nVirkemåde\n" +
+                        "– De fire tryk kan programmeres frit — som i den primære dokumentation.\n" +
+                        "– Dæmpningen gælder converterens 1–10 V-armaturer.\n" +
+                        "– Driftstilstand har i denne def standard rl (forkantstyring/LR-mode) — dimmeren skal være konfigureret til LR-mode for at fungere med converteren (jf. convertervejledningen). De øvrige indstillinger er som i den primære dokumentation.\n" +
+                        "– Scenarier/regulering er scenarietilknytningen; scenarier sætter Lys niveau." +
+                        "\n\nIndstillinger\n" +
+                        "– Min. lysniveau (dimmer_setting_minimum_value): nederste reguleringsgrænse i % (0–100, standard 22).\n" +
+                        "– Maks. lysniveau (dimmer_setting_maximum_value): øverste reguleringsgrænse i % (0–100, standard 100).\n" +
+                        "– Rampetid op (dimmer_setting_fade_rate_up): tid for optænding til niveau, i ms (200–60.000, standard 700).\n" +
+                        "– Rampetid ned (dimmer_setting_fade_rate_down): tid for nedtoning/sluk, i ms (200–60.000, standard 700).\n" +
+                        "– Reguleringstid (dimmer_setting_dimming_rate): tid for gennemløb af reguleringsområdet, i ms (2.000–10.000, standard 5.000).\n" +
+                        "– Driftstilstand (dimmer_setting_load_mode): her standard rl (forkantstyring/LR), som converteren kræver; auto og rc er de øvrige værdier.\n" +
+                        "– I IHC Visuals dialog Avancerede Dimmer egenskaber hedder de Soft tænd-tid og Soft sluk tid (ms), Manuel rampetid (sekunder, 2–10), Minimumværdi/Maksimumværdi (%) og Belastningskarakteristik." +
+                        "\n\nTilslutning\n" +
+                        "– Dimmerens regulerede udgang føres til converterens klemme 20, og klemme 17 fører 230 V tilbage som forsyning til dimmeren. Converteren forsynes med 230 V (klemme 16/18) og driver armaturets 1–10 V-styring (klemme 1–2) og 230 V-forsyning (klemme 12/19). Maks. 100 m mellem dimmer og converter; maks. 200 m på 1–10 V-udgangen.")
+                    .Documentation("Lys indikering", "Status fra dæmperen: ON når lysdæmperen er tændt.")
+                    .Documentation("Lys niveau", "Lysniveau i procent; kan sættes direkte fra programmet eller af et scenarie.")
+                    .Documentation("Sluk / regulér ned", "Slukker; fastholdt signal regulerer lysniveauet ned.")
+                    .Documentation("Tryk (nederst højre)", "Trådløs trykkanal 4 (sender); kan programmeres frit.")
+                    .Documentation("Tryk (nederst venstre)", "Trådløs trykkanal 3 (sender); kan programmeres frit.")
+                    .Documentation("Tryk (øverst højre)", "Trådløs trykkanal 2 (sender); kan programmeres frit.")
+                    .Documentation("Tryk (øverst venstre)", "Trådløs trykkanal 1 (sender); kan programmeres frit.")
+                    .Documentation("Tænd / regulér op", "Tænder; fastholdt signal regulerer lysniveauet op.")
                     .Grammar(BuiltInCatalogGrammar.G_f9fc5c54)
                     .Build();
             return definition with
@@ -2181,8 +3588,18 @@ namespace Ihc.Vis.Catalog
                     .EnduserReport()
                     .Attribute("icon", "_0x85")
                     .Note("Modificeret Kombi afbryder 4 tast")
-                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x1").Backup())
+                    .AddResource("airlink_relay", "Udgang", r => r.Address("_0x1").Backup().Documentation(
+                        "Kombirelæets relæudgang; ON = belastning tændt. Programmet tænder/slukker belastningen; startværdi off, omfattet af backup."))
                     .AddScenes()
+                    .Documentation(
+                        "Modificeret IHC Wireless kombirelæ (505D6503), hvor def'en kun eksponerer relæudgangen — " +
+                        "trykkene er skilt ud i 4-tast-varianten." +
+                        "\n\nAnvendelse\n" +
+                        "Når kombirelæets modtagerdel skal indsættes som sit eget produkt i projektet — fx for at placere relæ og tryk i hver sin funktionsgruppe. Def-noten: \"Modificeret Kombi afbryder 4 tast\". Hardwaren er det almindelige kombirelæ; se Kombi relæ 4 tast." +
+                        "\n\nVirkemåde\n" +
+                        "– Scenarier er produktets scenarietilknytning: scenarier tilknyttet her sætter udgangen." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er en Wireless-modtager og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført — se fællesvejledningen 019D904122.")
                     .Grammar(BuiltInCatalogGrammar.G_6437bed0)
                     .Build();
             return definition with
@@ -2204,10 +3621,23 @@ namespace Ihc.Vis.Catalog
                     .EnduserReport()
                     .Attribute("icon", "_0x85")
                     .Note("Modificeret Komi afbryder 4 tast")
-                    .AddResource("airlink_input", "Tryk (øverst venstre)", r => r.Address("_0x1"))
-                    .AddResource("airlink_input", "Tryk (øverst højre)", r => r.Address("_0x2"))
-                    .AddResource("airlink_input", "Tryk (nederst venstre)", r => r.Address("_0x3"))
-                    .AddResource("airlink_input", "Tryk (nederst højre)", r => r.Address("_0x4"))
+                    .AddResource("airlink_input", "Tryk (øverst venstre)", r => r.Address("_0x1").Documentation(
+                        "Trådløs trykkanal 1 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (øverst højre)", r => r.Address("_0x2").Documentation(
+                        "Trådløs trykkanal 2 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (nederst venstre)", r => r.Address("_0x3").Documentation(
+                        "Trådløs trykkanal 3 (sender); kan programmeres frit."))
+                    .AddResource("airlink_input", "Tryk (nederst højre)", r => r.Address("_0x4").Documentation(
+                        "Trådløs trykkanal 4 (sender); kan programmeres frit."))
+                    .Documentation(
+                        "Modificeret IHC Wireless kombirelæ (505D6503), hvor def'en kun eksponerer de fire tryk — " +
+                        "relæudgangen er skilt ud i relævarianten." +
+                        "\n\nAnvendelse\n" +
+                        "Når kombirelæets senderdel (de fire tryk) skal indsættes som sit eget produkt i projektet — fx for at placere tryk og relæ i hver sin funktionsgruppe. Def-noten: \"Modificeret Komi afbryder 4 tast\". Hardwaren er det almindelige kombirelæ; se Kombi relæ 4 tast." +
+                        "\n\nVirkemåde\n" +
+                        "– Kort/langt tryk fortolkes af funktionsblokkene." +
+                        "\n\nRegistrering\n" +
+                        "Enheden er senderdelen af en Wireless-kombienhed og linkes fra menuen Controller → Link Wireless-produkter; produktets serienummer vises dér (skrivebeskyttet), når linkningen er gennemført — se fællesvejledningen 019D904122.")
                     .Grammar(BuiltInCatalogGrammar.G_6437bed0)
                     .Build();
             return definition with
@@ -2225,8 +3655,20 @@ namespace Ihc.Vis.Catalog
                     .Name("03#Velux KLF-100")
                     .Note("")
                     .Attribute("icon", "_0x86")
-                    .AddOutput("Aben")
-                    .AddOutput("Luk for 230V")
+                    .AddOutput("Aben", o => o.Documentation(
+                        "Åbn-kommando til KLF 100-interfacet (kør til den indstillede UP-position); startværdi off, omfattet af backup."))
+                    .AddOutput("Luk for 230V", o => o.Documentation(
+                        "Luk-kommando til KLF 100-interfacet; startværdi off, omfattet af backup."))
+                    .Documentation(
+                        "Velux KLF 100-interface, der lader IHC styre io-homecontrol-produkter (fx ovenlysvinduer): " +
+                        "to udgange for åbn og luk." +
+                        "\n\nAnvendelse\n" +
+                        "Når io-homecontrol-produkter (Velux-vinduer, gardiner mv.) skal styres af eksterne styringer, der ikke er io-homecontrol-kompatible — som IHC: KLF 100 oversætter interfacets indgangssignaler til tovejs 868 MHz-radiokommandoer til de registrerede produkter. Kanaler, positioner (UP/DOWN) og produkterne registreres på selve interfacet." +
+                        "\n\nVirkemåde\n" +
+                        "– Programmeres typisk med tryk, tidsstyring eller regnsensor-logik i funktionsblokke." +
+                        "\n\nTilslutning\n" +
+                        "– Interfacets styreindgange fører ca. 10 V DC og må kun forbindes til potentialfrie relækontakter. Brug fx IHC Output 400/8x10-familien med galvanisk adskilte relækontakter; tilslut aldrig en spændingsgivende udgang direkte.\n" +
+                        "– Interfacet er kun til indendørs brug — se installationsvejledningen for klemmer, kanalopsætning og registrering af produkter.")
                     .Grammar(BuiltInCatalogGrammar.G_314c48d2)
                     .Build();
             return definition with
@@ -2243,8 +3685,20 @@ namespace Ihc.Vis.Catalog
                     .CategoryPath("Specielle produkter\\02#Vinduer")
                     .Name("01#WindowMaster WUC 101")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Åben Vindue", o => o.Note("Terminal 1"))
-                    .AddOutput("Luk Vindue", o => o.Note("Terminal 2"))
+                    .AddOutput("Åben Vindue", o => o.Note("Terminal 1").Documentation(
+                        "Åbn-kommando til styreenhedens terminal 1; starter motoren i åbn-retning. Startværdi off, omfattet af backup."))
+                    .AddOutput("Luk Vindue", o => o.Note("Terminal 2").Documentation(
+                        "Luk-kommando til styreenhedens terminal 2. Startværdi off, omfattet af backup."))
+                    .Documentation(
+                        "WindowMaster WUC 101-styreenhed til 24 V-vinduesmotorer: " +
+                        "to udgange for åbn og luk (terminal 1 og 2)." +
+                        "\n\nAnvendelse\n" +
+                        "Motoriseret vinduesåbning styret fra IHC: WUC 101 må kun tilsluttes originale WindowMaster 24 V-motorer. Enheden er kun til indendørs brug (IP20), må ikke tildækkes (maks. omgivelsestemperatur 50 °C) og ikke placeres i direkte sollys." +
+                        "\n\nVirkemåde\n" +
+                        "– Programmeres typisk med tryk, tidsstyring eller regn-/vindlogik i funktionsblokke." +
+                        "\n\nTilslutning\n" +
+                        "– IHC-udgangene svarer til def'ens noter Terminal 1 og Terminal 2; på selve WUC 101 er klemmerne mærket A–E, hvor åbn = kontakt mellem B og E, og luk = kontakt mellem B og D. Indgangene må kun styres med potentialfrie kontakter; brug fx IHC Output 400/8x10-familien med galvanisk adskilte relækontakter, ikke en spændingsgivende udgang. Motoren tilsluttes styreenhedens 24 V-motorudgang — se WindowMaster-vejledningen.\n" +
+                        "– Afbryd netspændingen før service på vinduer eller tilbehør.")
                     .Grammar(BuiltInCatalogGrammar.G_ff40db50)
                     .Build();
             return definition with
@@ -2261,10 +3715,24 @@ namespace Ihc.Vis.Catalog
                     .CategoryPath("Specielle produkter\\02#Vinduer")
                     .Name("02#WindowMaster WUC 102")
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Åben trinløs", o => o.Note("Terminal 1"))
-                    .AddOutput("Luk trinløs", o => o.Note("Terminal 2"))
-                    .AddOutput("Åben helt", o => o.Note("Terminal 4"))
-                    .AddOutput("Luk helt", o => o.Note("Terminal 5"))
+                    .AddOutput("Åben trinløs", o => o.Note("Terminal 1").Documentation(
+                        "Trinløs åbn-kommando (terminal 1); kører mens signalet holdes. Startværdi off, omfattet af backup."))
+                    .AddOutput("Luk trinløs", o => o.Note("Terminal 2").Documentation(
+                        "Trinløs luk-kommando (terminal 2); kører mens signalet holdes. Startværdi off, omfattet af backup."))
+                    .AddOutput("Åben helt", o => o.Note("Terminal 4").Documentation(
+                        "Kør til helt åben (terminal 4); startværdi off, omfattet af backup."))
+                    .AddOutput("Luk helt", o => o.Note("Terminal 5").Documentation(
+                        "Kør til helt lukket (terminal 5); startværdi off, omfattet af backup."))
+                    .Documentation(
+                        "WindowMaster WUC 102-styreenhed til 24 V-vinduesmotorer med fire udgange: " +
+                        "trinløs åbn/luk samt helt åbn/luk." +
+                        "\n\nAnvendelse\n" +
+                        "Motoriseret vinduesåbning styret fra IHC med både trinløs regulering og fuld åbning: styreenheden driver 24 V DC-vinduesaktuatorer og har potentialfrie signalindgange for OPEN/CLOSE-funktion." +
+                        "\n\nVirkemåde\n" +
+                        "– Overhold styreenhedens driftstid på maks. 2 min. pr. 5 min. (40 % ED) og maks. 3 A samlet motorforbrug.\n" +
+                        "– Programmeres typisk med tryk, tidsstyring eller regn-/vindlogik i funktionsblokke." +
+                        "\n\nTilslutning\n" +
+                        "– IHC-udgangene svarer til def'ens noter Terminal 1, 2, 4 og 5; produktbladet for WUC 102 beskriver enhedens egne styreindgange som A, B og C, så den præcise klemmetildeling skal tages fra WindowMaster-dokumentationen. Styreindgangene er potentialfrie: brug fx IHC Output 400/8x10-familien med galvanisk adskilte relækontakter, ikke en spændingsgivende udgang. Motoren tilsluttes styreenhedens 24 V-motorudgang.")
                     .Grammar(BuiltInCatalogGrammar.G_69268e25)
                     .Build();
             return definition with
@@ -2283,9 +3751,21 @@ namespace Ihc.Vis.Catalog
                     .Note("OPUS 66 Kombi PIR 180gr. gammel type")
                     .EnduserReport(false)
                     .Attribute("icon", "_0x83")
-                    .AddInput("Tilstedeværelses indikering")
-                    .AddInput("Skumringssensor")
-                    .AddInput("Alarm detektion")
+                    .AddInput("Tilstedeværelses indikering", i => i.Documentation(
+                        "Pulserer ved bevægelse i synsfeltet (bevægelsesudgangen, terminal 1) og bruges til at starte timerblokke i programmet."))
+                    .AddInput("Skumringssensor", i => i.Documentation(
+                        "Aktiv når lysniveauet er under den indstillede lux-værdi (skumringsrelæet, terminal 4; 10–1000 lux), så lyset fx kun tændes i mørke."))
+                    .AddInput("Alarm detektion", i => i.Documentation(
+                        "Def'ens tredje indgang; ingen kilde beskriver en tilsvarende udgang på 507N0304 — databladet nævner kun terminal 1 (bevægelsesudgang) og terminal 4 (skumringsrelæ). Vejledning 98435_03 anfører: \"NB! PIR'en må ikke anvendes til alarmanlæg\". Til alarmformål anvendes PIR alarm."))
+                    .Documentation(
+                        "OPUS 66 Kombi PIR 180° (gammel type, udgået) til bevægelses- og skumringsstyret automatik. " +
+                        "Def'en har desuden en uunderstøttet Alarm detektion-ressource." +
+                        "\n\nAnvendelse\n" +
+                        "Indendørs styring af lys-, varme- og ventilationsanlæg: PIR'en dækker 180° — op til 19 × 9,5 m (~180 m²), for stillesiddende personer 10 × 5 m (~50 m²). Flere PIR'er kan kobles til samme IHC-indgang for større dækning. Monteres på planforsænkede OPUS 66-dåser eller direkte på væg." +
+                        "\n\nVirkemåde\n" +
+                        "– Fire drejeknapper indstiller dækningsområde (venstre/højre/begge halvdele), følsomhed, lysniveau og om bevægelsesudgangen styres af lysniveauet." +
+                        "\n\nTilslutning\n" +
+                        "– PIR'en forbindes med svagstrømsledning til de 4 skæreklemmer: terminal 1 = bevægelsesudgang, terminal 2 = 24 V, terminal 3 = 0 V, terminal 4 = skumringsrelæ; udgangene forbindes til et 24 V IHC indgangsmodul.")
                     .Grammar(BuiltInCatalogGrammar.G_fd06aef9)
                     .Build();
             return definition with
@@ -2303,8 +3783,18 @@ namespace Ihc.Vis.Catalog
                     .Name("02#Skumringsrelæ med solsensor")
                     .Note("Skumringsrelæ og solsensor")
                     .Attribute("icon", "_0x83")
-                    .AddInput("Skumring")
-                    .AddInput("Solsensor")
+                    .AddInput("Skumring", i => i.Documentation(
+                        "Aktiv når lysniveauet er under den indstillede lux-værdi (2–200 lux med hysterese og tidsforsinkelse, jf. 120B1301); typisk betingelse for udelys."))
+                    .AddInput("Solsensor", i => i.Documentation(
+                        "Aktiv når lysniveauet stiger op over den indstillede værdi (1000–65 000 lux, transistorudgang 2); typisk betingelse for at rulle udvendigt gardin/jalousi ned."))
+                    .Documentation(
+                        "Udgået kombinationsprodukt: skumringsrelæ og solsensor med hver sin indgang i programmet." +
+                        "\n\nAnvendelse\n" +
+                        "Automatisk lysstyring med to uafhængige tærskler: skumringsdelen giver et signal, når lysniveauet falder under den indstillede lux-værdi, mens solsensordelen giver et signal, når lysniveauet stiger op over sin egen indstillede værdi (1000–65 000 lux) — typisk til at rulle et udvendigt gardin/jalousi ned (jf. vejledning 97826_03)." +
+                        "\n\nVirkemåde\n" +
+                        "– De to tærskler indstilles uafhængigt af hinanden." +
+                        "\n\nTilslutning\n" +
+                        "– Indgangene forbindes til et 24 V IHC inputmodul. Se 120B1301-databladet for skumringsrelæets klemmer og kabel.")
                     .Grammar(BuiltInCatalogGrammar.G_314c48d2)
                     .Build();
             return definition with
@@ -2334,6 +3824,32 @@ namespace Ihc.Vis.Catalog
                     .AddResource("kWh", "Consumption in the last month")
                     .AddResource("kWh", "Consumption in the last year")
                     .AddResource("resource_date", "Invoicing year start date", r => r.Attribute("year", "2000").Attribute("month", "1").Attribute("day", "1"))
+                    .Documentation(
+                        "Energimåler tilsluttet controllerens S0-pulsindgang, som tæller pulser og omregner dem til " +
+                        "effekt- og forbrugsværdier, programmet kan læse." +
+                        "\n\nAnvendelse\n" +
+                        "Når et energiforbrug skal måles og bruges i programmet — typisk en kWh-måler med puls-/S0-udgang, der tilsluttes controllerens S0-indgang. Indsættes ved højreklik på en lokalitet under Produkter → Specielle Produkter → S0 Device." +
+                        "\n\nVirkemåde\n" +
+                        "– Måleren afgiver en puls pr. målt energienhed; controlleren tæller pulserne og udstiller resultatet som færdige effekt- (W) og forbrugsværdier (kWh) i programmet.\n" +
+                        "– Alle ressourcenavne står på engelsk i def'en og vises sådan i IHC Visual.\n" +
+                        "– Ressourcerne er læse-ressourcer bortset fra Consumption og Invoicing year start date, der er skrivbare.\n" +
+                        "– Ingen af ressourcerne er backup-omfattet (backup=\"no\" er DTD-standard i denne def)." +
+                        "\n\nIndstillinger\n" +
+                        "– Antal pulser pr. 1 kW (ticks): målerens pulstal, som forbruget omregnes efter; def'ens instansværdi er 100. Angives i indsættelsesdialogen og bestemmer omregningen — er tallet forkert, bliver alle værdier forkerte." +
+                        "\n\nTilslutning\n" +
+                        "– Måleren er en passiv to-klemmet enhed med optokobler- eller reed-relæudgang og skal forsynes eksternt; den forbindes til controllerens S0-indgang. Def'ens cable_colour_plus/cable_colour_minus er ledningsfarverne for henholdsvis S0+ og S0−.\n" +
+                        "– Pulsenheder findes i to klasser: klasse A til lange forbindelser (maks. 27 V DC, ON-strøm 10–27 mA) og klasse B til korte forbindelser med lavt forbrug (maks. 15 V DC, ON-strøm 2–15 mA). ON-pulsen varer 30 ms, og der er mindst 30 ms mellem to pulser.")
+                    .Documentation("Avg. power/last hour", "Gennemsnitseffekt den seneste time, i W.")
+                    .Documentation("Consumption", "Akkumuleret forbrug i kWh; kan både læses og skrives af programmet.")
+                    .Documentation("Consumption in the last day", "Forbrug det seneste døgn, i kWh.")
+                    .Documentation("Consumption in the last hour", "Forbrug den seneste time, i kWh.")
+                    .Documentation("Consumption in the last month", "Forbrug den seneste måned, i kWh.")
+                    .Documentation("Consumption in the last week", "Forbrug den seneste uge, i kWh.")
+                    .Documentation("Consumption in the last year", "Forbrug det seneste år, i kWh.")
+                    .Documentation("Instantaneous power", "Øjebliksforbrug i W.")
+                    .Documentation("Invoicing year start date", "Startdato for afregningsåret; def'ens standard er 1/1-2000. Skrivbar fra programmet.")
+                    .Documentation("Max power during past 24 hrs", "Højeste effekt inden for de seneste 24 timer, i W.")
+                    .Documentation("Min power during past 24 hrs", "Laveste effekt inden for de seneste 24 timer, i W.")
                     .Grammar(BuiltInCatalogGrammar.G_624b316c)
                     .Build();
             return definition with
@@ -2352,14 +3868,32 @@ namespace Ihc.Vis.Catalog
                     .Note("Forbindelse til anden controller via datalinie")
                     .Locked(false)
                     .Attribute("icon", "_0x84")
-                    .AddOutput("Link 1", o => o.Note("Overførsel til anden controller"))
-                    .AddOutput("Link 2", o => o.Note("Overførsel til anden controller"))
-                    .AddOutput("Link 3", o => o.Note("Overførsel til anden controller"))
-                    .AddOutput("Link 4", o => o.Note("Overførsel til anden controller"))
-                    .AddOutput("Link 5", o => o.Note("Overførsel til anden controller"))
-                    .AddOutput("Link 6", o => o.Note("Overførsel til anden controller"))
-                    .AddOutput("Link 7", o => o.Note("Overførsel til anden controller"))
-                    .AddOutput("Link 8", o => o.Note("Overførsel til anden controller"))
+                    .AddOutput("Link 1", o => o.Note("Overførsel til anden controller").Documentation(
+                        "Overførsel til anden controller (kanal 1)."))
+                    .AddOutput("Link 2", o => o.Note("Overførsel til anden controller").Documentation(
+                        "Overførsel til anden controller (kanal 2)."))
+                    .AddOutput("Link 3", o => o.Note("Overførsel til anden controller").Documentation(
+                        "Overførsel til anden controller (kanal 3)."))
+                    .AddOutput("Link 4", o => o.Note("Overførsel til anden controller").Documentation(
+                        "Overførsel til anden controller (kanal 4)."))
+                    .AddOutput("Link 5", o => o.Note("Overførsel til anden controller").Documentation(
+                        "Overførsel til anden controller (kanal 5)."))
+                    .AddOutput("Link 6", o => o.Note("Overførsel til anden controller").Documentation(
+                        "Overførsel til anden controller (kanal 6)."))
+                    .AddOutput("Link 7", o => o.Note("Overførsel til anden controller").Documentation(
+                        "Overførsel til anden controller (kanal 7)."))
+                    .AddOutput("Link 8", o => o.Note("Overførsel til anden controller").Documentation(
+                        "Overførsel til anden controller (kanal 8)."))
+                    .Documentation(
+                        "Forbindelse til en anden IHC controller via datalinien: " +
+                        "otte link-udgange, der overføres til nabocontrollerens Controller Link IN." +
+                        "\n\nAnvendelse\n" +
+                        "Når en installation har flere IHC controllere, og signaler skal deles mellem dem: en controller-udgang forbindes via datalinien til en indgang på nabocontrolleren. Dette produkt repræsenterer afsendersiden; modtagersiden i den anden controller indsættes som Controller Link IN." +
+                        "\n\nVirkemåde\n" +
+                        "– Programmet sætter et link, og værdien læses af den anden controllers tilsvarende Link-indgang.\n" +
+                        "– Navnet er redigerbart (locked=\"no\"), så linkene kan navngives efter deres betydning." +
+                        "\n\nTilslutning\n" +
+                        "– Udgangene tildeles adresser på et udgangsmodul/controller-udgange, som fortrådes til den modtagende controllers indgange — se controllervejledningen for datalinie-tilslutningen.")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -2378,22 +3912,48 @@ namespace Ihc.Vis.Catalog
                     .Note("Forbindelse fra anden controller via datalinie")
                     .Locked(false)
                     .Attribute("icon", "_0x87")
-                    .AddInput("Link 1", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 2", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 3", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 4", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 5", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 6", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 7", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 8", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 11", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 12", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 13", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 14", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 15", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 16", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 17", i => i.Note("Overførsel fra anden controller"))
-                    .AddInput("Link 18", i => i.Note("Overførsel fra anden controller"))
+                    .AddInput("Link 1", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 1)."))
+                    .AddInput("Link 2", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 2)."))
+                    .AddInput("Link 3", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 3)."))
+                    .AddInput("Link 4", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 4)."))
+                    .AddInput("Link 5", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 5)."))
+                    .AddInput("Link 6", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 6)."))
+                    .AddInput("Link 7", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 7)."))
+                    .AddInput("Link 8", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 8)."))
+                    .AddInput("Link 11", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 11)."))
+                    .AddInput("Link 12", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 12)."))
+                    .AddInput("Link 13", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 13)."))
+                    .AddInput("Link 14", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 14)."))
+                    .AddInput("Link 15", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 15)."))
+                    .AddInput("Link 16", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 16)."))
+                    .AddInput("Link 17", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 17)."))
+                    .AddInput("Link 18", i => i.Note("Overførsel fra anden controller").Documentation(
+                        "Overførsel fra anden controller (kanal 18)."))
+                    .Documentation(
+                        "Forbindelse fra en anden IHC controller via datalinien: " +
+                        "seksten link-indgange, der modtager værdier fra nabocontrollerens Controller Link OUT." +
+                        "\n\nAnvendelse\n" +
+                        "Når en installation har flere IHC controllere, og signaler skal deles mellem dem: dette produkt repræsenterer modtagersiden — indgange, der læser værdier sat af nabocontrollerens Controller Link OUT." +
+                        "\n\nVirkemåde\n" +
+                        "– Indgangene følger de link-udgange, den anden controller sætter, og kan bruges frit i programmet.\n" +
+                        "– Navnet er redigerbart (locked=\"no\"), så linkene kan navngives efter deres betydning." +
+                        "\n\nTilslutning\n" +
+                        "– Indgangene tildeles adresser på et indgangsmodul/controller-indgange, som fortrådes fra den afsendende controllers udgange — se controllervejledningen for datalinie-tilslutningen.")
                     .Grammar(BuiltInCatalogGrammar.G_3ff12910)
                     .Build();
             return definition with
@@ -2412,6 +3972,15 @@ namespace Ihc.Vis.Catalog
                     .Name("08#LK IHC Wireless signalstyrke testudstyr")
                     .Note("RSSI måleudstyr for installatører")
                     .Attribute("icon", "_0x83")
+                    .Documentation(
+                        "RSSI-måleudstyr for installatører: et testkit med to enheder, der kontrollerer kvaliteten af den trådløse IHC Wireless-kommunikation. " +
+                        "Def'en har ingen programressourcer." +
+                        "\n\nAnvendelse\n" +
+                        "Ved planlægning og fejlfinding af IHC Wireless-installationer: testkittets to ens enheder synkroniseres og placeres (selvklæbende gummipude), hvor den trådløse forbindelse skal afprøves. Rækkevidden er omkring 300 m i åbent terræn og 10–50 m indendørs; vægge — især jernarmeret beton og metalflader — dæmper signalet, og refleksioner kan skabe skyggeområder med dårlig modtagelse." +
+                        "\n\nVirkemåde\n" +
+                        "– Testenheden linkes til controlleren fra IHC Visual, så signalstyrken kan måles (datablad 820B0200). Def'en definerer ingen indgange, udgange eller indstillinger, så produktet indgår ikke i programlogikken." +
+                        "\n\nRegistrering\n" +
+                        "Testenheden linkes fra menuen Controller → Link Wireless-produkter; serienummeret vises dér skrivebeskyttet efter linkning. Følg vejledning 9879622_02 for aktivering af testenheden.")
                     .Grammar(BuiltInCatalogGrammar.G_e8c2b169)
                     .Build();
             return definition with

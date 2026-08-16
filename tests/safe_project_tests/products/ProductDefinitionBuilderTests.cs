@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Ihc.Vis.Tests
@@ -114,6 +115,99 @@ namespace Ihc.Vis.Tests
             {
                 Assert.That(check.IsValid, Is.True);
                 Assert.That(edited.DisplayName, Is.EqualTo("Tryk"));
+            });
+        }
+
+        // ---- documentation authored ON the resource (the configurator form) ----
+
+        // The name-keyed Documentation("Tryk (højre)", …) repeats the resource name as a string key, so a typo binds
+        // the text to nothing and fails silently. The configurator form spells the name once, at the add. It must
+        // reach the same programmatic-lookup-only map — and, like every other documentation form, leave the
+        // serialized body alone.
+        [Test]
+        public void DocumentationOnTheResource_SurfacesOnTheDefinition_AndLeavesBodyUntouched()
+        {
+            ProductDefinition documented = ProductDefinitionBuilder
+                .Dataline(productIdentifier: "_0x2101", displayName: "Tryk 2 tast")
+                .AddInput("Tryk (venstre)", i => i.Address("_0x1").Note("Øverste tast"))
+                .AddInput("Tryk (højre)", i => i.Address("_0x2").Note("Nederste tast")
+                    .Documentation("HELP-SENTINEL: sluttekontakt i tangentens højre side."))
+                .Build();
+
+            // The same product authored without the help text — the body must be indistinguishable.
+            ProductDefinition bare = ProductDefinitionBuilder
+                .Dataline(productIdentifier: "_0x2101", displayName: "Tryk 2 tast")
+                .AddInput("Tryk (venstre)", i => i.Address("_0x1").Note("Øverste tast"))
+                .AddInput("Tryk (højre)", i => i.Address("_0x2").Note("Nederste tast"))
+                .Build();
+
+            ProjectElement rightPin = documented.Body.Children.Single(c => c.GetAttribute("name") == "Tryk (højre)");
+            Assert.Multiple(() =>
+            {
+                Assert.That(documented.Documentation.ForResource("Tryk (højre)"),
+                    Is.EqualTo("HELP-SENTINEL: sluttekontakt i tangentens højre side."));
+                Assert.That(documented.Documentation.ForResource("Tryk (venstre)"), Is.Null,
+                    "an undocumented sibling stays undocumented");
+                Assert.That(documented.Body, Is.EqualTo(bare.Body),
+                    "help text is programmatic-lookup only — the serialized body is exactly what it was without it");
+                Assert.That(rightPin.GetAttribute("note"), Is.EqualTo("Nederste tast"),
+                    "the serialized note attribute is unaffected by the help text authored beside it");
+            });
+        }
+
+        // The phase-in guarantee: both forms are interchangeable, across every product add-verb (dataline pins and
+        // the explicit-family escape hatch), so a call site can be converted one resource at a time.
+        [Test]
+        public void DocumentationOnTheResource_AndNameKeyed_ProduceTheSameDocumentation()
+        {
+            ProductDefinition onResource = ProductDefinitionBuilder
+                .Dataline(productIdentifier: "_0x2101", displayName: "Tryk 2 tast")
+                .AddInput("Tryk", i => i.Documentation("indgangens hjælpetekst"))
+                .AddOutput("Udgang", o => o.Documentation("udgangens hjælpetekst"))
+                .AddResource("resource_flag", "Synk", r => r.Documentation("flagets hjælpetekst"))
+                .Documentation("produktets hjælpetekst")
+                .Build();
+
+            ProductDefinition nameKeyed = ProductDefinitionBuilder
+                .Dataline(productIdentifier: "_0x2101", displayName: "Tryk 2 tast")
+                .AddInput("Tryk")
+                .AddOutput("Udgang")
+                .AddResource("resource_flag", "Synk")
+                .Documentation("produktets hjælpetekst")
+                .Documentation("Tryk", "indgangens hjælpetekst")
+                .Documentation("Udgang", "udgangens hjælpetekst")
+                .Documentation("Synk", "flagets hjælpetekst")
+                .Build();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(onResource.Documentation, Is.EqualTo(nameKeyed.Documentation),
+                    "the two authoring forms are interchangeable");
+                Assert.That(onResource.Body, Is.EqualTo(nameKeyed.Body));
+            });
+        }
+
+        // A half-converted call site can document one resource twice. The last write wins — the dictionary semantics
+        // the name-keyed form has always had — so neither form is privileged and conversion order decides.
+        [Test]
+        public void DocumentationForOneResourceTwice_KeepsTheLastCall_InEitherForm()
+        {
+            ProductDefinition nameKeyedLast = ProductDefinitionBuilder
+                .Dataline("_0x2101", "Tryk")
+                .AddInput("Tryk", i => i.Documentation("fra ressourcen"))
+                .Documentation("Tryk", "fra navnenøglen")
+                .Build();
+
+            ProductDefinition onResourceLast = ProductDefinitionBuilder
+                .Dataline("_0x2101", "Tryk")
+                .Documentation("Tryk", "fra navnenøglen")
+                .AddInput("Tryk", i => i.Documentation("fra ressourcen"))
+                .Build();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(nameKeyedLast.Documentation.ForResource("Tryk"), Is.EqualTo("fra navnenøglen"));
+                Assert.That(onResourceLast.Documentation.ForResource("Tryk"), Is.EqualTo("fra ressourcen"));
             });
         }
     }

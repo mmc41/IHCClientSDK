@@ -205,7 +205,11 @@ namespace Ihc.Vis.Products
         /// <summary>Sets whether the product is included in the end-user report (<c>enduser_report="yes"</c>).</summary>
         public ProductDefinitionBuilder EnduserReport(bool enabled = true) => SetRoot("enduser_report", enabled ? "yes" : "no");
 
-        /// <summary>Sets the product note.</summary>
+        /// <summary>Sets the product's <c>note</c> attribute — the <b>serialized</b> note carried on the definition
+        /// root and written out to the <c>.def</c> and any project <c>.vis</c> the product is placed in. Contrast
+        /// <see cref="DefinitionBuilderBase{TSelf}.Documentation(string)"/>, which attaches the product's help text as
+        /// programmatic-lookup-only metadata that never reaches a file: <c>Note</c> is project data,
+        /// <c>Documentation</c> is help.</summary>
         public ProductDefinitionBuilder Note(string note) => SetRoot("note", note);
 
         /// <summary>Sets the physical position description.</summary>
@@ -226,12 +230,12 @@ namespace Ihc.Vis.Products
         // ---- resources ----
 
         /// <summary>Adds a <c>dataline_input</c> pin; <paramref name="configure"/> sets its address / cable colour /
-        /// note / icon. Returns this for chaining.</summary>
+        /// note / icon and its help <see cref="ProductResourceDefBuilder.Documentation"/>. Returns this for chaining.</summary>
         public ProductDefinitionBuilder AddInput(string name, Action<ProductResourceDefBuilder>? configure = null) =>
             AddResource("dataline_input", name, configure);
 
-        /// <summary>Adds a <c>dataline_output</c> pin; <paramref name="configure"/> sets its address / backup / icon.
-        /// Returns this for chaining.</summary>
+        /// <summary>Adds a <c>dataline_output</c> pin; <paramref name="configure"/> sets its address / backup / icon
+        /// and its help <see cref="ProductResourceDefBuilder.Documentation"/>. Returns this for chaining.</summary>
         public ProductDefinitionBuilder AddOutput(string name, Action<ProductResourceDefBuilder>? configure = null) =>
             AddResource("dataline_output", name, configure);
 
@@ -248,6 +252,9 @@ namespace Ihc.Vis.Products
         // Both the product-level Documentation(string) and the name-keyed Documentation(string, string) live on the
         // shared DefinitionBuilderBase — a product keys per-resource docs by name (no handle), which is exactly the
         // base's name-keyed overload; the function-block side adds a by-FbResourceHandle overload on top.
+        // Per-resource text is ALSO authorable on the resource itself — ProductResourceDefBuilder.Documentation inside
+        // the AddInput/AddOutput/AddResource configurator — which spells the name once instead of repeating it as a
+        // key. Both forms write the same map (last call wins), so a caller can convert one resource at a time.
 
         // ---- escape hatches (exotic families / open world) ----
 
@@ -268,6 +275,13 @@ namespace Ihc.Vis.Products
             foreach ((string attrName, string attrValue) in configurator.Attributes)
             {
                 resource = resource.WithAttribute(attrName, attrValue);
+            }
+            // The one place that has both the resource name and the text authored on it: route documentation to the
+            // definition-level map (never to an attribute), so the configurator form and the name-keyed overload land
+            // in the same dictionary and stay interchangeable.
+            if (configurator.DocumentationText is { } documentation)
+            {
+                SetResourceDoc(name, documentation);
             }
             children.Add(resource);
             lastResourceId = id;
@@ -420,12 +434,18 @@ namespace Ihc.Vis.Products
     {
         private readonly string tag;
         private readonly List<(string Name, string Value)> attrs = new();
+        // Deliberately NOT in attrs: documentation is programmatic-lookup-only help metadata, harvested by
+        // AddResource into the definition's DefinitionDocumentation — never an attribute of the serialized element.
+        private string? documentation;
 
         // Carries the resource's element tag (like FbResourceDefBuilder) so a family-agnostic setter such as Address
         // can resolve the correct per-family attribute name instead of hardcoding the dataline one.
         internal ProductResourceDefBuilder(string tag) => this.tag = tag;
 
         internal IReadOnlyList<(string Name, string Value)> Attributes => attrs;
+
+        // The help text authored on this resource, or null when none — the second thing AddResource reads back.
+        internal string? DocumentationText => documentation;
 
         /// <summary>Sets the resource address token, resolved to the family's address attribute from the resource's
         /// element tag (<c>address_dataline</c> for dataline pins, <c>address_channel</c> for airlink channels,
@@ -455,8 +475,26 @@ namespace Ihc.Vis.Products
         /// <summary>Sets the cable colour.</summary>
         public ProductResourceDefBuilder CableColour(string colour) => Set("cable_colour", colour);
 
-        /// <summary>Sets the resource note.</summary>
+        /// <summary>Sets the resource's <c>note</c> attribute — the <b>serialized</b> installer-facing text: it is
+        /// written into the body and out to the <c>.def</c> and any project <c>.vis</c> the product is placed in, and
+        /// the GUI shows it in the pin's properties dialog. Contrast <see cref="Documentation"/>, which attaches help
+        /// text <i>about</i> the resource as programmatic-lookup-only metadata that never reaches a file. Rule of
+        /// thumb: <c>Note</c> is project data, <c>Documentation</c> is help.</summary>
         public ProductResourceDefBuilder Note(string note) => Set("note", note);
+
+        /// <summary>Attaches this resource's documentation text — <b>programmatic-lookup-only</b> help metadata that
+        /// surfaces on the built definition's <see cref="ProductDefinition.Documentation"/> (keyed by the resource's
+        /// display name, read back with <see cref="DefinitionDocumentation.ForResource"/>) and is never serialized
+        /// into the body or a <c>.def</c>. The name-free peer of
+        /// <see cref="DefinitionBuilderBase{TSelf}.Documentation(string,string)"/>: authored here the resource name is
+        /// spelled once, at the add, so it cannot drift from the pin it documents. Contrast <see cref="Note"/>, which
+        /// sets the resource's serialized <c>note</c> attribute: <c>Note</c> is project data, <c>Documentation</c> is
+        /// help. Documenting one resource name twice keeps the LAST call, whichever form wrote it.</summary>
+        public ProductResourceDefBuilder Documentation(string documentation)
+        {
+            this.documentation = documentation;
+            return this;
+        }
 
         /// <summary>Marks the resource as backed-up (<c>backup="yes"</c>) — applies to outputs and any resource that
         /// supports a backup flag; harmless on families that do not.</summary>
