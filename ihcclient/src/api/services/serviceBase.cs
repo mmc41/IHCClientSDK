@@ -78,12 +78,19 @@ namespace Ihc
         protected IhcSettings settings;
 
 
-        protected ServiceBaseImpl(ICookieHandler cookieHandler, IhcSettings settings, string serviceName)
+        /// <param name="cookieHandler">Session cookie source.</param>
+        /// <param name="settings">IHC settings.</param>
+        /// <param name="serviceName">Name of the IHC SOAP service this implementation wraps.</param>
+        /// <param name="transport">
+        /// Transport to use instead of the process-wide singleton HttpClient. Null in production; the seam
+        /// unit tests substitute a stub transport through (they own it and dispose it).
+        /// </param>
+        protected ServiceBaseImpl(ICookieHandler cookieHandler, IhcSettings settings, string serviceName, HttpClient transport = null)
         {
             this.settings = settings;
             this.Url = settings.Endpoint + "/ws/" + serviceName;
             this.cookieHandler = cookieHandler;
-            this.ihcClient = new Client(cookieHandler, Url, settings);
+            this.ihcClient = new Client(cookieHandler, Url, settings, transport);
         }
 
         private string escapeXMl(string xmlString)
@@ -114,7 +121,10 @@ namespace Ihc
                     (nameof(onOkSideEffect), onOkSideEffect != null)
                 );
 
-                var httpResp = await ihcClient.Post(soapAction, req).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                // The response is ours to dispose: HttpClient disposes the response it hands back only on its own
+                // failure path (HttpClient.HandleFailure), and EnsureSuccessStatusCode below does not dispose the
+                // content either - so a non-2xx answer would otherwise walk out of here with the response still open.
+                using var httpResp = await ihcClient.Post(soapAction, req).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
                 httpResp.EnsureSuccessStatusCode();
 
