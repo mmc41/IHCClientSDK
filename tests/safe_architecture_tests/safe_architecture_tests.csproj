@@ -4,6 +4,9 @@
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
+    <!-- Anchors the SOAP-layer rules on a generated type so a rename breaks this fixture's compile rather
+         than leaving a rule that silently matches nothing. Exempt from the repo-wide ban it enforces. -->
+    <UsesGeneratedSoapLayer>true</UsesGeneratedSoapLayer>
   </PropertyGroup>
 
   <ItemGroup>

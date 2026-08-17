@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+
+  <!--
+    Repo-wide compile-time bans. Imported automatically into every project *after* its own body, which is
+    what lets a project opt out with a property it sets itself — Directory.Build.props is imported before
+    the project body and could not see such a property, so this belongs here rather than there.
+
+    The generated SOAP layer must not be referenced outside the SDK. The architecture tests already enforce
+    that for the two assemblies they load (ihcclient's own tiers and ihc_openvisual); this covers the rest
+    of the repository, and reports at the edit instead of in a later test run.
+
+    A project that legitimately uses the layer sets <UsesGeneratedSoapLayer>true</UsesGeneratedSoapLayer>
+    in its own file, so each exception is visible where it is taken rather than in a list here that nothing
+    would keep honest. There are three: the SDK that owns the layer, and the two suites that white-box it.
+  -->
+  <ItemGroup Condition="'$(UsesGeneratedSoapLayer)' != 'true'">
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
+  </ItemGroup>
+
+</Project>

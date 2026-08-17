@@ -1,0 +1,4 @@
+#nullable enable
+const Ihc.Vis.Session.EditRefusals.NoProjectOpenRefusal = "Der er ikke åbnet et projekt." -> string!
+const Ihc.Vis.Session.EditRefusals.StaleBaseVersionRefusal = "Projektet er ændret, siden denne redigering blev forberedt." -> string!
+Ihc.Vis.Session.EditRefusals

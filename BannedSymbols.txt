@@ -1,0 +1,13 @@
+// Symbols banned at compile time across the repository. Applied by Directory.Build.targets to every
+// project except the few that legitimately own or white-box the generated layer; those opt out with
+// <UsesGeneratedSoapLayer>true</UsesGeneratedSoapLayer>, which makes each exception greppable.
+//
+// Format: one entry per line, "<documentation-comment ID>;<message shown in the error>".
+
+// The generated SOAP layer is public because XmlSerializer binds only public types, not because it is
+// meant to be consumed (ADR-003). Nothing outside the SDK may bind to it: a caller that does couples
+// itself to positional WSDL artifacts that change whenever the vendor's WSDL does, and bypasses the
+// anti-corruption layer the API services exist to provide. Use the Ihc.* service interfaces and the
+// SDK models in Ihc.Soap's place. The ban is namespace-wide, so a SOAP service added later is covered
+// on arrival without editing this file.
+N:Ihc.Soap;Use the high-level Ihc service interfaces and SDK models instead of the generated SOAP layer.

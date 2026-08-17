@@ -29,6 +29,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- GUI-scoped compile-time bans, merged with the repository-wide file the root Directory.Build.targets
+         supplies. They live here rather than at the root because the SDK owns the banned namespaces and must
+         keep using them; a repo-wide entry would ban them in the project that defines them. -->
+    <AdditionalFiles Include="BannedSymbols.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />

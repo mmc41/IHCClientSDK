@@ -27,17 +27,13 @@ Ordered by priority within each group.
 | **G1** | The vendor app can edit a `.vis` while OpenVisual has it open; the save silently overwrites it | Defect | Todo | [§G1](#g1--external-modification-of-the-open-file) |
 | **A1** | No `CancellationToken` on the async surface and no HTTP timeout — a caller blocks until the 100 s default | Defect | Todo | [§A1](#a1--cancellation-and-timeouts) |
 | **A2** | No behavioural test for the controller half — no wire fixtures, and `safe_integration_tests` never runs | Task | Todo | [§A2](#a2--soap-fixture-corpus--replay-harness) |
-| **B2a** | Decide the generated SOAP layer's visibility — Invariant 9's admitted `public` leak | Decision | **Needs decision** | [§B2a](#b2a--generated-soap-visibility) |
-| **B2b** | The SDK's public surface is not pinned (depends on B2a) | Task | **Blocked** — needs B2a | [§B2b](#b2b--sdk-public-api-baseline) |
 | **B1** | Tracing but no metrics — needs a `Meter` **and** an export pipeline that does not exist | Task | Todo | [§B1](#b1--metrics-instrument-and-export-pipeline) |
 | **B4** | Refusals carry a bare Danish string while validation findings carry a `RuleId` | Task | Todo | [§B4](#b4--refusal-codes) |
-| **B2c** | GUI banned-API rules are test-time only; could be compile-time (scoped to `ihc_openvisual`) | Task | Todo | [§B2c](#b2c--gui-banned-apis-at-compile-time) |
 | **G2b** | Live per-field dialog feedback (depends on G2a) | Task | **Blocked** — needs G2a | [§G2b](#g2b--live-per-field-dialog-feedback) |
 | **T3** | HTTPS certificate identity is not authenticated (`DangerousAcceptAnyServerCertificateValidator`) | Decision | **Needs decision** | [§T3](#t3--https-certificate-trust-boundary) |
 | **D1** | Rule on the two US-068 residuals (log-mark scope; stop-point / jump-to leaf routes) | Decision | **Blocked** — needs T018's Discoveries entry | [§D1](#d1--us-068-residuals) |
 | **O1** | PG-5 enum-editing oracle session — capture the value-id reallocation rule | Oracle | Todo | [§O1](#o1--pg-5-enum-editing-oracle-session) |
 | **P1** | `PerfBaselineBenchmark` is `[Explicit]` — the five perf budgets are measurable but never gated | Idea | Todo | [§P1](#p1--perf-benchmark-is-never-run) |
-| **R1** | Model-driven report rendering (option B: generic shape document + GUI shape interpreter) | Idea | **Verify** — appears superseded | [§R1](#r1--model-driven-report-rendering) |
 
 **Withdrawn after review:** a proposed `IProjectDocument : IDisposable` item and a nullable-enable item —
 see [Standing constraints](#standing-constraints--do-not-reopen-without-new-evidence). Coverage
@@ -179,29 +175,6 @@ data** — so an envelope, cookie-session or adapter regression is unguarded.
       suite — a CI gate that touches no controller and keeps Invariant 5.
 - [ ] Handle vendor-response drift the way the `.vis` oracles do: re-record deliberately, never edit.
 
-### B2a · Generated SOAP visibility
-
-**Decide first — B2b depends on it.** `ARCHITECTURE.md` Invariant 9 admits the gap: generated SOAP types
-and proxy classes are technically `public` but consumers must not use them, so vendor WSDL churn would
-ship as this SDK's breaking changes.
-
-- [ ] Decide: emit the generated layer as **internal** (`generate.sh` can; the `InternalsVisibleTo`
-      friend list already covers the suites that need it) · or accept the public surface deliberately and
-      record it as an ADR. It is currently neither.
-
-### B2b · SDK public-API baseline
-
-**Blocked on B2a** — pinning a surface you are about to change wastes the baseline.
-
-- [ ] Add `Microsoft.CodeAnalysis.PublicApiAnalyzers` to `ihcclient` and check in **both**
-      `PublicAPI.Shipped.txt` *and* `PublicAPI.Unshipped.txt`. The documented workflow needs the pair:
-      new API lands in *Unshipped* (via the analyzer's code fix) and is promoted to *Shipped* at release.
-      A single checked-in Shipped file is not the baseline.
-- [ ] Note the interaction with the project's `<Nullable>disable</Nullable>` default: the analyzer
-      records nullability in the API files, so files that already opt in per-`#nullable enable` and files
-      that do not will produce different entries. Settle the ordering against the nullability position in
-      Standing constraints before generating the baseline.
-
 ### B1 · Metrics instrument and export pipeline
 
 `Meter` ships in the same `System.Diagnostics.DiagnosticSource` assembly the SDK already uses for
@@ -242,18 +215,6 @@ cannot be aggregated by cause.
 
 This **preserves** the Danish-refusal decision rather than reopening it — it makes Danish the default
 instead of the only possibility.
-
-### B2c · GUI banned APIs at compile time
-
-`ConfigureAwait` and `Process.Start` are banned in `ihc_openvisual` and enforced today by IL scan in
-`safe_architecture_tests`. Compile-time enforcement would fail faster and closer to the edit.
-
-- [ ] Add `Microsoft.CodeAnalysis.BannedApiAnalyzers` **to `applications/ihc_openvisual` only**, with a
-      GUI-scoped `BannedSymbols.txt`. Keep the arch tests as the backstop.
-- [ ] ⛔ **Never apply these bans to `ihcclient`.** The SDK uses `ConfigureAwait` deliberately and
-      pervasively — 239 occurrences across 22 files, mostly
-      `ConfigureAwait(settings.AsyncContinueOnCapturedContext)`. Banning it there would be wrong, not
-      merely noisy.
 
 ### G2b · Live per-field dialog feedback
 
@@ -324,25 +285,6 @@ its numbers are machine-specific with no recorded baseline to compare against.
       committed per-machine baseline and a non-regression check. Low priority — the measurement exists,
       only the gate is missing.
 
-### R1 · Model-driven report rendering
-
-Original question (explore, do not implement): *can report generation in OpenVisual be made model-driven
-using reflection on the data models supplied by the ihcclient API, possibly extended with attribute
-metadata, so report content is not hardcoded in OpenVisual but derived?* Explored 2026-07-21 —
-analysis at `tmp/metadrivenreport-ana.md` (untracked).
-
-The idea was option B: the combined report model (backlog T020) emits a generic shape document
-(Table/KeyValue/Outline sections with US-071 option tags) and the GUI becomes a small shape interpreter;
-reflection/attributes stay SDK-internal if used at all. To be decided as an amendment to T020 **before**
-the reporting phases (Phase 4+) of the reporting backlog start — not retrofitted onto the then-current
-three report models.
-
-- [ ] **Verify and then close.** `ARCHITECTURE.md` now describes the shipped reporting pipeline as
-      *"per-kind builders project the tree into a mode-tagged shape document (a closed layout
-      vocabulary) … and one generic writer per format"*, with reports generated SDK-side and the GUI
-      composing no report markup at all. That reads as option B having landed, in which case this item
-      is superseded and should be deleted rather than left open. Confirm before deleting.
-
 ---
 
 ## Standing constraints — do not reopen without new evidence
@@ -377,3 +319,26 @@ three report models.
   already carry `#nullable enable`, including essentially all of `src/vis`. The residual is the older
   API/app-tier files and the project-level default (tracked separately as designfix P3/C4) — not a
   greenfield migration. Do not re-raise it as one.
+- **The generated SOAP layer stays public** (ruled 2026-08-17;
+  `docs/adr/ADR-003-generated-soap-layer-stays-public.md`). `dotnet-svcutil --internal` was tried end to
+  end, not reasoned about: it builds warning-free and then fails at runtime. `XmlSerializer` binds only
+  public types, and the SDK hands it the generated message wrappers on every call — so even
+  `RequestEnvelope<T>` cannot construct a serializer. Friend assemblies do not lift that check, which
+  precedes serializer codegen. The `WS*` data types would stay public regardless, for the same reason.
+  The boundary therefore stays in signatures and dependency direction: the architecture tests, plus a
+  repo-wide compile-time ban on `N:Ihc.Soap` (`BannedSymbols.txt`, applied by `Directory.Build.targets`).
+  A project that genuinely needs the layer opts out with `<UsesGeneratedSoapLayer>true</UsesGeneratedSoapLayer>`
+  in its own file — there are three, and that property is how you find them. The layer is deliberately
+  **not** recorded in `PublicAPI.*.txt`: the baseline states what the SDK promises, and this is not it.
+  **The premise expires if the wire path stops using `XmlSerializer`** — or before `ihcclient` is
+  published as a NuGet package, which would turn a source-level detail into a distributed contract.
+- **The GUI's `ConfigureAwait` and `Process.Start` bans stay architecture tests** (ruled 2026-08-17;
+  `docs/adr/ADR-004-compile-time-bans-over-architecture-tests.md`). Moving them to banned-symbol entries
+  was proposed and rejected on that ADR's own test: neither is a complete ban. `ConfigureAwait` is declared
+  on `Task`, `Task<T>`, `ValueTask`, `ValueTask<T>` and the awaitable extensions, so an entry list would
+  need one line per declaring type and would not cover a new awaitable at all — where the IL scan bans the
+  member by NAME and covers every declaring type, present and future. `Process.Start`'s overloads are
+  enumerable but equally a fixed list. Both are also documented as admitting no exemption, and a
+  banned-symbol entry can be waived at the call site with a suppression comment. ⛔ **Never apply either
+  ban to `ihcclient`** — the SDK uses `ConfigureAwait` deliberately and pervasively (239 occurrences
+  across 22 files). Six other GUI prohibitions did migrate; see the ADR for which and why.

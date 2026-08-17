@@ -72,74 +72,12 @@ namespace Ihc.Tests
         // ReportingPipelineTypes_AreInternal pins that this namespace is populated and internal-only.
         private const string Reporting = "Ihc.Vis.Reporting";
 
-        /// <summary>
-        /// The GUI is a thin shell over the <c>ProjectAppService</c> facade; it reaches the controller only through
-        /// that facade's API-service interfaces, so it must never touch the generated <c>Ihc.Soap.*</c> layer. If
-        /// the GUI cannot see the SOAP types, it cannot hand-roll controller protocol logic.
-        /// </summary>
-        [Test]
-        public void Gui_DoesNotDependOn_Soap() =>
-            AssertAssemblyHasNoDependency(Gui, SoapNs,
-                "the GUI is a thin shell over ProjectAppService and must never touch the generated SOAP types");
-
-        /// <summary>
-        /// All <c>.vis</c>/<c>.ifb</c>/<c>.def</c> XML IO belongs to the <c>Ihc.Vis</c> engine. The GUI must not
-        /// parse or emit that XML itself: forbidding <c>System.Xml.*</c> makes it structurally impossible for the
-        /// UI to hand-roll project serialization instead of going through the engine.
-        /// </summary>
-        [Test]
-        public void Gui_DoesNotDependOn_SystemXml() =>
-            AssertAssemblyHasNoDependency(Gui, SystemXmlNs,
-                "the GUI must not depend on System.Xml; project-file XML IO belongs to the Ihc.Vis engine");
-
-        /// <summary>
-        /// Loading and saving <c>.vis</c> files belongs to the engine's IO layer (<c>Ihc.Vis.Io</c> —
-        /// <c>ProjectSerializer</c>, <c>ProjectReader</c>), reached only through <c>ProjectAppService.Load</c>/
-        /// <c>Save</c>. The GUI must not call that layer directly: going through the facade is what keeps atomic
-        /// writes, <c>.BAK</c> backups, validate-before-save and the byte-fidelity save mode in one place instead of
-        /// re-implemented in the UI.
-        /// </summary>
-        [Test]
-        public void Gui_DoesNotDependOn_VisIoLayer() =>
-            AssertAssemblyHasNoDependency(Gui, VisIo,
-                "the GUI must load/save .vis files through ProjectAppService, not the Ihc.Vis.Io engine types directly");
-
-        /// <summary>
-        /// Mutating a project belongs to the SDK's live-session command layer (<c>Ihc.Vis.Session</c> commands
-        /// executed via <c>ProjectEditor</c>), surfaced to the GUI as undoable command objects. The GUI must not
-        /// reach into the low-level editing types (<c>ProjectEditor</c>, the <c>*Ref</c>/<c>*Builder</c> handles)
-        /// directly: that would bypass the undo/redo history and change-set reconciliation the command layer
-        /// provides. The read-only model interpretation the GUI legitimately needs (log-row detection, scene-value
-        /// parsing) lives on the <c>Ihc.Vis</c> read surface, not in the editing layer.
-        /// </summary>
-        [Test]
-        public void Gui_DoesNotDependOn_EditingLayer() =>
-            AssertAssemblyHasNoDependency(Gui, Editing,
-                "the GUI must mutate projects through the Ihc.Vis.Session command layer, not the low-level editing types directly");
-
-        /// <summary>
-        /// Report generation and formatting belong to the SDK: the GUI receives
-        /// finished report BYTES from <c>ProjectAppService.GenerateReport</c> and must never reach the
-        /// <c>Ihc.Vis.Reporting</c> pipeline (builders, shape document, format writers). The forbidden set
-        /// is REFLECTED from the SDK assembly — the pipeline is internal-only, so a fluent referenced-stub
-        /// ban would go vacuous the moment the GUI is compliant (the false-negative shape the name-based
-        /// edge scan exists for); armed by the set-non-empty guard and the shared positive control
-        /// <see cref="DependencyNameScan_DetectsKnownFacadeEdge"/>.
-        /// </summary>
-        [Test]
-        public void Gui_DoesNotDependOn_Reporting() =>
-            AssertNoDependencyOnTypeNames(Gui, GuiRoot, ReportingPipelineTypeNames(),
-                "Ihc.Vis.Reporting pipeline types",
-                "report generation and formatting live in the SDK; the GUI holds finished report bytes, never the pipeline");
-
-        /// <summary>Every type of the SDK's internal report pipeline, reflected by full name from the SDK
-        /// assembly (compiler-generated nested types included — an edge onto any of them is an edge too).</summary>
-        private static IReadOnlyCollection<string> ReportingPipelineTypeNames() =>
-            typeof(global::Ihc.Vis.ProjectAppService).Assembly.GetTypes()
-                .Where(type => type.Namespace is { } ns
-                               && (ns == Reporting || ns.StartsWith(Reporting + ".", StringComparison.Ordinal)))
-                .Select(type => type.FullName!)
-                .ToHashSet();
+        // The GUI's whole-assembly layering prohibitions — no Ihc.Soap, no System.Xml, no Ihc.Vis.Io, no
+        // Ihc.Vis.Editing, no Ihc.Vis.Reporting, and not the ProjectDocumentSession runner — are enforced at
+        // compile time instead of here, by the banned-symbol files (ADR-004). Each is a whole-project ban on a
+        // namespace or a single type, which a symbol ban states exactly and covers for types added later, so
+        // keeping a second copy of the rule here would be one statement of it drifting from the other.
+        // GuiLayerAnchors_ResolveToTheirDocumentedNamespaces below pins that those ban targets still resolve.
 
         /// <summary>
         /// The GUI does not compose report HTML/text: its single report door is
@@ -159,20 +97,6 @@ namespace Ihc.Tests
                 new[] { "ihc_openvisual.Services.ProjectReportWorkflow" },
                 "report generation calls",
                 "ProjectReportWorkflow is the single GenerateReport caller — the GUI never composes report output elsewhere");
-
-        /// <summary>
-        /// Command execution belongs to the SDK: interactive code holds the <c>IProjectDocument</c> PORT from
-        /// <c>ProjectAppService.OpenDocument</c>, and the stateless <c>Apply/CanApply/Preview</c>
-        /// facade serves one-shot callers — either way the GUI must never open the concrete
-        /// <c>ProjectDocumentSession</c> engine runner itself. This bans the one engine TYPE by name,
-        /// NEVER the <c>Ihc.Vis.Session</c> namespace: the command / outcome / change-set contract types live there
-        /// and the GUI legitimately consumes them. (Armed by <see cref="DependencyNameScan_DetectsKnownFacadeEdge"/>, the
-        /// positive control over the same <c>AssertNoDependencyOnTypeNames</c> scan.)
-        /// </summary>
-        [Test]
-        public void Gui_DoesNotDependOn_ProjectDocumentSession() =>
-            AssertNoDependencyOnTypeNames(Gui, GuiRoot, ProjectDocumentSessionTypeName(), "the ProjectDocumentSession engine runner",
-                "the interactive GUI must execute commands through IProjectDocument from ProjectAppService.OpenDocument, not open ProjectDocumentSession itself");
 
         /// <summary>
         /// View-models carry the app's presentation logic and must stay free of Avalonia types so that logic is
@@ -676,6 +600,12 @@ namespace Ihc.Tests
         /// so a namespace rename is followed automatically; the gap that leaves — an anchor type <i>moved</i> into a
         /// different existing namespace, silently retargeting its rule — is turned into a named failure here (the GUI
         /// analogue of the SDK fixture's <c>LayerAnchors_ResolveToTheirDocumentedNamespaces</c>).
+        /// <para>It carries a second duty since the GUI's whole-assembly layering prohibitions moved to compile-time
+        /// banned-symbol entries (ADR-004): a ban entry is a STRING, so renaming one of its targets would empty the
+        /// ban silently — the one failure mode a symbol ban has that an anchored rule does not. The names asserted
+        /// below are exactly the ones those entries carry, resolved here from the types themselves, so a rename
+        /// fails this test instead of quietly un-banning the namespace. <c>System.Xml</c> is deliberately absent: it
+        /// is a BCL namespace this repository cannot rename.</para>
         /// </summary>
         [Test]
         public void GuiLayerAnchors_ResolveToTheirDocumentedNamespaces() =>
@@ -690,7 +620,19 @@ namespace Ihc.Tests
                 Assert.That(VisIo, Is.EqualTo("Ihc.Vis.Io"), $"{nameof(global::Ihc.Vis.Io.ProjectSerializer)} anchors the offline IO engine");
                 Assert.That(Editing, Is.EqualTo("Ihc.Vis.Editing"), $"{nameof(global::Ihc.Vis.Editing.ProjectEditor)} anchors the editing layer");
                 Assert.That(SoapNs, Is.EqualTo("Ihc.Soap"), "the generated SOAP parent namespace");
+                Assert.That(ReportingPipelineTypeCount(), Is.GreaterThan(0),
+                    $"'{Reporting}' is named by the GUI's banned-symbol entry; renaming it would empty that ban");
+                Assert.That(typeof(global::Ihc.Vis.Session.ProjectDocumentSession).FullName,
+                    Is.EqualTo("Ihc.Vis.Session.ProjectDocumentSession"),
+                    "the engine command-runner named by the GUI's banned-symbol entry");
             });
+
+        /// <summary>How many types the SDK's internal report pipeline declares. The pipeline is internal, so no
+        /// public typeof anchor exists for its namespace; a populated count is what proves the name still resolves.</summary>
+        private static int ReportingPipelineTypeCount() =>
+            typeof(global::Ihc.Vis.ProjectAppService).Assembly.GetTypes()
+                .Count(type => type.Namespace is { } ns
+                               && (ns == Reporting || ns.StartsWith(Reporting + ".", StringComparison.Ordinal)));
 
         /// <summary>
         /// A backstop that the GUI suite is green because its rules hold, not because the mechanism is broken. The
@@ -871,15 +813,6 @@ namespace Ihc.Tests
             static bool IsServicesType(string fullName) =>
                 typeof(global::ihc_openvisual.App).Assembly.GetType(fullName)?.Namespace == Services;
         }
-
-        /// <summary>The engine's <see cref="Ihc.Vis.Session.ProjectDocumentSession"/> command-runner, by full name —
-        /// the single <c>Ihc.Vis.Session</c> type the GUI must reach only behind the <c>ProjectAppService</c> facade
-        /// (the command / outcome / change-set contract types in that namespace stay allowed, so this is a
-        /// single-TYPE ban, never a namespace ban).</summary>
-        private static IReadOnlyCollection<string> ProjectDocumentSessionTypeName() => new HashSet<string>
-        {
-            typeof(global::Ihc.Vis.Session.ProjectDocumentSession).FullName!,
-        };
 
         // ---- Reflection helpers for the identity (ElementId-not-reference) rule ------------------------------------
 

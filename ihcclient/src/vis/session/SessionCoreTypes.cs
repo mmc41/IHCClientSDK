@@ -37,6 +37,31 @@ namespace Ihc.Vis.Session
         public EditVerdict And(EditVerdict next) => Ok ? next : this;
     }
 
+    /// <summary>
+    /// The refusal sentences a caller may forward rather than re-author. They sit on the session CONTRACT, next to
+    /// the <see cref="EditVerdict"/> that carries them, because a frontend answering the same condition needs the
+    /// same sentence without reaching the concrete command runner that happens to raise it first.
+    /// <para>The <c>Refusal</c> suffix on each name is load-bearing, not decoration: the refusal-language test scans
+    /// SDK source for named constants matching it, so a rename that drops the suffix would hide the sentence from
+    /// the check that pins it as Danish.</para>
+    /// </summary>
+    public static class EditRefusals
+    {
+        /// <summary>
+        /// The ONE "nothing is open" refusal. Public so the app layer forwards this exact sentence instead of
+        /// authoring its own: a frontend answers the same question when it holds no document at all, where there
+        /// is no session to ask, and two separately-worded sentences for one condition is duplication.
+        /// </summary>
+        public const string NoProjectOpenRefusal = "Der er ikke åbnet et projekt.";
+
+        /// <summary>
+        /// The optimistic-concurrency refusal: the edit was prepared against an older version than the one it is
+        /// being applied to. Named rather than inlined for the same reason as the sentence above — it is one
+        /// condition and must read as one sentence wherever it is answered.
+        /// </summary>
+        public const string StaleBaseVersionRefusal = "Projektet er ændret, siden denne redigering blev forberedt.";
+    }
+
     /// <summary>The undo-history retention policy (proposal §3.3/D1): a <see cref="Cap"/> of null means unbounded
     /// (memory only), any int is a hard entry cap.</summary>
     public readonly record struct HistoryPolicy(int? Cap)

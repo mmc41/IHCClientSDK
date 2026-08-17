@@ -40,7 +40,6 @@ namespace Ihc.Tests
         // very absence is what the rules protect.
         public const string AvaloniaNs = "Avalonia";
         public const string LoggingNs = "Microsoft.Extensions.Logging";
-        public const string SystemXmlNs = "System.Xml";
 
         public static string ParentNamespace(string ns)
         {

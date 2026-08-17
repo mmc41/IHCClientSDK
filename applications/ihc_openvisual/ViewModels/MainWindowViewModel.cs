@@ -1739,7 +1739,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private static EditVerdict AllowGate(ShellContext ctx) => EditVerdict.Allow;
 
     private static EditVerdict ProjectOpenGate(ShellContext ctx) =>
-        ctx.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse(ProjectDocumentSession.NoProjectOpenRefusal);
+        ctx.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse(EditRefusals.NoProjectOpenRefusal);
 
     // Ctrl+I/Ctrl+U pin authoring: only inside an UNLOCKED block's programming view (A-27).
     private EditVerdict ProgrammingAuthoringGate(ShellContext ctx) =>
@@ -1969,7 +1969,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private async Task<string?> ApplyEnumTypeOperationAsync(EnumTypeManagerOperation operation)
     {
         if (_session.Current is not { } project)
-            return ProjectDocumentSession.NoProjectOpenRefusal;
+            return EditRefusals.NoProjectOpenRefusal;
 
         (ProjectCommand command, string status) = operation switch
         {

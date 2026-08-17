@@ -169,7 +169,7 @@ namespace Ihc.Vis.Session
                 // The SAME sentence CanApply answers this condition with (D13) — the two doors are asked the same
                 // question by the same GUI, so a hand-written second wording here would answer it in another voice
                 // (and, until this was fixed, in another LANGUAGE) depending only on which door happened to be used.
-                return new EditOutcome(EditStatus.Refused, command.GetType().Name, NoProjectOpenRefusal, null);
+                return new EditOutcome(EditStatus.Refused, command.GetType().Name, EditRefusals.NoProjectOpenRefusal, null);
             }
             // Label resolves against the pre-edit project (D10): a rename shows the old name, a delete the doomed target.
             string label = command.Describe(current);
@@ -177,7 +177,7 @@ namespace Ihc.Vis.Session
             {
                 // Danish, like every refusal: a Refused reason is forwarded to the installer verbatim (FR-2.6 / D13),
                 // so this is user-facing text that happens to live in the engine — not an internal diagnostic.
-                return new EditOutcome(EditStatus.Refused, label, StaleBaseVersionRefusal, null);
+                return new EditOutcome(EditStatus.Refused, label, EditRefusals.StaleBaseVersionRefusal, null);
             }
             EditVerdict verdict = command.Evaluate(new EditContext(current, _index!));
             if (!verdict.Ok)
@@ -325,21 +325,6 @@ namespace Ihc.Vis.Session
             }
         }
 
-        /// <summary>
-        /// The ONE "nothing is open" refusal. Public so the app layer forwards this exact sentence instead of
-        /// authoring its own: the workflow answers the same question when it holds no document at all, where there
-        /// is no session to ask, and two separately-worded sentences for one condition is the duplication D13
-        /// removes.
-        /// </summary>
-        public const string NoProjectOpenRefusal = "Der er ikke åbnet et projekt.";
-
-        /// <summary>
-        /// The optimistic-concurrency refusal: the edit was prepared against an older version than the one it is
-        /// being applied to. Named rather than inlined for the same reason as the sentence above — it is one
-        /// condition and must read as one sentence wherever it is answered.
-        /// </summary>
-        public const string StaleBaseVersionRefusal = "Projektet er ændret, siden denne redigering blev forberedt.";
-
         /// <summary>The command's legality verdict against the current project (cheap — no edit), for drag-over
         /// probes and menu gates.</summary>
         public EditVerdict CanApply(ProjectCommand command)
@@ -348,7 +333,7 @@ namespace Ihc.Vis.Session
             {
                 return _current is { } current
                     ? command.Evaluate(new EditContext(current, _index!))
-                    : EditVerdict.Refuse(NoProjectOpenRefusal);
+                    : EditVerdict.Refuse(EditRefusals.NoProjectOpenRefusal);
             }
         }
 

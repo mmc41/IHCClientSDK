@@ -1,0 +1,32 @@
+// Symbols banned in the OpenVisual GUI only. Merged with the repository-wide BannedSymbols.txt at the
+// root, which carries the bans that hold everywhere; these hold for this project alone, because the SDK
+// legitimately owns every namespace named below.
+//
+// Format: one entry per line, "<documentation-comment ID>;<message shown in the error>".
+//
+// Each of these is a whole-project prohibition on a namespace or a single type, so the ban is complete by
+// construction and covers types added to those namespaces later. That is the property that let these rules
+// move out of the architecture suite (ADR-004); a rule needing an exemption, a roster of our own evolving
+// API, or sight of .axaml markup stays a fitness test there. The architecture suite pins that these targets
+// still resolve, so renaming one cannot quietly empty the ban.
+
+// All .vis/.ifb/.def XML IO belongs to the Ihc.Vis engine. Forbidding System.Xml makes it structurally
+// impossible for the UI to hand-roll project serialization instead of going through the facade.
+N:System.Xml;Project-file XML IO belongs to the Ihc.Vis engine — go through ProjectAppService.
+
+// Loading and saving .vis files is reached only through ProjectAppService.Load/Save, which is what keeps
+// atomic writes, .BAK backups, validate-before-save and byte-fidelity save in one place.
+N:Ihc.Vis.Io;Load and save through ProjectAppService, not the Ihc.Vis.Io engine types.
+
+// Mutation belongs to the session command layer. Reaching the low-level editing handles directly bypasses
+// the undo/redo history and the change-set reconciliation the command layer provides.
+N:Ihc.Vis.Editing;Mutate through the Ihc.Vis.Session commands, not the low-level editing types.
+
+// The GUI receives finished report BYTES from ProjectAppService.GenerateReport and composes no report
+// output of its own; the pipeline's builders, shape document and format writers are the SDK's.
+N:Ihc.Vis.Reporting;The SDK generates finished reports — call ProjectAppService.GenerateReport.
+
+// One type, never the Ihc.Vis.Session namespace: the command, outcome and change-set contract types live
+// there and the GUI legitimately consumes them. Only the concrete engine runner is out of bounds —
+// interactive code holds the IProjectDocument port from ProjectAppService.OpenDocument.
+T:Ihc.Vis.Session.ProjectDocumentSession;Execute commands through IProjectDocument from ProjectAppService.OpenDocument.

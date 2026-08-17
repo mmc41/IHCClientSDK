@@ -1,0 +1,17 @@
+# The generated SOAP layer is excluded from the public-API baseline (RS0016).
+#
+# These types are public deliberately and are not part of the SDK's contract: XmlSerializer binds only
+# public types and the transport hands it the generated message wrappers on every call, so they cannot be
+# internal (ADR-003). Recording them in PublicAPI.*.txt would write ~4900 vendor-shaped entries into the
+# file that states what the SDK promises, and would fail the build on every regeneration until they were
+# re-recorded — friction on regeneration, in exchange for confirming an addition that was deliberate.
+#
+# What the baseline still catches is the part that matters: the hand-written service and models written to
+# wrap a new SOAP interface are ordinary public API and must be recorded. That the generated layer must not
+# be used directly is enforced separately, by the Ihc.Soap ban in BannedSymbols.txt and the architecture
+# rules — both of which match the whole Ihc.Soap namespace subtree, so a new service is covered on arrival.
+#
+# This file lives inside generatedsrc/ so it applies to every generated file automatically, including ones
+# that do not exist yet. generate.ps1/generate.sh delete only *.cs and *.json, so it survives regeneration.
+[*.cs]
+dotnet_diagnostic.RS0016.severity = none

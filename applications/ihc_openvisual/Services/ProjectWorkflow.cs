@@ -457,7 +457,7 @@ public sealed class ProjectWorkflow : IDisposable
     // no project; this workflow answers it when it holds no document at all, where there is no session to ask. Two
     // separately-authored sentences meant the installer saw "Intet projekt er åbent." or "Der er ikke åbnet et
     // projekt." depending on which layer noticed first. One condition, one sentence (D13).
-    private const string NoDocumentReason = ProjectDocumentSession.NoProjectOpenRefusal;
+    private const string NoDocumentReason = EditRefusals.NoProjectOpenRefusal;
 
     // Likewise the ONE title over every failed write this workflow reports — saving the project and saving a
     // function block to the library both surface it, and one title for one kind of failure is what the installer

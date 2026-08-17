@@ -87,6 +87,13 @@
   <ItemGroup Label="Tooling">
     <PackageVersion Include="AspNetCore.Proxy" Version="4.5.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+    <!-- Pins the SDK's public API surface as a reviewable text file (ihcclient only). Analyzer-only:
+         PrivateAssets="all" keeps it out of any consumer's dependency graph. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />
+    <!-- Compile-time ban on the generated SOAP layer outside the SDK (see BannedSymbols.txt and
+         Directory.Build.targets). Same Roslyn analyzer release train as the public-API analyzer above:
+         bump them together. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0" />
   </ItemGroup>
 
 </Project>

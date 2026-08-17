@@ -11,7 +11,7 @@ for filepath in wsdl/fixed/*.wsdl; do
   filebaseNoDir=$(basename ${filepath})
   filebase=${filebaseNoDir%.wsdl}
   fileNS=`echo ${filebase:0:1} | tr  '[a-z]' '[A-Z]'`${filebase:1}
-  dotnet-svcutil  --serializer XmlSerializer --noStdLib --outputDir generatedSrc --outputFile $filebase --namespace *,Ihc.Soap.$fileNS $filepath
+  dotnet-svcutil  --serializer XmlSerializer --noStdLib --outputDir generatedsrc --outputFile $filebase --namespace *,Ihc.Soap.$fileNS $filepath
 done
 
 rm generatedsrc/*.json

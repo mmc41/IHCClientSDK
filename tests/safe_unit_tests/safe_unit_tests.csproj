@@ -4,6 +4,10 @@
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
+    <!-- White-boxes the generated SOAP layer on purpose: the serialization tests round-trip the generated
+         message wrappers, and the service tests fake the generated contracts. Exempt from the repo-wide
+         ban in BannedSymbols.txt. -->
+    <UsesGeneratedSoapLayer>true</UsesGeneratedSoapLayer>
   </PropertyGroup>
 
   <ItemGroup>
