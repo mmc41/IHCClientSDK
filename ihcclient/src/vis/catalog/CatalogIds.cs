@@ -57,7 +57,7 @@ namespace Ihc.Vis.Catalog
             {
                 throw new InvalidOperationException(
                     $"Baked id-token count ({idTokens.Count}) does not match the built body's id-bearing element count " +
-                    $"({assign}); the generated factory is out of sync with its source file. Regenerate the catalog.");
+                    $"({assign}); the catalog definition factory is out of sync with the body it builds.");
             }
 
             int rewrite = 0;

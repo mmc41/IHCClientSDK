@@ -4,38 +4,35 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
 
 namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// The verbatim-free gate (Phase 4c of the plan of record), scoped to where verbatim vendor header text could
-    /// actually hide: the three regenerated <c>BuiltInCatalog.*.g.cs</c> files and both definition builders must
-    /// contain <b>no</b> DTD/prolog token text at all; within <c>ihcclient/src/vis/catalog/**</c> those tokens may
-    /// appear only in <c>CatalogDtdEmitter</c>/<c>CatalogDtdParser</c> (their own syntax constants). Explicitly out
-    /// of scope: <c>ProjectSchemaRegistry</c>'s curated <c>.vis</c> registry blocks, <c>InlineDtd</c>/
+    /// actually hide: the three committed <c>BuiltInCatalog.*.g.cs</c> definition files and both definition builders
+    /// must contain <b>no</b> DTD/prolog token text at all; within <c>ihcclient/src/vis/catalog/**</c> those tokens
+    /// may appear only in <c>CatalogDtdEmitter</c>/<c>CatalogDtdParser</c> (their own syntax constants). Explicitly
+    /// out of scope: <c>ProjectSchemaRegistry</c>'s curated <c>.vis</c> registry blocks, <c>InlineDtd</c>/
     /// <c>ProjectSerializer</c> (<c>.vis</c> header machinery), and test inputs — none of which are catalog-file
-    /// copies. Additionally asserts the three generated files carry <b>one identical</b> generation fingerprint
-    /// (a mixed generated tree — e.g. a crash between the publishes — must not look healthy) and that the Phase 3
-    /// compatibility bridge members no longer exist.
+    /// copies. Additionally asserts the Phase 3 compatibility bridge members no longer exist.
     /// </summary>
     public class VerbatimFreeGateTests
     {
         private static readonly string[] DtdTokens = { "<?xml", "<!DOCTYPE", "<!ELEMENT", "<!ATTLIST" };
 
-        private static readonly string[] GeneratedFiles =
+        private static readonly string[] DefinitionFiles =
         {
             "BuiltInCatalog.Grammar.g.cs", "BuiltInCatalog.Products.g.cs", "BuiltInCatalog.FunctionBlocks.g.cs",
         };
 
-        private static string GeneratedDir =>
-            Path.Combine(TestRepository.RequireRoot(), "ihcclient", "src", "vis", "catalog", "generated");
+        private static string DefinitionsDir =>
+            Path.Combine(TestRepository.RequireRoot(), "ihcclient", "src", "vis", "catalog", "definitions");
 
         [Test]
-        public void GeneratedCatalog_AndBuilders_CarryNoDtdText()
+        public void EmbeddedCatalog_AndBuilders_CarryNoDtdText()
         {
             var offenders = new List<string>();
-            IEnumerable<string> targets = GeneratedFiles.Select(f => Path.Combine(GeneratedDir, f)).Concat(new[]
+            IEnumerable<string> targets = DefinitionFiles.Select(f => Path.Combine(DefinitionsDir, f)).Concat(new[]
             {
                 Path.Combine(TestRepository.RequireRoot(), "ihcclient", "src", "vis", "products", "ProductDefinitionBuilder.cs"),
                 Path.Combine(TestRepository.RequireRoot(), "ihcclient", "src", "vis", "functionblocks", "FunctionBlockDefinitionBuilder.cs"),
@@ -49,7 +46,7 @@ namespace Ihc.Vis.Tests
                 }
             }
             Assert.That(offenders, Is.Empty,
-                "no verbatim DTD/prolog text may exist in generated catalog code or the builders:\n" +
+                "no verbatim DTD/prolog text may exist in the catalog definition files or the builders:\n" +
                 string.Join("\n", offenders));
         }
 
@@ -81,22 +78,6 @@ namespace Ihc.Vis.Tests
             Assert.That(offenders, Is.Empty,
                 "within the catalog namespace only the DTD emitter/parser own the declaration tokens:\n" +
                 string.Join("\n", offenders));
-        }
-
-        [Test]
-        public void GeneratedFiles_ShareOneGenerationFingerprint()
-        {
-            var fingerprints = new List<(string File, string Fingerprint)>();
-            foreach (string file in GeneratedFiles)
-            {
-                string text = File.ReadAllText(Path.Combine(GeneratedDir, file));
-                Match match = Regex.Match(text, @"Generation fingerprint: ([0-9a-f]+)");
-                Assert.That(match.Success, Is.True, $"{file} carries no generation fingerprint");
-                fingerprints.Add((file, match.Groups[1].Value));
-            }
-            Assert.That(fingerprints.Select(f => f.Fingerprint).Distinct().Count(), Is.EqualTo(1),
-                "the three generated files must come from ONE generator run (a mixed tree is a failed publish): " +
-                string.Join(", ", fingerprints.Select(f => $"{f.File}={f.Fingerprint}")));
         }
 
         [Test]
