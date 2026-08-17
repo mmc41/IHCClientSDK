@@ -1008,10 +1008,19 @@ namespace Ihc.Vis.Editing
         }
 
         /// <summary>
-        /// Toggles a "Log …" row's log mark (US-068, the vendor's &amp;Logmærke): a Logning <c>resource_enum</c> flips
-        /// its <c>inivalue</c> between "Off" and its first logging mode. Throws when the target is not a Logning row,
-        /// so a mistaken toggle can never rewrite an ordinary enum's initial value. Returns <c>this</c> for chaining.
+        /// Toggles a "Log …" row's log mark (US-068): a Logning <c>resource_enum</c> flips its <c>inivalue</c>
+        /// between the off state and the first logging mode, both addressed by their stable <c>typeid</c>. Throws
+        /// when the target is not a Logning row, so a mistaken toggle can never rewrite an ordinary enum's initial
+        /// value. Returns <c>this</c> for chaining.
         /// </summary>
+        /// <remarks>
+        /// <b>Not the vendor's <c>Logmærke</c> (Ctrl+M)</b>, despite the name: that is a simulation-log FILTER mark,
+        /// a non-persisted, non-undoable toggle alongside the breakpoint. This writes the persisted Logning state,
+        /// which the vendor edits through <i>Egenskaber ▸ Initial værdi</i> as a SIX-value picker (off plus five
+        /// intervals). Collapsing six states to two therefore loses information: toggling a row set to
+        /// <c>Månedligt</c> writes off, and toggling back writes <c>Kun ændringer</c>, not the interval it had.
+        /// The intended scope is an open product question (stories 11-interaction-model, "log-mark scope").
+        /// </remarks>
         public ProjectEditor ToggleLogMark(ElementId logRowId)
         {
             RefuseIfLockedTarget(logRowId, inclusive: true);   // T004: no log-mark toggle inside a locked block
@@ -1023,8 +1032,12 @@ namespace Ihc.Vis.Editing
             }
             System.Collections.Generic.List<ProjectElement> values =
                 def.Children.Where(v => v.Tag == "enum_value").ToList();
-            ProjectElement? off = values.FirstOrDefault(v => v.GetAttribute("name") == "Off");
-            ProjectElement? on = values.FirstOrDefault(v => v.GetAttribute("name") != "Off");
+            // Keyed on the stable per-value typeid, never on the display name: the name is user-editable, the vendor
+            // leaves the off state's as the English "Off" in an otherwise Danish table, and the catalog's own log
+            // stubs omit it entirely. The type side of this very method already keys on typeid.
+            ProjectElement? off = ByTypeid(values, ProjectElementRead.LogOffValueTypeId);
+            ProjectElement? on = ByTypeid(values, ProjectElementRead.LogFirstModeValueTypeId)
+                                 ?? FirstModeByIndex(values, off);
             if (off?.Id is not { } offId || on?.Id is not { } onId)
             {
                 throw new InvalidOperationException($"The Logning type of {logRowId.ToToken()} lacks Off/on values.");
@@ -1033,6 +1046,16 @@ namespace Ihc.Vis.Editing
             SetAttributeById(logRowId, "inivalue", (currentlyOff ? onId : offId).ToToken());
             return this;
         }
+
+        private static ProjectElement? ByTypeid(System.Collections.Generic.List<ProjectElement> values, string typeid) =>
+            values.FirstOrDefault(v => v.GetAttribute("typeid") == typeid);
+
+        /// <summary>The lowest-<c>index</c> state that is not the off state — the fallback when a project's Logning
+        /// type carries no <c>_0x18</c>. Ordered by the declared <c>index</c> rather than by document order, which
+        /// the schema states is ALLOCATION order and really does differ (a stock type lists indexes 2,1,0,3,…).</summary>
+        private static ProjectElement? FirstModeByIndex(
+            System.Collections.Generic.List<ProjectElement> values, ProjectElement? off) =>
+            values.Where(v => !ReferenceEquals(v, off)).OrderBy(EnumValueIndex.Of).FirstOrDefault();
 
         /// <summary>Id-addressed <see cref="UnlinkScene(ResourceRef,ScenesRef)"/> — removes the scene membership pair
         /// between a scene output pin and a scenes container (US-057).</summary>

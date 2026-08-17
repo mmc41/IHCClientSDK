@@ -22,7 +22,9 @@ public class ElementKindTests
     [TestCase("inputs", ElementKind.VariableSection)]
     [TestCase("internalsettings", ElementKind.VariableSection)]
     [TestCase("resource_flag", ElementKind.Resource)]
-    [TestCase("s0_device", ElementKind.Resource)]
+    // The one catalog device root without the `product_` prefix — a product, not a resource (its W/kWh children are
+    // the resources). Classed by the vendor's own tree-builder as "product", and DTD-declared with product_identifier.
+    [TestCase("s0_device", ElementKind.Product)]
     [TestCase("kWh", ElementKind.Resource)]
     [TestCase("dimmer_setting_load_mode", ElementKind.Resource)]
     [TestCase("resource_enum", ElementKind.EnumResource)]

@@ -564,7 +564,7 @@ namespace Ihc.Vis
         // The node types US-053 can delete: products, function blocks, variables/pins, and program elements. Structural
         // containers (sections, event/command/conditions groups, programs) and metadata are not user-deletable.
         private static bool IsDeletableNode(string tag) =>
-            tag.StartsWith("product_", StringComparison.Ordinal) || tag == "functionblock"
+            ProductClassifier.IsProduct(tag) || tag == "functionblock"
             || tag.StartsWith("resource_", StringComparison.Ordinal)
             || tag.StartsWith("dataline_", StringComparison.Ordinal)
             || tag.StartsWith("airlink_", StringComparison.Ordinal)

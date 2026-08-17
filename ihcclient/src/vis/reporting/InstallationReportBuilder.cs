@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
@@ -7,6 +8,7 @@ using System.Linq;
 
 using Ihc.Vis.Addressing;
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 
 namespace Ihc.Vis.Reporting
@@ -28,12 +30,53 @@ namespace Ihc.Vis.Reporting
         private static readonly string Title = ReportTitles.For(ReportKind.Installation);
         private const string Unknown = "?";
 
-        // The component-block families (A8): the detail products every block renders, and the modem tags
-        // whose blocks hoist to the end (U1). product_rs485_modem is an open-world tag recognized here.
-        private static readonly ImmutableHashSet<string> DetailProductTags =
-            ImmutableHashSet.Create(StringComparer.Ordinal, "product_dataline", "product_airlink", "product_rs485_led_dimmer");
-        private static readonly ImmutableHashSet<string> ModemTags =
-            ImmutableHashSet.Create(StringComparer.Ordinal, "product_rs485_modem", "product_rs485_sms_modem");
+        /// <summary>What one product family contributes to the per-locality section (A8): the family-specific rows
+        /// after the three every block shares, whether it carries the terminal sub-table, and whether its blocks
+        /// hoist to the end of the section (U1, the modems).</summary>
+        private readonly record struct ComponentFamily(
+            ImmutableArray<(string Label, string Attribute)> Fields, bool Terminals, bool Hoisted);
+
+        /// <summary>
+        /// The component-block families, one row each, keyed on the EXACT device-root tag — not a tag <c>switch</c>
+        /// with a catch-all arm, and deliberately not <see cref="ProductClassifier.Classify"/>, whose substring
+        /// fallback is an open-world UI convenience. Report section membership is closed: the vendor's serializer
+        /// carries a fixed element table and its report XSLT matches element names exactly, so a root absent from
+        /// this table renders no block at all. A catch-all arm instead gave every unrecognised root the modem's four
+        /// wire-colour rows.
+        /// <para><c>s0_device</c> is deliberately absent — it renders through its own table, not as a locality
+        /// component. Both modem roots are present and identical: two distinct catalog families (voice and SMS)
+        /// that happen to declare the same four <c>cablecolour_*</c> attributes.</para>
+        /// </summary>
+        private static readonly FrozenDictionary<string, ComponentFamily> ComponentFamilies =
+            new Dictionary<string, ComponentFamily>(StringComparer.Ordinal)
+            {
+                ["product_dataline"] = new([
+                    ("Identifikationskode", "documentation_tag"),
+                    ("Kabelnummer", "cablenumber"),
+                    ("Kabeltype", "cabletype"),
+                    ("Lysgruppe", "power_group")], Terminals: true, Hoisted: false),
+                ["product_airlink"] = new([
+                    ("Identifikationskode", "documentation_tag"),
+                    ("Serie nummer", "serialnumber"),
+                    ("Lysgruppe", "power_group")], Terminals: false, Hoisted: false),
+                ["product_rs485_led_dimmer"] = new([
+                    ("Serie nummer", "serialnumber")], Terminals: false, Hoisted: false),
+                ["product_rs485_modem"] = new(ModemFields, Terminals: false, Hoisted: true),
+                ["product_rs485_sms_modem"] = new(ModemFields, Terminals: false, Hoisted: true),
+            }.ToFrozenDictionary(StringComparer.Ordinal);
+
+        private static ImmutableArray<(string Label, string Attribute)> ModemFields =>
+        [
+            ("Identifikationskode", "documentation_tag"),
+            ("Ledningsfarve 0V", "cablecolour_0V"),
+            ("Ledningsfarve 24V", "cablecolour_24V"),
+            ("Ledningsfarve RS485Minus", "cablecolour_RS485Minus"),
+            ("Ledningsfarve RS485Plus", "cablecolour_RS485Plus"),
+        ];
+
+        /// <summary>The family's block contribution, or null when this tag renders no locality component block.</summary>
+        private static ComponentFamily? BlockFamily(string tag) =>
+            ComponentFamilies.TryGetValue(tag, out ComponentFamily family) ? family : null;
 
         public static ReportShapeDocument Build(Project project, DateTimeOffset generatedAt)
         {
@@ -50,8 +93,8 @@ namespace Ihc.Vis.Reporting
             shapes.Add(ModuleTable("Datalinie outputmoduler", all, "dataline_output_module"));
 
             shapes.Add(new SectionBreakShape("Lokaliteter og komponenter", SectionBreakStyle.Indented, ReportMembership.Common));
-            foreach (ProjectElement product in all.Where(e => DetailProductTags.Contains(e.Tag))
-                .Concat(all.Where(e => ModemTags.Contains(e.Tag))))   // U1: modems hoisted after all others
+            foreach (ProjectElement product in all.Where(e => BlockFamily(e.Tag) is { Hoisted: false })
+                .Concat(all.Where(e => BlockFamily(e.Tag) is { Hoisted: true })))   // U1: modems hoisted after all others
             {
                 shapes.Add(ComponentBlock(product, index));
             }
@@ -104,36 +147,13 @@ namespace Ihc.Vis.Reporting
             fields.Add(new KeyValueRow("Komponent", ReportText.Display(product.GetAttribute("name")),
                 product.GetAttribute("id")));
 
-            void Field(string label, string attribute) =>
-                fields.Add(new KeyValueRow(label, ReportText.Display(product.GetAttribute(attribute))));
-
-            TableShape? terminals = null;
-            switch (product.Tag)
+            ComponentFamily family = BlockFamily(product.Tag)!.Value;
+            foreach ((string label, string attribute) in family.Fields)
             {
-                case "product_dataline":
-                    Field("Identifikationskode", "documentation_tag");
-                    Field("Kabelnummer", "cablenumber");
-                    Field("Kabeltype", "cabletype");
-                    Field("Lysgruppe", "power_group");
-                    terminals = TerminalSubTable(product);
-                    break;
-                case "product_airlink":
-                    Field("Identifikationskode", "documentation_tag");
-                    Field("Serie nummer", "serialnumber");
-                    Field("Lysgruppe", "power_group");
-                    break;
-                case "product_rs485_led_dimmer":
-                    Field("Serie nummer", "serialnumber");
-                    break;
-                default:    // the modem family (U1-hoisted)
-                    Field("Identifikationskode", "documentation_tag");
-                    Field("Ledningsfarve 0V", "cablecolour_0V");
-                    Field("Ledningsfarve 24V", "cablecolour_24V");
-                    Field("Ledningsfarve RS485Minus", "cablecolour_RS485Minus");
-                    Field("Ledningsfarve RS485Plus", "cablecolour_RS485Plus");
-                    break;
+                fields.Add(new KeyValueRow(label, ReportText.Display(product.GetAttribute(attribute))));
             }
-            return new ComponentBlockShape(fields.ToImmutable(), terminals);
+            return new ComponentBlockShape(fields.ToImmutable(),
+                family.Terminals ? TerminalSubTable(product) : null);
         }
 
         // A9: the dataline terminal sub-table is descendant-scoped and UNSORTED (document order).
@@ -190,7 +210,9 @@ namespace Ihc.Vis.Reporting
             new("Specielle Produkter",
                 ImmutableArray.Create("Produkt", "Indgang", "Note", "Lokalitet", "Placering", "Id-kode",
                     "Ledningsfarve 0V", "Ledningsfarve 24V", "Ledningsfarve RS485Minus", "Ledningsfarve RS485Plus"),
-                all.Where(e => ModemTags.Contains(e.Tag))
+                // Exactly the families whose component blocks hoist — so this table and that section can never
+                // admit different products, which two independent tag sets could.
+                all.Where(e => BlockFamily(e.Tag) is { Hoisted: true })
                     .Select(m => ImmutableArray.Create<ReportCell>(
                         ReportText.SingleLine(m.GetAttribute("name")),
                         ReportText.SingleLine(m.GetAttribute("name")),   // the vendor prints the name in both columns

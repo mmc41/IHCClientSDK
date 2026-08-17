@@ -294,7 +294,9 @@ namespace Ihc.Vis.Session
         internal static ElementId At(EnumDefinitionRef definition, int index) =>
             index >= 0 && index < definition.Values.Count
                 ? definition.Values[index].Id
-                : throw new EditRefusedException(NoValueAt(definition.Typedef, index));
+                // The type's NAME, not its Typedef token: this sentence reaches the installer, and nothing in the
+                // vendor product ever shows an internal _0x id. The Evaluate-side peer already names it this way.
+                : throw new EditRefusedException(NoValueAt(definition.Name, index));
 
         /// <summary>The out-of-range refusal, composed in ONE place: <see cref="At"/> and
         /// <c>EnumTypeTarget.RequireValueAt</c> guard the same rule at the two ends of one command, so an

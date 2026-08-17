@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
 
@@ -19,6 +20,22 @@ namespace Ihc.Vis
         /// signal that identifies a log-mark row (A-22/US-068), read by the <c>IsLogRow</c> predicate below and by the
         /// editing layer's log-mark toggle.</summary>
         public const string LogEnumTypeId = "_0x16";
+
+        /// <summary>
+        /// The "Logning" type's OFF state, by its stable per-value <c>typeid</c>. The vendor identifies a built-in
+        /// enum value by <c>typeid</c> — element ids are re-allocated across save cycles, and the display name is
+        /// user-editable through the enum manager — so this, not the name, is what a log-mark read may key on.
+        /// <para>The name is doubly unsafe here: the vendor leaves this one value's name as the English
+        /// <c>"Off"</c> in an otherwise Danish table, and the catalog's own log stubs carry the value with a
+        /// <c>typeid</c> and <b>no <c>name</c> attribute at all</b>.</para>
+        /// </summary>
+        public const string LogOffValueTypeId = "_0x17";
+
+        /// <summary>The "Logning" type's first logging mode ("Kun ændringer") by <c>typeid</c> — the state the vendor
+        /// selects when logging is switched on. Companion to <see cref="LogOffValueTypeId"/>.
+        /// <para>The type has SIX states (off plus five intervals), so this names the specific one the toggle turns
+        /// on rather than "whichever is not off", which was document-order dependent.</para></summary>
+        public const string LogFirstModeValueTypeId = "_0x18";
 
         extension(ProjectElement element)
         {
@@ -146,8 +163,10 @@ namespace Ihc.Vis
             "dimmer_settings" or "shutter_settings" or "sms_modem_settings" => ElementKind.DeviceSettings,
             "documentation_modules" or "dataline_input_modules" or "dataline_output_modules" => ElementKind.ModuleMap,
             "dataline_input" or "dataline_output" => ElementKind.DatalinePin,
-            "kW" or "kWh" or "W" or "Wh" or "s0_device" or "light_indication" => ElementKind.Resource,
-            _ when tag.StartsWith("product_", StringComparison.Ordinal) => ElementKind.Product,
+            "kW" or "kWh" or "W" or "Wh" or "light_indication" => ElementKind.Resource,
+            // Through the shared classifier, not the `product_` prefix: s0_device is a catalog device root that
+            // carries no prefix, and classing it as a Resource put the same tag in two families at once.
+            _ when ProductClassifier.IsProduct(tag) => ElementKind.Product,
             _ when tag.StartsWith("airlink_", StringComparison.Ordinal) => ElementKind.WirelessPin,
             _ when tag.StartsWith("resource_", StringComparison.Ordinal) => ElementKind.Resource,
             _ when tag.StartsWith("dimmer_setting", StringComparison.Ordinal) => ElementKind.Resource,

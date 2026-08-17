@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
 
@@ -53,12 +54,13 @@ namespace Ihc.Vis.Reporting
             return current;
         }
 
-        // The nearest product_* ancestor (or self) at ANY depth (U8 — a general ancestor walk; the vendor's
-        // get_product_* stopped after two levels). Null when none — the "?" case.
+        // The nearest product ancestor (or self) at ANY depth (U8 — a general ancestor walk; the vendor's
+        // get_product_* stopped after two levels). Null when none — the "?" case. Through the shared classifier, so
+        // an unprefixed device root (s0_device) is found like any other product.
         public ProjectElement? NearestProduct(ProjectElement terminal)
         {
             ProjectElement? current = terminal;
-            while (current is not null && !current.Tag.StartsWith("product_", StringComparison.Ordinal))
+            while (current is not null && !ProductClassifier.IsProduct(current.Tag))
             {
                 current = Parent(current);
             }

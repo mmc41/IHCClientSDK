@@ -26,6 +26,10 @@ namespace Ihc.Vis.Editing
 
         internal ElementId Id { get; }
 
+        /// <summary>The type's display name — how the installer identifies it, and therefore the only form a refusal
+        /// may name it by. No vendor surface shows an <c>_0x</c> token to a user.</summary>
+        public string Name => name;
+
         /// <summary>The token to assign to a <c>resource_enum</c>'s <c>typedef</c> attribute.</summary>
         public string Typedef => Id.ToToken();
 
