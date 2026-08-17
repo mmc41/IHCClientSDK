@@ -67,7 +67,7 @@ internal static class SessionEditingTestExtensions
     // ---- products / function blocks / variables (T004: built through the SDK ProjectCommands gateway) ----
     /// <param name="displayName">Which product, when the identifier names more than one. Eight identifiers do
     /// (D22) — `_0x4304` is both <c>Lampeudtag dimmer</c> and <c>1-10v converter - Lampeudtag dimmer</c> — and
-    /// the SDK factory REFUSES an ambiguous identifier rather than guessing (T046). Omit for the ~92 products
+    /// the SDK factory REFUSES an ambiguous identifier rather than guessing (T046). Omit for the 83 products
     /// whose identifier is unique.</param>
     public static Task<ElementId?> AddProductAsync(
         this ProjectWorkflow s, ElementId localityId, string productIdentifier, string? displayName = null)

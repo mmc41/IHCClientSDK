@@ -87,7 +87,7 @@ namespace Ihc.Vis
                 : null;
 
         /// <summary>Command to insert a catalog product the caller has already resolved — the unambiguous form,
-        /// and the only one that can express which of two products sharing an identifier is meant (D22).</summary>
+        /// and the only one that can express which of several products sharing an identifier is meant (D22).</summary>
         public Session.AddProduct AddProduct(Project project, ElementId localityId, ProductDefinition definition) =>
             new Session.AddProduct(localityId, definition);
 

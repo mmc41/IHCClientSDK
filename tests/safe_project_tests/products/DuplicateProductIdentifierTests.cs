@@ -6,9 +6,9 @@ using Ihc.Vis.Session;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// D22: catalog product identifiers are NOT unique. `_0x2102`, `_0x2108`, `_0x2302`, `_0x4304`, `_0x4306`,
-    /// `_0x4406`, `_0x4408` and `_0x21000007` each name TWO different products under different names and
-    /// categories — `LK FUGA Tryk 4 tast` and `LK OPUS Tryk 4 tast` share `_0x2102`.
+    /// D22: catalog product identifiers are NOT unique — eight of them each name two or three different products
+    /// under different names and categories, e.g. `LK FUGA Tryk 4 tast` and `LK OPUS Tryk 4 tast` both answer to
+    /// `_0x2102`. <see cref="SharedIdentifiers"/> is the census.
     ///
     /// <para>Found on product 012's vendor comparison (T046): the vendor's `LK OPUS Tryk 4 tast` dialog is
     /// titled and named for OPUS, while OpenVisual's said `LK FUGA Tryk 4 tast`. The insert menu leaf carries
@@ -25,8 +25,29 @@ namespace Ihc.Vis.Tests
     {
         private static ProjectAppService App => new(TestSetup.Settings);
 
-        /// <summary>The premise. If the catalog ever stops carrying duplicates, the tests below are moot and
-        /// should be removed rather than left passing vacuously.</summary>
+        /// <summary>
+        /// The collision census — every shared identifier and every product that answers to it, stated rather
+        /// than left to be inferred. Eight groups, and <c>_0x4408</c> has <b>THREE</b> members, so any resolver
+        /// that takes a fixed number of candidates is wrong for that one: <c>ProductCatalogLookup</c>'s
+        /// <c>Take(2)</c> still cannot reach <c>WindowMaster WUC 102</c>. Fixing that lookup is separate work —
+        /// this table is what makes the defect visible, not a test of it.
+        /// </summary>
+        private static readonly (string Identifier, string[] Members)[] SharedIdentifiers =
+        [
+            ("_0x2102",     ["LK FUGA Tryk 4 tast", "LK OPUS Tryk 4 tast"]),
+            ("_0x2108",     ["LK FUGA Statustryk 4 tast 4 dioder", "LK OPUS Statustryk 4 tast 4 dioder"]),
+            ("_0x2302",     ["Output 1-10V IHC/SA", "UniDimmer 2-tast betjent"]),
+            ("_0x21000007", ["Dimmer 350LR/600CR/1000LR", "Velux KLF-100"]),
+            ("_0x4304",     ["Lampeudtag dimmer", "1-10v converter - Lampeudtag dimmer"]),
+            ("_0x4306",     ["Dimmer Universal", "1-10v converter - Dimmer Universal"]),
+            ("_0x4406",     ["Kombi dimmer 4 tast", "1-10v converter - Kombi dimmer 4 tast"]),
+            ("_0x4408",     ["Mod. kombi Wireless 4 tast", "WindowMaster WUC 101", "WindowMaster WUC 102"]),
+        ];
+
+        /// <summary>The premise, in full. If the catalog ever stops carrying duplicates, the tests below are moot
+        /// and should be removed rather than left passing vacuously. Two-way set equality, so a NEW collision —
+        /// a product added under an identifier already in use — fails here rather than quietly widening a group
+        /// callers elsewhere believe they have enumerated.</summary>
         [Test]
         public void TheCatalogReallyDoesCarryDuplicateIdentifiers()
         {
@@ -37,15 +58,18 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(duplicated, Is.Not.Empty, "D22: identifiers are not unique");
-                Assert.That(duplicated.Select(g => g.Key), Does.Contain("_0x2102"));
-                Assert.That(duplicated.First(g => g.Key == "_0x2102").Select(p => p.DisplayName),
-                    Is.EquivalentTo(new[] { "LK FUGA Tryk 4 tast", "LK OPUS Tryk 4 tast" }));
+                Assert.That(duplicated.Select(g => g.Key), Is.EquivalentTo(SharedIdentifiers.Select(s => s.Identifier)),
+                    "D22: exactly these identifiers name more than one product");
+                foreach ((string identifier, string[] members) in SharedIdentifiers)
+                {
+                    Assert.That(duplicated.SingleOrDefault(g => g.Key == identifier)?.Select(p => p.DisplayName),
+                        Is.EquivalentTo(members), identifier);
+                }
             });
         }
 
         /// <summary>
-        /// THE finding: asking for a product by identifier ALONE cannot say which of the two is meant, so the
+        /// THE finding: asking for a product by identifier ALONE cannot say which of them is meant, so the
         /// insert path must be able to name one exactly.
         /// </summary>
         [Test]
@@ -132,7 +156,7 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
-        /// The identifier-only factory is kept for the ~92 unambiguous products, but it must REFUSE rather than
+        /// The identifier-only factory is kept for the 83 unambiguous products, but it must REFUSE rather than
         /// guess when the identifier names more than one. A silent <c>FirstOrDefault</c> is what put the wrong
         /// product in the file; returning null makes the caller say which it meant.
         /// </summary>

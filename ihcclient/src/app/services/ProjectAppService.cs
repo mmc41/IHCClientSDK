@@ -697,8 +697,8 @@ namespace Ihc.Vis
 
         /// <summary>
         /// The catalog product a caller means, from its <c>product_identifier</c> and — when it has one — the
-        /// display name that tells two products sharing an identifier apart (D22). Null when the catalog does not
-        /// carry the identifier, or carries it twice and <paramref name="displayName"/> does not decide.
+        /// display name that tells products sharing an identifier apart (D22). Null when the catalog does not
+        /// carry the identifier, or carries it more than once and <paramref name="displayName"/> does not decide.
         /// <para>The one door for this question: an insert-menu leaf resolving what it stands for, and a placed
         /// element resolving its own catalog type, are the same lookup and must not answer differently. The rule
         /// itself lives at <see cref="ProductCatalogLookup.Resolve"/>.</para>

@@ -1,4 +1,4 @@
-# TODO — backlog
+# PROPOSALS — backlog
 
 One row per open item. **Detail lives in the sections below the table.** Standing constraints are at the
 bottom — they are rules, not work, and have no status.
@@ -20,7 +20,7 @@ needs confirming.
 Ordered by priority within each group.
 
 | ID | Item | Kind | Status | Detail |
-|----|------|------|--------|--------|
+| ---- | ------ | ------ | -------- | -------- |
 | **T1** | `UserManagerService.GetUsers` applies its redaction conditional in the **opposite direction** from its own comment | Defect | Todo | [§T1](#t1--usermanagerservicegetusers-redaction-is-inverted) |
 | **T2** | Configuration services attach **raw** WLAN/SMTP/email-control models to activity tags; their `ToString()` reveals secrets | Defect | Todo | [§T2](#t2--raw-secret-bearing-models-on-activity-tags) |
 | **G2a** | Product-dialog numeric `Minimum`/`Maximum` are enforced **nowhere** — an out-of-range value commits | Defect | Todo | [§G2a](#g2a--numeric-range-is-not-enforced-on-dialog-write-back) |

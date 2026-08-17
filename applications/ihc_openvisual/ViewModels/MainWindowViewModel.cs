@@ -1269,9 +1269,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 return;
             }
             string localityName = SelectedNode.DisplayName;
-            // Resolved by identifier AND the leaf's own name: eight catalog identifiers name two products each
-            // (D22), so the identifier alone cannot say whether the installer picked LK FUGA or LK OPUS. It used
-            // to take whichever came first, which placed the wrong product under the wrong name (T046).
+            // Resolved by identifier AND the leaf's own name: eight catalog identifiers are shared by two or
+            // three products (D22), so the identifier alone cannot say whether the installer picked LK FUGA or
+            // LK OPUS. It used to take whichever came first, which placed the wrong product under the wrong
+            // name (T046).
             if (_session.ResolveCatalogProduct(productIdentifier, productName) is not { } definition)
             {
                 await _dialogs.ShowMessageAsync("Indsætning mislykkedes", $"Intet katalogprodukt med identifikator '{productIdentifier}'.");
