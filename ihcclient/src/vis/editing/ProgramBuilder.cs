@@ -66,12 +66,7 @@ namespace Ihc.Vis.Editing
         /// </summary>
         public ProgramBuilder AddAction(string name, ResourceRef link1, string method, ResourceRef? link2 = null, string? note = null)
         {
-            ArgumentNullException.ThrowIfNull(name);
-            ArgumentNullException.ThrowIfNull(link1);
-            ArgumentNullException.ThrowIfNull(method);
-            ProgramGrammar.RequireLiveOperands(editor, link1, link2);
-            editor.AllocateChild(actionsId, "action",
-                ProgramGrammar.WiredAttrs(name, ProgramGrammar.ActionIcon, note, link1, link2, method));
+            ProgramGrammar.CreateAction(editor, actionsId, name, link1, method, link2, note);
             return this;
         }
 
@@ -220,12 +215,7 @@ namespace Ihc.Vis.Editing
         /// </summary>
         public BranchRef AddAction(string name, ResourceRef link1, string method, ResourceRef? link2 = null, string? note = null)
         {
-            ArgumentNullException.ThrowIfNull(name);
-            ArgumentNullException.ThrowIfNull(link1);
-            ArgumentNullException.ThrowIfNull(method);
-            ProgramGrammar.RequireLiveOperands(editor, link1, link2);
-            editor.AllocateChild(actionsId, "action",
-                ProgramGrammar.WiredAttrs(name, ProgramGrammar.ActionIcon, note, link1, link2, method));
+            ProgramGrammar.CreateAction(editor, actionsId, name, link1, method, link2, note);
             return this;
         }
 
@@ -490,6 +480,22 @@ namespace Ihc.Vis.Editing
             ElementId defaultActionsId = editor.AllocateChild(caseId, "actions",
                 ("name", DefaultCaseName), ("icon", ActionsIcon), ("note", DefaultCaseNote), ("type", DefaultCaseType));
             return new CaseRef(editor, caseId, defaultActionsId);
+        }
+
+        /// <summary>
+        /// Allocates an <c>action</c> command driving <paramref name="link1"/> per <paramref name="method"/> under
+        /// <paramref name="parentActionsId"/> — the one transcription of the action leaf shape, shared by a program's
+        /// root commands (<see cref="ProgramBuilder.AddAction"/>) and a branch's (<see cref="BranchRef.AddAction"/>)
+        /// so the oracle-pinned attribute set cannot drift between the two paths.
+        /// </summary>
+        public static void CreateAction(ProjectEditor editor, ElementId parentActionsId, string name,
+            ResourceRef link1, string method, ResourceRef? link2, string? note)
+        {
+            ArgumentNullException.ThrowIfNull(name);
+            ArgumentNullException.ThrowIfNull(link1);
+            ArgumentNullException.ThrowIfNull(method);
+            RequireLiveOperands(editor, link1, link2);
+            editor.AllocateChild(parentActionsId, "action", WiredAttrs(name, ActionIcon, note, link1, link2, method));
         }
 
         private static string RequireId(ResourceRef resource, string paramName) =>

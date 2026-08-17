@@ -226,71 +226,62 @@ namespace Ihc.Vis.Session
         }
 
         /// <summary>Reverses the most recent edit, or a no-op outcome when the history is empty.</summary>
-        public EditOutcome Undo()
+        public EditOutcome Undo() => HistoryStep("Undo", OriginUndo, current =>
         {
-            EditOutcome outcome;
-            lock (_sync)
+            if (_undo.Count == 0)
             {
-                if (_undo.Count == 0 || _current is not { } current)
-                {
-                    outcome = new EditOutcome(EditStatus.NoChange, "Undo", null, null);
-                }
-                else
-                {
-                    HistoryEntry entry = _undo.Last!.Value;
-                    _undo.RemoveLast();
-                    _redo.Push(new HistoryEntry(current, entry.Label));
-                    outcome = new EditOutcome(EditStatus.Committed, entry.Label, null,
-                        Transition(current, WithMonotonicAllocator(current, entry.Snapshot), entry.Label, OriginUndo));
-                }
+                return null;
             }
-            NotifyChanged(outcome.Changes);
-            return outcome;
-        }
+            HistoryEntry entry = _undo.Last!.Value;
+            _undo.RemoveLast();
+            _redo.Push(new HistoryEntry(current, entry.Label));
+            return (entry.Label, WithMonotonicAllocator(current, entry.Snapshot));
+        });
 
         /// <summary>Re-applies the most recently undone edit, or a no-op outcome when nothing is redoable.</summary>
-        public EditOutcome Redo()
+        public EditOutcome Redo() => HistoryStep("Redo", OriginRedo, current =>
         {
-            EditOutcome outcome;
-            lock (_sync)
+            if (_redo.Count == 0)
             {
-                if (_redo.Count == 0 || _current is not { } current)
-                {
-                    outcome = new EditOutcome(EditStatus.NoChange, "Redo", null, null);
-                }
-                else
-                {
-                    HistoryEntry entry = _redo.Pop();
-                    _undo.AddLast(new HistoryEntry(current, entry.Label));
-                    TrimUndo();
-                    outcome = new EditOutcome(EditStatus.Committed, entry.Label, null,
-                        Transition(current, WithMonotonicAllocator(current, entry.Snapshot), entry.Label, OriginRedo));
-                }
+                return null;
             }
-            NotifyChanged(outcome.Changes);
-            return outcome;
-        }
+            HistoryEntry entry = _redo.Pop();
+            _undo.AddLast(new HistoryEntry(current, entry.Label));
+            TrimUndo();
+            return (entry.Label, WithMonotonicAllocator(current, entry.Snapshot));
+        });
 
         /// <summary>Discards the most recent committed edit as if it never happened — see
         /// <see cref="IProjectDocument.Rollback"/>. The verbatim restore (no <see cref="WithMonotonicAllocator"/>)
         /// and the absent redo push are the two deliberate differences from <see cref="Undo"/>: a cancelled
         /// gesture burns no ids (vendor-measured, uxparity S-12) and cannot be redone.</summary>
-        public EditOutcome Rollback()
+        public EditOutcome Rollback() => HistoryStep("Rollback", OriginRollback, current =>
+        {
+            if (_undo.Count == 0)
+            {
+                return null;
+            }
+            HistoryEntry entry = _undo.Last!.Value;
+            _undo.RemoveLast();
+            return (entry.Label, entry.Snapshot);
+        });
+
+        // The one skeleton behind Undo/Redo/Rollback: take the lock, produce a no-op outcome when there is no open
+        // project or nothing to take, otherwise commit the transition — and raise Changed only after the lock is
+        // released. <paramref name="step"/> runs UNDER the lock and owns the whole of what differs between the
+        // three: which stack it pops, whether it pushes onto the other one, and whether the restored snapshot is
+        // re-seeded with a monotonic allocator. Returning null means "nothing to take". Keeping the skeleton here
+        // makes those three differences the only thing each member states.
+        private EditOutcome HistoryStep(string noOpLabel, string origin,
+            Func<Project, (string Label, Project Restored)?> step)
         {
             EditOutcome outcome;
             lock (_sync)
             {
-                if (_undo.Count == 0 || _current is not { } current)
-                {
-                    outcome = new EditOutcome(EditStatus.NoChange, "Rollback", null, null);
-                }
-                else
-                {
-                    HistoryEntry entry = _undo.Last!.Value;
-                    _undo.RemoveLast();
-                    outcome = new EditOutcome(EditStatus.Committed, entry.Label, null,
-                        Transition(current, entry.Snapshot, entry.Label, OriginRollback));
-                }
+                outcome = _current is { } current && step(current) is { } taken
+                    ? new EditOutcome(EditStatus.Committed, taken.Label, null,
+                        Transition(current, taken.Restored, taken.Label, origin))
+                    : new EditOutcome(EditStatus.NoChange, noOpLabel, null, null);
             }
             NotifyChanged(outcome.Changes);
             return outcome;

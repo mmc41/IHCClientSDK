@@ -149,7 +149,8 @@ namespace Ihc.Vis.Products
         /// <c>Navn</c> is disabled on a freshly inserted catalog product), editable where a preset says so.
         /// </summary>
         public static DialogFieldModel Navn(bool readOnly = false) =>
-            new("navn", "Navn", DialogControlKind.Text, new DialogBinding.RootAttribute("name"), ReadOnly: readOnly);
+            new("navn", "Navn", DialogControlKind.Text, new DialogBinding.RootAttribute("name"), ReadOnly: readOnly)
+            { ReadOnlyWhenLocked = true };
 
         /// <summary>
         /// One cable-colour field of the modem's <i>Kabling</i> group.

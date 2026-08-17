@@ -11,18 +11,6 @@ namespace safe_visual_tests;
 /// or current-parent target — now live in <c>safe_project_tests.StructureCommandTests</c> (W2-16).</summary>
 public class MoveTests
 {
-    private static TreeNodeViewModel? FindNode(IEnumerable<TreeNodeViewModel> nodes, ElementId id)
-    {
-        foreach (var n in nodes)
-        {
-            if (n.ElementId == id)
-                return n;
-            if (FindNode(n.Children, id) is { } found)
-                return found;
-        }
-        return null;
-    }
-
     // US-054: the Cut/Paste route performs the same move as a drag, and it is undoable.
     [Test]
     public async Task CutPaste_MovesProduct_AndIsUndoable()
@@ -36,8 +24,8 @@ public class MoveTests
         var productId = harness.Session.Current!.FindById(locA)!.Children.First(c => c.Tag.StartsWith("product_")).Id!.Value;
         var locB = (await harness.Session.AddLocalityAsync())!.Value;
 
-        vm.CutCommand.Execute(FindNode(vm.InstallationNodes, productId));
-        await vm.PasteCommand.ExecuteAsync(FindNode(vm.InstallationNodes, locB));
+        vm.CutCommand.Execute(TreeNodes.FindById(vm.InstallationNodes, productId));
+        await vm.PasteCommand.ExecuteAsync(TreeNodes.FindById(vm.InstallationNodes, locB));
         Assert.That(harness.Session.Current!.FindParent(productId)!.Id, Is.EqualTo(locB), "cut+paste moves the product");
 
         await harness.Session.UndoAsync();

@@ -197,4 +197,45 @@ namespace Ihc.Vis
             Element.FindDescendantOrSelf(e => e.Tag == "dimmer_setting_load_mode") is { } lm
             && Project.View(lm).Effective("value") is { } mode ? mode : "auto";
     }
+
+    /// <summary>
+    /// Typed read view of an enum variable (<c>resource_enum</c>) and the project-global type it names: the
+    /// <c>typedef</c> → <c>enum_definition</c> → <c>enum_value</c> walk, in one place.
+    /// <para>The GUI resolved this chain in three separate spots — the variable dialog, the case-value prompt and
+    /// the program-operand filter — two of them off RAW attributes and one through
+    /// <see cref="ElementView.Effective"/>. So a DTD-defaulted <c>typedef</c>, or a state whose <c>name</c> is
+    /// unset, resolved differently depending on which dialog asked, and the case prompt could offer a state list
+    /// the command gateway then rejected. Reading effective here — as the variable dialog already did — makes it
+    /// one answer, and puts the tag/attribute literals SDK-side where this file says they belong.</para>
+    /// <para>States come back in DOCUMENT order, which is the order the dialogs show. That is deliberately not the
+    /// <c>EnumValueIndex</c> order <c>ProjectProjections.GetEnumeratorTypeViews</c> sorts by for the type manager.</para>
+    /// </summary>
+    public readonly record struct EnumVariableView(Project Project, ProjectElement Element)
+    {
+        /// <summary>Whether the wrapped element is an enum variable at all.</summary>
+        public bool IsEnum => Element.Kind == ElementKind.EnumResource;
+
+        /// <summary>The id token of the enum type this variable names, or null when it is not an enum, or names none.</summary>
+        public string? TypeToken =>
+            IsEnum && Project.View(Element).Effective("typedef") is { Length: > 0 } token ? token : null;
+
+        /// <summary>The <c>enum_definition</c> this variable names, or null when it does not resolve.</summary>
+        public ProjectElement? Definition =>
+            TypeToken is { } token && ElementId.TryParse(token, out ElementId defId) ? Project.FindById(defId) : null;
+
+        /// <summary>The enum type's display name, or null when the type does not resolve.</summary>
+        public string? TypeName => Definition is { } def ? Project.View(def).Name : null;
+
+        /// <summary>The type's state names in document order; empty when this is not a resolvable enum variable.</summary>
+        public IReadOnlyList<string> States
+        {
+            get
+            {
+                Project project = Project;   // a lambda in a struct cannot capture `this`
+                return Definition is { } def
+                    ? def.Children.Where(c => c.IsEnumValue).Select(c => project.View(c).Name ?? string.Empty).ToList()
+                    : [];
+            }
+        }
+    }
 }

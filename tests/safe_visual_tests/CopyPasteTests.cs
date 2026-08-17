@@ -12,18 +12,6 @@ namespace safe_visual_tests;
 /// <c>safe_project_tests.StructureCommandTests</c> (W2-16).</summary>
 public class CopyPasteTests
 {
-    private static TreeNodeViewModel? FindNode(IEnumerable<TreeNodeViewModel> nodes, ElementId id)
-    {
-        foreach (var n in nodes)
-        {
-            if (n.ElementId == id)
-                return n;
-            if (FindNode(n.Children, id) is { } found)
-                return found;
-        }
-        return null;
-    }
-
     private static IEnumerable<ProjectElement> ProductsUnder(ProjectElement group) =>
         group.Children.Where(c => c.Tag.StartsWith("product_"));
 
@@ -40,9 +28,9 @@ public class CopyPasteTests
         var sourceId = ProductsUnder(harness.Session.Current!.FindById(locA)!).First().Id!.Value;
         var locB = (await harness.Session.AddLocalityAsync())!.Value;
 
-        vm.CopyCommand.Execute(FindNode(vm.InstallationNodes, sourceId));
-        await vm.PasteCommand.ExecuteAsync(FindNode(vm.InstallationNodes, locB));
-        await vm.PasteCommand.ExecuteAsync(FindNode(vm.InstallationNodes, locB));   // copy not consumed → paste again
+        vm.CopyCommand.Execute(TreeNodes.FindById(vm.InstallationNodes, sourceId));
+        await vm.PasteCommand.ExecuteAsync(TreeNodes.FindById(vm.InstallationNodes, locB));
+        await vm.PasteCommand.ExecuteAsync(TreeNodes.FindById(vm.InstallationNodes, locB));   // copy not consumed → paste again
         Assert.That(ProductsUnder(harness.Session.Current!.FindById(locB)!).Count(), Is.EqualTo(2), "two independent copies");
 
         await harness.Session.UndoAsync();

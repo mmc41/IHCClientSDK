@@ -379,19 +379,11 @@ internal sealed class PropertiesDialogCoordinator(
     }
 
     // Reads an enum variable's type name and ordered state names for the Edit dialog (US-030); null if not an enum.
-    private (string Name, List<string> States)? ReadEnumInfo(ElementId enumVariableId)
-    {
-        if (session.Current is not { } project || project.FindById(enumVariableId) is not { } variable
-            || variable.Kind != ElementKind.EnumResource
-            || !ElementId.TryParse(project.View(variable).Effective("typedef"), out ElementId defId)
-            || project.FindById(defId) is not { } def)
-        {
-            return null;
-        }
-        var states = def.Children.Where(c => c.IsEnumValue)
-            .Select(c => project.View(c).Name ?? string.Empty).ToList();
-        return (project.View(def).Name ?? string.Empty, states);
-    }
+    private (string Name, List<string> States)? ReadEnumInfo(ElementId enumVariableId) =>
+        session.Current is { } project && project.FindById(enumVariableId) is { } variable
+        && new EnumVariableView(project, variable) is { TypeName: { } typeName } view
+            ? (typeName, view.States.ToList())
+            : null;
 
     /// <summary>
     /// Opens the ONE generic product dialog on a composed descriptor and applies whatever the installer changed.

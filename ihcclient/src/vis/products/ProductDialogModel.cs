@@ -129,6 +129,17 @@ namespace Ihc.Vis.Products
         /// <c>A_1</c> — is never blanked, because its fragment does not claim this.</para>
         /// </summary>
         public bool HidesUnresolvedResourceKey { get; init; }
+
+        /// <summary>
+        /// Whether a <c>locked</c> placed element greys this field in addition to whatever <see cref="ReadOnly"/>
+        /// already says.
+        /// <para>A property of the FIELD, for the same reason as <see cref="HidesUnresolvedResourceKey"/>: it says
+        /// "this field follows the element's lock", which is metadata, where the composer testing an attribute name
+        /// was a per-attribute special case inside the shared mechanism. Declared on the <c>Navn</c> fragment — the
+        /// only field measured to grey on a locked product — so the rule reaches every family from one statement,
+        /// and a preset that binds something else to <c>name</c> does not acquire it by coincidence.</para>
+        /// </summary>
+        public bool ReadOnlyWhenLocked { get; init; }
     }
 
     /// <summary>

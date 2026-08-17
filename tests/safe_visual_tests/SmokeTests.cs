@@ -269,10 +269,10 @@ public class SmokeTests : AvaloniaTestBase
         await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[1].ElementId!.Value, "resource_output", "Chime");
 
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[0].Children[0]);   // arm the Input
-        vm.SelectNode(FindFlag(vm.FunctionNodes, n => n.IsEventsContainer)!);
+        vm.SelectNode(TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsEventsContainer)!);
         await ((IAsyncRelayCommand)vm.ProgramEventMenu[0].Command!).ExecuteAsync(null);    // "Doorbell skifter til ON"
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[1].Children[0]);   // arm the Output
-        vm.SelectNode(FindFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        vm.SelectNode(TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsCommandsContainer)!);
         await ((IAsyncRelayCommand)vm.ProgramCommandMenu.First(m => m.Header.Contains("kippes")).Command!).ExecuteAsync(null);
 
         var window = new MainWindow { DataContext = vm };
@@ -307,8 +307,8 @@ public class SmokeTests : AvaloniaTestBase
         await vm.InitializeAsync();
         await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
         vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
-        await vm.AddSubProgramCommand.ExecuteAsync(FindFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
-        await vm.SetConditionsOrCommand.ExecuteAsync(FindFlag(vm.FunctionNodes, n => n.IsConditionsContainer)!);
+        await vm.AddSubProgramCommand.ExecuteAsync(TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        await vm.SetConditionsOrCommand.ExecuteAsync(TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsConditionsContainer)!);
 
         var window = new MainWindow { DataContext = vm };
         CurrentTestWindow = window;
@@ -380,10 +380,10 @@ public class SmokeTests : AvaloniaTestBase
         vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
         await harness.Session.AddVariableAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, "resource_counter", "Cleanings");
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[3].Children[0]);
-        vm.SelectNode(FindFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        vm.SelectNode(TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsCommandsContainer)!);
         await ((IAsyncRelayCommand)vm.ProgramCaseMenu.First(m => m.Header == "Case (Cleanings)").Command!).ExecuteAsync(null);
         harness.Dialogs.PropertiesResult = new PropertiesResult("100", string.Empty);
-        await vm.NewCaseValueCommand.ExecuteAsync(FindFlag(vm.FunctionNodes, n => n.IsCaseNode));
+        await vm.NewCaseValueCommand.ExecuteAsync(TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsCaseNode));
 
         var window = new MainWindow { DataContext = vm };
         CurrentTestWindow = window;
@@ -422,7 +422,7 @@ public class SmokeTests : AvaloniaTestBase
         await harness.Session.AddVariableAsync(settingsId, "resource_integer", "F1");   // int+int + is authorable (float+float + is a dead cell, F-109)
         await harness.Session.AddVariableAsync(settingsId, "resource_integer", "F2");
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => TreeNodes.NameOf(c) == "F1"));
-        vm.SelectNode(FindFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
+        vm.SelectNode(TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsCommandsContainer)!);
         var addCategory = vm.ProgramArithmeticMenu.First(m => m.Header.StartsWith("F1 +"));
         await ((IAsyncRelayCommand)addCategory.Children.First(c => c.Header == "F2").Command!).ExecuteAsync(null);
 
@@ -454,10 +454,10 @@ public class SmokeTests : AvaloniaTestBase
         await vm.InitializeAsync();
         await harness.Session.AddEmptyFunctionBlockAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value);
         vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
-        await vm.AddPowerEventCommand.ExecuteAsync(FindFlag(vm.FunctionNodes, n => n.IsEventsContainer));
+        await vm.AddPowerEventCommand.ExecuteAsync(TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsEventsContainer));
         var outputSectionId = vm.InstallationNodes[0].Children[1].ElementId!.Value;
         var outputId = (await harness.Session.AddVariableAsync(outputSectionId, "resource_output", "Lys"))!.Value;
-        await vm.ToggleSaveValueCommand.ExecuteAsync(FindFlag(vm.InstallationNodes, n => n.ElementId == outputId));
+        await vm.ToggleSaveValueCommand.ExecuteAsync(TreeNodes.FindFirst(vm.InstallationNodes, n => n.ElementId == outputId));
 
         var window = new MainWindow { DataContext = vm };
         CurrentTestWindow = window;
@@ -637,18 +637,6 @@ public class SmokeTests : AvaloniaTestBase
             Assert.That(labels, Does.Contain("Installatør information"));
             Assert.That(custName, Is.Not.Null);
         });
-    }
-
-    private static TreeNodeViewModel? FindFlag(IEnumerable<TreeNodeViewModel> nodes, Func<TreeNodeViewModel, bool> match)
-    {
-        foreach (var node in nodes)
-        {
-            if (match(node))
-                return node;
-            if (FindFlag(node.Children, match) is { } found)
-                return found;
-        }
-        return null;
     }
 
     // US-009: a deleted (empty) locality no longer renders in the tree.

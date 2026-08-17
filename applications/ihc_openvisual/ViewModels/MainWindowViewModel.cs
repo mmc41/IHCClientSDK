@@ -163,6 +163,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// locality trees of configuration mode (US-026).</summary>
     [ObservableProperty] private bool _isProgrammingMode;
     private ElementId? _programmingBlockId;
+
+    /// <summary>The one writer of the programming-mode pair: the block id IS the state, and
+    /// <see cref="IsProgrammingMode"/> is the derived <c>[ObservableProperty]</c> the XAML and the registry context
+    /// bind to. Assigning through here means the two cannot disagree, so every reader tests the id alone.
+    /// The id is set FIRST — assigning the flag runs <c>OnIsProgrammingModeChanged</c>, which rebuilds the shell
+    /// context, and that read must not observe the previous block.</summary>
+    private void SetProgrammingBlock(ElementId? id)
+    {
+        _programmingBlockId = id;
+        IsProgrammingMode = id is not null;
+    }
     [ObservableProperty] private bool _isToolbarVisible = true;
     [ObservableProperty] private bool _isStatusBarVisible = true;
     [ObservableProperty] private AppTheme _currentTheme;
@@ -189,7 +200,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// VIEW-ONLY: its program renders, but every authoring command is withdrawn (A-27/F-076) — the installer must
     /// unlock it deliberately first. Unlock is a separate, irreversible action (F-046).</summary>
     public bool IsProgrammingBlockLocked =>
-        IsProgrammingMode && _programmingBlockId is { } id
+        _programmingBlockId is { } id
         && _session.Current is { } project && project.FindById(id) is { } block
         && project.View(block).Locked;
 
@@ -573,7 +584,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private Task InsertBlockPinAsync(string container, string tag, string label) => RunAsync(nameof(InsertBlockPinAsync), async () =>
     {
-        if (!IsProgrammingMode || IsProgrammingBlockLocked || _programmingBlockId is not { } blockId
+        if (IsProgrammingBlockLocked || _programmingBlockId is not { } blockId
             || _session.Current?.FindById(blockId)?.FindChild(container) is not { Id: { } sectionId })
         {
             StatusText = IsProgrammingBlockLocked
@@ -1032,9 +1043,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// </summary>
     private Task SaveFunctionBlock(TreeNodeViewModel? node) => RunAsync(nameof(SaveFunctionBlock), async () =>
     {
-        ElementId? id = node?.Kind == TreeNodeKind.FunctionBlock ? node.ElementId
-            : IsProgrammingMode ? _programmingBlockId
-            : null;
+        ElementId? id = node?.Kind == TreeNodeKind.FunctionBlock ? node.ElementId : _programmingBlockId;
         if (id is not { } blockId || _session.Current?.FindById(blockId) is not { } fb || fb.Kind != ElementKind.FunctionBlock)
             return;
         string currentName = _session.Current!.View(fb).Name ?? "block";
@@ -1326,8 +1335,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             AsOneContextRebuild(() =>   // review F03: mode + refresh + authoring gates = ONE transition, one sweep
             {
-                _programmingBlockId = id;
-                IsProgrammingMode = true;
+                SetProgrammingBlock(id);
                 Refresh();
                 NotifyProgrammingAuthoringGates();
                 // Lockedness comes from the MODEL (IsProgrammingBlockLocked), never from a tree node: Refresh() has
@@ -1401,13 +1409,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Registry.Register(new CommandSpec("edit.delete", "Delete",
             Surfaces.MenuBar | Surfaces.ContextMenu,
             Execute: ctx => Delete(ResolveNode(ctx)),
-            // CanDelete ignores cascade so deletable containers remain offered; when classification refuses, ask the
-            // command for the SDK's specific protected-element reason.
+            // One classification, not two: DeleteNode.Evaluate allows exactly the set CanDelete accepts (both read
+            // ClassifyDelete, G7) and otherwise carries the SDK's specific protected-element reason, so asking
+            // CanDelete first only re-ran the same walk on the refusal path. cascade:false keeps deletable
+            // containers offered — the gate is about deletability, and the confirm flow decides cascade.
             Gate: ctx => ctx.Node is { } node && CutOrDeleteAllowed(ctx, node)
                 && node.Id is { } id && _session.Current is { } project
-                ? _session.Commands.CanDelete(project, id)
-                    ? EditVerdict.Allow
-                    : _session.CanApply(_session.Commands.DeleteNode(project, id, cascade: false))
+                ? _session.CanApply(_session.Commands.DeleteNode(project, id, cascade: false))
                 : EditVerdict.Refuse("Vælg et element, der skal slettes.")));
 
         Registry.Register(new CommandSpec("view.showProgram", "F3",
@@ -1797,8 +1805,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         AsOneContextRebuild(() =>   // review F03: mode + refresh + authoring gates = ONE transition, one sweep
         {
-            IsProgrammingMode = false;
-            _programmingBlockId = null;
+            SetProgrammingBlock(null);
             Refresh();
             NotifyProgrammingAuthoringGates();
             StatusText = "Konfigurationstilstand.";
@@ -2116,7 +2123,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             Title = $"{_session.DocumentName}{(_session.IsDirty ? "•" : string.Empty)} - {Constants.AppName}";
             OnPropertyChanged(nameof(UndoMenuHeader));   // the history may have grown/shrunk — refresh the Edit-menu labels (E14)
             OnPropertyChanged(nameof(RedoMenuHeader));
-            if (IsProgrammingMode && _programmingBlockId is { } blockId
+            if (_programmingBlockId is { } blockId
                 && _session.Current?.FindById(blockId) is { } block && block.Kind == ElementKind.FunctionBlock)
             {
                 // BuildProgrammingTrees clears and rebuilds both panes (fresh node instances), so — exactly like the
@@ -2127,8 +2134,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             }
             else
             {
-                IsProgrammingMode = false;   // the block is gone (or never set) → configuration mode
-                _programmingBlockId = null;
+                SetProgrammingBlock(null);   // the block is gone (or never set) → configuration mode
                 InstallationPaneHeader = "Installation";
                 FunctionsPaneHeader = "Funktioner";
                 bool sameView = _treePanes.SameViewAsLastBuild("config");

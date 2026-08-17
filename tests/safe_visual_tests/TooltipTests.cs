@@ -12,18 +12,6 @@ namespace safe_visual_tests;
 /// neither (the Localities root, an empty locality) show no tooltip.</summary>
 public class TooltipTests
 {
-    private static TreeNodeViewModel? FindNodeById(IEnumerable<TreeNodeViewModel> nodes, ElementId id)
-    {
-        foreach (var node in nodes)
-        {
-            if (node.ElementId == id)
-                return node;
-            if (FindNodeById(node.Children, id) is { } found)
-                return found;
-        }
-        return null;
-    }
-
     [Test]
     public async Task Tooltip_LocalitiesRootAndEmptyLocality_ShowNoTooltip()
     {
@@ -49,7 +37,7 @@ public class TooltipTests
         await harness.Session.AddEmptyFunctionBlockAsync(loc);
         var blockId = vm.FunctionNodes[0].Children[0].Children[0].ElementId!.Value;
 
-        var tooltip = FindNodeById(vm.FunctionNodes, blockId)!.Tooltip;
+        var tooltip = TreeNodes.FindById(vm.FunctionNodes, blockId)!.Tooltip;
 
         Assert.That(tooltip, Does.Contain($"Resource ID: {blockId.Value}"), "the block shows its resource id");
     }
@@ -67,7 +55,7 @@ public class TooltipTests
         var pinId = FindTagged(harness.Session.Current!.Groups, "dataline_input")!.Value;
         await harness.Session.UpdatePinAsync(pinId, new PinPropertiesResult(1, 1, "red", "Presence from the PIR sensor.", false));
 
-        var tooltip = FindNodeById(vm.InstallationNodes, pinId)!.Tooltip;
+        var tooltip = TreeNodes.FindById(vm.InstallationNodes, pinId)!.Tooltip;
 
         Assert.Multiple(() =>
         {

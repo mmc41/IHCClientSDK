@@ -258,7 +258,7 @@ namespace Ihc.Vis.Validation
             var localIds = new HashSet<string>(StringComparer.Ordinal);
             CollectIdTokens(functionBlock, localIds);
 
-            void Walk(ProjectElement element)
+            foreach (ProjectElement element in functionBlock.DescendantsAndSelf())
             {
                 ElementSchema? schema = view.TryGet(element.Tag);
                 if (schema is not null)
@@ -281,12 +281,7 @@ namespace Ihc.Vis.Validation
                 {
                     ValidateEmbeddedConstants(element, findings);
                 }
-                foreach (ProjectElement child in element.Children)
-                {
-                    Walk(child);
-                }
             }
-            Walk(functionBlock);
         }
 
         private static void ValidateEmbeddedConstants(ProjectElement leaf, FindingCollector findings)
@@ -347,17 +342,15 @@ namespace Ihc.Vis.Validation
             foreach (ProjectElement half in halves.Values)
             {
                 string? partnerId = half.GetAttribute("link");
-                if (partnerId is null || partnerId == ElementId.NullToken)
+                bool unwired = partnerId is null || partnerId == ElementId.NullToken;
+                if (unwired && allowUnwired)
                 {
-                    if (allowUnwired)
-                    {
-                        continue;   // an unwired scene row is a legitimate authored state
-                    }
-                    findings.Error(ruleId, half,
-                        $"{noun} {half.Tag} '{half.GetAttribute("id")}' links to missing {noun} '{partnerId}'");
-                    continue;
+                    continue;   // an unwired scene row is a legitimate authored state
                 }
-                if (!halves.TryGetValue(partnerId, out ProjectElement? partner))
+                // One message for both ways a partner can be absent — no link at all, or a link pointing at
+                // nothing. The two were indistinguishable in the output already; keeping one call keeps them so.
+                ProjectElement? partner = null;
+                if (unwired || !halves.TryGetValue(partnerId!, out partner))
                 {
                     findings.Error(ruleId, half,
                         $"{noun} {half.Tag} '{half.GetAttribute("id")}' links to missing {noun} '{partnerId}'");

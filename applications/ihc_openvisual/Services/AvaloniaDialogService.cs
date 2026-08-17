@@ -28,6 +28,17 @@ public sealed class AvaloniaDialogService : IDialogService
     /// <summary>The main window, used as the modal owner and storage-provider source. Set after it is created.</summary>
     public Window? Owner { get; set; }
 
+    /// <summary>The one "there is no owner window yet" guard every modal shares — a headless or design-time
+    /// instance has no <see cref="Owner"/>, and showing a modal without one throws. Having it in a single place
+    /// means a newly added dialog inherits the guard instead of having to remember it, and each dialog member
+    /// stays the one call that is actually its own.</summary>
+    private Task<T?> WithOwnerAsync<T>(Func<Window, Task<T?>> show) where T : class =>
+        Owner is { } owner ? show(owner) : Task.FromResult<T?>(null);
+
+    /// <inheritdoc cref="WithOwnerAsync{T}"/>
+    private Task WithOwnerAsync(Func<Window, Task> show) =>
+        Owner is { } owner ? show(owner) : Task.CompletedTask;
+
     private static readonly FilePickerFileType VisFileType = new("IHC projekt (*.vis)") { Patterns = new[] { "*.vis" } };
     private static readonly FilePickerFileType CatalogFileType =
         new("IHC katalogdefinition (*.def, *.ifb)") { Patterns = new[] { "*.def", "*.ifb" } };
@@ -146,101 +157,49 @@ public sealed class AvaloniaDialogService : IDialogService
     public Task ShowSettingsAsync(string settingsText) =>
         ShowButtonsAsync("Effektive indstillinger", settingsText, selectable: true, ("Luk", true));
 
-    public async Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null,
-        string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null)
-    {
-        if (Owner is null)
-            return null;
-        return await PropertiesWindow.ShowAsync(Owner, title, name, note, origin, affirmative, userGroupCaption,
-            conditionsOr);
-    }
+    public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null,
+        string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null) =>
+        WithOwnerAsync(owner => PropertiesWindow.ShowAsync(owner, title, name, note, origin, affirmative,
+            userGroupCaption, conditionsOr));
 
-    public async Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input)
-    {
-        if (Owner is null)
-            return null;
-        return await VariablePropertiesWindow.ShowAsync(Owner, input);
-    }
+    public Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input) =>
+        WithOwnerAsync(owner => VariablePropertiesWindow.ShowAsync(owner, input));
 
-    public async Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input)
-    {
-        if (Owner is null)
-            return null;
-        return await SceneContainerWindow.ShowAsync(Owner, input);
-    }
+    public Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input) =>
+        WithOwnerAsync(owner => SceneContainerWindow.ShowAsync(owner, input));
 
-    public async Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input, Func<PinPropertiesResult, Task>? onApply = null)
-    {
-        if (Owner is null)
-            return null;
-        return await PinPropertiesWindow.ShowAsync(Owner, input, onApply);
-    }
+    public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input, Func<PinPropertiesResult, Task>? onApply = null) =>
+        WithOwnerAsync(owner => PinPropertiesWindow.ShowAsync(owner, input, onApply));
 
-    public async Task<ProductDialogEdits?> EditProductDialogAsync(
+    public Task<ProductDialogEdits?> EditProductDialogAsync(
         ProductDialogDescriptor descriptor, IReadOnlyList<ProductTerminal>? terminals = null,
-        IReadOnlyList<ProductSetting>? settings = null)
-    {
-        if (Owner is null)
-            return null;
-        return await ProductDialogWindow.ShowAsync(
-            Owner, new ProductDialogViewModel(descriptor, terminals, settings));
-    }
+        IReadOnlyList<ProductSetting>? settings = null) =>
+        WithOwnerAsync(owner => ProductDialogWindow.ShowAsync(
+            owner, new ProductDialogViewModel(descriptor, terminals, settings)));
 
-    public async Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input)
-    {
-        if (Owner is null)
-            return null;
-        return await AdvancedDimmerWindow.ShowAsync(Owner, input);
-    }
+    public Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input) =>
+        WithOwnerAsync(owner => AdvancedDimmerWindow.ShowAsync(owner, input));
 
-    public async Task<SceneValueResult?> EditSceneValueAsync(SceneValueInput input)
-    {
-        if (Owner is null)
-            return null;
-        return await SceneValueWindow.ShowAsync(Owner, input);
-    }
+    public Task<SceneValueResult?> EditSceneValueAsync(SceneValueInput input) =>
+        WithOwnerAsync(owner => SceneValueWindow.ShowAsync(owner, input));
 
-    public async Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input)
-    {
-        if (Owner is null)
-            return null;
-        return await EnumDefinitionWindow.ShowAsync(Owner, input);
-    }
+    public Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input) =>
+        WithOwnerAsync(owner => EnumDefinitionWindow.ShowAsync(owner, input));
 
-    public async Task ManageEnumTypesAsync(EnumTypeManagerInput input)
-    {
-        if (Owner is null)
-            return;
-        await EnumTypeManagerWindow.ShowAsync(Owner, input);
-    }
+    public Task ManageEnumTypesAsync(EnumTypeManagerInput input) =>
+        WithOwnerAsync(owner => EnumTypeManagerWindow.ShowAsync(owner, input));
 
-    public async Task<string?> PromptForNameAsync(NamePromptInput input)
-    {
-        if (Owner is null)
-            return null;
-        return await NamePromptWindow.ShowAsync(Owner, input);
-    }
+    public Task<string?> PromptForNameAsync(NamePromptInput input) =>
+        WithOwnerAsync(owner => NamePromptWindow.ShowAsync(owner, input));
 
-    public async Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current, ProjectInfoSuggestions suggestions)
-    {
-        if (Owner is null)
-            return null;
-        return await ProjectInfoWindow.ShowAsync(Owner, current, suggestions);
-    }
+    public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current, ProjectInfoSuggestions suggestions) =>
+        WithOwnerAsync(owner => ProjectInfoWindow.ShowAsync(owner, current, suggestions));
 
-    public async Task ShowReportPickerAsync(IReportPickerViewModel viewModel)
-    {
-        if (Owner is null)
-            return;
-        await ReportPickerWindow.ShowAsync(Owner, viewModel);
-    }
+    public Task ShowReportPickerAsync(IReportPickerViewModel viewModel) =>
+        WithOwnerAsync(owner => ReportPickerWindow.ShowAsync(owner, viewModel));
 
-    public async Task ShowModuleMapAsync(DatalineModuleMap map)
-    {
-        if (Owner is null)
-            return;
-        await ModuleMapWindow.ShowAsync(Owner, map);
-    }
+    public Task ShowModuleMapAsync(DatalineModuleMap map) =>
+        WithOwnerAsync(owner => ModuleMapWindow.ShowAsync(owner, map));
 
     /// <summary>Hands a generated report file, or a configured URL, to whatever the desktop associates with it.
     /// <para>Through Avalonia's <see cref="ILauncher"/>, not <c>Process.Start(UseShellExecute: true)</c>: shell

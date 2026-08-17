@@ -25,7 +25,10 @@ public static class CatalogMenu
     {
         ArgumentNullException.ThrowIfNull(products);
         ArgumentNullException.ThrowIfNull(leafCommand);
-        return BuildSubtree(products, topCategory, leafCommand);
+        return BuildSubtree(
+            products.Select(p => (Item: p, Segments: Segments(p.CategoryPath)))
+                .Where(e => e.Segments.FirstOrDefault() == topCategory),
+            leafCommand);
     }
 
     /// <summary>
@@ -41,31 +44,36 @@ public static class CatalogMenu
     {
         ArgumentNullException.ThrowIfNull(products);
         ArgumentNullException.ThrowIfNull(leafCommand);
-        var list = products as IReadOnlyCollection<CatalogItem> ?? products.ToList();
-        var present = list.Select(p => Segments(p.CategoryPath).FirstOrDefault()).Distinct().ToList();
+        // Split each CategoryPath ONCE and group by its top segment. The top-category scan, the per-category
+        // filter and the nesting projection all ask for the same segments, so splitting at each use re-allocated
+        // the array about seven times per product — for the whole catalog, on every menu build.
+        var byTop = products
+            .Select(p => (Item: p, Segments: Segments(p.CategoryPath)))
+            .ToLookup(e => e.Segments.FirstOrDefault());
         var forest = new List<ProductMenuItemViewModel>();
-        foreach (string? top in OrderTopCategories(present))
+        foreach (string? top in OrderTopCategories(byTop.Select(g => g.Key).ToList()))
         {
             var folder = new ProductMenuItemViewModel(TopCategoryLabel(top));
-            foreach (ProductMenuItemViewModel child in BuildSubtree(list, top, leafCommand))
+            foreach (ProductMenuItemViewModel child in BuildSubtree(byTop[top], leafCommand))
                 folder.Children.Add(child);
             forest.Add(folder);
         }
         return forest;
     }
 
-    // The subtree under one top category (null = the empty/imported top): the products whose CategoryPath begins
-    // with it, nested by their remaining segments, that top segment dropped (it labels the hosting menu item).
+    // The subtree under one top category (null = the empty/imported top): the products already grouped under it,
+    // nested by their remaining segments, that top segment dropped (it labels the hosting menu item).
     private static IReadOnlyList<ProductMenuItemViewModel> BuildSubtree(
-        IEnumerable<CatalogItem> products, string? topCategory, Func<CatalogItem, ICommand> leafCommand) =>
+        IEnumerable<(CatalogItem Item, string[] Segments)> products, Func<CatalogItem, ICommand> leafCommand) =>
         BuildForest(
-            products.Where(p => Segments(p.CategoryPath).FirstOrDefault() == topCategory),
-            p => Segments(p.CategoryPath).Skip(1).ToArray(),   // drop the top category itself
-            p => p.DisplayName, leafCommand, p => p.Identifier,
+            products,
+            // Drop the top category itself. An uncategorised product has NO segments, so guard the slice.
+            p => p.Segments.Length > 1 ? p.Segments[1..] : [],
+            p => p.Item.DisplayName, p => leafCommand(p.Item), p => p.Item.Identifier,
             // The catalog's own category names are already the UI language, so a folder shows its name verbatim.
             raw => Strip(raw),
             // Leaves order by the catalog's own name, which carries the same NN# prefix the folders order by.
-            p => p.OrderName);
+            p => p.Item.OrderName);
 
     /// <summary>The label of the bucket that holds imported / empty-category products (H2/D08), so an imported
     /// <c>.def</c> with no <c>CategoryPath</c> stays reachable in the insert menu.</summary>

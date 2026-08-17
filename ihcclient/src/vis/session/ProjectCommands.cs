@@ -107,20 +107,18 @@ namespace Ihc.Vis
         /// <summary>Command to add a typed variable to a function-block variable section (US-027), or null when the
         /// section is not a function-block variable section.</summary>
         public Session.AddVariable? AddVariable(Project project, ElementId sectionId, string resourceTag, string name) =>
-            project.FindById(sectionId) is { } section
-                && project.FindParent(sectionId) is { Id: { } blockId } block && block.Kind == ElementKind.FunctionBlock
-                ? new Session.AddVariable(blockId, section.Tag, resourceTag, name)
+            BlockSection(project, sectionId) is { } target
+                ? new Session.AddVariable(target.Block, target.Section, resourceTag, name)
                 : null;
 
         /// <summary>Command to create a project-global enum type and add a variable of it to a function-block section
         /// (US-030), or null when the section is not a function-block variable section.</summary>
         public Session.AddEnumVariable? AddEnumVariable(
             Project project, ElementId sectionId, string variableName, string typeName, IReadOnlyList<string> states) =>
-            project.FindById(sectionId) is { } section
-                && project.FindParent(sectionId) is { Id: { } blockId } block && block.Kind == ElementKind.FunctionBlock
+            BlockSection(project, sectionId) is { } target
                 // Snapshot at the gateway: `states` is caller-owned and mutable, and a command must not change
                 // after it is minted (its history entry would silently rewrite itself).
-                ? new Session.AddEnumVariable(blockId, section.Tag, variableName, typeName, EquatableArray.CreateRange(states))
+                ? new Session.AddEnumVariable(target.Block, target.Section, variableName, typeName, EquatableArray.CreateRange(states))
                 : null;
 
         /// <summary>Command to add a variable of an EXISTING project-global enumerator type to a function-block section
@@ -128,9 +126,18 @@ namespace Ihc.Vis
         /// section.</summary>
         public Session.AddEnumVariableOfExistingType? AddEnumVariableOfType(
             Project project, ElementId sectionId, string variableName, string typeName) =>
+            BlockSection(project, sectionId) is { } target
+                ? new Session.AddEnumVariableOfExistingType(target.Block, target.Section, variableName, typeName)
+                : null;
+
+        // Resolves the function block owning a variable SECTION, together with that section's own tag, or null when
+        // the target is not a function-block variable section. It is the shared precondition of the three AddVariable
+        // factories above, so a change to what counts as a variable section is one edit rather than three that can
+        // silently disagree. Sibling of ProgramOfEventsContainer, which does the same job for the events container.
+        private static (ElementId Block, string Section)? BlockSection(Project project, ElementId sectionId) =>
             project.FindById(sectionId) is { } section
-                && project.FindParent(sectionId) is { Id: { } blockId } block && block.Kind == ElementKind.FunctionBlock
-                ? new Session.AddEnumVariableOfExistingType(blockId, section.Tag, variableName, typeName)
+            && project.FindParent(sectionId) is { Id: { } blockId } block && block.Kind == ElementKind.FunctionBlock
+                ? (blockId, section.Tag)
                 : null;
 
         /// <summary>Command to author a standalone project-global enumerator TYPE (no variable) — a 0-state,
@@ -204,7 +211,7 @@ namespace Ihc.Vis
 
         // Whether the project already contains a modem device root (the at-most-one-modem rule, US-013).
         private static bool HasModem(Project project) =>
-            project.Root.DescendantsAndSelf().Any(e => ProductClassifier.IsModem(e.Tag));
+            project.Root.FindDescendantOrSelf(e => ProductClassifier.IsModem(e.Tag)) is not null;
 
         // ---- Structure family (T005): move / copy / delete / reorder + their legality (sliver #9 relocated) ----
 
@@ -565,7 +572,7 @@ namespace Ihc.Vis
                 or "program_sub" or "program_case" or "case_action";
 
         private static bool HasLinkHalves(ProjectElement element) =>
-            element.DescendantsAndSelf().Any(d => d.IsLinkHalf);
+            element.FindDescendantOrSelf(d => d.IsLinkHalf) is not null;
 
         private static bool WouldThrowStrict(Project project, ElementId id)
         {

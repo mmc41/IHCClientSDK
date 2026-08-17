@@ -348,16 +348,17 @@ internal sealed class ProgramAuthoringCoordinator(
                 continue;
             foreach (ProjectElement pin in section.Children)
                 if (pin.Id is { } pid && pid != exclude && ProgramMethodCatalog.ClassifyPin(pin.Tag) == type
-                    && (type != ProgramPinType.Enum || HasSameEnumDefinition(armed, pin)))
+                    && (type != ProgramPinType.Enum || HasSameEnumDefinition(project, armed, pin)))
                     yield return (project.NameOr(pin, pin.Tag), pid);
         }
     }
 
-    private static bool HasSameEnumDefinition(ProjectElement? armed, ProjectElement candidate) =>
-        armed?.Tag == "resource_enum"
-        && candidate.Tag == "resource_enum"
-        && armed.GetAttribute("typedef") is { Length: > 0 } typedef
-        && candidate.GetAttribute("typedef") == typedef;
+    // Same enum TYPE on both ends, resolved through the SDK view so a DTD-defaulted typedef counts here exactly as
+    // it counts everywhere else that asks what type an enum variable has.
+    private static bool HasSameEnumDefinition(Project project, ProjectElement? armed, ProjectElement candidate) =>
+        armed is not null
+        && new EnumVariableView(project, armed).TypeToken is { } typedef
+        && new EnumVariableView(project, candidate).TypeToken == typedef;
 
     // ---- T018: the stray program-authoring handlers consolidated here (US-029/031/033); the view-model keeps the
     // thin [RelayCommand] entry points, delegating their bodies to these. ----
@@ -435,25 +436,16 @@ internal sealed class ProgramAuthoringCoordinator(
             setStatus($"'{criterion}' er ikke en tilstand i denne enumerator — vælg en af: {string.Join(", ", states)}.");
     });
 
-    // The state names of an enum-keyed case's switch (US-031/T014), or an empty list when the switch is not an enum —
-    // read straight off the case's linked switch and its enum type.
-    private static IReadOnlyList<string> EnumSwitchStates(Project project, ElementId caseId)
-    {
-        var states = new List<string>();
-        if (project.FindById(caseId) is { } kase
-            && ElementId.TryParse(kase.GetAttribute("link"), out ElementId switchId)
-            && project.FindById(switchId) is { Tag: "resource_enum" } switchVar
-            && ElementId.TryParse(switchVar.GetAttribute("typedef"), out ElementId defId)
-            && project.FindById(defId) is { } def)
-        {
-            foreach (ProjectElement value in def.Children)
-            {
-                if (value.Tag == "enum_value")
-                {
-                    states.Add(value.GetAttribute("name") ?? string.Empty);
-                }
-            }
-        }
-        return states;
-    }
+    // The state names of an enum-keyed case's switch (US-031/T014), or an empty list when the switch is not an enum.
+    // The case→switch hop is this method's own; the switch→type→states walk is the SDK's one EnumVariableView, so
+    // the list offered in the prompt is resolved exactly the way the gateway resolves the list it accepts.
+    private static IReadOnlyList<string> EnumSwitchStates(Project project, ElementId caseId) =>
+        SwitchOf(project, caseId) is { } switchVar ? new EnumVariableView(project, switchVar).States : [];
+
+    // The switch variable an enum-keyed case is wired to, or null.
+    private static ProjectElement? SwitchOf(Project project, ElementId caseId) =>
+        project.FindById(caseId) is { } kase
+        && ElementId.TryParse(project.View(kase).Effective("link"), out ElementId switchId)
+            ? project.FindById(switchId)
+            : null;
 }

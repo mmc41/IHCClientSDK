@@ -261,11 +261,6 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>The catalog products as slim insert-menu items (<see cref="CatalogItem"/>) — what the insert menu binds to.</summary>
     public IReadOnlyList<CatalogItem> GetProductCatalogItems() => _service.GetProductCatalogItems();
 
-    /// <summary>One catalog product by its <c>product_identifier</c>, or null when the catalog does not carry it —
-    /// what a product/modem dialog titles itself from, without projecting the whole catalog to read one name.</summary>
-    public CatalogItem? GetProductCatalogItem(string productIdentifier) =>
-        _service.GetProductCatalogItem(productIdentifier);
-
     /// <summary>The catalog function blocks as slim insert-menu items (<see cref="CatalogItem"/>).</summary>
     public IReadOnlyList<CatalogItem> GetFunctionBlockCatalogItems() => _service.GetFunctionBlockCatalogItems();
 

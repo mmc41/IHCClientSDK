@@ -156,14 +156,6 @@ namespace Ihc.Vis.Products
                 ProductDialogFragments.Note,
                 ProductDialogFragments.Identifikationskode));
 
-        /// <summary>
-        /// Which field a locked product greys: the one bound to its own <c>name</c>, and no other. Expressed
-        /// against the BINDING rather than a field id, so a preset that names the field differently still gets the
-        /// rule and a preset that binds something else to `name` cannot escape it.
-        /// </summary>
-        private static bool GatedByLocked(DialogBinding binding) =>
-            binding is DialogBinding.RootAttribute { Name: "name" };
-
         private static DialogDescriptorField ComposeField(
             Project project, DialogGroupModel group, DialogFieldModel field,
             (ProjectElement Element, string Attribute) resolved, bool lockedElement,
@@ -177,7 +169,7 @@ namespace Ihc.Vis.Products
                 resolved.Element.Id!.Value,
                 resolved.Attribute,
                 ReadValue(project, resolved.Element, resolved.Attribute, field.HidesUnresolvedResourceKey),
-                field.ReadOnly || (lockedElement && GatedByLocked(field.Binding)),
+                field.ReadOnly || (lockedElement && field.ReadOnlyWhenLocked),
                 field.Rule,
                 min,
                 max,

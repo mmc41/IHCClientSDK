@@ -64,7 +64,7 @@ public class DeletionTests
         var productId = harness.Session.Current!.FindById(loc)!.Children.First(c => c.Tag.StartsWith("product_")).Id!.Value;
 
         // No prompt: the product and the reciprocal link half on the block pin go together straight away.
-        await vm.DeleteCommand.ExecuteAsync(FindNode(vm.InstallationNodes, productId));
+        await vm.DeleteCommand.ExecuteAsync(TreeNodes.FindById(vm.InstallationNodes, productId));
         Assert.Multiple(() =>
         {
             Assert.That(harness.Dialogs.ConfirmCalls, Is.Zero, "a referenced product deletes without asking");
@@ -116,21 +116,8 @@ public class DeletionTests
         var settingsId = vm.InstallationNodes[0].Children[2].ElementId!.Value;
         var varId = (await harness.Session.AddVariableAsync(settingsId, "resource_flag", "Away"))!.Value;
 
-        await vm.DeleteCommand.ExecuteAsync(FindNode(vm.InstallationNodes, varId));
+        await vm.DeleteCommand.ExecuteAsync(TreeNodes.FindById(vm.InstallationNodes, varId));
 
         Assert.That(harness.Session.Current!.FindById(varId), Is.Null, "the unused variable is deleted");
-    }
-
-    private static ihc_openvisual.ViewModels.TreeNodeViewModel? FindNode(
-        IEnumerable<ihc_openvisual.ViewModels.TreeNodeViewModel> nodes, ElementId id)
-    {
-        foreach (var n in nodes)
-        {
-            if (n.ElementId == id)
-                return n;
-            if (FindNode(n.Children, id) is { } found)
-                return found;
-        }
-        return null;
     }
 }

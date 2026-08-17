@@ -262,9 +262,9 @@ public partial class MainWindow : Window
     // otherwise the first row. Focusing the bare TreeView does not move the caret (A-28).
     private static void FocusPane(TreeView tree)
     {
-        var rows = tree.GetVisualDescendants().OfType<TreeViewItem>();
+        var rows = tree.GetVisualDescendants().OfType<TreeViewItem>().ToList();
         Control? target = rows.FirstOrDefault(i => ReferenceEquals(i.DataContext, tree.SelectedItem))
-            ?? tree.GetVisualDescendants().OfType<TreeViewItem>().FirstOrDefault();
+            ?? rows.FirstOrDefault();
         (target ?? (Control)tree).Focus();
     }
 

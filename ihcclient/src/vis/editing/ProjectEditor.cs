@@ -49,6 +49,11 @@ namespace Ihc.Vis.Editing
             ArgumentNullException.ThrowIfNull(project);
             root = project.Root;
             inlineDtdBlocks = project.InlineDtdBlocks;   // carry the file's captured DTD so open-world edits round-trip
+            // Reuse the project's memoized view rather than re-parsing the identical blocks: it is keyed on the very
+            // InlineDtdBlocks reference just carried over, and ProjectReader already warmed it at load. ToProject()
+            // reads SchemaView on every commit AND every preview, so a fresh parse here re-ran the whole captured
+            // DTD (73 blocks in the largest oracle) per edit. MergeNonRegistryBlocks still nulls it on adoption.
+            schemaView = project.SchemaView;
             // P1b (W4-1): an SDK-committed project registered its open analysis — the id counter high-water mark, and
             // implicitly that it is canonical, undeclared-attribute-free and duplicate-id-free. Reuse it: re-seeding the
             // allocator from the cached counter is exactly what a fresh scan would return, so the guards below are
@@ -1514,7 +1519,7 @@ namespace Ihc.Vis.Editing
         /// matching descendant resolves, matching the callers' original guarded form.</summary>
         internal void SetDescendantAttribute(ProjectElement parent, Func<ProjectElement, bool> match, string name, string value)
         {
-            if (parent.DescendantsAndSelf().FirstOrDefault(match) is { Id: { } id }
+            if (parent.FindDescendantOrSelf(match) is { Id: { } id }
                 && TryResolve(id, out ElementRef? handle))
             {
                 handle.SetAttribute(name, value);
