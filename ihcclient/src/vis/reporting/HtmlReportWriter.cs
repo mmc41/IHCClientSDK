@@ -141,22 +141,14 @@ namespace Ihc.Vis.Reporting
 
         // Every icon key the document will reference: the banner's logo, plus the icon-tree rows' keys in
         // first-use order (the provider owns the sprite's canonical ordering).
-        private static IReadOnlyCollection<string> UsedIconKeys(ReportShapeDocument document)
-        {
-            var keys = new List<string> { LogoKey };
-            // The List stays the ordered result (the sprite's emission order IS first-use order); the set only
-            // answers "seen already", so the membership test does not rescan every key per tree row.
-            var seen = new HashSet<string>(StringComparer.Ordinal) { LogoKey };
-            foreach (IconTreeRow row in document.Shapes.OfType<FbBlockShape>()
-                .SelectMany(b => b.Rows).OfType<IconTreeRow>())
-            {
-                if (seen.Add(row.IconKey))
-                {
-                    keys.Add(row.IconKey);
-                }
-            }
-            return keys;
-        }
+        // Distinct yields first occurrences in source order, which IS the sprite's emission order — so the hand-synced
+        // List-plus-HashSet pair this replaced was spelling out one LINQ operator.
+        private static IReadOnlyCollection<string> UsedIconKeys(ReportShapeDocument document) =>
+            document.Shapes.OfType<FbBlockShape>().SelectMany(b => b.Rows).OfType<IconTreeRow>()
+                .Select(row => row.IconKey)
+                .Prepend(LogoKey)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
 
         // ----- function-block sections -----
 
@@ -357,11 +349,24 @@ namespace Ihc.Vis.Reporting
             html.Append("    </table>\n  </div>\n");
         }
 
+        /// <summary>The row's cells across two source lines, split after <paramref name="firstChunk"/>. Always two
+        /// lines, even when the split point falls at or past the end — the oracles pin the blank continuation.</summary>
         private static void AppendCellChunks(StringBuilder html, IEnumerable<string> renderedCells, int firstChunk)
         {
-            var cells = renderedCells.ToList();
-            html.Append("        ").AppendJoin(string.Empty, cells.Take(firstChunk)).Append('\n');
-            html.Append("        ").AppendJoin(string.Empty, cells.Skip(firstChunk)).Append('\n');
+            List<string> cells = [.. renderedCells];
+            int split = Math.Min(firstChunk, cells.Count);
+            AppendSpan(html, cells, 0, split);
+            AppendSpan(html, cells, split, cells.Count);
+
+            static void AppendSpan(StringBuilder html, List<string> cells, int from, int to)
+            {
+                html.Append("        ");
+                for (int i = from; i < to; i++)
+                {
+                    html.Append(cells[i]);
+                }
+                html.Append('\n');
+            }
         }
 
         // One table.locality per component (A8/A9): the field rows spanning both value columns, then —

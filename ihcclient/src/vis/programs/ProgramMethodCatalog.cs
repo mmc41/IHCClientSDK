@@ -168,7 +168,9 @@ namespace Ihc.Vis.Programs
             {
                 return null;
             }
-            string generic = operatorSymbol switch { "+" => "_0x5a", "-" => "_0x64", "/" => "_0x6e", _ => "_0x78" };
+            // The operator's generic-column opcode is already its row in `Arithmetic` — read it there rather than
+            // re-listing the same four tokens, exactly as ArithmeticNote reads the row's wording below.
+            string generic = Arithmetic.First(m => m.OperatorSymbol == operatorSymbol).Token;
             bool mixed = tFloat ^ oFloat;   // exactly one floating-point operand → the +0x5 mixed-conversion column
             return mixed ? MixedToken(generic) : generic;
         }

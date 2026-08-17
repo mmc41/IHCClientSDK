@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.Linq;
 
 using Ihc.Vis.Editing;
+using Ihc.Vis.Products;
 namespace Ihc.Vis.Schema
 {
     /// <summary>
@@ -39,14 +40,6 @@ namespace Ihc.Vis.Schema
         private static bool InFunctionBlock(string? grandParentTag) => grandParentTag == "functionblock";
 
         /// <summary>
-        /// A product/device family root placeable directly in a room: any <c>product_*</c> family plus the known
-        /// non-product device roots (<c>s0_device</c>). The one classification the <c>group</c> containment rule,
-        /// <c>GroupRef.Product</c> lookup and <c>ProjectEditor.GetFullPath</c> rendering all share.
-        /// </summary>
-        public static bool IsDeviceRoot(string tag) =>
-            tag == "s0_device" || tag.StartsWith("product_", StringComparison.Ordinal);
-
-        /// <summary>
         /// The one function-block container a pin/scene type is bound to (§6.3.1) — <c>inputs</c> for
         /// <c>resource_input</c>, <c>outputs</c> for <c>resource_output</c>/<c>resource_scene</c> — or <c>null</c>
         /// for a type legal in any container. The single encoding of the pin-binding fact, shared by
@@ -71,7 +64,7 @@ namespace Ihc.Vis.Schema
             // A locality holds products/devices (dataline, airlink, rs485 dimmer, s0 meter, …) and function
             // blocks — but never nests. The device families vary by install, so admit any product_* plus the
             // known non-product device roots; GetInsertableAt surfaces the primary families for the menu.
-            "group" => childTag == "functionblock" || IsDeviceRoot(childTag),
+            "group" => childTag == "functionblock" || ProductClassifier.IsProduct(childTag),
             "inputs" or "outputs" => !InFunctionBlock(grandParentTag)
                        || PinContainerFor(childTag) == parentTag || ValueTypeSet.Contains(childTag),
             "settings" or "internalsettings" => !InFunctionBlock(grandParentTag) || ValueTypeSet.Contains(childTag),

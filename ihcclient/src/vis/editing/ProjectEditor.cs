@@ -685,7 +685,7 @@ namespace Ihc.Vis.Editing
             foreach (ElementId partnerId in partnerIds)
             {
                 if (FindById(candidate, partnerId) is { } partner
-                    && ReciprocalHalfTags.Contains(partner.Tag)
+                    && ReciprocalTags.All.Contains(partner.Tag)
                     && ElementId.TryParse(partner.GetAttribute("link"), out ElementId back)
                     && deletedIds.Contains(back))
                 {
@@ -737,7 +737,9 @@ namespace Ihc.Vis.Editing
                     reason = $"\"{target.GetAttribute("name") ?? target.Tag}\" er en katalogdefineret klemme på sit "
                            + "produkt og kan ikke slettes alene — slet produktet for at fjerne den.";
                 }
-                else if (IsWithinLockedBlock(root, id, inclusive: false))
+                // The ancestor scope IsWithinLockedBlock(root, id, inclusive: false) would rebuild is already in
+                // `chain` — reuse it rather than paying a second BuildPath walk on the menu-gate path.
+                else if (chain.Take(chain.Count - 1).Any(IsLockedBlock))
                 {
                     reason = "Denne node er inde i en låst funktionsblok og kan ikke slettes — lås blokken op først.";
                 }
@@ -762,7 +764,9 @@ namespace Ihc.Vis.Editing
 
         // A locked (library) function block: locking is the explicit locked="yes" flag (Unlock clears it to the "no"
         // default the canonicalizer omits), so the raw attribute alone identifies it without a project/DTD view.
-        private static bool IsLockedBlock(ProjectElement element) =>
+        /// <summary>What "locked" MEANS — the single definition both traversals read: this file's whole-tree
+        /// <see cref="IsWithinLockedBlock"/> and the session's index-backed upward walk.</summary>
+        internal static bool IsLockedBlock(ProjectElement element) =>
             element.Tag == "functionblock" && element.GetAttribute("locked") == "yes";
 
         /// <summary>
@@ -1125,7 +1129,7 @@ namespace Ihc.Vis.Editing
             // (HoistOrResolveEnum → BurnAndMapToExisting) reproduces the burn. Gate on device-root placement, not
             // product_identifier presence: a non-root rs485_led_dimmer_channel also declares product_identifier but
             // is not a pasted product, and must be copied one-id-per-element unchanged.
-            if (PlacementRules.IsDeviceRoot(body.Tag))
+            if (ProductClassifier.IsProduct(body.Tag))
             {
                 body = PrependReferencedEnumStubs(body);
             }
@@ -1225,7 +1229,15 @@ namespace Ihc.Vis.Editing
             List<ProjectElement> sameTag = parent.Children.Where(c => c.Tag == node.Tag).ToList();
             int clamped = Math.Clamp(index, 0, sameTag.Count - 1);
             // Translate the same-tag position to the absolute child index of the sibling currently sitting there.
-            int absolute = parent.Children.ToList().FindIndex(c => c.Id == sameTag[clamped].Id);
+            ElementId? targetId = sameTag[clamped].Id;
+            int absolute = -1;
+            for (int i = 0; i < parent.Children.Count && absolute < 0; i++)
+            {
+                if (parent.Children[i].Id == targetId)
+                {
+                    absolute = i;
+                }
+            }
             return MoveSubtree(id, parent.Id!.Value, absolute);
         }
 
@@ -1304,7 +1316,7 @@ namespace Ihc.Vis.Editing
         /// <summary>
         /// Renders an element's human-readable location as <c>locality / product-or-block / pin</c> — the
         /// significant ancestors (a <c>group</c>, a <c>functionblock</c> or a device root per
-        /// <see cref="PlacementRules.IsDeviceRoot"/>) followed by the element's own name, skipping structural
+        /// <see cref="ProductClassifier.IsProduct"/>) followed by the element's own name, skipping structural
         /// containers (<c>inputs</c>/<c>outputs</c>/…). Empty when the id is absent. Used for the "Link fra…"
         /// far-end decoration.
         /// </summary>
@@ -1328,7 +1340,7 @@ namespace Ihc.Vis.Editing
         }
 
         private static bool IsPathSignificant(string tag) =>
-            tag is "group" or "functionblock" || PlacementRules.IsDeviceRoot(tag);
+            tag is "group" or "functionblock" || ProductClassifier.IsProduct(tag);
 
         // FindParentOf / BuildPath moved to ProjectTreeOps (T015).
 
@@ -1587,7 +1599,7 @@ namespace Ihc.Vis.Editing
 
         // ----- tree machinery -----
 
-        // ReciprocalHalfTags / CollectLinkPartners / CollectExternalReciprocalHalves — the reciprocal-half
+        // ReciprocalTags.All / CollectLinkPartners / CollectExternalReciprocalHalves — the reciprocal-half
         // collection primitives — moved to DeleteCascade (T016); CollectIds moved to ProjectTreeOps (T015).
 
         private ElementId? FindGroupByName(string name)

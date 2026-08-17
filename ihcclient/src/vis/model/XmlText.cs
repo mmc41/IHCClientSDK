@@ -29,16 +29,7 @@ namespace Ihc.Vis.Model
                     sb.Append(c);
                     continue;
                 }
-                int semi = s.IndexOf(';', i + 1);
-                string? decoded = semi < 0 ? null : s.Substring(i + 1, semi - i - 1) switch
-                {
-                    "amp" => "&",
-                    "lt" => "<",
-                    "gt" => ">",
-                    "quot" => "\"",
-                    "apos" => "'",
-                    string entity => DecodeCharRef(entity),
-                };
+                string? decoded = TryDecodeReference(s, i, out int semi);
                 if (decoded is null)
                 {
                     sb.Append(c);
@@ -63,16 +54,9 @@ namespace Ihc.Vis.Model
                 {
                     continue;
                 }
-                int semi = s.IndexOf(';', i + 1);
-                if (semi < 0)
+                if (TryDecodeReference(s, i, out int semi) is null)
                 {
-                    return false;
-                }
-                string entity = s.Substring(i + 1, semi - i - 1);
-                bool known = entity is "amp" or "lt" or "gt" or "quot" or "apos" || DecodeCharRef(entity) is not null;
-                if (!known)
-                {
-                    return false;
+                    return false;   // no ';', or an unrecognized entity/char-ref → a bare '&'
                 }
                 i = semi;
             }
@@ -185,6 +169,28 @@ namespace Ihc.Vis.Model
                 else if (c == '>') { return i; }
             }
             return -1;
+        }
+
+        /// <summary>
+        /// What the reference beginning at the <c>&amp;</c> at <paramref name="i"/> decodes to, or <c>null</c> when it
+        /// is neither one of the five predefined entities nor a valid numeric character reference (including the case
+        /// of no terminating <c>;</c> at all). <paramref name="semi"/> receives that <c>;</c>'s index.
+        /// <para>The single entity table, read by both <see cref="Unescape"/> and
+        /// <see cref="HasOnlyWellFormedReferences"/> — spelled twice, the two could come to disagree about what
+        /// counts as a reference, and the validator would then reject text the decoder happily accepts.</para>
+        /// </summary>
+        private static string? TryDecodeReference(string s, int i, out int semi)
+        {
+            semi = s.IndexOf(';', i + 1);
+            return semi < 0 ? null : s.Substring(i + 1, semi - i - 1) switch
+            {
+                "amp" => "&",
+                "lt" => "<",
+                "gt" => ">",
+                "quot" => "\"",
+                "apos" => "'",
+                string entity => DecodeCharRef(entity),
+            };
         }
 
         private static string? DecodeCharRef(string entity)

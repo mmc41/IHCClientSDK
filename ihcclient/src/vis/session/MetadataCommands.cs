@@ -294,11 +294,13 @@ namespace Ihc.Vis.Session
         internal static ElementId At(EnumDefinitionRef definition, int index) =>
             index >= 0 && index < definition.Values.Count
                 ? definition.Values[index].Id
-                // Word for word the sentence EnumTypeTarget.RequireValueAt composes on the Evaluate side: the two
-                // guard the same rule at the two ends of one command, so an out-of-range position must read the
-                // same whether the pre-edit check caught it or this one did.
-                : throw new EditRefusedException(
-                    $"Enumeratortypen '{definition.Typedef}' har ingen værdi på plads {index}.");
+                : throw new EditRefusedException(NoValueAt(definition.Typedef, index));
+
+        /// <summary>The out-of-range refusal, composed in ONE place: <see cref="At"/> and
+        /// <c>EnumTypeTarget.RequireValueAt</c> guard the same rule at the two ends of one command, so an
+        /// out-of-range position must read the same whether the pre-edit check caught it or this one did.</summary>
+        internal static string NoValueAt(string? typeLabel, int index) =>
+            $"Enumeratortypen '{typeLabel}' har ingen værdi på plads {index}.";
     }
 
     /// <summary>
@@ -346,7 +348,7 @@ namespace Ihc.Vis.Session
             int count = def.Children.Count(v => v.Tag == "enum_value");
             return index >= 0 && index < count
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse($"Enumeratortypen '{defName}' har ingen værdi på plads {index}.");
+                : EditVerdict.Refuse(EnumValueAddressing.NoValueAt(defName, index));
         }
 
         private static ProjectElement? Find(Project project, string defName) =>

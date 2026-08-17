@@ -128,7 +128,7 @@ namespace Ihc.Vis.Session
         /// <see cref="Ihc.Vis.Editing.ProjectEditor.IsWithinLockedBlock"/> (an insert/move/copy TARGET counts itself; a
         /// reorder does not, so the block may still be reordered among its siblings).</summary>
         public EditVerdict RequireUnlockedTarget(ElementId id, bool inclusive) =>
-            Ihc.Vis.Editing.ProjectEditor.IsWithinLockedBlock(Project.Root, id, inclusive)
+            Index.IsWithinLockedBlock(id, inclusive)
                 ? EditVerdict.Refuse(Ihc.Vis.Editing.ProjectEditor.LockedBlockEditRefusal)
                 : EditVerdict.Allow;
 

@@ -194,15 +194,13 @@ namespace Ihc.Vis.Catalog
                             ("icon", "_0x8"), ("helpid", "_0x27d8"), ("type", "_0x2"),
                         }))));
 
-        // Element factory mirroring CatalogReader's Id derivation: the id is parsed from the (already-materialized)
-        // "id" attribute exactly as the reader does, so a vendor-typo token like "_05" yields the same Id (or null)
-        // on both sides and the trees compare structurally equal.
+        // Element factory sharing CatalogReader's Id derivation (ElementId.ParseOrNull), so a vendor-typo token like
+        // "_05" yields the same Id (or null) on both sides and the trees compare structurally equal.
         private static ProjectElement E(string tag, (string, string)[] attrs, params ProjectElement[] children)
         {
             ImmutableArray<(string, string)> bag = attrs.ToImmutableArray();
-            string? idToken = ProjectElement.GetAttribute(bag, "id");
-            ElementId? id = idToken is not null && ElementId.TryParse(idToken, out ElementId parsed) ? parsed : null;
-            return new ProjectElement(tag, id, bag, children.ToImmutableArray());
+            return new ProjectElement(tag, ElementId.ParseOrNull(ProjectElement.GetAttribute(bag, "id")),
+                bag, children.ToImmutableArray());
         }
     }
 }

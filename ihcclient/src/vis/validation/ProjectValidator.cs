@@ -31,7 +31,7 @@ namespace Ihc.Vis.Validation
         public static ProjectValidationResult Validate(Project project)
         {
             ArgumentNullException.ThrowIfNull(project);
-            ProjectSchemaView view = ProjectSchemaView.For(project);
+            ProjectSchemaView view = project.SchemaView;
             var findings = new FindingCollector();
 
             IReadOnlyList<ProjectElement> elements = project.Root.DescendantsAndSelf();
@@ -255,10 +255,17 @@ namespace Ihc.Vis.Validation
         private static void ValidateProgrammingReferences(ProjectElement functionBlock, Dictionary<string, ProjectElement> idToElement,
             FindingCollector findings, ProjectSchemaView view)
         {
+            IReadOnlyList<ProjectElement> inBlock = functionBlock.DescendantsAndSelf();
             var localIds = new HashSet<string>(StringComparer.Ordinal);
-            CollectIdTokens(functionBlock, localIds);
+            foreach (ProjectElement e in inBlock)
+            {
+                if (e.GetAttribute("id") is { } localId)
+                {
+                    localIds.Add(localId);
+                }
+            }
 
-            foreach (ProjectElement element in functionBlock.DescendantsAndSelf())
+            foreach (ProjectElement element in inBlock)
             {
                 ElementSchema? schema = view.TryGet(element.Tag);
                 if (schema is not null)
@@ -543,19 +550,6 @@ namespace Ihc.Vis.Validation
                         $"<{child.Tag}> under <{parent.Tag}> is outside the modeled containment rules (spec ch. 03/04/06)");
                 }
                 ValidateContainment(child, parent, findings);
-            }
-        }
-
-        // ----- helpers -----
-
-        private static void CollectIdTokens(ProjectElement element, HashSet<string> into)
-        {
-            foreach (ProjectElement e in element.DescendantsAndSelf())
-            {
-                if (e.GetAttribute("id") is { } id)
-                {
-                    into.Add(id);
-                }
             }
         }
 

@@ -28,13 +28,6 @@ namespace Ihc.Vis.Schema
 
         private ProjectSchemaView(FrozenDictionary<string, ElementSchema> captured) => this.captured = captured;
 
-        /// <summary>The project's schema view (memoized on the project; built eagerly at load).</summary>
-        public static ProjectSchemaView For(Project project)
-        {
-            ArgumentNullException.ThrowIfNull(project);
-            return project.SchemaView;
-        }
-
         /// <summary>Builds a view over captured inline-DTD blocks (tag → verbatim block); registry fallback.</summary>
         public static ProjectSchemaView For(ImmutableDictionary<string, string>? blocks)
         {

@@ -124,7 +124,7 @@ namespace Ihc.Vis.Editing
         public ProductRef Product(string name)
         {
             ArgumentNullException.ThrowIfNull(name);
-            ElementId id = editor.FindChildIdByName(Id, PlacementRules.IsDeviceRoot, name)
+            ElementId id = editor.FindChildIdByName(Id, ProductClassifier.IsProduct, name)
                 ?? throw new InvalidOperationException($"No product named '{name}' in this room.");
             return new ProductRef(editor, id);
         }

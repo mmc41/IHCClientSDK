@@ -46,7 +46,7 @@ namespace Ihc.Vis.Catalog
         public static DefinitionDocumentation ForBlock(HelpDocument document, ProjectElement body)
         {
             var resolved = ImmutableDictionary.CreateBuilder<string, string>(System.StringComparer.Ordinal);
-            foreach (string containerTag in FunctionBlockDefinitionBuilder.ResourceContainerTags)
+            foreach ((string containerTag, _) in FunctionBlockSections.All)
             {
                 if (body.FindChild(containerTag) is not { } holder)
                 {

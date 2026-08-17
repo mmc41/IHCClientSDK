@@ -216,12 +216,13 @@ namespace Ihc.Vis.Products
                 return FrozenDictionary<string, EquatableArray<string>>.Empty;
             }
 
+            // Attribute-bag-outer, wanted-inner: GetAttribute is a linear scan of the bag, so asking it once per
+            // wanted attribute re-scanned each element's bag N times. One pass per element regardless of N.
             foreach (ProjectElement element in project.Root.DescendantsAndSelf())
             {
-                foreach ((string attribute, SortedSet<string> values) in wanted)
+                foreach ((string name, string value) in element.Attrs)
                 {
-                    string? value = element.GetAttribute(attribute);
-                    if (!string.IsNullOrWhiteSpace(value))
+                    if (wanted.TryGetValue(name, out SortedSet<string>? values) && !string.IsNullOrWhiteSpace(value))
                     {
                         values.Add(value);
                     }

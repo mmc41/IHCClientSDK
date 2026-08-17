@@ -187,7 +187,7 @@ namespace Ihc.Vis.Catalog
             string tag = reader.LocalName;
             ImmutableArray<(string, string)> attrs = ReadAttributes(reader);
             string? idToken = ProjectElement.GetAttribute(attrs, "id");
-            ElementId? id = idToken is not null && ElementId.TryParse(idToken, out ElementId parsed) ? parsed : null;
+            ElementId? id = ElementId.ParseOrNull(idToken);
 
             if (reader.IsEmptyElement)
             {

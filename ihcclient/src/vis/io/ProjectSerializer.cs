@@ -43,7 +43,7 @@ namespace Ihc.Vis.Io
         public static byte[] Serialize(Project project)
         {
             ArgumentNullException.ThrowIfNull(project);
-            ProjectSchemaView view = ProjectSchemaView.For(project);
+            ProjectSchemaView view = project.SchemaView;
             var sb = new StringBuilder(4096);
             sb.Append(XmlDeclaration).Append(Crlf);
             AppendDtd(sb, project.Root, view);

@@ -64,11 +64,6 @@ namespace Ihc.Vis.FunctionBlocks
         private readonly List<ProjectElement> settings = new();
         private readonly List<ProjectElement> internalVars = new();
 
-        // How many children each standard container ALREADY holds in a From()-seeded body. SpliceAuthoredOnto appends
-        // the authored resources after those, so an authored resource's position in the built container — and hence
-        // its ResourceDocKey — is offset by this count. Empty (all zero) for a from-scratch builder; without it a pin
-        // added to a reopened block would claim the seeded first pin's help key.
-        private readonly Dictionary<string, int> decodedContainerCounts = new(StringComparer.Ordinal);
         private readonly List<FbEnumDefRef> enumDefs = new();
         private readonly List<ProjectElement> rawBodyChildren = new();
         private readonly List<FbProgramBuilder> programs = new();
@@ -121,10 +116,6 @@ namespace Ihc.Vis.FunctionBlocks
             builder.grammar = existing.Grammar;
             builder.sourceEncoding = existing.SourceEncoding;
             builder.explicitCloseIds = existing.ExplicitCloseIds.AsImmutableHashSet();   // review F1: else From(x).Build() drops the two-tag close set
-            foreach (string containerTag in ResourceContainerTags)
-            {
-                builder.decodedContainerCounts[containerTag] = existing.Body.FindChild(containerTag)?.Children.Length ?? 0;
-            }
             builder.SeedDocumentation(existing.Documentation);
             return builder;
         }
@@ -675,7 +666,8 @@ namespace Ihc.Vis.FunctionBlocks
 
         // The four standard resource containers, in the order the vendor body declares them. Shared by the From()
         // offset seeding and SpliceAuthoredOnto so "which containers hold resources" is answered once.
-        internal static readonly string[] ResourceContainerTags = { "inputs", "outputs", "settings", "internalsettings" };
+        // Derived from the shared FB-grammar descriptor rather than re-listed, so the four container tags have one home.
+        internal static readonly string[] ResourceContainerTags = [.. FunctionBlockSections.All.Select(s => s.Container)];
 
         private FbResourceHandle AddResourceTo(List<ProjectElement> container, string containerTag, string tag, string name,
             Action<FbResourceDefBuilder>? configure)
@@ -704,7 +696,10 @@ namespace Ihc.Vis.FunctionBlocks
             // The offset makes that position the one in the BUILT container, not just in the authored tail.
             if (configurator.DocumentationText is { } documentation)
             {
-                int position = decodedContainerCounts.GetValueOrDefault(containerTag) + container.Count;
+                // The authored tail is spliced AFTER whatever a From()-seeded body already holds, so the position in
+                // the BUILT container — and hence the ResourceDocKey — is offset by that count. Read straight off
+                // `decodedBody` (assigned once, in From); a cached count could only ever restate it.
+                int position = (decodedBody?.FindChild(containerTag)?.Children.Length ?? 0) + container.Count;
                 SetResourceDoc(ResourceDocKey.ForBlock(containerTag, position), documentation);
             }
             container.Add(resource);

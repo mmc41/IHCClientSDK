@@ -20,16 +20,15 @@ namespace Ihc.Vis.Editing
     /// </summary>
     internal static class DeleteCascade
     {
-        // The reciprocal-pair tags (follow-link halves + scene rows, spec ch. 06 §6.4, ch. 08) — sourced from the
-        // schema layer so this delete cascade, the validator's bijection checks and the copy-prune all read one
-        // definition; only elements of these types may be cascaded on a delete.
-        internal static readonly IReadOnlySet<string> ReciprocalHalfTags = ReciprocalTags.All;
+        // The reciprocal-pair tags (follow-link halves + scene rows, spec ch. 06 §6.4, ch. 08) live in the schema
+        // layer as ReciprocalTags.All, so this delete cascade, the validator's bijection checks and the copy-prune
+        // all read one definition; only elements of these types may be cascaded on a delete.
 
         internal static void CollectLinkPartners(ProjectElement element, List<ElementId> partners)
         {
             foreach (ProjectElement e in element.DescendantsAndSelf())
             {
-                if (ReciprocalHalfTags.Contains(e.Tag)
+                if (ReciprocalTags.All.Contains(e.Tag)
                     && ElementId.TryParse(e.GetAttribute("link"), out ElementId partner))
                 {
                     partners.Add(partner);
@@ -37,7 +36,7 @@ namespace Ihc.Vis.Editing
             }
         }
 
-        internal static void CollectExternalReciprocalHalves(ProjectElement element, HashSet<ElementId> insideIds, List<ElementId> external)
+        internal static void CollectExternalReciprocalHalves(ProjectElement element, HashSet<ElementId> insideIds, HashSet<ElementId> external)
         {
             foreach (ProjectElement e in element.DescendantsAndSelf())
             {
@@ -62,18 +61,11 @@ namespace Ihc.Vis.Editing
         {
             var insideIds = new HashSet<ElementId>();
             CollectIds(source, insideIds);
-            var external = new List<ElementId>();
+            var external = new HashSet<ElementId>();
             CollectExternalReciprocalHalves(source, insideIds, external);
-            if (source.Id is { } rootId && external.Contains(rootId))
-            {
-                return null;   // the copy root itself is the external half — the entire copy drops
-            }
-            ProjectElement pruned = source;
-            foreach (ElementId halfId in external)
-            {
-                pruned = RemoveById(pruned, halfId);
-            }
-            return pruned;
+            return source.Id is { } rootId && external.Contains(rootId)
+                ? null                              // the copy root itself is the external half — the whole copy drops
+                : RemoveByIds(source, external);
         }
 
         /// <summary>
@@ -108,15 +100,11 @@ namespace Ihc.Vis.Editing
         /// </summary>
         internal static ProjectElement DropAllReciprocalHalves(ProjectElement source)
         {
-            ProjectElement pruned = source;
-            foreach (ElementId halfId in source.DescendantsAndSelf()
-                         .Where(e => ReciprocalTags.All.Contains(e.Tag) && e.Id is not null)
-                         .Select(e => e.Id!.Value)
-                         .ToList())
-            {
-                pruned = RemoveById(pruned, halfId);
-            }
-            return pruned;
+            HashSet<ElementId> halves = source.DescendantsAndSelf()
+                .Where(e => ReciprocalTags.All.Contains(e.Tag) && e.Id is not null)
+                .Select(e => e.Id!.Value)
+                .ToHashSet();
+            return RemoveByIds(source, halves);
         }
 
         // The vendor US-009 reference cascade (ENG2-A5, §18 M-B = row-only, any-link-slot): every
@@ -146,11 +134,13 @@ namespace Ihc.Vis.Editing
                     }
                 }
                 Walk(tree);
+                var rowIds = new HashSet<ElementId>();
                 foreach (ProjectElement row in rows)   // rows are disjoint — Walk never descends into a matched row
                 {
                     CollectIds(row, deletedIds);
-                    tree = RemoveById(tree, row.Id!.Value);
+                    rowIds.Add(row.Id!.Value);
                 }
+                tree = RemoveByIds(tree, rowIds);      // one pass for the whole round, not one per row
                 removedAny = rows.Count > 0;
             }
             return tree;

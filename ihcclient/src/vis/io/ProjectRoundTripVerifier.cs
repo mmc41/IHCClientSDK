@@ -33,8 +33,8 @@ namespace Ihc.Vis.Io
         public static void Verify(Project toWrite, byte[] bytes)
         {
             Project reparsed = ProjectReader.Read(new MemoryStream(bytes));
-            ProjectElement expected = StripDefaultEqualAttrs(toWrite.Root, ProjectSchemaView.For(toWrite));
-            ProjectElement actual = StripDefaultEqualAttrs(reparsed.Root, ProjectSchemaView.For(reparsed));
+            ProjectElement expected = StripDefaultEqualAttrs(toWrite.Root, toWrite.SchemaView);
+            ProjectElement actual = StripDefaultEqualAttrs(reparsed.Root, reparsed.SchemaView);
             if (!actual.Equals(expected))
             {
                 throw new InvalidOperationException(

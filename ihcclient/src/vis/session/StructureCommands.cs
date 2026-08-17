@@ -16,7 +16,7 @@ namespace Ihc.Vis.Session
         internal override EditVerdict Evaluate(EditContext context) =>
             (context.Index.FindById(SourceId) is { } source
             && context.Index.FindById(TargetParentId) is { } target
-            && StructurePlacement.CanContain(source.Tag, target.Tag, context.Project.FindParent(TargetParentId)?.Tag)
+            && StructurePlacement.CanContain(source.Tag, target.Tag, context.Index.FindParent(TargetParentId)?.Tag)
             && context.Index.FindParent(SourceId)?.Id != TargetParentId
             && context.Project.Edit().CanMoveSubtree(SourceId, TargetParentId)
                 ? EditVerdict.Allow
@@ -45,7 +45,7 @@ namespace Ihc.Vis.Session
         internal override EditVerdict Evaluate(EditContext context) =>
             (context.Index.FindById(SourceId) is { } source
             && context.Index.FindById(TargetParentId) is { } target
-            && StructurePlacement.CanContain(source.Tag, target.Tag, context.Project.FindParent(TargetParentId)?.Tag)
+            && StructurePlacement.CanContain(source.Tag, target.Tag, context.Index.FindParent(TargetParentId)?.Tag)
             && context.Project.Edit().CanMoveSubtree(SourceId, TargetParentId)   // A2: no copy INTO the source or its own descendant (CopySubtree throws) — clean Refuse, mirroring MoveNode
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse("Den beholder kan ikke rumme denne node."))

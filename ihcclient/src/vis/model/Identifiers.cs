@@ -88,6 +88,17 @@ namespace Ihc.Vis.Model
             return true;
         }
 
+        /// <summary>
+        /// The parsed id, or <c>null</c> when <paramref name="token"/> is absent or is not a well-formed
+        /// <c>_0x</c> token — the nullable-valued form of <see cref="TryParse"/>.
+        /// <para>Every reader that materializes an element from an attribute bag derives its
+        /// <see cref="ProjectElement.Id"/> this way, and they are obliged to agree: a vendor-typo token like
+        /// <c>_05</c> must yield the same <c>null</c> on the project side, the catalog side and the built-in
+        /// templates alike. Stating it once here is what makes that agreement structural.</para>
+        /// </summary>
+        public static ElementId? ParseOrNull(string? token) =>
+            TryParse(token, out ElementId id) ? id : null;
+
         /// <inheritdoc/>
         public override string ToString() => ToToken();
     }

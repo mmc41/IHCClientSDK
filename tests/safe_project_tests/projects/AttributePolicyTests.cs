@@ -83,7 +83,7 @@ namespace Ihc.Vis.Tests
         public void Serialize_AttributeEqualToItsDtdDefault_IsOmitted()
         {
             Project project = Load("Project1-SimpelWired.vis");
-            ProjectSchemaView view = ProjectSchemaView.For(project);
+            ProjectSchemaView view = project.SchemaView;
             // Find a real element whose schema declares a Defaulted attribute with a non-empty default, currently absent.
             (ProjectElement Element, AttrSchema Attr) target = project.Root.DescendantsAndSelf()
                 .Where(e => e.Id is not null)

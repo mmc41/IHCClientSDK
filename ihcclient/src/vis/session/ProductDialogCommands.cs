@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Generic;
 using System.Linq;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
@@ -74,7 +75,8 @@ namespace Ihc.Vis.Session
                 .AllFields
                 .ToDictionary(f => (f.Target, f.Attribute));
 
-            var subtree = product.DescendantsAndSelf().Select(e => e.Id).Where(id => id is not null).ToHashSet();
+            var subtree = new HashSet<ElementId>();
+            ProjectTreeOps.CollectIds(product, subtree);
 
             foreach (ProductDialogEdit edit in Edits)
             {

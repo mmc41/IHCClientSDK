@@ -271,18 +271,34 @@ namespace Ihc.Vis.Editing
         {
             ElementSchema? schema = view?.TryGet(element.Tag);
             ImmutableArray<(string Name, string Value)> attrs = element.Attrs.AsImmutableArray();
+            bool anyAttrRewritten = false;
             for (int i = 0; i < attrs.Length; i++)
             {
-                if (rule(schema, attrs[i].Name, attrs[i].Value) is { } rewritten)
+                if (rule(schema, attrs[i].Name, attrs[i].Value) is { } rewritten
+                    && !string.Equals(rewritten, attrs[i].Value, StringComparison.Ordinal))
                 {
                     attrs = attrs.SetItem(i, (attrs[i].Name, rewritten));
+                    anyAttrRewritten = true;
                 }
             }
 
-            ImmutableArray<ProjectElement> children = element.Children
-                .Select(c => RewriteAttributes(c, view, rule)).ToImmutableArray();
+            // The Canonicalizer's P3 sharing rule, applied here too: an unchanged child returns ITSELF, so tracking
+            // reference equality lets an untouched subtree stay shared rather than be deep-copied. Without it each of
+            // the four normalization passes rebuilt its whole subtree — and NormalizeOnOpen runs one over the entire
+            // project, discarding on open exactly the structural sharing the commit path works to keep.
+            ImmutableArray<ProjectElement> sourceChildren = element.Children.AsImmutableArray();
+            bool anyChildRewritten = false;
+            var childBuilder = ImmutableArray.CreateBuilder<ProjectElement>(sourceChildren.Length);
+            foreach (ProjectElement child in sourceChildren)
+            {
+                ProjectElement rewrittenChild = RewriteAttributes(child, view, rule);
+                anyChildRewritten |= !ReferenceEquals(rewrittenChild, child);
+                childBuilder.Add(rewrittenChild);
+            }
 
-            return element with { Attrs = attrs, Children = children };
+            return anyAttrRewritten || anyChildRewritten
+                ? element with { Attrs = attrs, Children = childBuilder.MoveToImmutable() }
+                : element;
         }
 
         /// <summary>

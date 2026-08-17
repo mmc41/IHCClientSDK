@@ -72,6 +72,32 @@ namespace Ihc.Vis.Editing
             return changed ? element with { Children = builder.ToImmutable() } : element;
         }
 
+        /// <summary>The batch peer of <see cref="RemoveById"/>: drops every child whose id is in <paramref name="ids"/>
+        /// in ONE traversal, rather than re-walking and path-copying the whole tree once per id — a cascade that drops
+        /// k elements costs one pass, not k. Same sharing rule: a subtree with nothing removed is returned as-is.
+        /// Matched elements are not descended into, exactly as the repeated single-id form behaved.</summary>
+        internal static ProjectElement RemoveByIds(ProjectElement element, IReadOnlySet<ElementId> ids)
+        {
+            if (element.Children.IsEmpty || ids.Count == 0)
+            {
+                return element;
+            }
+            var builder = ImmutableArray.CreateBuilder<ProjectElement>();
+            bool changed = false;
+            foreach (ProjectElement child in element.Children)
+            {
+                if (child.Id is { } childId && ids.Contains(childId))
+                {
+                    changed = true;
+                    continue;
+                }
+                ProjectElement kept = RemoveByIds(child, ids);
+                changed |= !ReferenceEquals(kept, child);
+                builder.Add(kept);
+            }
+            return changed ? element with { Children = builder.ToImmutable() } : element;
+        }
+
         internal static ProjectElement ReplaceChildByTag(ProjectElement parent, string tag, ProjectElement replacement)
         {
             ImmutableArray<ProjectElement> children = parent.Children.AsImmutableArray();
@@ -95,13 +121,10 @@ namespace Ihc.Vis.Editing
             return result;
         }
 
-        internal static ProjectElement SimpleElement(string tag, ElementId id, params (string Name, string Value)[] attrs)
-        {
-            var bag = ImmutableArray.CreateBuilder<(string, string)>(attrs.Length + 1);
-            bag.Add(("id", id.ToToken()));
-            bag.AddRange(attrs);
-            return new ProjectElement(tag, id, bag.ToImmutable(), ImmutableArray<ProjectElement>.Empty);
-        }
+        /// <summary>A childless element with the id-led attribute bag — the <c>params</c> shorthand over the shared
+        /// <see cref="ProjectElement.Create"/> factory, which owns the id-led-bag convention.</summary>
+        internal static ProjectElement SimpleElement(string tag, ElementId id, params (string Name, string Value)[] attrs) =>
+            ProjectElement.Create(tag, id, attrs, []);
 
         internal static EquatableArray<ProjectElement> AppendTo(EquatableArray<ProjectElement> children, ProjectElement child) =>
             children.AsImmutableArray().Add(child);

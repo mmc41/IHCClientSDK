@@ -362,9 +362,9 @@ namespace Ihc.Vis.Session
                 // The reorderable-pair rule PLUS the locked-block gate the ReorderNode command enforces (review F02/A1):
                 // a node strictly inside a locked block cannot be reordered, so the drag-over hint must agree with the
                 // Apply it previews — the same IsWithinLockedBlock the command's Evaluate reads, so the two never diverge.
-                return _index is { } index && _current is { } current
+                return _index is { } index
                     && ProjectCommands.CanReorderNode(index, dragged, target)
-                    && !ProjectEditor.IsWithinLockedBlock(current.Root, dragged, inclusive: false);
+                    && !index.IsWithinLockedBlock(dragged, inclusive: false);
             }
         }
 
@@ -431,10 +431,12 @@ namespace Ihc.Vis.Session
         private ProjectChangeSet Transition(Project from, Project to, string label, string origin)
         {
             int baseVersion = _version;
+            ProjectIndex? fromIndex = _index;   // built for `from` (Open/the previous Transition) — reuse, don't re-walk
             _current = to;
             _index = ProjectIndex.Build(to);
             _version++;
-            return ProjectChangeSet.Diff(from, to, baseVersion, _version, origin, label);
+            return ProjectChangeSet.Diff(from, to, baseVersion, _version, origin, label,
+                fromIndex?.ById, _index.ById);
         }
 
         // D04: raises Changed for a committed transition — outside the lock, synchronously on the thread that
