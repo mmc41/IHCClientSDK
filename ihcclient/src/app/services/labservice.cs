@@ -1185,7 +1185,9 @@ namespace Ihc.App
                     // It's a Task (void async method)
                     try
                     {
-                        await (Task)taskObject;
+                        // LabAppService has no IhcSettings handle (Configure's is reserved, not stored), so this
+                        // and the two stream awaits below take the library default the settings flag defaults to.
+                        await ((Task)taskObject).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -1199,17 +1201,18 @@ namespace Ihc.App
                         ReturnType = taskType
                     };
 
-                    activity?.SetReturnValue($"Success=true, ReturnType={taskType?.Name ?? "null"}");
+                    activity?.SetReturnValue($"Success=true, ReturnType={taskType.Name}");
                     return result;
                 }
                 else if (taskType.IsGenericType && taskType.GetGenericTypeDefinition() == typeof(Task<>))
                 {
-                    // It's a Task<T> - we need to await it and get the result
-                    // Use dynamic to await the task
-                    dynamic dynamicTask = taskObject;
+                    // It's a Task<T> - await it for completion only. The value is read reflectively from Result
+                    // below, so the non-generic Task suffices and the `dynamic` this used to await through is
+                    // not needed: dynamic dispatch also hid the await from CA2007, which is how this branch kept
+                    // capturing the caller's context while the Task branch above did not.
                     try
                     {
-                        await dynamicTask;
+                        await ((Task)taskObject).ConfigureAwait(false);
                     }
                     catch (Exception ex)
                     {
@@ -1285,7 +1288,11 @@ namespace Ihc.App
             CancellationTokenSource cts;
             lock (_streamLock)
             {
+                // CA1849: CancelAsync cannot be awaited inside a lock, and the cancel has to stay inside it -
+                // moving it out reopens the window where the prior stream and this one share _streamCts.
+#pragma warning disable CA1849
                 _streamCts?.Cancel();
+#pragma warning restore CA1849
                 cts = new CancellationTokenSource();
                 _streamCts = cts;
             }
@@ -1321,7 +1328,7 @@ namespace Ihc.App
 
                 try
                 {
-                    while (await (ValueTask<bool>)moveNextAsync.Invoke(enumerator, null))
+                    while (await ((ValueTask<bool>)moveNextAsync.Invoke(enumerator, null)).ConfigureAwait(false))
                     {
                         onItem(currentProperty.GetValue(enumerator));
                     }
@@ -1332,7 +1339,7 @@ namespace Ihc.App
                 }
                 finally
                 {
-                    await (ValueTask)disposeAsync.Invoke(enumerator, null);
+                    await ((ValueTask)disposeAsync.Invoke(enumerator, null)).ConfigureAwait(false);
                 }
             }
             finally

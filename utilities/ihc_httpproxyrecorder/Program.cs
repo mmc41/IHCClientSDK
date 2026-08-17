@@ -16,7 +16,7 @@ var HttpsEndpoint = $"https://localhost:{HttpsPort}";
 var builder = WebApplication.CreateBuilder(args);
 
 // Create log file writer
-var logFile = new StreamWriter(LogFileName, append: true) { AutoFlush = true };
+using var logFile = new StreamWriter(LogFileName, append: true) { AutoFlush = true };
 
 // Handle Ctrl+C gracefully
 Console.CancelKeyPress += (sender, e) =>

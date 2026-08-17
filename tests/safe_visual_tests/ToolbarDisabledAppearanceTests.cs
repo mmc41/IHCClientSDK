@@ -1,14 +1,12 @@
-using System;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
-using Avalonia.Headless;
+using Avalonia.Controls.Presenters;
 using Avalonia.Headless.NUnit;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
+using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using ihc_openvisual.ViewModels;
@@ -28,11 +26,21 @@ namespace safe_visual_tests;
 /// bar and read as toggled ON. Vendor evidence: fresh project, nothing selected — Klip/Kopier/Indsæt are dimmed
 /// glyphs with no fill.</para>
 ///
-/// <para>These assert RENDERED PIXELS, not styled properties, and always against a live enabled sibling rather than
-/// literal colours — so they hold in every theme, and they cannot be satisfied by a setter the renderer ignores.
-/// That is not hypothetical: the first fix set <c>Opacity</c> on the icon, which satisfied a property-level
-/// assertion while the running app rendered the glyph exactly as dark as before, because the SVG control draws
-/// through a custom draw operation that the opacity never reached.</para>
+/// <para>These assert the RESOLVED STYLE — the ink each glyph is told to draw in and the fill behind it — always
+/// against a live enabled sibling and against the theme's own tokens rather than literal colours, so they hold in
+/// every theme. What they deliberately do NOT do is read back rendered pixels, and the limit of that is worth
+/// stating because it has bitten this file twice. A style assertion proves the app ASKED for the right ink; it
+/// cannot prove the renderer honoured the request:</para>
+/// <list type="bullet">
+///   <item>An <c>Opacity</c> setter on the icon satisfied a property-level assertion while the running app drew the
+///   glyph exactly as dark as before — the SVG control draws through a custom draw operation the opacity never
+///   reached. That is why the ink is a COLOUR token today and not an opacity (2026-08-10).</item>
+///   <item>Svg.Controls.Skia.Avalonia through 12.0.0.13 resolved the SVG <c>currentColor</c> keyword on Windows
+///   only; on Linux/macOS every glyph fell back to pure black and an unavailable command rendered exactly as dark
+///   as an available one, while <c>CurrentColor</c> read back correctly the whole time. Fixed by the 12.0.0.15
+///   floor pinned in <c>Directory.Packages.props</c>, which carries the full measurement — a regression there is
+///   invisible to this file by construction (2026-08-17).</item>
+/// </list>
 /// </summary>
 public class ToolbarDisabledAppearanceTests : AvaloniaTestBase
 {
@@ -56,39 +64,47 @@ public class ToolbarDisabledAppearanceTests : AvaloniaTestBase
         });
     }
 
-    // The glyph carries the state: an unavailable command's icon must render visibly lighter than an available
-    // one's. Measured as the darkest ink each button puts on screen — dimming raises it towards the background.
+    // The glyph carries the state: an unavailable command's icon takes the theme's disabled ink, an available
+    // one's the ordinary ink. Asserted against the tokens themselves, so the rule survives a palette change.
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]
-    public async Task DisabledToolbarButton_RendersItsGlyphDimmed()
+    public async Task DisabledToolbarButton_TakesTheDisabledIconInk()
     {
         MainWindow window = await ShowShellAsync();
-        using var frame = new RenderedFrame(window);
 
-        double enabled = frame.DarkestInk(ToolButton(window, "ToolbarNew"));
-        double disabled = frame.DarkestInk(ToolButton(window, "ToolbarCut"));
+        Color enabled = GlyphInk(window, "ToolbarNew");
+        Color disabled = GlyphInk(window, "ToolbarCut");
 
-        Assert.That(disabled, Is.GreaterThan(enabled + 24),
-            $"an unavailable command's glyph renders greyed, as the reference application greys it "
-            + $"(darkest ink: enabled {enabled:F0}, disabled {disabled:F0} on a 0-255 scale)");
+        Assert.Multiple(() =>
+        {
+            Assert.That(enabled, Is.EqualTo(Token("IconColor")),
+                "an available command's glyph draws in the ordinary icon ink");
+            Assert.That(disabled, Is.EqualTo(Token("DisabledIconColor")),
+                "an unavailable command's glyph draws in the disabled icon ink, as the reference application greys it");
+            Assert.That(disabled, Is.Not.EqualTo(enabled),
+                "and the two inks are distinguishable, which is the whole point of the pair");
+        });
     }
 
     // And the fill must not invert the emphasis: a disabled button may not paint a background its enabled siblings
-    // do not. This is the half that actually misleads — a grey box reads as "toggled on", not "off". Measured on
-    // the button's own corner, which no glyph reaches, so any difference there is fill.
+    // do not. This is the half that actually misleads — a grey box reads as "toggled on", not "off". Asserted on
+    // the template part the theme's own :disabled setter lands on, which is where the stock grey box came from.
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]
     public async Task DisabledToolbarButton_PaintsNoFillAnEnabledOneLacks()
     {
         MainWindow window = await ShowShellAsync();
-        using var frame = new RenderedFrame(window);
 
-        double enabled = frame.CornerLuminance(ToolButton(window, "ToolbarNew"));
-        double disabled = frame.CornerLuminance(ToolButton(window, "ToolbarCut"));
+        IBrush? enabled = ContentFill(window, "ToolbarNew");
+        IBrush? disabled = ContentFill(window, "ToolbarCut");
 
-        Assert.That(disabled, Is.EqualTo(enabled).Within(4),
-            $"an unavailable toolbar button sits on the same bare toolbar as an available one "
-            + $"(corner luminance: enabled {enabled:F0}, disabled {disabled:F0})");
+        Assert.Multiple(() =>
+        {
+            Assert.That(disabled?.ToString(), Is.EqualTo(enabled?.ToString()),
+                "an unavailable toolbar button sits on the same bare toolbar as an available one");
+            Assert.That(disabled?.ToString(), Is.EqualTo(Brushes.Transparent.ToString()),
+                "and that shared fill is nothing at all, not a shared box");
+        });
     }
 
     private static async Task<MainWindow> ShowShellAsync()
@@ -108,73 +124,22 @@ public class ToolbarDisabledAppearanceTests : AvaloniaTestBase
         window.GetVisualDescendants().OfType<Button>()
             .Single(b => b.Classes.Contains("tool") && AutomationProperties.GetAutomationId(b) == automationId);
 
-    /// <summary>One rendered frame of the window, sampled per control. Headless renders at scale 1, so a control's
-    /// logical bounds are its pixel bounds.</summary>
-    private sealed class RenderedFrame : IDisposable
+    /// <summary>The colour the button's glyph is told to draw itself in — the resolved end of the icon styles.</summary>
+    private static Color GlyphInk(MainWindow window, string automationId) =>
+        ToolButton(window, automationId).GetVisualDescendants().OfType<Avalonia.Svg.Skia.Svg>().Single()
+            .CurrentColor ?? throw new AssertionException($"{automationId} has no icon ink set at all");
+
+    /// <summary>The fill behind the glyph, read off the template part the Fluent theme's own :disabled setter
+    /// targets — clearing the Button's own Background would not reach it, so that is where this must be read.</summary>
+    private static IBrush? ContentFill(MainWindow window, string automationId) =>
+        ToolButton(window, automationId).GetVisualDescendants().OfType<ContentPresenter>()
+            .Single(p => p.Name == "PART_ContentPresenter").Background;
+
+    private static Color Token(string key)
     {
-        private readonly WriteableBitmap _bitmap;
-        private readonly ILockedFramebuffer _buffer;
-        private readonly Visual _root;
-
-        public RenderedFrame(Window window)
-        {
-            _bitmap = window.CaptureRenderedFrame()
-                ?? throw new InvalidOperationException("the headless session rendered no frame");
-            _buffer = _bitmap.Lock();
-            _root = window;
-        }
-
-        /// <summary>Darkest pixel the control paints — the ink of its glyph (0 = black, 255 = white).</summary>
-        public double DarkestInk(Visual control)
-        {
-            PixelRect rect = RectOf(control);
-            double darkest = 255;
-            for (int y = rect.Y; y < rect.Bottom; y++)
-            {
-                for (int x = rect.X; x < rect.Right; x++)
-                {
-                    darkest = Math.Min(darkest, Luminance(x, y));
-                }
-            }
-            return darkest;
-        }
-
-        /// <summary>The control's top-left pixel — background only, no glyph reaches it.</summary>
-        public double CornerLuminance(Visual control)
-        {
-            PixelRect rect = RectOf(control);
-            return Luminance(rect.X + 1, rect.Y + 1);
-        }
-
-        private PixelRect RectOf(Visual control)
-        {
-            Point origin = control.TranslatePoint(default, _root)
-                ?? throw new InvalidOperationException("the control is not in the window's visual tree");
-            var rect = new PixelRect(
-                (int)Math.Round(origin.X), (int)Math.Round(origin.Y),
-                (int)Math.Round(control.Bounds.Width), (int)Math.Round(control.Bounds.Height));
-            Assert.That(rect.Width, Is.GreaterThan(0), "the control was laid out with a real size");
-            Assert.That(new PixelRect(_buffer.Size).Contains(rect), Is.True,
-                "the control is inside the rendered frame");
-            return rect;
-        }
-
-        private double Luminance(int x, int y)
-        {
-            long offset = (long)y * _buffer.RowBytes + (long)x * 4;
-            byte first = Marshal.ReadByte(_buffer.Address, (int)offset);
-            byte green = Marshal.ReadByte(_buffer.Address, (int)offset + 1);
-            byte third = Marshal.ReadByte(_buffer.Address, (int)offset + 2);
-            // Both supported layouts put alpha last and the two ends of RGB at offsets 0 and 2, so green is shared
-            // and only the red/blue pair swaps — which is all this has to get right.
-            (double r, double b) = _buffer.Format == PixelFormat.Rgba8888 ? (first, third) : (third, first);
-            return 0.299 * r + 0.587 * green + 0.114 * b;
-        }
-
-        public void Dispose()
-        {
-            _buffer.Dispose();
-            _bitmap.Dispose();
-        }
+        ThemeVariant variant = Application.Current!.ActualThemeVariant;
+        Assert.That(Application.Current.TryGetResource(key, variant, out object? value), Is.True,
+            $"the theme defines the {key} token");
+        return (Color)value!;
     }
 }

@@ -139,7 +139,8 @@ namespace Ihc {
 
         public async Task<IhcUser> Authenticate()
         {
-            return await Authenticate(settings.UserName, settings.Password, settings.Application);
+            return await Authenticate(settings.UserName, settings.Password, settings.Application)
+                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         public Task<IhcUser> Authenticate(string userName, string password, Application application = Application.openapi)
@@ -279,6 +280,21 @@ namespace Ihc {
 
         public void Dispose()
         {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Disconnects the session. A derived type that overrides this must call the base implementation.
+        /// </summary>
+        /// <param name="disposing">True when called from <see cref="Dispose()"/>, false from a finalizer.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposing)
+            {
+                return;
+            }
+
             try
             {
                 // Block synchronously - this ensures cleanup completes

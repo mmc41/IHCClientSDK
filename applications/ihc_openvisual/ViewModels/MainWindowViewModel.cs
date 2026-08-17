@@ -781,6 +781,20 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// longer-lived sources (review Low). Called on app shutdown; the session itself is disposed separately.</summary>
     public void Dispose()
     {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>Detaches this view-model's handlers. The design-time subclass may extend it; an override must
+    /// call the base implementation or the handlers stay attached.</summary>
+    /// <param name="disposing">True when called from <see cref="Dispose()"/>, false from a finalizer.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposing)
+        {
+            return;
+        }
+
         _session.StateChanged -= _onSessionStateChanged;
         _session.CatalogChanged -= _onSessionCatalogChanged;
         _recent.Changed -= _onRecentChanged;

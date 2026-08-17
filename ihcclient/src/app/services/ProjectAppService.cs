@@ -342,7 +342,7 @@ namespace Ihc.Vis
                 Project project = ProjectReader.Read(bytes);
                 activity?.SetReturnValue(project);
                 return project;
-            });
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>
@@ -400,7 +400,7 @@ namespace Ihc.Vis
                 byte[] bytes = SerializeForSave(project, effective);
                 await WriteAtomically(path, bytes, effective.CreateBackup).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 activity?.SetReturnValue(bytes.Length);
-            });
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>
@@ -434,11 +434,18 @@ namespace Ihc.Vis
             string temp = Path.Combine(directory, Path.GetRandomFileName());
             try
             {
-                await using (var file = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-                                                       bufferSize: 4096, useAsync: true))
+                var file = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+                                          bufferSize: 4096, useAsync: true);
+                // The stream is declared outside the await using so `file` stays a FileStream: configuring the
+                // await directly would bind it to the ConfiguredAsyncDisposable wrapper instead.
+                await using (file.ConfigureAwait(settings.AsyncContinueOnCapturedContext))
                 {
                     await file.WriteAsync(bytes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    // CA1849: FlushAsync is NOT the async form of this call - it flushes to the OS, not through to
+                    // the disk, so swapping it in would silently drop the durability this line exists for.
+#pragma warning disable CA1849
                     file.Flush(flushToDisk: true);   // durable before the swap: a crash must leave old or new, never neither
+#pragma warning restore CA1849
                 }
                 if (File.Exists(fullPath))
                 {
@@ -475,7 +482,7 @@ namespace Ihc.Vis
                 byte[] bytes = SerializeForSave(project, options ?? ProjectSaveOptions.Default);
                 await stream.WriteAsync(bytes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 activity?.SetReturnValue(bytes.Length);
-            });
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>
@@ -535,7 +542,7 @@ namespace Ihc.Vis
                 Project project = await Load(ms).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 activity?.SetReturnValue(project);
                 return project;
-            });
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>
@@ -585,7 +592,7 @@ namespace Ihc.Vis
                 }
                 activity?.SetReturnValue(stored);
                 return stored;
-            });
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>The products available for insertion, from the SDK-embedded catalog (plus any imported).</summary>
@@ -798,7 +805,7 @@ namespace Ihc.Vis
                 await WriteAtomically(path, buffer.ToArray(), createBackup: false)
                     .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 activity?.SetReturnValue(path);
-            });
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>
@@ -840,7 +847,8 @@ namespace Ihc.Vis
         public async Task<ProjectApplyResult> SaveFunctionBlockToLibrary(Project project, ElementId functionBlockId, string path,
             string author, string name, string? note = null)
         {
-            await ExportFunctionBlock(project, functionBlockId, path, name, author, note: note);   // FIRST — throws → no transform
+            await ExportFunctionBlock(project, functionBlockId, path, name, author, note: note)   // FIRST — throws → no transform
+                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             return Apply(project, Commands.SaveFunctionBlockToLibrary(project, functionBlockId, name, author, note));
         }
 

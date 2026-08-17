@@ -176,7 +176,7 @@ namespace Ihc.Tests
     /// use the <see cref="SuppressLogging"/> helper class.
     /// </para>
     /// </summary>
-    public class TestContextLoggerProvider : Microsoft.Extensions.Logging.ILoggerProvider
+    public sealed class TestContextLoggerProvider : Microsoft.Extensions.Logging.ILoggerProvider
     {
         public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName)
         {
@@ -278,7 +278,7 @@ namespace Ihc.Tests
     /// }
     /// </code>
     /// </example>
-    public class SuppressLogging : IDisposable
+    public sealed class SuppressLogging : IDisposable
     {
         private readonly ILoggerFactory? _originalLoggerFactory;
 

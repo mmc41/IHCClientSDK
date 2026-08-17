@@ -171,8 +171,19 @@ in these apps.
 - CPU-heavy features will freeze the UI unless deliberately restructured as background+snapshot work — recurring
   design friction (short-term, per feature; reversible case by case).
 - Explicit marshalling ceremony at every background→UI boundary.
-- No analyzer enforces the policy; compliance is review-dependent until a fitness check exists — drift risk
-  (cross-cutting).
+- No analyzer enforces the policy; it is carried by IL fitness scans instead
+  (`OpenVisualThreadingArchitectureTests`, added after this ADR), because the analyzer that covers this ground asks
+  for the opposite — see the next bullet.
+- **This decision blocks enabling CA2007 anywhere a UI thread is in play, and that is most of the repository.**
+  CA2007 ("Consider calling `ConfigureAwait` on the awaited task") demands at every `await` exactly the call this
+  ADR forbids in GUI code, so with warnings-as-errors the two are jointly unsatisfiable: no source text passes both
+  the analyzer and `Gui_DoesNotCallConfigureAwait`, which is a blanket, exemption-free scan by member name.
+  Measured 2026-08-17 across the solution: **2,297 `await` sites, of which 2,256 (98%)** are in the four Avalonia
+  assemblies (`ihc_openvisual`, `ihc_lab`, and the headless `safe_visual_tests` / `safe_lab_tests`, which share the
+  same dispatcher affinity) or in test suites where the rule carries no signal. CA2007 is therefore enabled for
+  `ihcclient` alone, in `ihcclient/analyser.config`, where a library genuinely must not resume on its caller's
+  context. The same reasoning rules out the category mode that would pull CA2007 in — `AnalysisModeReliability=All`
+  — so the repo-wide file opts into rules individually. A future proposal to raise either meets this ADR first.
 - Parallel mutation of document/UI state is off the table while this ADR stands (long-term; costly to reverse once
   session APIs and tests assume affinity).
 

@@ -35,15 +35,18 @@ public class UnhandledExceptionTests
         var svc = new ProjectAppService(new IhcSettings());
         Project project = svc.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
         string path = harness.TempPath("project.vis");
-        await svc.Save(project, path);
+        await svc.SaveDocument(project, path);
         byte[] intact = File.ReadAllBytes(path);
 
-        // Lock the target so the atomic rename fails during a second save.
-        using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
-        {
-            Assert.That(async () => await svc.Save(project, path), Throws.Exception,
-                "the save fails while the target is locked");
-        }
+        // Break the swap the save ends in, with the target already on disk, so the failure lands AFTER the new
+        // bytes have been written — which is the only moment a half-written .vis could appear. A directory
+        // occupying the .BAK name fails the swap identically on Windows and on POSIX (measured on both).
+        // The previous mechanism — holding the target open with FileShare.None — is a Windows guarantee only:
+        // POSIX rename(2) ignores open handles, so on Linux the second save simply SUCCEEDED and every assertion
+        // below was reached with the wrong precondition.
+        Directory.CreateDirectory(Path.ChangeExtension(path, ".BAK"));
+        Assert.That(async () => await svc.SaveDocument(project, path), Throws.InstanceOf<IOException>(),
+            "the save fails when it cannot complete its swap");
 
         Assert.Multiple(() =>
         {

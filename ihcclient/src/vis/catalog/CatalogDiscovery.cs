@@ -88,7 +88,7 @@ namespace Ihc.Vis.Catalog
             {
                 byte[] bytes = File.ReadAllBytes(path);
                 builder.Add(CatalogReader.ParseCatalogFile(path,
-                    () => CatalogReader.BuildProduct(bytes, RelativeDir(productsDir, path), documentation: null)));
+                    () => CatalogReader.BuildProduct(bytes, CategoryPathFor(productsDir, path), documentation: null)));
             }
             return builder.ToImmutable();
         }
@@ -100,7 +100,7 @@ namespace Ihc.Vis.Catalog
             {
                 byte[] bytes = File.ReadAllBytes(path);
                 builder.Add(CatalogReader.ParseCatalogFile(path,
-                    () => CatalogReader.BuildFunctionBlock(bytes, RelativeDir(functionBlocksDir, path), documentation: null)));
+                    () => CatalogReader.BuildFunctionBlock(bytes, CategoryPathFor(functionBlocksDir, path), documentation: null)));
             }
             return builder.ToImmutable();
         }
@@ -110,7 +110,22 @@ namespace Ihc.Vis.Catalog
                 ? Directory.EnumerateFiles(root, pattern, SearchOption.AllDirectories).OrderBy(p => p, StringComparer.Ordinal)
                 : Enumerable.Empty<string>();
 
-        private static string RelativeDir(string root, string filePath) =>
-            Path.GetDirectoryName(Path.GetRelativePath(root, filePath)) ?? string.Empty;
+        /// <summary>
+        /// The catalog-tree location of a scanned file, as a <c>CategoryPath</c>.
+        /// <para>
+        /// <c>CategoryPath</c> is a catalog DATA convention and always <c>\</c>-separated — the built-in catalog
+        /// embeds it literally (<c>"01. Lysstyring\1.1 Generelt"</c>) and every consumer splits on <c>\</c>. It is
+        /// therefore NOT a host path, which is the whole reason this is a named method: <see cref="Path.GetDirectoryName(string)"/>
+        /// returns the HOST separator, so on Linux/macOS this produced <c>/</c>-separated values and a scanned
+        /// catalog's nested categories collapsed into a single flat folder name. The scan is the boundary where a
+        /// host path stops and catalog data begins, so the normalization belongs exactly here.
+        /// </para>
+        /// </summary>
+        internal static string CategoryPathFor(string root, string filePath) =>
+            (Path.GetDirectoryName(Path.GetRelativePath(root, filePath)) ?? string.Empty)
+                .Replace('/', CategorySeparator);
+
+        /// <summary>The separator every <c>CategoryPath</c> uses, on every OS.</summary>
+        internal const char CategorySeparator = '\\';
     }
 }

@@ -14,6 +14,13 @@ on:
     - '**/*.dtd'
     - 'tests/**'
     - '.github/workflows/**'
+    # Analyzer enforcement. Warnings are errors here, so a severity change alone can break the build in
+    # every project without touching a single .cs file — and none of the patterns above match these names.
+    - '.globalconfig'
+    - '**/*.globalconfig'
+    - '**/.editorconfig'
+    - '**/analyser.config'
+    - 'BannedSymbols.txt'
 
 env:
   DOTNET_VERSION: '10.x' # The .NET SDK version to use

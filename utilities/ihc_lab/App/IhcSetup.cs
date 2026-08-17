@@ -74,7 +74,7 @@ public class IhcSetup
     public void UpdateSetup()
     {
         if (IhcSettings.Endpoint == null)
-            throw new Exception("IhcSettings.Endpoint is null in IhcDomain UpdateSetup");
+            throw new InvalidOperationException("IhcSettings.Endpoint is null in IhcDomain UpdateSetup");
 
         if (!IhcSettings.Endpoint.StartsWith(SpecialEndpoints.MockedPrefix))
         {

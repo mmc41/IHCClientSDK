@@ -63,7 +63,7 @@ namespace Ihc.Vis.Session
         private static double Finite(double value) =>
             double.IsFinite(value)
                 ? value
-                : throw new ArgumentOutOfRangeException(nameof(Decimal), value,
+                : throw new ArgumentOutOfRangeException(nameof(value), value,
                     "A resource's initial value must be a finite number; NaN and infinity have no .vis representation.");
 
         /// <summary>The "no editable initial value" sentinel (date/decimal types/…): the write is a no-op.</summary>

@@ -117,9 +117,13 @@ namespace Ihc {
             // Encoding.ASCII.GetBytes, which flattened every non-ASCII character - e.g.
             // the Danish letters aeoe/AEOE - to '?'.) A TextReader also ignores any
             // encoding declaration in the XML, since the bytes are already characters.
+            // The XmlReader is what makes the parse safe on a response we do not control: DTD processing off
+            // (so no entity expansion or external subset) and no resolver (so no outbound fetch). Deserialize
+            // over a bare TextReader leaves both to the serializer's own defaults.
             using (var reader = new StringReader(xml))
+            using (var xmlReader = XmlReader.Create(reader, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null }))
             {
-                var result = xmlSerializer.Deserialize(reader);
+                var result = xmlSerializer.Deserialize(xmlReader);
                 return result as A;
             }
         } catch (Exception ex) {

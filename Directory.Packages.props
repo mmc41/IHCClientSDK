@@ -60,7 +60,14 @@
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <!-- IDE-agnostic .axaml hot reload (MIT). Development-only: nothing of it ships in a Release build. -->
     <PackageVersion Include="HotAvalonia" Version="3.1.4" />
-    <PackageVersion Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.13" />
+    <!-- 12.0.0.15 or newer is REQUIRED, not merely current: through 12.0.0.13 the control resolved the SVG
+         `currentColor` keyword on Windows only. On Linux/macOS every glyph fell back to the SVG default (pure
+         black), so the icon ink token was ignored and a disabled toolbar command rendered exactly as dark as an
+         available one — no disabled affordance at all on two of the three desktops this app targets. The
+         `CurrentColor` PROPERTY read back correctly the whole time, so only rendered pixels ever showed it
+         (measured Windows vs Ubuntu 24.04, 2026-08-17: glyph core #303030/#A6A6A6 vs #000000/#000000).
+         Literal colours were always honoured — it is the keyword resolution that was platform-dependent. -->
+    <PackageVersion Include="Svg.Controls.Skia.Avalonia" Version="12.0.0.15" />
   </ItemGroup>
 
   <ItemGroup Label="Telemetry">

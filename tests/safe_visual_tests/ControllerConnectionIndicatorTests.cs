@@ -67,7 +67,12 @@ public class ControllerConnectionIndicatorTests : AvaloniaTestBase
             Assert.Multiple(() =>
             {
                 Assert.That(svg, Does.Contain("viewBox=\"0 0 24 24\""), $"{name}: the 24-unit grid");
-                Assert.That(svg, Does.Contain("stroke=\"currentColor\""), $"{name}: themeable");
+                // Themeable BY AUTHORING — the asset asks to be inked by its host. Whether the SVG control then
+                // honours the ask is a RENDERER fact this cannot see, and the distinction is not academic:
+                // Svg.Controls.Skia.Avalonia ≤12.0.0.13 ignored `currentColor` on Linux/macOS and drew every glyph
+                // pure black while this assertion stayed green (2026-08-17; the floor is pinned, with the full
+                // measurement, in Directory.Packages.props).
+                Assert.That(svg, Does.Contain("stroke=\"currentColor\""), $"{name}: asks to be themed");
                 Assert.That(svg, Does.Not.Contain("#"), $"{name}: no baked hex colour");
             });
         }

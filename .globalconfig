@@ -1,0 +1,63 @@
+# Repository-wide analyzer rule selection.
+#
+# The built-in .NET analyzers ship ~450 rules and enable about thirty of them as warnings by default.
+# Raising the whole set (AnalysisMode=All) was measured before writing this file: 7,092 findings, of which
+# 5,442 come from four rules that do not apply repo-wide — CA1707 (underscores in test method names), CA1515
+# (public types in an application assembly), CA1861 (constant arrays in test data), and CA2007, which
+# demands the ConfigureAwait call that the OpenVisual architecture rules ban outright. Enabling the mode
+# would therefore have bought noise plus one rule contradicting an architectural decision.
+#
+# CA2007 is not absent, it is scoped: it is enabled for the SDK in ihcclient/analyser.config, where a library
+# must not resume on its caller's context. Why it can go there and nowhere else is recorded in ADR-001.
+#
+# So the rules are opted into individually, and the ones listed here share a property: a violation is a
+# defect or a latent one, not a matter of taste. Anything that is a style or naming preference belongs in
+# .editorconfig, not here. The security category is enabled wholesale instead — as a mode property in
+# Directory.Build.props, since it costs one finding.
+#
+# This is a global AnalyzerConfig: entries apply to a whole compilation, not to a path. Path-scoped
+# severity goes in an .editorconfig (see tests/.editorconfig, and ihcclient/generatedsrc/.editorconfig).
+#
+# Adding a rule here means fixing its findings in the same change: warnings are errors repo-wide.
+
+is_global = true
+
+# ── Resource lifetime ────────────────────────────────────────────────────────────────────────────────
+dotnet_diagnostic.CA1001.severity = warning  # type owns a disposable field but is not disposable
+dotnet_diagnostic.CA1063.severity = warning  # IDisposable implemented incorrectly
+dotnet_diagnostic.CA1816.severity = warning  # Dispose() does not call GC.SuppressFinalize
+dotnet_diagnostic.CA2000.severity = warning  # disposable lost before it is disposed
+dotnet_diagnostic.CA2213.severity = warning  # disposable field never disposed
+dotnet_diagnostic.CA2215.severity = warning  # Dispose does not call base.Dispose
+dotnet_diagnostic.CA2025.severity = warning  # disposable handed to a task nobody awaits
+
+# ── Async and cancellation ───────────────────────────────────────────────────────────────────────────
+dotnet_diagnostic.CA1849.severity = warning  # synchronous call blocking inside an async method
+dotnet_diagnostic.CA2012.severity = warning  # ValueTask consumed more than once
+dotnet_diagnostic.CA2016.severity = warning  # CancellationToken not forwarded to a call that takes one
+
+# ── Exceptions ───────────────────────────────────────────────────────────────────────────────────────
+dotnet_diagnostic.CA2201.severity = warning  # throwing a reserved type nobody can catch selectively
+dotnet_diagnostic.CA2208.severity = warning  # argument exception naming a parameter that does not exist
+dotnet_diagnostic.CA2219.severity = warning  # throw inside finally, discarding the original exception
+
+# ── Silently wrong code ──────────────────────────────────────────────────────────────────────────────
+dotnet_diagnostic.CA1806.severity = warning  # result of a call ignored (TryParse, LINQ, string methods)
+dotnet_diagnostic.CA1508.severity = warning  # condition that can never change the outcome
+dotnet_diagnostic.CA2011.severity = warning  # property assigning to itself — unbounded recursion
+dotnet_diagnostic.CA2019.severity = warning  # ThreadStatic field with an initializer only one thread sees
+dotnet_diagnostic.CA2020.severity = warning  # built-in operator whose overflow behaviour changed in .NET 7
+dotnet_diagnostic.CA2245.severity = warning  # property assigned to itself
+dotnet_diagnostic.CA2246.severity = warning  # symbol and its member assigned in one statement
+dotnet_diagnostic.CA2248.severity = warning  # HasFlag called with the wrong enum type
+dotnet_diagnostic.CA2211.severity = warning  # mutable static field visible outside its type
+
+# ── Diagnostics that must stay machine-readable ──────────────────────────────────────────────────────
+# A log call whose template is built per call defeats structured logging: every call becomes its own
+# message shape, so the field cannot be queried in OpenObserve — which is where this repo diagnoses runs.
+dotnet_diagnostic.CA2254.severity = warning
+
+# ── Correct API selection ────────────────────────────────────────────────────────────────────────────
+dotnet_diagnostic.CA1854.severity = warning  # double dictionary lookup instead of TryGetValue
+dotnet_diagnostic.CA2249.severity = warning  # IndexOf compared against -1 instead of Contains
+dotnet_diagnostic.CA2263.severity = warning  # Type-taking overload where a generic one exists

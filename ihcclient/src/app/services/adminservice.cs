@@ -96,7 +96,7 @@ namespace Ihc.App
         /// </remarks>
         public async Task Restart()
         {
-                await configService.DelayedReboot(1);
+                await configService.DelayedReboot(1).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>
@@ -311,8 +311,8 @@ namespace Ihc.App
                         Converters = { new JsonStringEnumConverter() }
                     };
 
-                    await JsonSerializer.SerializeAsync(stream, modelCopy, jsonOptions);
-                    await stream.FlushAsync();
+                    await JsonSerializer.SerializeAsync(stream, modelCopy, jsonOptions).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    await stream.FlushAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
                 catch (Exception ex)
                 {
@@ -337,7 +337,7 @@ namespace Ihc.App
                     activity?.SetParameters((nameof(adminModel), adminModel.ToString(settings.LogSensitiveData)), (nameof(path), path));
 
                     using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
-                    await SaveAsJson(adminModel, fileStream);
+                    await SaveAsJson(adminModel, fileStream).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
                 catch (Exception ex)
                 {
@@ -371,7 +371,7 @@ namespace Ihc.App
                         Converters = { new JsonStringEnumConverter() }
                     };
 
-                    var adminModel = await JsonSerializer.DeserializeAsync<MutableAdminModel>(stream, jsonOptions);
+                    var adminModel = await JsonSerializer.DeserializeAsync<MutableAdminModel>(stream, jsonOptions).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
                     if (adminModel == null)
                         throw new ArgumentException("Failed to deserialize AdminModel from JSON stream");
@@ -453,7 +453,7 @@ namespace Ihc.App
                     activity?.SetParameters((nameof(path), path));
 
                     using var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-                    var result = await LoadFromJson(fileStream);
+                    var result = await LoadFromJson(fileStream).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
                     activity?.SetReturnValue(result.ToString(settings.LogSensitiveData));
                     return result;
@@ -748,7 +748,17 @@ namespace Ihc.App
         /// </summary>
         public void Dispose()
         {
-            if (ownedServices && authService!=null)
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Releases the owned services. A derived type that overrides this must call the base implementation.
+        /// </summary>
+        /// <param name="disposing">True when called from <see cref="Dispose()"/>, false from a finalizer.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing && ownedServices && authService!=null)
             {
                 authService.Dispose();
             }
@@ -761,8 +771,10 @@ namespace Ihc.App
         {
             if (ownedServices && authService!=null)
             {
-                await authService.DisposeAsync();
+                await authService.DisposeAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             }
+
+            GC.SuppressFinalize(this);
         }
     }
 }

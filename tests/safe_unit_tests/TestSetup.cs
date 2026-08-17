@@ -12,7 +12,7 @@ namespace Ihc.Tests
     [SetUpFixture]
     public class Setup
   {
-        public static IhcSettings? settings;
+        public static IhcSettings? settings { get; private set; }
 
         [OneTimeSetUp]
         public void RunBeforeAnyTests()

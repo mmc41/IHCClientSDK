@@ -15,10 +15,10 @@ namespace Ihc.Tests
   [SetUpFixture]
   public class Setup
   {
-    public static IhcSettings settings;
-    public static int boolOutput1;
-    public static int boolInput1;
-    public static int boolInput2;
+    public static IhcSettings settings { get; private set; }
+    public static int boolOutput1 { get; private set; }
+    public static int boolInput1 { get; private set; }
+    public static int boolInput2 { get; private set; }
 
     [OneTimeSetUp]
     public void RunBeforeAnyTests()

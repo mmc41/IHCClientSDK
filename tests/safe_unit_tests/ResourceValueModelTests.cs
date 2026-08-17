@@ -17,7 +17,7 @@ namespace Ihc.Tests
         [Test]
         public void ValueKind_HasAllThirteenKinds()
         {
-            var kinds = Enum.GetNames(typeof(ResourceValue.ValueKind)).ToList();
+            var kinds = Enum.GetNames<ResourceValue.ValueKind>().ToList();
 
             Assert.That(kinds, Has.Count.EqualTo(13));
             Assert.That(kinds, Does.Contain("PhoneNumber"));

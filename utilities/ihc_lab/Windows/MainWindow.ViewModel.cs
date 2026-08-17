@@ -501,9 +501,9 @@ namespace IhcLab
             IsWarningVisible = !isError;
 
             if (isError)
-                logger.LogError(message: text, exception: ex);
+                logger.LogError(exception: ex, message: "{Text}", text);
             else
-                logger.LogWarning(message: text, exception: ex);
+                logger.LogWarning(exception: ex, message: "{Text}", text);
         }
 
         /// <summary>
@@ -688,7 +688,17 @@ namespace IhcLab
         /// </summary>
         public void Dispose()
         {
-            if (_labAppService != null)
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Unsubscribes from the app-service events. An override must call the base implementation.
+        /// </summary>
+        /// <param name="disposing">True when called from <see cref="Dispose()"/>, false from a finalizer.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing && _labAppService != null)
             {
                 _labAppService.CurrentOperationChanged -= OnCurrentOperationChanged;
                 _labAppService.ServicesChanged -= OnServicesChanged;

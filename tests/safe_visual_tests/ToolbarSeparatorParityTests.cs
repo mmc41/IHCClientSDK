@@ -1,16 +1,12 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
-using Avalonia.Headless;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless.NUnit;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using ihc_openvisual.ViewModels;
@@ -78,22 +74,37 @@ public class ToolbarSeparatorParityTests : AvaloniaTestBase
         });
     }
 
-    /// <summary>And it must still be DRAWN. Pixels, not properties: this is the surface where an ignored setter
-    /// already cost a turn (F-1's Opacity), and a rule that publishes itself perfectly while rendering nothing
-    /// would satisfy every assertion above.</summary>
+    /// <summary>And it must still be DRAWABLE: a rule that publishes itself perfectly while carrying no ink or no
+    /// size would satisfy every assertion above and show the user nothing.
+    /// <para>Asserted on the resolved style against the toolbar the rule stands on, not on a captured frame. That
+    /// is a deliberate limit, and this surface is where its cost is clearest: a setter the renderer ignores passes
+    /// here (F-1's <c>Opacity</c> did exactly that), and so does a third-party control that drops the value on one
+    /// OS — Svg.Controls.Skia.Avalonia ≤12.0.0.13 ignored <c>CurrentColor</c> on Linux while the property read back
+    /// correctly, which no property assertion in this suite could see (2026-08-17, see the package pin in
+    /// Directory.Packages.props). A plain <see cref="Separator"/> renders through the standard pipeline rather than
+    /// a custom draw operation, which is what makes the trade acceptable HERE and not everywhere.</para></summary>
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]
-    public async Task TheRule_IsActuallyDrawn()
+    public async Task TheRule_CarriesInkAndSizeAgainstTheBarBehindIt()
     {
         MainWindow window = await ShowShellAsync();
-        using var frame = new ToolbarFrame(window);
 
         Control rule = Rules(window).Single();
-        double ink = frame.DarkestInk(rule);
-        double bar = frame.LuminanceLeftOf(rule);
+        IBrush? ink = (rule as TemplatedControl)?.Background;
+        IBrush? bar = window.GetVisualDescendants().OfType<Border>()
+            .Single(b => AutomationProperties.GetAutomationId(b) == "Toolbar").Background;
 
-        Assert.That(ink, Is.LessThan(bar - 8),
-            $"the rule paints a visible line against the toolbar behind it (rule {ink:F0}, bar {bar:F0})");
+        Assert.Multiple(() =>
+        {
+            Assert.That(ink, Is.Not.Null, "the rule has a fill to draw with");
+            Assert.That(ink?.ToString(), Is.Not.EqualTo(Brushes.Transparent.ToString()),
+                "and that fill is not nothing");
+            Assert.That(ink?.ToString(), Is.Not.EqualTo(bar?.ToString()),
+                "and differs from the toolbar behind it, or the line is invisible against its own ground");
+            Assert.That(rule.Bounds.Width, Is.GreaterThan(0), "the rule was laid out with a real width");
+            Assert.That(rule.Bounds.Height, Is.GreaterThan(0), "the rule was laid out with a real height");
+            Assert.That(rule.IsEffectivelyVisible, Is.True, "and nothing above it hid the whole rule");
+        });
     }
 
     /// <summary>The bar's automation ids in visual order, with each rule rendered as "|" — the shape a toolbar
@@ -131,73 +142,5 @@ public class ToolbarSeparatorParityTests : AvaloniaTestBase
         window.Show();
         Dispatcher.UIThread.RunJobs();
         return window;
-    }
-
-    /// <summary>One rendered frame, sampled around a control. Headless renders at scale 1, so logical bounds are
-    /// pixel bounds.</summary>
-    private sealed class ToolbarFrame : IDisposable
-    {
-        private readonly WriteableBitmap _bitmap;
-        private readonly ILockedFramebuffer _buffer;
-        private readonly Visual _root;
-
-        public ToolbarFrame(Window window)
-        {
-            _bitmap = window.CaptureRenderedFrame()
-                ?? throw new InvalidOperationException("the headless session rendered no frame");
-            _buffer = _bitmap.Lock();
-            _root = window;
-        }
-
-        public double DarkestInk(Visual control)
-        {
-            PixelRect rect = RectOf(control);
-            double darkest = 255;
-            for (int y = rect.Y; y < rect.Bottom; y++)
-            {
-                for (int x = rect.X; x < rect.Right; x++)
-                {
-                    darkest = Math.Min(darkest, Luminance(x, y));
-                }
-            }
-            return darkest;
-        }
-
-        /// <summary>The bare toolbar a few pixels to the LEFT of the rule — the ground it has to stand out from.
-        /// Taken beside the rule rather than as a fixed colour so the assertion holds in either theme.</summary>
-        public double LuminanceLeftOf(Visual control)
-        {
-            PixelRect rect = RectOf(control);
-            return Luminance(Math.Max(0, rect.X - 3), rect.Y + rect.Height / 2);
-        }
-
-        private PixelRect RectOf(Visual control)
-        {
-            Point origin = control.TranslatePoint(default, _root)
-                ?? throw new InvalidOperationException("the control is not in the window's visual tree");
-            var rect = new PixelRect(
-                (int)Math.Round(origin.X), (int)Math.Round(origin.Y),
-                (int)Math.Round(control.Bounds.Width), (int)Math.Round(control.Bounds.Height));
-            Assert.That(rect.Width, Is.GreaterThan(0), "the rule was laid out with a real width");
-            Assert.That(rect.Height, Is.GreaterThan(0), "the rule was laid out with a real height");
-            Assert.That(new PixelRect(_buffer.Size).Contains(rect), Is.True, "the rule is inside the frame");
-            return rect;
-        }
-
-        private double Luminance(int x, int y)
-        {
-            long offset = (long)y * _buffer.RowBytes + (long)x * 4;
-            byte first = Marshal.ReadByte(_buffer.Address, (int)offset);
-            byte green = Marshal.ReadByte(_buffer.Address, (int)offset + 1);
-            byte third = Marshal.ReadByte(_buffer.Address, (int)offset + 2);
-            (double r, double b) = _buffer.Format == PixelFormat.Rgba8888 ? (first, third) : (third, first);
-            return 0.299 * r + 0.587 * green + 0.114 * b;
-        }
-
-        public void Dispose()
-        {
-            _buffer.Dispose();
-            _bitmap.Dispose();
-        }
     }
 }

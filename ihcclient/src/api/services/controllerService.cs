@@ -369,7 +369,7 @@ namespace Ihc {
             if (state == null || String.IsNullOrEmpty(state.state))
                 return ControllerState.Uninitialized;
 
-            switch (state?.state)
+            switch (state.state)
             {
                 case "text.ctrl.state.failed":
                     return ControllerState.Failed;

@@ -181,7 +181,7 @@ namespace Ihc.Vis.Model
             }
             if (rawLiteral is not null)
             {
-                if (rawLiteral.IndexOf('<') >= 0 || rawLiteral.IndexOf('"') >= 0)
+                if (rawLiteral.Contains('<') || rawLiteral.Contains('"'))
                 {
                     throw new ArgumentException(
                         $"Default literal of attribute '{name}' contains '<' or '\"', which cannot be re-emitted " +

@@ -122,7 +122,17 @@ namespace Ihc.App
         /// </summary>
         public void Dispose()
         {
-            if (ownedServices & authService!=null)
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Releases the owned services. A derived type that overrides this must call the base implementation.
+        /// </summary>
+        /// <param name="disposing">True when called from <see cref="Dispose()"/>, false from a finalizer.</param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing && ownedServices && authService!=null)
             {
                 authService.Dispose();
             }
@@ -135,8 +145,10 @@ namespace Ihc.App
         {
             if (ownedServices && authService!=null)
             {
-                await authService.DisposeAsync();
+                await authService.DisposeAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             }
+
+            GC.SuppressFinalize(this);
         }
     }
 }

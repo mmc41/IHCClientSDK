@@ -31,7 +31,7 @@ namespace Ihc.IOExtractor {
             switch (ioType) {
                 case IOType.Input: datalineName = "dataline_input"; break;
                 case IOType.Output: datalineName = "dataline_output"; break;
-                default: throw new Exception("Unknown iotype " + ioType);
+                default: throw new ArgumentOutOfRangeException(nameof(ioType), ioType, "Unknown iotype");
             }
 
             var inputNodes = navigator.Select("//group/product_dataline/"+datalineName);

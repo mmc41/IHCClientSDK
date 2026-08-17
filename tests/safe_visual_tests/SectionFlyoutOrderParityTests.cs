@@ -57,6 +57,31 @@ public class SectionFlyoutOrderParityTests : AvaloniaTestBase
     private static readonly System.StringComparer RegisteredOrder =
         System.StringComparer.Create(CultureInfo.GetCultureInfo("da-DK"), ignoreCase: true);
 
+    /// <summary>
+    /// The precondition every ordering assertion in this file rests on, and the one thing they cannot check
+    /// themselves: that <c>da-DK</c> really resolves to Danish collation.
+    /// <para>Both <see cref="RegisteredOrder"/> above and the production <see cref="DisplayOrder.Danish"/> are
+    /// <c>StringComparer.Create(da-DK)</c>. Make the host globalization-invariant — an
+    /// <c>InvariantGlobalization=true</c> anywhere in the build, or an ICU-less container image — and
+    /// <c>GetCultureInfo("da-DK")</c> degrades to invariant, so BOTH degrade together and every comparison in this
+    /// file keeps agreeing with itself while the shipped app orders æ/ø/å by code point. Neither ordering test can
+    /// see that, because each compares a production order against a comparer that broke the same way.</para>
+    /// <para>Pinned on the two facts an ordinal or invariant comparer cannot reproduce. Measured identical on
+    /// Windows 11 and Ubuntu 24.04 (2026-08-17) — .NET has used ICU on Windows too since .NET 5, so this is a
+    /// configuration tripwire, not a per-OS difference.</para>
+    /// </summary>
+    [Test]
+    public void DanishCollation_IsReallyDanish_NotSilentlyInvariant()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(DisplayOrder.Danish.Compare("Aarhus", "Zebra"), Is.GreaterThan(0),
+                "Danish collates 'aa' as 'å', which sorts after z — ordinal and invariant both put Aarhus first");
+            Assert.That(DisplayOrder.Danish.Compare("Kaal", "Kål"), Is.Zero,
+                "and treats the two spellings of the same word as equal");
+        });
+    }
+
     private static void AssertValueTypesAreInRegisteredOrder(List<string> types)
     {
         Assert.That(types, Is.EqualTo(types.OrderBy(t => t, RegisteredOrder).ToList()),

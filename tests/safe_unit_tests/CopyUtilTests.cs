@@ -1021,9 +1021,9 @@ namespace Ihc.Tests
             var warningTags = firstWarning.Tags.ToDictionary(t => t.Key, t => t.Value);
             Assert.That(warningTags.ContainsKey("type"), Is.True, "Should have type tag");
             Assert.That(warningTags["type"], Is.EqualTo("TypeFidelityLoss"));
-            if (warningTags.ContainsKey("declaredType"))
+            if (warningTags.TryGetValue("declaredType", out var declaredType))
             {
-                Assert.That(warningTags["declaredType"]?.ToString(), Does.Contain("IList").Or.Contains("ISet").Or.Contains("IDictionary"));
+                Assert.That(declaredType?.ToString(), Does.Contain("IList").Or.Contains("ISet").Or.Contains("IDictionary"));
             }
         }
 
@@ -1199,7 +1199,7 @@ namespace Ihc.Tests
 
             public string this[int index]
             {
-                get => _items.ContainsKey(index) ? _items[index] : string.Empty;
+                get => _items.TryGetValue(index, out var item) ? item : string.Empty;
                 set => _items[index] = value;
             }
 

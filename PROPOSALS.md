@@ -29,6 +29,7 @@ Ordered by priority within each group.
 | **A2** | No behavioural test for the controller half — no wire fixtures, and `safe_integration_tests` never runs | Task | Todo | [§A2](#a2--soap-fixture-corpus--replay-harness) |
 | **B1** | Tracing but no metrics — needs a `Meter` **and** an export pipeline that does not exist | Task | Todo | [§B1](#b1--metrics-instrument-and-export-pipeline) |
 | **B4** | Refusals carry a bare Danish string while validation findings carry a `RuleId` | Task | Todo | [§B4](#b4--refusal-codes) |
+| **C1** | The Linux CI legs cannot be run locally, and their native-dep list exists only in the workflow YAML | Task | Todo | [§C1](#c1--local-linux-ci-legs-on-a-windows-workstation) |
 | **G2b** | Live per-field dialog feedback (depends on G2a) | Task | **Blocked** — needs G2a | [§G2b](#g2b--live-per-field-dialog-feedback) |
 | **T3** | HTTPS certificate identity is not authenticated (`DangerousAcceptAnyServerCertificateValidator`) | Decision | **Needs decision** | [§T3](#t3--https-certificate-trust-boundary) |
 | **D1** | Rule on the two US-068 residuals (log-mark scope; stop-point / jump-to leaf routes) | Decision | **Blocked** — needs T018's Discoveries entry | [§D1](#d1--us-068-residuals) |
@@ -215,6 +216,60 @@ cannot be aggregated by cause.
 
 This **preserves** the Danish-refusal decision rather than reopening it — it makes Danish the default
 instead of the only possibility.
+
+### C1 · Local Linux CI legs on a Windows workstation
+
+**Why.** A Linux-only rendering defect shipped undetected and was caught only by CI (2026-08-17 — see
+the `Svg.Controls.Skia.Avalonia` floor pinned in `Directory.Packages.props`). Verifying a Linux fix
+today means push-and-wait. The recipe below was proven end to end during that session, so this item is
+formalizing something that works, not discovering it.
+
+**Proven recipe** (ad-hoc, uncommitted): `mcr.microsoft.com/dotnet/sdk:10.0-noble` — noble = Ubuntu
+24.04 = `ubuntu-latest` — plus `libfontconfig1 libice6 libsm6`, repo bind-mounted at `/src`. Runs all
+four Linux CI suites green from clean.
+
+**Scope it honestly: "run the Linux legs", not "develop here".** In-container: the four controller-free
+suites CI already runs on Linux. Not possible: the `aui-openvisual` skill (Windows UI Automation), live
+OpenVisual / `ihc_lab` runs, `screen-recorder`, `safe_lab_tests`, and the nine `IhcVisualInstallDir`-gated
+reference-catalog tests (the vendor tool is Windows-only). A container presenting itself as *the* dev
+environment while unable to do half the work is a trap — name it for its job.
+
+- [ ] Add `.devcontainer/Dockerfile` as the **single source** of the native-dep list. It currently
+      exists only as a `run:` step in `.github/workflows/build-validation.yml`, so what "Linux CI" means
+      can drift with nothing local pinning it.
+- [ ] Add `.dockerignore`: `tmp/` (800 MB), `bin/`, `obj/`, `.git/`, `ihcsettings.json`.
+- [ ] Add `scripts/test-linux.ps1` + `.sh`, matching the existing paired-script convention
+      (`check-no-raw-tags.*`). No VS Code dependency.
+- [ ] **Decide — bin/obj sharing.** A bind mount puts the Linux and Windows builds on the same
+      `obj/project.assets.json` and `bin/`: rebuild thrash plus the stale-build trap below. Options: an
+      OS-scoped artifacts path in `Directory.Build.props` · a named volume · copy-in. Solve this or the
+      tool actively misleads.
+- [ ] **Decide — `ihcsettings.json`.** Exclude it (matches CI exactly; recommended) or pass
+      `IHC_ENCRYPT_PASSPHRASE` through for controller-touching runs.
+- [ ] **Decide — should CI build the same image** rather than `apt-get`-ing inline? That is what makes
+      local and CI unable to diverge; it costs some CI time.
+- [ ] `devcontainer.json` only if "Reopen in Container" is actually used — trivial once the Dockerfile
+      exists, and pointless otherwise.
+
+**Gotchas already paid for — do not rediscover:**
+
+- **Stale incremental builds.** Copying files in from Windows preserves the source mtime, so a file
+  older than the container's build output makes MSBuild skip the rebuild. This produced a false
+  *failure*, and would as readily produce a false *pass*. Clean `bin`/`obj` before any run whose
+  result you intend to trust.
+- **`ihcsettings.json` is gitignored, so CI has no such file** (`.gitignore:20`). Copy it in and its
+  encrypted fields demand `IHC_ENCRYPT_PASSPHRASE` → 1324 failures in 230 ms in `safe_project_tests`,
+  entirely an artefact of the sandbox.
+- **Git Bash mangles `-v` paths**: `-v "$(pwd -W)/x:/src"` rewrites `/src` to `C:/Program Files/Git/src`.
+  Drive docker from PowerShell, or set `MSYS_NO_PATHCONV=1`.
+- WSL was tried first and abandoned: `sudo` needs a password there, so an unattended `apt-get` hangs.
+- `.gitattributes` forces CRLF for `.vis`/`.def`/`.ifb` on every OS, so the byte oracles survive a Linux
+  checkout or a volume clone — no special handling needed.
+
+**Watch the skip count, not just the pass count.** `safe_project_tests` reports green with 9 skipped on
+Linux; those are the `IhcVisualInstallDir`-gated tests, and a `CatalogDiscovery` path-separator defect
+lived in exactly that gap until 2026-08-17. Skips gated on a *machine* rather than a *platform* are
+where platform bugs hide.
 
 ### G2b · Live per-field dialog feedback
 

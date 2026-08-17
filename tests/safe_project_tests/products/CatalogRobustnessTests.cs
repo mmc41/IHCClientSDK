@@ -52,6 +52,47 @@ namespace Ihc.Vis.Tests
             }
         }
 
+        // ----- CategoryPath is catalog data, not a host path -----
+
+        // A scanned CategoryPath must be \-separated on EVERY OS: the built-in catalog embeds "01. Lysstyring\1.1
+        // Generelt" literally and every consumer splits on '\', so a /-separated value collapses a nested category
+        // into one flat folder name. Path.GetDirectoryName returns the HOST separator, which made the scan produce
+        // exactly that on Linux/macOS.
+        //
+        // White-box on purpose: reaching this through FromInstallDir needs a COMPLETE install dir (the Data\
+        // File→New templates), and no such fixture exists outside a real IHC Visual installation — every test that
+        // has one is install-dir-gated and therefore skips on the Linux CI leg, which is precisely the leg where
+        // this defect lives. The assertion is exact on Linux/macOS and tautological on Windows (where
+        // GetDirectoryName already yields '\'), so it is the non-Windows CI legs that carry it.
+        [Test]
+        public void ScannedCategoryPath_IsBackslashSeparated_OnEveryOS()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "ihc-cat-root");
+            string nested = Path.Combine(root, "01. Lysstyring", "1.1 Generelt", "kip.def");
+
+            string categoryPath = CatalogDiscovery.CategoryPathFor(root, nested);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(categoryPath, Is.EqualTo(@"01. Lysstyring\1.1 Generelt"),
+                    "the scanned location is catalog data in the built-in catalog's own shape");
+                Assert.That(categoryPath.Split(CatalogDiscovery.CategorySeparator), Has.Length.EqualTo(2),
+                    "so a consumer splitting on '\\' sees the two folder levels, not one flat name");
+                Assert.That(categoryPath, Does.Not.Contain("/"),
+                    "no host separator survives into catalog data");
+            });
+        }
+
+        [Test]
+        public void ScannedCategoryPath_ForATopLevelFile_IsEmpty()
+        {
+            // The uncategorised case the menu builder relies on: no segments, so the product stays reachable at the
+            // top of the insert menu rather than under a folder named after the scan root.
+            string root = Path.Combine(Path.GetTempPath(), "ihc-cat-root");
+
+            Assert.That(CatalogDiscovery.CategoryPathFor(root, Path.Combine(root, "kip.def")), Is.Empty);
+        }
+
         [Test]
         public void FromInstallDir_MalformedCatalogFile_NamesThePath()
         {

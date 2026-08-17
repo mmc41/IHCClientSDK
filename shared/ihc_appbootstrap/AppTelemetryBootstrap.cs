@@ -68,7 +68,11 @@ namespace Ihc.Bootstrap
                 combinedValues[0] = area;
                 combinedValues[1] = source?.GetType().Name ?? "Unknown";
                 Array.Copy(propertyValues, 0, combinedValues, 2, propertyValues.Length);
+                // CA2254: this is the Avalonia-to-ILogger bridge. The template IS the payload - it arrives from
+                // the framework's own log call - so it varies by construction and cannot be a constant here.
+#pragma warning disable CA2254
                 iLogger.Log(MapFromAvaloniaLogToILogLevel(level), combinedTemplate, combinedValues);
+#pragma warning restore CA2254
                 forwardSink?.Log(level, area, source, messageTemplate, propertyValues);
             }
         }

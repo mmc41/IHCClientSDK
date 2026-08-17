@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using Avalonia.Controls;
@@ -151,7 +152,10 @@ public abstract class AvaloniaTestBase
             }
 
             var testName = TestContext.CurrentContext.Test.Name;
-            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            // Invariant: a screenshot filename is a sortable machine key, not display text. Under a non-Gregorian
+            // default calendar (ar-SA, th-TH) the ambient culture would stamp a different YEAR into the name, so
+            // two runs on differently-configured machines would not sort or diff against each other.
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
             var safeTestName = string.Join("_", testName.Split(Path.GetInvalidFileNameChars()));
 
             var outputDir = Path.Combine(TestContext.CurrentContext.TestDirectory, "TestFailureScreenshots");

@@ -1,0 +1,29 @@
+# Analyzer severity for the test suites only.
+#
+# Four of the rules enabled repo-wide in /.globalconfig are about the lifetime and blocking behaviour of
+# objects inside a long-running process. A test method is not one: it runs once, on a fixture the runner
+# tears down, in a host process that exits. Enforcing them here was measured at 414 findings against 39 in
+# the code that ships — the ratio alone says the rules are matching the shape of test code rather than a
+# defect in it.
+#
+# Each is turned off for a stated reason, not as a blanket "tests are exempt". The remaining ~20 rules from
+# /.globalconfig stay in force here, and this file is a path-scoped .editorconfig precisely so that turning
+# one back on is a one-line change.
+
+[*.cs]
+
+# 328 of 335 findings. The objects are per-test harnesses, view-models and headless windows whose scope IS
+# the test method; the runner disposes the fixture and the process exits after the run.
+dotnet_diagnostic.CA2000.severity = none
+
+# Every finding is an ignored TryParse on a literal the test itself wrote. A parse that unexpectedly failed
+# would leave the out value at default and fail the assertion that follows it — the test is the check.
+dotnet_diagnostic.CA1806.severity = none
+
+# Blocking is the point: a test body waits for the operation it is asserting on. The rule's concern is a
+# thread-pool starvation that a single-threaded test host cannot suffer.
+dotnet_diagnostic.CA1849.severity = none
+
+# Fires on `using` + a task in the same scope, which in these fixtures is awaited before the scope ends.
+# The rule cannot see that, and the alternative is restructuring tests to satisfy a flow analysis.
+dotnet_diagnostic.CA2025.severity = none

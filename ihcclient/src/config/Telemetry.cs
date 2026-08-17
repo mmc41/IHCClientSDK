@@ -245,7 +245,7 @@ namespace Ihc {
             TelemetrySelfCheckResult result = await ProbeAsync(telemetry).ConfigureAwait(false);
             Trace.WriteLine(result.Message);
             if (result.IsProblem)
-                Console.Error.WriteLine(result.Message);
+                await Console.Error.WriteLineAsync(result.Message).ConfigureAwait(false);
         }
 
         /// <summary>

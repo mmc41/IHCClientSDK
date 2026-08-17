@@ -102,7 +102,7 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         {
             Name = $"{controlName}.ValueKind",
             MinWidth = 140,
-            ItemsSource = Enum.GetNames(typeof(ResourceValue.ValueKind))
+            ItemsSource = Enum.GetNames<ResourceValue.ValueKind>()
                 .Where(n => n != nameof(ResourceValue.ValueKind.NONE)).ToArray(),
             SelectedIndex = 0
         };

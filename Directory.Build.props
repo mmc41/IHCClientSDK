@@ -19,4 +19,27 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!--
+    Roslyn code analysis. The built-in .NET analyzers are on by default for net10.0; these two properties
+    are the part the SDK does not decide for us.
+
+    AnalysisLevel is pinned rather than left at its 'latest' default. Left floating, every .NET SDK upgrade
+    can enable rules nobody opted into, and because warnings are errors here that lands as a red build
+    rather than as advice. This is the same reason package versions are pinned centrally: a version — or a
+    rule set — that is stated once cannot drift. Raise it deliberately, with the new rules' findings fixed
+    in the same change.
+
+    AnalysisModeSecurity turns the whole security category on. Measured before enabling: one finding in the
+    entire repository, so the category costs nothing to hold at maximum and would otherwise report a real
+    XML-parsing weakness only as an IDE suggestion. The other categories stay at Default and the rules
+    worth having from them are opted into individually in .globalconfig, because the two largest rules a
+    category mode would bring in (CA1707 on test names, CA2007 on ConfigureAwait) do not apply repo-wide — and
+    CA2007 demands the opposite of what the GUI's architecture rules forbid (ADR-001). CA2007 is enabled for
+    the SDK alone, in ihcclient/analyser.config.
+  -->
+  <PropertyGroup>
+    <AnalysisLevel>10.0</AnalysisLevel>
+    <AnalysisModeSecurity>All</AnalysisModeSecurity>
+  </PropertyGroup>
+
 </Project>

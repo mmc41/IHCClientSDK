@@ -30,7 +30,7 @@ namespace Ihc.example
             var boolInput2 = int.Parse(testConfig["boolInput2"]);
 
             // Create client for IHC services that this example use (see also ConfigurationService, MessageControlLogService, ModuleService, NotificationManagerService, OpenAPIService, TimeManagerService, UserManagerService).
-            var authService = new AuthenticationService(settings);
+            using var authService = new AuthenticationService(settings);
             var resourceInteractionService = new ResourceInteractionService(authService);
             try
             {

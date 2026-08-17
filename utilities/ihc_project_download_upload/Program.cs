@@ -57,7 +57,7 @@ namespace Ihc.download_upload_example
             var telemetryConfig = TelemetryConfiguration.GetFromConfiguration(config);
 
             // Create client for IHC services that this utility use:
-            var authService = new AuthenticationService(settings);
+            using var authService = new AuthenticationService(settings);
             var controllerService = new ControllerService(authService);
             var ressourceService = new ResourceInteractionService(authService);
             var configService = new ConfigurationService(authService);
@@ -85,7 +85,7 @@ namespace Ihc.download_upload_example
                 if (command == CMD_GET)
                 {
                     ProjectFile project = await controllerService.GetProject();
-                    File.WriteAllText(path, project.Data, ProjectFile.Encoding);
+                    await File.WriteAllTextAsync(path, project.Data, ProjectFile.Encoding);
                     Console.WriteLine($"Downloaded project to {path}, size {project.Data.Length} characters (Org filename was {project.Filename})");
                 }
                 else if (command == CMD_STORE)
@@ -93,10 +93,10 @@ namespace Ihc.download_upload_example
                     var encoding = ProjectFile.Encoding;
                     ProjectFile project = new ProjectFile(
                         Filename: Path.GetFileName(path),
-                        Data: File.ReadAllText(path, encoding)
+                        Data: await File.ReadAllTextAsync(path, encoding)
                     );
 
-                    var projectContent = File.ReadAllText(path);
+                    var projectContent = await File.ReadAllTextAsync(path);
 
                     // TODO: Read all runtime values and store them 
 

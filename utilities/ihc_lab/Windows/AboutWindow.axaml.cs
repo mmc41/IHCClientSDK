@@ -48,7 +48,7 @@ public partial class AboutWindow : Window
         catch (Exception ex)
         {
             activity?.SetError(ex);
-            logger.Log(LogLevel.Error, message: "Could not open link " + url, exception: ex);
+            logger.Log(LogLevel.Error, exception: ex, message: "Could not open link {Url}", url);
         }
     }
 

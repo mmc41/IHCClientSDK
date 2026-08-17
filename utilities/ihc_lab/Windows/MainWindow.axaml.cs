@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Linq;
 using System.Text.Json;
@@ -65,6 +66,10 @@ namespace IhcLab;
 ///   <item><b>Service (LabAppService):</b> Business logic, IHC service interaction, no GUI knowledge</item>
 /// </list>
 /// </summary>
+[SuppressMessage("Reliability", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "A Window's lifetime ends at Closing, not at a Dispose() call nobody would make: the " +
+                    "framework creates and releases it. OnWindowClosing disposes the view-model there, which " +
+                    "is the only point at which the window is actually finished with it.")]
 public partial class MainWindow : Window
 {
     private IhcSetup? ihcDomain;
@@ -337,17 +342,17 @@ public partial class MainWindow : Window
 
             if (labAppService == null)
             {
-                throw new Exception("LabAppService not configured.");
+                throw new InvalidOperationException("LabAppService not configured.");
             }
 
             if (ServicesComboBox.SelectedIndex < 0)
             {
-                throw new Exception("No service selected.");
+                throw new InvalidOperationException("No service selected.");
             }
 
             if (OperationsComboBox.SelectedIndex < 0)
             {
-                throw new Exception("No operation selected.");
+                throw new InvalidOperationException("No operation selected.");
             }
 
             activity?.SetTag("ihcoperation", labAppService.SelectedOperation.DisplayName);
@@ -356,7 +361,8 @@ public partial class MainWindow : Window
 
             activity?.SetTag("result", operationResult.DisplayResult);
 
-            logger.LogInformation(message: $"Operation {labAppService.SelectedOperation.DisplayName} sucessfullly called with result {operationResult.DisplayResult}");
+            logger.LogInformation("Operation {Operation} sucessfullly called with result {Result}",
+                labAppService.SelectedOperation.DisplayName, operationResult.DisplayResult);
 
             // Remember the raw result so "Save Result to File…" can write the real bytes, not the display preview.
             lastOperationResult = operationResult;
