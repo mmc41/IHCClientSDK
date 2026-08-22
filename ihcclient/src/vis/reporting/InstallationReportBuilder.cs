@@ -37,15 +37,14 @@ namespace Ihc.Vis.Reporting
             ImmutableArray<(string Label, string Attribute)> Fields, bool Terminals, bool Hoisted);
 
         /// <summary>
-        /// The component-block families, one row each, keyed on the EXACT device-root tag — not a tag <c>switch</c>
-        /// with a catch-all arm, and deliberately not <see cref="ProductClassifier.Classify"/>, whose substring
-        /// fallback is an open-world UI convenience. Report section membership is closed: the vendor's serializer
-        /// carries a fixed element table and its report XSLT matches element names exactly, so a root absent from
-        /// this table renders no block at all. A catch-all arm instead gave every unrecognised root the modem's four
-        /// wire-colour rows.
-        /// <para><c>s0_device</c> is deliberately absent — it renders through its own table, not as a locality
-        /// component. Both modem roots are present and identical: two distinct catalog families (voice and SMS)
-        /// that happen to declare the same four <c>cablecolour_*</c> attributes.</para>
+        /// The component-block families, one row each, keyed on the EXACT device-root tag. The KNOWN families
+        /// only: a root that is not here is not given some other family's fields (an early catch-all arm handed
+        /// every unrecognised root the modem's four wire-colour rows) — it gets
+        /// <see cref="GenericComponent"/>'s shared rows instead.
+        /// <para><c>s0_device</c> is deliberately absent, and is excluded from the generic arm too
+        /// (<see cref="OwnTableRoots"/>) — it renders through its own table, not as a locality component. Both
+        /// modem roots are present and identical: two distinct catalog families (voice and SMS) that happen to
+        /// declare the same four <c>cablecolour_*</c> attributes.</para>
         /// </summary>
         private static readonly FrozenDictionary<string, ComponentFamily> ComponentFamilies =
             new Dictionary<string, ComponentFamily>(StringComparer.Ordinal)
@@ -74,14 +73,31 @@ namespace Ihc.Vis.Reporting
             ("Ledningsfarve RS485Plus", "cablecolour_RS485Plus"),
         ];
 
+        /// <summary>The product roots that document themselves through a table of their own, so they must never
+        /// also appear as a locality component (the double-listing the generic arm would otherwise cause).</summary>
+        private static readonly FrozenSet<string> OwnTableRoots =
+            new[] { "s0_device" }.ToFrozenSet(StringComparer.Ordinal);
+
+        /// <summary>
+        /// What a product root the family table does not know contributes: the three rows every block shares and
+        /// nothing else — no family rows, because there is no family to read them from. It carries the terminal
+        /// sub-table on the same terms as a dataline product, which is to say whenever the product has
+        /// <c>dataline_input</c>/<c>dataline_output</c> descendants: those terminals are already in the
+        /// cross-reference carrying this product's own metadata, so leaving the product itself undocumented was
+        /// the contradiction, not the fix (review G7).
+        /// </summary>
+        private static ComponentFamily GenericComponent => new([], Terminals: true, Hoisted: false);
+
         /// <summary>The family's block contribution, or null when this tag renders no locality component block.</summary>
         private static ComponentFamily? BlockFamily(string tag) =>
-            ComponentFamilies.TryGetValue(tag, out ComponentFamily family) ? family : null;
+            ComponentFamilies.TryGetValue(tag, out ComponentFamily family) ? family
+            : ProductClassifier.IsProduct(tag) && !OwnTableRoots.Contains(tag) ? GenericComponent
+            : null;
 
         public static ReportShapeDocument Build(Project project, DateTimeOffset generatedAt)
         {
             ArgumentNullException.ThrowIfNull(project);
-            var index = new TreeIndex(project.Root);
+            var index = new TreeIndex(project);
             IReadOnlyList<ProjectElement> all = project.Root.DescendantsAndSelf();
 
             var shapes = ImmutableArray.CreateBuilder<ReportShape>();
@@ -124,7 +140,11 @@ namespace Ihc.Vis.Reporting
             new(heading,
                 ImmutableArray.Create("Datalinie", "Modul type", "Lokalitet", "Beskrivelse"),
                 all.Where(e => e.Tag == tag)
-                    .OrderBy(e => double.TryParse(e.GetAttribute("dataline"), NumberStyles.Any, CultureInfo.InvariantCulture, out double d) ? d : 0d)
+                    // A7: numeric sort by data-line number. NumberStyles.Integer, not .Any — .Any admits the
+                    // invariant thousands separator, currency symbols and exponents, so a data line spelled
+                    // "1,5" was re-read as 15 and sorted past the real data line 10 (review G9). Anything that
+                    // is not a plain integer is unparseable and sorts first, with the other unparseable ones.
+                    .OrderBy(e => int.TryParse(e.GetAttribute("dataline"), NumberStyles.Integer, CultureInfo.InvariantCulture, out int line) ? line : 0)
                     .Select(m => ImmutableArray.Create<ReportCell>(
                         ReportText.Display(m.GetAttribute("dataline")),
                         new ReportCell(ReportText.Display(m.GetAttribute("module_type")), m.GetAttribute("id")),
@@ -293,14 +313,18 @@ namespace Ihc.Vis.Reporting
                 : Unknown;
         }
 
-        // The numeric packed address value for sorting (B4); unaddressed/unparseable sorts first (A7). A packed value
-        // of 0 (an explicit "_0x0") renders as unaddressed through AddressLabel (DatalineAddress.TryParse refuses a
-        // value <= 0), so it must SORT as unaddressed too — floor any value <= 0 to the same -1 key an absent token
-        // gets, or two identically-displayed "?" rows would order inconsistently (review G1).
+        // The numeric packed address value for sorting (B4); unaddressed/unparseable sorts first (A7). The sort key
+        // is decided by the SAME parse the display goes through, so the two can never disagree: whatever
+        // AddressLabel renders as "?" gets the -1 key an absent token gets, ties keeping document order. Deciding
+        // it independently is what broke twice — an explicit "_0x0" sorted as 0 rather than unaddressed (review
+        // G1), and a token too wide for the label's int parse still parsed as a long here, so it displayed "?" and
+        // sorted after every real address (review G10).
         private static long SortValue(ProjectElement terminal)
         {
-            long value = HexToken.ParseValueOrDefault(terminal.GetAttribute("address_dataline"), -1);
-            return value <= 0 ? -1 : value;
+            string? token = terminal.GetAttribute("address_dataline");
+            return DatalineAddress.TryParse(token, terminal.Tag == "dataline_output", out _)
+                ? HexToken.ParseValueOrDefault(token, -1)
+                : -1;
         }
     }
 }

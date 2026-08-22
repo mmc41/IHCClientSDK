@@ -243,11 +243,17 @@ Fejl i dokumentation
   Køkken                Temperatur sensor med logning                                     Mangler Kabeltype
   Køkken                Temperatur sensor med logning                                     Mangler Kabelnummer
   Køkken                Temperatur sensor med logning                                     Mangler Placering
+  Køkken                Temperatur sensor med logning        Temperatur sensor indgang    Ikke forbundet
+  Køkken                Temperatur sensor med logning        Temperatur sensor indgang    Mangler Ledningsfarve
+  Køkken                Temperatur sensor med logning        Temperatur sensor indgang    Mangler Adresse
   Køkken                Lux / Temperatur sensor med logning                               Mangler Id-kode
   Køkken                Lux / Temperatur sensor med logning                               Mangler Lysgruppe
   Køkken                Lux / Temperatur sensor med logning                               Mangler Kabeltype
   Køkken                Lux / Temperatur sensor med logning                               Mangler Kabelnummer
   Køkken                Lux / Temperatur sensor med logning                               Mangler Placering
+  Køkken                Lux / Temperatur sensor med logning  Lux / Temperatur sensor      Ikke forbundet
+  Køkken                Lux / Temperatur sensor med logning  Lux / Temperatur sensor      Mangler Ledningsfarve
+  Køkken                Lux / Temperatur sensor med logning  Lux / Temperatur sensor      Mangler Adresse
   Soveværelse           Dimmer touch                                                      Mangler Id-kode
   Soveværelse           Dimmer touch                                                      Mangler Lysgruppe
   Soveværelse           Dimmer touch                                                      Mangler Kabeltype

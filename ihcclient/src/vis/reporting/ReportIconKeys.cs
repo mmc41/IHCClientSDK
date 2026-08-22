@@ -47,6 +47,16 @@ namespace Ihc.Vis.Reporting
             ["resource_floating_point"] = "var-decimal",
             ["resource_temperature"] = "var-temperature",
             ["resource_light_level"] = "var-light-level",
+            // The register-C1 types (Full mode only). Their keys are the ones icon_codes.md §3a/§3b already
+            // assigns, and every one already has a default stand-in and an app SVG — the four energy types
+            // deliberately SHARE var-energy, because the value's unit column is what distinguishes them.
+            ["resource_holiday"] = "var-holiday",
+            ["resource_humidity_level"] = "var-humidity",
+            ["resource_light"] = "var-illuminance",
+            ["kW"] = "var-energy",
+            ["kWh"] = "var-energy",
+            ["W"] = "var-energy",
+            ["Wh"] = "var-energy",
         }.ToFrozenDictionary(StringComparer.Ordinal);
 
         /// <summary>The icon key for a report-rendered element, or null when the type has none.</summary>

@@ -39,9 +39,16 @@ Dækker æøåÆØÅ i en funktionsbloknote.
   ≣7 Ugedag             = fredag
  ⚙  Interne variable
   ⚑ Flag                = On
+  ☂ Helligdag           = On
   ℃ Temperatur          = 21.50 C
+  RH Fugt               = 45.00%
+  ☼ Lys                 = 300 Lux
   ☼% Lysniveau          = 75%
   0.0 Kommatal          = 3.14
+  ↯ kW                  = 1.25 kW
+  ↯ kWh                 = 250.00 kWh
+  ↯ W                   = 900.00 W
+  ↯ Wh                  = 1500.00 Wh
  ↳◆ Programmer
   ◆ Program
    !! Hændelser
@@ -174,14 +181,15 @@ Tom blok (ID _0xfa28)
 ------------------------------------------------------------------------------
 Fejl i dokumentation
 
-  Lokalitet  Produkt                              Terminal                Fejl
-  ---------  -----------------------------------  ----------------------  ---------------------
-  Stue       LK FUGA Tryk 4 tast 2 dioder                                 Mangler Id-kode
-  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst venstre)  Mangler Ledningsfarve
-  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)    Ikke forbundet
-  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)    Mangler Ledningsfarve
-  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)    Mangler Adresse
-  Stue       Egen kontakt & "test"                                        Mangler Kabeltype
-  Stue       Egen kontakt & "test"                                        Mangler Kabelnummer
-  Stue       Lux / Temperatur sensor med logning                          Mangler Lysgruppe
-  Stue       Lux / Temperatur sensor med logning                          Mangler Placering
+  Lokalitet  Produkt                              Terminal                 Fejl
+  ---------  -----------------------------------  -----------------------  ---------------------
+  Stue       LK FUGA Tryk 4 tast 2 dioder                                  Mangler Id-kode
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst venstre)   Mangler Ledningsfarve
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)     Ikke forbundet
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)     Mangler Ledningsfarve
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)     Mangler Adresse
+  Stue       Egen kontakt & "test"                                         Mangler Kabeltype
+  Stue       Egen kontakt & "test"                                         Mangler Kabelnummer
+  Stue       Lux / Temperatur sensor med logning                           Mangler Lysgruppe
+  Stue       Lux / Temperatur sensor med logning                           Mangler Placering
+  Stue       Lux / Temperatur sensor med logning  Lux / Temperatur sensor  Ikke forbundet

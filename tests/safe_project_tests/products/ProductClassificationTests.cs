@@ -6,8 +6,9 @@ namespace Ihc.Vis.Tests
     /// <summary>
     /// US-012/013/014: the shared SDK product classifier. The known catalog families classify exactly; the
     /// open-world predicates route undocumented tags for the UI (airlink-before-modem precedence); and — the
-    /// Finding-5 correction — an open-world tag the predicates recognise still never leaks into a closed-set
-    /// installation-report section.
+    /// Finding-5 correction, as amended by RL-2c/G7 — an open-world tag the predicates recognise is
+    /// documented by the installation report, yet never inherits a known family's fields or its closed
+    /// special-products section.
     /// </summary>
     public class ProductClassificationTests
     {
@@ -65,10 +66,18 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        // ----- No-leak: an open-world tag the predicates admit never reaches a closed-set report section -----
+        // ----- An open-world tag the predicates admit is documented, but never inherits another family -----
 
+        /// <summary>
+        /// Since RL-2c (finding G7) an unrecognised product root IS documented — as a generic component block
+        /// of the three shared rows. What stays closed is which FAMILY's fields a root can be given: the
+        /// classifier's substring notion of "modem"/"airlink" is an open-world UI convenience, and it must
+        /// never hand a rogue root the modem's four wire-colour rows, nor hoist it into the closed
+        /// "Specielle Produkter" table. Before RL-2c that separation was kept by excluding such roots from
+        /// the report entirely; it is now kept by the generic block carrying no family rows at all.
+        /// </summary>
         [Test]
-        public async System.Threading.Tasks.Task Report_ClosedSectionMembership_ExcludesOpenWorldTags()
+        public async System.Threading.Tasks.Task Report_OpenWorldRoots_AreDocumented_ButNeverInheritAFamily()
         {
             ProjectElement openModem = Element("product_x_modem", ("name", "Rogue modem"));
             ProjectElement openAirlink = Element("product_x_airlink", ("name", "Rogue airlink"));
@@ -86,9 +95,13 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                // Membership stayed closed: the open-world products entered no report section.
-                Assert.That(report, Does.Not.Contain("Rogue modem").And.Not.Contain("Rogue airlink"));
-                // ...yet the UI-facing predicates DO recognise them.
+                // RL-2c: both are documented, as generic component blocks.
+                Assert.That(report, Does.Contain("Rogue modem").And.Contain("Rogue airlink"));
+                // ...with no family's fields — those two labels appear only as component-block field rows.
+                Assert.That(report, Does.Not.Contain("Identifikationskode").And.Not.Contain("Serie nummer"));
+                // ...and neither hoists into the closed special-products table, though the UI-facing
+                // predicate does call one of them a modem.
+                Assert.That(ReportProbe.TableRowCount(report, "Specielle Produkter"), Is.Zero);
                 Assert.That(ProductClassifier.IsModem("product_x_modem"), Is.True);
                 Assert.That(ProductClassifier.IsWireless("product_x_airlink"), Is.True);
             });

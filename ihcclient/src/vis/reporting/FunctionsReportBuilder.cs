@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.Linq;
 
 using Ihc.Vis.Model;
+using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 
 namespace Ihc.Vis.Reporting
@@ -12,9 +13,9 @@ namespace Ihc.Vis.Reporting
     /// <summary>
     /// Builds the "Funktionsdokumentation" (functions / end-user) report as a shape document (spec R4):
     /// every locality as a top-level tree section in document order (U5 — nested localities flatten), its
-    /// end-user-flagged dataline/airlink products (A4; descendant scope with locality = nearest ancestor
-    /// group, U12), each product's terminals — dataline inputs before outputs regardless of document order
-    /// (A6), airlink inputs — and under each terminal one note row per wired link, the note read from the
+    /// end-user-flagged product roots (A4; descendant scope with locality = nearest ancestor group, U12),
+    /// each product's terminals located by descent — dataline inputs before outputs regardless of document
+    /// order (A6), airlink inputs — and under each terminal one note row per wired link, the note read from the
     /// far half's FB pin (A5). A dangling link emits nothing; an empty note still emits its row (U2). Rows
     /// carry the Full-only id chips and the differing-locality note suffix (name EQUALITY, B9) — the mode
     /// filter strips both for Standard.
@@ -26,7 +27,7 @@ namespace Ihc.Vis.Reporting
         public static ReportShapeDocument Build(Project project, DateTimeOffset generatedAt)
         {
             ArgumentNullException.ThrowIfNull(project);
-            var index = new TreeIndex(project.Root);
+            var index = new TreeIndex(project);
             var rows = ImmutableArray.CreateBuilder<ReportTreeRow>();
 
             foreach (ProjectElement locality in TreeIndex.Localities(project))
@@ -40,7 +41,10 @@ namespace Ihc.Vis.Reporting
                         product.GetAttribute("id")));
                     foreach (ProjectElement terminal in Terminals(product))
                     {
-                        rows.Add(new PlainTreeRow(2, Name(terminal), terminal.GetAttribute("id")));
+                        rows.Add(new PlainTreeRow(2, Name(terminal), terminal.GetAttribute("id"))
+                        {
+                            Membership = TerminalMembership(terminal.Tag),
+                        });
                         AddNoteRows(terminal, Name(locality), index, rows);
                     }
                 }
@@ -54,8 +58,8 @@ namespace Ihc.Vis.Reporting
             return new ReportShapeDocument(Title, shapes.ToImmutable());
         }
 
-        // A4 + U12: end-user-flagged dataline/airlink products anywhere under the locality whose NEAREST
-        // ancestor group is this locality — a nested group's subtree belongs to that nested locality.
+        // A4 + U12: end-user-flagged product roots anywhere under the locality whose NEAREST ancestor group
+        // is this locality — a nested group's subtree belongs to that nested locality.
         private static IEnumerable<ProjectElement> EndUserProducts(Project project, ProjectElement locality)
         {
             foreach (ProjectElement child in locality.Children)
@@ -64,7 +68,10 @@ namespace Ihc.Vis.Reporting
                 {
                     continue;   // its own top-level locality (U5/U12 nearest-ancestor scope)
                 }
-                if (child.Tag is "product_dataline" or "product_airlink" && project.View(child).EnduserReport)
+                // Admission is by product ROOT, through the shared classifier — not an exact two-tag match,
+                // which refused a flagged open-world product outright even though the installation report
+                // documented its terminals in full (review G7(b)).
+                if (ProductClassifier.IsProduct(child.Tag) && project.View(child).EnduserReport)
                 {
                     yield return child;
                 }
@@ -76,13 +83,36 @@ namespace Ihc.Vis.Reporting
         }
 
         // A6: dataline inputs always precede outputs; airlink products list their inputs (vendor scope).
+        // Located by DESCENT (U8) — the same way the installation report locates them. Reading only the
+        // direct children made the two reports answer differently about one tree: the vendor's own sensor
+        // products nest their terminals inside a settings container, so the installation report documented a
+        // terminal the end-user report silently dropped (review G6).
+        // Which KIND of terminal a product carries is decided by the same classifier that admits it, for the
+        // same reason: an exact `product_airlink` match would render a flagged open-world wireless product as
+        // a bare name with no children — moving G7(b)'s contradiction one level down instead of closing it.
         private static IEnumerable<ProjectElement> Terminals(ProjectElement product)
         {
-            ImmutableArray<ProjectElement> children = product.Children.AsImmutableArray();
-            return product.Tag == "product_airlink"
-                ? children.Where(c => c.Tag == "airlink_input")
-                : children.Where(c => c.Tag == "dataline_input").Concat(children.Where(c => c.Tag == "dataline_output"));
+            IReadOnlyList<ProjectElement> descendants = product.Descendants();
+            return ProductClassifier.IsWireless(product.Tag)
+                ? descendants.Where(c => c.Tag.StartsWith(AirlinkTerminalPrefix, StringComparison.Ordinal))
+                : descendants.Where(c => c.Tag == "dataline_input").Concat(descendants.Where(c => c.Tag == "dataline_output"));
         }
+
+        /// <summary>The tag prefix every wireless terminal kind shares (input, relay, dimming, the dimmer
+        /// pair and the three shutter controls) — an open set, so it is matched by prefix rather than by a
+        /// list that a new catalog family would silently fall out of.</summary>
+        private const string AirlinkTerminalPrefix = "airlink_";
+
+        /// <summary>
+        /// Which mode a terminal row belongs to. Standard is the vendor-parity surface (C-3) and the vendor's
+        /// end-user report listed only the airlink INPUTS, so every other wireless terminal kind is content
+        /// the vendor loses and lands in Full alone (RL-3). Their note rows follow at greater depth and need
+        /// no tag of their own — <see cref="ReportModeFilter"/> drops a Full-only row with its whole subtree.
+        /// </summary>
+        private static ReportMembership TerminalMembership(string tag) =>
+            tag.StartsWith(AirlinkTerminalPrefix, StringComparison.Ordinal) && tag != "airlink_input"
+                ? ReportMembership.FullOnly
+                : ReportMembership.Common;
 
         // A5/U2/B9: one note row per wired link, note = the far half's FB pin @note; dangling link → no row;
         // empty note → row with empty text. The Full-only suffix is the linked FB's locality name when it

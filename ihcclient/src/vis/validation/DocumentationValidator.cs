@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
@@ -10,9 +11,11 @@ using Ihc.Vis.Schema;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The eight US-072 documentation-completeness checks (R10): per locality → wired dataline product →
-    /// terminal, one <see cref="ValidationCategory.Documentation"/> finding per missing/blank documentation
-    /// item. Five product-level checks (Id-kode, Lysgruppe, Kabeltype, Kabelnummer, Placering) and three
+    /// The eight US-072 documentation-completeness checks (R10): every wired dataline product under the
+    /// project's localities and every terminal beneath it — reached by DESCENT, the same scope the report
+    /// bodies use (U5/U8/U12), so the appendix that lists the documentation errors cannot omit ones the body
+    /// documents in full. One <see cref="ValidationCategory.Documentation"/> finding per missing/blank
+    /// documentation item. Five product-level checks (Id-kode, Lysgruppe, Kabeltype, Kabelnummer, Placering) and three
     /// terminal-level checks (not linked, Ledningsfarve, unparseable data-line address), each with a stable
     /// kebab-case rule id and its fixed Danish label as the message. All findings carry
     /// <see cref="ValidationSeverity.Warning"/> — documentation gaps are advisory and never block a
@@ -41,34 +44,45 @@ namespace Ihc.Vis.Validation
                     { Category = ValidationCategory.Documentation },
                     subject));
 
-            foreach (ProjectElement group in project.Groups)
+            foreach (ProjectElement product in DatalineProducts(project))
             {
-                foreach (ProjectElement product in group.Children.Where(c => c.Tag == "product_dataline"))
+                void Product(string attribute, string ruleId, string label)
                 {
-                    void Product(string attribute, string ruleId, string label)
-                    {
-                        if (Blank(product, attribute)) { Add(ruleId, product, label); }
-                    }
-                    Product("documentation_tag", "doc-documentation-tag", "Mangler Id-kode");
-                    Product("power_group", "doc-power-group", "Mangler Lysgruppe");
-                    Product("cabletype", "doc-cabletype", "Mangler Kabeltype");
-                    Product("cablenumber", "doc-cablenumber", "Mangler Kabelnummer");
-                    Product("position", "doc-position", "Mangler Placering");
+                    if (Blank(product, attribute)) { Add(ruleId, product, label); }
+                }
+                Product("documentation_tag", "doc-documentation-tag", "Mangler Id-kode");
+                Product("power_group", "doc-power-group", "Mangler Lysgruppe");
+                Product("cabletype", "doc-cabletype", "Mangler Kabeltype");
+                Product("cablenumber", "doc-cablenumber", "Mangler Kabelnummer");
+                Product("position", "doc-position", "Mangler Placering");
 
-                    foreach (ProjectElement terminal in product.Children.Where(c => c.Tag is "dataline_input" or "dataline_output"))
+                foreach (ProjectElement terminal in product.Descendants()
+                    .Where(c => c.Tag is "dataline_input" or "dataline_output"))
+                {
+                    bool linked = terminal.Children.Any(c => c.Tag is ReciprocalTags.FollowLinkFromTag or ReciprocalTags.FollowLinkToTag);
+                    if (!linked) { Add("doc-not-linked", terminal, "Ikke forbundet"); }
+                    if (Blank(terminal, "cable_colour")) { Add("doc-cable-colour", terminal, "Mangler Ledningsfarve"); }
+                    if (!DatalineAddress.TryParse(terminal.GetAttribute("address_dataline"), terminal.Tag == "dataline_output", out _))
                     {
-                        bool linked = terminal.Children.Any(c => c.Tag is ReciprocalTags.FollowLinkFromTag or ReciprocalTags.FollowLinkToTag);
-                        if (!linked) { Add("doc-not-linked", terminal, "Ikke forbundet"); }
-                        if (Blank(terminal, "cable_colour")) { Add("doc-cable-colour", terminal, "Mangler Ledningsfarve"); }
-                        if (!DatalineAddress.TryParse(terminal.GetAttribute("address_dataline"), terminal.Tag == "dataline_output", out _))
-                        {
-                            Add("doc-address", terminal, "Mangler Adresse");
-                        }
+                        Add("doc-address", terminal, "Mangler Adresse");
                     }
                 }
             }
             return findings.ToImmutable();
         }
+
+        /// <summary>
+        /// Every wired dataline product under the project's localities, in document order. This is the report
+        /// BODY's scope, which the checks used to undercut on both axes: only top-level groups counted as
+        /// localities (U5 flattens nested ones) and only a group's DIRECT product children were visited (U8/U12
+        /// reach a product by descent). A single descendant scan visits each product exactly once — what
+        /// per-locality iteration achieves only by nearest-group ownership — and its order is document order,
+        /// which is this validator's pinned finding order.
+        /// </summary>
+        private static IEnumerable<ProjectElement> DatalineProducts(Project project) =>
+            project.Child("groups") is { } groups
+                ? groups.Descendants().Where(e => e.Tag == "product_dataline")
+                : Enumerable.Empty<ProjectElement>();
 
         private static bool Blank(ProjectElement element, string attribute) =>
             string.IsNullOrWhiteSpace(element.GetAttribute(attribute));

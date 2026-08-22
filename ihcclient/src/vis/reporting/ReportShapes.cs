@@ -35,8 +35,21 @@ namespace Ihc.Vis.Reporting
     internal sealed record TreeShape(ImmutableArray<ReportTreeRow> Rows)
         : ReportShape(ReportMembership.Common);
 
-    /// <summary>One row of a <see cref="TreeShape"/>. <see cref="Depth"/> is 0-based.</summary>
-    internal abstract record ReportTreeRow(int Depth);
+    /// <summary>
+    /// One row of a <see cref="TreeShape"/> (or of a <see cref="FbBlockShape"/>'s icon tree).
+    /// <see cref="Depth"/> is 0-based.
+    /// <para><see cref="Membership"/> carries mode at ROW level, so a mode can add rows and not merely
+    /// strip fields — it defaults to <see cref="ReportMembership.Common"/>, so a builder says nothing
+    /// unless it means to. <see cref="ReportModeFilter"/> is still the only reader; the writers never see
+    /// it. Marking a row <see cref="ReportMembership.FullOnly"/> drops its whole SUBTREE in Standard, which
+    /// is a contract and not an optimisation: rows are depth-encoded and the HTML writer's forest builder
+    /// consumes only rows at exactly the depth it is reading, so a surviving child of a dropped parent
+    /// would silently truncate the rest of the block.</para>
+    /// </summary>
+    internal abstract record ReportTreeRow(int Depth)
+    {
+        public ReportMembership Membership { get; init; } = ReportMembership.Common;
+    }
 
     /// <summary>
     /// A row whose name is emphasized (HTML <c>span.name</c>): localities and products. <see cref="Detail"/>

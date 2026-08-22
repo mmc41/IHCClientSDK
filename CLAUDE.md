@@ -277,9 +277,9 @@ Before running any code that connects to an IHC controller:
 
 Oracle fixtures live in `tests/testdata/` and are shared by `safe_project_tests`, `safe_unit_tests` and `safe_visual_tests`:
 
-- `projects/` — `.vis` project oracles (byte-fidelity round-trip targets, editing/mutation replay baselines)
-- `products/` — product catalog `.def` oracles
-- `functionblocks/` — function-block `.ifb` oracles
+- `projects/` — `.vis` project oracles (byte-fidelity round-trip targets, editing/mutation replay baselines). These are authentic and produce by orginal vendor software, unless marked specificly as synthetic. Never edit a VIS project oracle.
+- `products/` — product catalog `.def` oracles. Mostly synthetic.
+- `functionblocks/` — function-block `.ifb` oracles. Mostly synthetic.
 - `reports/` — report-format oracles for the documentation reports (`std-*`/`full-*` per report kind and mode, as `.html` pages pinning the OpenVisual SVG-icon output and `.txt` companions pinning the default unicode-stand-in output; all 24 regenerate byte-identically through `ProjectAppService.GenerateReport` in the E2E suites)
 
 Each consuming suite imports `tests/TestData.props`, which copies them to `$(OutDir)/testdata/...`; reach them via `TestContext.CurrentContext.TestDirectory` (the `TestData` helper), never by walking up into the source checkout. A suite that needs oracles adds that one `<Import>` line — do not add per-file `<None Link=...>` copies or new path-discovery helpers. The report fixtures are LF+UTF-8; treat all oracles as byte-exact references — regenerate by script, never retype.
@@ -409,3 +409,6 @@ var labAppService = A.Fake<LabAppService>(); // WRONG!
 ```
 
 See `tests/safe_lab_tests/README.md` for detailed test infrastructure documentation.
+
+**IMPORTANT: Use of git**
+Git is controlled by the user. Treat git as readonly - do not commit or push things to git, do not stash things, do not change git state/branch.

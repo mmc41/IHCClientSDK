@@ -60,9 +60,14 @@ namespace Ihc.Vis.Reporting
             var rows = ImmutableArray.CreateBuilder<ImmutableArray<ReportCell>>();
             foreach ((ProjectValidationFinding finding, ProjectElement subject) in DocumentationValidator.CheckWithSubjects(project))
             {
+                // Resolved by ANCESTRY, not by immediate parent: a terminal's product may be a container or
+                // two above it (the vendor's sensors nest their terminals inside a settings container), and a
+                // product's locality may be a nested group. Reading the immediate parent printed that
+                // container as the Produkt and the real product as the Lokalitet — a wrong row, which is worse
+                // than the missing one the narrow validator scope used to produce.
                 bool terminalLevel = subject.Tag is "dataline_input" or "dataline_output";
-                ProjectElement? product = terminalLevel ? index.Parent(subject) : subject;
-                ProjectElement? locality = product is null ? null : index.Parent(product);
+                ProjectElement? product = terminalLevel ? index.NearestProduct(subject) : subject;
+                ProjectElement? locality = product is null ? null : index.NearestAncestorOrSelf(product, "group");
                 rows.Add(ImmutableArray.Create<ReportCell>(
                     ReportText.SingleLine(locality?.GetAttribute("name")),
                     ReportText.SingleLine(product?.GetAttribute("name")),

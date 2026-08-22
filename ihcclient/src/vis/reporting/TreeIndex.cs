@@ -11,17 +11,28 @@ using Ihc.Vis.Schema;
 namespace Ihc.Vis.Reporting
 {
     /// <summary>
-    /// The tree navigation the report builders share: parent pointers, id resolution and ancestor walks over
-    /// an immutable project tree (which has no parent links), built once per report, plus the locality (U5/U12)
-    /// and terminal-link (A5/U2) queries every report kind asks the same way. Keyed by reference so distinct
-    /// nodes never collide.
+    /// The per-report project context the builders share: parent pointers, id resolution and ancestor walks
+    /// over an immutable project tree (which has no parent links), built once per report, plus the locality
+    /// (U5/U12) and terminal-link (A5/U2) queries every report kind asks the same way. Keyed by reference so
+    /// distinct nodes never collide. It carries the <see cref="Projects.Project"/> itself because attribute
+    /// DEFAULTS live on the project's schema, not on the context-free element — so a builder needing an
+    /// effective read (the A11 value formats) has one context object to reach for, not two parameters
+    /// threaded through every private helper.
     /// </summary>
     internal sealed class TreeIndex
     {
         private readonly Dictionary<ProjectElement, ProjectElement> parents = new(ReferenceEqualityComparer.Instance);
         private readonly Dictionary<string, ProjectElement> byId = new(StringComparer.Ordinal);
 
-        public TreeIndex(ProjectElement root) => Walk(root);
+        public TreeIndex(Project project)
+        {
+            Project = project;
+            Walk(project.Root);
+        }
+
+        /// <summary>The project this index was built over — the handle an effective (schema-defaulted)
+        /// attribute read resolves through.</summary>
+        public Project Project { get; }
 
         private void Walk(ProjectElement element)
         {

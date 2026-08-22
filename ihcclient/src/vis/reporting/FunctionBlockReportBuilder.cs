@@ -27,14 +27,31 @@ namespace Ihc.Vis.Reporting
     {
         private static readonly string Title = ReportTitles.For(ReportKind.FunctionBlocks);
 
-        // The vendor-scope variable types the settings/internalsettings sections render (staleness gaps —
-        // holiday/humidity/lux/energy — stay omitted in Standard; register C owns their future).
-        private static readonly FrozenSet<string> VariableTags = new[]
+        // The variable types the VENDOR's own report showed — Standard's parity surface (C-3).
+        private static readonly FrozenSet<string> CommonVariableTags = new[]
         {
             "resource_timer", "resource_time", "resource_timertime", "resource_counter", "resource_integer",
             "resource_enum", "resource_date", "resource_weekday", "resource_flag", "resource_temperature",
             "resource_light_level", "resource_floating_point",
         }.ToFrozenSet(StringComparer.Ordinal);
+
+        /// <summary>
+        /// The register-C1 variable types: real variables the vendor's report simply never listed, so a block
+        /// declaring them documented fewer variables than it has. They render in FULL mode only (RL-4) —
+        /// adding them to Standard would break the "same content as the vendor" contract.
+        /// <para>Note the four energy types are UPPERCASE element tags naming their own unit, not
+        /// <c>resource_*</c> names; a lowercase-anchored scan of the schema misses them and understates this
+        /// as a three-type gap.</para>
+        /// </summary>
+        private static readonly FrozenSet<string> FullOnlyVariableTags = new[]
+        {
+            "resource_holiday", "resource_humidity_level", "resource_light", "kW", "kWh", "W", "Wh",
+        }.ToFrozenSet(StringComparer.Ordinal);
+
+        // Every type the variable sections render, in either mode. Declared after both so the union is built
+        // from initialized sets.
+        private static readonly FrozenSet<string> VariableTags =
+            CommonVariableTags.Concat(FullOnlyVariableTags).ToFrozenSet(StringComparer.Ordinal);
 
         private static readonly FrozenSet<string> PinTags =
             new[] { "resource_input", "resource_output", "resource_scene" }.ToFrozenSet(StringComparer.Ordinal);
@@ -65,14 +82,14 @@ namespace Ihc.Vis.Reporting
         public static ReportShapeDocument Build(Project project, DateTimeOffset generatedAt)
         {
             ArgumentNullException.ThrowIfNull(project);
-            var index = new TreeIndex(project.Root);
+            var index = new TreeIndex(project);
 
             var shapes = ImmutableArray.CreateBuilder<ReportShape>();
             shapes.Add(FullModeShapes.MetaLine(project, generatedAt));
             shapes.Add(FullModeShapes.ProjektBlock(project));
             foreach (ProjectElement locality in TreeIndex.Localities(project))
             {
-                foreach (ProjectElement block in locality.Children.Where(c => c.Tag == "functionblock"))
+                foreach (ProjectElement block in FunctionBlocks(locality))
                 {
                     shapes.Add(BuildBlock(project, block, index));
                 }
@@ -80,6 +97,30 @@ namespace Ihc.Vis.Reporting
             shapes.AddRange(FullModeShapes.FindingsAppendix(project, index));
             // The FB report's first shape sits directly under the h1 with no blank separator.
             return new ReportShapeDocument(Title, shapes.ToImmutable(), TitleHugsFirstShape: true);
+        }
+
+        // U5/U12: the function blocks anywhere under the locality whose NEAREST ancestor group is this
+        // locality — a nested group's subtree belongs to that nested locality, which is already its own
+        // top-level locality here. Scanning only the locality's direct children dropped a block one
+        // container deeper entirely, with no warning (review G8); scanning plain descent instead would list
+        // a nested locality's block twice, once under each ancestor locality (CL-7).
+        private static IEnumerable<ProjectElement> FunctionBlocks(ProjectElement locality)
+        {
+            foreach (ProjectElement child in locality.Children)
+            {
+                if (child.Tag == "group")
+                {
+                    continue;
+                }
+                if (child.Tag == "functionblock")
+                {
+                    yield return child;
+                }
+                foreach (ProjectElement nested in FunctionBlocks(child))
+                {
+                    yield return nested;
+                }
+            }
         }
 
         private static FbBlockShape BuildBlock(Project project, ProjectElement block, TreeIndex index)
@@ -110,7 +151,13 @@ namespace Ihc.Vis.Reporting
                     foreach (ProjectElement child in section.Children
                         .Where(c => PinTags.Contains(c.Tag) || VariableTags.Contains(c.Tag)))
                     {
-                        rows.Add(Row(child, 1, index, value: variables ? FormatValue(child, index) : null));
+                        rows.Add(Row(child, 1, index, value: variables ? FormatValue(child, index) : null)
+                            with
+                            {
+                                Membership = FullOnlyVariableTags.Contains(child.Tag)
+                                    ? ReportMembership.FullOnly
+                                    : ReportMembership.Common,
+                            });
                     }
                 }
             }
@@ -318,23 +365,46 @@ namespace Ihc.Vis.Reporting
             return operand;
         }
 
-        // A11 value formats (B1: the REAL month), keyed by variable type.
-        private static string? FormatValue(ProjectElement variable, TreeIndex index) => variable.Tag switch
+        /// <summary>
+        /// A11 value formats (B1: the REAL month), keyed by variable type — or <c>null</c> when the type has no
+        /// value to show, which suppresses the writer's <c>= </c> instead of leaving a bare equals sign with
+        /// nothing after it (review G11: an enum whose <c>inivalue</c> IDREF is the null token or dangling
+        /// formats to nothing, as does any type declaring no initial value at all).
+        /// <para>An absent stored value reads the type's own DTD default through the effective read (review
+        /// G12). The arms used to carry a literal copy of that default per type — correct against the schema
+        /// on the day it was written, and a silent duplicate of it thereafter; it also had no arm for a pin,
+        /// so a <c>resource_input</c>/<c>resource_output</c> placed in a settings section showed the
+        /// catch-all's fabricated "0" instead of its declared <c>off</c>.</para>
+        /// </summary>
+        private static string? FormatValue(ProjectElement variable, TreeIndex index)
         {
-            "resource_timer" or "resource_timertime" =>
-                $"{Int(variable, "hour"):00}:{Int(variable, "minute"):00}:{Int(variable, "second"):00},{Int(variable, "millisecond"):000}",
-            "resource_time" => $"{Int(variable, "hour"):00}:{Int(variable, "minute"):00}:{Int(variable, "second"):00}",
-            "resource_enum" => ReportText.Collapse(index.ById(variable.GetAttribute("inivalue"))?.GetAttribute("name")),
-            "resource_date" => Int(variable, "day").ToString(CultureInfo.InvariantCulture) + ". " + MonthName(variable),
-            "resource_weekday" => DanishWeekdays.TryGetValue(variable.GetAttribute("inivalue") ?? "monday", out string? day)
-                ? day
-                : ReportText.Collapse(variable.GetAttribute("inivalue")),
-            "resource_flag" or "resource_holiday" => variable.GetAttribute("inivalue") == "on" ? "On" : "Off",
-            "resource_temperature" => Ini(variable, "0.00") + " C",
-            "resource_light_level" => Ini(variable, "0") + "%",
-            "resource_floating_point" => Ini(variable, "0.00"),
-            _ => Ini(variable, "0"),
-        };
+            string initial = Initial(variable, index);
+            string text = variable.Tag switch
+            {
+                "resource_timer" or "resource_timertime" =>
+                    $"{Int(variable, "hour"):00}:{Int(variable, "minute"):00}:{Int(variable, "second"):00},{Int(variable, "millisecond"):000}",
+                "resource_time" => $"{Int(variable, "hour"):00}:{Int(variable, "minute"):00}:{Int(variable, "second"):00}",
+                "resource_enum" => ReportText.Collapse(index.ById(variable.GetAttribute("inivalue"))?.GetAttribute("name")),
+                "resource_date" => Int(variable, "day").ToString(CultureInfo.InvariantCulture) + ". " + MonthName(variable),
+                "resource_weekday" => DanishWeekdays.TryGetValue(initial, out string? day) ? day : initial,
+                "resource_flag" or "resource_holiday" => initial == "on" ? "On" : "Off",
+                "resource_temperature" => Unit(initial, " C"),
+                "resource_light_level" => Unit(initial, "%"),
+                // Relative humidity, per the catalog's own resource note "0-100% RH".
+                "resource_humidity_level" => Unit(initial, "%"),
+                // Illuminance, per the catalog's own resource note "0-60.000 Lux".
+                "resource_light" => Unit(initial, " Lux"),
+                // The energy element tags ARE their unit (kW / kWh / W / Wh) — which is why all four share
+                // one icon key: the unit column is what tells them apart.
+                "kW" or "kWh" or "W" or "Wh" => Unit(initial, " " + variable.Tag),
+                _ => initial,
+            };
+            return text.Length == 0 ? null : text;
+        }
+
+        /// <summary>A value with its unit suffix — and nothing at all when there is no value, so an
+        /// undeclared type never renders a bare unit.</summary>
+        private static string Unit(string value, string unit) => value.Length == 0 ? value : value + unit;
 
         private static string MonthName(ProjectElement date)
         {
@@ -344,10 +414,11 @@ namespace Ihc.Vis.Reporting
                 : ReportText.SingleLine(date.GetAttribute("month"));
         }
 
-        // The display default when a variable carries no inivalue — per-type ("0.00" for the decimal
-        // family, "0" otherwise), matching what the vendor renderer showed for untouched variables.
-        private static string Ini(ProjectElement variable, string absentDefault) =>
-            ReportText.Collapse(variable.GetAttribute("inivalue") ?? absentDefault);
+        // The variable's initial value, read EFFECTIVE: its own inivalue when stored, else the default its
+        // element type declares, else empty (a type declaring none has no initial value to show). The
+        // project's own inline DTD answers first, so an open-world type declares its own default too.
+        private static string Initial(ProjectElement variable, TreeIndex index) =>
+            ReportText.Collapse(index.Project.View(variable).InitialValue);
 
         private static int Int(ProjectElement element, string attribute) =>
             int.TryParse(element.GetAttribute(attribute), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value) ? value : 0;

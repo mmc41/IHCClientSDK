@@ -6,10 +6,11 @@ namespace Ihc.Vis.Reporting
 {
     /// <summary>
     /// Selects a mode's view of a full-tagged <see cref="ReportShapeDocument"/> (spec R4): Full passes the
-    /// document through untouched; Standard drops <see cref="ReportMembership.FullOnly"/> shapes, strips the
-    /// Full-only row FIELDS (the <c>(ID …)</c> chip and the note's locality suffix), and re-tags the layout
-    /// a stripped shape switches to. This is the single home of mode membership at render time — the writers
-    /// never see the mode.
+    /// document through untouched; Standard drops <see cref="ReportMembership.FullOnly"/> shapes AND
+    /// <see cref="ReportMembership.FullOnly"/> tree rows (each with its whole subtree), strips the Full-only
+    /// row FIELDS (the <c>(ID …)</c> chip and the note's locality suffix), and re-tags the layout a stripped
+    /// shape switches to. This is the single home of mode membership at render time — the writers never see
+    /// the mode.
     /// </summary>
     internal static class ReportModeFilter
     {
@@ -31,7 +32,7 @@ namespace Ihc.Vis.Reporting
 
         private static ReportShape StripFullOnlyFields(ReportShape shape) => shape switch
         {
-            TreeShape tree => tree with { Rows = tree.Rows.Select(StripRow).ToImmutableArray() },
+            TreeShape tree => tree with { Rows = SelectRows(tree.Rows) },
             KeyValueBlockShape block => block with { Rows = StripKeyValues(block.Rows) },
             TableShape table => StripTable(table),
             ComponentBlockShape component => component with
@@ -46,10 +47,39 @@ namespace Ihc.Vis.Reporting
                 // Without the identity grid the section joins the single-line run: the mode decision becomes
                 // an explicit layout property here, so the writers never infer it from the stripped content.
                 Standalone = false,
-                Rows = block.Rows.Select(StripRow).ToImmutableArray(),
+                Rows = SelectRows(block.Rows),
             },
             _ => shape,
         };
+
+        /// <summary>
+        /// Standard's view of a row list: the Full-only rows dropped, the survivors stripped of their
+        /// Full-only fields. A dropped row takes its whole SUBTREE with it — every following row of greater
+        /// depth. That is a contract, not an optimisation: rows are depth-encoded and the HTML writer's
+        /// forest builder consumes rows only while their depth equals the depth it is reading, so a
+        /// surviving child of a dropped parent would be an orphan it stops at, silently discarding the rest
+        /// of the block.
+        /// </summary>
+        private static ImmutableArray<ReportTreeRow> SelectRows(ImmutableArray<ReportTreeRow> rows)
+        {
+            var kept = ImmutableArray.CreateBuilder<ReportTreeRow>(rows.Length);
+            for (int at = 0; at < rows.Length; at++)
+            {
+                if (rows[at].Membership == ReportMembership.FullOnly)
+                {
+                    int depth = rows[at].Depth;
+                    while (at + 1 < rows.Length && rows[at + 1].Depth > depth)
+                    {
+                        at++;
+                    }
+                }
+                else
+                {
+                    kept.Add(StripRow(rows[at]));
+                }
+            }
+            return kept.ToImmutable();
+        }
 
         private static ReportTreeRow StripRow(ReportTreeRow row) => row switch
         {

@@ -29,6 +29,9 @@ Stue (ID _0x2132)
   Jalousi 2 tast (lokal lås) (ID _0x7154) I vindue, syd
     Tryk (venstre) (ID _0x745c)
     Tryk (højre) (ID _0x755c)
+    Lås (ID _0x7659)
+    Op (ID _0x7762)
+    Ned (ID _0x7863)
 Entré (ID _0x2232)
 Køkken (ID _0x2332)
 Soveværelse (ID _0x2432)
@@ -45,14 +48,15 @@ Tom lokalitet (ID _0x5332)
 ------------------------------------------------------------------------------
 Fejl i dokumentation
 
-  Lokalitet  Produkt                              Terminal                Fejl
-  ---------  -----------------------------------  ----------------------  ---------------------
-  Stue       LK FUGA Tryk 4 tast 2 dioder                                 Mangler Id-kode
-  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst venstre)  Mangler Ledningsfarve
-  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)    Ikke forbundet
-  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)    Mangler Ledningsfarve
-  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)    Mangler Adresse
-  Stue       Egen kontakt & "test"                                        Mangler Kabeltype
-  Stue       Egen kontakt & "test"                                        Mangler Kabelnummer
-  Stue       Lux / Temperatur sensor med logning                          Mangler Lysgruppe
-  Stue       Lux / Temperatur sensor med logning                          Mangler Placering
+  Lokalitet  Produkt                              Terminal                 Fejl
+  ---------  -----------------------------------  -----------------------  ---------------------
+  Stue       LK FUGA Tryk 4 tast 2 dioder                                  Mangler Id-kode
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst venstre)   Mangler Ledningsfarve
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)     Ikke forbundet
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)     Mangler Ledningsfarve
+  Stue       LK FUGA Tryk 4 tast 2 dioder         Tryk (nederst højre)     Mangler Adresse
+  Stue       Egen kontakt & "test"                                         Mangler Kabeltype
+  Stue       Egen kontakt & "test"                                         Mangler Kabelnummer
+  Stue       Lux / Temperatur sensor med logning                           Mangler Lysgruppe
+  Stue       Lux / Temperatur sensor med logning                           Mangler Placering
+  Stue       Lux / Temperatur sensor med logning  Lux / Temperatur sensor  Ikke forbundet

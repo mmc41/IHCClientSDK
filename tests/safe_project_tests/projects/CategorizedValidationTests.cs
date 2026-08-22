@@ -78,6 +78,11 @@ namespace Ihc.Vis.Tests
                 ("doc-cablenumber", "_0x6453", "Mangler Kabelnummer"),
                 ("doc-power-group", "_0x6653", "Mangler Lysgruppe"),
                 ("doc-position", "_0x6653", "Mangler Placering"),
+                // The sensor's own terminal, which sits inside its product's `settings` container: it is
+                // self-closed, hence unlinked. Reached only since the checks were widened to the report
+                // body's descent scope (RL-1/G5) — before that, a whole product family's terminals were
+                // silently exempt from every terminal-level check.
+                ("doc-not-linked", "_0x705a", "Ikke forbundet"),
             };
             Assert.Multiple(() =>
             {

@@ -110,13 +110,25 @@ namespace Ihc.Vis.Tests
                     ("var-weekday", "Ugedag", "fredag"),
                 }), "settings variables carry `= value` per the A11 type formats; B1 renders the REAL month");
                 Assert.That(rows.Skip(internals + 1).Take(programs - internals - 1)
-                        .Select(r => (r.IconKey, r.Name, r.Value)), Is.EqualTo(new[]
+                        .Select(r => (r.IconKey, r.Name, r.Value, r.Membership)), Is.EqualTo(new[]
                 {
-                    ("var-flag", "Flag", "On"),
-                    ("var-temperature", "Temperatur", "21.50 C"),
-                    ("var-light-level", "Lysniveau", "75%"),
-                    ("var-decimal", "Kommatal", "3.14"),
-                }), "internal variables filter to the vendor-scope types — holiday/humidity/lux/energy rows are omitted");
+                    ("var-flag", "Flag", "On", ReportMembership.Common),
+                    ("var-holiday", "Helligdag", "On", ReportMembership.FullOnly),
+                    ("var-temperature", "Temperatur", "21.50 C", ReportMembership.Common),
+                    ("var-humidity", "Fugt", "45.00%", ReportMembership.FullOnly),
+                    ("var-illuminance", "Lys", "300 Lux", ReportMembership.FullOnly),
+                    ("var-light-level", "Lysniveau", "75%", ReportMembership.Common),
+                    ("var-decimal", "Kommatal", "3.14", ReportMembership.Common),
+                    ("kW", "kW", "1.25 kW", ReportMembership.FullOnly),
+                    ("kWh", "kWh", "250.00 kWh", ReportMembership.FullOnly),
+                    ("W", "W", "900.00 W", ReportMembership.FullOnly),
+                    ("Wh", "Wh", "1500.00 Wh", ReportMembership.FullOnly),
+                }.Select(r => (r.Item1 == "kW" || r.Item1 == "kWh" || r.Item1 == "W" || r.Item1 == "Wh"
+                        ? "var-energy" : r.Item1, r.Item2, r.Item3, r.Item4))),
+                    "RL-4/G2: every declared variable renders — the register-C1 types (holiday, humidity, "
+                    + "illuminance, the four energy tags) tagged FullOnly so Standard keeps vendor parity. "
+                    + "Units come from the catalog's own resource notes (\"0-100% RH\", \"0-60.000 Lux\") and, "
+                    + "for the energy tags, from the tag itself — which is why all four share var-energy");
                 Assert.That(rows.Take(settings).Select(r => (r.IconKey, r.Name, r.Value, r.Note)), Is.EqualTo(new (string, string, string?, string?)[]
                 {
                     ("section-input", "Input", null, null),
