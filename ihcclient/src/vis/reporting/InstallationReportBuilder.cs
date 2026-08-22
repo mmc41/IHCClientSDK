@@ -30,11 +30,25 @@ namespace Ihc.Vis.Reporting
         private static readonly string Title = ReportTitles.For(ReportKind.Installation);
         private const string Unknown = "?";
 
+        /// <summary>Which grid, if any, a family's component block nests beneath its field rows. The locality
+        /// block is a fixed THREE-column layout (its colgroup plus <c>table-layout: fixed</c>), so each of these
+        /// carries three columns and no more; a family's complete field set belongs in a flat table.</summary>
+        private enum ComponentSubTable
+        {
+            None,
+
+            /// <summary>A9: the dataline product's descendant-scoped terminal grid.</summary>
+            Terminals,
+
+            /// <summary>The LED dimmer's channel grid (Full only — the vendor's report showed no channels).</summary>
+            Channels,
+        }
+
         /// <summary>What one product family contributes to the per-locality section (A8): the family-specific rows
-        /// after the three every block shares, whether it carries the terminal sub-table, and whether its blocks
-        /// hoist to the end of the section (U1, the modems).</summary>
+        /// after the three every block shares, which sub-table it nests, and whether its blocks hoist to the end
+        /// of the section (U1, the modems).</summary>
         private readonly record struct ComponentFamily(
-            ImmutableArray<(string Label, string Attribute)> Fields, bool Terminals, bool Hoisted);
+            ImmutableArray<(string Label, string Attribute)> Fields, ComponentSubTable SubTable, bool Hoisted);
 
         /// <summary>
         /// The component-block families, one row each, keyed on the EXACT device-root tag. The KNOWN families
@@ -53,15 +67,15 @@ namespace Ihc.Vis.Reporting
                     ("Identifikationskode", "documentation_tag"),
                     ("Kabelnummer", "cablenumber"),
                     ("Kabeltype", "cabletype"),
-                    ("Lysgruppe", "power_group")], Terminals: true, Hoisted: false),
+                    ("Lysgruppe", "power_group")], ComponentSubTable.Terminals, Hoisted: false),
                 ["product_airlink"] = new([
                     ("Identifikationskode", "documentation_tag"),
                     ("Serie nummer", "serialnumber"),
-                    ("Lysgruppe", "power_group")], Terminals: false, Hoisted: false),
+                    ("Lysgruppe", "power_group")], ComponentSubTable.None, Hoisted: false),
                 ["product_rs485_led_dimmer"] = new([
-                    ("Serie nummer", "serialnumber")], Terminals: false, Hoisted: false),
-                ["product_rs485_modem"] = new(ModemFields, Terminals: false, Hoisted: true),
-                ["product_rs485_sms_modem"] = new(ModemFields, Terminals: false, Hoisted: true),
+                    ("Serie nummer", "serialnumber")], ComponentSubTable.Channels, Hoisted: false),
+                ["product_rs485_modem"] = new(ModemFields, ComponentSubTable.None, Hoisted: true),
+                ["product_rs485_sms_modem"] = new(ModemFields, ComponentSubTable.None, Hoisted: true),
             }.ToFrozenDictionary(StringComparer.Ordinal);
 
         private static ImmutableArray<(string Label, string Attribute)> ModemFields =>
@@ -86,7 +100,7 @@ namespace Ihc.Vis.Reporting
         /// cross-reference carrying this product's own metadata, so leaving the product itself undocumented was
         /// the contradiction, not the fix (review G7).
         /// </summary>
-        private static ComponentFamily GenericComponent => new([], Terminals: true, Hoisted: false);
+        private static ComponentFamily GenericComponent => new([], ComponentSubTable.Terminals, Hoisted: false);
 
         /// <summary>The family's block contribution, or null when this tag renders no locality component block.</summary>
         private static ComponentFamily? BlockFamily(string tag) =>
@@ -122,6 +136,7 @@ namespace Ihc.Vis.Reporting
             shapes.Add(S0DeviceTable(all, index));
 
             shapes.AddRange(TerminalConnections(all, index));
+            shapes.AddRange(ChannelsAndMeters(all, index));
             shapes.AddRange(FullModeShapes.FindingsAppendix(project, index));
             return new ReportShapeDocument(Title, shapes.ToImmutable());
         }
@@ -172,8 +187,12 @@ namespace Ihc.Vis.Reporting
             {
                 fields.Add(new KeyValueRow(label, ReportText.Display(product.GetAttribute(attribute))));
             }
-            return new ComponentBlockShape(fields.ToImmutable(),
-                family.Terminals ? TerminalSubTable(product) : null);
+            return new ComponentBlockShape(fields.ToImmutable(), family.SubTable switch
+            {
+                ComponentSubTable.Terminals => TerminalSubTable(product),
+                ComponentSubTable.Channels => ChannelSubTable(product),
+                _ => null,
+            });
         }
 
         // A9: the dataline terminal sub-table is descendant-scoped and UNSORTED (document order).
@@ -190,6 +209,77 @@ namespace Ihc.Vis.Reporting
                 ? null
                 : new TableShape(Heading: null, ImmutableArray.Create("Terminal", "Adresse", "Ledning"), rows,
                     TableStyle.Plain, ReportMembership.Common);
+        }
+
+        /// <summary>
+        /// The LED dimmer's channel grid, nested in its component block on the same terms as a dataline
+        /// product's terminal grid — the same compact-then-complete pairing this report already uses for
+        /// terminals. The locality block holds three columns, so the two fields that do not fit
+        /// (Id-kode, Lysgruppe) live in the "Kanaler og målere" section instead. A channel with nothing
+        /// stored is still listed, rendering the A1 <c>--</c> placeholders: a reader has to be able to see
+        /// that the dimmer has channels nobody documented. Full mode only — the vendor's report showed no
+        /// channels at all (review G4).
+        /// </summary>
+        private static TableShape? ChannelSubTable(ProjectElement product)
+        {
+            ImmutableArray<ImmutableArray<ReportCell>> rows = Channels(product)
+                .Select(channel => ImmutableArray.Create<ReportCell>(
+                    new ReportCell(ReportText.Display(channel.GetAttribute("name")), channel.GetAttribute("id")),
+                    ReportText.Display(channel.GetAttribute("position")),
+                    ReportText.Display(channel.GetAttribute("note"))))
+                .ToImmutableArray();
+            return rows.IsEmpty
+                ? null
+                : new TableShape(Heading: null, ImmutableArray.Create("Kanal", "Placering", "Note"), rows,
+                    TableStyle.Plain, ReportMembership.FullOnly);
+        }
+
+        private static IEnumerable<ProjectElement> Channels(ProjectElement product) =>
+            product.Descendants().Where(e => e.Tag == "rs485_led_dimmer_channel");
+
+        /// <summary>
+        /// The Full-only "Kanaler og målere" section (RL-5b): the complete field set for content the vendor's
+        /// report never carried — every LED dimmer channel, and every S0 meter's <c>ticks</c>. Both are NEW
+        /// tables rather than columns added to existing ones, which is what makes them expressible at all:
+        /// a new Full-only table may carry whatever columns it likes, while a new column on the Common
+        /// "S0 Device" table would have changed Standard and broken vendor parity (C-3).
+        /// <para><see cref="TableStyle.Module"/> is the layout family here because it is the one that renders
+        /// a table heading in BOTH formats and assumes nothing about the column count —
+        /// <see cref="TableStyle.Plain"/> drops the heading in HTML, and the scroll styles split their rows
+        /// at a fixed column index. Neither table chips its subject: the id chip marks an element's
+        /// DEFINITION site, which for a channel is its compact row in the dimmer's block and for a meter is
+        /// the "S0 Device" table — the flat cross-reference tables have never carried one.</para>
+        /// </summary>
+        private static IEnumerable<ReportShape> ChannelsAndMeters(IReadOnlyList<ProjectElement> all, TreeIndex index)
+        {
+            yield return new SectionBreakShape("Kanaler og målere", SectionBreakStyle.Flush, ReportMembership.FullOnly);
+            yield return new TableShape("LED dimmer kanaler",
+                ImmutableArray.Create("Produkt", "Kanal", "Note", "Lokalitet", "Placering", "Id-kode", "Lysgruppe"),
+                all.Where(e => ComponentFamilies.TryGetValue(e.Tag, out ComponentFamily family)
+                        && family.SubTable == ComponentSubTable.Channels)
+                    .SelectMany(dimmer => Channels(dimmer).Select(channel => ImmutableArray.Create<ReportCell>(
+                        ReportText.SingleLine(dimmer.GetAttribute("name")),
+                        ReportText.SingleLine(channel.GetAttribute("name")),
+                        ReportText.SingleLine(channel.GetAttribute("note")),
+                        ReportText.SingleLine(index.LocalityName(channel)),
+                        ReportText.SingleLine(channel.GetAttribute("position")),
+                        ReportText.SingleLine(channel.GetAttribute("documentation_tag")),
+                        ReportText.SingleLine(channel.GetAttribute("power_group")))))
+                    .ToImmutableArray(),
+                TableStyle.Module,
+                ReportMembership.FullOnly);
+            yield return new TableShape("S0 målere",
+                ImmutableArray.Create("Produkt", "Lokalitet", "Placering", "Id-kode", "Ticks"),
+                all.Where(e => e.Tag == "s0_device")
+                    .Select(meter => ImmutableArray.Create<ReportCell>(
+                        ReportText.SingleLine(meter.GetAttribute("name")),
+                        ReportText.SingleLine(index.LocalityName(meter)),
+                        ReportText.SingleLine(meter.GetAttribute("position")),
+                        ReportText.SingleLine(meter.GetAttribute("documentation_tag")),
+                        ReportText.SingleLine(meter.GetAttribute("ticks"))))
+                    .ToImmutableArray(),
+                TableStyle.Module,
+                ReportMembership.FullOnly);
         }
 
         // ----- flat cross-reference tables (blank-cell convention) -----

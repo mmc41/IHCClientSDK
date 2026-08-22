@@ -107,6 +107,11 @@ Lokaliteter og komponenter
   Komponent     IHC LED Dimmer 2 kanaler (ID _0x8158)
   Serie nummer  --
 
+    Kanal                            Placering      Note
+    -------------------------------  -------------  ---------
+    LED Dimmer kanal 1 (ID _0x837b)  Kanal 1, stue  Loftspots
+    LED Dimmer kanal 2 (ID _0x947b)  Kanal 2, stue  Bordlampe
+
   Lokalitet                 Teknik (ID _0x5232)
   Placering                 I tavle, nederst
   Komponent                 SMS Modem (ID _0xa556)
@@ -158,6 +163,20 @@ Terminal-forbindelser
   LK FUGA Tryk 4 tast 2 dioder  LED (nederst)           -> Udgang til alarmblok -> 6.3.03.a. Overfaldstryk -> Teknik  Forbindes til alarmblok, Indgang for overfald
   Lampeudtag                    Udgang                  -> Udgang -> Doku zoo -> Etage 1                              Til lampe og LED
   Egen kontakt & "test"         Indgang                 -> Kip -> Doku zoo -> Etage 1                                 Tænd/sluk af stuelys
+
+------------------------------------------------------------------------------
+Kanaler og målere
+
+LED dimmer kanaler
+  Produkt                   Kanal               Note       Lokalitet  Placering      Id-kode  Lysgruppe
+  ------------------------  ------------------  ---------  ---------  -------------  -------  ---------
+  IHC LED Dimmer 2 kanaler  LED Dimmer kanal 1  Loftspots  Teknik     Kanal 1, stue  S3-01-A  K/12
+  IHC LED Dimmer 2 kanaler  LED Dimmer kanal 2  Bordlampe  Teknik     Kanal 2, stue  S3-01-B  K/12
+
+S0 målere
+  Produkt    Lokalitet  Placering    Id-kode  Ticks
+  ---------  ---------  -----------  -------  -----
+  S0 Device  Teknik     Ved bimåler  S3-03    1000
 
 ------------------------------------------------------------------------------
 Fejl i dokumentation

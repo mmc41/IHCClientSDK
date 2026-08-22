@@ -191,17 +191,66 @@ namespace Ihc.Vis.Tests
             }), "A12 nesting; the and/or group icon comes from the conditions group's type");
 
             int caseStart = rows.IndexOf(rows.Single(r => r.Name == "Case (Tilstand)"));
-            Assert.That(rows.Skip(caseStart).Take(7).Select(r => (r.IconKey, r.Name, r.Value)), Is.EqualTo(new[]
+            Assert.That(rows.Skip(caseStart).Take(13).Select(r => (r.IconKey, r.Name, r.Value)), Is.EqualTo(new[]
             {
                 ("prog-subprogram", "Case (Tilstand)", (string?)null),
                 ("command-group", "Case Tilstand", "Tilstand A"),
                 ("command", "Udgang", "ON"),
                 ("command-group", "Case Tilstand", "Tilstand B"),
                 ("command", "Udgang", "OFF"),
+                // G3: the Tilstand B branch's sub-program, which used to be dropped with its whole subtree.
+                ("prog-subprogram", "Under program", null),
+                ("cond-and", "Betingelser", null),
+                ("condition", "Tæller >= 5", null),
+                ("command-group", "Kommandoer ved betingelser sande", null),
+                ("command", "Flag", "ON"),
+                ("command-group", "Kommandoer ved betingelser falske", null),
                 ("command-group", "Udføres når ingen case er lig case værdien", null),
                 ("command", "Kip Udgang", null),
-            }), "%LT → the case selector's name; a case_action renders only its action children " +
-                "(the nested program_sub under the Tilstand B case is dropped)");
+            }), "%LT → the case selector's name; a case branch renders the same child vocabulary as an " +
+                "ordinary actions group, so an authored sub-program inside one is documented (G3)");
+        }
+
+        /// <summary>
+        /// RL-5 / finding G3: a <c>case_action</c> used to render only its <c>action</c> children, so a
+        /// sub-program authored inside a case branch vanished from the report together with its whole
+        /// subtree — the largest single content loss the generality review found, and witnessed by the
+        /// vendor-authored project5 fixture. It now renders on the same terms as a sub-program under an
+        /// ordinary <c>actions</c> group, in FULL mode only (register C2: this is content the vendor's own
+        /// report loses, and Standard is the parity surface).
+        /// </summary>
+        [Test]
+        public void CaseAction_RendersItsNestedSubProgram_FullOnly_G3()
+        {
+            ImmutableArray<IconTreeRow> rows = Rows(Blocks(Load("project5-Dokumentation.vis"))[0]);
+
+            IconTreeRow[] subPrograms = [.. rows.Where(r => r.Name == "Under program")];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(subPrograms.Select(r => r.Membership), Is.EqualTo(new[]
+                {
+                    ReportMembership.Common,
+                    ReportMembership.Common,
+                    ReportMembership.FullOnly,
+                }), "G3: the block holds three sub-programs — two under ordinary actions groups, which were "
+                    + "never lost and stay vendor-parity content, and one inside a case branch, which was "
+                    + "dropped entirely and now renders in Full mode only");
+
+                IconTreeRow nested = subPrograms[^1];
+                Assert.That(rows.Skip(rows.IndexOf(nested))
+                        .TakeWhile((row, index) => index == 0 || row.Depth > nested.Depth)
+                        .Select(row => (Depth: row.Depth - nested.Depth, row.IconKey)), Is.EqualTo(new[]
+                {
+                    (0, "prog-subprogram"),
+                    (1, "cond-and"),
+                    (2, "condition"),
+                    (1, "command-group"),
+                    (2, "command"),
+                    (1, "command-group"),
+                }), "G3: and it brings its whole subtree with it — the conditions group, the true branch "
+                    + "and the empty false branch");
+            });
         }
 
         [Test]

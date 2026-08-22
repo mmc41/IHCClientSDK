@@ -154,6 +154,11 @@ Lokaliteter og komponenter
   Komponent     IHC LED Dimmer 2 kanaler (ID _0x52758)
   Serie nummer  --
 
+    Kanal                             Placering  Note
+    --------------------------------  ---------  ----
+    LED Dimmer kanal 1 (ID _0x5297b)  --         --
+    LED Dimmer kanal 2 (ID _0x53a7b)  --         --
+
 ------------------------------------------------------------------------------
 Datalinjer
 
@@ -191,6 +196,20 @@ Terminal-forbindelser
   -------------------  --------------  ---------------------------------------------------  ----------------------------------------------------
   LK FUGA Tryk 2 tast  Tryk (venstre)  -> Indgang 1 -> 4.1.01. AND ("Og"- blok) -> Værelse  Kort tryk < 1 sek. Tænd / sluk: Loftlampe i stue
   LK FUGA Tryk 2 tast  Tryk (højre)    -> Indgang 3 -> 4.1.01. AND ("Og"- blok) -> Værelse  Kort tryk < 1 sek. Tænd / sluk: Spot over køkkenbord
+
+------------------------------------------------------------------------------
+Kanaler og målere
+
+LED dimmer kanaler
+  Produkt                   Kanal               Note  Lokalitet  Placering  Id-kode  Lysgruppe
+  ------------------------  ------------------  ----  ---------  ---------  -------  ---------
+  IHC LED Dimmer 2 kanaler  LED Dimmer kanal 1        Kælder
+  IHC LED Dimmer 2 kanaler  LED Dimmer kanal 2        Kælder
+
+S0 målere
+  Produkt    Lokalitet  Placering  Id-kode  Ticks
+  ---------  ---------  ---------  -------  -----
+  S0 Device  Kælder                         100
 
 ------------------------------------------------------------------------------
 Fejl i dokumentation

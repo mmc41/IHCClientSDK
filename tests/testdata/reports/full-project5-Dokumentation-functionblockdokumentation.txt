@@ -102,6 +102,12 @@ Dækker æøåÆØÅ i en funktionsbloknote.
       ✓ Udgang          = ON
      ✓✓ Case Tilstand   = Tilstand B
       ✓ Udgang          = OFF
+      ↳◆ Under program
+       ∧ Betingelser
+        ? Tæller >= 5
+       ✓✓ Kommandoer ved betingelser sande
+        ✓ Flag          = ON
+       ✓✓ Kommandoer ved betingelser falske
      ✓✓ Udføres når ingen case er lig case værdien
       ✓ Kip Udgang
     ↳◆ Case (Tal)

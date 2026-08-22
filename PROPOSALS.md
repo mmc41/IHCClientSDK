@@ -21,7 +21,7 @@ Ordered by priority within each group.
 
 | ID | Item | Kind | Status | Detail |
 | ---- | ------ | ------ | -------- | -------- |
-| **T1** | `UserManagerService.GetUsers` applies its redaction conditional in the **opposite direction** from its own comment | Defect | Todo | [§T1](#t1--usermanagerservicegetusers-redaction-is-inverted) |
+| **T1** | `UserManagerService.GetUsers` applies its redaction conditional in the **opposite direction** from its own comment | Defect | Verify | [§T1](#t1--usermanagerservicegetusers-redaction-is-inverted) |
 | **T2** | Configuration services attach **raw** WLAN/SMTP/email-control models to activity tags; their `ToString()` reveals secrets | Defect | Todo | [§T2](#t2--raw-secret-bearing-models-on-activity-tags) |
 | **G2a** | Product-dialog numeric `Minimum`/`Maximum` are enforced **nowhere** — an out-of-range value commits | Defect | Todo | [§G2a](#g2a--numeric-range-is-not-enforced-on-dialog-write-back) |
 | **G1** | The vendor app can edit a `.vis` while OpenVisual has it open; the save silently overwrites it | Defect | Todo | [§G1](#g1--external-modification-of-the-open-file) |
@@ -46,8 +46,13 @@ gating / mutation testing remains unpromoted.
 
 ### T1 · `UserManagerService.GetUsers` redaction is inverted
 
-- [ ] Verify against `IhcSettings.LogSensitiveData` and fix. Reproduce with a test first, per the
-      repo's bug workflow.
+- [x] **Fixed 2026-08-22.** The branches were swapped, so the `retv` span tag carried cleartext
+      passwords exactly when `LogSensitiveData` was **false** — the default. The tag is now built
+      through `IhcUser.ToString(bool)`, which restores the direction and also stops an exporter
+      falling back to the parameterless `ToString()` the model itself documents as unsafe.
+      Reproduced first in `tests/safe_unit_tests/UserManagerServiceTelemetryTests.cs` (both
+      directions, plus a guard that the *returned* user keeps its password); the fixture reaches the
+      service through a new internal test-seam constructor mirroring `ControllerService`’s.
 
 ### T2 · Raw secret-bearing models on activity tags
 
@@ -123,27 +128,27 @@ amount of care closes without a lock, which is ruled out. This narrows the windo
 `GetResourceValueChanges` streaming methods. `PostAsync` is called without one and no `HttpClient.Timeout`
 is set, so a caller blocks until `HttpClient`'s 100 s default and cannot abort in the meantime.
 
-- [ ] Add `CancellationToken cancellationToken = default` as the trailing parameter across the API tier,
+- [x ] Add `CancellationToken cancellationToken = default` as the trailing parameter across the API tier,
       the application tier, and `ProjectAppService`'s file/controller operations. **One sweep, not
       opportunistically** — a half-threaded surface looks like cancellation works.
       ⚠️ Source-compatible for *call sites* only. Adding an optional parameter to an **interface** is a
       binary-breaking change and breaks every existing implementer, including any outside this repo.
       Decide explicitly whether that is acceptable before starting.
-- [ ] Thread it to the wire (`PostAsync(url, content, cancellationToken)`) **and to the response-body
+- [x ] Thread it to the wire (`PostAsync(url, content, cancellationToken)`) **and to the response-body
       read** in `src/api/services/serviceBase.cs` — a token that stops at the request leaves the read
       unbounded, which is where a slow controller actually hangs.
-- [ ] ⛔ **Do NOT replace the `CancellationToken.None` at `src/api/util/services.cs:86`.** It is
+- [x ] ⛔ **Do NOT replace the `CancellationToken.None` at `src/api/util/services.cs:86`.** It is
       deliberate: that call sits in a `finally` block (*"no cancellation here to avoid masking
       exceptions"*) immediately before `disableSubscription(resourceIds)`. Flowing an already-cancelled
       caller token there would skip the cleanup and leak the subscription on the controller. If cleanup
       needs bounding, give it its **own** short independent token — never the caller's.
-- [ ] Set an explicit `HttpClient.Timeout` from `IhcSettings`. ⚠️ The client is a process-wide singleton
+- [x ] Set an explicit `HttpClient.Timeout` from `IhcSettings`. ⚠️ The client is a process-wide singleton
       built by the first caller (`src/api/util/httpclient.cs`), so a settings-derived timeout is
       **first-caller-wins** across every service in the process. Either accept that, move the bound to a
       per-request linked token, or change the client's lifetime — decide before implementing.
-- [ ] Delete or rewrite the three `// TODO: Retry x times.` comments in `controllerService.cs:800,818,836`
+- [x ] Delete or rewrite the three `// TODO: Retry x times.` comments in `controllerService.cs:800,818,836`
       — they advertise work that will not happen (see the retry ruling in Standing constraints).
-- [ ] Update `ARCHITECTURE.md` → Cross-cutting → Async with the cancellation policy.
+- [x ] Update `ARCHITECTURE.md` → Cross-cutting → Async with the cancellation policy.
 
 ### A2 · SOAP fixture corpus + replay harness
 

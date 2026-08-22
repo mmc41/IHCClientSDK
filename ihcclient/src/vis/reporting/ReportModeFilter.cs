@@ -38,7 +38,11 @@ namespace Ihc.Vis.Reporting
             ComponentBlockShape component => component with
             {
                 Fields = StripKeyValues(component.Fields),
-                Terminals = component.Terminals is { } terminals ? StripTable(terminals) : null,
+                // The nested table carries its own membership like any other shape: a Full-only sub-table
+                // (the LED dimmer's channel grid) disappears from Standard, while the block itself stays.
+                Terminals = component.Terminals is { Membership: ReportMembership.Common } terminals
+                    ? StripTable(terminals)
+                    : null,
             },
             FbBlockShape block => block with
             {

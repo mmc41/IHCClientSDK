@@ -71,7 +71,7 @@ namespace Ihc {
             }
         }
 
-        private readonly SoapImpl impl;
+        private readonly Ihc.Soap.Usermanager.UserManagerService impl;
 
         private IhcUserGroup mapUserGroup(WSUserGroup group)
         {
@@ -168,6 +168,14 @@ namespace Ihc {
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
+        /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
+        internal UserManagerService(IAuthenticationService authService, Ihc.Soap.Usermanager.UserManagerService impl)
+            : base(authService.IhcSettings)
+        {
+            this.authService = authService;
+            this.impl = impl;
+        }
+
         /// <summary>
         /// Get set of registered controller users and their information.
         /// </summary>
@@ -186,7 +194,9 @@ namespace Ihc {
                     var retv = new HashSet<IhcUser>(resp.getUsers1.Where((v) => v != null).Select((u) => mapUser(u, includePassword)));
 
                     // Register activity - note that regardless of if password is included, any password will be also not be logged/observed unless LogSensitiveData allows it.
-                    activity?.SetReturnValue(IhcSettings.LogSensitiveData ? retv.Select(r => r.RedactPassword()).ToArray() : retv.ToArray());
+                    // Stringified here through the LogSensitiveData-aware overload: the tag is rendered by
+                    // whatever exports it, and IhcUser's parameterless ToString() is the unsafe one.
+                    activity?.SetReturnValue(string.Join(", ", retv.Select(r => r.ToString(settings.LogSensitiveData))));
                     return retv;
                 }
                 catch (Exception ex)

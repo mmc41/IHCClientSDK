@@ -230,28 +230,36 @@ namespace Ihc.Vis.Reporting
 
         // ----- program tree (A12) -----
 
-        private static void AddProgramRows(ProjectElement element, int depth, ImmutableArray<ReportTreeRow>.Builder rows, TreeIndex index)
+        private static void AddProgramRows(ProjectElement element, int depth,
+            ImmutableArray<ReportTreeRow>.Builder rows, TreeIndex index,
+            ReportMembership membership = ReportMembership.Common)
         {
-            rows.Add(Row(element, depth, index));
+            rows.Add(Row(element, depth, index) with { Membership = membership });
             foreach (ProjectElement child in ProgramChildren(element))
             {
-                AddProgramRows(child, depth + 1, rows, index);
+                // Only the ROOT of a newly-admitted subtree is tagged; the mode filter drops a Full-only
+                // row together with everything below it, so tagging the descendants too would be redundant.
+                AddProgramRows(child, depth + 1, rows, index,
+                    element.Tag == "case_action" && child.Tag != "action"
+                        ? ReportMembership.FullOnly
+                        : ReportMembership.Common);
             }
         }
 
         // What each program element renders beneath itself: containers recurse into their statement or
-        // group children; a case_action renders ONLY its action children (its embedded value constant is
-        // consumed by the value column, and the vendor never rendered deeper structure there).
+        // group children. A case_action carries the same child vocabulary as an ordinary `actions` group —
+        // the two arms are deliberately one, because a case BRANCH is a command list like any other, and
+        // reading only its `action` children dropped an authored sub-program with its whole subtree
+        // (review G3). Its embedded value constant is not listed here: that is consumed by the value column.
         private static IEnumerable<ProjectElement> ProgramChildren(ProjectElement element) => element.Tag switch
         {
             "program_simple" or "program_sub" => element.Children
                 .Where(c => c.Tag is "events" or "actions" or "conditions"),
             "events" => element.Children.Where(c => c.Tag is "event" or "event_power"),
-            "actions" => element.Children
+            "actions" or "case_action" => element.Children
                 .Where(c => c.Tag is "action" or "program_sub" or "program_case"),
             "conditions" => element.Children.Where(c => c.Tag is "condition" or "conditions"),
             "program_case" => element.Children.Where(c => c.Tag is "case_action" or "actions"),
-            "case_action" => element.Children.Where(c => c.Tag == "action"),
             _ => Enumerable.Empty<ProjectElement>(),
         };
 
