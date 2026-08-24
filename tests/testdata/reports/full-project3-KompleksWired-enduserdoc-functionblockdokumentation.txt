@@ -1262,6 +1262,7 @@ Fejl i dokumentation
   Stue & Køkken "åben"  Diode                                Lampe                        Ikke forbundet
   Stue & Køkken "åben"  Diode                                Lampe                        Mangler Ledningsfarve
   Stue & Køkken "åben"  Diode                                Lampe                        Mangler Adresse
+  Stue & Køkken "åben"  1.1.01.e. Kip tænd sluk                                           Uændret standardnavn
   Entré                 PIR                                                               Mangler Id-kode
   Entré                 PIR                                                               Mangler Lysgruppe
   Entré                 PIR                                                               Mangler Kabeltype
@@ -1278,6 +1279,7 @@ Fejl i dokumentation
   Entré                 Stikkontakt                          Udgang                       Ikke forbundet
   Entré                 Stikkontakt                          Udgang                       Mangler Ledningsfarve
   Entré                 Stikkontakt                          Udgang                       Mangler Adresse
+  Entré                 1.4.02.a. PIR styring                                             Uændret standardnavn
   Køkken                Temperatur sensor med logning                                     Mangler Id-kode
   Køkken                Temperatur sensor med logning                                     Mangler Lysgruppe
   Køkken                Temperatur sensor med logning                                     Mangler Kabeltype
@@ -1294,6 +1296,7 @@ Fejl i dokumentation
   Køkken                Lux / Temperatur sensor med logning  Lux / Temperatur sensor      Ikke forbundet
   Køkken                Lux / Temperatur sensor med logning  Lux / Temperatur sensor      Mangler Ledningsfarve
   Køkken                Lux / Temperatur sensor med logning  Lux / Temperatur sensor      Mangler Adresse
+  Køkken                2.1.01.a. Ur, med 1 tidspunkt                                     Uændret standardnavn
   Soveværelse           Dimmer touch                                                      Mangler Id-kode
   Soveværelse           Dimmer touch                                                      Mangler Lysgruppe
   Soveværelse           Dimmer touch                                                      Mangler Kabeltype
@@ -1305,3 +1308,10 @@ Fejl i dokumentation
   Soveværelse           Dimmer touch                         Sluk                         Ikke forbundet
   Soveværelse           Dimmer touch                         Sluk                         Mangler Ledningsfarve
   Soveværelse           Dimmer touch                         Sluk                         Mangler Adresse
+  Soveværelse           1.2.04.e. Trådløs / Bus lysdæmper                                 Uændret standardnavn
+  Værelse               4.1.01. AND ("Og"- blok)                                          Uændret standardnavn
+  Bad                   Tom blok                                                          Uændret standardnavn
+  Bryggers              4.1.04. Driftstimetæller                                          Uændret standardnavn
+  Bryggers              Tom blok                                                          Uændret standardnavn
+  Garage                Tom blok                                                          Uændret standardnavn
+  Lokalitet             Lokalitet                                                         Uændret standardnavn

@@ -135,7 +135,7 @@ namespace Ihc.Vis.Session
             (Programs.IsCommandContainer(context, CommandsId)
             && context.Index.FindById(SwitchVariableId) is { } v && ProgramMethodCatalog.EligibleCaseVariableTags.Contains(v.Tag)
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Ikke en gyldig case-forgrening på en kommandogruppe."))
+                : EditVerdict.Refuse(EditRefusalCodes.CaseBranchInvalid, "Ikke en gyldig case-forgrening på en kommandogruppe."))
             .And(context.RequireUnlockedTarget(CommandsId, inclusive: true));   // T003
         internal override void Execute(ProjectEditor editor) =>
             editor.Branch(CommandsId).AddCase(
@@ -195,7 +195,7 @@ namespace Ihc.Vis.Session
         internal override string Describe(Project project) => "Skift logmærke";
         internal override EditVerdict Evaluate(EditContext context) =>
             (context.Index.FindById(LogRowId) is { } row && row.IsLogRow(context.Project)
-                ? EditVerdict.Allow : EditVerdict.Refuse("Ikke en Logning-række."))
+                ? EditVerdict.Allow : EditVerdict.Refuse(EditRefusalCodes.NotALogRow, "Ikke en Logning-række."))
             .And(context.RequireUnlockedTarget(LogRowId, inclusive: true));   // T004 (defensive: log rows are product-scoped)
         internal override void Execute(ProjectEditor editor) => editor.ToggleLogMark(LogRowId);
     }
@@ -207,6 +207,6 @@ namespace Ihc.Vis.Session
 
         public static EditVerdict RequireCommandContainer(EditContext context, ElementId id) =>
             IsCommandContainer(context, id)
-                ? EditVerdict.Allow : EditVerdict.Refuse("Målet er ikke en kommandogruppe.");
+                ? EditVerdict.Allow : EditVerdict.Refuse(EditRefusalCodes.NotACommandGroup, "Målet er ikke en kommandogruppe.");
     }
 }

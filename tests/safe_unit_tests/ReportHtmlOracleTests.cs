@@ -42,4 +42,29 @@ public class ReportHtmlOracleTests
         ReportOracles.AssertMatchesOracle(
             File.ReadAllBytes(TestData("reports", oracleFile)), output.ToArray(), oracleFile);
     }
+
+    /// <summary>
+    /// Regenerates all twelve <c>*.html</c> oracles into <c>reports.generated/</c> beside the test binary — the
+    /// HTML half of the same deliberate, diff-then-adopt regeneration the <c>*.txt</c> oracles get.
+    /// <see cref="ExplicitAttribute"/> so it never runs in the gate.
+    /// TODO: Delete this test and the <c>reports.generated/</c> folder once the oracles are stable and the HTML report is no longer changing.
+    /// </summary>
+    [Test]
+    [Explicit("Regenerates the checked-in *.html report oracles. Run deliberately, then diff the emitted files "
+        + "against tests/testdata/reports/ before copying them over.")]
+    [Category("OracleRegeneration")]
+    public async Task Regenerate_TheHtmlOracles()
+    {
+        foreach (object[] oracleCase in HtmlOracleCases())
+        {
+            Project project = await App().Load(TestData("projects", (string)oracleCase[1]));
+            using var output = new MemoryStream();
+
+            await App().GenerateReport(
+                project, (ReportKind)oracleCase[2], (ReportMode)oracleCase[3], ReportMimeTypes.Html, output,
+                new SvgReportIconProvider());
+
+            TestContext.Out.WriteLine(ReportOracles.WriteGenerated((string)oracleCase[0], output.ToArray()));
+        }
+    }
 }

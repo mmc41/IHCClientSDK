@@ -28,6 +28,10 @@ internal sealed class CatalogImportWorkflow(
     // (US-062) is deliberately titled differently — earlier files WERE imported, which is a different outcome.
     private const string ImportFailedTitle = "Import mislykkedes";
 
+    /// <summary>The title over a FOLDER import that stopped part-way: the ones before it were kept, so the box
+    /// says stopped rather than failed (US-062).</summary>
+    private const string ImportStoppedTitle = "Import stoppet";
+
     private static IEnumerable<string> EnumerateCatalogFiles(string dir) =>
         Directory.EnumerateFiles(dir, "*.*", SearchOption.AllDirectories)
             .Where(f => f.EndsWith(".def", StringComparison.OrdinalIgnoreCase)
@@ -86,9 +90,12 @@ internal sealed class CatalogImportWorkflow(
         catch (Exception ex)
         {
             ActivityExtensions.SetError(activity, ex);
+            // The SDK's coded cause and its English detail go to the LOG; the installer reads the shell's own
+            // coded sentence, which names the file (US-062). One-child chain: the SDK's operation head over the
+            // shell's more specific cause, so exactly one sentence reaches the user (T006 case 2).
             logger.LogError(ex, "Failed to import catalog file {File}", path);
-            await dialogs.ShowMessageAsync(ImportFailedTitle,
-                $"'{Path.GetFileName(path)}' er ikke en gyldig produkt- eller funktionsblok-definitionsfil:\n{ex.Message}");
+            await dialogs.ShowProblemAsync(ImportFailedTitle,
+                HostProblems.Narrate(HostProblems.CatalogFileRejected(Path.GetFileName(path), ex), ex));
             return false;
         }
     }
@@ -101,7 +108,8 @@ internal sealed class CatalogImportWorkflow(
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(CatalogImportWorkflow)}.{nameof(ImportFolderAsync)}");
         if (!Directory.Exists(dir))
         {
-            await dialogs.ShowMessageAsync(ImportFailedTitle, $"Mappen '{dir}' findes ikke.");
+            // The shell's own condition — it checked the folder before asking the SDK for anything — so a host code.
+            await dialogs.ShowProblemAsync(ImportFailedTitle, HostProblems.CatalogFolderMissing(dir));
             return CatalogImportOutcome.NotFound;
         }
         int count = 0;
@@ -121,8 +129,9 @@ internal sealed class CatalogImportWorkflow(
                 {
                     ActivityExtensions.SetError(activity, ex);
                     logger.LogError(ex, "Folder import stopped at {File}", file);
-                    await dialogs.ShowMessageAsync("Import stoppet",
-                        $"'{Path.GetFileName(file)}' kunne ikke importeres ({count} importeret før den):\n{ex.Message}");
+                    // The same one-child chain as the single-file site, with the batch count as a declared argument.
+                    await dialogs.ShowProblemAsync(ImportStoppedTitle, HostProblems.Narrate(
+                        HostProblems.CatalogImportStopped(Path.GetFileName(file), count, ex), ex));
                     stopped = true;
                     break;   // stop at the first unreadable file (US-062)
                 }

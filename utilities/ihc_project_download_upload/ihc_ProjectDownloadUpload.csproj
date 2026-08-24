@@ -5,6 +5,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <!-- T044/R17 check three: the architecture suite calls this utility's own console renderer with an arbitrary
+         SDK problem, and reads this assembly's references to prove it needs no GUI. -->
+    <InternalsVisibleTo Include="safe_architecture_tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj"/>
   </ItemGroup>
   <ItemGroup>

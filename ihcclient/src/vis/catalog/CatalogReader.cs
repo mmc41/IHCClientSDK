@@ -7,6 +7,7 @@ using System.Xml;
 
 using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 namespace Ihc.Vis.Catalog
 {
@@ -70,7 +71,7 @@ namespace Ihc.Vis.Catalog
 
         /// <summary>
         /// Runs a catalog-file parse with file-context error wrapping: one malformed/truncated vendor file surfaces
-        /// an <see cref="InvalidDataException"/> naming the offending path, instead of a bare
+        /// a <see cref="RefusedImportException"/> naming the offending path, instead of a bare
         /// <see cref="XmlException"/>/<see cref="IOException"/> that names neither the file nor that a catalog read
         /// was in progress. This reader owns the path, so the wrap lives here — shared by the path-taking readers
         /// above and by <see cref="CatalogDiscovery"/>'s install-dir scan.
@@ -83,7 +84,8 @@ namespace Ihc.Vis.Catalog
             }
             catch (Exception ex) when (ex is XmlException or IOException or UnauthorizedAccessException)
             {
-                throw new InvalidDataException($"Failed to parse IHC Visual catalog file '{path}': {ex.Message}", ex);
+                throw new RefusedImportException(ImportRefusalCodes.CatalogUnparsable,
+                    $"Failed to parse IHC Visual catalog file '{path}': {ex.Message}", ex);
             }
         }
 

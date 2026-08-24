@@ -86,6 +86,17 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   is worth catching at entry rather than at the alarm.
   *Pinned by:* `DialogValueRuleTests` (the rule and its boundaries), `ModemPhoneValidationTests` (the dialog
   consults that rule and states the refusal).
+- The same rule is also reported by the **whole-project check**, as `addr-modem-phonenumber-malformed`
+  (Warning, category Addressing) — one finding per offending slot, naming the offending value. It is the same
+  object, not a second copy: the catalogue rule delegates its predicate to the dialog's own
+  `DialogValueRule.PhoneNumber`, so the dialog, the commit refusal and the project finding cannot disagree
+  about what a valid number is. **Consequence for files this application did not author:** because three of the
+  four strictnesses above are OpenVisual's rather than the original's, an authentic project carrying a
+  country-code-less, spaced or over-long number now shows a warning when it is checked. That is the intended
+  reading — such a number is one the modem cannot dial — and it never blocks: a Warning does not stop opening,
+  saving or uploading.
+  *Pinned by:* `DeviceAddressRulesTests` (the boundaries, and that the entry's declared lengths mirror the
+  dialog rule's).
 - Every drag-and-drop operation is also reachable from the menus and the keyboard, so linking, moving, and reordering never require a mouse.
   *Pinned by:* `DragRouteAlternativesParityTests`.
 - Unavailable commands explain themselves: pressing the keyboard shortcut of a greyed menu command shows the reason in the status bar.

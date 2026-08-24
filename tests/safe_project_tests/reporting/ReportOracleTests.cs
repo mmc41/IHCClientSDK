@@ -35,5 +35,31 @@ namespace Ihc.Vis.Tests
             ReportOracles.AssertMatchesOracle(
                 TestData.ReadBytes(Path.Combine("reports", oracleFile)), output.ToArray(), oracleFile);
         }
+
+        /// <summary>
+        /// Regenerates all twelve <c>*.txt</c> oracles into <c>reports.generated/</c> beside the test binary.
+        /// <see cref="ExplicitAttribute"/> so it never runs in the gate: adopting the output is the deliberate act
+        /// of diffing it against <c>tests/testdata/reports/</c>, explaining every changed line by a rule the same
+        /// change introduced, and copying it over — which the Definition of Done only permits in a task that names
+        /// its oracle impact up front. A DOCUMENTATION-category rule changes these files, because the Fuld report
+        /// renders that category as its appendix.
+        /// </summary>
+        [Test]
+        [Explicit("Regenerates the checked-in *.txt report oracles. Run deliberately, then diff the emitted files "
+            + "against tests/testdata/reports/ before copying them over.")]
+        [Category("OracleRegeneration")]
+        public async Task Regenerate_TheTxtOracles()
+        {
+            foreach (object[] oracleCase in TxtOracleCases())
+            {
+                Project project = Load((string)oracleCase[1]);
+                using var output = new MemoryStream();
+
+                await App().GenerateReport(
+                    project, (ReportKind)oracleCase[2], (ReportMode)oracleCase[3], ReportMimeTypes.PlainText, output);
+
+                TestContext.Out.WriteLine(ReportOracles.WriteGenerated((string)oracleCase[0], output.ToArray()));
+            }
+        }
     }
 }

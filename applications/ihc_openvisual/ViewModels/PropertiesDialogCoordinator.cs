@@ -10,6 +10,7 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
+using Ihc.Vis.Validation;
 
 namespace ihc_openvisual.ViewModels;
 
@@ -357,7 +358,7 @@ internal sealed class PropertiesDialogCoordinator(
         // block's scene pin to a Lampeudtag and to a Lampeudtag dimmer). One fixed caption, as this had, cannot
         // tell the installer which of the two dialogs is open.
         var input = new SceneValueInput(SceneValueTitles.For(isDimmer), isDimmer, sv.On, sv.LevelPercent,
-            ms / 60000, ms / 1000 % 60);
+            ms / 60000, ms / 1000 % 60, SceneValue.LevelConstraint, SceneValue.RampPartConstraint);
 
         SceneValueResult? result = await dialogs.EditSceneValueAsync(input);
         if (result is null)
@@ -535,6 +536,16 @@ internal sealed class PropertiesDialogCoordinator(
         return terminals;
     }
 
+    // A setting declared in MILLISECONDS shown in seconds: the value is divided by 1000 at the read above, so its
+    // bounds are divided by the same 1000 here. Converting the metadata rather than re-typing the seconds keeps the
+    // catalog the only source — if a preset ever declares 3000–12000 ms, the field offers 3–12 s with no edit here.
+    private static FieldConstraintMetadata PerSecond(FieldConstraintMetadata declared) =>
+        declared with
+        {
+            Minimum = declared.Minimum / 1000,
+            Maximum = declared.Maximum / 1000,
+        };
+
     private async Task OpenAdvancedDimmerAsync(ElementId productId)
     {
         if (session.Current is not { } project || project.FindById(productId) is not { } product)
@@ -546,12 +557,19 @@ internal sealed class PropertiesDialogCoordinator(
         var input = new AdvancedDimmerInput(
             view.PositiveSetting("dimmer_setting_fade_rate_up") ?? 700,
             view.PositiveSetting("dimmer_setting_fade_rate_down") ?? 700,
-            // Stored in ms (default 5000, range 2000–10000); the dialog edits it in seconds, so ÷1000. The
-            // command multiplies back by 1000 on commit, so the stored value round-trips exactly.
+            // Stored in ms (default 5000); the dialog edits it in seconds, so ÷1000. The command multiplies back
+            // by 1000 on commit, so the stored value round-trips exactly — and its BOUNDS are divided by the same
+            // 1000 below, so what the field offers is what the catalog declares.
             (view.PositiveSetting("dimmer_setting_dimming_rate") ?? 5000) / 1000,
             view.PositiveSetting("dimmer_setting_minimum_value") ?? 0,
             view.PositiveSetting("dimmer_setting_maximum_value") ?? 100,
-            view.LoadMode);
+            view.LoadMode,
+            // The catalog's own bounds per setting, through the SDK's metadata face (T045). No number here.
+            view.SettingConstraint("dimmer_setting_fade_rate_up"),
+            view.SettingConstraint("dimmer_setting_fade_rate_down"),
+            PerSecond(view.SettingConstraint("dimmer_setting_dimming_rate")),
+            view.SettingConstraint("dimmer_setting_minimum_value"),
+            view.SettingConstraint("dimmer_setting_maximum_value"));
 
         AdvancedDimmerResult? result = await dialogs.EditAdvancedDimmerAsync(input);
         if (result is null)

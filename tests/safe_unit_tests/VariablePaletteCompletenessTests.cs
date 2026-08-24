@@ -6,7 +6,7 @@ using Ihc.Vis.Schema;
 namespace safe_unit_tests;
 
 /// <summary>
-/// M3 / ADR-002 / D07 (T008): the OpenVisual "Insert variable" palette is a PROJECTION of the SDK-authoritative
+/// ADR-002: the OpenVisual "Insert variable" palette is a PROJECTION of the SDK-authoritative
 /// <see cref="VariableTypeRegistry"/>, so every variable type the engine supports is presented (with an app label) —
 /// a supported type can never silently vanish from the UI (the drift that had dropped six types:
 /// resource_light_level/resource_humidity_level and kW/kWh/W/Wh, all now offered — T017 un-suppressed the four

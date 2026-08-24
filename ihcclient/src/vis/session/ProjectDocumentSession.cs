@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
@@ -17,7 +18,8 @@ namespace Ihc.Vis.Session
     /// <see cref="ProjectAppService.OpenDocument"/>; the concrete type stays out of GUI reach (arch-enforced).
     /// </summary>
     /// <remarks>
-    /// <b>Lock-serialized (crudarch D04, supersedes the D12 thread-affinity):</b> a private monitor serializes
+    /// <b>Lock-serialized (crudarch D04, supersedes the D12 thread-affinity):</b> a private
+    /// <see cref="System.Threading.Lock"/> serializes
     /// every member body, so any thread may READ while another edits — the backup-timer shape: a worker sampling
     /// <see cref="Current"/> mid-edit observes the pre- or post-edit snapshot (immutable <see cref="Project"/>
     /// instances), never a torn state. <see cref="Changed"/>/<see cref="StateChanged"/> are raised OUTSIDE the
@@ -27,7 +29,9 @@ namespace Ihc.Vis.Session
     /// </remarks>
     public sealed class ProjectDocumentSession : IProjectDocument
     {
-        private readonly object _sync = new();
+        // .NET 9+/C# 13 dedicated lock type, not an `object` monitor: the type-safe default Microsoft's
+        // managed-threading guidance now names for a synchronous lock target.
+        private readonly Lock _sync = new();
         private readonly HistoryPolicy _history;
         private readonly LinkedList<HistoryEntry> _undo = new();   // Last = top of the undo stack
         private readonly Stack<HistoryEntry> _redo = new();
@@ -155,7 +159,7 @@ namespace Ihc.Vis.Session
             }
             NotifyChanged(outcome.Changes);
             return new EditOutcome<T>(outcome.Status, outcome.Label, outcome.Reason, outcome.Changes,
-                outcome.Status == EditStatus.Committed ? produced : default);
+                outcome.Status == EditStatus.Committed ? produced : default, outcome.Code);
         }
 
         private EditOutcome ApplyInternal(ProjectCommand command, int? baseVersion, Action<ProjectEditor> execute)
@@ -169,7 +173,8 @@ namespace Ihc.Vis.Session
                 // The SAME sentence CanApply answers this condition with (D13) — the two doors are asked the same
                 // question by the same GUI, so a hand-written second wording here would answer it in another voice
                 // (and, until this was fixed, in another LANGUAGE) depending only on which door happened to be used.
-                return new EditOutcome(EditStatus.Refused, command.GetType().Name, EditRefusals.NoProjectOpenRefusal, null);
+                return new EditOutcome(EditStatus.Refused, command.GetType().Name, EditRefusals.NoProjectOpenRefusal,
+                    null, EditRefusalCodes.NoProjectOpen);
             }
             // Label resolves against the pre-edit project (D10): a rename shows the old name, a delete the doomed target.
             string label = command.Describe(current);
@@ -177,12 +182,15 @@ namespace Ihc.Vis.Session
             {
                 // Danish, like every refusal: a Refused reason is forwarded to the installer verbatim (FR-2.6 / D13),
                 // so this is user-facing text that happens to live in the engine — not an internal diagnostic.
-                return new EditOutcome(EditStatus.Refused, label, EditRefusals.StaleBaseVersionRefusal, null);
+                return new EditOutcome(EditStatus.Refused, label, EditRefusals.StaleBaseVersionRefusal,
+                    null, EditRefusalCodes.StaleBaseVersion);
             }
             EditVerdict verdict = command.Evaluate(new EditContext(current, _index!));
             if (!verdict.Ok)
             {
-                return new EditOutcome(EditStatus.Refused, label, verdict.Reason, null);
+                // The verdict's OWN code, carried through unchanged: this is what makes "what the gate refuses,
+                // the door refuses" checkable by identity instead of by comparing two Danish sentences.
+                return new EditOutcome(EditStatus.Refused, label, verdict.Reason, null, verdict.Code);
             }
 
             Project? updated;
@@ -193,7 +201,9 @@ namespace Ihc.Vis.Session
             catch (EditRefusedException ex)   // a deep guard refuses only inside Execute
             {
                 ActivityExtensions.SetError(activity, ex);
-                return new EditOutcome(EditStatus.Refused, label, ex.Message, null);
+                // A deep guard has no verdict to take a code from — it refused from inside Execute, after the
+                // gate allowed. edit.deep-guard is the code that says exactly that.
+                return new EditOutcome(EditStatus.Refused, label, ex.Message, null, EditRefusalCodes.DeepGuard);
             }
             catch (Exception ex)   // any other failure (incl. engine InvalidOperationException on a malformed doc)
             {
@@ -298,12 +308,12 @@ namespace Ihc.Vis.Session
             {
                 if (_current is not { } current)
                 {
-                    return PreviewOutcome.Refused("No project is open.");
+                    return PreviewOutcome.Refused(EditRefusals.NoProjectOpenRefusal, EditRefusalCodes.NoProjectOpen);
                 }
                 EditVerdict verdict = command.Evaluate(new EditContext(current, _index!));
                 if (!verdict.Ok)
                 {
-                    return PreviewOutcome.Refused(verdict.Reason);
+                    return PreviewOutcome.Refused(verdict);
                 }
                 Project? updated;
                 try
@@ -312,7 +322,7 @@ namespace Ihc.Vis.Session
                 }
                 catch (EditRefusedException ex)   // a deep guard refuses only inside Execute — a refusal, not a fault
                 {
-                    return PreviewOutcome.Refused(ex.Message);
+                    return PreviewOutcome.Refused(ex.Message, EditRefusalCodes.DeepGuard);
                 }
                 catch (Exception ex)   // an unexpected engine fault — surfaced, not swallowed as "nothing to preview" (D05)
                 {
@@ -325,15 +335,19 @@ namespace Ihc.Vis.Session
             }
         }
 
-        /// <summary>The command's legality verdict against the current project (cheap — no edit), for drag-over
-        /// probes and menu gates.</summary>
+        /// <summary>The command's legality verdict against the current project (cheap — no edit, and no
+        /// whole-project validation scan per evaluation), for drag-over probes and menu gates.
+        /// <para>It runs the command's own <c>Evaluate</c> against the open snapshot and nothing else, which is why
+        /// a host may re-ask it on every pointer event. A pure query: asking changes nothing, and a REFUSED apply
+        /// through the door beside it leaves no undo entry, no version bump and no dirty flag, so a gate and a
+        /// click cannot leave the document in different states.</para></summary>
         public EditVerdict CanApply(ProjectCommand command)
         {
             lock (_sync)
             {
                 return _current is { } current
                     ? command.Evaluate(new EditContext(current, _index!))
-                    : EditVerdict.Refuse(EditRefusals.NoProjectOpenRefusal);
+                    : EditVerdict.Refuse(EditRefusalCodes.NoProjectOpen, EditRefusals.NoProjectOpenRefusal);
             }
         }
 
@@ -412,7 +426,7 @@ namespace Ihc.Vis.Session
         // Commits a state transition under the caller-held lock and returns its change set. The Changed raise is
         // deliberately NOT here: the public member that committed raises it via NotifyChanged AFTER releasing the
         // lock (D04 — outside the lock, on the mutating thread), so a handler re-entering the session never runs
-        // inside the monitor.
+        // inside the lock.
         private ProjectChangeSet Transition(Project from, Project to, string label, string origin)
         {
             int baseVersion = _version;

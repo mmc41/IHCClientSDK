@@ -44,6 +44,30 @@
          every registered difference must name the test that would fail if it drifted back. -->
     <None Include="..\..\applications\ihc_openvisual\docs\product.md"
           Link="appdocs\product.md" CopyToOutputDirectory="PreserveNewest" />
+    <!-- T041: the host problem appendix, for the same reason — its row table is RENDERED from the
+         app.openvisual.* declarations and compared, so the published document cannot fall behind the code. -->
+    <None Include="..\..\applications\ihc_openvisual\docs\error-list.md"
+          Link="appdocs\error-list.md" CopyToOutputDirectory="PreserveNewest" />
+    <!-- T042: the GUI's own sources are the SUBJECT of the message-site fitness check — it must see EVERY file,
+         not a list someone remembers to extend, so this is a glob with bin/obj excluded. Copied beside the
+         binaries like the markup and docs above; no test walks into the checkout. -->
+    <None Include="..\..\applications\ihc_openvisual\**\*.cs"
+          Exclude="..\..\applications\ihc_openvisual\bin\**\*.cs;..\..\applications\ihc_openvisual\obj\**\*.cs"
+          Link="appsrc\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <!-- T045: the app's MARKUP, for the numeric-bounds gate — it must see every window, not a remembered list.
+       Copied by a TARGET rather than as a None item: Avalonia's build targets reclassify *.axaml out of None, so the
+       declarative form silently copied nothing (measured: zero files in the output, and the armed control caught
+       it — a scan that reads no files passes every assertion). -->
+  <Target Name="CopyAppMarkupForScan" BeforeTargets="Build">
+    <ItemGroup>
+      <AppMarkupForScan Include="..\..\applications\ihc_openvisual\**\*.axaml"
+                        Exclude="..\..\applications\ihc_openvisual\bin\**\*.axaml;..\..\applications\ihc_openvisual\obj\**\*.axaml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(AppMarkupForScan)"
+          DestinationFiles="@(AppMarkupForScan->'$(OutDir)appmarkup\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

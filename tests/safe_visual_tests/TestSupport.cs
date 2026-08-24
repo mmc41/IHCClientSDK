@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using ihc_openvisual.Services;
+using Ihc.Vis.Problems;
 using ihc_openvisual.ViewModels;
 using Ihc;
 using Ihc.Vis;
@@ -96,6 +97,28 @@ public sealed class FakeDialogService : IDialogService
         LastMessageTitle = title;
         LastMessage = message;
         return Task.CompletedTask;
+    }
+
+    /// <summary>The last coded problem SHOWN, so a test can assert on its identity instead of on its prose.</summary>
+    public Problem? LastProblem { get; private set; }
+
+    /// <summary>The chain, when the site framed an SDK failure — the operation is on it, unrendered.</summary>
+    public ProblemChain? LastProblemChain { get; private set; }
+
+    // The coded doors record BOTH: the identity for a code assertion, and the rendered text through the shell's own
+    // presentation path, so the existing message assertions keep testing what the installer actually reads.
+    public Task ShowProblemAsync(string title, Problem problem)
+    {
+        LastProblem = problem;
+        LastProblemChain = null;
+        return ShowMessageAsync(title, ProblemPresenter.Text(problem));
+    }
+
+    public Task ShowProblemAsync(string title, ProblemChain chain)
+    {
+        LastProblem = chain.Cause;
+        LastProblemChain = chain;
+        return ShowMessageAsync(title, ProblemPresenter.Text(chain));
     }
     public Task<string?> PickOpenProjectAsync(string? initialDirectory) => Task.FromResult(OpenPath);
     public Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName) => Task.FromResult(SavePath);

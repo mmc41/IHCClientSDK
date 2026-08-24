@@ -2,7 +2,10 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Interactivity;
+using ihc_openvisual.Services;
 using ihc_openvisual.Views;
+using Ihc;
+using Ihc.Vis;
 
 namespace safe_visual_tests;
 
@@ -14,9 +17,15 @@ namespace safe_visual_tests;
 /// </summary>
 public class NamePromptValidationTests : AvaloniaTestBase
 {
+    // Built through the SAME factory ShowAsync uses, and handed the SAME decision the application hands it:
+    // ProjectAppService.MissingRequiredField. A window constructed bare would carry no validator at all, so a
+    // test driving one would prove the window silent rather than prove the wiring — which is the defect this
+    // dialog was fixed for in the first place.
     private static (NamePromptWindow Window, TextBox Box, TextBlock Error) Open()
     {
-        var window = new NamePromptWindow();
+        var app = new ProjectAppService(new IhcSettings());
+        NamePromptWindow window = NamePromptWindow.Create(
+            new NamePromptInput("Omdøb", string.Empty, app.MissingRequiredField));
         CurrentTestWindow = window;   // so a failure screenshot has something to capture
         window.Show();
         return (window,

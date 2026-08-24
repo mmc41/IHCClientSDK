@@ -141,7 +141,7 @@ public partial class EnumTypeManagerWindow : Window
     }
 
     private Task<string?> Prompt(string title, string initial) =>
-        NamePromptWindow.ShowAsync(this, new NamePromptInput(title, initial));
+        NamePromptWindow.ShowAsync(this, new NamePromptInput(title, initial, _input.Blank));
 
     // Reload REGARDLESS of the verdict: a refusal leaves the document untouched, but re-reading it is what proves
     // the panes still describe the project rather than the edit we hoped for. The view-model surfaces the reason.

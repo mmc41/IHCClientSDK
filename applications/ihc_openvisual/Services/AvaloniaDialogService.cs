@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Ihc.Vis;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Session;
 using Avalonia.Layout;
@@ -68,6 +69,14 @@ public sealed class AvaloniaDialogService : IDialogService
 
     public Task ShowMessageAsync(string title, string message) =>
         ShowButtonsAsync(title, message, ("OK", true));
+
+    // The coded doors render through the shell's ONE presentation path and then reuse the same box: identity is
+    // decided there, never per dialog, so a problem shown here and one shown in a future findings pane read alike.
+    public Task ShowProblemAsync(string title, Problem problem) =>
+        ShowMessageAsync(title, ProblemPresenter.Text(problem));
+
+    public Task ShowProblemAsync(string title, ProblemChain chain) =>
+        ShowMessageAsync(title, ProblemPresenter.Text(chain));
 
     public async Task<string?> PickOpenProjectAsync(string? initialDirectory)
     {

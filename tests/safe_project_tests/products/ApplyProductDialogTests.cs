@@ -167,6 +167,10 @@ namespace Ihc.Vis.Tests
         /// <summary>
         /// The value rule is enforced from the PRESET, not from anything the caller supplies — a caller that could
         /// pass its own rule could also omit it.
+        /// <para>The phone-number rule refuses under a code OF ITS OWN. The generic <c>edit.field-value-rule</c>
+        /// governs the sentence <i>"Feltet {field} har en ugyldig værdi."</i>, which is not the sentence this site
+        /// shows and has no slot the offending value could bind to — so raising it here would anchor a specific
+        /// guidance to a template that does not govern it.</para>
         /// </summary>
         [Test]
         public async Task AValueBreakingItsRule_IsRefused()
@@ -174,15 +178,21 @@ namespace Ihc.Vis.Tests
             (ProjectDocumentSession session, ElementId id) = await Placed("_0x3103");
             DialogDescriptorField slot = App.GetProductDialog(session.Current!, id)
                 .Groups.Single(g => g.Id == "telefonnumre").Fields[0];
+            ApplyProductDialog command = new(id, Edits(
+                new ProductDialogEdit(slot.Target, "phonenumber", "12")));   // below the 3-character minimum
 
-            EditOutcome outcome = session.Apply(new ApplyProductDialog(id, Edits(
-                new ProductDialogEdit(slot.Target, "phonenumber", "12"))));   // below the 3-character minimum
+            EditVerdict verdict = session.CanApply(command);
+            EditOutcome outcome = session.Apply(command);
 
             Assert.Multiple(() =>
             {
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
-                Assert.That(outcome.Reason, Is.EqualTo(DialogValueRule.PhoneNumber.Refusal),
-                    "the SDK's own sentence, not a second copy");
+                Assert.That(verdict.Code, Is.EqualTo(EditRefusalCodes.FieldPhonenumberMalformed),
+                    "the code a catalogue entry governs, not the generic field-value one");
+                Assert.That(outcome.Reason, Is.EqualTo(
+                    "Telefonnummeret '12' skal være på 3-20 tegn uden mellemrum og begynde med en landekode, "
+                    + "f.eks. +45."),
+                    "the same specific guidance as before, now naming the offending value");
             });
         }
 

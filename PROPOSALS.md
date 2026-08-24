@@ -23,14 +23,16 @@ Ordered by priority within each group.
 | ---- | ------ | ------ | -------- | -------- |
 | **T1** | `UserManagerService.GetUsers` applies its redaction conditional in the **opposite direction** from its own comment | Defect | Verify | [§T1](#t1--usermanagerservicegetusers-redaction-is-inverted) |
 | **T2** | Configuration services attach **raw** WLAN/SMTP/email-control models to activity tags; their `ToString()` reveals secrets | Defect | Todo | [§T2](#t2--raw-secret-bearing-models-on-activity-tags) |
-| **G2a** | Product-dialog numeric `Minimum`/`Maximum` are enforced **nowhere** — an out-of-range value commits | Defect | Todo | [§G2a](#g2a--numeric-range-is-not-enforced-on-dialog-write-back) |
+| **G2a** | Numeric `Minimum`/`Maximum` **are** enforced on write-back now — but nothing tests it, for any family | Task | Todo | [§G2a](#g2a--numeric-range-is-enforced-but-untested) |
+| **G2c** | A **non-numeric** value in a bounded numeric field still commits — the surviving half of the old G2a | Decision | **Needs decision** | [§G2c](#g2c--a-non-numeric-value-in-a-bounded-field) |
 | **G1** | The vendor app can edit a `.vis` while OpenVisual has it open; the save silently overwrites it | Defect | Todo | [§G1](#g1--external-modification-of-the-open-file) |
-| **A1** | No `CancellationToken` on the async surface and no HTTP timeout — a caller blocks until the 100 s default | Defect | Todo | [§A1](#a1--cancellation-and-timeouts) |
+| **A1** | Catalog import blocks the UI thread for ~2.4 s with no cancel; `LoadPersisted` blocks startup the same way | Defect | Todo | [§A1](#a1--catalog-import-blocks-the-ui-thread) |
+| **A1b** | No HTTP timeout on the controller path — a caller blocks until `HttpClient`'s 100 s default | Defect | Todo | [§A1b](#a1b--http-timeout-on-the-controller-path) |
 | **A2** | No behavioural test for the controller half — no wire fixtures, and `safe_integration_tests` never runs | Task | Todo | [§A2](#a2--soap-fixture-corpus--replay-harness) |
 | **B1** | Tracing but no metrics — needs a `Meter` **and** an export pipeline that does not exist | Task | Todo | [§B1](#b1--metrics-instrument-and-export-pipeline) |
 | **B4** | Refusals carry a bare Danish string while validation findings carry a `RuleId` | Task | Todo | [§B4](#b4--refusal-codes) |
 | **C1** | The Linux CI legs cannot be run locally, and their native-dep list exists only in the workflow YAML | Task | Todo | [§C1](#c1--local-linux-ci-legs-on-a-windows-workstation) |
-| **G2b** | Live per-field dialog feedback (depends on G2a) | Task | **Blocked** — needs G2a | [§G2b](#g2b--live-per-field-dialog-feedback) |
+| **G2b** | Live per-field dialog feedback — the GUI's `IsSatisfied` still ignores the bounds the SDK now enforces | Task | Todo | [§G2b](#g2b--live-per-field-dialog-feedback) |
 | **T3** | HTTPS certificate identity is not authenticated (`DangerousAcceptAnyServerCertificateValidator`) | Decision | **Needs decision** | [§T3](#t3--https-certificate-trust-boundary) |
 | **D1** | Rule on the two US-068 residuals (log-mark scope; stop-point / jump-to leaf routes) | Decision | **Blocked** — needs T018's Discoveries entry | [§D1](#d1--us-068-residuals) |
 | **O1** | PG-5 enum-editing oracle session — capture the value-id reallocation rule | Oracle | Todo | [§O1](#o1--pg-5-enum-editing-oracle-session) |
@@ -66,26 +68,69 @@ parameterless `ToString()` reveals secrets.
 `ARCHITECTURE.md` states the standing property (redaction is call-site, not global, so trace data must
 be treated as sensitive); these are the specific defects behind that warning.
 
-### G2a · Numeric range is not enforced on dialog write-back
+### G2a · Numeric range is enforced but untested
 
-**Correctness defect.** `ProductDialogDescriptor` carries `Minimum`/`Maximum` (`ProductDialogDescriptor.cs:76-77`,
-*"the numeric lower/upper bound DERIVED from the target element"*), and **nothing enforces them**:
+> **Re-measured 2026-08-24. The correctness defect is FIXED; only its test coverage is outstanding.**
+> This row's central evidence — *"`ProductDialogCommands.cs` contains no reference to `Minimum` or
+> `Maximum`"* — is no longer true, and the fix predates this re-measurement (the comment above the call
+> reads *"the bounds … finally read"*). The row is retitled and re-kinded accordingly; the one clause of
+> its old net-effect sentence that DOES survive was split out as [§G2c](#g2c--a-non-numeric-value-in-a-bounded-field)
+> rather than dropped.
 
-- `ProductDialogCommands.cs` contains **no reference to `Minimum` or `Maximum`** — the write-back
-  re-composes the dialog to check that a field is offered and writable, not that its value is in range.
-- The GUI's `ProductDialogViewModel` exposes `Minimum`/`Maximum` (`:44,:46`) but its `IsSatisfied`
-  (`:81`) consults **only** `Rule` — `Rule?.IsSatisfiedBy(Value) ?? true` — so the bounds are surfaced
-  and never evaluated.
+**What now holds.** The write-back enforces the descriptor's bounds on the same path that already refuses
+unoffered and read-only fields, so the guarantee holds for **every** caller and not just the GUI:
 
-Net effect: a non-numeric or out-of-range value can be committed through the dialog.
+- `ProductDialogCommands.cs:115` — `if (OutsideBounds(field, edit.Value) is { } outside) return
+  EditVerdict.Refuse(EditRefusalCodes.FieldOutOfRange, outside);`
+- `OutsideBounds` (`:150`) reads `field.Minimum`/`field.Maximum`; `Sentence` (`:171`) builds the Danish
+  refusal naming the field and its bounds (*"Feltet 'X' skal være mellem 0 og 9999."*).
+- The refusal-versus-failure question is settled the way this row recommended: **refusal**.
+  `edit.field-out-of-range` carries `CatalogDisposition.Refusal`
+  (`ProblemCatalogEntries.EditRefusals.cs:589-592`).
 
-- [ ] Reproduce with a test first: submit an out-of-range value for a field that declares bounds, assert
-      it currently commits.
-- [ ] Enforce the bounds in the SDK, on the same write-back path that already refuses unoffered and
-      read-only fields — so the guarantee holds for every caller, not just the GUI.
-- [ ] Decide whether an out-of-range value is a **refusal** (installer-actionable, Danish sentence) or a
-      **failure**; refusal is the better fit and matches the existing unoffered/read-only behaviour.
-- [ ] Cover per family in `safe_project_tests`, not for one product.
+**What is outstanding — and it is the whole of this row now.** `grep -rln "FieldOutOfRange" tests` returns
+**nothing**. No test, in any suite, asserts this refusal for any family. The behaviour is real and
+ungated, so a regression would ship silently. (`CatalogCompletenessTests` proves the code *has a
+catalogue entry*; it does not prove the code is ever raised.)
+
+- [ ] Cover the refusal per family in `safe_project_tests`, not for one product: a field that declares
+      bounds, a value below the minimum, a value above the maximum, and the two boundary values
+      accepted. Assert the CODE (`EditRefusalCodes.FieldOutOfRange`), not the sentence alone.
+- [ ] Assert the sentence separately against the field's declared bounds, so the three `Sentence`
+      shapes (min+max, min only, max only) are each exercised rather than only the common one.
+- ~~Reproduce with a test first~~ — moot: there is no longer a defect to reproduce. It collapses into
+  the coverage item above.
+- ~~Enforce the bounds in the SDK~~ — **done**, see above.
+- ~~Decide refusal versus failure~~ — **done**: refusal.
+
+### G2c · A non-numeric value in a bounded field
+
+**Split out of G2a on 2026-08-24**, because it is the one clause of that row's net-effect sentence
+(*"a **non-numeric** or out-of-range value can be committed"*) that survived the fix. Out-of-range is now
+refused; non-numeric is not.
+
+`OutsideBounds` returns `null` for a blank **or unparseable** value, deliberately and with the reasoning
+written at the call site (`ProductDialogCommands.cs:110-114`):
+
+> *A BLANK value is not out of range: a numeric field sitting at its declared default presents blank, and
+> committing blank writes the default back. Neither is an unparseable one — this condition answers "is
+> this number outside its bounds", and nothing else.*
+
+The blank half is clearly right. The unparseable half is a **decision, not an oversight** — but it means
+`abc` submitted into a bounded numeric field is written through unless that field also carries a
+`DialogValueRule`, and the descriptor's bounds are the only thing that marks the field as numeric at all.
+
+- [ ] **Decide where "this field holds a number" is enforced.** Three shapes, and they are not equivalent:
+      the write-back refuses an unparseable value in a bounded field · the composer gives every bounded
+      field a numeric `DialogValueRule`, so the existing rule check catches it · or it stays the caller's
+      problem and this row is closed as won't-do.
+- [ ] Whichever is chosen, it needs its own code and Danish sentence — *"is not a number"* is a different
+      refusal from *"is outside its bounds"*, and reusing `edit.field-out-of-range` would anchor a
+      sentence to an entry that does not govern it.
+- [ ] Check the vendor's behaviour before ruling: parity is the governing default, and this was not
+      measured. IHC Visual's numeric fields may simply refuse the keystroke, in which case the state is
+      unreachable through the dialog and only reachable by import or hand-edit — which would make it a
+      whole-project finding rather than a commit refusal.
 
 ### G1 · External modification of the open file
 
@@ -121,34 +166,102 @@ declined (it would see the app's own temp+rename writes and needs debounce plus 
 And the check is inherently **best-effort**: there is a race between hashing and `File.Replace` that no
 amount of care closes without a lock, which is ruled out. This narrows the window; it does not close it.
 
-### A1 · Cancellation and timeouts
+### A1 · Catalog import blocks the UI thread
 
-428 public `Task`-returning member declarations under `ihcclient/src/api/services` and **zero** accept a
-`CancellationToken`; `ProjectAppService` is 11/0. The token exists only on the two
-`GetResourceValueChanges` streaming methods. `PostAsync` is called without one and no `HttpClient.Timeout`
-is set, so a caller blocks until `HttpClient`'s 100 s default and cannot abort in the meantime.
+> **Re-evaluated 2026-08-24.** The original A1 proposed one `CancellationToken` sweep across the API tier,
+> the application tier and `ProjectAppService`. Three things have changed since it was written, and
+> together they invert it. Its checkboxes were also marked `[x ]` while **none** of the work was done —
+> `Client.Post` still calls `SendAsync(request)` with no token, no `HttpClient.Timeout` is set anywhere on
+> the SOAP path, and the three retry TODOs are still at `controllerService.cs:800,818,836`. The boxes are
+> gone rather than reset: most of that list is now foreclosed, and the rest is [§A1b](#a1b--http-timeout-on-the-controller-path).
+>
+> 1. **ADR-001 already ruled on the SDK half and rejected it** (broadened 2026-08-24). It weighed
+>    *"the facade grows `…Async(snapshot, CancellationToken)` doors"* against host-side offload and chose
+>    the host, on three counts: a library wrapping synchronous CPU work in `Task.Run` spends the caller's
+>    thread-pool thread unasked; every existing `Task`-returning facade door is I/O-shaped, so `Async`
+>    would mean two different things on one type across a shipped public-API baseline; and the token would
+>    be a public promise the engine cannot keep mid-run. Its standing rule: **never publish a
+>    `CancellationToken` on a door that ignores it.** See [Standing constraints](#standing-constraints--do-not-reopen-without-new-evidence).
+> 2. **Validation does not need cancelling — measured, not assumed.** `PerfBaselineBenchmark` over the
+>    largest authentic project (`project3-KompleksWired`, 11 localities / **1337 elements**):
+>    `ValidateCategorized` is **12.6 ms median, 13.4 ms p95** in a DEBUG build; the whole 17-document
+>    characterization corpus is 28 ms. And it cannot grow without bound — a `.vis` targets a physical
+>    controller, so `ControllerCapabilityLimits` caps a project at 2000 resources / 8 input + 16 output
+>    modules / 128 addresses per direction / 64 wireless devices. ADR-001 makes finer cancellation
+>    *"an increment to buy when measurement justifies it"*; measurement does not. Nothing under
+>    `applications/` calls `Validate` or `ValidateCategorized` today either, so there is also no caller to
+>    cancel.
+> 3. **The genuinely long-running path is catalog import, which A1 never mentioned** — and it is host-side,
+>    in OpenVisual, which is the low-risk half. That is the item below.
 
-- [x ] Add `CancellationToken cancellationToken = default` as the trailing parameter across the API tier,
-      the application tier, and `ProjectAppService`'s file/controller operations. **One sweep, not
-      opportunistically** — a half-threaded surface looks like cancellation works.
-      ⚠️ Source-compatible for *call sites* only. Adding an optional parameter to an **interface** is a
-      binary-breaking change and breaks every existing implementer, including any outside this repo.
-      Decide explicitly whether that is acceptable before starting.
-- [x ] Thread it to the wire (`PostAsync(url, content, cancellationToken)`) **and to the response-body
-      read** in `src/api/services/serviceBase.cs` — a token that stops at the request leaves the read
-      unbounded, which is where a slow controller actually hangs.
-- [x ] ⛔ **Do NOT replace the `CancellationToken.None` at `src/api/util/services.cs:86`.** It is
+`CatalogImportWorkflow.ImportFolderAsync` is declared `async Task` but **contains no `await` inside its
+loop**: it walks `Directory.EnumerateFiles(dir, "*.*", SearchOption.AllDirectories)` and per file runs
+`service.ImportCatalogFile(file)` (read + XML parse + catalog append) and, when persisting, a `File.Copy`.
+The only awaits are the error dialogs. So the whole run occupies the UI thread — and OpenVisual has **no
+`Task.Run` anywhere**, so ADR-001's five-step host contract is currently written but unimplemented.
+
+**Measured against a real vendor install** (`C:\Program Files (x86)\LK IHC Control`): **480** `.def`/`.ifb`
+files, **2385 ms parse-only**, DEBUG. Directory enumeration is 7 ms of that — the cost is the per-file
+parse. `persist: true` adds 480 `File.Copy` calls on top. Unlike everything else in the engine this is
+bounded by the folder the installer picks, not by controller capacity, so there is no ceiling argument to
+make here.
+
+`LoadPersisted()` is the worse half of the same defect: it is called **synchronously from the
+`ProjectWorkflow` constructor** (`ProjectWorkflow.cs:71`), so a large persisted catalog delays startup with
+no window drawn yet — and unlike the folder import it deliberately does **not** stop at the first bad file
+(it logs and continues), so it always pays the full walk.
+
+- [ ] Reproduce first: a `safe_visual_tests` case over a fixture folder asserting the import is
+      cancellable and that the UI thread is not the one doing the parsing.
+- [ ] Offload the loop under ADR-001's host contract — `await Task.Run(… , ct)`, bind on the UI thread,
+      honour the token at both boundaries. **The token is checked between files, in the host's own loop**,
+      which is exactly ADR-001's coarse-cancellation model and needs **no SDK change**: `ImportCatalogFile`
+      stays synchronous and tokenless.
+   - Thread-safety is already settled — `CompositeCatalog` documents itself *"Deferred + concurrent-read
+     safe"*: `Import` appends under a `lock (gate)` and invalidates the snapshot, reads take a lock-free
+     `Volatile.Read`. ⚠️ But note this is a **mutation**, not one of ADR-001's compute-doors-over-immutable-
+     snapshots, so steps 1 and 3 (snapshot + version capture, latest-wins discard) do not apply; steps 2,
+     4 and 5 do. Say so where the code lands, or the next reader will assume the contract was misapplied.
+- [ ] Add a progress + cancel affordance. `IDialogService` has **no** progress or busy dialog today, so
+      this is a new seam rather than a new call. ADR-001 already fixes the mechanism: `IProgress<T>`,
+      which keeps view-models free of Avalonia types.
+- [ ] Decide what cancelling a half-finished import means. `CatalogImportOutcome` already distinguishes
+      `Stopped` from `Completed` precisely so a partial run is not reported as a whole one (UX review
+      CORE-03) — a cancelled run is a third outcome and should not be folded into `Stopped`, which means
+      "hit an unreadable file".
+- [ ] Startup: make `LoadPersisted()` not block the constructor. This one is **not** cancellable by the
+      installer — there is no UI yet — so it wants deferral, not a cancel button.
+
+### A1b · HTTP timeout on the controller path
+
+The one piece of the original A1 that survives intact, and the only genuinely bad failure mode in it:
+**no `HttpClient.Timeout` is set anywhere on the SOAP path** (the sole `.Timeout` in the SDK is an
+unrelated 5 s telemetry probe in `config/Telemetry.cs:281`), and `Client.Post` calls `SendAsync(request)`
+with no token. A caller therefore blocks until `HttpClient`'s 100 s default with no way to abort.
+
+**Deliberately narrowed.** The original item bundled this with adding `CancellationToken` to 429 public
+`Task`-returning members under `src/api/services` (plus `ProjectAppService`'s 11). That sweep is now
+**not recommended**: it is binary-breaking on every interface it touches, it is the highest-risk surface in
+the repo, and — per ADR-001 — a token that only reaches the transport is a public promise most of those
+doors would not keep. The timeout can be had without any of it.
+
+- [ ] Bound the request in `Client.Post` with a per-request `CancellationTokenSource(timeout)` rather than
+      setting `HttpClient.Timeout`. ⚠️ The client is a process-wide singleton built by the first caller
+      (`src/api/util/httpclient.cs`), so a settings-derived `HttpClient.Timeout` is **first-caller-wins**
+      across every service in the process; a per-request linked token has the same effect with no
+      singleton coupling and touches no public signature.
+- [ ] Source the value from `IhcSettings` and bound the **response-body read** as well as the request — a
+      bound that stops at the request leaves the read unbounded, which is where a slow controller actually
+      hangs.
+- [ ] ⛔ **Do NOT replace the `CancellationToken.None` at `src/api/util/services.cs:86`.** It is
       deliberate: that call sits in a `finally` block (*"no cancellation here to avoid masking
       exceptions"*) immediately before `disableSubscription(resourceIds)`. Flowing an already-cancelled
       caller token there would skip the cleanup and leak the subscription on the controller. If cleanup
       needs bounding, give it its **own** short independent token — never the caller's.
-- [x ] Set an explicit `HttpClient.Timeout` from `IhcSettings`. ⚠️ The client is a process-wide singleton
-      built by the first caller (`src/api/util/httpclient.cs`), so a settings-derived timeout is
-      **first-caller-wins** across every service in the process. Either accept that, move the bound to a
-      per-request linked token, or change the client's lifetime — decide before implementing.
-- [x ] Delete or rewrite the three `// TODO: Retry x times.` comments in `controllerService.cs:800,818,836`
+- [ ] Delete or rewrite the three `// TODO: Retry x times.` comments in `controllerService.cs:800,818,836`
       — they advertise work that will not happen (see the retry ruling in Standing constraints).
-- [x ] Update `ARCHITECTURE.md` → Cross-cutting → Async with the cancellation policy.
+- [ ] Update `ARCHITECTURE.md` → Cross-cutting → Async with the timeout policy, and state that
+      cancellation of SDK compute is ADR-001's host-side concern rather than a facade parameter.
 
 ### A2 · SOAP fixture corpus + replay harness
 
@@ -278,14 +391,24 @@ where platform bugs hide.
 
 ### G2b · Live per-field dialog feedback
 
-**Blocked on G2a** — there is no point surfacing a bound the write-back does not enforce.
+**UNBLOCKED 2026-08-24** — G2a's SDK half has landed, so there is now a bound worth surfacing. Re-measured
+at the same time: item (a) below is unchanged and is the whole of the gap.
 
 Correcting the original framing: the GUI does **not** discard the descriptor's rules. `ProductDialogViewModel`
 already exposes `Rule`, `IsSatisfied` and `RefusalSentence`, so rule feedback partly exists. What is
-missing is (a) `Minimum`/`Maximum` participating in `IsSatisfied` (G2a's SDK fix should drive this) and
-(b) a standard error-presentation channel.
+missing is (a) `Minimum`/`Maximum` participating in `IsSatisfied` and (b) a standard error-presentation
+channel.
 
-- [ ] Once G2a lands, include the bounds in the field's satisfied/unsatisfied state.
+**The measured gap.** `IsSatisfied` is still `Rule?.IsSatisfiedBy(Value) ?? true`
+(`ProductDialogViewModel.cs:81`) and `TryCommit` gates on it (`:416`), so the GUI's own pre-check ignores
+the bounds the SDK now enforces. The user-visible consequence is no longer "an out-of-range value
+commits" — it is that the refusal arrives from the COMMIT instead of inline while typing, which is
+exactly what this row is for.
+
+- [ ] Include the bounds in the field's satisfied/unsatisfied state. Consult the SDK rather than
+      re-deriving: the descriptor already carries `Minimum`/`Maximum`, and the comparison the write-back
+      makes is the one to mirror — a second definition of "in range" in the GUI is the defect G2a just
+      closed, reintroduced one layer up.
 - [ ] Consider `INotifyDataErrorInfo` on the field view-model so the error presents through the standard
       channel rather than an ad-hoc binding. Optional — the existing `IsSatisfied`/`RefusalSentence` pair
       may be sufficient.
@@ -361,7 +484,21 @@ its numbers are machine-specific with no recorded baseline to compare against.
   controller path: the transport addresses a controller on the same LAN, not a WAN dependency, so the
   failure profile that motivates the pattern largely does not arise, and a breaker in front of one fixed
   endpoint adds state without adding availability. **The premise expires if remote access is ever
-  supported.** Timeouts are *not* covered by this and stay in scope (A1).
+  supported.** Timeouts are *not* covered by this and stay in scope
+  ([§A1b](#a1b--http-timeout-on-the-controller-path)).
+- **No `CancellationToken` sweep across the SDK surface** (ruled by ADR-001, broadened 2026-08-24). An SDK
+  compute door is synchronous and thread-agnostic; the **host** offloads it under ADR-001's five-step
+  contract and honours the token there. The alternative — growing `…Async(snapshot, CancellationToken)`
+  doors on the facade — was weighed and rejected: it spends the caller's thread-pool thread unasked, makes
+  `Async` mean two different things on one type across a shipped public-API baseline, and publishes a
+  promise the engine cannot keep mid-run. The standing rule is **never publish a `CancellationToken` on a
+  door that ignores it.** Cancellation is therefore *coarse* — honoured between runs, not mid-run — and
+  finer cancellation inside the validation executor is an increment to buy **when measurement justifies
+  it**, cheapest first (a check between rules in the executor's own loop, one file; only then a token
+  threaded into the two dozen `*Rules.cs`). Measurement as of 2026-08-24 does **not** justify it:
+  `ValidateCategorized` is 12.6 ms on the largest authentic project, and `ControllerCapabilityLimits` caps
+  how large a project can get. Re-open on a measured figure, not on a consistency argument. Transport
+  timeouts are *not* covered by this and stay in scope ([§A1b](#a1b--http-timeout-on-the-controller-path)).
 - **No autosave, command journal, or crash recovery** (ruled 2026-08-14). In-memory-only undo history is
   accepted for an incubating app; commands are deliberately not serializable, so there is no macro or
   scripting surface either. `ARCHITECTURE.md` was corrected to stop claiming one. Does **not** cover G1,

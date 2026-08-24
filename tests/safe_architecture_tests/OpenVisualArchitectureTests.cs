@@ -429,14 +429,11 @@ namespace Ihc.Tests
                 // Logged, not shown.
                 new MethodCallExemption("ihc_openvisual.Program", "CreateX11Options"),
                 new MethodCallExemption("ihc_openvisual.Views.HandlerGuard", "RunAsync"),
-                // Shown as detail under a Danish sentence naming the file/operation.
-                new MethodCallExemption("ihc_openvisual.Services.ProjectWorkflow", "OpenAsync"),
-                new MethodCallExemption("ihc_openvisual.Services.ProjectWorkflow", "SaveToAsync"),
-                new MethodCallExemption("ihc_openvisual.Services.ProjectWorkflow", "SaveFunctionBlockAsync"),
-                new MethodCallExemption("ihc_openvisual.Services.ProjectReportWorkflow", "ViewInBrowserAsync"),
-                new MethodCallExemption("ihc_openvisual.Services.ProjectReportWorkflow", "SaveAsAsync"),
-                new MethodCallExemption("ihc_openvisual.Services.CatalogImportWorkflow", "ImportFileAsync"),
-                new MethodCallExemption("ihc_openvisual.Services.CatalogImportWorkflow", "ImportFolderAsync"),
+                // T042: the ONE remaining read, and it moves the message into a coded problem's DIAGNOSTIC slot,
+                // which the shell's presentation path never renders. The seven per-site exemptions this replaces
+                // are gone with the sites that needed them: each now hands the exception to a typed factory
+                // instead of splicing its message into a Danish sentence, so the triage record is one line.
+                new MethodCallExemption("ihc_openvisual.Services.HostProblems", "Detail"),
             };
 
         /// <summary>

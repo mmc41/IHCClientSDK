@@ -1,7 +1,9 @@
+using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using ihc_openvisual.Services;
+using Ihc.Vis.Problems;
 
 namespace ihc_openvisual.Views;
 
@@ -29,26 +31,51 @@ public partial class NamePromptWindow : ResultDialog<string>
         };
     }
 
+    /// <summary>
+    /// The blank decision, SUPPLIED. A View may not name <c>ProjectAppService</c>, so it cannot mint this and it
+    /// cannot fall back to one of its own — an emptiness test written here is exactly the shell-side duplicate
+    /// this window stopped carrying. Null only on the parameterless construction path, which is the XAML previewer
+    /// and the tests that never press OK; every production route builds a <see cref="NamePromptInput"/>, whose
+    /// <see cref="NamePromptInput.Blank"/> the compiler requires.
+    /// </summary>
+    private Func<string?, Problem?>? _blank;
+
     public static Task<string?> ShowAsync(Window owner, NamePromptInput input)
     {
-        var window = new NamePromptWindow { Title = input.Title };
-        window.NameBox.Text = input.InitialName;
+        NamePromptWindow window = Create(input);
         window.FocusOnOpen(window.NameBox);
         return window.ShowDialogForResult(owner);
+    }
+
+    /// <summary>The window as the prompt configures it, so a test drives the SAME wiring the application does
+    /// rather than a window whose validator was never attached.</summary>
+    internal static NamePromptWindow Create(NamePromptInput input)
+    {
+        var window = new NamePromptWindow { Title = input.Title };
+        window._blank = input.Blank;
+        window.NameBox.Text = input.InitialName;
+        return window;
     }
 
     // An all-whitespace name is not a name, so OK refuses it rather than committing one the engine would have to
     // second-guess — but it SAYS SO. Refusing silently is the worse half of that behaviour: the button appears
     // broken, and a keyboard or screen-reader user gets no signal at all. Cancel remains the way out.
+    //
+    // T045: the DECISION is the SDK's required-field constraint and the SENTENCE is its coded problem's — this
+    // window's own emptiness test and its markup's fixed line are gone. What stays here is the interaction the
+    // task keeps in the windows: the inline feedback, the focus return, and the dialog staying open.
+    //
+    // The decision now arrives on the input rather than through a shell-side helper: the caller asks the SDK
+    // facade and hands the answer in, because a View may not drive ProjectAppService.
     private void OnOk(object? sender, RoutedEventArgs e)
     {
-        string name = NameBox.Text?.Trim() ?? string.Empty;
-        if (name.Length == 0)
+        if (_blank?.Invoke(NameBox.Text) is { } blank)
         {
+            NameError.Text = blank.Message;
             NameError.IsVisible = true;
             NameBox.Focus();   // put the caret where the fix has to happen
             return;
         }
-        Accept(name);
+        Accept(NameBox.Text!.Trim());
     }
 }

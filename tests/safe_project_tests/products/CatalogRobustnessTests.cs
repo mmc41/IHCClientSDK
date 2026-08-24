@@ -1,3 +1,4 @@
+using Ihc.Vis.Problems;
 using System.Text;
 using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
@@ -105,7 +106,7 @@ namespace Ihc.Vis.Tests
             try
             {
                 Assert.That(() => CatalogDiscovery.FromInstallDir(dir),
-                    Throws.TypeOf<InvalidDataException>().With.Message.Contains("garbage.def"));
+                    Throws.TypeOf<RefusedImportException>().With.Message.Contains("garbage.def"));
             }
             finally
             {

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
+using Ihc.Vis.Problems;
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Io;
 using Ihc.Vis.Model;
@@ -400,7 +401,7 @@ namespace Ihc.Vis.FunctionBlocks
         {
             if (CollectErrors().Count > 0)
             {
-                throw new ProjectValidationException(Validate());   // full result, advisories included
+                throw new ProjectValidationException(new ProblemCode("import.definition-invalid"), Validate());   // full result, advisories included
             }
 
             // The materialized body is deliberately left un-canonicalized (raw placeholder ids + effective

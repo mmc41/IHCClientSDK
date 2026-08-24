@@ -25,6 +25,12 @@ namespace Ihc.Vis
     /// </summary>
     public sealed class SceneValue
     {
+        /// <summary>The lowest light level a dimmer member may carry — the floor both the guard and the editor read.</summary>
+        private const int MinimumLevel = 0;
+
+        /// <summary>The highest light level a dimmer member may carry.</summary>
+        private const int MaximumLevel = 100;
+
         private SceneValue(string memberTag, ImmutableArray<(string Name, string Value)> attributes)
         {
             MemberTag = memberTag;
@@ -104,6 +110,26 @@ namespace Ihc.Vis
             }
         }
 
+        /// <summary>
+        /// What a scene-value editor may offer for a dimmer member's LIGHT LEVEL: 0–100 %. The same bounds
+        /// <see cref="Dimmer"/> enforces, declared once so an editor advertises exactly what the factory accepts —
+        /// the pair that used to be a hardcoded clamp in a window and a throw in here.
+        /// </summary>
+        public static Validation.FieldConstraintMetadata LevelConstraint { get; } =
+            Validation.FieldConstraintMetadata.Unconstrained with { Minimum = MinimumLevel, Maximum = MaximumLevel };
+
+        /// <summary>
+        /// What a scene-value editor may offer for each half of a mm:ss RAMP entry: 0–59.
+        /// <para>
+        /// This one is a NOTATION bound, not a file-format one — the format stores whole milliseconds and this type
+        /// refuses only a negative ramp — and it is declared here anyway, because the alternative is the same two
+        /// numbers written into a window's markup where nothing can check them against the milliseconds this type
+        /// serializes. 59:59 is what the reference application's own two-field entry allows.
+        /// </para>
+        /// </summary>
+        public static Validation.FieldConstraintMetadata RampPartConstraint { get; } =
+            Validation.FieldConstraintMetadata.Unconstrained with { Minimum = 0, Maximum = 59 };
+
         /// <summary>A relay/socket member (<c>scene_relay</c>): the output switches <paramref name="on"/> or off.</summary>
         public static SceneValue Relay(bool on) =>
             new("scene_relay", ImmutableArray.Create(("relay_value", on ? "on" : "off")));
@@ -114,8 +140,8 @@ namespace Ihc.Vis
         /// </summary>
         public static SceneValue Dimmer(int levelPercent, TimeSpan rampTime)
         {
-            ArgumentOutOfRangeException.ThrowIfLessThan(levelPercent, 0);
-            ArgumentOutOfRangeException.ThrowIfGreaterThan(levelPercent, 100);
+            ArgumentOutOfRangeException.ThrowIfLessThan(levelPercent, MinimumLevel);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(levelPercent, MaximumLevel);
             ArgumentOutOfRangeException.ThrowIfNegative(rampTime.Ticks, nameof(rampTime));
             return new("scene_dimmer", ImmutableArray.Create(
                 ("dimming_value", DecToken.Format(levelPercent)),

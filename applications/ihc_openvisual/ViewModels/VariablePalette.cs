@@ -6,7 +6,7 @@ using Ihc.Vis.Schema;
 namespace ihc_openvisual.ViewModels;
 
 /// <summary>
-/// Labels the SDK-authoritative variable types (<see cref="VariableTypeRegistry"/>, ADR-002/D07) for the "Insert
+/// Labels the SDK-authoritative variable types (<see cref="VariableTypeRegistry"/>, ADR-002) for the "Insert
 /// variable" palette (US-027): the app supplies a display <see cref="Labels">label</see> per tag, over the registry's
 /// tags and in the registry's order. WHICH types a section accepts is the engine's rule
 /// (<c>ProjectAppService.GetInsertableVariableTypes</c>) and is never re-derived here. EVERY registry type is given a

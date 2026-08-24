@@ -98,7 +98,7 @@ namespace Ihc.Vis.Tests
             // 'bogus' is declared by neither the registry nor the file's own inline DTD → must not be silently emitted.
             Project project = Load(TestData.ReadBytes("projects/Synthetic/OpenWorldUndeclaredAttr.vis"));
 
-            Assert.Throws<InvalidOperationException>(() => ProjectSerializer.Serialize(project));
+            Assert.Catch<InvalidOperationException>(() => ProjectSerializer.Serialize(project));
         }
 
         private static ProjectElement? FindByTag(ProjectElement element, string tag)

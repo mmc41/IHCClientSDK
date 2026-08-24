@@ -1,11 +1,11 @@
 # `Project6-Errors.vis` — the finding-catalogue oracle
 
 **What it is.** A vendor-written IHC Visual project carrying a **deliberate instance of every non-fatal
-condition** in [`applications/ihc_openvisual/docs/error-list.md`](../../../applications/ihc_openvisual/docs/error-list.md)
+condition** in [`ihcclient/docs/problem-catalogue.md`](../../../ihcclient/docs/problem-catalogue.md)
 that IHC Visual will actually let a user author — plus the catalogue's **deliberate non-findings**, and
 an **issue-free control product** that must appear in no finding list at all.
 
-**Why it exists.** `error-list.md` §5 proposes ~87 *user-sourced* rows on the strength of §3's decision
+**Why it exists.** The catalogue's §5 proposes ~87 *user-sourced* rows on the strength of §3's decision
 procedure: a row is User-sourced when *"the state is reachable by ordinary authoring"*. That claim was
 never tested against the vendor application. This fixture tests it one row at a time: a row IHC Visual
 authors is **confirmed**, a row it **refuses** is not user-sourced at all and belongs in §4 (file-sourced).
@@ -204,7 +204,8 @@ automatic is a deliberate choice rather than an oversight.
 ## 7. What the implemented checks report today
 
 The eight implemented US-072 checks produce **44 findings** on this fixture, all `Warning`, all in the
-Documentation category. The exact counts are pinned by `ErrorsFixtureFindingsTests`, because
+Documentation category; the five naming rows in §7.1 add **10 more**, of the same severity and category.
+The exact counts are pinned by `ErrorsFixtureFindingsTests`, because
 "fires at least once" is satisfied by both failure modes that matter — a check that collapses onto one
 element, and one that fans out over the whole project.
 
@@ -233,9 +234,192 @@ leaves the control product `Lampeudtag` silent, reproduces the one-sided-documen
 like this implementation — reports nothing for the RS485/airlink/S0/bus products, whose
 `documentation_tag` is empty. Its own totals are larger on the five product-level rules (79 findings
 against 44) purely because it repeats a product-level gap under every terminal of the product; see the
-appendix of [`error-list.md`](../../../applications/ihc_openvisual/docs/error-list.md).
+appendix of [`problem-catalogue.md`](../../../ihcclient/docs/problem-catalogue.md).
 
 ⚠ **What that agreement is worth.** The tool is unofficial, may be incomplete, and **has no severity
 model** — it emits a flat list. So it corroborates *detection* (which conditions, on which elements) and
 says nothing about severity. Two implementations can also share a blind spot. The oracle is this
 fixture, whose content was authored deliberately and is recorded above — not the third-party report.
+
+### 7.0 Logic rows — the enum set (T054)
+
+The `Zoo` locality's four authored enumerator types produce **6 findings**, all `Warning`, all in the Logic
+category, counted by `Fixture_CarriesExactlyTheseLogicConditions`.
+
+| Rule | Count | Where |
+|---|---|---|
+| `enum-def-empty` | 1 | `Tom enum` |
+| `enum-def-single-value` | 1 | `Enkelt`, whose only value is `Kun` |
+| `enum-def-unused` | 4 | **all four authored types**, `Brugt` included |
+
+⚠ **Why `enum-def-unused` fires four times and not once.** §4 records (M-14) that IHC Visual cannot bind a
+user-created enumerator type to a variable at all — `Indsæt ▸ Variable` offers a fixed 21 entries and none of
+them is an enumerator. So every user-created type in every project is necessarily unreferenced; `Brugt` is
+named for the intent it was authored to carry (`enum-value-unused`), not for a binding the application can
+make. The row is still correct: the type really is dead in the project and in the reports. The two shipped
+`typeid` tables are excluded — they are read-only furniture, unreferenced in most authentic files.
+
+### 7.0c Logic rows — the program-shape set (T056)
+
+| Rule | Count | Where |
+|---|---|---|
+| `logic-program-no-events` | 1 | the `Zoo` program that carries commands and no trigger |
+| `logic-program-no-actions` | 1 | the `Zoo` program that carries a trigger and no commands |
+| `logic-subprogram-no-conditions` | 1 | the sub-program whose `conditions` container is empty |
+| `logic-case-no-branches` | 2 | the two case nodes with no `case_action` at all |
+
+⚠ **The two "empty program" rows never both fire on one program.** `logic-program-no-actions` requires events
+to be PRESENT — the row's own wording — so the empty default program every inserted block ships is the events
+row's finding alone. Measured over the corpus: exactly one program has events and no commands, and it is here.
+
+⚠ **`logic-case-duplicate-value` is implemented and cannot be witnessed here.** §5 records the measurement:
+`Indsæt ▸ Ny case værdi` writes its branch under the LEFT pane's caret instead of into the selected case node,
+and the left pane never holds a `program_case`. Four routes were driven, including the vendor's own documented
+right-click gesture. So a duplicate case value only reaches a file by hand-editing, and the rule is tested
+against hand-built trees in `ProgramShapeRulesTests`.
+
+### 7.0a Logic rows — the variable-usage set (T057)
+
+Thirteen findings, all `Warning`, all over the shared program read model.
+
+| Rule | Count | Where |
+|---|---|---|
+| `logic-variable-unused` | 4 | `Zoo`'s declared state variables no program touches and no link reaches |
+| `logic-variable-write-only` | 3 | assigned by a program, never read, never linked |
+| `logic-variable-read-only` | 1 | read by a program, never assigned — an internal variable, not a setting |
+| `enum-value-unused` | 5 | every value of the four AUTHORED enumerator types |
+
+⚠ **`enum-value-unused` counts five because of M-14, not because the fixture is odd.** The application
+cannot bind a user-created enumerator type to a variable at all, so no value of one can ever be referenced;
+the row states a true fact the GUI offers no way to fix. The two shipped `typeid` tables are excluded — they
+are read-only furniture whose 11 values are unreferenced in every project, the empty one included.
+
+⚠ **A PIN is never counted by these three rows.** An input's producer and an output's consumer live outside
+the block, and the wiring rows own them (`link-fb-input-unfed`, `link-fb-output-unused`). Measured on
+`project3`: including pins takes the set from 9 findings to 64. A `settings` variable is likewise never
+reported as read-only, because a dialog-set value is *supposed* to keep the value it was given.
+
+⚠ **`logic-case-value-foreign` cannot be witnessed here or anywhere in the corpus.** The chain is
+branch → inline operand → `inivalue`, and every committed branch tests a value its switch's type declares.
+
+### 7.0a-2 Logic rows — the dataflow set (T058)
+
+Nine findings, all `Warning`, all predicates over the shared program read model. **All six rows are
+witnessed here**, which is why this fixture is the one that proves the set.
+
+| Rule | Count | Where |
+|---|---|---|
+| `logic-output-never-assigned` | 3 | linked outputs no program assigns |
+| `logic-flag-never-cleared` | 2 | flags written only by `%P = ON` |
+| `logic-counter-never-reset` | 1 | a counter written only by `%P = %P + 1` |
+| `logic-timer-unused` | 1 | a declared timer no activation command starts |
+| `logic-self-trigger` | 1 | `Selvudløser`, a program triggered by the flag it assigns |
+| `logic-contending-writers` | 1 | a variable written by two programs whose triggers share no ancestry |
+
+⚠ **`logic-contending-writers` counts ONE here, and that is the whole design of the row.** Comparing trigger
+variables directly makes the standard ON/OFF block shape look like a contention — one program sets the output
+ON, another sets it OFF, each from its own pulse flag — and reports 8 on this fixture, 24 on `project3` and 9
+on `Project1`. Both pulse flags are written by programs triggered by the same button, so their trigger
+ANCESTRIES meet, and the shape is related rather than contending. Do not "fix" the fixture to make more of
+them fire.
+
+⚠ **Starting a timer is not assigning one.** The fixture's timer is written by an assignment and still
+reported, because only the three activation commands (`_0xbe`/`_0xc8`/`_0xd2`) start a timer.
+
+### 7.0b Logic rows — the function-block shape set (T055, completed by T055a)
+
+| Rule | Count | Where |
+|---|---|---|
+| `logic-block-empty` | 2 | `Tom blok` and `Kobling`, both of which had their default `Program` deleted (§3) |
+| `logic-block-no-pins` | 1 | `Tom blok` alone — `Kobling` has pins, which is what makes it the `link-through-empty-block` witness |
+| `logic-duplicate-program` | 1 | the `Zoo` block's two identical programs — the only duplicated pair in the whole corpus |
+| `logic-master-block-modified` | 1 | `Kip tænd sluk (lokalt tilpasset)`, renamed away from its insert name while keeping `Nummer`/`Version`/`Oprettet`/`Udviklet af` |
+| `logic-block-locked-content` | 1 | the same block's `Timer`, moved from 3 to 5 minutes under `locked="yes"` — the note below is why it took a second task |
+
+⚠ **`logic-block-locked-content` now HAS a rule, and this fixture is its witness** — the `Timer` setting
+edited from 3 to 5 minutes under `locked="yes"`, which §3 recorded long before anything could see it. Two
+things had to be true first. D27 gave the validation context a LIBRARY port (declared and skipped when
+absent, exactly as the capacity rows treat controller limits), because nothing in the file distinguishes an
+edited value from a library default. And the value had to be read where a timer keeps it: NOT in `value` or
+`inivalue`, which a `resource_timer` does not carry at all, but in its `hour`/`minute`/`second`/`millisecond`
+attributes — a first implementation that read only the two obvious attributes produced the eight authentic
+findings below and missed the one designed witness. The id-ordering proxy T055 considered stays refuted; see
+its entry.
+
+⚠ **The row also reports ordinary configuration**, and that is the row rather than a defect: eight settings
+across three locked library blocks in `Project1` and `project3` (`PIR styring` in both, plus `Trådløs / Bus
+lysdæmper`) differ from their library defaults because an installer configured them, which the vendor lock
+permits. Its reasonable-disagreement column — *lock applied after the
+edit, deliberately* — is what a reader dismisses those with.
+
+⚠ **Neither ⊘ duplicate row can be witnessed here**, and §5 already records why: the enum editor answers
+*"Vælg et andet navn"* to a duplicate name and has no index field at all. Those two rows are tested against
+hand-built trees in `EnumDefinitionRulesTests` — including the case that matters most, an absent `index`
+colliding with an explicit `index="0"`, because the canonicalizer elides the default.
+
+### 7.3 Project-structure rows (T060)
+
+Five findings, all `Warning`, counted by `Fixture_CarriesExactlyTheseStructureConditions`.
+
+| Rule | Count | Where |
+|---|---|---|
+| `struct-locality-empty` | 1 | the locality still named `Lokalitet`, which holds nothing |
+| `struct-locality-no-devices` | 1 | the `Logik` room, which holds blocks and no hardware |
+| `struct-product-no-terminals` | 1 | **P8 `SMS Modem`**, exactly as §2 records it |
+| `struct-orphan-block` | 2 | `Tom blok` and the second unwired block |
+
+⚠ **The dimmer and the logging sensors are NOT reported as terminal-less**, and that is deliberate: an RS485
+dimmer's `rs485_led_dimmer_channel` children and a bus sensor's `resource_*` measurements are what an author
+wires. Reading the row as "no `dataline_*` child" reports 3 to 4 products in every project; reading it as
+"nothing wirable at all" reports the modem alone.
+
+⚠ **No capacity row fires here.** This fixture holds ONE modem (so `capacity-modem-multiple` stays silent),
+and the three controller-capability rows are not evaluated at all without a declared capability profile —
+which the corpus run does not supply, by design.
+
+⚠ **`struct-icon-default` cannot be witnessed here or anywhere in the corpus**, and `struct-modified-stale`
+has no rule at all. The first needs an element whose kind otherwise carries icons — no dialog offers an icon
+picker, so only a hand-edited file can carry it. The second was ruled out: `modified` is re-stamped on every
+save, so the condition cannot hold in a saved file.
+
+### 7.1 Naming rows (T052)
+
+The five NAMING rows are DOCUMENTATION too, and this fixture witnesses **all five** — 10 further findings,
+counted and pinned by the same test. They are listed apart from the eight above because their unit is a
+third one: a *collision* row counts the SECOND holder, so a duplicated pair is one finding, not two.
+
+| Rule | Count | Unit | Where |
+|---|---|---|---|
+| `name-empty` | 1 | element | the unnamed `product_dataline` in `Lokaliteter` (position `Skab`, Id-kode `ID-9`) |
+| `name-default` | 2 | element | the `Tom blok` function block, and the locality still named `Lokalitet` |
+| `name-duplicate-siblings` | 5 | collision | two `Indgang` inputs in `Kobling`, two `Udgang` outputs in `Kobling`, two `Indgang` inputs in `Zoo`, two `LK FUGA Tryk 2 tast` products in one locality, two `Modtager relæ` products in one locality |
+| `name-id-code-duplicate` | 1 | collision | the two `Stikkontakt` products both carrying `ID-7` |
+| `name-cable-number-duplicate` | 1 | collision | the same pair, both carrying `K-7` |
+
+⚠ **The two `Stikkontakt` products are NOT a `name-duplicate-siblings` witness**, and that is the row's
+scope rather than an oversight: they sit in DIFFERENT localities, and two rooms may each hold a socket of
+the same name. They collide only on the two documentation values that are supposed to identify ONE unit
+project-wide — which is exactly the distinction between the sibling row and the two code rows.
+
+⚠ **What this fixture does NOT witness for these rows:** nothing. Every naming row fires here, which is
+why the naming set is the first one whose baseline count moves for all five ids at once.
+
+### 7.2 The four remaining documentation rows (T053)
+
+| Rule | Count | Unit | Where |
+|---|---|---|---|
+| `name-note-missing` | 5 | pin | the five hand-authored block inputs carrying no `note` (`Kobling` ×3, `Zoo` ×2) |
+| `name-power-group-variant` | 1 | element | the `Stikkontakt` whose light group is spelled `stue` where the rest of the project says `Stue` |
+| `doc-project-info-blank` | 1 | project | all three masthead blocks are blank, so every report masthead renders `--` |
+
+⚠ **`doc-no-enduser-products` cannot be witnessed in THIS fixture, and that is structural.** IHC Visual
+writes `enduser_report="yes"` on each of the catalogue's two shutter products at insert time and no airlink
+dialog carries the checkbox that clears it — so any project witnessing `dev-shutter-traveltime-zero`, as
+this one does, necessarily carries a flagged product. The synthetic corpus trees in
+`ValidationCharacterizationTests` witness it instead; do not "fix" this by unflagging a shutter, which
+would cost the shutter witness and could not be reproduced in IHC Visual anyway.
+
+⚠ **The masthead row is deliberately the ALL-THREE reading**, not the literal *project, customer or
+installer*: the vendor leaves `customer_info` blank in 15 of the 20 committed projects, so the literal
+reading would report almost every authentic file. This fixture had its three blocks **cleared** on purpose
+(IHC Visual pre-fills `programmer` with the Windows user name), which is what makes it the witness.

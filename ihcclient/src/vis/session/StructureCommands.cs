@@ -2,6 +2,7 @@
 using Ihc.Vis.Editing;
 using Ihc.Vis.Schema;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 
@@ -20,7 +21,7 @@ namespace Ihc.Vis.Session
             && context.Index.FindParent(SourceId)?.Id != TargetParentId
             && context.Project.Edit().CanMoveSubtree(SourceId, TargetParentId)
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Den flytning er ikke tilladt."))
+                : EditVerdict.Refuse(EditRefusalCodes.MoveNotAllowed, "Den flytning er ikke tilladt."))
             .And(context.RequireUnlockedTarget(TargetParentId, inclusive: true))    // T003: no move INTO a locked block
             .And(context.RequireUnlockedTarget(SourceId, inclusive: false));        // T003: no move of a node OUT of a locked block (review B1)
         internal override void Execute(ProjectEditor editor) => editor.MoveSubtree(SourceId, TargetParentId);
@@ -48,7 +49,7 @@ namespace Ihc.Vis.Session
             && StructurePlacement.CanContain(source.Tag, target.Tag, context.Index.FindParent(TargetParentId)?.Tag)
             && context.Project.Edit().CanMoveSubtree(SourceId, TargetParentId)   // A2: no copy INTO the source or its own descendant (CopySubtree throws) — clean Refuse, mirroring MoveNode
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Den beholder kan ikke rumme denne node."))
+                : EditVerdict.Refuse(EditRefusalCodes.ContainerRejectsNode, "Den beholder kan ikke rumme denne node."))
             .And(context.RequireUnlockedTarget(TargetParentId, inclusive: true));   // T003: no copy INTO a locked block
         // DropAll, not the DropExternal default: a clipboard paste produces an UNWIRED duplicate, links and all
         // (uxparity S-10, measured against IHC Visual on a whole-locality copy). A product copy is unaffected —
@@ -72,11 +73,17 @@ namespace Ihc.Vis.Session
             {
                 (not DeleteKind.NotDeletable, _) => EditVerdict.Allow,
                 (_, null) => context.RequireExists(Id, "Noden"),
-                _ => EditVerdict.Refuse(ProjectEditor.DeletionRefusalReason(context.Project.Root, Id)
-                    ?? "Dette element kan ikke slettes."),   // catalog pin / locked block, else a structural container
+                // ONE CODE PER RULE (D5), so the refusal a caller filters on says WHICH rule refused rather than
+                // only that something did. The sentence comes off the same value as the code, so the two cannot
+                // come apart.
+                _ => Refuse(ProjectCommands.DeleteRefusal(
+                    ProjectEditor.ClassifyDeletionRefusal(context.Project.Root, Id))),
             };
         internal override void Execute(ProjectEditor editor) =>
             editor.DeleteById(Id, Cascade ? DeleteReferencePolicy.CascadeReferences : DeleteReferencePolicy.Strict);
+
+        /// <summary>A coded problem as a refusal verdict — both halves off one value, so they cannot disagree.</summary>
+        private static EditVerdict Refuse(Problem problem) => EditVerdict.Refuse(problem.Code, problem.Message);
     }
 
     internal static class StructurePlacement

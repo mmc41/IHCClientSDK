@@ -21,7 +21,7 @@ public class SessionCoreTypesTests
     [Test]
     public void EditVerdict_Refuse_CarriesTheReason()
     {
-        EditVerdict verdict = EditVerdict.Refuse("not allowed");
+        EditVerdict verdict = EditVerdict.Refuse(EditRefusalCodes.TargetMissing, "not allowed");
 
         Assert.Multiple(() =>
         {

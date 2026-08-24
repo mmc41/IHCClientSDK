@@ -20,7 +20,7 @@ namespace Ihc.Vis.Session
         internal override EditVerdict Evaluate(EditContext context) =>
             Source != Target && context.Project.Edit().CanLink(Source, Target)
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("De to klemmer kan ikke linkes i den retning.");
+                : EditVerdict.Refuse(EditRefusalCodes.LinkDirection, "De to klemmer kan ikke linkes i den retning.");
         internal override void Execute(ProjectEditor editor) => editor.Link(Source, Target);
     }
 
@@ -42,7 +42,7 @@ namespace Ihc.Vis.Session
         {
             if (context.Index.FindById(SceneOutputId) is null || context.Index.FindById(ScenesId) is not { } scenes)
             {
-                return EditVerdict.Refuse("Et endepunkt i scenariet findes ikke længere.");
+                return EditVerdict.Refuse(EditRefusalCodes.SceneEndpointMissing, "Et endepunkt i scenariet findes ikke længere.");
             }
             // A3: the scenes container's bound output family pins which scene-member kind it accepts, and this command
             // can only author a relay or dimmer value; a container bound to a family that pins a DIFFERENT kind is
@@ -55,6 +55,7 @@ namespace Ihc.Vis.Session
                 && pinned != produced)
             {
                 return EditVerdict.Refuse(
+                    EditRefusalCodes.SceneMemberKind,
                     $"Denne scenarie-beholder rummer {pinned}-medlemmer; en {produced}-værdi kan ikke tilknyttes her.");
             }
             return EditVerdict.Allow;

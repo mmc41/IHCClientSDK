@@ -130,8 +130,12 @@ namespace Ihc.Vis.Tests
             A.CallTo(() => controller.GetProject()).Returns((ProjectFile?)null);
             var app = Fakes.BridgeService(controller);
 
+            // InstanceOf, not TypeOf: the refusal now carries a code (import-controller-no-project under
+            // bridge.download) and is the derived RefusedOperationException. Still an InvalidOperationException,
+            // which is what this assertion is here to keep.
             Assert.That(async () => await app.DownloadFrom(),
-                Throws.InvalidOperationException.With.Message.Contains(nameof(IControllerService.IsIHCProjectAvailable)),
+                Throws.InstanceOf<InvalidOperationException>()
+                    .With.Message.Contains(nameof(IControllerService.IsIHCProjectAvailable)),
                 "an empty controller must produce an actionable error, not a NullReferenceException");
         }
 

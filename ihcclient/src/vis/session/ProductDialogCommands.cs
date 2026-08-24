@@ -1,8 +1,10 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 
@@ -82,29 +84,97 @@ namespace Ihc.Vis.Session
             {
                 if (context.Index.FindById(edit.Target) is null)
                 {
-                    return EditVerdict.Refuse("Et af felterne peger på et element, der ikke findes længere.");
+                    return EditVerdict.Refuse(EditRefusalCodes.FieldTargetMissing, "Et af felterne peger på et element, der ikke findes længere.");
                 }
                 if (!subtree.Contains(edit.Target))
                 {
                     // Not a technicality: without it, a dialog could be handed an id belonging to a DIFFERENT
                     // product and would edit that one instead, reporting success either way.
-                    return EditVerdict.Refuse("Et af felterne peger på et element uden for produktet.");
+                    return EditVerdict.Refuse(EditRefusalCodes.FieldOutsideProduct, "Et af felterne peger på et element uden for produktet.");
                 }
                 if (!offered.TryGetValue((edit.Target, edit.Attribute), out DialogDescriptorField? field))
                 {
-                    return EditVerdict.Refuse($"Produktets dialog har ikke feltet '{edit.Attribute}'.");
+                    return EditVerdict.Refuse(EditRefusalCodes.FieldNotOffered, $"Produktets dialog har ikke feltet '{edit.Attribute}'.");
                 }
                 if (field.ReadOnly)
                 {
-                    return EditVerdict.Refuse($"Feltet '{field.Caption}' kan ikke redigeres.");
+                    return EditVerdict.Refuse(EditRefusalCodes.FieldReadOnly, $"Feltet '{field.Caption}' kan ikke redigeres.");
                 }
                 if (field.Rule is { } rule && !rule.IsSatisfiedBy(edit.Value))
                 {
-                    return EditVerdict.Refuse(rule.Refusal);
+                    (ProblemCode code, string sentence) = ValueRuleRefusal(rule, edit.Value);
+                    return EditVerdict.Refuse(code, sentence);
+                }
+                // The bounds the composer derived from the placed element, finally read. Without this the dialog
+                // knows a SIM PIN runs 0-9999, shows it, and then commits 99999 anyway — the descriptor was the
+                // authority on which fields exist and what they accept, and only the second half went unused.
+                //
+                // A BLANK value is not out of range: a numeric field sitting at its declared default presents
+                // blank, and committing blank writes the default back. Neither is an unparseable one — this
+                // condition answers "is this number outside its bounds", and nothing else.
+                if (OutsideBounds(field, edit.Value) is { } outside)
+                {
+                    return EditVerdict.Refuse(EditRefusalCodes.FieldOutOfRange, outside);
                 }
             }
             return EditVerdict.Allow;
         }
+
+        /// <summary>
+        /// Which coded identity a broken field rule refuses under, and the Danish sentence that goes with it.
+        /// <para>The telephone rule has a catalogue entry OF ITS OWN, with a <c>{value}</c> slot, because the
+        /// sentence this site shows is the rule's specific guidance rather than the generic entry's
+        /// <i>"Feltet {field} har en ugyldig værdi."</i> — a template with no slot a value could bind to. Every
+        /// other rule keeps the generic code, which is the honest answer while its sentence stays the rule's.</para>
+        /// <para>The sentence is written HERE rather than read from the catalogue because
+        /// <c>Ihc.Vis.Session</c> may not depend on <c>Ihc.Vis.Validation</c>. That is the established shape for
+        /// a refusing site — its own copy beside its code — and a drift test keeps the copy equal to the entry's
+        /// template.</para>
+        /// <para>The rule is identified by IDENTITY, not by re-testing its members: <c>DialogValueRule</c> is a
+        /// record, so a value comparison would also match any other rule that happened to carry the same four
+        /// bounds, and this code is about the telephone field specifically.</para>
+        /// </summary>
+        /// <param name="rule">The field rule the submitted value broke.</param>
+        /// <param name="value">The offending value, as submitted.</param>
+        private static (ProblemCode Code, string Sentence) ValueRuleRefusal(DialogValueRule rule, string value) =>
+            ReferenceEquals(rule, DialogValueRule.PhoneNumber)
+                ? (EditRefusalCodes.FieldPhonenumberMalformed,
+                    $"Telefonnummeret '{value}' skal være på 3-20 tegn uden mellemrum og begynde med en "
+                    + "landekode, f.eks. +45.")
+                : (EditRefusalCodes.FieldValueRule, rule.Refusal);
+
+        /// <summary>
+        /// The refusal sentence when a numeric field's value falls outside the bounds its own catalog element
+        /// declares, or null when it does not. Blank and unparseable values are not this condition.
+        /// </summary>
+        private static string? OutsideBounds(DialogDescriptorField field, string? value)
+        {
+            if (field.Minimum is null && field.Maximum is null)
+            {
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(value)
+                || !int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int number))
+            {
+                return null;
+            }
+
+            if (field.Minimum is { } min && number < min)
+            {
+                return Sentence(field);
+            }
+
+            return field.Maximum is { } max && number > max ? Sentence(field) : null;
+        }
+
+        private static string Sentence(DialogDescriptorField field) => (field.Minimum, field.Maximum) switch
+        {
+            ({ } min, { } max) => $"Feltet '{field.Caption}' skal være mellem {min} og {max}.",
+            ({ } min, null) => $"Feltet '{field.Caption}' skal være mindst {min}.",
+            (null, { } max) => $"Feltet '{field.Caption}' skal være højst {max}.",
+            _ => $"Feltet '{field.Caption}' ligger uden for sit tilladte område.",
+        };
 
         internal override void Execute(ProjectEditor editor)
         {

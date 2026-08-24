@@ -35,12 +35,12 @@ namespace Ihc.Vis.Tests
                         Node("product_dataline", "_0x5153", new[] { ("product_identifier", "_0x2202"), ("name", "P") },
                             Node("scenes", "_0x5349", new[] { ("name", "Scenarier"), ("scene_resource", "_0xdead52") })))));
 
-            ProjectValidationResult result = ProjectValidator.Validate(new Project(root));
+            ProjectValidationResult result = ProjectVerification.Structural(new Project(root));
 
             Assert.Multiple(() =>
             {
                 Assert.That(result.IsValid, Is.False);
-                Assert.That(result.Errors.Any(e => e.Contains("scene_resource") && e.Contains("_0xdead52")), Is.True);
+                Assert.That(result.Findings.Any(f => f.RuleId == "idref-dangling" && f.Locator == "_0x5349"), Is.True);
             });
         }
 
@@ -51,12 +51,12 @@ namespace Ihc.Vis.Tests
                 Node("groups", "_0x2031", new[] { ("name", "L") },
                     Node("group", "_0x2132", new[] { ("name", "€uro") })));   // € is outside ISO-8859-1
 
-            ProjectValidationResult result = ProjectValidator.Validate(new Project(root));
+            ProjectValidationResult result = ProjectVerification.Structural(new Project(root));
 
             Assert.Multiple(() =>
             {
                 Assert.That(result.IsValid, Is.False);
-                Assert.That(result.Errors.Any(e => e.Contains("non-ISO-8859-1")), Is.True);
+                Assert.That(result.Findings.Any(f => f.RuleId == "attr-latin1"), Is.True);
             });
         }
 
@@ -72,9 +72,9 @@ namespace Ihc.Vis.Tests
                         Node("product_dataline", "_0x5153", new[] { ("product_identifier", "_0x2202"), ("name", "P") },
                             Node("scenes", "_0x5349", new[] { ("name", "S"), ("scene_resource", "_0x0") })))));
 
-            ProjectValidationResult result = ProjectValidator.Validate(new Project(root));
+            ProjectValidationResult result = ProjectVerification.Structural(new Project(root));
 
-            Assert.That(result.Errors.Any(e => e.Contains("dangling")), Is.False,
+            Assert.That(result.Findings.Any(f => f.RuleId == "idref-dangling"), Is.False,
                 "an unwired _0x0 IDREF is a legitimate authored state; errors: " + string.Join(" | ", result.Errors));
         }
 
@@ -97,9 +97,9 @@ namespace Ihc.Vis.Tests
                                     Node("actions", "_0x6004", new[] { ("name", "actions") },
                                         Node("program_case", "_0x6005", new[] { ("name", "Switch"), ("link", "_0x900") }))))))));
 
-            ProjectValidationResult result = ProjectValidator.Validate(new Project(root));
+            ProjectValidationResult result = ProjectVerification.Structural(new Project(root));
 
-            Assert.That(result.Errors.Any(e => e.Contains("program_case") && e.Contains("outside")), Is.True,
+            Assert.That(result.Findings.Any(f => f.RuleId == "fb-local-ref"), Is.True,
                 "a cross-block program_case@link is a locality violation; errors: " + string.Join(" | ", result.Errors));
         }
 
@@ -117,7 +117,7 @@ namespace Ihc.Vis.Tests
         public void Validate_AllRequiredPresentAndEnumsInRange_IsClean()
         {
             // product_dataline with both #REQUIRED attributes (id via Node + product_identifier) and valid enums.
-            ProjectValidationResult result = ProjectValidator.Validate(new Project(
+            ProjectValidationResult result = ProjectVerification.Structural(new Project(
                 ValidRoot(("product_identifier", "_0x2202"), ("name", "P"), ("locked", "yes"), ("enduser_report", "no"))));
 
             Assert.That(result.IsValid, Is.True, "errors: " + string.Join(" | ", result.Errors));
@@ -127,13 +127,13 @@ namespace Ihc.Vis.Tests
         public void Validate_MissingRequiredAttribute_IsReported()
         {
             // product_dataline@product_identifier is #REQUIRED; omitting it must be flagged.
-            ProjectValidationResult result = ProjectValidator.Validate(new Project(
+            ProjectValidationResult result = ProjectVerification.Structural(new Project(
                 ValidRoot(("name", "P"), ("locked", "yes"))));   // no product_identifier
 
             Assert.Multiple(() =>
             {
                 Assert.That(result.IsValid, Is.False);
-                Assert.That(result.Errors.Any(e => e.Contains("product_identifier") && e.Contains("product_dataline")), Is.True);
+                Assert.That(result.Findings.Any(f => f.RuleId == "attr-required"), Is.True);
             });
         }
 
@@ -148,12 +148,12 @@ namespace Ihc.Vis.Tests
                 Node("groups", "_0x2031", new[] { ("name", "L") },
                     Node("group", "_0x2132", new[] { ("name", "Stue") })));
 
-            ProjectValidationResult result = ProjectValidator.Validate(new Project(root));
+            ProjectValidationResult result = ProjectVerification.Structural(new Project(root));
 
             Assert.Multiple(() =>
             {
-                Assert.That(result.Errors.Any(e => e.Contains("not a _0x hex token")), Is.True, "the malformed value is reported");
-                Assert.That(result.Errors.Any(e => e.Contains("below the highest counter")), Is.False,
+                Assert.That(result.Findings.Any(f => f.RuleId == "luid-malformed"), Is.True, "the malformed value is reported");
+                Assert.That(result.Findings.Any(f => f.RuleId == "luid-low"), Is.False,
                     "no spurious second luid-low derived from the unparsed 0");
             });
         }
@@ -162,13 +162,13 @@ namespace Ihc.Vis.Tests
         public void Validate_OutOfRangeEnumValue_IsReported()
         {
             // product_dataline@locked is the enumeration (yes | no); any other value must be flagged.
-            ProjectValidationResult result = ProjectValidator.Validate(new Project(
+            ProjectValidationResult result = ProjectVerification.Structural(new Project(
                 ValidRoot(("product_identifier", "_0x2202"), ("name", "P"), ("locked", "sometimes"))));
 
             Assert.Multiple(() =>
             {
                 Assert.That(result.IsValid, Is.False);
-                Assert.That(result.Errors.Any(e => e.Contains("locked") && e.Contains("sometimes")), Is.True);
+                Assert.That(result.Findings.Any(f => f.RuleId == "attr-enum-range"), Is.True);
             });
         }
     }

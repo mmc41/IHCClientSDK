@@ -112,7 +112,8 @@ internal sealed class LinkingCoordinator(
         // 2026-08-11: linking a block's scene pin to a Lampeudtag opened the relay caption). Two call sites
         // raise this dialog and only one had been corrected; a shared helper now keeps them from drifting.
         var input = new SceneValueInput(SceneValueTitles.For(isDimmer), isDimmer, On: true,
-            LevelPercent: isDimmer ? 100 : 0, RampMinutes: 0, RampSeconds: 0);
+            LevelPercent: isDimmer ? 100 : 0, RampMinutes: 0, RampSeconds: 0,
+            Level: SceneValue.LevelConstraint, RampPart: SceneValue.RampPartConstraint);
 
         SceneValueResult? result = await dialogs.EditSceneValueAsync(input);
         return result is not null

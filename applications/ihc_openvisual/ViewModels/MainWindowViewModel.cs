@@ -13,6 +13,7 @@ using Ihc.Vis;
 using Ihc.Vis.Addressing;
 using Ihc.Vis.Session;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Programs;
 using Ihc.Vis.Projects;
@@ -313,7 +314,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     public ObservableCollection<ProductMenuItemViewModel> SectionFlyoutItems { get; } = new();
 
     // The variable palette (label, resource tag, section kind) is projected over the SDK variable-type registry by
-    // VariablePalette (US-027, ADR-002/D07) — so the types the engine accepts and the types the UI offers cannot
+    // VariablePalette (US-027, ADR-002) — so the types the engine accepts and the types the UI offers cannot
     // drift, and a dropped type is a deliberate, tested suppression rather than a silent omission.
 
     partial void OnSelectedNodeChanged(TreeNodeViewModel? value)
@@ -508,11 +509,29 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     internal const string EditFailedMessage =
         "Redigeringen kunne ikke gennemføres på grund af en intern fejl. Ændringen blev ikke gemt.";
 
+    /// <summary>The title over an insertion that could not happen — the shell's own framing of an SDK refusal it
+    /// narrates below (T043). Named because two insert paths raise the same box.</summary>
+    internal const string InsertFailedTitle = "Indsætning mislykkedes";
+
+    /// <summary>The at-most-one-modem box is titled for the RULE, not for the failure — the registered difference
+    /// from the reference application (S-28). The sentence below it is the SDK's.</summary>
+    internal const string ModemLimitTitle = "Kun ét modem";
+
+    /// <summary>The title over an edit that FAULTED (as opposed to being refused).</summary>
+    internal const string EditFailedTitle = "Redigering mislykkedes";
+
+    /// <summary>The title over a node the SDK refuses to delete. The sentence under it is the SDK's own.</summary>
+    internal const string CannotDeleteTitle = "Kan ikke slette";
+
+    /// <summary>The title over the telemetry-host diagnostics box.</summary>
+    internal const string TelemetryTitle = "Telemetridiagnostik";
+
     /// <summary>The title and sentence <see cref="RunAsync"/> answers an unhandled command exception with. Fixed
     /// Danish text rather than the exception's own message, for the reason <see cref="UserFacingRefusal"/> gives:
     /// an engine diagnostic belongs in the log, not on the installer's screen.</summary>
     internal const string UnexpectedErrorTitle = "Uventet fejl";
 
+    /// <summary>The sentence under <see cref="UnexpectedErrorTitle"/>; see that member for why it is fixed.</summary>
     internal const string UnexpectedErrorMessage =
         "Handlingen kunne ikke gennemføres på grund af en intern fejl. Detaljerne er skrevet til loggen.";
 
@@ -545,7 +564,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // can act on; a failure is a defect they can only report, and the log is where the detail belongs.
             case EditStatus.Failed:
                 _logger.LogError("Edit failed: {Label} — {Reason}", outcome.Label, outcome.Reason);
-                await _dialogs.ShowMessageAsync("Redigering mislykkedes", EditFailedMessage);
+                await _dialogs.ShowProblemAsync(EditFailedTitle, HostProblems.EditFailed(outcome.Reason));
                 break;
         }
         return outcome;
@@ -661,7 +680,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             StatusText = "Afsendelse annulleret.";
             return;
         }
-        await _dialogs.ShowMessageAsync(ControllerRequiredTitle, "Afsendelse af projektet " + ControllerRequiredMessage);
+        await _dialogs.ShowProblemAsync(ControllerRequiredTitle, HostProblems.ControllerRequiredSend());
         StatusText = ControllerRequiredStatus;
     });
 
@@ -669,7 +688,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// transfer is deferred per E10 and this build never contacts a controller.</summary>
     private Task RetrieveProject() => RunAsync(nameof(RetrieveProject), async () =>
     {
-        await _dialogs.ShowMessageAsync(ControllerRequiredTitle, "Hentning af et projekt " + ControllerRequiredMessage);
+        await _dialogs.ShowProblemAsync(ControllerRequiredTitle, HostProblems.ControllerRequiredRetrieve());
         StatusText = ControllerRequiredStatus;
     });
 
@@ -920,9 +939,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 return;
             }
             string localityName = SelectedNode.DisplayName;
-            if (_session.Commands.AddFunctionBlock(project, localityId, masterType) is not { } command)
+            // The SDK says WHY there is no such block, with a code and its own Danish sentence (T043); the shell
+            // narrates it through the one presentation path instead of authoring a second sentence for a rule it
+            // does not own.
+            if (!_session.Commands.TryAddFunctionBlock(project, localityId, masterType,
+                    out AddFunctionBlock? command, out Problem? refusal))
             {
-                await _dialogs.ShowMessageAsync("Indsætning mislykkedes", $"Ingen biblioteks-funktionsblok med master type '{masterType}'.");
+                await _dialogs.ShowProblemAsync(InsertFailedTitle, refusal);
                 return;
             }
             // The placed block opens, showing the sections and pins it brought — the reference application reveals
@@ -1098,9 +1121,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         DeleteImpact impact = _session.Commands.PreviewDelete(project, id);
         if (!impact.Deletable)
         {
-            // The SDK's own sentence, forwarded — not a generic copy authored here. It names WHICH rule refused
-            // (a catalog-declared pin, a locked library block, project structure), which the GUI cannot know.
-            await _dialogs.ShowMessageAsync("Kan ikke slette", impact.Reason!);
+            // The SDK's own coded problem, forwarded WHOLE — not a sentence the shell re-wraps in a code of its
+            // own choosing. It names WHICH rule refused (a catalog-declared pin, a locked library block, project
+            // structure, or a node that is already gone), which the GUI cannot know; before D5 all four arrived
+            // under one code and the identity was lost here.
+            await _dialogs.ShowProblemAsync(CannotDeleteTitle, impact.Refusal!);
             return;
         }
         if (impact.Kind == DeleteKind.Link)
@@ -1287,16 +1312,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // three products (D22), so the identifier alone cannot say whether the installer picked LK FUGA or
             // LK OPUS. It used to take whichever came first, which placed the wrong product under the wrong
             // name (T046).
-            if (_session.ResolveCatalogProduct(productIdentifier, productName) is not { } definition)
+            if (!_session.TryResolveCatalogProduct(productIdentifier, productName,
+                    out ProductDefinition? definition, out Problem? unresolved))
             {
-                await _dialogs.ShowMessageAsync("Indsætning mislykkedes", $"Intet katalogprodukt med identifikator '{productIdentifier}'.");
+                await _dialogs.ShowProblemAsync(InsertFailedTitle, unresolved);
                 return;
             }
             AddProduct command = _session.Commands.AddProduct(project, localityId, definition);
-            if (_session.Commands.WouldExceedModemLimit(project, productIdentifier))   // at most one modem per project (US-013)
+            // At most one modem per project (US-013). The rule, its remedy and its identity are the SDK's; the
+            // title is the shell's, because the box is titled for the rule rather than for the failure (S-28).
+            if (_session.Commands.ModemLimitRefusal(project, productIdentifier) is { } modemLimit)
             {
-                await _dialogs.ShowMessageAsync("Kun ét modem",
-                    "Et projekt må højst indeholde ét modem. Fjern det eksisterende modem, før du tilføjer et nyt.");
+                await _dialogs.ShowProblemAsync(ModemLimitTitle, modemLimit);
                 return;
             }
             // Placing a product ASKS for its documentation as part of placing it, and cancelling places nothing —
@@ -1415,11 +1442,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Registry.Register(new CommandSpec("edit.paste", "Ctrl+V",
             Surfaces.MenuBar | Surfaces.ContextMenu | Surfaces.Toolbar,
             Execute: ctx => Paste(ResolveNode(ctx)),
-            Gate: ctx => ctx.Clipboard is null
-                ? EditVerdict.Refuse("Klip eller kopier først en node.")
-                : ctx.Node is { Kind: TreeNodeKind.Locality }
-                    ? EditVerdict.Allow
-                    : EditVerdict.Refuse("Indsæt på en lokalitet.")));
+            Gate: PasteGate));
 
         Registry.Register(new CommandSpec("edit.delete", "Delete",
             Surfaces.MenuBar | Surfaces.ContextMenu,
@@ -1772,6 +1795,32 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // applies the same boundary rule the ReorderNode factory does plus the command's own verdict,
     // so the keybindings stop firing no-ops, the flyout omits an impossible move, and this gate (re-run on every
     // selection change, twice) costs dictionary lookups instead of tree walks and mints nothing (review F02).
+    // The paste gate asks the SDK the SAME question the paste body will: it mints the very command Paste would
+    // apply and probes it. It used to answer "is the target a locality?" itself — a legality fact of its own, and a
+    // wrong one. T015 measured three states it enabled that the SDK refuses: moving a locality INTO a locality,
+    // moving one into ITSELF, and moving a node onto the parent it already sits in. Each would have shown an
+    // enabled Indsæt that refused on click.
+    private EditVerdict PasteGate(ShellContext ctx)
+    {
+        if (ctx.Clipboard is not { } clipboard)
+            return EditVerdict.Refuse("Klip eller kopier først en node.");
+        if (_session.Current is not { } project || PasteTarget(ctx, project) is not { } target)
+            return EditVerdict.Refuse("Indsæt på en lokalitet.");
+        // The SDK's own sentence from here on, forwarded verbatim: it knows why a particular destination is
+        // refused, and a second wording here could only drift from it.
+        return _session.CanApply(clipboard.IsCut
+            ? _session.Commands.MoveNode(project, clipboard.SourceId, target)
+            : _session.Commands.CopyNode(project, clipboard.SourceId, target));
+    }
+
+    // The SAME target resolution the Paste body uses, so the gate and the body cannot disagree about where a paste
+    // would land: the id-less Localities root stands for the <groups> container, which is where a copied locality
+    // has to go because a locality does not nest inside another one.
+    private static ElementId? PasteTarget(ShellContext ctx, Project project) =>
+        ctx.Node is not { } node
+            ? null
+            : node.Kind == TreeNodeKind.LocalitiesRoot ? project.Child("groups")?.Id : node.Id;
+
     private EditVerdict MoveGate(ShellContext ctx, int delta) =>
         ctx.Node is { CanReorder: true, Id: { } id } node && !ctx.ProgrammingBlockLocked
             && !(ctx.IsProgrammingMode && node.Kind == TreeNodeKind.FunctionBlock)
@@ -1940,8 +1989,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         EnumDefinitionResult? result = await _dialogs.EditEnumDefinitionAsync(
             new EnumDefinitionInput("Ny enumerator", string.Empty, System.Array.Empty<string>(), IsNew: true));
-        if (result is null || string.IsNullOrWhiteSpace(result.TypeName))
+        if (result is null)
             return;
+        // The blank DECISION is the SDK's required-field constraint, not this site's own IsNullOrWhiteSpace — and a
+        // blank name is now REPORTED. It used to return silently: the dialog closed, nothing appeared in the tree,
+        // and no surface said why (va-ana G2, the worse half of that gap).
+        if (_session.MissingRequiredField(result.TypeName) is { } blank)
+        {
+            StatusText = blank.Message;
+            return;
+        }
         if (_session.Current is { } project
             && _session.Commands.AddEnumVariable(project, sectionId, result.TypeName, result.TypeName, result.States) is { } command)
             await ApplyAsync(command, $"Enumeratoren '{result.TypeName}' blev indsat under {sectionLabel}");
@@ -1953,8 +2010,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         EnumDefinitionResult? result = await _dialogs.EditEnumDefinitionAsync(
             new EnumDefinitionInput("Ny selvstændig enumerator type", string.Empty, System.Array.Empty<string>(), IsNew: true));
-        if (result is null || string.IsNullOrWhiteSpace(result.TypeName))
+        if (result is null)
             return;
+        if (_session.MissingRequiredField(result.TypeName) is { } blank)
+        {
+            StatusText = blank.Message;
+            return;
+        }
         if (_session.Current is { } project)
             await ApplyAsync(_session.Commands.AddStandaloneEnumType(project, result.TypeName, result.States),
                 $"Enumerator typen '{result.TypeName}' blev oprettet");
@@ -1974,7 +2036,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _dialogs.ManageEnumTypesAsync(new EnumTypeManagerInput(
             "Enumerator typer og værdier",
             () => _session.Current?.GetEnumeratorTypeViews() ?? System.Array.Empty<EnumTypeView>(),
-            ApplyEnumTypeOperationAsync)));
+            ApplyEnumTypeOperationAsync,
+            // The manager builds its own name prompts, and it is a View: the blank decision has to travel to it.
+            _session.MissingRequiredField)));
 
     /// <summary>Turns one enumerator-manager button press into its command and applies it. Returns null when it
     /// committed, otherwise the refusal sentence — the dialog cannot show a reason it is not handed. An outcome
@@ -2032,9 +2096,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         string? host = _config?.TelemetryConfig.Host;
         if (string.IsNullOrWhiteSpace(host))
-            await _dialogs.ShowMessageAsync("Telemetridiagnostik", "Der er ikke konfigureret nogen telemetri-vært i ihcsettings.json.");
+            await _dialogs.ShowProblemAsync(TelemetryTitle, HostProblems.TelemetryHostMissing());
         else if (!await _dialogs.OpenExternalUrlAsync(host))
-            await _dialogs.ShowMessageAsync("Telemetridiagnostik", $"Kunne ikke åbne telemetri-værten:\n{host}");
+            await _dialogs.ShowProblemAsync(TelemetryTitle, HostProblems.TelemetryHostUnreachable(host));
     });
 
     private async Task RunAsync(string operation, Func<Task> action)
@@ -2053,7 +2117,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // fixed Danish sentence. This is the widest instance of that channel — every command routes through
             // here — and it is the one place that cannot name what failed, since it catches for all of them.
             StatusText = UnexpectedErrorMessage;
-            await _dialogs.ShowMessageAsync(UnexpectedErrorTitle, UnexpectedErrorMessage);
+            await _dialogs.ShowProblemAsync(UnexpectedErrorTitle, HostProblems.Unexpected(ex));
         }
     }
 

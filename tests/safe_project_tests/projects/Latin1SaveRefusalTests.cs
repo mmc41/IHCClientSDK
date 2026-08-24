@@ -38,12 +38,17 @@ namespace Ihc.Vis.Tests
             Project project = await ProjectWithNonLatin1NoteAsync();
             string path = Path.Combine(TestContext.CurrentContext.WorkDirectory, $"latin1-{Guid.NewGuid():N}.vis");
 
-            var refusal = Assert.ThrowsAsync<InvalidOperationException>(
+            // The refusal now carries a code (attr-latin1 under io.save) and is therefore the derived type. It
+            // is STILL an InvalidOperationException — that base is what callers of a save already catch, and
+            // keeping it is the whole reason the identity rides on an interface rather than a new hierarchy.
+            var refusal = Assert.ThrowsAsync<Ihc.Vis.Problems.RefusedOperationException>(
                 async () => await new ProjectAppService(Settings).Save(project, path));
 
             Assert.Multiple(() =>
             {
-                Assert.That(refusal!.Message, Does.Contain("ISO-8859-1"), "the refusal names the repertoire");
+                Assert.That(refusal, Is.InstanceOf<InvalidOperationException>());
+                Assert.That(refusal!.Problems!.Cause.Code.Value, Is.EqualTo("attr-latin1"));
+                Assert.That(refusal.Message, Does.Contain("ISO-8859-1"), "the refusal names the repertoire");
                 Assert.That(refusal.Message, Does.Contain("<group>"), "and the element that carries the text");
                 Assert.That(refusal.Message, Does.Contain("'note'"), "and which of its attributes");
                 Assert.That(refusal.Message, Does.Contain("U+20AC"), "and the character itself, by code point");

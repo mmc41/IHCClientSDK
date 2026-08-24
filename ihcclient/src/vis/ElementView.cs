@@ -57,6 +57,23 @@ namespace Ihc.Vis
         /// <summary>The element's effective <c>value</c> (e.g. a dimmer setting or enum value), or its DTD default.</summary>
         public string? Value => Effective("value");
 
+        /// <summary>
+        /// The bounds this element DECLARES on its own <c>value</c> — its <c>minimum</c>/<c>maximum</c> attributes,
+        /// resolved through the schema like any other attribute. Null where the catalog declares none: the engine
+        /// does not invent a limit.
+        /// <para>
+        /// It lives here because two callers need the same answer and used to be one: the product-dialog composer
+        /// derives a field's range from it, and the dialog-metadata face advertises it to a hand-written window.
+        /// A second reader would be the staleness the composer's own "derived, never declared" note warns about.
+        /// </para>
+        /// </summary>
+        public (int? Minimum, int? Maximum) DeclaredBounds =>
+            (ParseBound(Effective("minimum")), ParseBound(Effective("maximum")));
+
+        private static int? ParseBound(string? raw) =>
+            int.TryParse(raw, System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out int value) ? value : null;
+
         /// <summary>The element's effective initial value (<c>inivalue</c>, e.g. an output's on/off power-up state),
         /// or its DTD default.</summary>
         public string? InitialValue => Effective("inivalue");

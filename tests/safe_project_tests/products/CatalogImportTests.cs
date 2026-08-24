@@ -1,4 +1,5 @@
 #nullable enable
+using Ihc.Vis.Problems;
 using System;
 using System.IO;
 using System.Linq;
@@ -125,8 +126,11 @@ namespace Ihc.Vis.Tests
 
                 ProjectAppService app = NewApp();
 
+                // The type changed with the identity, deliberately: InvalidDataException is SEALED, so the
+                // refusal could not carry a code while remaining one. RefusedImportException : FormatException
+                // is what a malformed .vis already throws, so the two file kinds now fail alike.
                 Assert.That(() => app.ImportCatalogFile(defPath),
-                    Throws.TypeOf<InvalidDataException>().With.Message.Contains("broken.def"),
+                    Throws.TypeOf<RefusedImportException>().With.Message.Contains("broken.def"),
                     "the import error names the offending file");
             }
             finally

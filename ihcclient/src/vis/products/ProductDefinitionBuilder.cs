@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
+using Ihc.Vis.Problems;
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Io;
 using Ihc.Vis.Model;
@@ -393,7 +394,7 @@ namespace Ihc.Vis.Products
         {
             if (CollectErrors().Count > 0)
             {
-                throw new ProjectValidationException(Validate());   // full result, advisories included
+                throw new ProjectValidationException(new ProblemCode("import.definition-invalid"), Validate());   // full result, advisories included
             }
 
             var childElements = new List<ProjectElement>(children);

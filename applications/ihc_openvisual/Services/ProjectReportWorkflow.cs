@@ -55,15 +55,15 @@ internal sealed class ProjectReportWorkflow(
             // failure of it — not a silent no-op that leaves the installer waiting for a window (UX review CORE-03).
             if (!await dialogs.OpenExternalUrlAsync(path))
             {
-                await dialogs.ShowMessageAsync(ReportFailedTitle,
-                    $"Rapporten blev dannet, men kunne ikke åbnes i en fremviser.\nFilen ligger her:\n{path}");
+                await dialogs.ShowProblemAsync(ReportFailedTitle, HostProblems.ReportNotOpenable(path));
             }
         }
         catch (Exception ex)
         {
             ActivityExtensions.SetError(activity, ex);
             logger.LogError(ex, "Failed to generate the {Kind} {Mode} report for browser view", kind, mode);
-            await dialogs.ShowMessageAsync(ReportFailedTitle, $"Rapporten kunne ikke vises:\n{ex.Message}");
+            await dialogs.ShowProblemAsync(ReportFailedTitle,
+                HostProblems.Narrate(HostProblems.ReportViewFailed(ex), ex));
         }
     }
 
@@ -93,7 +93,8 @@ internal sealed class ProjectReportWorkflow(
         {
             ActivityExtensions.SetError(activity, ex);
             logger.LogError(ex, "Failed to save the {Kind} {Mode} report", kind, mode);
-            await dialogs.ShowMessageAsync(ReportFailedTitle, $"Rapporten kunne ikke gemmes:\n{ex.Message}");
+            await dialogs.ShowProblemAsync(ReportFailedTitle,
+                HostProblems.Narrate(HostProblems.ReportSaveFailed(ex), ex));
         }
     }
 

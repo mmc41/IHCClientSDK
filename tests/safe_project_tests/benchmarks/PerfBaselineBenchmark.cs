@@ -106,6 +106,72 @@ namespace Ihc.Vis.Tests
             try { File.Delete(pathB); } catch { /* best-effort temp cleanup */ }
         }
 
+        /// <summary>
+        /// va-backlog T003 / R14 — the validation-engine baseline, measured BEFORE the engine is built so a
+        /// later run has something to be compared against. Two figures, both machine-specific:
+        ///
+        /// <list type="number">
+        /// <item><description><b>Whole-project validation</b> (face 1, <c>ValidateCategorized</c>) over the
+        /// characterization corpus <see cref="ValidationCharacterizationTests.Corpus"/> — the same 17 documents
+        /// the oracle pins, so a latency or allocation move is attributable to a document whose findings are
+        /// already recorded. Each project is loaded once up front; only the validation call is timed.</description></item>
+        /// <item><description><b>Per-command <c>CanApply</c></b> — the interactive budget the engine's second
+        /// face lands on. Measured on an already-open session, so this is the evaluation cost ALONE, unlike the
+        /// drag-over probe above, which deliberately includes the scratch-session open because that is what a
+        /// pointer move actually pays.</description></item>
+        /// </list>
+        ///
+        /// <para>Per D22 nothing here is asserted: this test records numbers, it does not gate them. The
+        /// consequence is stated in the decision — no automated gate catches a gradual creep, so the check is
+        /// a human reading of these lines against the figures in the backlog's Discoveries.</para>
+        /// </summary>
+        [Test]
+        public async Task Measure_ValidationAndCommandEvaluation()
+        {
+            ProjectAppService app = App;
+            (string Case, Project Project)[] corpus =
+                [.. ValidationCharacterizationTests.Corpus.Select(c => (c.Case, c.Build()))];
+            Project largest = await app.Load(LargestPath);
+
+            TestContext.Out.WriteLine("=== va-backlog T003 baseline (validation engine + command evaluation) ===");
+            TestContext.Out.WriteLine($"machine : {RuntimeInformation.OSDescription} | {RuntimeInformation.FrameworkDescription} " +
+                $"| cores={Environment.ProcessorCount} | build={BuildConfig()}");
+            TestContext.Out.WriteLine($"samples : warm-up={Warmup}, sampled={Samples}, reporting median + p95 (ms) and median allocation");
+            TestContext.Out.WriteLine("");
+            TestContext.Out.WriteLine("--- face 1: ValidateCategorized over the T002 characterization corpus ---");
+
+            foreach ((string name, Project project) in corpus)
+            {
+                Measure($"validate {name}", () => app.ValidateCategorized(project));
+            }
+            Measure("validate WHOLE CORPUS", () =>
+            {
+                foreach ((_, Project project) in corpus)
+                    app.ValidateCategorized(project);
+            });
+
+            TestContext.Out.WriteLine("");
+            TestContext.Out.WriteLine($"--- face 2: CanApply on an open session over {LargestPath} ---");
+
+            var session = new ProjectDocumentSession();
+            session.Open(largest);
+            ElementId src = largest.Groups.First().Id!.Value;
+            ElementId dst = largest.Groups.Skip(1).First().Id!.Value;
+            foreach ((string label, ProjectCommand command) in new (string, ProjectCommand)[]
+            {
+                ("MoveNode", new MoveNode(src, dst)),
+                ("CopyNode", new CopyNode(src, dst)),
+                ("ReorderNode", new ReorderNode(src, 0)),
+                ("DeleteNode (cascade)", new DeleteNode(src, Cascade: true)),
+                ("AddLocality", new AddLocality("bench")),
+                ("RenameLocality", new RenameLocality(src, "bench", string.Empty)),
+                ("DeleteLocality", new DeleteLocality(src)),
+            })
+            {
+                Measure($"CanApply {label}", () => session.CanApply(command));
+            }
+        }
+
         // Applies N locality inserts to a snapshot of the project and returns the resulting wider project.
         private static Project Widen(Project project, int extraLocalities)
         {
@@ -116,24 +182,33 @@ namespace Ihc.Vis.Tests
             return session.Current!;
         }
 
-        // Warm-up + sampled Stopwatch timing → median and p95 (ms), written to the test output.
+        // Warm-up + sampled Stopwatch timing → median and p95 (ms) plus the median managed allocation per call,
+        // written to the test output. Allocation is read from GC.GetAllocatedBytesForCurrentThread, which is
+        // exact for this thread and unaffected by collections, so it is the stabler of the two figures: a
+        // refactor that doubles the garbage shows there long before it shows in a median wall-clock.
         private static void Measure(string label, Action body, int samples = Samples)
         {
             for (int i = 0; i < Warmup; i++)
                 body();
             var times = new double[samples];
+            var bytes = new double[samples];
             for (int i = 0; i < samples; i++)
             {
+                long allocated = GC.GetAllocatedBytesForCurrentThread();
                 var sw = Stopwatch.StartNew();
                 body();
                 sw.Stop();
+                bytes[i] = GC.GetAllocatedBytesForCurrentThread() - allocated;
                 times[i] = sw.Elapsed.TotalMilliseconds;
             }
             Array.Sort(times);
+            Array.Sort(bytes);
             double median = times[samples / 2];
             double p95 = times[(int)Math.Ceiling(0.95 * samples) - 1];
-            TestContext.Out.WriteLine($"{label,-30} median={median,9:F3} ms   p95={p95,9:F3} ms");
+            TestContext.Out.WriteLine($"{label,-30} median={median,9:F3} ms   p95={p95,9:F3} ms   alloc={Kb(bytes[samples / 2]),10}");
         }
+
+        private static string Kb(double bytes) => bytes >= 1024 ? $"{bytes / 1024:F1} KB" : $"{bytes:F0} B";
 
         private static string Describe(Project project) =>
             $"{project.Groups.Count} localities, {project.Root.DescendantsAndSelf().Count()} elements";

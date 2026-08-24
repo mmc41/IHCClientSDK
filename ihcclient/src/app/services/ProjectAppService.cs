@@ -2,12 +2,14 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Ihc.App;
 
+using Ihc.Vis.Problems;
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Editing;
 using Ihc.Vis.FunctionBlocks;
@@ -54,6 +56,7 @@ namespace Ihc.Vis
 
         private readonly IhcSettings settings;
         private readonly Lazy<CompositeCatalog> catalog;
+        private readonly Lazy<ILibraryBlockSource> library;
         private readonly TimeProvider timeProvider;
         private readonly IControllerService? controller;
         // Only the controller bridge (DownloadFrom/UploadTo) authenticates; null for a file-only service.
@@ -139,6 +142,12 @@ namespace Ihc.Vis
             // controller IO still need no IHC Visual install.
             this.catalog = new Lazy<CompositeCatalog>(
                 () => baseCatalog.Value as CompositeCatalog ?? new CompositeCatalog(baseCatalog.Value),
+                LazyThreadSafetyMode.PublicationOnly);
+
+            // D27's library port, over the same lazy catalog: a validation run that meets no locked library block
+            // never materializes the catalog, and one that does pays for it once.
+            this.library = new Lazy<ILibraryBlockSource>(
+                () => new CatalogLibraryBlockSource(() => this.catalog.Value.FunctionBlocks),
                 LazyThreadSafetyMode.PublicationOnly);
             this.timeProvider = timeProvider;
             this.controller = controller;
@@ -257,8 +266,14 @@ namespace Ihc.Vis
         }
 
         /// <summary>
-        /// The command's legality verdict against <paramref name="project"/> (cheap — no edit), for drag-over probes
-        /// and menu gates (D02). Runs the command's own <c>Evaluate</c> on a fresh single-use session.
+        /// The command's legality verdict against <paramref name="project"/> (cheap — no edit, and no additional
+        /// validation scan), for drag-over probes and menu gates (D02). Runs the command's own <c>Evaluate</c> on a
+        /// fresh single-use session.
+        /// <para>"No additional validation scan" is the honest qualifier and not the stronger "no scan": this
+        /// overload OPENS a scratch session per call, and opening builds a <c>ProjectIndex</c>, which is a full
+        /// pre-order walk of the document. That is fine for a one-shot caller — a console tool, a test — and it is
+        /// why an interactive frontend uses <c>IProjectDocument.CanApply</c> on the open document instead, where
+        /// the index is already built and shared.</para>
         /// </summary>
         public EditVerdict CanApply(Project project, ProjectCommand command)
         {
@@ -424,12 +439,13 @@ namespace Ihc.Vis
             if (backup is not null && string.Equals(Path.GetFullPath(backup), fullPath,
                     OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
             {
-                throw new IOException(
+                throw new RefusedWriteException(SaveRefusalCodes.TargetUnwritable,
                     $"Cannot create a .BAK backup for '{path}': the target itself has the .BAK extension; " +
                     $"save under a different name or disable {nameof(ProjectSaveOptions.CreateBackup)}.");
             }
             string directory = Path.GetDirectoryName(fullPath)
-                ?? throw new IOException($"'{path}' has no containing directory.");
+                ?? throw new RefusedWriteException(SaveRefusalCodes.TargetUnwritable,
+                    $"'{path}' has no containing directory.");
             // Same directory ⇒ same volume, which File.Replace/File.Move need for an atomic rename.
             string temp = Path.Combine(directory, Path.GetRandomFileName());
             try
@@ -456,7 +472,7 @@ namespace Ihc.Vis
                     File.Move(temp, fullPath);
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 try
                 {
@@ -464,6 +480,18 @@ namespace Ihc.Vis
                 }
                 catch (IOException) { }
                 catch (UnauthorizedAccessException) { }
+
+                // The destination is what failed — locked, read-only, gone, or full — so the refusal is named
+                // here, where the operation is known, rather than left as whatever the platform threw. It stays
+                // an IOException: a caller that already handles "the file could not be written" keeps working
+                // and gains the code only if it looks for one. Anything that is NOT a write failure (a
+                // cancellation, an out-of-memory) is not renamed as one.
+                if (ex is IOException or UnauthorizedAccessException)
+                {
+                    throw new RefusedWriteException(SaveRefusalCodes.TargetUnwritable,
+                        $"The project could not be written to '{path}': {ex.Message}", ex);
+                }
+
                 throw;
             }
         }
@@ -494,10 +522,10 @@ namespace Ihc.Vis
         {
             if (options.ValidateBeforeSave)
             {
-                ProjectValidationResult validation = ProjectValidator.Validate(project);
+                ProjectValidationResult validation = ProjectVerification.Run(project, StructuralProfile);
                 if (!validation.IsValid)
                 {
-                    throw new ProjectValidationException(validation);
+                    throw new ProjectValidationException(new ProblemCode("io.save"), validation);
                 }
             }
             Project toWrite = options.WriteMetadataVerbatim
@@ -530,7 +558,7 @@ namespace Ihc.Vis
                 ProjectFile file = await controller.GetProject().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 if (file?.Data is null)
                 {
-                    throw new InvalidOperationException(
+                    throw new RefusedOperationException(BridgeRefusalCodes.ControllerNoProject,
                         "The controller returned no project — it likely has none stored. Check " +
                         $"{nameof(IControllerService)}.{nameof(IControllerService.IsIHCProjectAvailable)}() " +
                         $"before calling {nameof(DownloadFrom)}.");
@@ -585,7 +613,7 @@ namespace Ihc.Vis
                 bool stored = await controller.StoreProject(file).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 if (!stored)
                 {
-                    throw new ProjectUploadException(
+                    throw new ProjectUploadException(BridgeRefusalCodes.ControllerDeclined,
                         $"The controller declined {nameof(IControllerService.StoreProject)} after entering change " +
                         $"mode; its project state is uncertain — verify with " +
                         $"{nameof(IControllerService)}.{nameof(IControllerService.GetProjectInfo)} before retrying.");
@@ -712,6 +740,28 @@ namespace Ihc.Vis
         /// </summary>
         public ProductDefinition? ResolveProduct(string? productIdentifier, string? displayName = null) =>
             ProductCatalogLookup.Resolve(GetAvailableProducts(), productIdentifier, displayName);
+
+        /// <summary>
+        /// The same lookup, with the CODED REASON when it finds nothing (T043) — for the callers that must tell a
+        /// user why an insertion did not happen. The two shapes are one implementation: this is the door that
+        /// explains itself, <see cref="ResolveProduct"/> the one for a caller with nothing to explain (a placed
+        /// element falling back to its own name is not a failure).
+        /// </summary>
+        /// <param name="productIdentifier">The product's <c>product_identifier</c>.</param>
+        /// <param name="displayName">The display name that tells products sharing an identifier apart (D22).</param>
+        /// <param name="product">The resolved product, when the catalog decides.</param>
+        /// <param name="refusal">The coded problem, when it does not.</param>
+        public bool TryResolveProduct(
+            string? productIdentifier, string? displayName,
+            [NotNullWhen(true)] out ProductDefinition? product,
+            [NotNullWhen(false)] out Problem? refusal)
+        {
+            product = ResolveProduct(productIdentifier, displayName);
+            refusal = product is null
+                ? EditRefusalProblems.CatalogProductMissing(productIdentifier ?? string.Empty)
+                : null;
+            return product is not null;
+        }
 
         // The body's `name` carries the catalog's NN# ordering prefix, which DisplayName has had stripped — an
         // insert menu needs it to list its leaves in the catalog's own order rather than alphabetically.
@@ -871,16 +921,67 @@ namespace Ihc.Vis
             ArgumentNullException.ThrowIfNull(project);
             return RunTraced(nameof(Validate), activity =>
             {
-                ProjectValidationResult result = ProjectValidator.Validate(project);
+                ProjectValidationResult result = ProjectVerification.Run(project, StructuralProfile);
                 activity?.SetReturnValue(result);
                 return result;
             });
         }
 
         /// <summary>
+        /// What the shipped rules declare about one dialog field: its bounds, its required-ness, its allowed set —
+        /// the same constraint objects the whole-project run executes, read rather than run.
+        /// <para>
+        /// THE ONLY LEGAL WIRING POINT, and not for want of alternatives. Composing a <see cref="RuleSet"/> with a
+        /// target is business logic, this service is where the SDK composes its faces, and no other type may hold
+        /// the rule set — so a frontend asking a field's declared bounds asks here, exactly as it asks here for
+        /// everything else. Answering it anywhere else would put the composition in a frontend.
+        /// </para>
+        /// <para>
+        /// It is a READ, not a run: no project is walked and nothing is validated. A field no rule constrains
+        /// answers <see cref="FieldConstraintMetadata.Unconstrained"/>, which is the honest answer rather than an
+        /// absence — and the value type is what a dialog binds to, the same currency the grammar-declared bounds
+        /// already arrive in.
+        /// </para>
+        /// </summary>
+        /// <param name="target">The (tag, attribute) pair the field edits.</param>
+        public FieldConstraintMetadata DescribeField(RuleTarget target) =>
+            ProjectRules.Registered.DescribeField(target);
+
+        /// <summary>
+        /// The coded problem when a value a surface requires is blank, or null when it carries something.
+        /// <para>
+        /// ONE decision and ONE sentence, for every frontend. It composes two SDK pieces that a caller would
+        /// otherwise have to compose for itself — the required-field constraint, which owns what BLANK means
+        /// (whitespace-only counts), and the <c>edit.value-required</c> problem, which owns the words. A frontend
+        /// doing that composition is a frontend holding business logic, and the OpenVisual shell's four callers
+        /// are the measured proof that it spreads: before this member they shared one helper, and before that
+        /// helper they were three gates that disagreed about a name of three spaces and two of which said nothing
+        /// at all.
+        /// </para>
+        /// <para>
+        /// Only the DECISION and the SENTENCE are here. HOW a surface reports it — an inline line in a modal
+        /// prompt, a status bar, a refusal dialog — stays with the surface, which is the half no SDK should own.
+        /// </para>
+        /// </summary>
+        /// <param name="value">The submitted value, UNTRIMMED: the constraint's policy decides what blank means,
+        /// so a caller that trimmed first would be answering the question itself.</param>
+        public Problem? MissingRequiredField(string? value) =>
+            RequiredFieldConstraint.For(EditRefusalCodes.ValueRequired).Check(value).Satisfied
+                ? null
+                : EditRefusalProblems.ValueRequired();
+
+        /// <summary>
+        /// The structural profile WITH the library this service already holds (D27). It is not
+        /// <see cref="ProjectVerification.Structural"/>: that overload has no catalog, so every row declaring a
+        /// library is skipped — including <c>logic-block-locked-content</c>, whose category is
+        /// <see cref="ValidationCategory.Logic"/>. The two entry points are documented to differ by AUDIENCE alone,
+        /// so a Logic row visible to one and invisible to the other is a gap, not a profile.
+        /// </summary>
+        private ValidationProfile StructuralProfile => ValidationProfile.ProjectOnly with { Library = library.Value };
+
+        /// <summary>
         /// Validates a project against the FULL categorized verification (R10): the structural
-        /// pre-serialize checklist (<see cref="Validate"/>, <see cref="ValidationCategory.Structural"/>)
-        /// plus the documentation-completeness checks
+        /// pre-serialize checklist (<see cref="Validate"/>) plus the documentation-completeness checks
         /// (<see cref="ValidationCategory.Documentation"/>, always
         /// <see cref="ValidationSeverity.Warning"/>). <c>IsValid</c>/<c>Errors</c> mean exactly what
         /// <see cref="Validate"/> means — documentation findings only ever add <c>Warnings</c>.
@@ -890,7 +991,10 @@ namespace Ihc.Vis
             ArgumentNullException.ThrowIfNull(project);
             return RunTraced(nameof(ValidateCategorized), activity =>
             {
-                ProjectValidationResult result = ProjectValidator.ValidateCategorized(project);
+                // D27: the library port comes from the catalog this service already holds, so the two rows that
+                // need a library are evaluated here and skipped by a caller who validates without one.
+                ProjectValidationResult result = ProjectVerification.Run(
+                    project, ValidationProfile.Categorized with { Library = library.Value });
                 activity?.SetReturnValue(result);
                 return result;
             });

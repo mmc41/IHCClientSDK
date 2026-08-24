@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -442,6 +443,111 @@ namespace Ihc.Vis.Tests
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
                 Assert.That(outcome.Reason, Does.Contain("låst funktionsblok"));
                 Assert.That(outcome.Reason, Does.Contain("lås blokken op"));
+            });
+        }
+
+        // ── the CODE half, added beside the language half ────────────────────────────────────────────
+        //
+        // Every assertion above pins a SENTENCE and not one of them changed when the refusals gained codes.
+        // That was the constraint: a code is an identity a caller can act on, and adding one must not move a
+        // single word of what an installer reads. These four assert the other half.
+
+        /// <summary>
+        /// Every refusal the SDK itself raises names its code. The scan is over SOURCE for the same reason the
+        /// language scan is: some refusals are only reachable through states this suite cannot build, and those
+        /// are exactly the ones a per-case set would omit.
+        /// </summary>
+        [Test]
+        public void NoRefusalInTheSdkIsRaisedWithoutACode()
+        {
+            string root = TestRepository.RequireRoot();
+            List<string> anonymous = [];
+            foreach (string path in Directory.EnumerateFiles(
+                Path.Combine(root, "ihcclient", "src", "vis"), "*.cs", SearchOption.AllDirectories))
+            {
+                foreach (Match match in Regex.Matches(
+                    File.ReadAllText(path), @"EditVerdict\.Refuse\(\s*[$@]?"""))
+                {
+                    anonymous.Add($"{Path.GetFileName(path)}: {match.Value}");
+                }
+            }
+
+            Assert.That(anonymous, Is.Empty,
+                "an SDK refusal must name its code — the uncoded overload exists for a HOST, which owns its own "
+                + "family, and must not become the easy path back to anonymous refusals inside the engine. Found:"
+                + Environment.NewLine + string.Join(Environment.NewLine, anonymous));
+        }
+
+        /// <summary>
+        /// The scan above is armed: a refusal written the anonymous way is caught. Without this the check reads
+        /// as a clean pass over a pattern that might match nothing at all.
+        /// </summary>
+        [Test]
+        public void TheCodeScanIsArmed()
+        {
+            const string anonymous = @"return EditVerdict.Refuse(""En afvisning uden kode."");";
+            const string coded = @"return EditVerdict.Refuse(EditRefusalCodes.TargetMissing, ""Med kode."");";
+            Regex probe = new(@"EditVerdict\.Refuse\(\s*[$@]?""");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(probe.IsMatch(anonymous), Is.True, "the seeded anonymous refusal is caught");
+                Assert.That(probe.IsMatch(coded), Is.False, "and a coded one is not");
+            });
+        }
+
+        /// <summary>
+        /// A refused verdict carries its code all the way to the caller, so two paths answering the same question
+        /// can be compared by identity rather than by comparing two Danish sentences that happen to match.
+        /// </summary>
+        [Test]
+        public async Task ARefusedVerdictCarriesItsCodeAlongsideItsSentence()
+        {
+            Project project = await new ProjectAppService(TestSetup.Settings).Load("testdata/projects/project3-KompleksWired.vis");
+            var session = new ProjectDocumentSession();
+            session.Open(project);
+            ElementId.TryParse("_0xdead01", out ElementId absent);
+
+            EditVerdict verdict = session.CanApply(new RenameLocality(absent, "Nyt", string.Empty));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(verdict.Ok, Is.False);
+                Assert.That(verdict.Code, Is.EqualTo(EditRefusalCodes.TargetMissing));
+                Assert.That(verdict.Reason, Does.Contain("findes ikke længere"),
+                    "and the sentence is untouched — the code is beside it, not instead of it");
+            });
+        }
+
+        /// <summary>
+        /// The catalogue's Danish template for a refusal says the same thing the site says. Checked on the codes
+        /// whose sentence carries no interpolated value, where "the same thing" is exact equality; the rest are
+        /// pinned sentence-by-sentence by the behaviour tests above.
+        /// </summary>
+        [Test]
+        public void ACatalogueTemplateSaysWhatItsRefusalSiteSays()
+        {
+            (ProblemCode Code, string Sentence)[] fixedSentences =
+            [
+                (EditRefusalCodes.NoProjectOpen, EditRefusals.NoProjectOpenRefusal),
+                (EditRefusalCodes.StaleBaseVersion, EditRefusals.StaleBaseVersionRefusal),
+                (EditRefusalCodes.TerminalMissing, "Klemmen findes ikke længere."),
+                (EditRefusalCodes.TerminalAddressRange, "Klemmenummeret ligger uden for datalinjens område."),
+                (EditRefusalCodes.LinkDirection, "De to klemmer kan ikke linkes i den retning."),
+                (EditRefusalCodes.MoveNotAllowed, "Den flytning er ikke tilladt."),
+                (EditRefusalCodes.ContainerRejectsNode, "Den beholder kan ikke rumme denne node."),
+                (EditRefusalCodes.NotALogRow, "Ikke en Logning-række."),
+                (EditRefusalCodes.NotACommandGroup, "Målet er ikke en kommandogruppe."),
+            ];
+
+            Assert.Multiple(() =>
+            {
+                foreach ((ProblemCode code, string sentence) in fixedSentences)
+                {
+                    Assert.That(ProblemCatalog.Current.TryGet(code, out ProblemCatalogEntry entry), Is.True, code.Value);
+                    Assert.That(entry.MessageTemplate, Is.EqualTo(sentence),
+                        code.Value + ": the catalogue template and the refusing site must not drift apart");
+                }
             });
         }
     }

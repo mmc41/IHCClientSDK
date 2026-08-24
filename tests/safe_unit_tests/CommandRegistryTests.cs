@@ -43,7 +43,7 @@ public class CommandRegistryTests
     [Test]
     public void Evaluator_GateFail_ContextMenuOmits_BarAndToolbarGreyWithReason()
     {
-        CommandSpec row = Row(gate: _ => EditVerdict.Refuse("Locked."));
+        CommandSpec row = Row(gate: _ => EditVerdict.Refuse(EditRefusalCodes.TargetMissing, "Locked."));
 
         Assert.Multiple(() =>
         {
@@ -101,7 +101,7 @@ public class CommandRegistryTests
         var registry = new CommandRegistry(() => current);
         bool executed = false;
         var command = registry.Register(Row(
-            gate: c => c.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse("No project."),
+            gate: c => c.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse(EditRefusalCodes.TargetMissing, "No project."),
             execute: _ => { executed = true; return Task.CompletedTask; }));
 
         Assert.That(command.CanExecute(null), Is.False, "the materialized CanExecute IS the gate (D02)");
@@ -119,7 +119,7 @@ public class CommandRegistryTests
         ShellContext current = Open;
         var registry = new CommandRegistry(() => current);
         var command = registry.Register(Row(
-            gate: c => c.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse("No project.")));
+            gate: c => c.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse(EditRefusalCodes.TargetMissing, "No project.")));
         int raised = 0;
         command.CanExecuteChanged += (_, _) => raised++;
 
@@ -154,7 +154,7 @@ public class CommandRegistryTests
     {
         ShellContext current = ShellContext.Empty;
         var registry = new CommandRegistry(() => current);
-        registry.Register(Row("gated", gate: c => c.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse("No project.")));
+        registry.Register(Row("gated", gate: c => c.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse(EditRefusalCodes.TargetMissing, "No project.")));
         registry.Register(Row("silent", placement: Surfaces.None, gate: _ => new EditVerdict(false, null)));
 
         Assert.Multiple(() =>
@@ -182,7 +182,7 @@ public class CommandRegistryTests
         registry.Register(Row("barRestricted", surfacePolicy: (_, surface) =>
             surface == Surface.ContextMenu ? null : Availability.Disabled("Not from the bar.")));
         registry.Register(Row("keysOnly", placement: Surfaces.None));
-        registry.Register(Row("refused", gate: _ => EditVerdict.Refuse("No.")));
+        registry.Register(Row("refused", gate: _ => EditVerdict.Refuse(EditRefusalCodes.TargetMissing, "No.")));
 
         Assert.Multiple(() =>
         {

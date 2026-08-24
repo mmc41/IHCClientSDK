@@ -12,7 +12,7 @@ namespace Ihc.Vis.Tests
     /// no longer needs to declare every catalog type — a type the registry does not contain is inserted using the
     /// grammar captured from its own catalog descriptor's inline DTD (merged into the project on insert), so the full
     /// ~173-descriptor catalog round-trips structurally regardless of what the (now lean) registry covers. Each
-    /// inserted project also runs through <see cref="ProjectValidator"/>; all validate clean except the S0 device,
+    /// inserted project also runs through the whole-project verification; all validate clean except the S0 device,
     /// whose vendor catalog data ships a malformed <c>kWh@accessibility="readwrite"</c> (outside the DTD enumeration)
     /// — a faithfully-copied source-data quirk the validator rightly flags, tolerated here but asserted to be the
     /// <em>only</em> kind of validity issue.

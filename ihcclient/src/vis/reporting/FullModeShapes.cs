@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Linq;
 
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Validation;
 
@@ -58,7 +59,7 @@ namespace Ihc.Vis.Reporting
         private static ImmutableArray<ImmutableArray<ReportCell>> FindingRows(Project project, TreeIndex index)
         {
             var rows = ImmutableArray.CreateBuilder<ImmutableArray<ReportCell>>();
-            foreach ((ProjectValidationFinding finding, ProjectElement subject) in DocumentationValidator.CheckWithSubjects(project))
+            foreach ((ValidationFinding finding, ProjectElement subject) in DocumentationFindings(project, index))
             {
                 // Resolved by ANCESTRY, not by immediate parent: a terminal's product may be a container or
                 // two above it (the vendor's sensors nest their terminals inside a settings container), and a
@@ -72,9 +73,57 @@ namespace Ihc.Vis.Reporting
                     ReportText.SingleLine(locality?.GetAttribute("name")),
                     ReportText.SingleLine(product?.GetAttribute("name")),
                     terminalLevel ? ReportText.SingleLine(subject.GetAttribute("name")) : string.Empty,
-                    finding.Message));
+                    finding.Problem.Message));
             }
             return rows.ToImmutable();
         }
+
+        /// <summary>
+        /// The documentation findings of ONE engine run, paired with the element each is about and ordered the way
+        /// the vendor appendix witnesses them.
+        /// <para>
+        /// The ORDER is the report's own, not the engine's. The engine orders by document position and then by
+        /// code, which for the five product-level checks on one element is alphabetical and is NOT the sequence
+        /// the vendor prints. The sequence is declared beside the checks themselves, and this reads it — so the
+        /// appendix stays byte-identical without the engine carrying a rendering concern in its sort.
+        /// </para>
+        /// </summary>
+        private static ImmutableArray<(ValidationFinding Finding, ProjectElement Subject)> DocumentationFindings(
+            Project project, TreeIndex index)
+        {
+            ImmutableArray<ProblemCode> order =
+                [.. DocumentationRules.ProductChecksInReportOrder, .. DocumentationRules.TerminalChecksInReportOrder];
+            int RankOf(ValidationFinding finding) => order.IndexOf(finding.Code);
+
+            var subjects = ImmutableArray.CreateBuilder<(ValidationFinding, ProjectElement, int)>();
+            int arrival = 0;
+            foreach (ValidationFinding finding in ProjectRules.Validator
+                .Validate(project, ValidationProfile.Categorized)
+                .Where(f => f.Category == ValidationCategory.Documentation))
+            {
+                if (Subject(project, index, finding) is { } subject)
+                {
+                    subjects.Add((finding, subject, arrival));
+                }
+                arrival++;
+            }
+
+            return
+            [
+                .. subjects
+                    // Elements are records, so grouping "the findings about this element" must key by IDENTITY.
+                    // The cast pins TKey: bare, the comparer's IEqualityComparer<object?> lets inference settle
+                    // on TKey = object, which compiles and then surprises the first reader of group.Key.
+                    .GroupBy(entry => entry.Item2, (IEqualityComparer<ProjectElement?>)ReferenceEqualityComparer.Instance)
+                    .OrderBy(group => group.Min(entry => entry.Item3))
+                    .SelectMany(group => group.OrderBy(entry => RankOf(entry.Item1)))
+                    .Select(entry => (entry.Item1, entry.Item2)),
+            ];
+        }
+
+        /// <summary>The element a documentation finding is about, resolved from its primary location.</summary>
+        private static ProjectElement? Subject(Project project, TreeIndex index, ValidationFinding finding) =>
+            finding.Primary?.Element is { } id ? project.FindById(id) : null;
+
     }
 }

@@ -323,8 +323,10 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
         Assert.Multiple(() =>
         {
             Assert.That(pinBar.Enabled, Is.False, "a catalog-declared pin cannot be deleted on its own");
-            Assert.That(pinBar.Reason, Does.Contain("katalogdefineret klemme"),
-                "the grey names the SDK's specific reason, not a generic 'cannot be deleted' — Danish since T015");
+            Assert.That(pinBar.Reason, Does.Contain("katalogdefineret"),
+                "the grey names the SDK's specific reason, not a generic 'cannot be deleted' — Danish since T015. "
+                + "The sentence opens on the noun rather than on a quoted name (D5), because a template has to "
+                + "start with a capital or a placeholder to pass the phrasing standard the SDK holds itself to");
             Assert.That(At(vm, "edit.delete", vm.Context with { Node = Node(catalogPin, TreeNodeKind.Pin, isPin: true) },
                 Surface.ContextMenu), Is.EqualTo(Availability.Hidden), "…while the transient surface omits it (US-068)");
             Assert.That(productBar, Is.EqualTo(Availability.Allow), "the product that owns the pin still deletes");

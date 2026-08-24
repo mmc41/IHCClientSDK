@@ -18,6 +18,50 @@ using static Ihc.Vis.Editing.ProjectTreeOps;   // T015: the pure immutable-tree 
 using static Ihc.Vis.Editing.DeleteCascade;    // T016: the delete/copy reference-integrity cluster (schema-bearing calls pass SchemaView)
 namespace Ihc.Vis.Editing
 {
+    /// <summary>Which ownership rule refuses a node's DIRECT deletion, or <see cref="None"/> when none does.</summary>
+    internal enum DeletionRefusalKind
+    {
+        /// <summary>Nothing refuses it — the delete is the caller's to make.</summary>
+        None,
+
+        /// <summary>A product's catalog-declared pin: the catalog owns it, not the installer.</summary>
+        CatalogPin,
+
+        /// <summary>A node inside a locked function block: the library owns it until the block is unlocked.</summary>
+        LockedBlock,
+    }
+
+    /// <summary>
+    /// The refusal a direct delete meets — WHICH rule, and the pin's name when a pin is the target.
+    /// <para>
+    /// The kind travels rather than only the sentence, because the two sites that report this refusal must raise
+    /// two different CODES for the two rules, and a code cannot be recovered from a Danish sentence. It carries
+    /// the sentence too: the editing layer sits below the validation engine and may not read the catalogue, so a
+    /// refusing site keeps its own copy of the words, and a drift test holds that copy equal to the entry's.
+    /// </para>
+    /// </summary>
+    /// <param name="Kind">Which rule refuses, or <see cref="DeletionRefusalKind.None"/>.</param>
+    /// <param name="PinName">The pin's authored name, for <see cref="DeletionRefusalKind.CatalogPin"/> only.</param>
+    internal readonly record struct DeletionRefusal(DeletionRefusalKind Kind, string? PinName)
+    {
+        /// <summary>Nothing refuses this delete.</summary>
+        internal static DeletionRefusal Allowed => default;
+
+        /// <summary>Whether a rule refuses this delete.</summary>
+        internal bool Refused => Kind != DeletionRefusalKind.None;
+
+        /// <summary>The Danish sentence the installer reads, or null when nothing refuses.</summary>
+        internal string? Sentence => Kind switch
+        {
+            DeletionRefusalKind.CatalogPin =>
+                $"Klemmen '{PinName}' er katalogdefineret på sit produkt og kan ikke slettes alene — "
+                + "slet produktet for at fjerne den.",
+            DeletionRefusalKind.LockedBlock =>
+                "Denne node er inde i en låst funktionsblok og kan ikke slettes — lås blokken op først.",
+            _ => null,
+        };
+    }
+
     /// <summary>
     /// The mutable edit session over an immutable <see cref="Project"/> — the authoring (write) surface a GUI
     /// drives. Open it with <c>project.Edit()</c>, mutate through live handles (<see cref="Group(string)"/> → products /
@@ -672,7 +716,7 @@ namespace Ihc.Vis.Editing
             {
                 return this;                             // absent id → nothing to delete
             }
-            if (DeletionRefusalReason(root, id) is { } refusal)
+            if (ClassifyDeletionRefusal(root, id).Sentence is { } refusal)
             {
                 throw new InvalidOperationException(refusal);   // catalog pin / locked-block node (review3 H1)
             }
@@ -709,7 +753,7 @@ namespace Ihc.Vis.Editing
         }
 
         /// <summary>
-        /// The SDK-authoritative rule (review3 H1 / ADR-002, D09) for whether <paramref name="id"/> may be deleted as
+        /// The SDK-authoritative rule (ADR-002) for whether <paramref name="id"/> may be deleted as
         /// the DIRECT target: a product's catalog-declared pin (a <c>resource_</c>/<c>dataline_</c>/<c>airlink_</c>
         /// child of a product device root) and any node inside a LOCKED function block are owned by the
         /// catalog/library, not the installer, so deleting them on their own is refused — the returned reason names
@@ -718,33 +762,34 @@ namespace Ihc.Vis.Editing
         /// the engine (<see cref="DeleteById(ElementId, DeleteReferencePolicy)"/>), the <c>DeleteNode</c> command's
         /// legality check and <c>PreviewDelete</c> so one owner decides deletability across every surface.
         /// </summary>
-        internal static string? DeletionRefusalReason(ProjectElement root, ElementId id)
+        internal static DeletionRefusal ClassifyDeletionRefusal(ProjectElement root, ElementId id)
         {
             var chain = new List<ProjectElement>();
-            string? reason = null;
-            if (BuildPath(root, id, chain))
+            if (!BuildPath(root, id, chain))
             {
-                ProjectElement target = chain[^1];
-                ProjectElement? parent = chain.Count >= 2 ? chain[^2] : null;
-                // Link halves / scene members are wiring, removed via the link operations (US-057) — legitimate even
-                // on a locked block's pins — so the catalog/lock ownership rule never applies to them.
-                if (IsWiringNode(target.Tag))
-                {
-                    reason = null;
-                }
-                else if (parent is not null && ProductClassifier.IsProduct(parent.Tag) && IsCatalogPinTag(target.Tag))
-                {
-                    reason = $"\"{target.GetAttribute("name") ?? target.Tag}\" er en katalogdefineret klemme på sit "
-                           + "produkt og kan ikke slettes alene — slet produktet for at fjerne den.";
-                }
-                // The ancestor scope IsWithinLockedBlock(root, id, inclusive: false) would rebuild is already in
-                // `chain` — reuse it rather than paying a second BuildPath walk on the menu-gate path.
-                else if (chain.Take(chain.Count - 1).Any(IsLockedBlock))
-                {
-                    reason = "Denne node er inde i en låst funktionsblok og kan ikke slettes — lås blokken op først.";
-                }
+                return DeletionRefusal.Allowed;
             }
-            return reason;
+
+            ProjectElement target = chain[^1];
+            ProjectElement? parent = chain.Count >= 2 ? chain[^2] : null;
+
+            // Link halves / scene members are wiring, removed via the link operations (US-057) — legitimate even
+            // on a locked block's pins — so the catalog/lock ownership rule never applies to them.
+            if (IsWiringNode(target.Tag))
+            {
+                return DeletionRefusal.Allowed;
+            }
+
+            if (parent is not null && ProductClassifier.IsProduct(parent.Tag) && IsCatalogPinTag(target.Tag))
+            {
+                return new DeletionRefusal(DeletionRefusalKind.CatalogPin, target.GetAttribute("name") ?? target.Tag);
+            }
+
+            // The ancestor scope IsWithinLockedBlock(root, id, inclusive: false) would rebuild is already in
+            // `chain` — reuse it rather than paying a second BuildPath walk on the menu-gate path.
+            return chain.Take(chain.Count - 1).Any(IsLockedBlock)
+                ? new DeletionRefusal(DeletionRefusalKind.LockedBlock, null)
+                : DeletionRefusal.Allowed;
         }
 
         // Wiring: link halves and scene members are attached/detached by the link operations (US-057), never owned by
@@ -756,7 +801,7 @@ namespace Ihc.Vis.Editing
 
         // A catalog pin family: a product's resource_/dataline_/airlink_ child exists because the product's catalog
         // type declares it (review3 H1). Function-block variables share the resource_ prefix but hang off a variable
-        // section, not a product, so DeletionRefusalReason's parent-is-a-product test distinguishes the two.
+        // section, not a product, so ClassifyDeletionRefusal's parent-is-a-product test distinguishes the two.
         private static bool IsCatalogPinTag(string tag) =>
             tag.StartsWith("resource_", StringComparison.Ordinal)
             || tag.StartsWith("dataline_", StringComparison.Ordinal)
@@ -770,7 +815,7 @@ namespace Ihc.Vis.Editing
             element.Tag == "functionblock" && element.GetAttribute("locked") == "yes";
 
         /// <summary>
-        /// T003 — the ONE central locked-ancestor authorization (generalising <see cref="DeletionRefusalReason"/>'s
+        /// T003 — the ONE central locked-ancestor authorization (generalising <see cref="ClassifyDeletionRefusal"/>'s
         /// locked clause): whether a STRUCTURAL mutation whose subtree/target is <paramref name="id"/> must be refused
         /// because <paramref name="id"/> lies within a locked (<c>locked="yes"</c>) function block — the library owns
         /// that subtree until it is unlocked. <paramref name="inclusive"/> counts <paramref name="id"/> itself being

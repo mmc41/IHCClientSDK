@@ -192,6 +192,33 @@ namespace Ihc.Vis
             return el is not null && int.TryParse(Project.View(el).Effective("value"), out int v) && v > 0 ? v : null;
         }
 
+        /// <summary>
+        /// What a dialog may offer for the given <c>dimmer_setting_*</c>: the bounds the CATALOG declares on that
+        /// setting, as the metadata a field binds to.
+        /// <para>
+        /// This is the door that lets the advanced-dimmer window stop carrying its own copy of 200–60000, 2000–10000
+        /// and 0–100. Those numbers are catalog data — a preset declares them per setting — and a window that
+        /// repeated them went stale the moment a catalog changed one, silently, in the direction that matters
+        /// (offering a value the commit path then refuses).
+        /// </para>
+        /// <para>
+        /// A setting the product does not carry, or one the catalog leaves unbounded, is
+        /// <see cref="Validation.FieldConstraintMetadata.Unconstrained"/>: absence is not zero.
+        /// </para>
+        /// </summary>
+        /// <param name="settingTag">The setting element's tag, e.g. <c>dimmer_setting_fade_rate_up</c>.</param>
+        public Validation.FieldConstraintMetadata SettingConstraint(string settingTag)
+        {
+            ProjectElement? el = Element.FindDescendantOrSelf(e => e.Tag == settingTag);
+            if (el is null)
+            {
+                return Validation.FieldConstraintMetadata.Unconstrained;
+            }
+
+            (int? minimum, int? maximum) = Project.View(el).DeclaredBounds;
+            return Validation.FieldConstraintMetadata.Unconstrained with { Minimum = minimum, Maximum = maximum };
+        }
+
         /// <summary>The dimmer's load mode (auto/rc/rl), defaulting to auto when unset.</summary>
         public string LoadMode =>
             Element.FindDescendantOrSelf(e => e.Tag == "dimmer_setting_load_mode") is { } lm

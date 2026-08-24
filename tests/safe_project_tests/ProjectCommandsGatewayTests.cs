@@ -174,15 +174,16 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
-        public async Task WouldExceedModemLimit_FalseForNonModemProductInAModemlessProject()
+        public async Task ModemLimitRefusal_IsNullForNonModemProductInAModemlessProject()
         {
             ProjectAppService app = App;
             Project project = await Load("project3-KompleksWired.vis");
             string firstNonModem = app.GetAvailableProducts()
                 .First(p => !Ihc.Vis.Products.ProductClassifier.IsModem(p.Body.Tag)).ProductIdentifier;
 
-            Assert.That(app.Commands.WouldExceedModemLimit(project, firstNonModem), Is.False,
-                "the one-modem gate (sliver #10) is open when no modem is present");
+            Assert.That(app.Commands.ModemLimitRefusal(project, firstNonModem), Is.Null,
+                "the one-modem gate (sliver #10) is open when no modem is present — and it now says so with a "
+                + "coded problem rather than a bare bool (T043)");
         }
 
         // ---- Structure family (T005) ----

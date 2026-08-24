@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// The three layers that see an out-of-grammar attribute must agree: <see cref="ProjectValidator"/> reports it,
+    /// The three layers that see an out-of-grammar attribute must agree: the whole-project verification reports it,
     /// <see cref="ProjectSerializer"/> refuses it, and an edit session refuses it up front — never the previous
     /// split where Validate said clean, direct Save threw, and Edit()+commit silently deleted the attribute.
     /// Also pins the serializer's #REQUIRED guard: a missing required attribute must fail the save loudly instead
@@ -40,12 +40,12 @@ namespace Ihc.Vis.Tests
         {
             Project project = Load("Synthetic/OpenWorldUndeclaredAttr.vis");
 
-            ProjectValidationResult result = ProjectValidator.Validate(project);
+            ProjectValidationResult result = ProjectVerification.Structural(project);
 
             Assert.Multiple(() =>
             {
                 Assert.That(result.IsValid, Is.False, "Validate must be a superset of what Serialize rejects");
-                Assert.That(result.Errors.Any(e => e.Contains("bogus") && e.Contains("group")), Is.True,
+                Assert.That(result.Findings.Any(f => f.RuleId == "attr-undeclared"), Is.True,
                     "errors: " + string.Join(" | ", result.Errors));
             });
         }
@@ -66,8 +66,12 @@ namespace Ihc.Vis.Tests
                 Root = project.Root with { Children = project.Root.Children.AsImmutableArray().SetItem(index, stripped) },
             };
 
+            // InstanceOf, not TypeOf: the refusal now carries a code (attr-required under io.save) and is the
+            // derived RefusedOperationException. It is still an InvalidOperationException, which is the promise
+            // this assertion is here to keep.
             Assert.That(() => ProjectSerializer.Serialize(broken),
-                Throws.InvalidOperationException.With.Message.Contains("modified").And.Message.Contains("year"));
+                Throws.InstanceOf<InvalidOperationException>()
+                    .With.Message.Contains("modified").And.Message.Contains("year"));
         }
 
         // Rebuilds the tree with the element of the given id replaced — a raw model edit that bypasses the editor's
@@ -110,7 +114,7 @@ namespace Ihc.Vis.Tests
             Project modified = project with { Root = Replace(project.Root, group.Id!.Value, group.WithAttribute("bogus_undeclared", "x")) };
 
             Assert.That(() => ProjectSerializer.Serialize(modified),
-                Throws.InvalidOperationException.With.Message.Contains("bogus_undeclared"));
+                Throws.InstanceOf<InvalidOperationException>().With.Message.Contains("bogus_undeclared"));
         }
 
         [Test]
@@ -129,10 +133,10 @@ namespace Ihc.Vis.Tests
                 Root = project.Root with { Children = project.Root.Children.AsImmutableArray().SetItem(index, stripped) },
             };
 
-            ProjectValidationResult result = ProjectValidator.Validate(broken);
+            ProjectValidationResult result = ProjectVerification.Structural(broken);
 
-            Assert.That(result.Errors.Any(e => e.Contains("year") && e.Contains("modified")), Is.True,
-                "errors: " + string.Join(" | ", result.Errors));
+            Assert.That(result.Findings.Any(f => f.RuleId == "attr-required"), Is.True,
+                "findings: " + string.Join(" | ", result.Findings.Select(f => f.RuleId)));
         }
     }
 }

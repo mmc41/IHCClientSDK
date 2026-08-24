@@ -100,6 +100,30 @@ namespace Ihc.Tests
             Assert.That(rule.HasNoViolations(arch), Is.False, message);
         }
 
+        /// <summary>
+        /// The same arming assertion for a type this assembly cannot NAME. The <see cref="System.Type"/> overload
+        /// needs a <c>typeof</c>, so an <c>internal</c> carrier is unreachable by it — and an arming pass that
+        /// dropped such a carrier would leave the rule it arms silently vacuous, which is the exact failure the
+        /// arming pass exists to prevent. Matches the recorded dependency edges by full name, the same technique
+        /// and the same reason as <see cref="AssertNoDependencyOnTypeNames"/>.
+        /// </summary>
+        /// <param name="arch">The loaded architecture.</param>
+        /// <param name="fromTypeFullName">The carrier's full name; it must be present in the model.</param>
+        /// <param name="onNamespace">The namespace subtree the carrier is expected to depend on.</param>
+        /// <param name="message">What a clean result would mean — always that the mechanism is broken.</param>
+        public static void AssertDependencyIsDetected(Architecture arch, string fromTypeFullName,
+            string onNamespace, string message)
+        {
+            IType[] origins = [.. arch.Types.Where(t => t.FullName == fromTypeFullName)];
+            Assert.That(origins, Is.Not.Empty,
+                $"'{fromTypeFullName}' is not in the loaded model, so this arming assertion would prove nothing");
+
+            Assert.That(
+                origins.SelectMany(t => t.Dependencies).Any(d =>
+                    d.Target.FullName.StartsWith(onNamespace + ".", StringComparison.Ordinal)),
+                Is.True, message);
+        }
+
         /// <summary>Forbidden dependency from a whole loaded assembly onto an external namespace subtree.</summary>
         public static void AssertAssemblyHasNoDependency(Architecture arch, string onNamespace, string because)
         {

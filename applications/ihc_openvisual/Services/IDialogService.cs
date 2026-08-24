@@ -4,7 +4,9 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Ihc.Vis;
 using Ihc.Vis.Addressing;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
+using Ihc.Vis.Validation;
 using Ihc.Vis.Session;
 
 namespace ihc_openvisual.Services;
@@ -131,9 +133,17 @@ public sealed record SceneContainerInput(string Name, string Note, IReadOnlyList
 public sealed record SceneContainerResult(string Note);
 
 /// <summary>The current values shown by the advanced wireless-dimmer dialog (US-015). Times in ms/s, levels in %,
-/// <c>LoadMode</c> is the stored token (<c>auto</c>/<c>rc</c>/<c>rl</c>).</summary>
+/// <c>LoadMode</c> is the stored token (<c>auto</c>/<c>rc</c>/<c>rl</c>).
+/// <para>The five <see cref="FieldConstraintMetadata"/> members are what each numeric field may offer, read from the
+/// CATALOG through the SDK's dialog-metadata face (T045). They replace the window's own copy of 200–60000, 2–10 and
+/// 0–100: those are catalog data, and a window repeating them could advertise a value the commit path refuses.
+/// <c>ManualRamp</c> is the one that is converted rather than forwarded — the setting is declared in milliseconds
+/// and the dialog edits seconds, so its bounds are divided by the same 1000 the value is.</para></summary>
 public sealed record AdvancedDimmerInput(
-    int SoftOnMs, int SoftOffMs, int ManualRampS, int MinimumPercent, int MaximumPercent, string LoadMode);
+    int SoftOnMs, int SoftOffMs, int ManualRampS, int MinimumPercent, int MaximumPercent, string LoadMode,
+    FieldConstraintMetadata SoftOn = default, FieldConstraintMetadata SoftOff = default,
+    FieldConstraintMetadata ManualRamp = default, FieldConstraintMetadata Minimum = default,
+    FieldConstraintMetadata Maximum = default);
 
 // AdvancedDimmerResult moved to the SDK (Ihc.Vis.Session, W2-10) — an edit payload for the dimmer command.
 
@@ -157,10 +167,14 @@ public sealed record EnumDefinitionResult(string TypeName, IReadOnlyList<string>
 /// what the document actually holds rather than a copy that could drift from it.</param>
 /// <param name="Apply">Applies one operation. Returns null on success, or the refusal sentence to show — an
 /// engine-level "[read only]" / "still used" refusal has to reach the installer, not vanish.</param>
+/// <param name="Blank">The blank-name decision, for the name prompts this manager raises itself. It builds its own
+/// <see cref="NamePromptInput"/> — it is a View, so it can neither reach the SDK facade nor mint a validator — and
+/// without this member those four prompts would be the one unvalidated door in the application.</param>
 public sealed record EnumTypeManagerInput(
     string Title,
     Func<IReadOnlyList<EnumTypeView>> Types,
-    Func<EnumTypeManagerOperation, Task<string?>> Apply);
+    Func<EnumTypeManagerOperation, Task<string?>> Apply,
+    Func<string?, Problem?> Blank);
 
 /// <summary>One thing the enumerator-type manager can do — the six buttons of the vendor's two panes, as data. The
 /// dialog decides WHICH; the view-model owns what each one means, so naming and refusal rules stay in one place.</summary>
@@ -190,13 +204,26 @@ public abstract record EnumTypeManagerOperation
 
 /// <summary>What the one-field name prompt shows: its window title and the text the box starts with (selected, so
 /// typing replaces it). The reference application raises exactly this for all four of its Ny/Omdøb buttons —
-/// "Opret ny enumerator type", "Opret ny enumerator værdi", "Omdøb Enumerator type", "Omdøb Enumerator værdi".</summary>
-public sealed record NamePromptInput(string Title, string InitialName);
+/// "Opret ny enumerator type", "Opret ny enumerator værdi", "Omdøb Enumerator type", "Omdøb Enumerator værdi".
+/// <para><see cref="Blank"/> is the decision the window ASKS rather than makes: the caller supplies it from
+/// <c>ProjectAppService.MissingRequiredField</c>, and OK calls it. A View may not name the facade, so this is how
+/// the decision reaches a window that must present its answer — the same shape
+/// <see cref="EnumTypeManagerInput.Types"/> and <see cref="EnumTypeManagerInput.Apply"/> already use, and the same
+/// shape <see cref="SceneValueInput.Level"/> uses to thread an SDK constraint into a window. The window keeps the
+/// whole interaction half: the inline line, the focus return, the dialog staying open.</para></summary>
+/// <param name="Title">The window title.</param>
+/// <param name="InitialName">The text the box starts with, selected so typing replaces it.</param>
+/// <param name="Blank">Answers whether the submitted value counts as missing, and with which sentence.</param>
+public sealed record NamePromptInput(string Title, string InitialName, Func<string?, Problem?> Blank);
 
 /// <summary>The current values shown by the scene-value dialog (US-024/US-058). A dimmer scene asks a light level
-/// (%) + ramp time; a relay/socket scene an ON/OFF state.</summary>
+/// (%) + ramp time; a relay/socket scene an ON/OFF state.
+/// <para><see cref="Level"/> and <see cref="RampPart"/> are the SDK's own declared constraints for a scene value
+/// (T045) — the level bounds the <c>SceneValue.Dimmer</c> factory enforces, and the mm:ss notation's per-part
+/// bound. The window binds them rather than carrying 0–100 and 0–59 of its own.</para></summary>
 public sealed record SceneValueInput(
-    string Title, bool IsDimmer, bool On, int LevelPercent, int RampMinutes, int RampSeconds);
+    string Title, bool IsDimmer, bool On, int LevelPercent, int RampMinutes, int RampSeconds,
+    FieldConstraintMetadata Level = default, FieldConstraintMetadata RampPart = default);
 
 // SceneValueResult moved to the SDK (Ihc.Vis.Session, W2-7) — an edit payload for the scene commands.
 
@@ -239,7 +266,25 @@ public interface IDialogService
 
     Task<bool> ConfirmAsync(string title, string message);
 
+    /// <summary>
+    /// Shows an INFORMATIONAL text — help content, a diagnostic readout. Not for an outcome: something that failed,
+    /// was refused or could not be carried through is a coded problem and goes through
+    /// <see cref="ShowProblemAsync(string, Problem)"/>, so that identity reaches the installer (R18). The per-site
+    /// register pins which sites may use this one and why.
+    /// </summary>
     Task ShowMessageAsync(string title, string message);
+
+    /// <summary>
+    /// Shows one coded problem: its Danish message with its identity as a bracketed suffix, rendered by the shell's
+    /// single presentation path (T040). The title is the shell's own framing of the box.
+    /// </summary>
+    Task ShowProblemAsync(string title, Problem problem);
+
+    /// <summary>
+    /// Shows a cause/detail CHAIN — the shape a site has when it frames an SDK failure of its own (T006). Exactly
+    /// one sentence reaches the installer, the cause's; the operation's code stays available for the log.
+    /// </summary>
+    Task ShowProblemAsync(string title, ProblemChain chain);
 
     /// <summary>Opens a project file picker; returns the chosen path, or null if cancelled.</summary>
     Task<string?> PickOpenProjectAsync(string? initialDirectory);

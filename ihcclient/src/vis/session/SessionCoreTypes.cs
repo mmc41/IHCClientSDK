@@ -22,13 +22,39 @@ namespace Ihc.Vis.Session
         Failed,
     }
 
-    /// <summary>The result of a command legality check (proposal §3.4): allowed, or refused with a reason.</summary>
-    public readonly record struct EditVerdict(bool Ok, string? Reason)
+    /// <summary>
+    /// The result of a command legality check: allowed, or refused with a reason and an identity.
+    /// <para>
+    /// The <see cref="Code"/> is what a caller can act on. The sentence has always been the whole of a refusal,
+    /// which meant two paths answering the same question could only be compared by comparing prose, a host could
+    /// not group or count refusals, and a wording edit was indistinguishable from a behaviour change. The code
+    /// fixes all three without changing a word of what the user reads.
+    /// </para>
+    /// </summary>
+    /// <param name="Ok">Whether the command may be applied.</param>
+    /// <param name="Reason">The Danish sentence a frontend shows, or null when allowed.</param>
+    /// <param name="Code">The refusal's identity, or the default when allowed.</param>
+    public readonly record struct EditVerdict(bool Ok, string? Reason, Problems.ProblemCode Code = default)
     {
         /// <summary>The command is allowed.</summary>
         public static EditVerdict Allow => new(true, null);
 
-        /// <summary>The command is refused for the stated reason.</summary>
+        /// <summary>The command is refused, with an identity and the sentence the user reads.</summary>
+        /// <param name="code">Which refusal this is.</param>
+        /// <param name="reason">The Danish sentence.</param>
+        public static EditVerdict Refuse(Problems.ProblemCode code, string reason) => new(false, reason, code);
+
+        /// <summary>
+        /// Refuses with a sentence and NO identity — for a host that has not adopted a code family yet.
+        /// <para>
+        /// It exists because a host builds verdicts of its own for its own availability gates, and a host's codes
+        /// are a host's business: requiring one here would close the vocabulary from the SDK side, which is
+        /// precisely what the reserved-family design refuses to do. What it is NOT for is an SDK refusal — every
+        /// one of those names its code, and a source scan pins that they do, so this overload cannot quietly
+        /// become the easy path back to anonymous refusals inside the engine.
+        /// </para>
+        /// </summary>
+        /// <param name="reason">The Danish sentence.</param>
         public static EditVerdict Refuse(string reason) => new(false, reason);
 
         /// <summary>Chains a second legality check after this one, keeping the FIRST failure (short-circuits on a
@@ -74,14 +100,29 @@ namespace Ihc.Vis.Session
     }
 
     /// <summary>The result of applying a command (proposal §3.3): its terminal <see cref="Status"/>, a human label
-    /// (for the undo/status text), an optional refusal/failure reason, and the change set when it committed.</summary>
-    public record EditOutcome(EditStatus Status, string Label, string? Reason, ProjectChangeSet? Changes);
+    /// (for the undo/status text), an optional refusal/failure reason, the change set when it committed, and the
+    /// refusal's IDENTITY when it refused.
+    /// <para>
+    /// <see cref="Code"/> is what makes agreement between the gate and this door checkable: a refused apply carries
+    /// the same code <see cref="ProjectDocumentSession.CanApply"/> returned, so a caller can compare, group and
+    /// count refusals instead of comparing two Danish sentences that happen to match today. It is the default for
+    /// every non-refusing outcome — a committed edit has no refusal to identify.
+    /// </para>
+    /// <para>
+    /// LAST and defaulted deliberately: every existing construction site keeps compiling, so the sites that gained
+    /// a code are exactly the refusing ones and a reviewer can see that in the diff.
+    /// </para>
+    /// </summary>
+    public record EditOutcome(
+        EditStatus Status, string Label, string? Reason, ProjectChangeSet? Changes,
+        Problems.ProblemCode Code = default);
 
     /// <summary>An <see cref="EditOutcome"/> that also carries a produced value (e.g. a new element's id). Derives
     /// from <see cref="EditOutcome"/> so one GUI outcome→status/dialog mapping serves both shapes.</summary>
     public sealed record EditOutcome<T>(
-        EditStatus Status, string Label, string? Reason, ProjectChangeSet? Changes, T? Value)
-        : EditOutcome(Status, Label, Reason, Changes);
+        EditStatus Status, string Label, string? Reason, ProjectChangeSet? Changes, T? Value,
+        Problems.ProblemCode Code = default)
+        : EditOutcome(Status, Label, Reason, Changes, Code);
 
     /// <summary>The terminal state of a <see cref="PreviewOutcome"/> — the non-committing mirror of
     /// <see cref="EditStatus"/> (M8/D05): previewing a command against the current project shows it either WOULD
@@ -107,7 +148,8 @@ namespace Ihc.Vis.Session
     /// when <see cref="PreviewStatus.WouldChange"/>), and a <see cref="Reason"/> for a refuse/fault. Distinguishing a
     /// legitimate refuse/no-change from an unexpected engine fault lets a caller surface a genuine bug instead of
     /// swallowing it as "nothing to preview" (the bare-catch it replaces conflated all three as null).</summary>
-    public sealed record PreviewOutcome(PreviewStatus Status, ProjectChangeSet? Changes, string? Reason)
+    public sealed record PreviewOutcome(
+        PreviewStatus Status, ProjectChangeSet? Changes, string? Reason, Problems.ProblemCode Code = default)
     {
         /// <summary>The command would commit <paramref name="changes"/>.</summary>
         public static PreviewOutcome WouldChange(ProjectChangeSet changes) => new(PreviewStatus.WouldChange, changes, null);
@@ -115,8 +157,15 @@ namespace Ihc.Vis.Session
         /// <summary>The command would make no change.</summary>
         public static PreviewOutcome NoChange { get; } = new(PreviewStatus.NoChange, null, null);
 
-        /// <summary>The command was refused for the stated reason.</summary>
-        public static PreviewOutcome Refused(string? reason) => new(PreviewStatus.Refused, null, reason);
+        /// <summary>The command was refused for the stated reason, with an identity when one is known.</summary>
+        /// <param name="reason">The Danish sentence.</param>
+        /// <param name="code">The refusal's identity, or the default when the refusing path has none.</param>
+        public static PreviewOutcome Refused(string? reason, Problems.ProblemCode code = default) =>
+            new(PreviewStatus.Refused, null, reason, code);
+
+        /// <summary>The preview was refused, carrying the refusal identity through unchanged.</summary>
+        /// <param name="verdict">The verdict that refused it.</param>
+        public static PreviewOutcome Refused(EditVerdict verdict) => Refused(verdict.Reason, verdict.Code);
 
         /// <summary>The command faulted with an unexpected engine error.</summary>
         public static PreviewOutcome Faulted(string? reason) => new(PreviewStatus.Faulted, null, reason);
@@ -134,7 +183,9 @@ namespace Ihc.Vis.Session
         /// mechanically — it just puts half-Danish text in front of a user — so the nouns are named at the call
         /// sites and the whole channel is asserted by <c>RefusalLanguageTests</c>.</para></summary>
         public EditVerdict RequireExists(ElementId id, string noun) =>
-            Index.FindById(id) is not null ? EditVerdict.Allow : EditVerdict.Refuse($"{noun} findes ikke længere.");
+            Index.FindById(id) is not null
+                ? EditVerdict.Allow
+                : EditVerdict.Refuse(EditRefusalCodes.TargetMissing, $"{noun} findes ikke længere.");
 
         /// <summary>Allow when <paramref name="id"/> resolves to an element whose tag is one of
         /// <paramref name="tags"/>, else Refuse naming the expected <paramref name="noun"/> — the tag-aware peer of
@@ -144,7 +195,7 @@ namespace Ihc.Vis.Session
         public EditVerdict RequireTag(ElementId id, string noun, params string[] tags) =>
             Index.FindById(id) is { } element && System.Array.IndexOf(tags, element.Tag) >= 0
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse($"Målet er ikke {noun}.");
+                : EditVerdict.Refuse(EditRefusalCodes.TargetWrongKind, $"Målet er ikke {noun}.");
 
         /// <summary>Allow unless <paramref name="id"/> lies at/within a locked function block's subtree, in which case
         /// Refuse — the session half of the central locked-ancestor authorization (T003): a structural
@@ -154,7 +205,7 @@ namespace Ihc.Vis.Session
         /// reorder does not, so the block may still be reordered among its siblings).</summary>
         public EditVerdict RequireUnlockedTarget(ElementId id, bool inclusive) =>
             Index.IsWithinLockedBlock(id, inclusive)
-                ? EditVerdict.Refuse(Ihc.Vis.Editing.ProjectEditor.LockedBlockEditRefusal)
+                ? EditVerdict.Refuse(EditRefusalCodes.TargetLocked, Ihc.Vis.Editing.ProjectEditor.LockedBlockEditRefusal)
                 : EditVerdict.Allow;
 
         /// <summary>The composition the authoring commands actually want: <see cref="RequireTag"/> on

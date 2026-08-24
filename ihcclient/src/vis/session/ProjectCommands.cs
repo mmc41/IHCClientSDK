@@ -1,9 +1,11 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 // NOTE: deliberately NOT `using Ihc.Vis.Session;` — a factory named e.g. `AddLocality` would collide with the
@@ -70,7 +72,7 @@ namespace Ihc.Vis
 
         /// <summary>Command to insert the catalog product with <paramref name="productIdentifier"/> into a locality
         /// (US-010), or null when no such product is in the catalog. The at-most-one-modem rule (US-013) is a separate
-        /// pre-check — <see cref="WouldExceedModemLimit"/> — so the caller can surface it before applying.</summary>
+        /// pre-check — <see cref="ModemLimitRefusal"/> — so the caller can surface it before applying.</summary>
         /// <summary>
         /// Command to insert a catalog product by identifier — or null when the catalog has no such product, or
         /// when the identifier names more than one and <paramref name="displayName"/> does not say which.
@@ -92,11 +94,33 @@ namespace Ihc.Vis
             new Session.AddProduct(localityId, definition);
 
         /// <summary>Command to insert a preprogrammed library function block by master type into a locality (US-018),
-        /// or null when no such block is in the catalog.</summary>
+        /// or null when no such block is in the catalog. Use
+        /// <see cref="TryAddFunctionBlock(Project, ElementId, string, out Session.AddFunctionBlock, out Problem)"/>
+        /// where the absence has to be explained to a user.</summary>
         public Session.AddFunctionBlock? AddFunctionBlock(Project project, ElementId localityId, string masterType) =>
             _catalog.Value.FunctionBlocks.FirstOrDefault(f => f.MasterType == masterType) is { } definition
                 ? new Session.AddFunctionBlock(localityId, definition)
                 : null;
+
+        /// <summary>
+        /// The same insert command, with the CODED REASON when there is none (T043). A caller that has to tell a
+        /// user why nothing happened gets the SDK's own coded problem — identity plus the Danish sentence — instead
+        /// of a bare empty result it would have to invent a message for.
+        /// </summary>
+        /// <param name="project">The project the command would be applied to.</param>
+        /// <param name="localityId">The locality the block would be inserted under.</param>
+        /// <param name="masterType">The library block's master type.</param>
+        /// <param name="command">The minted command, when the catalog carries the block.</param>
+        /// <param name="refusal">The coded problem, when it does not.</param>
+        public bool TryAddFunctionBlock(
+            Project project, ElementId localityId, string masterType,
+            [NotNullWhen(true)] out Session.AddFunctionBlock? command,
+            [NotNullWhen(false)] out Problem? refusal)
+        {
+            command = AddFunctionBlock(project, localityId, masterType);
+            refusal = command is null ? Session.EditRefusalProblems.LibraryBlockMissing(masterType) : null;
+            return command is not null;
+        }
 
         /// <summary>Command to insert the catalog "Tom blok" empty function-block template into a locality (US-019),
         /// stamped with today's date (from the service clock) and the caller-supplied default <paramref name="name"/>.</summary>
@@ -202,12 +226,22 @@ namespace Ihc.Vis
             new Session.SaveFunctionBlockToLibrary(id, name, programmer,
                 DateOnly.FromDateTime(_timeProvider.GetLocalNow().DateTime), note);
 
-        /// <summary>Whether inserting the product would break the at-most-one-modem rule (US-013, sliver #10 relocated
-        /// from the app): the product is a modem and the project already holds one. The confirm <i>wording</i> stays
-        /// GUI-side; this owns only the decision.</summary>
-        public bool WouldExceedModemLimit(Project project, string productIdentifier) =>
+        /// <summary>
+        /// The at-most-one-modem rule (US-013), as a CODED REFUSAL: the coded problem when inserting the product
+        /// would break it — the product is a modem and the project already holds one — or null when it would not.
+        /// <para>
+        /// It returns the problem rather than a bool (T043) because a bare bool left the caller to author the
+        /// sentence for a rule the SDK owns: the wording, the remedy and the identity are all this door's, and a
+        /// second frontend answering the same question can no longer word it differently.
+        /// </para>
+        /// </summary>
+        /// <param name="project">The project the product would be inserted into.</param>
+        /// <param name="productIdentifier">The product's <c>product_identifier</c>.</param>
+        public Problem? ModemLimitRefusal(Project project, string productIdentifier) =>
             ProductCatalogLookup.Resolve(_catalog.Value.Products, productIdentifier) is { } definition
-            && ProductClassifier.IsModem(definition.Body.Tag) && HasModem(project);
+            && ProductClassifier.IsModem(definition.Body.Tag) && HasModem(project)
+                ? Session.EditRefusalProblems.ModemLimit()
+                : null;
 
         // Whether the project already contains a modem device root (the at-most-one-modem rule, US-013).
         private static bool HasModem(Project project) =>
@@ -321,7 +355,7 @@ namespace Ihc.Vis
         {
             ProjectElement? element = project.FindById(id);
             DeleteKind kind;
-            if (element is null || ProjectEditor.DeletionRefusalReason(project.Root, id) is not null)
+            if (element is null || ProjectEditor.ClassifyDeletionRefusal(project.Root, id).Refused)
             {
                 kind = DeleteKind.NotDeletable;   // missing, or a catalog pin / locked-block node (review3 H1)
             }
@@ -364,17 +398,50 @@ namespace Ihc.Vis
                 _ => false,   // NotDeletable / Link never confirm
             };
             bool deletable = kind != DeleteKind.NotDeletable;
-            // A node can be undeletable for three reasons, and the installer deserves to be told which: the engine's
-            // own refusal (catalog pin / locked block), a node type that is structure rather than content, or an id
-            // that no longer resolves. Only the first has an engine sentence, so the other two are named here.
-            string? reason = deletable
+            // A node can be undeletable for four reasons, and the installer deserves to be told which: a
+            // catalog-declared pin, a locked block, a node type that is structure rather than content, or an id
+            // that no longer resolves. Each is its OWN code (D5), carried as a whole problem rather than as a bare
+            // sentence — so the shell forwards a refusal it can filter on instead of re-deciding which one it is.
+            Problem? refusal = deletable
                 ? null
-                : ProjectEditor.DeletionRefusalReason(project.Root, id)
-                  ?? (element is null
-                        ? "Noden findes ikke længere."
-                        : "Denne node er en del af projektets struktur og kan ikke slettes.");
-            return new DeleteImpact(deletable, needsConfirm, kind, reason);
+                : element is null
+                    ? new Problem(Session.EditRefusalCodes.TargetMissing, "Noden findes ikke længere.",
+                        EquatableArray<ProblemArgument>.Empty)
+                    : DeleteRefusal(ProjectEditor.ClassifyDeletionRefusal(project.Root, id));
+            return new DeleteImpact(deletable, needsConfirm, kind, refusal);
         }
+
+        /// <summary>
+        /// The refused-deletion problem for one classified refusal — ONE place where a delete refusal's code and
+        /// its Danish sentence are paired (D5), read by the command's legality check and by
+        /// <see cref="PreviewDelete"/> alike, so the menu gate and the dialog cannot report a delete differently.
+        /// <para>
+        /// The sentences are written here rather than looked up: the session layer may not depend on the
+        /// validation engine, so a refusing site keeps its own copy of the words and a drift test holds that copy
+        /// equal to the catalogue's template.
+        /// </para>
+        /// </summary>
+        /// <param name="refusal">Which ownership rule refused, from the editor's classifier.</param>
+        internal static Problem DeleteRefusal(DeletionRefusal refusal) => refusal.Kind switch
+        {
+            DeletionRefusalKind.CatalogPin => new Problem(
+                Session.EditRefusalCodes.DeletionRefusedCatalogPin,
+                refusal.Sentence!,
+                EquatableArray.Create<ProblemArgument>([new ProblemArgument("pin", refusal.PinName!)])),
+
+            DeletionRefusalKind.LockedBlock => new Problem(
+                Session.EditRefusalCodes.DeletionRefusedLockedBlock,
+                refusal.Sentence!,
+                EquatableArray<ProblemArgument>.Empty),
+
+            // Neither ownership rule refused, yet the classifier said not deletable: the node is project
+            // STRUCTURE. The sentence is the one the GUI already showed on this path — it says why, where the
+            // retired row's "Dette element kan ikke slettes." said only that something had gone wrong.
+            _ => new Problem(
+                Session.EditRefusalCodes.DeletionRefusedStructural,
+                "Denne node er en del af projektets struktur og kan ikke slettes.",
+                EquatableArray<ProblemArgument>.Empty),
+        };
 
         // ---- Link/Scene family (T006): pin links, link removal, scenario links + values (sliver #11 relocated) ----
 
@@ -485,6 +552,46 @@ namespace Ihc.Vis
                 && def.Children.Any(v => v.IsEnumValue && project.View(v).Name == criterion)
                     ? new Session.AddCaseValue(caseId, criterion, switchVar.Tag, typeName) : null;
         }
+
+        /// <summary>
+        /// The same case-value command, with the CODED REASON when it cannot be minted (T045): the criterion is not
+        /// a state of the switch's enumerator type, or the target is not a case with a switch. The GUI used to
+        /// re-derive that first sentence — and re-walk the state list behind it — from the data this factory
+        /// already reads.
+        /// </summary>
+        /// <param name="project">The project the command would be applied to.</param>
+        /// <param name="caseId">The <c>program_case</c> the branch is added to.</param>
+        /// <param name="criterion">The branch's criterion value.</param>
+        /// <param name="command">The minted command, when the criterion is acceptable.</param>
+        /// <param name="refusal">The coded problem, when it is not.</param>
+        public bool TryAddCaseValue(
+            Project project, ElementId caseId, string criterion,
+            [NotNullWhen(true)] out Session.AddCaseValue? command,
+            [NotNullWhen(false)] out Problem? refusal)
+        {
+            command = AddCaseValue(project, caseId, criterion);
+            if (command is not null)
+            {
+                refusal = null;
+                return true;
+            }
+
+            refusal = EnumSwitchTypeName(project, caseId) is { } typeName
+                ? Session.EditRefusalProblems.CaseValueNotAState(criterion, typeName)
+                : Session.EditRefusalProblems.TargetWrongKind("en case med en switch-variabel");
+            return false;
+        }
+
+        // The name of the enumerator type an enum-keyed case's switch is typed by, or null when the case, its link
+        // or its switch is not an enum one — which is exactly the difference between the two refusals above.
+        private static string? EnumSwitchTypeName(Project project, ElementId caseId) =>
+            project.FindById(caseId) is { } kase && kase.IsProgramCase
+            && ElementId.TryParse(project.View(kase).Effective("link"), out ElementId switchId)
+            && project.FindById(switchId) is { Kind: ElementKind.EnumResource } switchVar
+            && ElementId.TryParse(project.View(switchVar).Effective("typedef"), out ElementId defId)
+            && project.FindById(defId) is { } def
+                ? project.View(def).Name
+                : null;
 
         /// <summary>Command to set an output's "Gem aktuel værdi" power-loss persistence (US-033).</summary>
         public Session.SetOutputBackup SetOutputBackup(Project project, ElementId outputId, bool save) =>
@@ -603,5 +710,24 @@ namespace Ihc.Vis
     /// "Denne node er inde i en låst funktionsblok …") rather than authoring a generic copy. The engine already
     /// computed it; before this it was discarded at the boundary and replaced with "Denne node kan ikke slettes."</para>
     /// </summary>
-    public readonly record struct DeleteImpact(bool Deletable, bool NeedsConfirm, DeleteKind Kind, string? Reason = null);
+    /// <summary>
+    /// What deleting one node would cost, and — when it cannot be deleted — WHY, as a coded
+    /// <see cref="Problem"/> rather than a bare sentence (D5).
+    /// <para>
+    /// Carrying the whole problem is what lets a shell forward the refusal instead of re-deciding it: the four
+    /// reasons a delete is refused are four codes, and a shell that received only prose could group, count and
+    /// filter none of them. <see cref="Reason"/> is DERIVED from it, so the sentence and the identity cannot
+    /// become two different things.
+    /// </para>
+    /// </summary>
+    /// <param name="Deletable">Whether the node may be deleted at all.</param>
+    /// <param name="NeedsConfirm">Whether the delete should be confirmed with the user first.</param>
+    /// <param name="Kind">Which delete this is — link, locality, general, or none.</param>
+    /// <param name="Refusal">The coded refusal, or null when the node is deletable.</param>
+    public readonly record struct DeleteImpact(
+        bool Deletable, bool NeedsConfirm, DeleteKind Kind, Problem? Refusal = null)
+    {
+        /// <summary>The Danish sentence the installer reads, or null when the node is deletable.</summary>
+        public string? Reason => Refusal?.Message;
+    }
 }

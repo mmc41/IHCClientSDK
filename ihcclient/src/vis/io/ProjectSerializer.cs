@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
 namespace Ihc.Vis.Io
@@ -59,7 +60,7 @@ namespace Ihc.Vis.Io
             }
             catch (EncoderFallbackException ex)
             {
-                throw new InvalidOperationException(
+                throw new RefusedOperationException(SaveRefusalCodes.AttrLatin1,
                     "The project contains text outside the ISO-8859-1 (Latin-1) repertoire, which the .vis format " +
                     $"cannot represent.{LocateNonLatin1(root)} Restrict all text to Latin-1.", ex);
             }
@@ -101,10 +102,21 @@ namespace Ihc.Vis.Io
             sb.Append(DoctypeOpen).Append(Crlf);
             foreach (string tag in FirstOccurrenceOrder(root))
             {
-                sb.Append(view.Get(tag).CanonicalDtdBlock); // file-captured block first, registry fallback; ends with CRLF
+                sb.Append(SchemaForSave(view, tag).CanonicalDtdBlock); // file-captured block first, registry fallback; ends with CRLF
             }
             sb.Append(DoctypeClose).Append(Crlf);
         }
+
+        /// <summary>
+        /// The element's schema, refusing the SAVE by name when neither the file's inline DTD nor the registry
+        /// declares its type. <see cref="ProjectSchemaView.Get"/> raises the same condition for readers that are
+        /// not saving — a library export, an edit commit — so the identity is applied here, at the site that
+        /// knows which operation is being refused, rather than on the shared view.
+        /// </summary>
+        private static ElementSchema SchemaForSave(ProjectSchemaView view, string tag) =>
+            view.TryGet(tag) ?? throw new RefusedOperationException(SaveRefusalCodes.ElementUndeclared,
+                $"No schema for .vis element type '{tag}' in the project's own inline DTD or the schema registry. " +
+                "A project may only contain element types declared by its inline DTD or the SDK registry.");
 
         /// <summary>The element types present in the tree, in preorder first-occurrence order (root first).</summary>
         private static IEnumerable<string> FirstOccurrenceOrder(ProjectElement root)
@@ -129,7 +141,7 @@ namespace Ihc.Vis.Io
 
         private static void AppendElement(StringBuilder sb, ProjectElement element, int depth, ProjectSchemaView view)
         {
-            ElementSchema schema = view.Get(element.Tag);
+            ElementSchema schema = SchemaForSave(view, element.Tag);
             string indent = Indent(depth);
 
             sb.Append(indent).Append('<').Append(element.Tag);
@@ -150,7 +162,7 @@ namespace Ihc.Vis.Io
 
         private static void AppendAttributes(StringBuilder sb, ProjectElement element, ElementSchema schema)
         {
-            SchemaGuards.GuardNoUnknownAttributes(element, schema);
+            SchemaGuards.GuardNoUnknownAttributes(element, schema, SaveRefusalCodes.AttrUndeclared);
             foreach (AttrSchema attr in schema.Attrs)
             {
                 string? value = element.GetAttribute(attr.Name);
@@ -160,7 +172,7 @@ namespace Ihc.Vis.Io
                     {
                         // Writing without it would violate the DTD this very file declares inline — IHC Visual
                         // (a validating consumer) then refuses the file after the original was already replaced.
-                        throw new InvalidOperationException(
+                        throw new RefusedOperationException(SaveRefusalCodes.AttrRequired,
                             $"Element '{element.Tag}' is missing #REQUIRED attribute '{attr.Name}' declared by its " +
                             $"DTD block; run {nameof(ProjectAppService)}.{nameof(ProjectAppService.Validate)} to " +
                             "list every problem before saving.");

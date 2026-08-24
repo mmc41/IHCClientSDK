@@ -73,7 +73,7 @@ internal static class SessionEditingTestExtensions
         this ProjectWorkflow s, ElementId localityId, string productIdentifier, string? displayName = null)
     {
         // The at-most-one-modem rule (US-013) is an app-level pre-check, not part of the command's legality.
-        if (s.Commands.WouldExceedModemLimit(s.Current!, productIdentifier))
+        if (s.Commands.ModemLimitRefusal(s.Current!, productIdentifier) is not null)
         {
             return Task.FromResult<ElementId?>(null);
         }

@@ -1,7 +1,28 @@
 #nullable enable
-const Ihc.Vis.Session.EditRefusals.NoProjectOpenRefusal = "Der er ikke åbnet et projekt." -> string!
-const Ihc.Vis.Session.EditRefusals.StaleBaseVersionRefusal = "Projektet er ændret, siden denne redigering blev forberedt." -> string!
-Ihc.Vis.Session.EditRefusals
-virtual Ihc.App.AdminAppService.Dispose(bool disposing) -> void
-virtual Ihc.App.InformationAppService.Dispose(bool disposing) -> void
-virtual Ihc.AuthenticationService.Dispose(bool disposing) -> void
+Ihc.Vis.Validation.ILibraryBlockSource
+Ihc.Vis.Validation.ILibraryBlockSource.TryGetBody(string! masterType, string! masterVersion, out Ihc.Vis.Model.ProjectElement! body) -> bool
+Ihc.Vis.Validation.FieldConstraintMetadata.Blank.get -> Ihc.Vis.Validation.BlankPolicy
+Ihc.Vis.Validation.FieldConstraintMetadata.Blank.init -> void
+Ihc.Vis.Validation.IProgramUsageAnalysis.IsSelfModifying(Ihc.Vis.Model.ProjectElement! row) -> bool
+Ihc.Vis.Validation.IProjectAnalyses.Elements.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Model.ProjectElement!>
+Ihc.Vis.Validation.IProjectAnalyses.WithTag(string! tag) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Model.ProjectElement!>
+Ihc.Vis.Validation.IProjectInspection.Library.get -> Ihc.Vis.Validation.ILibraryBlockSource?
+Ihc.Vis.Validation.ProblemCatalogEntry.RequiresLibrary.get -> bool
+Ihc.Vis.Validation.ProblemCatalogEntry.RequiresLibrary.init -> void
+Ihc.Vis.Validation.ValidationProfile.Library.get -> Ihc.Vis.Validation.ILibraryBlockSource?
+Ihc.Vis.Validation.ValidationProfile.Library.init -> void
+static Ihc.Vis.Validation.FieldMetadataFace.Stricter(Ihc.Vis.Validation.FieldConstraintMetadata into, Ihc.Vis.Validation.FieldConstraintMetadata from) -> Ihc.Vis.Validation.FieldConstraintMetadata
+static Ihc.Vis.Session.EditRefusalCodes.FieldPhonenumberMalformed.get -> Ihc.Vis.Problems.ProblemCode
+Ihc.Vis.ProjectAppService.DescribeField(Ihc.Vis.Validation.RuleTarget target) -> Ihc.Vis.Validation.FieldConstraintMetadata
+Ihc.Vis.ProjectAppService.MissingRequiredField(string? value) -> Ihc.Vis.Problems.Problem?
+Ihc.Vis.Session.EditOutcome.Code.get -> Ihc.Vis.Problems.ProblemCode
+Ihc.Vis.Session.EditOutcome.Code.init -> void
+Ihc.Vis.Session.EditOutcome.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes, out Ihc.Vis.Problems.ProblemCode Code) -> void
+Ihc.Vis.Session.EditOutcome.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode)) -> void
+Ihc.Vis.Session.EditOutcome<T>.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes, out T? Value, out Ihc.Vis.Problems.ProblemCode Code) -> void
+Ihc.Vis.Session.EditOutcome<T>.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes, T? Value, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode)) -> void
+Ihc.Vis.Session.PreviewOutcome.Code.get -> Ihc.Vis.Problems.ProblemCode
+Ihc.Vis.Session.PreviewOutcome.Code.init -> void
+Ihc.Vis.Session.PreviewOutcome.Deconstruct(out Ihc.Vis.Session.PreviewStatus Status, out Ihc.Vis.Session.ProjectChangeSet? Changes, out string? Reason, out Ihc.Vis.Problems.ProblemCode Code) -> void
+Ihc.Vis.Session.PreviewOutcome.PreviewOutcome(Ihc.Vis.Session.PreviewStatus Status, Ihc.Vis.Session.ProjectChangeSet? Changes, string? Reason, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode)) -> void
+static Ihc.Vis.Session.PreviewOutcome.Refused(string? reason, Ihc.Vis.Problems.ProblemCode code = default(Ihc.Vis.Problems.ProblemCode)) -> Ihc.Vis.Session.PreviewOutcome!

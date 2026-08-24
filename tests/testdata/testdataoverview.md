@@ -534,7 +534,7 @@ before touching the fixture.
 Authentic IHC Visual (03.04.72.03) output authored **from scratch** on 2026-08-09 by driving the vendor app
 through the `IHCVisualAutomation` CLI (`app.exe`, the `ihcvisual` MCP's console sibling) — no byte
 hand-edited, no SDK write path involved. Its purpose is to carry a **deliberate instance of every non-fatal
-condition** in `applications/ihc_openvisual/docs/error-list.md` that IHC Visual will actually let a user
+condition** in `ihcclient/docs/problem-catalogue.md` that IHC Visual will actually let a user
 author, plus that catalogue's **deliberate non-findings**, plus an **issue-free control product**.
 
 Shape: 410 ids, 81 distinct element types, `last_unique_id="_0x216"`; **5 localities** (one empty and

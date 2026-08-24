@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using ihc_openvisual.Services;
 using Ihc.Vis;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Programs;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
@@ -427,13 +428,27 @@ internal sealed class ProgramAuthoringCoordinator(
         IReadOnlyList<string> states = EnumSwitchStates(project, caseId);
         string title = states.Count > 0 ? $"Ny case værdi ({string.Join(", ", states)})" : "Ny case værdi";
         PropertiesResult? result = await dialogs.EditPropertiesAsync(title, string.Empty, string.Empty);
-        if (result is null || string.IsNullOrWhiteSpace(result.Name))
+        if (result is null)
             return;
+        // Blank: the shared required-field decision, reported rather than swallowed (T045, va-ana G2).
+        if (session.MissingRequiredField(result.Name) is { } blank)
+        {
+            setStatus(blank.Message);
+            return;
+        }
         string criterion = result.Name.Trim();
-        if (session.Commands.AddCaseValue(project, caseId, criterion) is { } command)
+        // Not a state: the SDK says so, in its own words. This site used to re-derive the sentence AND re-list the
+        // states behind it from the very data the factory reads — two answers to one question, and only one of them
+        // could be right after a rename.
+        if (session.Commands.TryAddCaseValue(project, caseId, criterion,
+                out AddCaseValue? command, out Problem? refusal))
+        {
             await applyAndReport(command, $"Case værdi '{criterion}' tilføjet.");
-        else if (states.Count > 0)
-            setStatus($"'{criterion}' er ikke en tilstand i denne enumerator — vælg en af: {string.Join(", ", states)}.");
+        }
+        else
+        {
+            setStatus(refusal.Message);
+        }
     });
 
     // The state names of an enum-keyed case's switch (US-031/T014), or an empty list when the switch is not an enum.

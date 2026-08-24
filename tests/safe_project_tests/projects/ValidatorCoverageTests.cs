@@ -70,12 +70,12 @@ namespace Ihc.Vis.Tests
                         FunctionBlock(0x60, "FB A", new[] { foreignPin }, eventLeaf: null),
                         FunctionBlock(0x80, "FB B", System.Array.Empty<ProjectElement>(), eventLeaf))));
 
-            ProjectValidationResult result = ProjectValidator.Validate(project);
+            ProjectValidationResult result = ProjectVerification.Structural(project);
 
             Assert.Multiple(() =>
             {
                 Assert.That(result.IsValid, Is.False);
-                Assert.That(result.Errors.Any(e => e.Contains("link1") && e.Contains("outside its function")),
+                Assert.That(result.Findings.Any(f => f.RuleId == "fb-local-ref"),
                     Is.True, "errors: " + string.Join(" | ", result.Errors));
             });
         }
@@ -102,9 +102,9 @@ namespace Ihc.Vis.Tests
                 Node("groups", T("groups", 0x20), A(("name", "L")),
                     Node("group", T("group", 0x21), A(("name", "Stue")), fb)));
 
-            ProjectValidationResult result = ProjectValidator.Validate(project);
+            ProjectValidationResult result = ProjectVerification.Structural(project);
 
-            Assert.That(result.Errors.Any(e => e.Contains("embedded constant") && e.Contains("link2")),
+            Assert.That(result.Findings.Any(f => f.RuleId == "inline-constant"),
                 Is.True, "errors: " + string.Join(" | ", result.Errors));
         }
 
@@ -121,9 +121,9 @@ namespace Ihc.Vis.Tests
                             Node("scenes", T("scenes", 0x53), A(("name", "Scenarier"), ("scene_resource", T("dataline_output", 0x52))),
                                 Node("scene_link", T("scene_link", 0x54), A(("name", "S"), ("link", "_0xdead49"))))))));
 
-            ProjectValidationResult result = ProjectValidator.Validate(project);
+            ProjectValidationResult result = ProjectVerification.Structural(project);
 
-            Assert.That(result.Errors.Any(e => e.Contains("scene") && e.Contains("_0xdead49")),
+            Assert.That(result.Findings.Any(f => f.RuleId == "scene-bijection"),
                 Is.True, "errors: " + string.Join(" | ", result.Errors));
         }
 
@@ -140,13 +140,13 @@ namespace Ihc.Vis.Tests
                             Node("dataline_input", T("dataline_input", 0x53), A(("name", "B"), ("address_dataline", "_0x5"))),
                             Node("dataline_input", T("dataline_input", 0x54), A(("name", "C"), ("address_dataline", "_0x9c")))))));
 
-            ProjectValidationResult result = ProjectValidator.Validate(project);
+            ProjectValidationResult result = ProjectVerification.Structural(project);
 
             Assert.Multiple(() =>
             {
-                Assert.That(result.Errors.Any(e => e.Contains("duplicates the address")), Is.True,
+                Assert.That(result.Findings.Any(f => f.RuleId == "dataline-address-duplicate"), Is.True,
                     "errors: " + string.Join(" | ", result.Errors));
-                Assert.That(result.Errors.Any(e => e.Contains("1–128")), Is.True,
+                Assert.That(result.Findings.Any(f => f.RuleId == "dataline-address-range"), Is.True,
                     "errors: " + string.Join(" | ", result.Errors));
             });
         }
@@ -167,9 +167,9 @@ namespace Ihc.Vis.Tests
                 Node("groups", T("groups", 0x20), A(("name", "L")),
                     Node("group", T("group", 0x21), A(("name", "Stue")), consumer)));
 
-            ProjectValidationResult result = ProjectValidator.Validate(project);
+            ProjectValidationResult result = ProjectVerification.Structural(project);
 
-            Assert.That(result.Errors.Any(e => e.Contains("inivalue") && e.Contains("not a value of")),
+            Assert.That(result.Findings.Any(f => f.RuleId == "enum-inivalue"),
                 Is.True, "errors: " + string.Join(" | ", result.Errors));
         }
 
@@ -181,9 +181,9 @@ namespace Ihc.Vis.Tests
             Project project = new(Node("utcs_project", null,
                 A(("version_major", "4"), ("version_minor", "0"), ("id1", "_0x1"), ("id2", "_0x2"), ("last_unique_id", "_0xzz"))));
 
-            ProjectValidationResult result = ProjectValidator.Validate(project);
+            ProjectValidationResult result = ProjectVerification.Structural(project);
 
-            Assert.That(result.Errors.Any(e => e.Contains("last_unique_id") && e.Contains("_0xzz")), Is.True,
+            Assert.That(result.Findings.Any(f => f.RuleId == "luid-malformed"), Is.True,
                 "errors: " + string.Join(" | ", result.Errors));
         }
 
@@ -193,9 +193,9 @@ namespace Ihc.Vis.Tests
             Project project = new(Node("utcs_project", null,
                 A(("version_major", "5"), ("version_minor", "0"), ("id1", "_0x1"), ("id2", "_0x2"), ("last_unique_id", "_0x40"))));
 
-            ProjectValidationResult result = ProjectValidator.Validate(project);
+            ProjectValidationResult result = ProjectVerification.Structural(project);
 
-            Assert.That(result.Errors.Any(e => e.Contains("version_major") && e.Contains("above 4")), Is.True,
+            Assert.That(result.Findings.Any(f => f.RuleId == "root-version"), Is.True,
                 "errors: " + string.Join(" | ", result.Errors));
         }
 
@@ -208,7 +208,7 @@ namespace Ihc.Vis.Tests
                 Node("groups", T("groups", 0x20), A(("name", "L")),
                     Node("group", T("group", 0x21), A(("name", "Stue")))));
 
-            ProjectValidationResult result = ProjectValidator.Validate(project);
+            ProjectValidationResult result = ProjectVerification.Structural(project);
 
             Assert.Multiple(() =>
             {
@@ -228,7 +228,7 @@ namespace Ihc.Vis.Tests
                             A(("product_identifier", "_0x2202"), ("name", "P")),
                             Node("scenes", T("scenes", 0x53), A(("name", "S"), ("scene_resource", "_0xdead52")))))));
 
-            ProjectValidationResult result = ProjectValidator.Validate(project);
+            ProjectValidationResult result = ProjectVerification.Structural(project);
 
             ProjectValidationFinding dangling = result.Findings.Single(f => f.RuleId == "idref-dangling");
             Assert.That(dangling.Locator, Is.EqualTo(T("scenes", 0x53)),

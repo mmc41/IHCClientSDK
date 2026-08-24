@@ -89,12 +89,12 @@ namespace Ihc.Vis.Session
         {
             if (context.Index.FindById(Id) is not { } pin)
             {
-                return EditVerdict.Refuse("Klemmen findes ikke længere.");
+                return EditVerdict.Refuse(EditRefusalCodes.TerminalMissing, "Klemmen findes ikke længere.");
             }
             bool isOutput = pin.Tag == "dataline_output";
             return DatalineAddress.TryEncode(Result.DataLine, Result.Terminal, isOutput, out _)
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse("Klemmenummeret ligger uden for datalinjens område.");
+                : EditVerdict.Refuse(EditRefusalCodes.TerminalAddressRange, "Klemmenummeret ligger uden for datalinjens område.");
         }
         internal override void Execute(ProjectEditor editor)
         {

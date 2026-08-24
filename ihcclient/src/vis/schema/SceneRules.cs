@@ -1,4 +1,7 @@
 #nullable enable
+using System;
+using System.Collections.Frozen;
+using System.Collections.Generic;
 
 namespace Ihc.Vis.Schema
 {
@@ -20,11 +23,32 @@ namespace Ihc.Vis.Schema
         /// exactly like the <see cref="LinkRoles"/> convention. A shutter-bound container therefore gets no kind
         /// validation until a real output→<c>scene_shutter</c> binding is observed and added here.
         /// </remarks>
-        public static string? PinnedMemberTagFor(string boundOutputTag) => boundOutputTag switch
-        {
-            "dataline_output" or "airlink_relay" => "scene_relay",
-            "airlink_dimming" => "scene_dimmer",
-            _ => null,
-        };
+        public static string? PinnedMemberTagFor(string boundOutputTag) =>
+            PinnedByOutputTag.TryGetValue(boundOutputTag, out string? pinned) ? pinned : null;
+
+        /// <summary>
+        /// The output families this table measures — the domain of <see cref="PinnedMemberTagFor"/>, and therefore
+        /// the shipped statement of which product pins a scenario can drive.
+        /// <para>
+        /// Exposed so the one other consumer that needs the SET rather than the mapping reads it from here instead
+        /// of retyping the members. A hand-copied list beside a switch cannot be kept in step by anything; a
+        /// derivation is in step by construction.
+        /// </para>
+        /// </summary>
+        public static IReadOnlySet<string> OutputTagsWithPinnedMember => outputTags;
+
+        /// <summary>The measured output-family → pinned-member-tag mapping; see the remarks on the accessor above.</summary>
+        private static readonly FrozenDictionary<string, string> PinnedByOutputTag =
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["dataline_output"] = "scene_relay",
+                ["airlink_relay"] = "scene_relay",
+                ["airlink_dimming"] = "scene_dimmer",
+            }.ToFrozenDictionary(StringComparer.Ordinal);
+
+        // Declared after PinnedByOutputTag on purpose: static initializers run in declaration order, so a set
+        // derived from the map has to come second or it reads a null map.
+        private static readonly FrozenSet<string> outputTags =
+            PinnedByOutputTag.Keys.ToFrozenSet(StringComparer.Ordinal);
     }
 }

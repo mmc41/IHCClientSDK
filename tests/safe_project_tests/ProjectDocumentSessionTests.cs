@@ -32,7 +32,7 @@ namespace Ihc.Vis.Tests
             internal override string Describe(Project project) =>
                 "Omdøb " + (project.FindById(Id)?.GetAttribute("name") ?? "?");
             internal override EditVerdict Evaluate(EditContext context) =>
-                context.Index.FindById(Id) is not null ? EditVerdict.Allow : EditVerdict.Refuse("no such element");
+                context.Index.FindById(Id) is not null ? EditVerdict.Allow : EditVerdict.Refuse(EditRefusalCodes.TargetMissing, "no such element");
             internal override void Execute(ProjectEditor editor)
             {
                 if (editor.TryResolve(Id, out ElementRef? handle))
@@ -52,7 +52,7 @@ namespace Ihc.Vis.Tests
         private sealed record AlwaysRefuse(string Reason) : ProjectCommand
         {
             internal override string Describe(Project project) => "Refuse";
-            internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Refuse(Reason);
+            internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Refuse(EditRefusalCodes.TargetMissing, Reason);
             internal override void Execute(ProjectEditor editor) => throw new InvalidOperationException("must not run");
         }
 

@@ -56,7 +56,11 @@ namespace Ihc.Vis
         EditOutcome<T> Apply<T>(ProjectCommand<T> command, int? baseVersion = null);
 
         /// <summary>The command's legality verdict against the current snapshot (cheap — reuses the
-        /// per-commit index, no edit), for drag-over probes and menu gates.</summary>
+        /// per-commit index, no edit, and NO whole-project validation scan), for drag-over probes and menu gates.
+        /// <para>This is the probe an INTERACTIVE frontend uses, and the cheapness is what makes a per-pointer-event
+        /// gate honest rather than merely tolerable. It is a pure query: it mutates nothing, and a refusal leaves no
+        /// undo entry, no version bump and no dirty flag — pinned by
+        /// <c>SessionRefusalPropertiesTests</c>.</para></summary>
         EditVerdict CanApply(ProjectCommand command);
 
         /// <summary>Whether <paramref name="dragged"/> and <paramref name="target"/> are distinct same-parent,

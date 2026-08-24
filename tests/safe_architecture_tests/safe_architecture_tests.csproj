@@ -28,6 +28,9 @@
          ArchUnitNET model and enforce the "thin GUI" boundary. This pulls Avalonia into this test project's
          output (never into the SDK — Sdk_DoesNotDependOn_Avalonia loads only the SDK assembly). -->
     <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
+    <!-- T044/R17 check three: the NON-GUI consumer whose rendering of an SDK problem is the measurement.
+         Referenced so the check calls the real renderer and reads the real assembly's references. -->
+    <ProjectReference Include="..\..\utilities\ihc_project_download_upload\ihc_ProjectDownloadUpload.csproj" />
   </ItemGroup>
 
 </Project>

@@ -81,7 +81,8 @@ namespace Ihc.Vis.Tests
             Project project = MinimalProject(("note", System.Char.ConvertFromUtf32(0x1F600)));
 
             Assert.That(() => ProjectSerializer.Serialize(project),
-                Throws.InvalidOperationException.With.Message.Contains("U+1F600").And.Message.Not.Contains("U+D83D"),
+                Throws.InstanceOf<InvalidOperationException>()
+                    .With.Message.Contains("U+1F600").And.Message.Not.Contains("U+D83D"),
                 "the diagnostic names the real code point, not a surrogate half");
         }
 

@@ -57,8 +57,8 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(result.IsValid, Is.False);
-                Assert.That(result.Errors.Any(e => e.Contains("five containers")), Is.True,
-                    "errors: " + string.Join(" | ", result.Errors));
+                Assert.That(result.Findings.Any(f => f.RuleId == "fb-shape"), Is.True,
+                    "findings: " + string.Join(" | ", result.Findings.Select(f => f.RuleId)));
             });
         }
 
@@ -71,8 +71,8 @@ namespace Ihc.Vis.Tests
             editor.MoveSubtree(fb.FindChild("inputs")!.Id!.Value, fb.Id!.Value, index: 4);   // inputs to the end
             ProjectValidationResult result = App.Validate(editor.ToProject());
 
-            Assert.That(result.Errors.Any(e => e.Contains("five containers")), Is.True,
-                "a reordered container sequence is rejected: " + string.Join(" | ", result.Errors));
+            Assert.That(result.Findings.Any(f => f.RuleId == "fb-shape"), Is.True,
+                "a reordered container sequence is rejected: " + string.Join(" | ", result.Findings.Select(f => f.RuleId)));
         }
 
         [Test]
@@ -85,7 +85,7 @@ namespace Ihc.Vis.Tests
             editor.CopySubtree(eventsId, fb.FindChild("programs")!.Id!.Value);   // an events under programs
             ProjectValidationResult result = App.Validate(editor.ToProject());
 
-            Assert.That(result.Errors.Any(e => e.Contains("programs contains")), Is.True,
+            Assert.That(result.Findings.Any(f => f.RuleId == "fb-programs"), Is.True,
                 "programs may hold only program_simple: " + string.Join(" | ", result.Errors));
         }
 
@@ -99,7 +99,7 @@ namespace Ihc.Vis.Tests
             editor.CopySubtree(resourceInputId, fb.FindChild("settings")!.Id!.Value);   // resource_input under settings
             ProjectValidationResult result = App.Validate(editor.ToProject());
 
-            Assert.That(result.Errors.Any(e => e.Contains("must be under inputs")), Is.True,
+            Assert.That(result.Findings.Any(f => f.RuleId == "fb-pin-container"), Is.True,
                 "a pin type is bound to its container: " + string.Join(" | ", result.Errors));
         }
     }

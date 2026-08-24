@@ -53,12 +53,15 @@ namespace Ihc.Vis.Tests
         {
             ProjectValidationResult structural = App().Validate(Load("project5-Dokumentation.vis"));
 
-            Assert.That(structural.Findings.All(f => f.Category == ValidationCategory.Structural), Is.True,
-                "the existing Validate surface returns exactly today's structural checklist — no documentation findings");
+            Assert.That(structural.Findings.Any(f => f.Category == ValidationCategory.Documentation), Is.False,
+                "the Validate surface returns the structural checklist and NO documentation findings. Stated as an "
+                + "absence rather than as a single category, because the checklist now spreads across the "
+                + "catalogue's real categories — file integrity, wiring, logic, addressing — where it used to "
+                + "carry one transitional value for all of them.");
         }
 
         [Test]
-        public void ValidateCategorized_OrderAndRuleIds_PinnedOverProject5_AllEightChecksFire()
+        public void ValidateCategorized_OrderAndRuleIds_PinnedOverProject5()
         {
             ProjectValidationResult categorized = App().ValidateCategorized(Load("project5-Dokumentation.vis"));
 
@@ -67,29 +70,48 @@ namespace Ihc.Vis.Tests
                 .Select(f => (f.RuleId, f.Locator, f.Message))
                 .ToImmutableArray();
 
+            // Document-scan order of the subject element, then ORDINAL RULE ID within one element.
+            //
+            // The second half changed when the engine took over orchestration, and the change is deliberate.
+            // The old pipeline emitted the five product-level checks in the sequence the vendor's report
+            // appendix prints; the engine sorts by code, because an executor's order must follow from the
+            // finding itself rather than from which check happened to be written first — that is what makes it
+            // independent of registration order and therefore provable.
+            //
+            // The APPENDIX still prints the vendor sequence. It sorts its own rows, reading the order declared
+            // beside the checks, which is where a rendering concern belongs; the 24 report oracles are what pin
+            // that, and they are untouched.
             var expected = new (string RuleId, string? Locator, string Message)[]
             {
                 ("doc-documentation-tag", "_0x5a53", "Mangler Id-kode"),
                 ("doc-cable-colour", "_0x5d5a", "Mangler Ledningsfarve"),
-                ("doc-not-linked", "_0x5e5a", "Ikke forbundet"),
-                ("doc-cable-colour", "_0x5e5a", "Mangler Ledningsfarve"),
                 ("doc-address", "_0x5e5a", "Mangler Adresse"),
-                ("doc-cabletype", "_0x6453", "Mangler Kabeltype"),
+                ("doc-cable-colour", "_0x5e5a", "Mangler Ledningsfarve"),
+                ("doc-not-linked", "_0x5e5a", "Ikke forbundet"),
                 ("doc-cablenumber", "_0x6453", "Mangler Kabelnummer"),
-                ("doc-power-group", "_0x6653", "Mangler Lysgruppe"),
+                ("doc-cabletype", "_0x6453", "Mangler Kabeltype"),
                 ("doc-position", "_0x6653", "Mangler Placering"),
+                ("doc-power-group", "_0x6653", "Mangler Lysgruppe"),
                 // The sensor's own terminal, which sits inside its product's `settings` container: it is
                 // self-closed, hence unlinked. Reached only since the checks were widened to the report
                 // body's descent scope (RL-1/G5) — before that, a whole product family's terminals were
                 // silently exempt from every terminal-level check.
                 ("doc-not-linked", "_0x705a", "Ikke forbundet"),
+                // T052's NAMING rows join the same category, and the two that fire here are blocks still at their
+                // insert name — the library block the fixture placed and never renamed, and the empty block it
+                // added. They sort after every product finding because the blocks sit later in the document, which
+                // is the same rule the rows above follow.
+                ("name-default", "_0xd828", "Uændret standardnavn"),
+                ("name-default", "_0xfa28", "Uændret standardnavn"),
             };
             Assert.Multiple(() =>
             {
                 Assert.That(documentation, Is.EqualTo(expected),
-                    "document-scan order of the subject element, then the fixed per-element check order (the vendor-witnessed appendix order)");
-                Assert.That(documentation.Select(f => f.RuleId).Distinct().Count(), Is.EqualTo(8),
-                    "all eight US-072 checks fire over project5");
+                    "document-scan order of the subject element, then ordinal rule id within one element");
+                Assert.That(documentation.Select(f => f.RuleId).Distinct().Count(), Is.EqualTo(9),
+                    "all eight US-072 checks fire over project5, plus T052's name-default");
+                Assert.That(documentation.Select(f => f.Locator), Is.EqualTo(expected.Select(e => e.Locator)).AsCollection,
+                    "the SUBJECTS and their document order are unchanged — only the within-element order moved");
             });
         }
     }

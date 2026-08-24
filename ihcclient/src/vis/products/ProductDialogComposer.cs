@@ -351,12 +351,8 @@ namespace Ihc.Vis.Products
             {
                 return (null, null);
             }
-            ElementView view = project.View(element);
-            return (ParseBound(view.Effective("minimum")), ParseBound(view.Effective("maximum")));
+            return project.View(element).DeclaredBounds;
         }
-
-        private static int? ParseBound(string? raw) =>
-            int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value) ? value : null;
 
         /// <summary>The stable id a renderer stamps on the control: <c>dlg.&lt;groupId&gt;.&lt;fieldId&gt;</c>.</summary>
         public static string AutomationId(string groupId, string fieldId) =>

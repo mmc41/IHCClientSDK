@@ -318,9 +318,10 @@ namespace Ihc.Vis.Session
         internal static EditVerdict RequireEditable(EditContext context, string defName) =>
             Find(context.Project, defName) switch
             {
-                null => EditVerdict.Refuse($"Projektet har ingen enumeratortype ved navn '{defName}'."),
+                null => EditVerdict.Refuse(EditRefusalCodes.EnumTypeMissing, $"Projektet har ingen enumeratortype ved navn '{defName}'."),
                 { } def when (def.GetAttribute("typeid") ?? ElementId.NullToken) != ElementId.NullToken =>
-                    EditVerdict.Refuse($"Enumeratortypen '{defName}' er en indbygget [read only]-type og kan ikke redigeres."),
+                    EditVerdict.Refuse(EditRefusalCodes.EnumTypeReadOnly,
+                        $"Enumeratortypen '{defName}' er en indbygget [read only]-type og kan ikke redigeres."),
                 _ => EditVerdict.Allow,
             };
 
@@ -337,7 +338,8 @@ namespace Ihc.Vis.Session
             int users = ProjectEditor.ReferenceCount(context.Project.Root, "typedef", defId);
             return users == 0
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse($"Enumeratortypen '{defName}' bruges stadig af {users} ressource(r) og kan ikke slettes.");
+                : EditVerdict.Refuse(EditRefusalCodes.EnumTypeInUse,
+                    $"Enumeratortypen '{defName}' bruges stadig af {users} ressource(r) og kan ikke slettes.");
         }
 
         /// <summary>The 0-based value position must exist in the type — the dialog addresses values by position.</summary>
@@ -350,7 +352,7 @@ namespace Ihc.Vis.Session
             int count = def.Children.Count(v => v.Tag == "enum_value");
             return index >= 0 && index < count
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse(EnumValueAddressing.NoValueAt(defName, index));
+                : EditVerdict.Refuse(EditRefusalCodes.EnumValueMissing, EnumValueAddressing.NoValueAt(defName, index));
         }
 
         private static ProjectElement? Find(Project project, string defName) =>

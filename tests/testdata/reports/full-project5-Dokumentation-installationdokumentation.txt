@@ -193,3 +193,5 @@ Fejl i dokumentation
   Stue       Lux / Temperatur sensor med logning                           Mangler Lysgruppe
   Stue       Lux / Temperatur sensor med logning                           Mangler Placering
   Stue       Lux / Temperatur sensor med logning  Lux / Temperatur sensor  Ikke forbundet
+  Teknik     6.3.03.a. Overfaldstryk                                       Uændret standardnavn
+  Teknik     Tom blok                                                      Uændret standardnavn

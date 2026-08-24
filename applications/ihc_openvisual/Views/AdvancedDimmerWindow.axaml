@@ -20,23 +20,23 @@
         </StackPanel.Styles>
 
         <TextBlock Name="SoftOnLabel" Classes="label" Text="Blød opstart (ms)"/>
-        <NumericUpDown Name="SoftOnBox" Minimum="200" Maximum="60000" Increment="100" FormatString="0"
+        <NumericUpDown Name="SoftOnBox" Increment="100" FormatString="0"
                        a:AutomationProperties.LabeledBy="{Binding #SoftOnLabel}"/>
 
         <TextBlock Name="SoftOffLabel" Classes="label" Text="Blød nedlukning (ms)"/>
-        <NumericUpDown Name="SoftOffBox" Minimum="200" Maximum="60000" Increment="100" FormatString="0"
+        <NumericUpDown Name="SoftOffBox" Increment="100" FormatString="0"
                        a:AutomationProperties.LabeledBy="{Binding #SoftOffLabel}"/>
 
         <TextBlock Name="ManualRampLabel" Classes="label" Text="Manuel ramptid (s)"/>
-        <NumericUpDown Name="ManualRampBox" Minimum="2" Maximum="10" Increment="1" FormatString="0"
+        <NumericUpDown Name="ManualRampBox" Increment="1" FormatString="0"
                        a:AutomationProperties.LabeledBy="{Binding #ManualRampLabel}"/>
 
         <TextBlock Name="MinimumLabel" Classes="label" Text="Minimum værdi (%)"/>
-        <NumericUpDown Name="MinimumBox" Minimum="0" Maximum="100" Increment="1" FormatString="0"
+        <NumericUpDown Name="MinimumBox" Increment="1" FormatString="0"
                        a:AutomationProperties.LabeledBy="{Binding #MinimumLabel}"/>
 
         <TextBlock Name="MaximumLabel" Classes="label" Text="Maksimum værdi (%)"/>
-        <NumericUpDown Name="MaximumBox" Minimum="0" Maximum="100" Increment="1" FormatString="0"
+        <NumericUpDown Name="MaximumBox" Increment="1" FormatString="0"
                        a:AutomationProperties.LabeledBy="{Binding #MaximumLabel}"/>
 
         <TextBlock Name="LoadModeLabel" Classes="label" Text="Belastnings karakteristik"/>

@@ -379,7 +379,7 @@ rule.
   alignment F-47).
 - A project file that nonetheless carries **two** modems — reachable only by import or by hand, since neither
   editor will author it — is a catalogue Error: `capacity-modem-multiple` in
-  [`error-list.md`](../error-list.md).
+  [`problem-catalogue.md`](../../../../ihcclient/docs/problem-catalogue.md).
 
 **Property groups (dialog "Modem properties"):**
 - SHOULD: **Modem properties** — Name (type name), Note (appended in parentheses after Name), Location,

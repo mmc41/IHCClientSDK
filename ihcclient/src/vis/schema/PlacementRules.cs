@@ -29,7 +29,7 @@ namespace Ihc.Vis.Schema
 
         // Value-variable resource types (spec §6.3.1) — accepted by any function-block container; the full set the
         // authentic oracles place across inputs/outputs/settings/internalsettings. The single SDK-authoritative
-        // source is VariableTypeRegistry (ADR-002/D07): the engine admits value insertion by exactly this set and
+        // source is VariableTypeRegistry (ADR-002): the engine admits value insertion by exactly this set and
         // the UI variable palette projects labels over the same registry, so the two can never drift apart.
         private static readonly HashSet<string> ValueTypeSet = new(VariableTypeRegistry.ValueTypeTags, StringComparer.Ordinal);
 

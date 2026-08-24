@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -10,6 +11,7 @@ using ihc_openvisual.Configuration;
 using Ihc.Vis;
 using Ihc.Vis.Addressing;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
@@ -87,6 +89,12 @@ public sealed class ProjectWorkflow : IDisposable
     /// stateless planner on the underlying <see cref="ProjectAppService"/> — the app never constructs command
     /// types directly.</summary>
     public ProjectCommands Commands => _service.Commands;
+
+    /// <summary>The SDK's blank-field decision and its sentence (<see cref="ProjectAppService.MissingRequiredField"/>),
+    /// reached the same way the command gateway is: through the service this workflow already holds. The shell
+    /// composes nothing — it asks, and reports the answer on whichever surface raised the question.</summary>
+    /// <param name="value">The submitted value, untrimmed: the SDK's policy decides what blank means.</param>
+    public Problem? MissingRequiredField(string? value) => _service.MissingRequiredField(value);
 
     public string? FilePath { get; private set; }
 
@@ -174,7 +182,8 @@ public sealed class ProjectWorkflow : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to open project {Path}", path);
-            await _dialogs.ShowMessageAsync("Åbning mislykkedes", $"Kunne ikke åbne '{path}':\n{ex.Message}");
+            await _dialogs.ShowProblemAsync(OpenFailedTitle,
+                HostProblems.Narrate(HostProblems.ProjectOpenFailed(path, ex), ex));
             return false;
         }
     }
@@ -272,6 +281,14 @@ public sealed class ProjectWorkflow : IDisposable
     public ProductDefinition? ResolveCatalogProduct(string productIdentifier, string displayName) =>
         _service.ResolveProduct(productIdentifier, displayName);
 
+    /// <summary>
+    /// The same lookup, with the SDK's CODED PROBLEM when it finds nothing (T043) — what an insert path needs, since
+    /// it has to tell the installer why nothing was placed and the reason is the SDK's to word.
+    /// </summary>
+    public bool TryResolveCatalogProduct(string productIdentifier, string displayName,
+        [NotNullWhen(true)] out ProductDefinition? product, [NotNullWhen(false)] out Problem? refusal) =>
+        _service.TryResolveProduct(productIdentifier, displayName, out product, out refusal);
+
     /// <summary>The composed properties dialog for a placed product — its groups, fields, current values, rules and
     /// write targets, all decided by the SDK. Empty when no project is open or the element composes no dialog.</summary>
     public ProductDialogDescriptor GetProductDialog(ElementId productId) =>
@@ -321,8 +338,8 @@ public sealed class ProjectWorkflow : IDisposable
             _logger.LogError(ex, "Failed to save function block {Id} to {Path}", functionBlockId.ToToken(), filePath);
             // The engine's message is DETAIL under a Danish sentence naming what failed and to where — never the
             // whole message on its own, which left the installer reading a bare English diagnostic under a title.
-            await _dialogs.ShowMessageAsync(SaveFailedTitle,
-                $"Kunne ikke gemme funktionsblokken '{name}' til '{filePath}':\n{ex.Message}");
+            await _dialogs.ShowProblemAsync(SaveFailedTitle,
+                HostProblems.Narrate(HostProblems.BlockExportFailed(name, filePath, ex), ex));
             return false;
         }
         EditOutcome outcome = await ApplyAsync(
@@ -462,6 +479,10 @@ public sealed class ProjectWorkflow : IDisposable
     // Likewise the ONE title over every failed write this workflow reports — saving the project and saving a
     // function block to the library both surface it, and one title for one kind of failure is what the installer
     // learns to recognise.
+    /// <summary>The title over a project that could not be opened. Named beside its save counterpart so the two
+    /// framings of a file operation stay together.</summary>
+    private const string OpenFailedTitle = "Åbning mislykkedes";
+
     private const string SaveFailedTitle = "Lagring mislykkedes";
 
     private static EditOutcome NoDocument(ProjectCommand command) =>
@@ -530,7 +551,8 @@ public sealed class ProjectWorkflow : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save project {Path}", path);
-            await _dialogs.ShowMessageAsync(SaveFailedTitle, $"Kunne ikke gemme '{path}':\n{ex.Message}");
+            await _dialogs.ShowProblemAsync(SaveFailedTitle,
+                HostProblems.Narrate(HostProblems.ProjectSaveFailed(path, ex), ex));
             return false;
         }
     }

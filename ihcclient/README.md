@@ -21,6 +21,12 @@ The provided API is by design free of SOAP inhertiage and completly async. For l
 Each service class is internally wrapping a `SoapImpl` class based on a specific Ihc.Soap.\*.\* interface generated from the WSDL. These and
 the related low level SOAP data structures in Ihc.Soap.*.* namespaces are for internal use (should not be exposed).
 
+## Documentation
+
+- [`docs/problem-catalogue.md`](docs/problem-catalogue.md) — every condition the SDK can report about a `.vis`
+  project file, in one catalogue: category, severity, source and the live-vendor verification status of each
+  row. This is the SDK's own catalogue; a host application owns only its reserved `app.*` code family.
+
 ## Status
 
 The `AuthenticationService` and `ResourceInteractionService` services are essentially feature complete. The remaining servies are currently only partically implemented.

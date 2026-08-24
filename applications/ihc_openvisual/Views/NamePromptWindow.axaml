@@ -17,8 +17,9 @@
         </controls:AccessibleGroupBox>
         <!-- Why OK refused. Hidden until it happens, and announced when it appears: a polite live region is the
              only way a screen-reader user learns of a refusal that changes nothing on screen but this line. -->
+        <!-- The text is set from the SDK's coded required-field problem when OK refuses (T045); the markup
+             states no sentence of its own. -->
         <TextBlock Name="NameError" IsVisible="False"
-                   Text="Indtast et navn."
                    TextWrapping="Wrap"
                    Foreground="{DynamicResource ErrorBrush}"
                    a:AutomationProperties.AutomationId="NamePromptError"

@@ -43,7 +43,7 @@ namespace Ihc.Vis.Schema
         /// drives it, software cannot (vendor cell 4; 0 of 160 corpus halves). An FB output is the block's own
         /// result, computed rather than driven (cells 5/6/T3; 0 of 237).
         /// </summary>
-        private static readonly IReadOnlySet<string> NeverASink = new HashSet<string>(StringComparer.Ordinal)
+        internal static readonly IReadOnlySet<string> NeverASink = new HashSet<string>(StringComparer.Ordinal)
         {
             "dataline_input", "airlink_input", "resource_output",
         };

@@ -4,7 +4,7 @@ using Ihc.Vis.Schema;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// M3 / ADR-002 / D07 (T008): the SDK <see cref="VariableTypeRegistry"/> is the single source the placement
+    /// ADR-002: the SDK <see cref="VariableTypeRegistry"/> is the single source the placement
     /// engine admits value insertion by, so the registry and the engine's accept-set cannot drift. The six types M3
     /// found dropped from the UI (resource_light_level/resource_humidity_level, kW/kWh/W/Wh) are all in the registry;
     /// the UI decides only whether to present or suppress each (VariablePaletteCompletenessTests, UNIT).

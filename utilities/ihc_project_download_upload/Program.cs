@@ -117,7 +117,10 @@ namespace Ihc.download_upload_example
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed operation: {ex.Message}");
+                // The SDK's own coded problem when it raised one — identity, its Danish sentence and its declared
+                // arguments — instead of a bare English message that names no operation (R17: a non-GUI consumer
+                // renders the contract too).
+                Console.WriteLine($"Failed operation: {ProblemConsoleFormat.Describe(ex)}");
             }
             finally
             {

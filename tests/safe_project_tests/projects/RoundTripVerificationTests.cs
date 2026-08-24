@@ -102,7 +102,7 @@ namespace Ihc.Vis.Tests
             A.CallTo(() => controller.GetProject()).Returns((ProjectFile?)null);
             var app = Fakes.BridgeService(controller, auth: auth);
 
-            Assert.That(async () => await app.DownloadFrom(), Throws.InvalidOperationException);
+            Assert.That(async () => await app.DownloadFrom(), Throws.InstanceOf<InvalidOperationException>());
             A.CallTo(() => auth.Authenticate()).MustHaveHappenedOnceExactly();
         }
     }

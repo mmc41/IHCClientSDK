@@ -1,0 +1,627 @@
+# The validation characterization oracle: every finding the SDK produces over the corpus in
+# ValidationCharacterizationTests, in production order. One finding per line, tab-separated:
+#
+#   case <TAB> severity <TAB> rule-id <TAB> category <TAB> locator <TAB> message
+#
+# The locator is '-' when the finding names no element. This is the PRE-migration recording and
+# is never rewritten to make a migration pass: an intended rule-id or message change is declared
+# in rule-id-map.txt instead. Regenerate with the [Explicit] Regenerate_TheRecording test.
+
+authentic/Project0-Tomt	Warning	struct-locality-empty	ProjectStructure	_0x2132	Lokaliteten 'Stue' indeholder hverken produkter eller blokke.
+authentic/Project0-Tomt	Warning	struct-locality-empty	ProjectStructure	_0x2232	Lokaliteten 'Entré' indeholder hverken produkter eller blokke.
+authentic/Project0-Tomt	Warning	struct-locality-empty	ProjectStructure	_0x2332	Lokaliteten 'Køkken' indeholder hverken produkter eller blokke.
+authentic/Project0-Tomt	Warning	struct-locality-empty	ProjectStructure	_0x2432	Lokaliteten 'Soveværelse' indeholder hverken produkter eller blokke.
+authentic/Project0-Tomt	Warning	struct-locality-empty	ProjectStructure	_0x2532	Lokaliteten 'Værelse' indeholder hverken produkter eller blokke.
+authentic/Project0-Tomt	Warning	struct-locality-empty	ProjectStructure	_0x2632	Lokaliteten 'Bad' indeholder hverken produkter eller blokke.
+authentic/Project0-Tomt	Warning	struct-locality-empty	ProjectStructure	_0x2732	Lokaliteten 'Bryggers' indeholder hverken produkter eller blokke.
+authentic/Project0-Tomt	Warning	struct-locality-empty	ProjectStructure	_0x2832	Lokaliteten 'Garage' indeholder hverken produkter eller blokke.
+authentic/Project0-Tomt	Warning	struct-locality-empty	ProjectStructure	_0x2932	Lokaliteten 'Kælder' indeholder hverken produkter eller blokke.
+authentic/Project0-Tomt	Warning	struct-locality-empty	ProjectStructure	_0x2a32	Lokaliteten 'Udendørs' indeholder hverken produkter eller blokke.
+authentic/Project1-SimpelWired	Warning	enum-value-unused	Logic	_0xd048	Værdien 'Kun efterløb' i enumerator typen 'PIR funktion' bruges ikke.
+authentic/Project1-SimpelWired	Warning	addr-module-partial	Addressing	_0x555b	Datalinje 1 bruger kun 1 af 8 klemmer.
+authentic/Project1-SimpelWired	Warning	doc-cable-colour	Documentation	_0x555b	Mangler Ledningsfarve
+authentic/Project1-SimpelWired	Warning	scene-output-also-linked	Scenes	_0x555b	Udgangen 'Udgang' styres både af et scenarie og af et følg-link.
+authentic/Project1-SimpelWired	Warning	name-default	Documentation	_0x5728	Uændret standardnavn
+authentic/Project1-SimpelWired	Warning	scene-empty	Scenes	_0x624a	Scenariet 'Scenarie Tænd' har ingen medlemmer.
+authentic/Project1-SimpelWired	Warning	scene-empty	Scenes	_0x634a	Scenariet 'Scenarie Sluk' har ingen medlemmer.
+authentic/Project1-SimpelWired	Warning	logic-contending-writers	Logic	_0x6510	Variablen 'Timer' tilskrives af 5 programmer med uafhængige udløsere.
+authentic/Project1-SimpelWired	Warning	addr-module-partial	Addressing	_0xc85b	Datalinje 2 bruger kun 1 af 8 klemmer.
+authentic/Project1-SimpelWired	Warning	doc-cable-colour	Documentation	_0xc85b	Mangler Ledningsfarve
+authentic/Project1-SimpelWired	Warning	scene-output-also-linked	Scenes	_0xc85b	Udgangen 'Udgang' styres både af et scenarie og af et følg-link.
+authentic/Project1-SimpelWired	Warning	name-default	Documentation	_0xca28	Uændret standardnavn
+authentic/Project1-SimpelWired	Warning	scene-empty	Scenes	_0xe24a	Scenariet 'Scenarie tænd' har ingen medlemmer.
+authentic/Project1-SimpelWired	Warning	scene-empty	Scenes	_0xe34a	Scenariet 'Scenarie sluk' har ingen medlemmer.
+authentic/Project1-SimpelWired	Warning	logic-block-locked-content	Logic	_0xe60f	Den låste blok '1.4.02.a. PIR styring ' har ændret 'PIR funktion'.
+authentic/Project1-SimpelWired	Warning	logic-block-locked-content	Logic	_0xe70f	Den låste blok '1.4.02.a. PIR styring ' har ændret 'PIR funktion nat'.
+authentic/Project1-SimpelWired	Warning	dev-backup-missing	DeviceSettings	_0xe80f	Variablen 'Manuel tænding' i '1.4.02.a. PIR styring ' gemmes ikke ved strømsvigt.
+authentic/Project1-SimpelWired	Warning	logic-block-locked-content	Logic	_0xe80f	Den låste blok '1.4.02.a. PIR styring ' har ændret 'Manuel tænding'.
+authentic/Project1-SimpelWired	Warning	logic-contending-writers	Logic	_0xea10	Variablen 'Blokkering efter manuel sluk' tilskrives af 3 programmer med uafhængige udløsere.
+authentic/Project1-SimpelWired	Warning	logic-self-trigger	Logic	_0x1f91e	Programmet 'Manuel sluk blinker med diode' udløses af 'Kvittér med blink efter manuel sluk', som det selv tilskriver.
+authentic/Project1-SimpelWired	Warning	addr-module-partial	Addressing	_0x2105a	Datalinje 3 bruger kun 1 af 16 klemmer.
+authentic/Project1-SimpelWired	Warning	doc-cable-colour	Documentation	_0x2105a	Mangler Ledningsfarve
+authentic/Project1-SimpelWired	Warning	struct-locality-empty	ProjectStructure	_0x2332	Lokaliteten 'Køkken' indeholder hverken produkter eller blokke.
+authentic/Project1-SimpelWired	Warning	struct-locality-empty	ProjectStructure	_0x2432	Lokaliteten 'Soveværelse' indeholder hverken produkter eller blokke.
+authentic/Project1-SimpelWired	Warning	struct-locality-empty	ProjectStructure	_0x2532	Lokaliteten 'Værelse' indeholder hverken produkter eller blokke.
+authentic/Project1-SimpelWired	Warning	struct-locality-empty	ProjectStructure	_0x2632	Lokaliteten 'Bad' indeholder hverken produkter eller blokke.
+authentic/Project1-SimpelWired	Warning	struct-locality-empty	ProjectStructure	_0x2732	Lokaliteten 'Bryggers' indeholder hverken produkter eller blokke.
+authentic/Project1-SimpelWired	Warning	struct-locality-empty	ProjectStructure	_0x2832	Lokaliteten 'Garage' indeholder hverken produkter eller blokke.
+authentic/Project1-SimpelWired	Warning	struct-locality-empty	ProjectStructure	_0x2932	Lokaliteten 'Kælder' indeholder hverken produkter eller blokke.
+authentic/Project1-SimpelWired	Warning	struct-locality-empty	ProjectStructure	_0x2a32	Lokaliteten 'Udendørs' indeholder hverken produkter eller blokke.
+authentic/project2-CustomBlock	Warning	enum-value-unused	Logic	_0x8948	Værdien 'Værdi3' i enumerator typen 'NyTypeForThisProject' bruges ikke.
+authentic/project2-CustomBlock	Warning	struct-locality-no-devices	ProjectStructure	_0x2132	Lokaliteten 'Stue' indeholder kun funktionsblokke.
+authentic/project2-CustomBlock	Warning	link-fb-input-unfed	Wiring	_0x5128	Funktionsblokken 'AutoProof' har ingen forbundne indgange.
+authentic/project2-CustomBlock	Warning	link-fb-output-unused	Wiring	_0x5128	Funktionsblokken 'AutoProof' har ingen forbundne udgange.
+authentic/project2-CustomBlock	Warning	struct-orphan-block	ProjectStructure	_0x5128	Blokken 'AutoProof' er ikke forbundet til resten af installationen.
+authentic/project2-CustomBlock	Warning	scene-empty	Scenes	_0x564a	Scenariet 'Scenarie' har ingen medlemmer.
+authentic/project2-CustomBlock	Warning	link-fb-input-unfed	Wiring	_0x6728	Funktionsblokken 'Custom blok' har ingen forbundne indgange.
+authentic/project2-CustomBlock	Warning	link-fb-output-unused	Wiring	_0x6728	Funktionsblokken 'Custom blok' har ingen forbundne udgange.
+authentic/project2-CustomBlock	Warning	struct-orphan-block	ProjectStructure	_0x6728	Blokken 'Custom blok' er ikke forbundet til resten af installationen.
+authentic/project2-CustomBlock	Warning	name-note-missing	Documentation	_0x7011	Mangler Note
+authentic/project2-CustomBlock	Warning	logic-timer-unused	Logic	_0xaf10	Timeren 'Timer' startes ikke af noget program.
+authentic/project2-CustomBlock	Warning	name-duplicate-siblings	Documentation	_0xba15	Dobbelt navn
+authentic/project2-CustomBlock	Warning	scene-empty	Scenes	_0xc04a	Scenariet 'Scenarie' har ingen medlemmer.
+authentic/project2-CustomBlock	Warning	scene-unreferenced	Scenes	_0xc04a	Scenariet 'Scenarie' kaldes ikke fra noget program.
+authentic/project2-CustomBlock	Warning	name-duplicate-siblings	Documentation	_0xc14a	Dobbelt navn
+authentic/project2-CustomBlock	Warning	scene-empty	Scenes	_0xc14a	Scenariet 'Scenarie' har ingen medlemmer.
+authentic/project2-CustomBlock	Warning	scene-unreferenced	Scenes	_0xc14a	Scenariet 'Scenarie' kaldes ikke fra noget program.
+authentic/project2-CustomBlock	Warning	logic-timer-unused	Logic	_0xc710	Timeren 'Timer' startes ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x720e	Variablen 'Dato' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x7427	Variablen 'Fugtighed' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x7615	Variablen 'Kommatal' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x7916	Variablen 'Lys' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x7c0b	Variablen 'Tal' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x7d14	Variablen 'Temperatur' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-timer-unused	Logic	_0x7f10	Timeren 'Timer' startes ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x7f10	Variablen 'Timer' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x8017	Variablen 'Timertid' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x8109	Variablen 'Ugedag' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x850f	Variablen 'Persienne tilstand' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x840e	Variablen 'Dato' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x8c0f	Variablen 'NyTypeForThisProject' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x8e27	Variablen 'Fugtighed' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x8f20	Variablen 'Helligdag' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x9015	Variablen 'Kommatal' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x9416	Variablen 'Lys' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-read-only	Logic	_0x9513	Variablen 'Lys niveau' i 'Custom blok' læses, men tilskrives aldrig.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x970c	Variablen 'Tæller' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x980b	Variablen 'Tal' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x9914	Variablen 'Temperatur' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x9a0d	Variablen 'Tidspunkt' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-timer-unused	Logic	_0x9b10	Timeren 'Timer' startes ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-read-only	Logic	_0x9b10	Variablen 'Timer' i 'Custom blok' læses, men tilskrives aldrig.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x9c17	Variablen 'Timertid' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x9d09	Variablen 'Ugedag' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-variable-unused	Logic	_0x8d0a	Variablen 'Flag' i 'Custom blok' bruges ikke af noget program.
+authentic/project2-CustomBlock	Warning	logic-subprogram-no-conditions	Logic	_0xe91f	Underprogrammet 'Under program' har ingen betingelser.
+authentic/project2-CustomBlock	Warning	logic-subprogram-no-conditions	Logic	_0xe51f	Underprogrammet 'Under program' har ingen betingelser.
+authentic/project2-CustomBlock	Warning	struct-locality-empty	ProjectStructure	_0x2232	Lokaliteten 'Entré' indeholder hverken produkter eller blokke.
+authentic/project2-CustomBlock	Warning	struct-locality-empty	ProjectStructure	_0x2332	Lokaliteten 'Køkken' indeholder hverken produkter eller blokke.
+authentic/project2-CustomBlock	Warning	struct-locality-empty	ProjectStructure	_0x2432	Lokaliteten 'Soveværelse' indeholder hverken produkter eller blokke.
+authentic/project2-CustomBlock	Warning	struct-locality-empty	ProjectStructure	_0x2532	Lokaliteten 'Værelse' indeholder hverken produkter eller blokke.
+authentic/project2-CustomBlock	Warning	struct-locality-empty	ProjectStructure	_0x2632	Lokaliteten 'Bad' indeholder hverken produkter eller blokke.
+authentic/project2-CustomBlock	Warning	struct-locality-empty	ProjectStructure	_0x2732	Lokaliteten 'Bryggers' indeholder hverken produkter eller blokke.
+authentic/project2-CustomBlock	Warning	struct-locality-empty	ProjectStructure	_0x2832	Lokaliteten 'Garage' indeholder hverken produkter eller blokke.
+authentic/project2-CustomBlock	Warning	struct-locality-empty	ProjectStructure	_0x2932	Lokaliteten 'Kælder' indeholder hverken produkter eller blokke.
+authentic/project2-CustomBlock	Warning	struct-locality-empty	ProjectStructure	_0x2a32	Lokaliteten 'Udendørs' indeholder hverken produkter eller blokke.
+authentic/project3-KompleksWired	Warning	enum-value-unused	Logic	_0x2eb48	Værdien 'Kun efterløb' i enumerator typen 'PIR funktion' bruges ikke.
+authentic/project3-KompleksWired	Warning	enum-def-empty	Logic	_0x51147	Enumerator typen 'TestEnum æøå äö "x"' har ingen værdier.
+authentic/project3-KompleksWired	Warning	enum-def-unused	Logic	_0x51147	Enumerator typen 'TestEnum æøå äö "x"' bruges ikke af nogen variabel.
+authentic/project3-KompleksWired	Warning	doc-cablenumber	Documentation	_0x5153	Mangler Kabelnummer
+authentic/project3-KompleksWired	Warning	doc-cabletype	Documentation	_0x5153	Mangler Kabeltype
+authentic/project3-KompleksWired	Warning	doc-documentation-tag	Documentation	_0x5153	Mangler Id-kode
+authentic/project3-KompleksWired	Warning	doc-position	Documentation	_0x5153	Mangler Placering
+authentic/project3-KompleksWired	Warning	doc-power-group	Documentation	_0x5153	Mangler Lysgruppe
+authentic/project3-KompleksWired	Warning	doc-address	Documentation	_0x525a	Mangler Adresse
+authentic/project3-KompleksWired	Warning	doc-cable-colour	Documentation	_0x525a	Mangler Ledningsfarve
+authentic/project3-KompleksWired	Warning	link-crosses-locality	Wiring	_0x5542d	Følg-linket går mellem lokaliteterne 'Stue & Køkken "åben"' og 'Værelse'.
+authentic/project3-KompleksWired	Warning	link-crosses-locality	Wiring	_0x5562d	Følg-linket går mellem lokaliteterne 'Stue & Køkken "åben"' og 'Værelse'.
+authentic/project3-KompleksWired	Warning	doc-address	Documentation	_0x535a	Mangler Adresse
+authentic/project3-KompleksWired	Warning	doc-cable-colour	Documentation	_0x535a	Mangler Ledningsfarve
+authentic/project3-KompleksWired	Warning	link-crosses-locality	Wiring	_0x5582d	Følg-linket går mellem lokaliteterne 'Stue & Køkken "åben"' og 'Værelse'.
+authentic/project3-KompleksWired	Warning	doc-cablenumber	Documentation	_0x5453	Mangler Kabelnummer
+authentic/project3-KompleksWired	Warning	doc-cabletype	Documentation	_0x5453	Mangler Kabeltype
+authentic/project3-KompleksWired	Warning	doc-documentation-tag	Documentation	_0x5453	Mangler Id-kode
+authentic/project3-KompleksWired	Warning	doc-position	Documentation	_0x5453	Mangler Placering
+authentic/project3-KompleksWired	Warning	doc-power-group	Documentation	_0x5453	Mangler Lysgruppe
+authentic/project3-KompleksWired	Warning	doc-address	Documentation	_0x555b	Mangler Adresse
+authentic/project3-KompleksWired	Warning	doc-cable-colour	Documentation	_0x555b	Mangler Ledningsfarve
+authentic/project3-KompleksWired	Warning	doc-not-linked	Documentation	_0x555b	Ikke forbundet
+authentic/project3-KompleksWired	Warning	doc-cablenumber	Documentation	_0x5753	Mangler Kabelnummer
+authentic/project3-KompleksWired	Warning	doc-cabletype	Documentation	_0x5753	Mangler Kabeltype
+authentic/project3-KompleksWired	Warning	doc-documentation-tag	Documentation	_0x5753	Mangler Id-kode
+authentic/project3-KompleksWired	Warning	doc-position	Documentation	_0x5753	Mangler Placering
+authentic/project3-KompleksWired	Warning	doc-power-group	Documentation	_0x5753	Mangler Lysgruppe
+authentic/project3-KompleksWired	Warning	doc-address	Documentation	_0x585b	Mangler Adresse
+authentic/project3-KompleksWired	Warning	doc-cable-colour	Documentation	_0x585b	Mangler Ledningsfarve
+authentic/project3-KompleksWired	Warning	doc-not-linked	Documentation	_0x585b	Ikke forbundet
+authentic/project3-KompleksWired	Warning	link-output-undriven	Wiring	_0x585b	Udgangen 'Lampe' styres ikke af noget.
+authentic/project3-KompleksWired	Warning	link-fb-input-unfed	Wiring	_0x8b28	Funktionsblokken '1.1.01.e. Kip tænd sluk' har ingen forbundne indgange.
+authentic/project3-KompleksWired	Warning	link-fb-output-unused	Wiring	_0x8b28	Funktionsblokken '1.1.01.e. Kip tænd sluk' har ingen forbundne udgange.
+authentic/project3-KompleksWired	Warning	name-default	Documentation	_0x8b28	Uændret standardnavn
+authentic/project3-KompleksWired	Warning	struct-orphan-block	ProjectStructure	_0x8b28	Blokken '1.1.01.e. Kip tænd sluk' er ikke forbundet til resten af installationen.
+authentic/project3-KompleksWired	Warning	scene-empty	Scenes	_0x964a	Scenariet 'Scenarie Tænd' har ingen medlemmer.
+authentic/project3-KompleksWired	Warning	scene-empty	Scenes	_0x974a	Scenariet 'Scenarie Sluk' har ingen medlemmer.
+authentic/project3-KompleksWired	Warning	logic-contending-writers	Logic	_0x9910	Variablen 'Timer' tilskrives af 5 programmer med uafhængige udløsere.
+authentic/project3-KompleksWired	Warning	doc-cablenumber	Documentation	_0x5953	Mangler Kabelnummer
+authentic/project3-KompleksWired	Warning	doc-cabletype	Documentation	_0x5953	Mangler Kabeltype
+authentic/project3-KompleksWired	Warning	doc-documentation-tag	Documentation	_0x5953	Mangler Id-kode
+authentic/project3-KompleksWired	Warning	doc-position	Documentation	_0x5953	Mangler Placering
+authentic/project3-KompleksWired	Warning	doc-power-group	Documentation	_0x5953	Mangler Lysgruppe
+authentic/project3-KompleksWired	Warning	doc-address	Documentation	_0x5a5a	Mangler Adresse
+authentic/project3-KompleksWired	Warning	doc-cable-colour	Documentation	_0x5a5a	Mangler Ledningsfarve
+authentic/project3-KompleksWired	Warning	doc-not-linked	Documentation	_0x5a5a	Ikke forbundet
+authentic/project3-KompleksWired	Warning	link-input-unconnected	Wiring	_0x5a5a	Indgangen 'Tilstedeværelses indikering' er ikke forbundet.
+authentic/project3-KompleksWired	Warning	doc-cablenumber	Documentation	_0x5b53	Mangler Kabelnummer
+authentic/project3-KompleksWired	Warning	doc-cabletype	Documentation	_0x5b53	Mangler Kabeltype
+authentic/project3-KompleksWired	Warning	doc-documentation-tag	Documentation	_0x5b53	Mangler Id-kode
+authentic/project3-KompleksWired	Warning	doc-position	Documentation	_0x5b53	Mangler Placering
+authentic/project3-KompleksWired	Warning	doc-power-group	Documentation	_0x5b53	Mangler Lysgruppe
+authentic/project3-KompleksWired	Warning	doc-address	Documentation	_0x5c5b	Mangler Adresse
+authentic/project3-KompleksWired	Warning	doc-cable-colour	Documentation	_0x5c5b	Mangler Ledningsfarve
+authentic/project3-KompleksWired	Warning	doc-not-linked	Documentation	_0x5c5b	Ikke forbundet
+authentic/project3-KompleksWired	Warning	link-fb-input-unfed	Wiring	_0x2e528	Funktionsblokken '1.4.02.a. PIR styring ' har ingen forbundne indgange.
+authentic/project3-KompleksWired	Warning	link-fb-output-unused	Wiring	_0x2e528	Funktionsblokken '1.4.02.a. PIR styring ' har ingen forbundne udgange.
+authentic/project3-KompleksWired	Warning	name-default	Documentation	_0x2e528	Uændret standardnavn
+authentic/project3-KompleksWired	Warning	struct-orphan-block	ProjectStructure	_0x2e528	Blokken '1.4.02.a. PIR styring ' er ikke forbundet til resten af installationen.
+authentic/project3-KompleksWired	Warning	scene-empty	Scenes	_0x2fd4a	Scenariet 'Scenarie tænd' har ingen medlemmer.
+authentic/project3-KompleksWired	Warning	scene-empty	Scenes	_0x2fe4a	Scenariet 'Scenarie sluk' har ingen medlemmer.
+authentic/project3-KompleksWired	Warning	logic-block-locked-content	Logic	_0x3010f	Den låste blok '1.4.02.a. PIR styring ' har ændret 'PIR funktion'.
+authentic/project3-KompleksWired	Warning	logic-block-locked-content	Logic	_0x3020f	Den låste blok '1.4.02.a. PIR styring ' har ændret 'PIR funktion nat'.
+authentic/project3-KompleksWired	Warning	dev-backup-missing	DeviceSettings	_0x3030f	Variablen 'Manuel tænding' i '1.4.02.a. PIR styring ' gemmes ikke ved strømsvigt.
+authentic/project3-KompleksWired	Warning	logic-block-locked-content	Logic	_0x3030f	Den låste blok '1.4.02.a. PIR styring ' har ændret 'Manuel tænding'.
+authentic/project3-KompleksWired	Warning	logic-contending-writers	Logic	_0x30510	Variablen 'Blokkering efter manuel sluk' tilskrives af 3 programmer med uafhængige udløsere.
+authentic/project3-KompleksWired	Warning	logic-self-trigger	Logic	_0x4141e	Programmet 'Manuel sluk blinker med diode' udløses af 'Kvittér med blink efter manuel sluk', som det selv tilskriver.
+authentic/project3-KompleksWired	Warning	doc-cablenumber	Documentation	_0x5e53	Mangler Kabelnummer
+authentic/project3-KompleksWired	Warning	doc-cabletype	Documentation	_0x5e53	Mangler Kabeltype
+authentic/project3-KompleksWired	Warning	doc-documentation-tag	Documentation	_0x5e53	Mangler Id-kode
+authentic/project3-KompleksWired	Warning	doc-position	Documentation	_0x5e53	Mangler Placering
+authentic/project3-KompleksWired	Warning	doc-power-group	Documentation	_0x5e53	Mangler Lysgruppe
+authentic/project3-KompleksWired	Warning	doc-address	Documentation	_0x695a	Mangler Adresse
+authentic/project3-KompleksWired	Warning	doc-cable-colour	Documentation	_0x695a	Mangler Ledningsfarve
+authentic/project3-KompleksWired	Warning	doc-not-linked	Documentation	_0x695a	Ikke forbundet
+authentic/project3-KompleksWired	Warning	link-input-unconnected	Wiring	_0x695a	Indgangen 'Temperatur sensor indgang' er ikke forbundet.
+authentic/project3-KompleksWired	Warning	doc-cablenumber	Documentation	_0x6a53	Mangler Kabelnummer
+authentic/project3-KompleksWired	Warning	doc-cabletype	Documentation	_0x6a53	Mangler Kabeltype
+authentic/project3-KompleksWired	Warning	doc-documentation-tag	Documentation	_0x6a53	Mangler Id-kode
+authentic/project3-KompleksWired	Warning	doc-position	Documentation	_0x6a53	Mangler Placering
+authentic/project3-KompleksWired	Warning	doc-power-group	Documentation	_0x6a53	Mangler Lysgruppe
+authentic/project3-KompleksWired	Warning	doc-address	Documentation	_0x745a	Mangler Adresse
+authentic/project3-KompleksWired	Warning	doc-cable-colour	Documentation	_0x745a	Mangler Ledningsfarve
+authentic/project3-KompleksWired	Warning	doc-not-linked	Documentation	_0x745a	Ikke forbundet
+authentic/project3-KompleksWired	Warning	link-input-unconnected	Wiring	_0x745a	Indgangen 'Lux / Temperatur sensor' er ikke forbundet.
+authentic/project3-KompleksWired	Warning	link-fb-input-unfed	Wiring	_0x42a28	Funktionsblokken '2.1.01.a. Ur, med 1 tidspunkt' har ingen forbundne indgange.
+authentic/project3-KompleksWired	Warning	link-fb-output-unused	Wiring	_0x42a28	Funktionsblokken '2.1.01.a. Ur, med 1 tidspunkt' har ingen forbundne udgange.
+authentic/project3-KompleksWired	Warning	name-default	Documentation	_0x42a28	Uændret standardnavn
+authentic/project3-KompleksWired	Warning	struct-orphan-block	ProjectStructure	_0x42a28	Blokken '2.1.01.a. Ur, med 1 tidspunkt' er ikke forbundet til resten af installationen.
+authentic/project3-KompleksWired	Warning	logic-contending-writers	Logic	_0x42e12	Variablen 'Udgang fra ur' tilskrives af 2 programmer med uafhængige udløsere.
+authentic/project3-KompleksWired	Warning	scene-empty	Scenes	_0x4314a	Scenariet 'Scenarie Tænd' har ingen medlemmer.
+authentic/project3-KompleksWired	Warning	scene-empty	Scenes	_0x4324a	Scenariet 'Scenarie Sluk' har ingen medlemmer.
+authentic/project3-KompleksWired	Warning	doc-cablenumber	Documentation	_0x7553	Mangler Kabelnummer
+authentic/project3-KompleksWired	Warning	doc-cabletype	Documentation	_0x7553	Mangler Kabeltype
+authentic/project3-KompleksWired	Warning	doc-documentation-tag	Documentation	_0x7553	Mangler Id-kode
+authentic/project3-KompleksWired	Warning	doc-position	Documentation	_0x7553	Mangler Placering
+authentic/project3-KompleksWired	Warning	doc-power-group	Documentation	_0x7553	Mangler Lysgruppe
+authentic/project3-KompleksWired	Warning	doc-address	Documentation	_0x765b	Mangler Adresse
+authentic/project3-KompleksWired	Warning	doc-cable-colour	Documentation	_0x765b	Mangler Ledningsfarve
+authentic/project3-KompleksWired	Warning	doc-not-linked	Documentation	_0x765b	Ikke forbundet
+authentic/project3-KompleksWired	Warning	link-output-undriven	Wiring	_0x765b	Udgangen 'Touch' styres ikke af noget.
+authentic/project3-KompleksWired	Warning	doc-address	Documentation	_0x775b	Mangler Adresse
+authentic/project3-KompleksWired	Warning	doc-cable-colour	Documentation	_0x775b	Mangler Ledningsfarve
+authentic/project3-KompleksWired	Warning	doc-not-linked	Documentation	_0x775b	Ikke forbundet
+authentic/project3-KompleksWired	Warning	link-output-undriven	Wiring	_0x775b	Udgangen 'Sluk' styres ikke af noget.
+authentic/project3-KompleksWired	Warning	addr-wireless-not-commissioned	Addressing	_0x7e54	Produktet 'Dimmer Universal' har intet serienummer.
+authentic/project3-KompleksWired	Warning	dev-setting-default	DeviceSettings	_0x7e54	Produktet 'Dimmer Universal' har 1 af 6 indstillinger på fabriksværdien.
+authentic/project3-KompleksWired	Warning	link-fb-input-unfed	Wiring	_0xf528	Funktionsblokken '1.2.04.e. Trådløs / Bus lysdæmper' har ingen forbundne indgange.
+authentic/project3-KompleksWired	Warning	link-fb-output-unused	Wiring	_0xf528	Funktionsblokken '1.2.04.e. Trådløs / Bus lysdæmper' har ingen forbundne udgange.
+authentic/project3-KompleksWired	Warning	name-default	Documentation	_0xf528	Uændret standardnavn
+authentic/project3-KompleksWired	Warning	struct-orphan-block	ProjectStructure	_0xf528	Blokken '1.2.04.e. Trådløs / Bus lysdæmper' er ikke forbundet til resten af installationen.
+authentic/project3-KompleksWired	Warning	scene-empty	Scenes	_0x10d4a	Scenariet 'Højt niveau' har ingen medlemmer.
+authentic/project3-KompleksWired	Warning	scene-empty	Scenes	_0x10e4a	Scenariet 'Lavt niveau' har ingen medlemmer.
+authentic/project3-KompleksWired	Warning	dev-inivalue-overwritten	DeviceSettings	_0x10f0f	Startværdien '_0xfc48' på 'Lysdæmper status' sættes af et program ved hver opstart.
+authentic/project3-KompleksWired	Warning	logic-block-locked-content	Logic	_0x10f0f	Den låste blok '1.2.04.e. Trådløs / Bus lysdæmper' har ændret 'Lysdæmper status'.
+authentic/project3-KompleksWired	Warning	logic-block-locked-content	Logic	_0x1120f	Den låste blok '1.2.04.e. Trådløs / Bus lysdæmper' har ændret 'Kort reguleringstryk tænder'.
+authentic/project3-KompleksWired	Warning	dev-backup-missing	DeviceSettings	_0x11c0a	Variablen 'Reg. retning' i '1.2.04.e. Trådløs / Bus lysdæmper' gemmes ikke ved strømsvigt.
+authentic/project3-KompleksWired	Warning	logic-contending-writers	Logic	_0x11d0a	Variablen 'Oneshot man' tilskrives af 2 programmer med uafhængige udløsere.
+authentic/project3-KompleksWired	Warning	logic-timer-unused	Logic	_0x13810	Timeren 'Timer' startes ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-timer-unused	Logic	_0x17010	Timeren 'Timer' startes ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-timer-unused	Logic	_0x19210	Timeren 'Timer' startes ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-timer-unused	Logic	_0x1c910	Timeren 'Timer' startes ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-self-trigger	Logic	_0x29b1e	Programmet 'Status' udløses af 'Status check', som det selv tilskriver.
+authentic/project3-KompleksWired	Warning	addr-wireless-not-commissioned	Addressing	_0x7854	Produktet 'Tryk 2 tast' har intet serienummer.
+authentic/project3-KompleksWired	Warning	link-input-unconnected	Wiring	_0x795c	Indgangen 'Tryk (venstre)' er ikke forbundet.
+authentic/project3-KompleksWired	Warning	link-input-unconnected	Wiring	_0x7a5c	Indgangen 'Tryk (højre)' er ikke forbundet.
+authentic/project3-KompleksWired	Warning	addr-wireless-not-commissioned	Addressing	_0x7b54	Produktet 'Lampeudtag' har intet serienummer.
+authentic/project3-KompleksWired	Warning	link-fb-output-unused	Wiring	_0x47028	Funktionsblokken '4.1.01. AND ("Og"- blok)' har ingen forbundne udgange.
+authentic/project3-KompleksWired	Warning	name-default	Documentation	_0x47028	Uændret standardnavn
+authentic/project3-KompleksWired	Warning	scene-empty	Scenes	_0x4804a	Scenariet 'Scenarie Tænd' har ingen medlemmer.
+authentic/project3-KompleksWired	Warning	scene-empty	Scenes	_0x4814a	Scenariet 'Scenarie Sluk' har ingen medlemmer.
+authentic/project3-KompleksWired	Warning	struct-locality-no-devices	ProjectStructure	_0x2632	Lokaliteten 'Bad' indeholder kun funktionsblokke.
+authentic/project3-KompleksWired	Warning	logic-block-no-pins	Logic	_0x54b28	Blokken 'Tom blok' har hverken ind- eller udgange.
+authentic/project3-KompleksWired	Warning	name-default	Documentation	_0x54b28	Uændret standardnavn
+authentic/project3-KompleksWired	Warning	struct-orphan-block	ProjectStructure	_0x54b28	Blokken 'Tom blok' er ikke forbundet til resten af installationen.
+authentic/project3-KompleksWired	Warning	logic-program-no-events	Logic	_0x5511e	Programmet 'Program' har ingen hændelser.
+authentic/project3-KompleksWired	Warning	struct-locality-no-devices	ProjectStructure	_0x2732	Lokaliteten 'Bryggers' indeholder kun funktionsblokke.
+authentic/project3-KompleksWired	Warning	link-fb-input-unfed	Wiring	_0x4b928	Funktionsblokken '4.1.04. Driftstimetæller' har ingen forbundne indgange.
+authentic/project3-KompleksWired	Warning	link-fb-output-unused	Wiring	_0x4b928	Funktionsblokken '4.1.04. Driftstimetæller' har ingen forbundne udgange.
+authentic/project3-KompleksWired	Warning	name-default	Documentation	_0x4b928	Uændret standardnavn
+authentic/project3-KompleksWired	Warning	struct-orphan-block	ProjectStructure	_0x4b928	Blokken '4.1.04. Driftstimetæller' er ikke forbundet til resten af installationen.
+authentic/project3-KompleksWired	Warning	logic-self-trigger	Logic	_0x4d61e	Programmet 'Sekundt' udløses af '½sec', som det selv tilskriver.
+authentic/project3-KompleksWired	Warning	logic-self-trigger	Logic	_0x4e31e	Programmet 'Opdatering' udløses af 'Sekund', som det selv tilskriver.
+authentic/project3-KompleksWired	Warning	logic-block-no-pins	Logic	_0x55a28	Blokken 'Tom blok' har hverken ind- eller udgange.
+authentic/project3-KompleksWired	Warning	name-default	Documentation	_0x55a28	Uændret standardnavn
+authentic/project3-KompleksWired	Warning	struct-orphan-block	ProjectStructure	_0x55a28	Blokken 'Tom blok' er ikke forbundet til resten af installationen.
+authentic/project3-KompleksWired	Warning	logic-variable-unused	Logic	_0x56309	Variablen 'Ugedag' i 'Tom blok' bruges ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-variable-unused	Logic	_0x5640b	Variablen 'Tal' i 'Tom blok' bruges ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-variable-unused	Logic	_0x5650a	Variablen 'Flag' i 'Tom blok' bruges ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-variable-unused	Logic	_0x5660c	Variablen 'Tæller' i 'Tom blok' bruges ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-variable-unused	Logic	_0x5670e	Variablen 'Dato' i 'Tom blok' bruges ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-timer-unused	Logic	_0x56810	Timeren 'Timer' startes ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-variable-unused	Logic	_0x56810	Variablen 'Timer' i 'Tom blok' bruges ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-variable-unused	Logic	_0x56915	Variablen 'Kommatal' i 'Tom blok' bruges ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-variable-unused	Logic	_0x56a27	Variablen 'Fugtighed' i 'Tom blok' bruges ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-variable-unused	Logic	_0x56b14	Variablen 'Temperatur' i 'Tom blok' bruges ikke af noget program.
+authentic/project3-KompleksWired	Warning	logic-program-no-events	Logic	_0x5601e	Programmet 'Program' har ingen hændelser.
+authentic/project3-KompleksWired	Warning	struct-locality-no-devices	ProjectStructure	_0x2832	Lokaliteten 'Garage' indeholder kun funktionsblokke.
+authentic/project3-KompleksWired	Warning	logic-block-no-pins	Logic	_0x51228	Blokken 'Tom blok' har hverken ind- eller udgange.
+authentic/project3-KompleksWired	Warning	name-default	Documentation	_0x51228	Uændret standardnavn
+authentic/project3-KompleksWired	Warning	struct-orphan-block	ProjectStructure	_0x51228	Blokken 'Tom blok' er ikke forbundet til resten af installationen.
+authentic/project3-KompleksWired	Warning	logic-program-no-events	Logic	_0x5181e	Programmet 'Program' har ingen hændelser.
+authentic/project3-KompleksWired	Warning	addr-dimmer-channel-unassigned	Addressing	_0x5297b	Kanalen 'LED Dimmer kanal 1' har ingen kanal-id.
+authentic/project3-KompleksWired	Warning	addr-dimmer-channel-unassigned	Addressing	_0x53a7b	Kanalen 'LED Dimmer kanal 2' har ingen kanal-id.
+authentic/project3-KompleksWired	Warning	struct-locality-empty	ProjectStructure	_0x2a32	Lokaliteten 'Udendørs' indeholder hverken produkter eller blokke.
+authentic/project3-KompleksWired	Warning	name-default	Documentation	_0x56c32	Uændret standardnavn
+authentic/project3-KompleksWired	Warning	struct-locality-empty	ProjectStructure	_0x56c32	Lokaliteten 'Lokalitet' indeholder hverken produkter eller blokke.
+authentic/project5-Dokumentation	Warning	doc-documentation-tag	Documentation	_0x5a53	Mangler Id-kode
+authentic/project5-Dokumentation	Warning	link-crosses-locality	Wiring	_0x1232d	Følg-linket går mellem lokaliteterne 'Stue' og 'Etage 1'.
+authentic/project5-Dokumentation	Warning	link-crosses-locality	Wiring	_0x1252d	Følg-linket går mellem lokaliteterne 'Stue' og 'Teknik'.
+authentic/project5-Dokumentation	Warning	link-crosses-locality	Wiring	_0x1272d	Følg-linket går mellem lokaliteterne 'Stue' og 'Teknik'.
+authentic/project5-Dokumentation	Warning	doc-cable-colour	Documentation	_0x5d5a	Mangler Ledningsfarve
+authentic/project5-Dokumentation	Warning	link-crosses-locality	Wiring	_0x1292d	Følg-linket går mellem lokaliteterne 'Stue' og 'Etage 1'.
+authentic/project5-Dokumentation	Warning	doc-address	Documentation	_0x5e5a	Mangler Adresse
+authentic/project5-Dokumentation	Warning	doc-cable-colour	Documentation	_0x5e5a	Mangler Ledningsfarve
+authentic/project5-Dokumentation	Warning	doc-not-linked	Documentation	_0x5e5a	Ikke forbundet
+authentic/project5-Dokumentation	Warning	link-input-unconnected	Wiring	_0x5e5a	Indgangen 'Tryk (nederst højre)' er ikke forbundet.
+authentic/project5-Dokumentation	Warning	addr-module-partial	Addressing	_0x625b	Datalinje 1 bruger kun 1 af 8 klemmer.
+authentic/project5-Dokumentation	Warning	scene-output-also-linked	Scenes	_0x625b	Udgangen 'Udgang' styres både af et scenarie og af et følg-link.
+authentic/project5-Dokumentation	Warning	doc-cablenumber	Documentation	_0x6453	Mangler Kabelnummer
+authentic/project5-Dokumentation	Warning	doc-cabletype	Documentation	_0x6453	Mangler Kabeltype
+authentic/project5-Dokumentation	Warning	addr-module-partial	Addressing	_0x655a	Datalinje 8 bruger kun 1 af 16 klemmer.
+authentic/project5-Dokumentation	Warning	link-crosses-locality	Wiring	_0x12b2d	Følg-linket går mellem lokaliteterne 'Stue' og 'Etage 1'.
+authentic/project5-Dokumentation	Warning	doc-position	Documentation	_0x6653	Mangler Placering
+authentic/project5-Dokumentation	Warning	doc-power-group	Documentation	_0x6653	Mangler Lysgruppe
+authentic/project5-Dokumentation	Warning	link-crosses-locality	Wiring	_0x12d2d	Følg-linket går mellem lokaliteterne 'Stue' og 'Etage 1'.
+authentic/project5-Dokumentation	Warning	doc-not-linked	Documentation	_0x705a	Ikke forbundet
+authentic/project5-Dokumentation	Warning	link-input-unconnected	Wiring	_0x705a	Indgangen 'Lux / Temperatur sensor' er ikke forbundet.
+authentic/project5-Dokumentation	Warning	addr-wireless-not-commissioned	Addressing	_0x7154	Produktet 'Jalousi 2 tast (lokal lås)' har intet serienummer.
+authentic/project5-Dokumentation	Warning	link-input-unconnected	Wiring	_0x745c	Indgangen 'Tryk (venstre)' er ikke forbundet.
+authentic/project5-Dokumentation	Warning	link-input-unconnected	Wiring	_0x755c	Indgangen 'Tryk (højre)' er ikke forbundet.
+authentic/project5-Dokumentation	Warning	addr-wireless-not-commissioned	Addressing	_0x7e54	Produktet 'Modtager relæ' har intet serienummer.
+authentic/project5-Dokumentation	Warning	struct-locality-empty	ProjectStructure	_0x2232	Lokaliteten 'Entré' indeholder hverken produkter eller blokke.
+authentic/project5-Dokumentation	Warning	struct-locality-empty	ProjectStructure	_0x2332	Lokaliteten 'Køkken' indeholder hverken produkter eller blokke.
+authentic/project5-Dokumentation	Warning	struct-locality-empty	ProjectStructure	_0x2432	Lokaliteten 'Soveværelse' indeholder hverken produkter eller blokke.
+authentic/project5-Dokumentation	Warning	struct-locality-empty	ProjectStructure	_0x2532	Lokaliteten 'Værelse' indeholder hverken produkter eller blokke.
+authentic/project5-Dokumentation	Warning	struct-locality-empty	ProjectStructure	_0x2632	Lokaliteten 'Bad' indeholder hverken produkter eller blokke.
+authentic/project5-Dokumentation	Warning	struct-locality-empty	ProjectStructure	_0x2732	Lokaliteten 'Bryggers' indeholder hverken produkter eller blokke.
+authentic/project5-Dokumentation	Warning	struct-locality-empty	ProjectStructure	_0x2832	Lokaliteten 'Garage' indeholder hverken produkter eller blokke.
+authentic/project5-Dokumentation	Warning	struct-locality-empty	ProjectStructure	_0x2932	Lokaliteten 'Kælder' indeholder hverken produkter eller blokke.
+authentic/project5-Dokumentation	Warning	struct-locality-empty	ProjectStructure	_0x2a32	Lokaliteten 'Udendørs' indeholder hverken produkter eller blokke.
+authentic/project5-Dokumentation	Warning	struct-locality-no-devices	ProjectStructure	_0x5132	Lokaliteten 'Etage 1' indeholder kun funktionsblokke.
+authentic/project5-Dokumentation	Warning	link-crosses-locality	Wiring	_0x12f2d	Følg-linket går mellem lokaliteterne 'Etage 1' og 'Stue'.
+authentic/project5-Dokumentation	Warning	link-crosses-locality	Wiring	_0x1312d	Følg-linket går mellem lokaliteterne 'Etage 1' og 'Stue'.
+authentic/project5-Dokumentation	Warning	link-crosses-locality	Wiring	_0x1352d	Følg-linket går mellem lokaliteterne 'Etage 1' og 'Teknik'.
+authentic/project5-Dokumentation	Warning	logic-variable-write-only	Logic	_0x11010	Variablen 'Timer' i 'Doku zoo' tilskrives, men læses aldrig.
+authentic/project5-Dokumentation	Warning	logic-variable-write-only	Logic	_0x1110d	Variablen 'Tidspunkt' i 'Doku zoo' tilskrives, men læses aldrig.
+authentic/project5-Dokumentation	Warning	dev-backup-missing	DeviceSettings	_0x1130c	Variablen 'Tæller' i 'Doku zoo' gemmes ikke ved strømsvigt.
+authentic/project5-Dokumentation	Warning	dev-inivalue-overwritten	DeviceSettings	_0x1140b	Startværdien '42' på 'Tal' sættes af et program ved hver opstart.
+authentic/project5-Dokumentation	Warning	dev-backup-missing	DeviceSettings	_0x1150f	Variablen 'Tilstand' i 'Doku zoo' gemmes ikke ved strømsvigt.
+authentic/project5-Dokumentation	Warning	dev-inivalue-overwritten	DeviceSettings	_0x1150f	Startværdien '_0x5648' på 'Tilstand' sættes af et program ved hver opstart.
+authentic/project5-Dokumentation	Warning	logic-variable-write-only	Logic	_0x1160e	Variablen 'Dato' i 'Doku zoo' tilskrives, men læses aldrig.
+authentic/project5-Dokumentation	Warning	logic-variable-unused	Logic	_0x11709	Variablen 'Ugedag' i 'Doku zoo' bruges ikke af noget program.
+authentic/project5-Dokumentation	Warning	dev-backup-missing	DeviceSettings	_0x1180a	Variablen 'Flag' i 'Doku zoo' gemmes ikke ved strømsvigt.
+authentic/project5-Dokumentation	Warning	logic-variable-unused	Logic	_0x11920	Variablen 'Helligdag' i 'Doku zoo' bruges ikke af noget program.
+authentic/project5-Dokumentation	Warning	dev-inivalue-overwritten	DeviceSettings	_0x11a14	Startværdien '21.50' på 'Temperatur' sættes af et program ved hver opstart.
+authentic/project5-Dokumentation	Warning	logic-variable-write-only	Logic	_0x11a14	Variablen 'Temperatur' i 'Doku zoo' tilskrives, men læses aldrig.
+authentic/project5-Dokumentation	Warning	logic-variable-unused	Logic	_0x11b27	Variablen 'Fugt' i 'Doku zoo' bruges ikke af noget program.
+authentic/project5-Dokumentation	Warning	logic-variable-unused	Logic	_0x11c16	Variablen 'Lys' i 'Doku zoo' bruges ikke af noget program.
+authentic/project5-Dokumentation	Warning	logic-variable-unused	Logic	_0x11d13	Variablen 'Lysniveau' i 'Doku zoo' bruges ikke af noget program.
+authentic/project5-Dokumentation	Warning	dev-inivalue-overwritten	DeviceSettings	_0x11e15	Startværdien '3.14' på 'Kommatal' sættes af et program ved hver opstart.
+authentic/project5-Dokumentation	Warning	logic-variable-write-only	Logic	_0x11e15	Variablen 'Kommatal' i 'Doku zoo' tilskrives, men læses aldrig.
+authentic/project5-Dokumentation	Warning	logic-program-no-events	Logic	_0x1091e	Programmet 'Program' har ingen hændelser.
+authentic/project5-Dokumentation	Warning	logic-subprogram-no-conditions	Logic	_0x15e1f	Underprogrammet 'Under program' har ingen betingelser.
+authentic/project5-Dokumentation	Warning	dev-setting-default	DeviceSettings	_0x8158	Produktet 'IHC LED Dimmer 2 kanaler' har 1 af 12 indstillinger på fabriksværdien.
+authentic/project5-Dokumentation	Warning	addr-dimmer-channel-unassigned	Addressing	_0x837b	Kanalen 'LED Dimmer kanal 1' har ingen kanal-id.
+authentic/project5-Dokumentation	Warning	addr-dimmer-channel-unassigned	Addressing	_0x947b	Kanalen 'LED Dimmer kanal 2' har ingen kanal-id.
+authentic/project5-Dokumentation	Warning	dev-setting-default	DeviceSettings	_0xa556	Produktet 'SMS Modem' har 30 af 31 indstillinger på fabriksværdien.
+authentic/project5-Dokumentation	Warning	struct-product-no-terminals	ProjectStructure	_0xa556	Produktet 'SMS Modem' har ingen klemmer.
+authentic/project5-Dokumentation	Warning	name-default	Documentation	_0xd828	Uændret standardnavn
+authentic/project5-Dokumentation	Warning	link-crosses-locality	Wiring	_0x1332d	Følg-linket går mellem lokaliteterne 'Teknik' og 'Stue'.
+authentic/project5-Dokumentation	Warning	logic-block-no-pins	Logic	_0xfa28	Blokken 'Tom blok' har hverken ind- eller udgange.
+authentic/project5-Dokumentation	Warning	name-default	Documentation	_0xfa28	Uændret standardnavn
+authentic/project5-Dokumentation	Warning	struct-orphan-block	ProjectStructure	_0xfa28	Blokken 'Tom blok' er ikke forbundet til resten af installationen.
+authentic/project5-Dokumentation	Warning	logic-program-no-events	Logic	_0x1001e	Programmet 'Program' har ingen hændelser.
+authentic/project5-Dokumentation	Warning	struct-locality-empty	ProjectStructure	_0x5332	Lokaliteten 'Tom lokalitet' indeholder hverken produkter eller blokke.
+fixture/Project6-Errors	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
+fixture/Project6-Errors	Warning	enum-def-empty	Logic	_0x1e847	Enumerator typen 'Tom enum' har ingen værdier.
+fixture/Project6-Errors	Warning	enum-def-unused	Logic	_0x1e847	Enumerator typen 'Tom enum' bruges ikke af nogen variabel.
+fixture/Project6-Errors	Warning	enum-def-single-value	Logic	_0x1e947	Enumerator typen 'Enkelt' har kun én værdi, 'Kun'.
+fixture/Project6-Errors	Warning	enum-def-unused	Logic	_0x1e947	Enumerator typen 'Enkelt' bruges ikke af nogen variabel.
+fixture/Project6-Errors	Warning	enum-value-unused	Logic	_0x1ed48	Værdien 'Kun' i enumerator typen 'Enkelt' bruges ikke.
+fixture/Project6-Errors	Warning	enum-def-unused	Logic	_0x1eb47	Enumerator typen 'Ubrugt' bruges ikke af nogen variabel.
+fixture/Project6-Errors	Warning	enum-value-unused	Logic	_0x1f048	Værdien 'Ubrugt A' i enumerator typen 'Ubrugt' bruges ikke.
+fixture/Project6-Errors	Warning	enum-value-unused	Logic	_0x1f148	Værdien 'Ubrugt B' i enumerator typen 'Ubrugt' bruges ikke.
+fixture/Project6-Errors	Warning	enum-def-unused	Logic	_0x1ec47	Enumerator typen 'Brugt' bruges ikke af nogen variabel.
+fixture/Project6-Errors	Warning	enum-value-unused	Logic	_0x1f248	Værdien 'Brugt A' i enumerator typen 'Brugt' bruges ikke.
+fixture/Project6-Errors	Warning	enum-value-unused	Logic	_0x1f348	Værdien 'Brugt B' i enumerator typen 'Brugt' bruges ikke.
+fixture/Project6-Errors	Warning	scene-output-also-linked	Scenes	_0x5a5b	Udgangen 'Udgang' styres både af et scenarie og af et følg-link.
+fixture/Project6-Errors	Warning	doc-cablenumber	Documentation	_0x5c53	Mangler Kabelnummer
+fixture/Project6-Errors	Warning	doc-cabletype	Documentation	_0x5c53	Mangler Kabeltype
+fixture/Project6-Errors	Warning	doc-documentation-tag	Documentation	_0x5c53	Mangler Id-kode
+fixture/Project6-Errors	Warning	doc-position	Documentation	_0x5c53	Mangler Placering
+fixture/Project6-Errors	Warning	doc-power-group	Documentation	_0x5c53	Mangler Lysgruppe
+fixture/Project6-Errors	Warning	doc-address	Documentation	_0x5d5a	Mangler Adresse
+fixture/Project6-Errors	Warning	doc-not-linked	Documentation	_0x5d5a	Ikke forbundet
+fixture/Project6-Errors	Warning	link-input-unconnected	Wiring	_0x5d5a	Indgangen 'Tryk (øverst venstre)' er ikke forbundet.
+fixture/Project6-Errors	Warning	doc-cable-colour	Documentation	_0x5e5a	Mangler Ledningsfarve
+fixture/Project6-Errors	Warning	doc-not-linked	Documentation	_0x5e5a	Ikke forbundet
+fixture/Project6-Errors	Warning	link-input-unconnected	Wiring	_0x5e5a	Indgangen 'Tryk (øverst højre)' er ikke forbundet.
+fixture/Project6-Errors	Warning	doc-not-linked	Documentation	_0x5f5a	Ikke forbundet
+fixture/Project6-Errors	Warning	link-input-unconnected	Wiring	_0x5f5a	Indgangen 'Tryk (nederst venstre)' er ikke forbundet.
+fixture/Project6-Errors	Warning	doc-not-linked	Documentation	_0x615b	Ikke forbundet
+fixture/Project6-Errors	Warning	link-output-undriven	Wiring	_0x615b	Udgangen 'LED (øverst)' styres ikke af noget.
+fixture/Project6-Errors	Warning	doc-cable-colour	Documentation	_0x625b	Mangler Ledningsfarve
+fixture/Project6-Errors	Warning	doc-not-linked	Documentation	_0x625b	Ikke forbundet
+fixture/Project6-Errors	Warning	link-output-undriven	Wiring	_0x625b	Udgangen 'LED (nederst)' styres ikke af noget.
+fixture/Project6-Errors	Warning	link-output-multidriven	Wiring	_0x645b	Udgangen 'Udgang' styres af 2 kilder.
+fixture/Project6-Errors	Warning	scene-output-also-linked	Scenes	_0x645b	Udgangen 'Udgang' styres både af et scenarie og af et følg-link.
+fixture/Project6-Errors	Warning	link-through-empty-block	Wiring	_0xe328	Funktionsblokken 'Kobling' har ingen programmer, men modtager signaler.
+fixture/Project6-Errors	Warning	logic-block-empty	Logic	_0xe328	Blokken 'Kobling' har ingen programmer.
+fixture/Project6-Errors	Warning	name-note-missing	Documentation	_0x16f11	Mangler Note
+fixture/Project6-Errors	Warning	name-duplicate-siblings	Documentation	_0x17011	Dobbelt navn
+fixture/Project6-Errors	Warning	name-note-missing	Documentation	_0x17011	Mangler Note
+fixture/Project6-Errors	Warning	logic-output-never-assigned	Logic	_0x17112	Udgangen 'Udgang' tilskrives ikke af noget program.
+fixture/Project6-Errors	Warning	logic-output-never-assigned	Logic	_0x17212	Udgangen 'Udgang' tilskrives ikke af noget program.
+fixture/Project6-Errors	Warning	name-duplicate-siblings	Documentation	_0x17212	Dobbelt navn
+fixture/Project6-Errors	Warning	name-note-missing	Documentation	_0x17311	Mangler Note
+fixture/Project6-Errors	Warning	name-cable-number-duplicate	Documentation	_0x6653	Dobbelt Kabelnummer
+fixture/Project6-Errors	Warning	name-id-code-duplicate	Documentation	_0x6653	Dobbelt Id-kode
+fixture/Project6-Errors	Warning	name-power-group-variant	Documentation	_0x6653	Afvigende stavning af lysgruppe
+fixture/Project6-Errors	Warning	doc-not-linked	Documentation	_0x675b	Ikke forbundet
+fixture/Project6-Errors	Warning	doc-cablenumber	Documentation	_0x6953	Mangler Kabelnummer
+fixture/Project6-Errors	Warning	doc-cabletype	Documentation	_0x6953	Mangler Kabeltype
+fixture/Project6-Errors	Warning	doc-documentation-tag	Documentation	_0x6953	Mangler Id-kode
+fixture/Project6-Errors	Warning	doc-position	Documentation	_0x6953	Mangler Placering
+fixture/Project6-Errors	Warning	doc-power-group	Documentation	_0x6953	Mangler Lysgruppe
+fixture/Project6-Errors	Warning	doc-cable-colour	Documentation	_0x6a5a	Mangler Ledningsfarve
+fixture/Project6-Errors	Warning	link-crosses-locality	Wiring	_0x1792d	Følg-linket går mellem lokaliteterne 'Køkken' og 'Logik'.
+fixture/Project6-Errors	Warning	doc-cable-colour	Documentation	_0x6b5a	Mangler Ledningsfarve
+fixture/Project6-Errors	Warning	doc-not-linked	Documentation	_0x6b5a	Ikke forbundet
+fixture/Project6-Errors	Warning	link-input-unconnected	Wiring	_0x6b5a	Indgangen 'Tryk (højre)' er ikke forbundet.
+fixture/Project6-Errors	Warning	doc-cablenumber	Documentation	_0x6c53	Mangler Kabelnummer
+fixture/Project6-Errors	Warning	doc-cabletype	Documentation	_0x6c53	Mangler Kabeltype
+fixture/Project6-Errors	Warning	doc-documentation-tag	Documentation	_0x6c53	Mangler Id-kode
+fixture/Project6-Errors	Warning	doc-position	Documentation	_0x6c53	Mangler Placering
+fixture/Project6-Errors	Warning	doc-power-group	Documentation	_0x6c53	Mangler Lysgruppe
+fixture/Project6-Errors	Warning	name-duplicate-siblings	Documentation	_0x6c53	Dobbelt navn
+fixture/Project6-Errors	Warning	doc-address	Documentation	_0x6d5a	Mangler Adresse
+fixture/Project6-Errors	Warning	doc-cable-colour	Documentation	_0x6d5a	Mangler Ledningsfarve
+fixture/Project6-Errors	Warning	doc-not-linked	Documentation	_0x6d5a	Ikke forbundet
+fixture/Project6-Errors	Warning	link-input-unconnected	Wiring	_0x6d5a	Indgangen 'Tryk (venstre)' er ikke forbundet.
+fixture/Project6-Errors	Warning	doc-address	Documentation	_0x6e5a	Mangler Adresse
+fixture/Project6-Errors	Warning	doc-cable-colour	Documentation	_0x6e5a	Mangler Ledningsfarve
+fixture/Project6-Errors	Warning	doc-not-linked	Documentation	_0x6e5a	Ikke forbundet
+fixture/Project6-Errors	Warning	link-input-unconnected	Wiring	_0x6e5a	Indgangen 'Tryk (højre)' er ikke forbundet.
+fixture/Project6-Errors	Warning	doc-cablenumber	Documentation	_0x6f53	Mangler Kabelnummer
+fixture/Project6-Errors	Warning	name-empty	Documentation	_0x6f53	Mangler Navn
+fixture/Project6-Errors	Warning	doc-address	Documentation	_0x705b	Mangler Adresse
+fixture/Project6-Errors	Warning	doc-cable-colour	Documentation	_0x705b	Mangler Ledningsfarve
+fixture/Project6-Errors	Warning	doc-not-linked	Documentation	_0x705b	Ikke forbundet
+fixture/Project6-Errors	Warning	link-output-undriven	Wiring	_0x705b	Udgangen 'Udgang' styres ikke af noget.
+fixture/Project6-Errors	Warning	doc-cablenumber	Documentation	_0xd853	Mangler Kabelnummer
+fixture/Project6-Errors	Warning	doc-cabletype	Documentation	_0xd853	Mangler Kabeltype
+fixture/Project6-Errors	Warning	doc-documentation-tag	Documentation	_0xd853	Mangler Id-kode
+fixture/Project6-Errors	Warning	doc-position	Documentation	_0xd853	Mangler Placering
+fixture/Project6-Errors	Warning	doc-power-group	Documentation	_0xd853	Mangler Lysgruppe
+fixture/Project6-Errors	Warning	doc-address	Documentation	_0xd95b	Mangler Adresse
+fixture/Project6-Errors	Warning	doc-cable-colour	Documentation	_0xd95b	Mangler Ledningsfarve
+fixture/Project6-Errors	Warning	dev-dimmer-range-inverted	DeviceSettings	_0x7158	Lysdæmperen 'IHC LED Dimmer 2 kanaler' har minimum 80 % og maksimum 40 %.
+fixture/Project6-Errors	Warning	dev-setting-default	DeviceSettings	_0x7158	Produktet 'IHC LED Dimmer 2 kanaler' har 3 af 12 indstillinger på fabriksværdien.
+fixture/Project6-Errors	Warning	addr-dimmer-channel-unassigned	Addressing	_0x737b	Kanalen 'LED Dimmer kanal 1' har ingen kanal-id.
+fixture/Project6-Errors	Warning	scene-long-delay	Scenes	_0x1fb4c	Ramptiden 1801 sekunder er længere end de tilladte 60.
+fixture/Project6-Errors	Warning	addr-dimmer-channel-unassigned	Addressing	_0x847b	Kanalen 'LED Dimmer kanal 2' har ingen kanal-id.
+fixture/Project6-Errors	Warning	addr-wireless-not-commissioned	Addressing	_0xa154	Produktet 'Jalousi 2 tast (lokal lås)' har intet serienummer.
+fixture/Project6-Errors	Warning	dev-setting-default	DeviceSettings	_0xa154	Produktet 'Jalousi 2 tast (lokal lås)' har 1 af 2 indstillinger på fabriksværdien.
+fixture/Project6-Errors	Warning	link-input-unconnected	Wiring	_0xa45c	Indgangen 'Tryk (venstre)' er ikke forbundet.
+fixture/Project6-Errors	Warning	link-input-unconnected	Wiring	_0xa55c	Indgangen 'Tryk (højre)' er ikke forbundet.
+fixture/Project6-Errors	Warning	addr-wireless-not-commissioned	Addressing	_0xae54	Produktet 'Modtager relæ' har intet serienummer.
+fixture/Project6-Errors	Warning	addr-wireless-not-commissioned	Addressing	_0xb154	Produktet 'Modtager relæ' har intet serienummer.
+fixture/Project6-Errors	Warning	name-duplicate-siblings	Documentation	_0xb154	Dobbelt navn
+fixture/Project6-Errors	Warning	addr-modem-phonenumber-blank	Addressing	_0xb456	Modemet 'SMS Modem' har intet telefonnummer i nogen af sine 30 pladser.
+fixture/Project6-Errors	Warning	dev-setting-default	DeviceSettings	_0xb456	Produktet 'SMS Modem' har 30 af 31 indstillinger på fabriksværdien.
+fixture/Project6-Errors	Warning	struct-product-no-terminals	ProjectStructure	_0xb456	Produktet 'SMS Modem' har ingen klemmer.
+fixture/Project6-Errors	Warning	struct-locality-no-devices	ProjectStructure	_0x5432	Lokaliteten 'Logik' indeholder kun funktionsblokke.
+fixture/Project6-Errors	Warning	logic-block-empty	Logic	_0xda28	Blokken 'Tom blok' har ingen programmer.
+fixture/Project6-Errors	Warning	logic-block-no-pins	Logic	_0xda28	Blokken 'Tom blok' har hverken ind- eller udgange.
+fixture/Project6-Errors	Warning	name-default	Documentation	_0xda28	Uændret standardnavn
+fixture/Project6-Errors	Warning	struct-orphan-block	ProjectStructure	_0xda28	Blokken 'Tom blok' er ikke forbundet til resten af installationen.
+fixture/Project6-Errors	Warning	name-note-missing	Documentation	_0x16811	Mangler Note
+fixture/Project6-Errors	Warning	name-duplicate-siblings	Documentation	_0x16911	Dobbelt navn
+fixture/Project6-Errors	Warning	name-note-missing	Documentation	_0x16911	Mangler Note
+fixture/Project6-Errors	Warning	logic-output-never-assigned	Logic	_0x19012	Udgangen 'Aldrig tilskrevet' tilskrives ikke af noget program.
+fixture/Project6-Errors	Warning	link-crosses-locality	Wiring	_0x1df2d	Følg-linket går mellem lokaliteterne 'Logik' og 'Køkken'.
+fixture/Project6-Errors	Warning	scene-empty	Scenes	_0x1f44a	Scenariet 'Tom scene' har ingen medlemmer.
+fixture/Project6-Errors	Warning	scene-unreferenced	Scenes	_0x1f44a	Scenariet 'Tom scene' kaldes ikke fra noget program.
+fixture/Project6-Errors	Warning	scene-all-off	Scenes	_0x1f54a	Scenariet 'Alt slukket' slukker alle 3 medlemmer.
+fixture/Project6-Errors	Warning	scene-unreferenced	Scenes	_0x1f54a	Scenariet 'Alt slukket' kaldes ikke fra noget program.
+fixture/Project6-Errors	Warning	scene-unreferenced	Scenes	_0x1f64a	Scenariet 'Modstrid' kaldes ikke fra noget program.
+fixture/Project6-Errors	Warning	dev-backup-missing	DeviceSettings	_0x16b0a	Variablen 'Flag' i 'Zoo' gemmes ikke ved strømsvigt.
+fixture/Project6-Errors	Warning	logic-flag-never-cleared	Logic	_0x16b0a	Flaget 'Flag' sættes, men nulstilles aldrig.
+fixture/Project6-Errors	Warning	logic-variable-write-only	Logic	_0x16b0a	Variablen 'Flag' i 'Zoo' tilskrives, men læses aldrig.
+fixture/Project6-Errors	Warning	dev-backup-missing	DeviceSettings	_0x16c0b	Variablen 'Tal' i 'Zoo' gemmes ikke ved strømsvigt.
+fixture/Project6-Errors	Warning	logic-variable-unused	Logic	_0x16c0b	Variablen 'Tal' i 'Zoo' bruges ikke af noget program.
+fixture/Project6-Errors	Warning	logic-timer-unused	Logic	_0x16d10	Timeren 'Timer' startes ikke af noget program.
+fixture/Project6-Errors	Warning	logic-variable-unused	Logic	_0x16d10	Variablen 'Timer' i 'Zoo' bruges ikke af noget program.
+fixture/Project6-Errors	Warning	dev-backup-missing	DeviceSettings	_0x16e0c	Variablen 'Tæller' i 'Zoo' gemmes ikke ved strømsvigt.
+fixture/Project6-Errors	Warning	logic-counter-never-reset	Logic	_0x16e0c	Tælleren 'Tæller' tælles op, men nulstilles aldrig.
+fixture/Project6-Errors	Warning	dev-backup-missing	DeviceSettings	_0x18c0a	Variablen 'Selvudløser' i 'Zoo' gemmes ikke ved strømsvigt.
+fixture/Project6-Errors	Warning	dev-backup-missing	DeviceSettings	_0x18d0b	Variablen 'Kun skrevet' i 'Zoo' gemmes ikke ved strømsvigt.
+fixture/Project6-Errors	Warning	logic-variable-write-only	Logic	_0x18d0b	Variablen 'Kun skrevet' i 'Zoo' tilskrives, men læses aldrig.
+fixture/Project6-Errors	Warning	dev-backup-missing	DeviceSettings	_0x18e0b	Variablen 'Kun læst' i 'Zoo' gemmes ikke ved strømsvigt.
+fixture/Project6-Errors	Warning	logic-variable-read-only	Logic	_0x18e0b	Variablen 'Kun læst' i 'Zoo' læses, men tilskrives aldrig.
+fixture/Project6-Errors	Warning	logic-variable-unused	Logic	_0x18f09	Variablen 'Ugedag' i 'Zoo' bruges ikke af noget program.
+fixture/Project6-Errors	Warning	logic-variable-unused	Logic	_0x20f0a	Variablen 'Gemt tilstand' i 'Zoo' bruges ikke af noget program.
+fixture/Project6-Errors	Warning	dev-backup-missing	DeviceSettings	_0x2150a	Variablen 'Startværdi' i 'Zoo' gemmes ikke ved strømsvigt.
+fixture/Project6-Errors	Warning	dev-inivalue-overwritten	DeviceSettings	_0x2150a	Startværdien 'on' på 'Startværdi' sættes af et program ved hver opstart.
+fixture/Project6-Errors	Warning	logic-flag-never-cleared	Logic	_0x2150a	Flaget 'Startværdi' sættes, men nulstilles aldrig.
+fixture/Project6-Errors	Warning	logic-variable-write-only	Logic	_0x2150a	Variablen 'Startværdi' i 'Zoo' tilskrives, men læses aldrig.
+fixture/Project6-Errors	Warning	logic-program-no-actions	Logic	_0xfb1e	Programmet 'Program' har hændelser, men ingen kommandoer.
+fixture/Project6-Errors	Warning	logic-program-no-events	Logic	_0x1821e	Programmet 'Program' har ingen hændelser.
+fixture/Project6-Errors	Warning	logic-self-trigger	Logic	_0x1911e	Programmet 'Program' udløses af 'Selvudløser', som det selv tilskriver.
+fixture/Project6-Errors	Warning	logic-duplicate-program	Logic	_0x1a51e	Blokken 'Zoo' har to identiske programmer.
+fixture/Project6-Errors	Warning	logic-subprogram-no-conditions	Logic	_0x1ad1f	Underprogrammet 'Under program' har ingen betingelser.
+fixture/Project6-Errors	Warning	logic-case-no-branches	Logic	_0x1b621	Case-noden 'Case (%LT)' har ingen case-værdier.
+fixture/Project6-Errors	Warning	logic-case-no-branches	Logic	_0x1bc21	Case-noden 'Case (%LT)' har ingen case-værdier.
+fixture/Project6-Errors	Warning	link-fb-input-unfed	Wiring	_0xfe28	Funktionsblokken 'Kip tænd sluk (lokalt tilpasset)' har ingen forbundne indgange.
+fixture/Project6-Errors	Warning	link-fb-output-unused	Wiring	_0xfe28	Funktionsblokken 'Kip tænd sluk (lokalt tilpasset)' har ingen forbundne udgange.
+fixture/Project6-Errors	Warning	logic-master-block-modified	Logic	_0xfe28	Blokken 'Kip tænd sluk (lokalt tilpasset)' er ændret lokalt i forhold til biblioteksblokken 'Kip tænd sluk'.
+fixture/Project6-Errors	Warning	struct-orphan-block	ProjectStructure	_0xfe28	Blokken 'Kip tænd sluk (lokalt tilpasset)' er ikke forbundet til resten af installationen.
+fixture/Project6-Errors	Warning	scene-empty	Scenes	_0x1094a	Scenariet 'Scenarie Tænd' har ingen medlemmer.
+fixture/Project6-Errors	Warning	scene-empty	Scenes	_0x10a4a	Scenariet 'Scenarie Sluk' har ingen medlemmer.
+fixture/Project6-Errors	Warning	logic-block-locked-content	Logic	_0x10c10	Den låste blok 'Kip tænd sluk (lokalt tilpasset)' har ændret 'Timer'.
+fixture/Project6-Errors	Warning	logic-contending-writers	Logic	_0x10c10	Variablen 'Timer' tilskrives af 5 programmer med uafhængige udløsere.
+fixture/Project6-Errors	Warning	name-default	Documentation	_0x5532	Uændret standardnavn
+fixture/Project6-Errors	Warning	struct-locality-empty	ProjectStructure	_0x5532	Lokaliteten 'Lokalitet' indeholder hverken produkter eller blokke.
+synthetic/ids	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
+synthetic/ids	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/ids	Warning	struct-locality-empty	ProjectStructure	_0x2132	Lokaliteten 'First' indeholder hverken produkter eller blokke.
+synthetic/ids	Error	id-duplicate-token	FileIntegrity	_0x2132	Dobbelt id
+synthetic/ids	Warning	struct-locality-empty	ProjectStructure	_0x2132	Lokaliteten 'Same token' indeholder hverken produkter eller blokke.
+synthetic/ids	Error	id-duplicate-counter	FileIntegrity	_0x2131	Dobbelt id-tæller
+synthetic/ids	Error	id-typecode	FileIntegrity	_0x2131	Forkert id-typekode
+synthetic/ids	Warning	struct-locality-empty	ProjectStructure	_0x2131	Lokaliteten 'Foreign type code' indeholder hverken produkter eller blokke.
+synthetic/ids	Error	id-wellformed	FileIntegrity	_0xzz	Ugyldigt id
+synthetic/ids	Warning	struct-locality-empty	ProjectStructure	_0xzz	Lokaliteten 'Unparseable' indeholder hverken produkter eller blokke.
+synthetic/schema	Warning	doc-no-enduser-products	Documentation	utcs_project	Ingen produkter til slutbrugerdokumentation
+synthetic/schema	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
+synthetic/schema	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/schema	Error	attr-enum-range	FileIntegrity	_0x5153	Ugyldig værdi
+synthetic/schema	Error	attr-required	FileIntegrity	_0x5153	Mangler påkrævet attribut
+synthetic/schema	Error	attr-undeclared	FileIntegrity	_0x5153	Ukendt attribut
+synthetic/schema	Warning	doc-cablenumber	Documentation	_0x5153	Mangler Kabelnummer
+synthetic/schema	Warning	doc-cabletype	Documentation	_0x5153	Mangler Kabeltype
+synthetic/schema	Warning	doc-documentation-tag	Documentation	_0x5153	Mangler Id-kode
+synthetic/schema	Warning	doc-position	Documentation	_0x5153	Mangler Placering
+synthetic/schema	Warning	doc-power-group	Documentation	_0x5153	Mangler Lysgruppe
+synthetic/schema	Warning	struct-product-no-terminals	ProjectStructure	_0x5153	Produktet 'Missing and undeclared' har ingen klemmer.
+synthetic/schema	Error	idref-dangling	FileIntegrity	_0x5349	Reference uden mål
+synthetic/schema	Error	attr-latin1	FileIntegrity	_0x5553	Tegn kan ikke gemmes
+synthetic/schema	Warning	doc-cablenumber	Documentation	_0x5553	Mangler Kabelnummer
+synthetic/schema	Warning	doc-cabletype	Documentation	_0x5553	Mangler Kabeltype
+synthetic/schema	Warning	doc-documentation-tag	Documentation	_0x5553	Mangler Id-kode
+synthetic/schema	Warning	doc-position	Documentation	_0x5553	Mangler Placering
+synthetic/schema	Warning	doc-power-group	Documentation	_0x5553	Mangler Lysgruppe
+synthetic/schema	Warning	struct-product-no-terminals	ProjectStructure	_0x5553	Produktet 'Pris €' har ingen klemmer.
+synthetic/schema	Warning	containment	FileIntegrity	bogus_element	Uventet placering
+synthetic/schema	Error	element-undeclared	FileIntegrity	bogus_element	Ukendt elementtype
+synthetic/fb-locality	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
+synthetic/fb-locality	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/fb-locality	Warning	struct-locality-no-devices	ProjectStructure	_0x2132	Lokaliteten 'Stue' indeholder kun funktionsblokke.
+synthetic/fb-locality	Warning	link-fb-input-unfed	Wiring	_0x6028	Funktionsblokken 'Owner' har ingen forbundne indgange.
+synthetic/fb-locality	Warning	name-note-missing	Documentation	_0x7011	Mangler Note
+synthetic/fb-locality	Warning	logic-program-no-events	Logic	_0x661e	Programmet 'PS' har ingen hændelser.
+synthetic/fb-locality	Warning	link-fb-input-unfed	Wiring	_0x8028	Funktionsblokken 'Borrower' har ingen forbundne indgange.
+synthetic/fb-locality	Warning	struct-orphan-block	ProjectStructure	_0x8028	Blokken 'Borrower' er ikke forbundet til resten af installationen.
+synthetic/fb-locality	Warning	name-note-missing	Documentation	_0x8911	Mangler Note
+synthetic/fb-locality	Error	fb-local-ref	Logic	_0x90c8	Reference uden for blokken
+synthetic/fb-locality	Error	inline-constant	Logic	_0x91c9	Ubrugt indlejret konstant
+synthetic/fb-shape	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
+synthetic/fb-shape	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/fb-shape	Warning	struct-locality-no-devices	ProjectStructure	_0x2132	Lokaliteten 'Stue' indeholder kun funktionsblokke.
+synthetic/fb-shape	Error	fb-shape	Logic	_0x6028	Forkert blokopbygning
+synthetic/fb-shape	Warning	logic-block-empty	Logic	_0x6028	Blokken 'Truncated' har ingen programmer.
+synthetic/fb-shape	Warning	struct-orphan-block	ProjectStructure	_0x6028	Blokken 'Truncated' er ikke forbundet til resten af installationen.
+synthetic/fb-shape	Warning	containment	FileIntegrity	_0x7011	Uventet placering
+synthetic/fb-shape	Error	fb-pin-container	Logic	_0x7011	Klemme i forkert beholder
+synthetic/fb-shape	Error	fb-programs	Logic	_0x8028	Ugyldigt programindhold
+synthetic/fb-shape	Warning	logic-block-empty	Logic	_0x8028	Blokken 'Sub program' har ingen programmer.
+synthetic/fb-shape	Warning	logic-block-no-pins	Logic	_0x8028	Blokken 'Sub program' har hverken ind- eller udgange.
+synthetic/fb-shape	Warning	struct-orphan-block	ProjectStructure	_0x8028	Blokken 'Sub program' er ikke forbundet til resten af installationen.
+synthetic/fb-shape	Warning	containment	FileIntegrity	_0x861f	Uventet placering
+synthetic/fb-shape	Warning	logic-subprogram-no-conditions	Logic	_0x861f	Underprogrammet 'PSub' har ingen betingelser.
+synthetic/fb-shape	Warning	program-shape	Logic	_0x861f	Uventet programopbygning
+synthetic/bijection	Warning	doc-no-enduser-products	Documentation	utcs_project	Ingen produkter til slutbrugerdokumentation
+synthetic/bijection	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
+synthetic/bijection	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/bijection	Warning	doc-cablenumber	Documentation	_0x5153	Mangler Kabelnummer
+synthetic/bijection	Warning	doc-cabletype	Documentation	_0x5153	Mangler Kabeltype
+synthetic/bijection	Warning	doc-documentation-tag	Documentation	_0x5153	Mangler Id-kode
+synthetic/bijection	Warning	doc-position	Documentation	_0x5153	Mangler Placering
+synthetic/bijection	Warning	doc-power-group	Documentation	_0x5153	Mangler Lysgruppe
+synthetic/bijection	Warning	doc-address	Documentation	_0x525b	Mangler Adresse
+synthetic/bijection	Warning	doc-cable-colour	Documentation	_0x525b	Mangler Ledningsfarve
+synthetic/bijection	Error	idref-dangling	FileIntegrity	_0x542d	Reference uden mål
+synthetic/bijection	Error	link-bijection	Wiring	_0x542d	Forbindelsen er ensidig
+synthetic/bijection	Error	idref-dangling	FileIntegrity	_0x554b	Reference uden mål
+synthetic/bijection	Error	scene-bijection	Scenes	_0x554b	Scenerækken er ensidig
+synthetic/dataline-address	Warning	doc-no-enduser-products	Documentation	utcs_project	Ingen produkter til slutbrugerdokumentation
+synthetic/dataline-address	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
+synthetic/dataline-address	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/dataline-address	Warning	doc-cablenumber	Documentation	_0x5153	Mangler Kabelnummer
+synthetic/dataline-address	Warning	doc-cabletype	Documentation	_0x5153	Mangler Kabeltype
+synthetic/dataline-address	Warning	doc-documentation-tag	Documentation	_0x5153	Mangler Id-kode
+synthetic/dataline-address	Warning	doc-position	Documentation	_0x5153	Mangler Placering
+synthetic/dataline-address	Warning	doc-power-group	Documentation	_0x5153	Mangler Lysgruppe
+synthetic/dataline-address	Warning	doc-cable-colour	Documentation	_0x525a	Mangler Ledningsfarve
+synthetic/dataline-address	Warning	doc-not-linked	Documentation	_0x525a	Ikke forbundet
+synthetic/dataline-address	Warning	link-input-unconnected	Wiring	_0x525a	Indgangen 'A' er ikke forbundet.
+synthetic/dataline-address	Error	dataline-address-duplicate	Addressing	_0x535a	Dobbelt klemmeadresse
+synthetic/dataline-address	Warning	doc-cable-colour	Documentation	_0x535a	Mangler Ledningsfarve
+synthetic/dataline-address	Warning	doc-not-linked	Documentation	_0x535a	Ikke forbundet
+synthetic/dataline-address	Warning	link-input-unconnected	Wiring	_0x535a	Indgangen 'B' er ikke forbundet.
+synthetic/dataline-address	Warning	addr-module-partial	Addressing	_0x545a	Datalinje 10 bruger kun 1 af 16 klemmer.
+synthetic/dataline-address	Error	dataline-address-range	Addressing	_0x545a	Klemmeadresse uden for området
+synthetic/dataline-address	Warning	doc-cable-colour	Documentation	_0x545a	Mangler Ledningsfarve
+synthetic/dataline-address	Warning	doc-not-linked	Documentation	_0x545a	Ikke forbundet
+synthetic/dataline-address	Warning	link-input-unconnected	Wiring	_0x545a	Indgangen 'C' er ikke forbundet.
+synthetic/dataline-address	Error	dataline-address-malformed	Addressing	_0x565a	Ugyldig klemmeadresse
+synthetic/dataline-address	Warning	doc-address	Documentation	_0x565a	Mangler Adresse
+synthetic/dataline-address	Warning	doc-cable-colour	Documentation	_0x565a	Mangler Ledningsfarve
+synthetic/dataline-address	Warning	doc-not-linked	Documentation	_0x565a	Ikke forbundet
+synthetic/dataline-address	Warning	link-input-unconnected	Wiring	_0x565a	Indgangen 'D' er ikke forbundet.
+synthetic/enum	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
+synthetic/enum	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/enum	Warning	enum-def-single-value	Logic	_0x4147	Enumerator typen 'A' har kun én værdi, 'A1'.
+synthetic/enum	Warning	enum-value-unused	Logic	_0x4248	Værdien 'A1' i enumerator typen 'A' bruges ikke.
+synthetic/enum	Warning	enum-def-single-value	Logic	_0x4347	Enumerator typen 'B' har kun én værdi, 'B1'.
+synthetic/enum	Warning	enum-def-unused	Logic	_0x4347	Enumerator typen 'B' bruges ikke af nogen variabel.
+synthetic/enum	Warning	struct-locality-empty	ProjectStructure	_0x2132	Lokaliteten 'Stue' indeholder hverken produkter eller blokke.
+synthetic/enum	Warning	containment	FileIntegrity	_0x910f	Uventet placering
+synthetic/enum	Error	enum-inivalue	Logic	_0x910f	Ugyldig starttilstand
+synthetic/enum	Warning	containment	FileIntegrity	_0x930f	Uventet placering
+synthetic/enum	Error	enum-typedef	Logic	_0x930f	Enumeratortype mangler
+synthetic/root-version	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
+synthetic/root-version	Error	luid-malformed	FileIntegrity	utcs_project	Ugyldig id-tæller
+synthetic/root-version	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/root-version	Error	root-version	FileIntegrity	utcs_project	Nyere projektversion
+synthetic/luid-ceiling	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
+synthetic/luid-ceiling	Error	luid-ceiling	FileIntegrity	utcs_project	Id-tælleren er opbrugt
+synthetic/luid-ceiling	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/luid-low	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
+synthetic/luid-low	Error	luid-low	FileIntegrity	utcs_project	Id-tælleren er for lav
+synthetic/luid-low	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/luid-low	Warning	struct-locality-empty	ProjectStructure	_0x2132	Lokaliteten 'Stue' indeholder hverken produkter eller blokke.
+synthetic/containment	Warning	doc-no-enduser-products	Documentation	utcs_project	Ingen produkter til slutbrugerdokumentation
+synthetic/containment	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
+synthetic/containment	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/containment	Warning	containment	FileIntegrity	_0x5153	Uventet placering
+synthetic/containment	Warning	doc-cablenumber	Documentation	_0x5153	Mangler Kabelnummer
+synthetic/containment	Warning	doc-cabletype	Documentation	_0x5153	Mangler Kabeltype
+synthetic/containment	Warning	doc-documentation-tag	Documentation	_0x5153	Mangler Id-kode
+synthetic/containment	Warning	doc-position	Documentation	_0x5153	Mangler Placering
+synthetic/containment	Warning	doc-power-group	Documentation	_0x5153	Mangler Lysgruppe
+synthetic/containment	Warning	struct-product-no-terminals	ProjectStructure	_0x5153	Produktet 'Loose product' har ingen klemmer.
+synthetic/modem-phone	Warning	doc-no-enduser-products	Documentation	utcs_project	Ingen produkter til slutbrugerdokumentation
+synthetic/modem-phone	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
+synthetic/modem-phone	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/modem-phone	Warning	struct-product-no-terminals	ProjectStructure	_0x5156	Produktet 'SMS modem' har ingen klemmer.
+synthetic/modem-phone	Warning	addr-modem-phonenumber-malformed	Addressing	_0x54cd	Telefonnummeret '+4' skal være på 3-20 tegn uden mellemrum og begynde med en landekode, f.eks. +45.
+synthetic/modem-phone	Warning	addr-modem-phonenumber-malformed	Addressing	_0x55cd	Telefonnummeret '4512345678' skal være på 3-20 tegn uden mellemrum og begynde med en landekode, f.eks. +45.

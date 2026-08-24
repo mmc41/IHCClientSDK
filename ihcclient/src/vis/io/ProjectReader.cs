@@ -41,7 +41,9 @@ namespace Ihc.Vis.Io
             }
             catch (VisSchemaFormatException ex)
             {
-                throw new ProjectFormatException($"The file's inline DTD is malformed: {ex.Message}", ex);
+                throw new ProjectFormatException(
+                    LoadRefusalCodes.DtdMalformed,
+                    $"The file's inline DTD is malformed: {ex.Message}", ex);
             }
 
             var settings = new XmlReaderSettings
@@ -62,16 +64,19 @@ namespace Ihc.Vis.Io
             catch (XmlException ex)
             {
                 throw new ProjectFormatException(
+                    LoadRefusalCodes.NotXml,
                     $"Not a well-formed .vis/.ihc XML document (line {ex.LineNumber}, position {ex.LinePosition}): {ex.Message}", ex);
             }
             if (root.Tag != "utcs_project")
             {
                 throw new ProjectFormatException(
+                    LoadRefusalCodes.RootTag,
                     $"Root element is <{root.Tag}>, expected <utcs_project> — not an IHC .vis/.ihc project file.");
             }
             if (root.GetAttribute("version_major") is null)
             {
                 throw new ProjectFormatException(
+                    LoadRefusalCodes.VersionMissing,
                     "The root <utcs_project> is missing its required version_major attribute — not a valid IHC project file.");
             }
 
@@ -82,7 +87,9 @@ namespace Ihc.Vis.Io
             }
             catch (VisSchemaFormatException ex)
             {
-                throw new ProjectFormatException($"The file's inline DTD is malformed: {ex.Message}", ex);
+                throw new ProjectFormatException(
+                    LoadRefusalCodes.DtdMalformed,
+                    $"The file's inline DTD is malformed: {ex.Message}", ex);
             }
             return project;
         }
@@ -91,22 +98,27 @@ namespace Ihc.Vis.Io
         {
             if (bytes.Length == 0)
             {
-                throw new ProjectFormatException("The stream is empty — not a .vis/.ihc project.");
+                throw new ProjectFormatException(
+                    LoadRefusalCodes.Empty,
+                    "The stream is empty — not a .vis/.ihc project.");
             }
             if (bytes.Length >= 2 && bytes[0] == 0x1F && bytes[1] == 0x8B)
             {
                 throw new ProjectFormatException(
+                    LoadRefusalCodes.Gzip,
                     "The content is gzip-compressed. Controller project blobs must be decompressed first " +
                     $"({nameof(IControllerService)}.{nameof(IControllerService.GetProject)} already returns decompressed XML).");
             }
             if (CatalogTextEncodingExtensions.HasUtf8Bom(bytes))
             {
                 throw new ProjectFormatException(
+                    LoadRefusalCodes.Utf8Bom,
                     ".vis files are ISO-8859-1 with no byte-order mark; found a UTF-8 BOM. Re-save the file as ISO-8859-1 without a BOM.");
             }
             if (bytes.Length >= 2 && ((bytes[0] == 0xFF && bytes[1] == 0xFE) || (bytes[0] == 0xFE && bytes[1] == 0xFF)))
             {
                 throw new ProjectFormatException(
+                    LoadRefusalCodes.Utf16Bom,
                     ".vis files are ISO-8859-1 with no byte-order mark; found a UTF-16 BOM. Re-save the file as ISO-8859-1.");
             }
             GuardDeclaredEncoding(bytes);
@@ -122,6 +134,7 @@ namespace Ihc.Vis.Io
                 && !declared.Equals("ISO-8859-1", StringComparison.OrdinalIgnoreCase))
             {
                 throw new ProjectFormatException(
+                    LoadRefusalCodes.DeclaredEncoding,
                     $"The file declares encoding '{declared}'; .vis files are ISO-8859-1. " +
                     "Re-encode the file as ISO-8859-1 first (note: a re-encoded file will not round-trip byte-identically).");
             }
@@ -132,6 +145,7 @@ namespace Ihc.Vis.Io
             if (depth > MaxElementDepth)
             {
                 throw new ProjectFormatException(
+                    LoadRefusalCodes.Depth,
                     $"Element nesting exceeds {MaxElementDepth} levels; the file is corrupt or not a .vis project.");
             }
             reader.MoveToContent();
@@ -162,7 +176,9 @@ namespace Ihc.Vis.Io
                 }
                 else if (reader.NodeType == XmlNodeType.None)
                 {
-                    throw new ProjectFormatException($"Unexpected end of document inside <{tag}> — the file is truncated.");
+                    throw new ProjectFormatException(
+                        LoadRefusalCodes.NotXml,
+                        $"Unexpected end of document inside <{tag}> — the file is truncated.");
                 }
                 else
                 {
@@ -189,6 +205,7 @@ namespace Ihc.Vis.Io
                 ? $" (line {info.LineNumber}, position {info.LinePosition})"
                 : string.Empty;
             throw new ProjectFormatException(
+                LoadRefusalCodes.CharacterData,
                 $"Element <{parentTag}> contains character data (\"{excerpt}\"){at}; the .vis model is " +
                 "attribute-only, and loading this file would silently lose the text on save.");
         }

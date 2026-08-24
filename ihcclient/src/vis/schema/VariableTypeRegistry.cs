@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace Ihc.Vis.Schema
 {
-    /// <summary>The role a function-block variable type plays in the §6.3.1 section↔type model (ADR-002/D07): an
+    /// <summary>The role a function-block variable type plays in the §6.3.1 section↔type model (ADR-002): an
     /// input pin, an output pin, or a value variable accepted by any block container. SDK-authoritative — the UI
     /// palette projects display labels over it.</summary>
     public enum VariableRole
@@ -22,12 +22,12 @@ namespace Ihc.Vis.Schema
     }
 
     /// <summary>An SDK-supported, user-authorable function-block variable type: its resource <see cref="Tag"/> and
-    /// its <see cref="Role"/> classification (ADR-002/D07).</summary>
+    /// its <see cref="Role"/> classification (ADR-002).</summary>
     public readonly record struct VariableTypeInfo(string Tag, VariableRole Role);
 
     /// <summary>
     /// The single authoritative registry of the function-block variable types a user can author into a block's
-    /// sections (US-027, ADR-002/D07): the input and output pin types and the value-variable resource types the
+    /// sections (US-027, ADR-002): the input and output pin types and the value-variable resource types the
     /// engine accepts, each classified by <see cref="VariableRole"/>. <see cref="PlacementRules"/> admits value
     /// insertion by this set, and the OpenVisual "Insert variable" palette projects display labels over it — so the
     /// set the engine accepts and the set the UI offers cannot drift apart. Display labels stay app-side

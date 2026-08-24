@@ -34,7 +34,7 @@ latest_update: 2026-08-14 — E17 (integrated component help) added under storie
 | --- | --- | --- | --- |
 | [checklist.md](checklist.md) | Scope contract for comparing OpenVisual with vendor IHC Visual: dimensions, oracle choice, evidence rules, verdicts | comparison dimensions, reference oracle, evidence, verdict, maintenance rule | 172 |
 | [alignment-coverage.md](alignment-coverage.md) | Coverage ledger recording what has been measured per checklist dimension — answers "what has nobody looked at?" | coverage cells, dialogs, set-valued dimensions, state axes, driver gaps | 162 |
-| [error-list.md](error-list.md) | Findings catalogue of `.vis` project error conditions: categories, severities, sources, live-vendor verification status | corruption findings, user-sourced findings, severity, live verification, draft | 449 |
+| [error-list.md](error-list.md) | Host problem appendix: the reserved `app.openvisual.*` code family, what may be minted into it, and the governance it follows. The `.vis` findings catalogue itself moved to [`ihcclient/docs/problem-catalogue.md`](../../../ihcclient/docs/problem-catalogue.md) | reserved host family, operation outcomes, code ownership, Danish labels, id reservation | 37 |
 
 ### Icon language
 
@@ -55,14 +55,14 @@ latest_update: 2026-08-14 — E17 (integrated component help) added under storie
 6. Data Requirements / Glossary
 7. Test Oracles / Test Data / Source Code / Companion Specifications / Standards and Specifications
 
-#### [error-list.md](error-list.md) — project findings catalogue
+#### [error-list.md](error-list.md) — host problem appendix
 
-1. How to read a row / Categories / Severity / Source
-2. File-sourced findings — corruption
-3. User-sourced findings — action or lack of action
-4. Deliberate non-findings / Behavioural requirements
-5. Verification against the live application
-6. Appendix — field evidence: the documentation set of eight is closed
+1. What belongs here — the reserved `app.openvisual.*` family, operation outcomes only
+2. The rules this family follows — uniqueness, entries, typed arguments, Danish labels, id reservation
+3. Rows — rendered from `Services/HostProblemCatalog.cs` and compared by a test; add a declaration, then regenerate
+
+> The `.vis` findings are NOT here. Every project finding and coded refusal the SDK reports lives in the SDK's master artifact,
+> [`ihcclient/docs/problem-catalogue.md`](../../../ihcclient/docs/problem-catalogue.md); this file is the host family alone.
 
 #### [icon_codes.md](icon_codes.md) — icon selection reference
 

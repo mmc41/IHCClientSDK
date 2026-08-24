@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 using ihc_openvisual.ViewModels;
 using ihc_openvisual.Views;
@@ -20,8 +21,15 @@ public class SelectionClearTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
 
-        TreeNodeViewModel locality = vm.InstallationNodes[0].Children[0];   // a room locality (deletable, NodeKind "locality")
-        vm.CopyCommand.Execute(locality);          // arm the clipboard so Paste is offered on a locality
+        // A PRODUCT on the clipboard and a DIFFERENT locality selected — a paste the SDK actually allows.
+        // This used to copy a locality and select that same locality, which the paste gate offered and the SDK
+        // would have refused on click; T015 closed that by making the gate ask CanApply, so the scenario has to
+        // be a legal one for the precondition below to mean anything.
+        TreeNodeViewModel source = vm.InstallationNodes[0].Children[0];
+        await harness.Session.AddProductAsync(source.ElementId!.Value,
+            harness.ProjectService.GetAvailableProducts().First().ProductIdentifier);
+        vm.CopyCommand.Execute(source.Children[0]);
+        TreeNodeViewModel locality = vm.InstallationNodes[0].Children[1];   // a room locality (deletable, NodeKind "locality")
         vm.SelectedInstallationNode = locality;    // select in the Installation pane — the active pane
 
         // Preconditions: the active-pane selection drives SelectedNode and the mutation gates are enabled

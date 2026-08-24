@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
 
@@ -20,7 +21,7 @@ namespace Ihc.Vis.Io
     internal static class ProjectRoundTripVerifier
     {
         /// <summary>
-        /// Throws <see cref="InvalidOperationException"/> when <paramref name="bytes"/> (the serialized form of
+        /// Throws <see cref="RefusedOperationException"/> when <paramref name="bytes"/> (the serialized form of
         /// <paramref name="toWrite"/>) do not re-parse back to <paramref name="toWrite"/>. Tolerant comparison: the
         /// serializer omits a Defaulted attribute whose value equals its DTD default (<see cref="AttrSchema.OmitsOnWrite"/>)
         /// and the reader never re-materializes it, so a model that explicitly carried such an attribute is a FAITHFUL
@@ -37,7 +38,7 @@ namespace Ihc.Vis.Io
             ProjectElement actual = StripDefaultEqualAttrs(reparsed.Root, reparsed.SchemaView);
             if (!actual.Equals(expected))
             {
-                throw new InvalidOperationException(
+                throw new RefusedOperationException(SaveRefusalCodes.RoundTripMismatch,
                     "Serialize/re-parse mismatch: the written bytes do not reproduce the in-memory project" +
                     FirstDivergence(expected, actual, path: "utcs_project") +
                     " — the model holds state the .vis format cannot represent.");

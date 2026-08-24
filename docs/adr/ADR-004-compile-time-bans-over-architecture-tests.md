@@ -2,9 +2,9 @@
 
 ## Status
 
-Decided — 2026-08-17. Refines ADR-002, which recorded that enforcement of the layering rules is partial,
-and ADR-003, whose confirmation names a compile-time namespace ban alongside the architecture tests. Neither
-is superseded.
+Decided — 2026-08-17. Refines ADR-002, whose enforcement inventory names both mechanisms and defers the
+split between them to this record, and ADR-003, whose confirmation names a compile-time namespace ban
+alongside the architecture tests. Neither is superseded.
 
 Revisit triggers: (a) a migrated ban acquires a local waiver, since the rules moved here were moved on the
 premise that they carry none; (b) the analyzer stops supporting namespace-level entries, which is what makes
@@ -15,15 +15,16 @@ what "whole-project" scope means for both mechanisms.
 
 Each architecture rule is enforced in exactly one place. A rule moves to a compile-time symbol ban when the
 ban expresses it exactly — a namespace or type entry, covering the whole project and any member added later.
-Every other rule stays an ArchUnitNET fitness test, because a symbol ban cannot express it at all.
+Every other rule stays an ArchUnitNET fitness test, because a symbol ban cannot express it exactly.
 
 ## Context
 
 **Current state** (2026-08-17; 18 projects, `net10.0`; both mechanisms present):
 
-- The architecture suite holds 80 rules over two IL models (the SDK and the GUI assembly), run on all three
-  desktop platforms in CI. It reads IL, so it sees dependency direction, type hierarchy, member-signature
-  closures, construction sites, field retention and markup-authored constructions.
+- The architecture suite holds 80 rules over two IL models of product code (the SDK and the GUI assembly),
+  plus a self-scan of the suite's own assembly for its seeded controls, run on all three desktop platforms
+  in CI. It reads IL, so it sees dependency direction, type hierarchy, member-signature closures,
+  construction sites, field retention and markup-authored constructions.
 - **33 of those 80 rules are rules about the rules** — seeded-violator positive controls and vacuity guards.
   They exist because a scan that stops matching anything keeps passing.
 - A compile-time ban mechanism is in place repo-wide: one banned-symbol file applied to every project that
@@ -33,7 +34,7 @@ Every other rule stays an ArchUnitNET fitness test, because a symbol ban cannot 
   and in the editor before that.
 - Observed on repeated cold builds: adding the ban analyzer to a project changes build wall-clock by less
   than measurement noise, while an architecture verdict over the same code costs a second project build plus
-  a test-host run on top of the build being compared.
+  a test-host run on top of the product build itself.
 
 **Decision forces**: two mechanisms now cover overlapping ground. Without a rule for choosing between them,
 both grow, rules get enforced twice, and it stops being clear which one is authoritative.
@@ -46,7 +47,7 @@ back by restoring the test. No published artefact depends on the choice.
 | Assumption | Type | Confidence | Source | Validation trigger |
 | --- | --- | --- | --- | --- |
 | Contributors read a compile error at the offending line sooner than a test failure in a report | operational | high | industry norm; the repo already invests in inner-loop feedback | a violation reaching CI despite a local build |
-| The migrated rules genuinely need no exemption | technical | medium | each is a layering ban with no recorded exception | the first request for a waiver |
+| The migrated rules genuinely need no exemption | technical | medium | each is a layering prohibition with no exception on record | the first request for a waiver |
 | Namespace-level ban entries keep covering symbols added later | technical | high | the mechanism matches on the namespace, not a member roster | an analyzer release that narrows matching |
 | The suite's remaining rules stay beyond a symbol ban's reach | technical | high | classification of every rule against the ban's expressiveness | a rule simplifying into a plain reference ban |
 
@@ -56,13 +57,13 @@ back by restoring the test. No published artefact depends on the choice.
 | --- | --- | --- |
 | A symbol ban applies to a whole project; it cannot hold for only some types within one | technical | given |
 | A source analyzer sees C# only; markup-authored constructions are invisible to it | technical | given |
-| The SDK uses context-capture pervasively and deliberately, so any such ban must be project-scoped | technical | given |
+| The SDK states `ConfigureAwait` at every await by design (ADR-001), so a no-`ConfigureAwait` ban could only ever be project-scoped, never repo-wide | technical | given |
 | Sole-maintainer capacity | organizational | given |
 
 ## Evaluation Criteria
 
-Priority order (highest first). The first is decisive: a mechanism that cannot express a rule is not an
-option for that rule, whatever it scores elsewhere.
+Priority order (highest first). The first is decisive: a mechanism that cannot state a rule exactly is not
+an option for that rule, whatever it scores elsewhere.
 
 1. **Rule fidelity** — expresses the rule exactly, including code the rule must reach and members added later.
 2. **Failure mode** — whether enforcement can stop working while still reporting success.
@@ -113,11 +114,11 @@ compares, which is the shape the repository's build-policy files were centralise
 | Criteria | Score | Rationale |
 | --- | --- | --- |
 | Rule fidelity | 5/5 | The test carries the rule; the ban adds an earlier partial signal |
-| Failure mode | 4/5 | The test's anchors still break on a rename, and the ban cannot go vacuous |
+| Failure mode | 2/5 | Each copy alone is guarded — anchors break on a rename, a ban cannot go vacuous — but nothing compares the pair, so the two statements of one rule can stop agreeing while every signal stays green |
 | Feedback locality and latency | 5/5 | Violations surface at the edit and are still checked in full afterwards |
 | Exemption discipline | 5/5 | A local suppression silences the ban but not the test |
-| Maintenance cost | 1/5 | Each rule is stated twice, in two syntaxes, with no mechanism comparing them, and neither is clearly authoritative |
-| | **Total: 20/25** | **Trade-offs**: buys the best feedback and keeps unwaivability, at the price of duplicated rules that drift apart silently |
+| Maintenance cost | 1/5 | Each rule is stated twice, in two syntaxes, kept in sync only by hand, and neither copy is clearly authoritative |
+| | **Total: 18/25** | **Trade-offs**: buys the best feedback and keeps unwaivability, at the price of duplicated rules that drift apart silently |
 
 ## Decision
 
@@ -129,14 +130,18 @@ Adopt option 1: one rule, one mechanism.
   candidate: the roster silently ages, and a rule that quietly stops covering new cases is worse than one
   that reports late.
 - Rules whose value depends on being unwaivable stay fitness tests. A compile-time ban can be suppressed at
-  the call site, which is acceptable for a layering prohibition — the waiver is visible where it is taken —
-  but changes the meaning of a ban documented as admitting no exception.
-- Option 3 scores as well on the criteria and is rejected on the one where it does not: a rule stated twice
-  in two syntaxes, with nothing comparing the copies, drifts. This repository already centralised its build
-  policy and package versions for that reason, and the same argument applies to a rule.
+  the call site. For a layering prohibition that merely has no exception on record, that is acceptable — the
+  waiver is visible where it is taken. For a rule documented as admitting no exception, such as the GUI's
+  exemption-free no-`ConfigureAwait` rule, suppressibility changes what the rule means, so it stays a test.
+- Option 3 buys the best feedback, but duplication is a failure mode before it is a cost: a rule stated
+  twice in two syntaxes, with nothing comparing the copies, can quietly stop meaning one thing, and
+  enforcement then reports success for a rule neither copy fully states. This repository already centralised
+  its build policy and package versions to eliminate that shape, and the same argument applies to a rule.
 - The migrated set is therefore small — the whole-project layering prohibitions — and the suite keeps the
   large majority of its rules, including every one that reasons about hierarchy, signatures, retention,
-  construction sites or markup.
+  construction sites or markup. This record fixes the placement rule, not the inventory: the entries
+  themselves live in the two `BannedSymbols.txt` files (repository root and `applications/ihc_openvisual/`),
+  and `ARCHITECTURE.md`'s Architectural Invariants section names them.
 
 Confidence: high — the split follows from what each mechanism can express, which was established by
 classifying every existing rule rather than by preference. Top unresolved uncertainty: whether the migrated
@@ -155,7 +160,7 @@ bans attract local suppressions in practice; the first one is the signal that a 
 ### Negative
 
 - Migrated rules become locally waivable by a suppression comment, where a fitness test admits no waiver at
-  all — a real weakening, accepted only for prohibitions that carry no documented exception.
+  all — a real weakening, accepted only for prohibitions with no exception on record.
 - A ban entry is a string, so renaming a banned namespace empties the ban. The anchored resolve-pin is what
   keeps that from being silent, and it is an obligation the fitness tests carried implicitly.
 - Two mechanisms now exist for one concern, so a contributor adding a rule must first decide which applies,

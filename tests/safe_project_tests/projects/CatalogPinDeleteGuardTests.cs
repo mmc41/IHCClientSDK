@@ -8,7 +8,7 @@ using Ihc.Vis.Session;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// review3 H1 / ADR-002 (D09): the SDK is the authority on what may NOT be deleted as a direct target — a
+    /// ADR-002: the SDK is the authority on what may NOT be deleted as a direct target — a
     /// product's catalog-declared pin (a <c>resource_</c>/<c>dataline_</c>/<c>airlink_</c> child of a product device
     /// root) and any node inside a LOCKED function block are owned by the catalog/library, not the installer. All
     /// three delete surfaces enforce it: the engine (<see cref="ProjectEditor.DeleteById(ElementId, DeleteReferencePolicy)"/>)

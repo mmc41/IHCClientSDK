@@ -1,0 +1,108 @@
+# The old-to-new rule-id map for the validation-engine migration. Tab-separated:
+#
+#   recorded-rule-id <TAB> emitted-rule-id(s) <TAB> emitted-message <TAB> emitted-category
+#
+# '=' means unchanged: the same id, or the message and category exactly as rule-characterization.txt
+# records them. A rule that SPLITS lists its successors comma-separated; one whose user-facing message is
+# translated to its Danish fixed label puts that label in the third cell, and one that moves category names
+# its new one in the fourth. Declaring a change here is what makes it intended; an undeclared one fails
+# Corpus_ReproducesTheRecordedFindings.
+#
+# Every row reads '=' right now, and that is the post-migration state rather than a disabled gate: the
+# recording was re-made once, at the task that switched the pipeline to the engine, so recorded and produced
+# agree again. The columns stay because the NEXT change needs them -- and because a change made without
+# declaring it here still fails.
+
+addr-dimmer-channel-unassigned	=	=	=
+addr-modem-phonenumber-blank	=	=	=
+addr-modem-phonenumber-malformed	=	=	=
+addr-module-partial	=	=	=
+addr-wireless-not-commissioned	=	=	=
+attr-enum-range	=	=	=
+attr-latin1	=	=	=
+attr-required	=	=	=
+attr-undeclared	=	=	=
+containment	=	=	=
+dataline-address-duplicate	=	=	=
+dataline-address-malformed	=	=	=
+dataline-address-range	=	=	=
+dev-backup-missing	=	=	=
+dev-dimmer-range-inverted	=	=	=
+dev-inivalue-overwritten	=	=	=
+dev-setting-default	=	=	=
+doc-address	=	=	=
+doc-cable-colour	=	=	=
+doc-cablenumber	=	=	=
+doc-cabletype	=	=	=
+doc-documentation-tag	=	=	=
+doc-no-enduser-products	=	=	=
+doc-not-linked	=	=	=
+doc-position	=	=	=
+doc-power-group	=	=	=
+doc-project-info-blank	=	=	=
+element-undeclared	=	=	=
+enum-def-empty	=	=	=
+enum-def-single-value	=	=	=
+enum-def-unused	=	=	=
+enum-inivalue	=	=	=
+enum-typedef	=	=	=
+enum-value-unused	=	=	=
+fb-local-ref	=	=	=
+fb-pin-container	=	=	=
+fb-programs	=	=	=
+fb-shape	=	=	=
+id-duplicate-counter	=	=	=
+id-duplicate-token	=	=	=
+id-typecode	=	=	=
+id-wellformed	=	=	=
+idref-dangling	=	=	=
+inline-constant	=	=	=
+link-bijection	=	=	=
+link-crosses-locality	=	=	=
+link-fb-input-unfed	=	=	=
+link-fb-output-unused	=	=	=
+link-input-unconnected	=	=	=
+link-output-multidriven	=	=	=
+link-output-undriven	=	=	=
+link-through-empty-block	=	=	=
+logic-block-empty	=	=	=
+logic-block-locked-content	=	=	=
+logic-block-no-pins	=	=	=
+logic-case-no-branches	=	=	=
+logic-contending-writers	=	=	=
+logic-counter-never-reset	=	=	=
+logic-duplicate-program	=	=	=
+logic-flag-never-cleared	=	=	=
+logic-master-block-modified	=	=	=
+logic-output-never-assigned	=	=	=
+logic-program-no-actions	=	=	=
+logic-program-no-events	=	=	=
+logic-self-trigger	=	=	=
+logic-subprogram-no-conditions	=	=	=
+logic-timer-unused	=	=	=
+logic-variable-read-only	=	=	=
+logic-variable-unused	=	=	=
+logic-variable-write-only	=	=	=
+luid-ceiling	=	=	=
+luid-low	=	=	=
+luid-malformed	=	=	=
+name-cable-number-duplicate	=	=	=
+name-default	=	=	=
+name-duplicate-siblings	=	=	=
+name-empty	=	=	=
+name-id-code-duplicate	=	=	=
+name-note-missing	=	=	=
+name-power-group-variant	=	=	=
+program-shape	=	=	=
+root-children	=	=	=
+root-version	=	=	=
+scene-all-off	=	=	=
+scene-bijection	=	=	=
+scene-empty	=	=	=
+scene-long-delay	=	=	=
+scene-output-also-linked	=	=	=
+scene-unreferenced	=	=	=
+struct-locality-empty	=	=	=
+struct-locality-no-devices	=	=	=
+struct-orphan-block	=	=	=
+struct-product-no-terminals	=	=	=
