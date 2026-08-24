@@ -89,9 +89,11 @@ namespace Ihc.Vis.Session
                 "outputs" => fb.AddOutput(ResourceTag, Name),
                 "settings" => fb.AddSetting(ResourceTag, Name),
                 "internalsettings" => fb.AddInternalVariable(ResourceTag, Name),
-                _ => throw new EditRefusedException($"<{SectionTag}> er ikke en variabelsektion i en funktionsblok."),
+                _ => throw new EditRefusedException(EditRefusalCodes.SectionNotVariables,
+                    $"<{SectionTag}> er ikke en variabelsektion i en funktionsblok."),
             };
-            return added.Id ?? throw new EditRefusedException("Variablen blev ikke tilføjet.");
+            return added.Id ?? throw new EditRefusedException(
+                EditRefusalCodes.VariableNotAdded, "Variablen blev ikke tilføjet.");
         }
     }
 
@@ -150,9 +152,11 @@ namespace Ihc.Vis.Session
             {
                 "settings" => fb.AddSetting("resource_enum", variableName, Configure),
                 "internalsettings" => fb.AddInternalVariable("resource_enum", variableName, Configure),
-                _ => throw new EditRefusedException($"<{sectionTag}> kan ikke rumme en enumerator-variabel."),
+                _ => throw new EditRefusedException(EditRefusalCodes.SectionRejectsEnum,
+                    $"<{sectionTag}> kan ikke rumme en enumerator-variabel."),
             };
-            return added.Id ?? throw new EditRefusedException("Variablen blev ikke tilføjet.");
+            return added.Id ?? throw new EditRefusedException(
+                EditRefusalCodes.VariableNotAdded, "Variablen blev ikke tilføjet.");
         }
     }
 
@@ -296,7 +300,7 @@ namespace Ihc.Vis.Session
                 ? definition.Values[index].Id
                 // The type's NAME, not its Typedef token: this sentence reaches the installer, and nothing in the
                 // vendor product ever shows an internal _0x id. The Evaluate-side peer already names it this way.
-                : throw new EditRefusedException(NoValueAt(definition.Name, index));
+                : throw new EditRefusedException(EditRefusalCodes.EnumValueMissing, NoValueAt(definition.Name, index));
 
         /// <summary>The out-of-range refusal, composed in ONE place: <see cref="At"/> and
         /// <c>EnumTypeTarget.RequireValueAt</c> guard the same rule at the two ends of one command, so an

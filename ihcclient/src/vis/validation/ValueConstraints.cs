@@ -43,11 +43,20 @@ namespace Ihc.Vis.Validation
     /// <param name="Maximum">The inclusive numeric upper bound, or null when unbounded above.</param>
     /// <param name="MinimumLength">The minimum text length, or null when unbounded.</param>
     /// <param name="MaximumLength">The maximum text length, or null when unbounded.</param>
-    /// <param name="WhitespaceAllowed">
-    /// Whether whitespace may appear in the value AT ALL — that is how the shipped <c>DialogValueRule</c> enforces
-    /// it, rejecting a value containing any whitespace character. It is NOT the blank policy: a name with a space
-    /// in it is a perfectly good name. See <see cref="FieldConstraintMetadata.Blank"/>, which is the other
+    /// <param name="WhitespaceForbidden">
+    /// Whether whitespace may NOT appear in the value at all — that is how the shipped <c>DialogValueRule</c>
+    /// enforces it, rejecting a value containing any whitespace character. It is NOT the blank policy: a name with
+    /// a space in it is a perfectly good name. See <see cref="FieldConstraintMetadata.Blank"/>, which is the other
     /// question and had to stop being answered here.
+    /// <para>
+    /// STATED AS THE BAN rather than the permission so that the struct's own <see langword="default"/> is the
+    /// LOOSEST answer, which is the property every other member here already has. This is a record STRUCT, so a
+    /// caller writing <c>FieldConstraintMetadata x = default</c> — which a dialog DTO's optional member must,
+    /// since a default parameter has to be a compile-time constant and
+    /// <see cref="FieldConstraintMetadata.Unconstrained"/> is not one — gets the all-zero value. With the
+    /// permission stored, that zero said "whitespace forbidden": a rule nobody declared, applied to exactly the
+    /// fields nobody had constrained. Read it through <see cref="FieldConstraintMetadata.WhitespaceAllowed"/>.
+    /// </para>
     /// </param>
     /// <param name="AllowedValues">
     /// The closed set of acceptable values, or empty when the field is open. This is the enum-membership case; a
@@ -60,9 +69,16 @@ namespace Ihc.Vis.Validation
         double? Maximum,
         int? MinimumLength,
         int? MaximumLength,
-        bool WhitespaceAllowed,
+        bool WhitespaceForbidden,
         EquatableArray<string> AllowedValues)
     {
+        /// <summary>
+        /// Whether whitespace may appear in the value at all — the reading half of
+        /// <see cref="WhitespaceForbidden"/>, and the one every consumer wants. Stored as the ban so that the
+        /// struct's default is unconstrained; read as the permission because that is the question a dialog asks.
+        /// </summary>
+        public bool WhitespaceAllowed => !WhitespaceForbidden;
+
         /// <summary>
         /// WHAT COUNTS AS BLANK for a <see cref="Required"/> field: empty only, or whitespace-only too.
         /// <para>
@@ -78,9 +94,13 @@ namespace Ihc.Vis.Validation
         /// </summary>
         public BlankPolicy Blank { get; init; }
 
-        /// <summary>A field with no constraint at all — the honest answer for an attribute no rule targets.</summary>
+        /// <summary>
+        /// A field with no constraint at all — the honest answer for an attribute no rule targets, and byte-for-byte
+        /// the struct's own <see langword="default"/>, so an OMITTED constraint and an explicitly unconstrained one
+        /// are the same value.
+        /// </summary>
         public static FieldConstraintMetadata Unconstrained =>
-            new(false, null, null, null, null, true, EquatableArray<string>.Empty);
+            new(false, null, null, null, null, false, EquatableArray<string>.Empty);
     }
 
     /// <summary>

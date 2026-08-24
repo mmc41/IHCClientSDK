@@ -243,7 +243,7 @@ namespace Ihc.Vis.Validation
             {
                 MinimumLength = minimumLength,
                 MaximumLength = maximumLength,
-                WhitespaceAllowed = false,
+                WhitespaceForbidden = true,
             };
         }
 

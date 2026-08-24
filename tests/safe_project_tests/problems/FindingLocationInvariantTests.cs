@@ -41,6 +41,18 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
+        /// The ONE row whose sites legitimately share a locator: a duplicate id token is N DIFFERENT elements
+        /// carrying the SAME id, so every site's locator is that id and the check below cannot tell "the whole
+        /// group was passed" from "this is the collision". The locator is a proxy for element identity everywhere
+        /// else, and this is the row where the proxy is the subject.
+        /// <para>
+        /// The row is not left unchecked: <c>DuplicateIdGroupingTests</c> pins its group size, its anchor and its
+        /// sentence directly.
+        /// </para>
+        /// </summary>
+        private const string LocatorIsTheDuplicatedValue = "id-duplicate-token";
+
+        /// <summary>
         /// A finding's related locations are the OTHER sites. Listing the primary among them makes the anchor
         /// element appear twice in one finding, so a reader is sent to the place they are already standing and a
         /// count taken over the group is one too high.
@@ -51,6 +63,7 @@ namespace Ihc.Vis.Tests
             List<string> offenders =
             [
                 .. CorpusFindings()
+                    .Where(pair => pair.Finding.Code.Value != LocatorIsTheDuplicatedValue)
                     .Where(pair => pair.Finding.Primary?.Locator is { Length: > 0 } primary
                         && pair.Finding.Related.Any(r =>
                             string.Equals(r.Locator, primary, StringComparison.Ordinal)))

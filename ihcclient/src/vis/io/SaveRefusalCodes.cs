@@ -23,6 +23,12 @@ namespace Ihc.Vis.Io
     /// one row with two faces, not two rows: the Danish sentence a user reads is the same either way, which is
     /// why the labels here are the catalogue's own templates and a test pins that they still agree.
     /// </para>
+    /// <para>
+    /// Those four labels carry ARGUMENT SLOTS, so the member below holds the template and the raising site binds
+    /// it with <see cref="RefusalIdentity.Binding"/> — the site is the only place that knows which attribute on
+    /// which element failed. Keeping the template on the member is what lets the drift gate compare it to the
+    /// catalogue entry; a member that stored a bound sentence would have nothing to compare.
+    /// </para>
     /// </summary>
     public static class SaveRefusalCodes
     {
@@ -30,16 +36,16 @@ namespace Ihc.Vis.Io
             new(OperationCodes.Save, OperationCodes.SaveLabel, new ProblemCode(cause), causeLabel);
 
         /// <summary>An attribute value carries text outside ISO-8859-1, which the <c>.vis</c> encoding cannot represent.</summary>
-        public static RefusalIdentity AttrLatin1 { get; } = Refusing("attr-latin1", "Tegn kan ikke gemmes");
+        public static RefusalIdentity AttrLatin1 { get; } = Refusing("attr-latin1", "Tegn kan ikke gemmes i attributten '{attribute}' på <{tag}>.");
 
         /// <summary>A <c>#REQUIRED</c> attribute is missing, so the file would violate the DTD it declares inline.</summary>
-        public static RefusalIdentity AttrRequired { get; } = Refusing("attr-required", "Mangler påkrævet attribut");
+        public static RefusalIdentity AttrRequired { get; } = Refusing("attr-required", "Den påkrævede attribut '{attribute}' mangler på <{tag}>.");
 
         /// <summary>An attribute is declared neither in the element's inline-DTD block nor in the registry.</summary>
-        public static RefusalIdentity AttrUndeclared { get; } = Refusing("attr-undeclared", "Ukendt attribut");
+        public static RefusalIdentity AttrUndeclared { get; } = Refusing("attr-undeclared", "Ukendt attribut '{attribute}' på <{tag}>.");
 
         /// <summary>An element type is declared neither in the file's inline DTD nor in the registry.</summary>
-        public static RefusalIdentity ElementUndeclared { get; } = Refusing("element-undeclared", "Ukendt elementtype");
+        public static RefusalIdentity ElementUndeclared { get; } = Refusing("element-undeclared", "Ukendt elementtype <{tag}>.");
 
         /// <summary>The destination cannot be written: locked, read-only, missing, or out of space.</summary>
         public static RefusalIdentity TargetUnwritable { get; } = Refusing("save-target-unwritable", "Filen kunne ikke skrives");

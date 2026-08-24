@@ -101,7 +101,7 @@ namespace Ihc.Vis.Validation
                 Lower(into.Maximum, from.Maximum),
                 Higher(into.MinimumLength, from.MinimumLength),
                 Lower(into.MaximumLength, from.MaximumLength),
-                into.WhitespaceAllowed && from.WhitespaceAllowed,
+                into.WhitespaceForbidden || from.WhitespaceForbidden,   // either ban wins, as every axis here tightens
                 Narrow(into.AllowedValues, from.AllowedValues))
             {
                 // The stricter blank policy wins, like every other axis here: a dialog advertising the looser of

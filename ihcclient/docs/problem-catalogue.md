@@ -84,8 +84,8 @@ catalogue's own: the operation-outcome heads carry no category, by design.
 | **ADR** | 0 | 5 | 9 | 14 |
 | **DEV** | 0 | 1 | 8 | 9 |
 | **DOC** | 0 | 0 | 18 | 18 |
-| **PRJ** | 0 | 5 | 8 | 13 |
-| **Total** | **18** | **39** | **92** | **149** |
+| **PRJ** | 0 | 7 | 8 | 15 |
+| **Total** | **18** | **41** | **92** | **151** |
 <!-- END GENERATED -->
 
 ## 2. Severity
@@ -273,7 +273,9 @@ acts or ignores it.
 | `doc-no-enduser-products` | DOC | Warning | No product is flagged for end-user documentation | The Funktionsdokumentation report comes out empty | Only installer documentation is wanted |
 | `capacity-input-modules` | PRJ | **Error** | More INPUT data lines are addressed than the target controller supports | The project cannot be uploaded as it stands | Project covers a future expansion |
 | `capacity-output-modules` | PRJ | **Error** | More OUTPUT data lines are addressed than the target controller supports | The project cannot be uploaded as it stands | Project covers a future expansion |
-| `capacity-addresses` | PRJ | **Error** | More terminals are addressed in one data-line direction than the target controller supports | The project cannot be uploaded as it stands | Project covers a future expansion |
+| `capacity-input-addresses` | PRJ | **Error** | More INPUT terminals are addressed than the target controller supports | The project cannot be uploaded as it stands | Project covers a future expansion |
+| `capacity-output-addresses` | PRJ | **Error** | More OUTPUT terminals are addressed than the target controller supports | The project cannot be uploaded as it stands | Project covers a future expansion |
+| ~~`capacity-addresses`~~ | PRJ | **Error** | **RETIRED — split into the two address rows above.** It counted the terminals of ONE direction but named neither, so a project over on both produced two findings a reader could tell apart only by their numbers — and a number cannot say which direction it counts. Its own entry argued the direction is not an argument "because a direction is a word and an argument is data", which is right and is why the fix was to split the row rather than to put a word in a slot. The id stays reserved and is never re-pointed at a successor | — |
 | ~~`capacity-modules-exceeded`~~ | PRJ | **Error** | **RETIRED — split into the three rows above.** It covered all three quantities under one Danish sentence, *"Projektet bruger {used} af {limit} moduler."* | That sentence was false of the terminals count: 200 terminals over a 128 limit read as "uses 200 of 128 modules". Its entry claimed the arguments said which quantity, but the only arguments were `used` and `limit`. The rule also looped per direction, so it could emit two findings against a declared `OneFinding`. The id stays reserved and is never re-pointed at a successor | — |
 | `capacity-wireless-exceeded` | PRJ | Warning | More than 64 wireless products are bound to one controller | Response time degrades. The vendor states a RECOMMENDATION, not a hard limit — *"En IHC controller bør maksimalt forbindes til 64 IHC Wireless produkter"*, explicitly *"af hensyn til en fornuftig responstid"*. **Corrected from Error:** an Error's consequence must hold whatever the author intended, and the devices do bind — the system merely answers more slowly | Planning document, not an upload; a deliberately large installation whose response time the author accepts |
 | `capacity-modem-multiple` ⊘ | PRJ | **Error** | The project contains more than one modem | The controller binds one modem, so the extra entries can never be commissioned. **Neither editor will author this state** (measured live 2026-08-11): IHC Visual refuses the second insert with *"Modem er allerede indsat. Der kan kun indsættes et modem i projektet"* and OpenVisual with *"Et projekt må højst indeholde ét modem…"*, each leaving the tree unchanged — so a file carrying two can only have arrived by import or by hand, which is exactly why the file-level check still earns its place | — (the limit is the controller's; no intent makes a second modem work) |
@@ -527,7 +529,7 @@ fall behind the declarations. Edit the declarations, not this table.
 The evidence and rationale columns of the sections above are deliberately absent here: they are
 prose, and they live as doc-comments on each declaration.
 
-### Project findings (139)
+### Project findings (141)
 
 | Id | Cat | Costs | Kind | Status | Danish label |
 | --- | --- | --- | --- | --- | --- |
@@ -541,22 +543,24 @@ prose, and they live as doc-comments on each declaration.
 | `addr-unassigned` | ADR | Warning | UserContentRule | RuledOut | *(to author)* |
 | `addr-wireless-channel-shared` | ADR | Warning | UserContentRule | Active | Klemmerne '{pin}' og '{other}' deler kanal {channel}. |
 | `addr-wireless-not-commissioned` | ADR | Warning | UserContentRule | Active | Produktet '{product}' har intet serienummer. |
-| `attr-enum-range` | INT | Error | SchemaSerializationGuard | Active | Ugyldig værdi |
-| `attr-latin1` | INT | Error | SchemaSerializationGuard | Active | Tegn kan ikke gemmes |
-| `attr-required` | INT | Error | SchemaSerializationGuard | Active | Mangler påkrævet attribut |
-| `attr-undeclared` | INT | Error | SchemaSerializationGuard | Active | Ukendt attribut |
-| `capacity-addresses` | PRJ | Error | UserContentRule | Active | Projektet bruger {used} af {limit} klemmer på én datalinjeretning. |
+| `attr-enum-range` | INT | Error | SchemaSerializationGuard | Active | Ugyldig værdi '{value}' i attributten '{attribute}' på <{tag}>. Tilladte værdier: {allowed}. |
+| `attr-latin1` | INT | Error | SchemaSerializationGuard | Active | Tegn kan ikke gemmes i attributten '{attribute}' på <{tag}>. |
+| `attr-required` | INT | Error | SchemaSerializationGuard | Active | Den påkrævede attribut '{attribute}' mangler på <{tag}>. |
+| `attr-undeclared` | INT | Error | SchemaSerializationGuard | Active | Ukendt attribut '{attribute}' på <{tag}>. |
+| `capacity-addresses` | PRJ | Error | UserContentRule | Retired | *(to author)* |
+| `capacity-input-addresses` | PRJ | Error | UserContentRule | Active | Projektet bruger {used} af {limit} indgangsklemmer. |
 | `capacity-input-modules` | PRJ | Error | UserContentRule | Active | Projektet bruger {used} af {limit} indgangsmoduler. |
 | `capacity-modem-multiple` | PRJ | Error | UserContentRule | Active | Projektet indeholder {used} modemer; controlleren binder ét. |
 | `capacity-modules-exceeded` | PRJ | Error | UserContentRule | Retired | *(to author)* |
+| `capacity-output-addresses` | PRJ | Error | UserContentRule | Active | Projektet bruger {used} af {limit} udgangsklemmer. |
 | `capacity-output-modules` | PRJ | Error | UserContentRule | Active | Projektet bruger {used} af {limit} udgangsmoduler. |
 | `capacity-resources-high` | PRJ | Warning | UserContentRule | Active | Projektet bruger {used} af {limit} ressourcer. |
 | `capacity-wireless-exceeded` | PRJ | Warning | UserContentRule | Active | Projektet har {used} trådløse produkter; anbefalingen er højst {limit}. |
-| `containment` | INT | Warning | UserContentRule | Active | Uventet placering |
+| `containment` | INT | Warning | UserContentRule | Active | Uventet placering: <{tag}> ligger under <{parent}>. |
 | `dataline-address` | ADR | Error | UserContentRule | Retired | *(to author)* |
-| `dataline-address-duplicate` | ADR | Error | UserContentRule | Active | Dobbelt klemmeadresse |
-| `dataline-address-malformed` | ADR | Error | UserContentRule | Active | Ugyldig klemmeadresse |
-| `dataline-address-range` | ADR | Error | UserContentRule | Active | Klemmeadresse uden for området |
+| `dataline-address-duplicate` | ADR | Error | UserContentRule | Active | Dobbelt klemmeadresse '{value}': {count} klemmer på <{tag}> deler adressen. |
+| `dataline-address-malformed` | ADR | Error | UserContentRule | Active | Ugyldig klemmeadresse '{value}' på <{tag}>. |
+| `dataline-address-range` | ADR | Error | UserContentRule | Active | Klemmeadressen '{value}' på <{tag}> er uden for det gyldige område 1-{maximum}. |
 | `dev-backup-missing` | DEV | Warning | UserContentRule | Active | Variablen '{variable}' i '{block}' gemmes ikke ved strømsvigt. |
 | `dev-dimmer-fade-zero` | DEV | Warning | UserContentRule | Active | Lysdæmperen '{product}' skifter hårdt i begge retninger. |
 | `dev-dimmer-load-mode-auto` | DEV | Warning | UserContentRule | Active | LED-dæmperen '{product}' står på automatisk lastregistrering. |
@@ -576,30 +580,30 @@ prose, and they live as doc-comments on each declaration.
 | `doc-position` | DOC | Warning | UserContentRule | Active | Mangler Placering |
 | `doc-power-group` | DOC | Warning | UserContentRule | Active | Mangler Lysgruppe |
 | `doc-project-info-blank` | DOC | Warning | UserContentRule | Active | Mangler projektoplysninger |
-| `element-undeclared` | INT | Error | SchemaSerializationGuard | Active | Ukendt elementtype |
+| `element-undeclared` | INT | Error | SchemaSerializationGuard | Active | Ukendt elementtype <{tag}>. |
 | `enum-def-duplicate-index` | LOG | Error | UserContentRule | Active | Enumerator typen '{enum}' har to værdier med indeks {index}. |
 | `enum-def-duplicate-name` | LOG | Warning | UserContentRule | Active | Enumerator typen '{enum}' har to værdier med navnet '{value}'. |
 | `enum-def-empty` | LOG | Warning | UserContentRule | Active | Enumerator typen '{enum}' har ingen værdier. |
 | `enum-def-single-value` | LOG | Warning | UserContentRule | Active | Enumerator typen '{enum}' har kun én værdi, '{value}'. |
 | `enum-def-unused` | LOG | Warning | UserContentRule | Active | Enumerator typen '{enum}' bruges ikke af nogen variabel. |
-| `enum-inivalue` | LOG | Error | UserContentRule | Active | Ugyldig starttilstand |
-| `enum-typedef` | LOG | Error | UserContentRule | Active | Enumeratortype mangler |
+| `enum-inivalue` | LOG | Error | UserContentRule | Active | Ugyldig starttilstand '{inivalue}' på enumerator-variablen '{name}': den findes ikke i enumeratortypen '{typedef}'. |
+| `enum-typedef` | LOG | Error | UserContentRule | Active | Enumeratortype mangler: typedef='{typedef}' på enumerator-variablen '{name}' peger på <{tag}>, ikke på en enumeratortype. |
 | `enum-value-unused` | LOG | Warning | UserContentRule | Active | Værdien '{value}' i enumerator typen '{enum}' bruges ikke. |
 | `export-controller-declined` | INT | Refusal | OperationOutcome | Active | Controlleren afviste projektet |
-| `fb-local-ref` | LOG | Error | UserContentRule | Active | Reference uden for blokken |
-| `fb-pin-container` | LOG | Error | UserContentRule | Active | Klemme i forkert beholder |
-| `fb-programs` | LOG | Error | UserContentRule | Active | Ugyldigt programindhold |
-| `fb-shape` | LOG | Error | UserContentRule | Active | Forkert blokopbygning |
-| `id-duplicate-counter` | INT | Error | UserContentRule | Active | Dobbelt id-tæller |
-| `id-duplicate-token` | INT | Error | UserContentRule | Active | Dobbelt id |
-| `id-typecode` | INT | Error | UserContentRule | Active | Forkert id-typekode |
-| `id-wellformed` | INT | Error | UserContentRule | Active | Ugyldigt id |
-| `idref-dangling` | INT | Error | UserContentRule | Active | Reference uden mål |
+| `fb-local-ref` | LOG | Error | UserContentRule | Active | Reference uden for blokken: {attribute}='{value}' på <{tag}> peger uden for funktionsblokken. |
+| `fb-pin-container` | LOG | Error | UserContentRule | Active | Klemme i forkert beholder: <{tag}> i funktionsblokken '{id}' skal ligge under <{expected}>, ikke under <{actual}>. |
+| `fb-programs` | LOG | Error | UserContentRule | Active | Ugyldigt programindhold i funktionsblokken '{id}': programbeholderen indeholder <{tag}>, men må kun indeholde simple programmer. |
+| `fb-shape` | LOG | Error | UserContentRule | Active | Forkert blokopbygning i funktionsblokken '{id}': forventet [{expected}], men fandt [{actual}]. |
+| `id-duplicate-counter` | INT | Error | UserContentRule | Active | Dobbelt id-tæller i '{id}' på <{tag}>: {count} id'er deler samme tæller. |
+| `id-duplicate-token` | INT | Error | UserContentRule | Active | Dobbelt id '{id}' på <{tag}>: {count} elementer deler dette id. |
+| `id-typecode` | INT | Error | UserContentRule | Active | Forkert id-typekode i '{id}' på <{tag}>: typekoden er {actual}, men skulle være {expected}. |
+| `id-wellformed` | INT | Error | UserContentRule | Active | Ugyldigt id '{id}' på <{tag}>. |
+| `idref-dangling` | INT | Error | UserContentRule | Active | Reference uden mål: {attribute}='{value}' på <{tag}> peger ikke på noget element. |
 | `import-catalog-unparsable` | INT | Refusal | OperationOutcome | Active | Ugyldig katalogfil |
 | `import-catalog-wrong-kind` | INT | Refusal | OperationOutcome | Active | *(to author)* |
 | `import-controller-no-project` | INT | Refusal | OperationOutcome | Active | Intet projekt på controlleren |
-| `inline-constant` | LOG | Error | UserContentRule | Active | Ubrugt indlejret konstant |
-| `link-bijection` | WIR | Error | UserContentRule | Active | Forbindelsen er ensidig |
+| `inline-constant` | LOG | Error | UserContentRule | Active | Ubrugt indlejret konstant <{tag}> '{id}' i <{parent}>: forælderens {attribute} er '{value}' og peger ikke på den. |
+| `link-bijection` | WIR | Error | UserContentRule | Active | Forbindelsen er ensidig: <{tag}> '{id}' er ikke forbundet begge veje til en partner af den modsatte type. |
 | `link-crosses-locality` | WIR | Warning | UserContentRule | Active | Følg-linket går mellem lokaliteterne '{from}' og '{to}'. |
 | `link-fb-input-unfed` | WIR | Warning | UserContentRule | Active | Funktionsblokken '{block}' har ingen forbundne indgange. |
 | `link-fb-output-unused` | WIR | Warning | UserContentRule | Active | Funktionsblokken '{block}' har ingen forbundne udgange. |
@@ -640,9 +644,9 @@ prose, and they live as doc-comments on each declaration.
 | `logic-variable-read-only` | LOG | Warning | UserContentRule | Active | Variablen '{variable}' i '{block}' læses, men tilskrives aldrig. |
 | `logic-variable-unused` | LOG | Warning | UserContentRule | Active | Variablen '{variable}' i '{block}' bruges ikke af noget program. |
 | `logic-variable-write-only` | LOG | Warning | UserContentRule | Active | Variablen '{variable}' i '{block}' tilskrives, men læses aldrig. |
-| `luid-ceiling` | INT | Error | UserContentRule | Active | Id-tælleren er opbrugt |
+| `luid-ceiling` | INT | Error | UserContentRule | Active | Id-tælleren er opbrugt: last_unique_id '{value}' overskrider loftet for 24-bit id-tællere. |
 | `luid-low` | INT | Error | UserContentRule | Active | Id-tælleren er for lav |
-| `luid-malformed` | INT | Error | UserContentRule | Active | Ugyldig id-tæller |
+| `luid-malformed` | INT | Error | UserContentRule | Active | Ugyldig id-tæller: last_unique_id '{value}' er ikke et _0x-hextoken. |
 | `name-cable-number-duplicate` | DOC | Warning | UserContentRule | Active | Dobbelt Kabelnummer |
 | `name-default` | DOC | Warning | UserContentRule | Active | Uændret standardnavn |
 | `name-duplicate-siblings` | DOC | Warning | UserContentRule | Active | Dobbelt navn |
@@ -651,13 +655,13 @@ prose, and they live as doc-comments on each declaration.
 | `name-id-code-duplicate` | DOC | Warning | UserContentRule | Active | Dobbelt Id-kode |
 | `name-note-missing` | DOC | Warning | UserContentRule | Active | Mangler Note |
 | `name-power-group-variant` | DOC | Warning | UserContentRule | Active | Afvigende stavning af lysgruppe |
-| `program-shape` | LOG | Warning | UserContentRule | Active | Uventet programopbygning |
-| `root-children` | INT | Warning | UserContentRule | Active | Uventet rækkefølge i roden |
-| `root-version` | INT | Error | UserContentRule | Active | Nyere projektversion |
+| `program-shape` | LOG | Warning | UserContentRule | Active | Uventet programopbygning i <{tag}> '{id}': forventet [{expected}], men fandt [{actual}]. |
+| `root-children` | INT | Warning | UserContentRule | Active | Uventet rækkefølge i roden: rodens børn er [{actual}]; forventet [{expected}]. |
+| `root-version` | INT | Error | UserContentRule | Active | Nyere projektversion: version_major='{version}' er nyere end version 4, som dette værktøj understøtter. |
 | `save-roundtrip-mismatch` | INT | Refusal | OperationOutcome | Active | Projektet kan ikke gemmes uden tab |
 | `save-target-unwritable` | INT | Refusal | OperationOutcome | Active | Filen kunne ikke skrives |
 | `scene-all-off` | SCN | Warning | UserContentRule | Active | Scenariet '{scene}' slukker alle {members} medlemmer. |
-| `scene-bijection` | SCN | Error | UserContentRule | Active | Scenerækken er ensidig |
+| `scene-bijection` | SCN | Error | UserContentRule | Active | Scenerækken er ensidig: <{tag}> '{id}' er ikke forbundet begge veje til en partner af den modsatte type. |
 | `scene-duplicate-target` | SCN | Warning | UserContentRule | Active | Scenariet '{scene}' styrer udgangen '{output}' i flere rækker. |
 | `scene-empty` | SCN | Warning | UserContentRule | Active | Scenariet '{scene}' har ingen medlemmer. |
 | `scene-long-delay` | SCN | Warning | UserContentRule | Active | Ramptiden {seconds} sekunder er længere end de tilladte {limit}. |
@@ -686,7 +690,7 @@ prose, and they live as doc-comments on each declaration.
 | `resource-enum-unwired` | LOG | Error | UserContentRule | Active | Enumerator ikke forbundet |
 | `scenes-without-output` | SCN | Error | UserContentRule | Active | Scener uden udgang |
 
-### Operation outcomes (46)
+### Operation outcomes (49)
 
 | Id | Cat | Costs | Kind | Status | Danish label |
 | --- | --- | --- | --- | --- | --- |
@@ -705,8 +709,10 @@ prose, and they live as doc-comments on each declaration.
 | `edit.enum-type-missing` | — | Refusal | EditPrecondition | Active | Projektet har ingen enumeratortype ved navn {name}. |
 | `edit.enum-type-readonly` | — | Refusal | EditPrecondition | Active | Enumeratortypen {name} er en indbygget [read only]-type og kan ikke redigeres. |
 | `edit.enum-value-missing` | — | Refusal | EditPrecondition | Active | Enumeratortypen {name} har ingen værdi nummer {index}. |
+| `edit.field-above-maximum` | — | Refusal | EditPrecondition | Active | Feltet '{field}' skal være højst {maximum}. |
+| `edit.field-below-minimum` | — | Refusal | EditPrecondition | Active | Feltet '{field}' skal være mindst {minimum}. |
 | `edit.field-not-offered` | — | Refusal | EditPrecondition | Active | Produktets dialog har ikke feltet {field}. |
-| `edit.field-out-of-range` | — | Refusal | EditPrecondition | Active | Feltet {field} skal være mellem {minimum} og {maximum}. |
+| `edit.field-out-of-range` | — | Refusal | EditPrecondition | Active | Feltet '{field}' skal være mellem {minimum} og {maximum}. |
 | `edit.field-outside-product` | — | Refusal | EditPrecondition | Active | Et af felterne peger på et element uden for produktet. |
 | `edit.field-phonenumber-malformed` | — | Refusal | EditPrecondition | Active | Telefonnummeret '{value}' skal være på 3-20 tegn uden mellemrum og begynde med en landekode, f.eks. +45. |
 | `edit.field-read-only` | — | Refusal | EditPrecondition | Active | Feltet {field} kan ikke redigeres. |
@@ -719,6 +725,7 @@ prose, and they live as doc-comments on each declaration.
 | `edit.no-project-open` | — | Refusal | EditPrecondition | Active | Der er ikke åbnet et projekt. |
 | `edit.not-a-command-group` | — | Refusal | EditPrecondition | Active | Målet er ikke en kommandogruppe. |
 | `edit.not-a-log-row` | — | Refusal | EditPrecondition | Active | Ikke en Logning-række. |
+| `edit.open` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke åbnes til redigering |
 | `edit.scene-endpoint-missing` | — | Refusal | EditPrecondition | Active | Et endepunkt i scenariet findes ikke længere. |
 | `edit.scene-member-kind` | — | Refusal | EditPrecondition | Active | Denne scenarie-beholder rummer {pinned}-medlemmer; en {produced}-værdi kan ikke tilknyttes her. |
 | `edit.section-not-variables` | — | Refusal | EditPrecondition | Active | <{section}> er ikke en variabelsektion i en funktionsblok. |
@@ -735,7 +742,7 @@ prose, and they live as doc-comments on each declaration.
 | `import.definition-invalid` | — | Refusal | OperationOutcome | Active | Definitionen kunne ikke bygges |
 | `internal.unexpected` | — | Refusal | OperationOutcome | Active | Uventet fejl |
 | `io.load` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke åbnes |
-| `io.save` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke gemmes |
+| `io.save` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke gemmes: {count} fejl skal rettes først. |
 
-**Total: 195 entries.** 188 active, 3 retired, 4 ruled out.
+**Total: 200 entries.** 192 active, 4 retired, 4 ruled out.
 <!-- END GENERATED -->

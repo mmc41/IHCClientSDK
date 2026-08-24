@@ -62,6 +62,57 @@ namespace Ihc.Vis.Tests
                     ]));
         }
 
+        /// <summary>
+        /// A row's DECLARED SLOT ORDER is its template's placeholder order. The declaration is what a typed
+        /// factory's parameters follow, so a row whose slots run in a different order than its sentence hands the
+        /// factory's arguments to the wrong slots the moment anyone writes one — and reading the row tells you
+        /// the opposite of what it does.
+        /// <para>
+        /// Compared by FIRST APPEARANCE, and only over the slots the template actually names: a row may
+        /// legitimately declare fewer slots than the rule supplies arguments (see the luid rows, whose shared
+        /// factory hands them a maximum they do not render), but the ones it declares must be in the order they
+        /// are read.
+        /// </para>
+        /// </summary>
+        [Test]
+        public void EveryRowsDeclaredSlotOrderIsItsTemplatesPlaceholderOrder()
+        {
+            string[] outOfOrder =
+            [
+                .. ProblemCatalog.Current.Entries
+                    .Where(e => e.Slots.Length > 1 && e.MessageTemplate.Length > 0)
+                    .Where(e => !DeclaredOrderMatchesTemplate(e))
+                    .Select(e => $"{e.Code.Value}: declared [{string.Join(", ", e.Slots.Select(s => s.Name))}] "
+                        + $"but reads [{string.Join(", ", PlaceholderOrder(e))}]")
+                    .OrderBy(line => line, StringComparer.Ordinal),
+            ];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ProblemCatalog.Current.Entries.Count(e => e.Slots.Length > 1), Is.GreaterThan(20),
+                    "the catalogue must carry multi-slot rows, or this gate is vacuous");
+                Assert.That(outOfOrder, Is.Empty,
+                    "these rows declare their slots in an order their sentence does not read them in:"
+                    + Environment.NewLine + string.Join(Environment.NewLine, outOfOrder));
+            });
+        }
+
+        /// <summary>The declared slots the template names, in the order the template first names them.</summary>
+        private static string[] PlaceholderOrder(ProblemCatalogEntry entry) =>
+            [.. entry.Slots
+                .Select(s => (s.Name, At: entry.MessageTemplate.IndexOf($"{{{s.Name}}}", StringComparison.Ordinal)))
+                .Where(pair => pair.At >= 0)
+                .OrderBy(pair => pair.At)
+                .Select(pair => pair.Name)];
+
+        private static bool DeclaredOrderMatchesTemplate(ProblemCatalogEntry entry)
+        {
+            string[] read = PlaceholderOrder(entry);
+            string[] declared =
+                [.. entry.Slots.Select(s => s.Name).Where(name => read.Contains(name, StringComparer.Ordinal))];
+            return declared.SequenceEqual(read, StringComparer.Ordinal);
+        }
+
         /// <summary>The CLR type a declared slot kind accepts. The one place the mapping is written down.</summary>
         private static readonly Dictionary<ProblemArgumentType, Type> SlotTypes = new()
         {

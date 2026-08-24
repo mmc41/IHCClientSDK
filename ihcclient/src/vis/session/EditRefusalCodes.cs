@@ -113,8 +113,23 @@ namespace Ihc.Vis.Session
         /// </summary>
         public static ProblemCode FieldPhonenumberMalformed { get; } = new("edit.field-phonenumber-malformed");
 
-        /// <summary>The submitted value is outside the bounds the field's catalog element declares.</summary>
+        /// <summary>
+        /// The submitted value is outside the bounds the field's catalog element declares — BOTH of them.
+        /// <para>
+        /// THREE CODES, one per reachable bound shape (D05). A field constrained on one side only has no value
+        /// for the other slot, so a single row declaring both could never be bound at a one-sided field, and the
+        /// site authored a sentence of its own instead — leaving the catalogue describing words no user saw.
+        /// Splitting by shape gives each row one template whose declared slots ALWAYS bind. Follows the
+        /// capacity-input-modules / capacity-output-modules precedent.
+        /// </para>
+        /// </summary>
         public static ProblemCode FieldOutOfRange { get; } = new("edit.field-out-of-range");
+
+        /// <summary>The submitted value is below the only bound the field declares.</summary>
+        public static ProblemCode FieldBelowMinimum { get; } = new("edit.field-below-minimum");
+
+        /// <summary>The submitted value is above the only bound the field declares.</summary>
+        public static ProblemCode FieldAboveMaximum { get; } = new("edit.field-above-maximum");
 
         // ── programs ────────────────────────────────────────────────────────────────────────────────
 
@@ -199,7 +214,7 @@ namespace Ihc.Vis.Session
                 EnumTypeMissing, EnumTypeReadOnly, EnumTypeInUse, EnumValueMissing,
                 TerminalMissing, TerminalAddressRange,
                 FieldTargetMissing, FieldOutsideProduct, FieldNotOffered, FieldReadOnly, FieldValueRule,
-                FieldPhonenumberMalformed, FieldOutOfRange,
+                FieldPhonenumberMalformed, FieldOutOfRange, FieldBelowMinimum, FieldAboveMaximum,
                 CaseBranchInvalid, NotALogRow, NotACommandGroup,
                 MoveNotAllowed, ContainerRejectsNode,
                 DeletionRefusedCatalogPin, DeletionRefusedLockedBlock, DeletionRefusedStructural,

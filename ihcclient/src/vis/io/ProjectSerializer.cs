@@ -60,14 +60,37 @@ namespace Ihc.Vis.Io
             }
             catch (EncoderFallbackException ex)
             {
-                throw new RefusedOperationException(SaveRefusalCodes.AttrLatin1,
+                NonLatin1Site? site = LocateNonLatin1(root);
+                // Named ONCE: the severity-times-operation matrix records where each code is raised, and a
+                // conditional naming the identity in both branches would report one throw as two sites.
+                ProblemArgument[] offender = site is { } found
+                    ?
+                    [
+                        new ProblemArgument("attribute", found.Attribute),
+                        new ProblemArgument("tag", found.Tag),
+                    ]
+                    : [];
+                throw new RefusedOperationException(
+                    SaveRefusalCodes.AttrLatin1.Binding(offender),
                     "The project contains text outside the ISO-8859-1 (Latin-1) repertoire, which the .vis format " +
-                    $"cannot represent.{LocateNonLatin1(root)} Restrict all text to Latin-1.", ex);
+                    $"cannot represent.{site?.Sentence ?? string.Empty} Restrict all text to Latin-1.", ex);
             }
         }
 
+        /// <summary>
+        /// The first attribute whose value the .vis encoding cannot represent. The model is attribute-only and
+        /// every other byte the writer emits is ASCII, so an encoder failure always has one of these behind it —
+        /// which is why the unbound fallback above is unreachable rather than merely unlikely.
+        /// </summary>
+        private readonly record struct NonLatin1Site(string Attribute, string Tag, string Id, int Scalar)
+        {
+            /// <summary>The clause the English diagnostic appends, unchanged from when it was built inline.</summary>
+            public string Sentence =>
+                $" First offender: attribute '{Attribute}' on <{Tag}>{Id} containing U+{Scalar:X4}.";
+        }
+
         // One bad character in a 200 KB project is a needle in a haystack — name the first offender.
-        private static string LocateNonLatin1(ProjectElement element)
+        private static NonLatin1Site? LocateNonLatin1(ProjectElement element)
         {
             foreach ((string name, string value) in element.Attrs)
             {
@@ -82,19 +105,18 @@ namespace Ihc.Vis.Io
                             ? char.ConvertToUtf32(c, value[i + 1])
                             : c;
                         string id = element.Id is { } eid ? $" (id {eid.ToToken()})" : string.Empty;
-                        return $" First offender: attribute '{name}' on <{element.Tag}>{id} containing U+{scalar:X4}.";
+                        return new NonLatin1Site(name, element.Tag, id, scalar);
                     }
                 }
             }
             foreach (ProjectElement child in element.Children)
             {
-                string found = LocateNonLatin1(child);
-                if (found.Length > 0)
+                if (LocateNonLatin1(child) is { } found)
                 {
                     return found;
                 }
             }
-            return string.Empty;
+            return null;
         }
 
         private static void AppendDtd(StringBuilder sb, ProjectElement root, ProjectSchemaView view)
@@ -114,7 +136,8 @@ namespace Ihc.Vis.Io
         /// knows which operation is being refused, rather than on the shared view.
         /// </summary>
         private static ElementSchema SchemaForSave(ProjectSchemaView view, string tag) =>
-            view.TryGet(tag) ?? throw new RefusedOperationException(SaveRefusalCodes.ElementUndeclared,
+            view.TryGet(tag) ?? throw new RefusedOperationException(
+                SaveRefusalCodes.ElementUndeclared.Binding(new ProblemArgument("tag", tag)),
                 $"No schema for .vis element type '{tag}' in the project's own inline DTD or the schema registry. " +
                 "A project may only contain element types declared by its inline DTD or the SDK registry.");
 
@@ -172,7 +195,10 @@ namespace Ihc.Vis.Io
                     {
                         // Writing without it would violate the DTD this very file declares inline — IHC Visual
                         // (a validating consumer) then refuses the file after the original was already replaced.
-                        throw new RefusedOperationException(SaveRefusalCodes.AttrRequired,
+                        throw new RefusedOperationException(
+                            SaveRefusalCodes.AttrRequired.Binding(
+                                new ProblemArgument("attribute", attr.Name),
+                                new ProblemArgument("tag", element.Tag)),
                             $"Element '{element.Tag}' is missing #REQUIRED attribute '{attr.Name}' declared by its " +
                             $"DTD block; run {nameof(ProjectAppService)}.{nameof(ProjectAppService.Validate)} to " +
                             "list every problem before saving.");

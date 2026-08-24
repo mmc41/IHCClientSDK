@@ -38,17 +38,18 @@ namespace Ihc.Vis.Tests
                 Assert.That(Catalog.Total, Is.EqualTo(project.Count + definitions.Count + outcomes.Count),
                     "every entry is in exactly one section");
 
-                // 133 live project rows, plus the 4 that were investigated and ruled out, plus the 2 that were
+                // 134 live project rows, plus the 4 that were investigated and ruled out, plus the 3 that were
                 // SPLIT and retired. All three kinds keep their ids occupied, which is the whole reservation
                 // mechanism: an entry that stays is an id that can never be handed to a different condition.
                 // The fourth ruled-out row is T048's `addr-unassigned`: its condition is what `doc-address`
-                // already reports, on the same elements, which the catalogue row itself admits. The second
-                // retired row is `capacity-modules-exceeded`, split into the three capacity rows under D2.
-                // The 133rd live row is `addr-modem-phonenumber-malformed`, the first DECLARATIVE one.
-                Assert.That(project, Has.Count.EqualTo(139));
-                Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Active), Is.EqualTo(133));
+                // already reports, on the same elements, which the catalogue row itself admits. The retired rows
+                // are `dataline-address`, `capacity-modules-exceeded` (split into the three capacity rows under
+                // D2) and `capacity-addresses` (split again, per direction, so a project over on both no longer
+                // reports two findings distinguishable only by their numbers).
+                Assert.That(project, Has.Count.EqualTo(141));
+                Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Active), Is.EqualTo(134));
                 Assert.That(project.Count(e => e.Status == ProblemCodeStatus.RuledOut), Is.EqualTo(4));
-                Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Retired), Is.EqualTo(2));
+                Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Retired), Is.EqualTo(3));
 
                 // The ten codes that already shipped with no catalogue row behind them.
                 Assert.That(definitions, Has.Count.EqualTo(10));
@@ -295,8 +296,8 @@ namespace Ihc.Vis.Tests
                     .OrderBy(v => v, StringComparer.Ordinal)];
                 Assert.That(needLimits, Is.EqualTo(new[]
                 {
-                    "capacity-addresses", "capacity-input-modules", "capacity-output-modules",
-                    "capacity-resources-high", "capacity-wireless-exceeded",
+                    "capacity-input-addresses", "capacity-input-modules", "capacity-output-addresses",
+                    "capacity-output-modules", "capacity-resources-high", "capacity-wireless-exceeded",
                 }).AsCollection, "a verdict that depends on the machine is not a property of the project file");
 
                 // The modem row needs neither a limit nor a controller.

@@ -17,6 +17,7 @@ public sealed class NullDialogService : IDialogService
     public Task ShowMessageAsync(string title, string message) => Task.CompletedTask;
     public Task ShowProblemAsync(string title, Ihc.Vis.Problems.Problem problem) => Task.CompletedTask;
     public Task ShowProblemAsync(string title, Ihc.Vis.Problems.ProblemChain chain) => Task.CompletedTask;
+    public Task ShowProblemAsync(string title, Ihc.Vis.Problems.ProblemAggregate aggregate) => Task.CompletedTask;
     public Task<string?> PickOpenProjectAsync(string? initialDirectory) => Task.FromResult<string?>(null);
     public Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName) => Task.FromResult<string?>(null);
     public Task ShowAboutAsync() => Task.CompletedTask;

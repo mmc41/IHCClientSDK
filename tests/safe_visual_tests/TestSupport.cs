@@ -120,6 +120,17 @@ public sealed class FakeDialogService : IDialogService
         LastProblemChain = chain;
         return ShowMessageAsync(title, ProblemPresenter.Text(chain));
     }
+
+    /// <summary>The aggregate, when the site showed a head plus N independent items (a refused validation).</summary>
+    public ProblemAggregate? LastProblemAggregate { get; private set; }
+
+    public Task ShowProblemAsync(string title, ProblemAggregate aggregate)
+    {
+        LastProblem = aggregate.Head;
+        LastProblemChain = null;
+        LastProblemAggregate = aggregate;
+        return ShowMessageAsync(title, ProblemPresenter.Text(aggregate));
+    }
     public Task<string?> PickOpenProjectAsync(string? initialDirectory) => Task.FromResult(OpenPath);
     public Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName) => Task.FromResult(SavePath);
     public string? SaveReportPath { get; set; }

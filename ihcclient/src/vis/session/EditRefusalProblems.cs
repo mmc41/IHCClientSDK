@@ -103,6 +103,79 @@ namespace Ihc.Vis.Session
         internal static string TargetWrongKindRefusal(string noun) => $"Målet er ikke {noun}.";
 
         /// <summary>
+        /// The Danish sentence for <see cref="EditRefusalCodes.TargetMissing"/>, as the shared guards splice it —
+        /// the peer of <see cref="TargetWrongKindRefusal"/>, and the words the <c>edit.target-missing</c> entry
+        /// declares.
+        /// <para>
+        /// The noun is the SUBJECT of the sentence, so it is definite and capitalized ("Produktet",
+        /// "Lokaliteten") — which is not the indefinite form a tag guard names ("en funktionsblok"). A guard that
+        /// has only the indefinite noun therefore passes <c>"Målet"</c> and says the true thing about it, rather
+        /// than splicing a noun the sentence cannot carry.
+        /// </para>
+        /// </summary>
+        internal static string TargetMissingRefusal(string noun) => $"{noun} findes ikke længere.";
+
+        /// <summary>The subject <see cref="TargetMissingRefusal"/> takes when the guard knows only an indefinite
+        /// noun — the same "Målet" the wrong-kind sentence uses, so one guard speaks with one voice.</summary>
+        internal const string TargetSubject = "Målet";
+
+        /// <summary>The Danish template for <see cref="EditRefusalCodes.FieldOutOfRange"/> — both bounds.</summary>
+        internal const string FieldOutOfRangeRefusal = "Feltet '{field}' skal være mellem {minimum} og {maximum}.";
+
+        /// <summary>The Danish template for <see cref="EditRefusalCodes.FieldBelowMinimum"/> — minimum only.</summary>
+        internal const string FieldBelowMinimumRefusal = "Feltet '{field}' skal være mindst {minimum}.";
+
+        /// <summary>The Danish template for <see cref="EditRefusalCodes.FieldAboveMaximum"/> — maximum only.</summary>
+        internal const string FieldAboveMaximumRefusal = "Feltet '{field}' skal være højst {maximum}.";
+
+        /// <summary>
+        /// Which of D05's three bound refusals a submitted number earns, and its sentence already bound — or null
+        /// when the number is within its bounds.
+        /// <para>
+        /// The SHAPE of the field's bounds chooses the code, so each row binds exactly the slots it declares and
+        /// no site has to compose prose. The three consts above are the templates the catalogue entries are built
+        /// from, which is what lets a drift test compare the two copies; this method binds them.
+        /// </para>
+        /// <para>
+        /// There is deliberately no fourth arm for "neither bound". A field declaring no bound cannot be out of
+        /// them, and the caller returns before reaching here — an arm for it would be a sentence nothing could
+        /// ever show, which is the defect this split exists to end.
+        /// </para>
+        /// </summary>
+        /// <param name="field">The field's caption, as the dialog shows it.</param>
+        /// <param name="minimum">The declared lower bound, when the element declares one.</param>
+        /// <param name="maximum">The declared upper bound, when the element declares one.</param>
+        /// <param name="number">The submitted value, already parsed.</param>
+        internal static (ProblemCode Code, string Message)? FieldBounds(
+            string field, int? minimum, int? maximum, int number) =>
+            (minimum, maximum) switch
+            {
+                ({ } min, { } max) when number < min || number > max => (
+                    EditRefusalCodes.FieldOutOfRange,
+                    ProblemTemplate.Bind(FieldOutOfRangeRefusal,
+                    [
+                        new ProblemArgument("field", field),
+                        new ProblemArgument("minimum", min),
+                        new ProblemArgument("maximum", max),
+                    ])),
+                ({ } min, null) when number < min => (
+                    EditRefusalCodes.FieldBelowMinimum,
+                    ProblemTemplate.Bind(FieldBelowMinimumRefusal,
+                    [
+                        new ProblemArgument("field", field),
+                        new ProblemArgument("minimum", min),
+                    ])),
+                (null, { } max) when number > max => (
+                    EditRefusalCodes.FieldAboveMaximum,
+                    ProblemTemplate.Bind(FieldAboveMaximumRefusal,
+                    [
+                        new ProblemArgument("field", field),
+                        new ProblemArgument("maximum", max),
+                    ])),
+                _ => null,
+            };
+
+        /// <summary>
         /// The Danish sentence for <see cref="ModemLimit"/> — the rule AND its remedy, which is the registered
         /// difference from the reference application's own wording.
         /// </summary>

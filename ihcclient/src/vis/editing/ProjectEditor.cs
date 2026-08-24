@@ -111,7 +111,10 @@ namespace Ihc.Vis.Editing
             EditAnalysisCache.CountFullAnalysis();
             // An attribute the grammar does not declare would fail the save; failing here — before the user
             // invests edits — beats a commit-time crash, and beats the silent drop canonicalization once did.
-            SchemaGuards.GuardTreeNoUnknownAttributes(root, SchemaView);
+            // WITH AN IDENTITY: the refusal names edit.open over the same published attr-undeclared cause the
+            // save family raises, so a session can report which attribute stopped the open rather than a bare
+            // engine failure.
+            SchemaGuards.GuardTreeNoUnknownAttributes(root, SchemaView, EditOpenRefusalCodes.AttrUndeclared);
             GuardNoDuplicateIdTokens(root);
         }
 
@@ -655,7 +658,7 @@ namespace Ihc.Vis.Editing
         internal ElementRef Resolve(ElementId id, string noun) =>
             TryResolve(id, out ElementRef? handle)
                 ? handle
-                : throw new Ihc.Vis.Session.EditRefusedException($"{noun} findes ikke længere.");
+                : throw Ihc.Vis.Session.EditRefusedException.TargetMissing(noun);
 
         /// <summary>
         /// Resolves <paramref name="id"/> and asserts its tag is one of <paramref name="expectedTags"/>, returning the

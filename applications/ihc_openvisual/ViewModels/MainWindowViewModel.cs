@@ -532,8 +532,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     internal const string UnexpectedErrorTitle = "Uventet fejl";
 
     /// <summary>The sentence under <see cref="UnexpectedErrorTitle"/>; see that member for why it is fixed.</summary>
-    internal const string UnexpectedErrorMessage =
-        "Handlingen kunne ikke gennemføres på grund af en intern fejl. Detaljerne er skrevet til loggen.";
+    /// <summary>
+    /// The catch-all's sentence, READ from the entry that governs <c>app.openvisual.unexpected</c> rather than
+    /// written again here. It was a second copy of the same Danish, with a test standing between the two to keep
+    /// them equal — and a test comparing two copies is what you write when you cannot delete one. Reading the
+    /// entry deletes one.
+    /// <para>
+    /// Reading the HOST catalogue is sanctioned where reading the SDK's is not (L5 / R17): a reserved family buys
+    /// a host its own code space under the same governance, and this app owns every row in it.
+    /// </para>
+    /// </summary>
+    internal static string UnexpectedErrorMessage => HostProblemCatalog.Unexpected.MessageTemplate;
 
     /// <summary>The generic that stands in wherever a non-committed outcome has no sentence this app may show —
     /// deliberately not <see cref="EditFailedMessage"/>, which <see cref="ReportOutcomeAsync"/> has already put in
@@ -549,7 +558,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// developer diagnostic naming element tags, attribute names and <c>_0x</c> ids.
     /// </summary>
     internal static string? UserFacingRefusal(EditOutcome outcome) =>
-        outcome.Status == EditStatus.Refused ? outcome.Reason : null;
+        outcome.Status == EditStatus.Refused
+            // RENDERED through the shell's one presentation path, so a refusal shown in the status bar carries
+            // the same bracketed identity it carries in a dialog (R18). Showing the sentence raw here made one
+            // refusal identified on one surface and anonymous on another, which is the difference between a user
+            // who can quote a code and one who can only paraphrase a sentence.
+            ? ProblemPresenter.Text(new Problem(
+                outcome.Code, outcome.Reason ?? string.Empty, EquatableArray<ProblemArgument>.Empty))
+            : null;
 
     private async Task<EditOutcome> ReportOutcomeAsync(EditOutcome outcome, string? successStatus)
     {

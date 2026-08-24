@@ -31,8 +31,23 @@ namespace Ihc.Vis.Tests
             // ToProject() and save a file with the attribute gone.
             Project project = Load("Synthetic/OpenWorldUndeclaredAttr.vis");
 
+            // InstanceOf, not Throws.InvalidOperationException: that form matches the EXACT type, and the refusal
+            // is now a RefusedOperationException, which derives from it precisely so every existing caller keeps
+            // catching it. What the base type buys is asserted here; the code it now carries is asserted beside it.
             Assert.That(() => project.Edit(),
-                Throws.InvalidOperationException.With.Message.Contains("bogus").And.Message.Contains("group"));
+                Throws.InstanceOf<InvalidOperationException>()
+                    .With.Message.Contains("bogus").And.Message.Contains("group"));
+
+            RefusedOperationException refusal =
+                Assert.Throws<RefusedOperationException>(() => project.Edit())!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(refusal.Problems!.Operation.Code, Is.EqualTo(OperationCodes.EditOpen),
+                    "the open is what was refused");
+                Assert.That(refusal.Problems.Cause.Message, Does.Contain("bogus").And.Contain("group"),
+                    "and the Danish sentence names the attribute and its element");
+            });
         }
 
         [Test]

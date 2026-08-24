@@ -185,17 +185,33 @@ namespace Ihc.Vis.Session
         public EditVerdict RequireExists(ElementId id, string noun) =>
             Index.FindById(id) is not null
                 ? EditVerdict.Allow
-                : EditVerdict.Refuse(EditRefusalCodes.TargetMissing, $"{noun} findes ikke længere.");
+                : EditVerdict.Refuse(
+                    EditRefusalCodes.TargetMissing, EditRefusalProblems.TargetMissingRefusal(noun));
 
         /// <summary>Allow when <paramref name="id"/> resolves to an element whose tag is one of
         /// <paramref name="tags"/>, else Refuse naming the expected <paramref name="noun"/> — the tag-aware peer of
         /// <see cref="RequireExists"/> (review theme 2 / M5): the single "does the target exist AND carry the right
         /// tag?" legality guard the command Evaluate checks route through, replacing the hand-inlined
-        /// <c>?.Tag == "…" ? Allow : Refuse</c> copies.</summary>
+        /// <c>?.Tag == "…" ? Allow : Refuse</c> copies.
+        /// <para>
+        /// TWO failure conditions, TWO identities. An id that does not resolve at all is a MISSING target; only an
+        /// id that DOES resolve, to an element of another tag, is the wrong KIND. Answering both with
+        /// <see cref="EditRefusalCodes.TargetWrongKind"/> told a user whose target had just been deleted something
+        /// untrue about it, and threw away the distinction the two catalogue rows exist to draw.
+        /// </para>
+        /// <para>
+        /// The missing half is <see cref="RequireExists"/>'s answer, DELEGATED rather than re-spelled: one
+        /// condition keeps one refusal site, so the two guards cannot drift into two spellings of it. The second
+        /// lookup that costs is on the refusal path only. The subject is <c>"Målet"</c> because this guard knows
+        /// the noun only in its indefinite form, which that sentence cannot take as its subject.
+        /// </para></summary>
         public EditVerdict RequireTag(ElementId id, string noun, params string[] tags) =>
-            Index.FindById(id) is { } element && System.Array.IndexOf(tags, element.Tag) >= 0
-                ? EditVerdict.Allow
-                : EditVerdict.Refuse(EditRefusalCodes.TargetWrongKind, $"Målet er ikke {noun}.");
+            Index.FindById(id) is not { } element
+                ? RequireExists(id, EditRefusalProblems.TargetSubject)
+                : System.Array.IndexOf(tags, element.Tag) >= 0
+                    ? EditVerdict.Allow
+                    : EditVerdict.Refuse(
+                        EditRefusalCodes.TargetWrongKind, EditRefusalProblems.TargetWrongKindRefusal(noun));
 
         /// <summary>Allow unless <paramref name="id"/> lies at/within a locked function block's subtree, in which case
         /// Refuse — the session half of the central locked-ancestor authorization (T003): a structural
@@ -218,12 +234,55 @@ namespace Ihc.Vis.Session
             RequireTag(id, noun, tags).And(RequireUnlockedTarget(id, inclusive: true));
     }
 
-    /// <summary>Thrown by a deep engine guard that can only refuse a command once inside its Execute (proposal
-    /// §3.4). The session maps it to <see cref="EditStatus.Refused"/>; every other exception is a failure.</summary>
+    /// <summary>
+    /// Thrown by a deep engine guard that can only refuse a command once inside its Execute (proposal §3.4). The
+    /// session maps it to <see cref="EditStatus.Refused"/>; every other exception is a failure.
+    /// <para>
+    /// It carries its own <see cref="Code"/>. <c>edit.deep-guard</c> says WHERE a refusal was raised — below the
+    /// gate, with no verdict to take a code from — and nothing about WHAT was refused, so reporting every deep
+    /// guard under it collapsed distinct conditions into one bucket a caller cannot filter apart. Three codes had
+    /// a catalogue entry and no reachable raiser as a result, and two more answered to one code through the
+    /// shallow verdict and a different one through the deep guard.
+    /// </para>
+    /// </summary>
     public sealed class EditRefusedException : Exception
     {
-        /// <summary>Creates the exception with the refusal reason.</summary>
-        public EditRefusedException(string message) : base(message) { }
+        /// <summary>
+        /// Creates the exception with the refusal reason and no identity of its own — <see cref="Code"/> is then
+        /// <see cref="EditRefusalCodes.DeepGuard"/>, which is the honest answer where nothing more specific
+        /// exists.
+        /// </summary>
+        /// <param name="message">The Danish sentence the user reads.</param>
+        public EditRefusedException(string message) : this(EditRefusalCodes.DeepGuard, message)
+        {
+        }
+
+        /// <summary>Creates the exception with the identity of the condition that was actually refused.</summary>
+        /// <param name="code">Which refusal this is.</param>
+        /// <param name="message">The Danish sentence the user reads.</param>
+        public EditRefusedException(Problems.ProblemCode code, string message) : base(message)
+        {
+            Code = code;
+        }
+
+        /// <summary>The refusal's identity; <see cref="EditRefusalCodes.DeepGuard"/> when the site named none.</summary>
+        public Problems.ProblemCode Code { get; }
+
+        /// <summary>
+        /// The stale-id refusal, ready to throw — a deep guard's "the element is not there any more".
+        /// <para>
+        /// It is a FACTORY rather than two arguments at the call site because the only site that raises it lives
+        /// in <c>Ihc.Vis.Editing</c>, which the architecture permits to name exactly ONE type from this
+        /// namespace: this exception. Naming <see cref="EditRefusalCodes"/> and
+        /// <see cref="EditRefusalProblems"/> there would widen the editing/session edge from one type to three,
+        /// which <c>EditingLayer_ReachesTheSessionLayer_OnlyForTheRefusalException</c> refuses. Putting the
+        /// pairing behind the permitted type keeps the code and its sentence together, in the layer that owns
+        /// both, without opening the edge.
+        /// </para>
+        /// </summary>
+        /// <param name="noun">The Danish subject, capitalized and definite, as <see cref="EditContext.RequireExists"/> takes it.</param>
+        public static EditRefusedException TargetMissing(string noun) =>
+            new(EditRefusalCodes.TargetMissing, EditRefusalProblems.TargetMissingRefusal(noun));
     }
 
     /// <summary>Carries the <see cref="ProjectChangeSet"/> for a document-session change notification.</summary>

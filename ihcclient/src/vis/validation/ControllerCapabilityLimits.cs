@@ -10,8 +10,12 @@ namespace Ihc.Vis.Validation
     /// rule is absent from a project-only run rather than evaluated against a guess.
     /// </para>
     /// </summary>
-    /// <param name="InputModules">Input data-line terminals the controller carries. Vendor datasheet: 8.</param>
-    /// <param name="OutputModules">Output data-line terminals the controller carries. Vendor datasheet: 16.</param>
+    /// <param name="InputModules">
+    /// Input data LINES — modules, not terminals — the controller carries. Vendor datasheet: 8. The distinction is
+    /// the one that forced <c>capacity-modules-exceeded</c> to split: a module holds many terminals, and a count of
+    /// one read as the other is a sentence that says the wrong unit beside a number.
+    /// </param>
+    /// <param name="OutputModules">Output data LINES the controller carries. Vendor datasheet: 16.</param>
     /// <param name="AddressesPerDirection">
     /// Maximum addresses per direction. Vendor datasheet: 128, corroborated by the authoring bound — the address
     /// chooser offers 1–8 input and 1–16 output modules, and 8×16 and 16×8 both land on 128.

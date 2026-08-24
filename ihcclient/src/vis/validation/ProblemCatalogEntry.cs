@@ -128,22 +128,30 @@ namespace Ihc.Vis.Validation
         public string BindTemplate(Problem problem)
         {
             ArgumentNullException.ThrowIfNull(problem);
-            if (MessageTemplate.Length == 0 || MessageTemplate.IndexOf('{', StringComparison.Ordinal) < 0)
-            {
-                return MessageTemplate;
-            }
-
-            StringBuilder bound = new(MessageTemplate);
-            foreach (ProblemArgument argument in problem.Arguments)
-            {
-                bound.Replace($"{{{argument.Name}}}", Format(argument.Value));
-            }
-
-            return bound.ToString();
+            return Bind(MessageTemplate, problem);
         }
 
-        private static string Format(object value) =>
-            value as string ?? (value as IFormattable)?.ToString(null, CultureInfo.InvariantCulture)
-            ?? value.ToString() ?? string.Empty;
+        /// <summary>
+        /// Binds the same arguments into this row's ENGLISH <see cref="Diagnostic"/>, which declares the same
+        /// slots as the Danish template and had been left unbound — so the one text written for the person
+        /// debugging was the one text that reached the log with <c>{attribute}</c> still spelled out.
+        /// <para>
+        /// Null in, null out: a row that declares no diagnostic gains nothing to bind.
+        /// </para>
+        /// </summary>
+        /// <param name="problem">The problem whose arguments fill this row's slots.</param>
+        public string? BindDiagnostic(Problem problem)
+        {
+            ArgumentNullException.ThrowIfNull(problem);
+            return Diagnostic is { } diagnostic ? Bind(diagnostic, problem) : null;
+        }
+
+        /// <summary>
+        /// The one substitution, shared so this row's two texts cannot bind by different rules — and shared with
+        /// the refusing sites below the engine, which bind the same sentence through
+        /// <see cref="RefusalIdentity.Binding"/> because they may not read this catalogue.
+        /// </summary>
+        private static string Bind(string template, Problem problem) =>
+            ProblemTemplate.Bind(template, problem.Arguments);
     }
 }

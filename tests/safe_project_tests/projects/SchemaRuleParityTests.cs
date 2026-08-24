@@ -91,11 +91,14 @@ namespace Ihc.Vis.Tests
                         .Select(f => $"{f.Severity}\t{f.Code.Value}\t{f.Category}\t{f.Primary?.Locator ?? "-"}\t{f.Problem.Message}")
                         .OrderBy(row => row, StringComparer.Ordinal)];
 
+                    // The CATEGORY is the entry's, because a migration moves it on purpose. The MESSAGE is the
+                    // recording's: these six rows surface their arguments, so the produced sentence is BOUND and
+                    // an expectation taken from the raw template would demand a literal '{tag}'.
                     string[] expected = [.. forCase
                         .Select(cells =>
                         {
                             Catalog.TryGet(new ProblemCode(cells[2]), out ProblemCatalogEntry entry);
-                            return $"{cells[1]}\t{cells[2]}\t{entry.Category}\t{cells[4]}\t{entry.MessageTemplate}";
+                            return $"{cells[1]}\t{cells[2]}\t{entry.Category}\t{cells[4]}\t{cells[5]}";
                         })
                         .OrderBy(row => row, StringComparer.Ordinal)];
 

@@ -49,6 +49,14 @@ namespace Ihc.Vis.Validation
     /// asked first.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// One id collision, as the reader must see it: the FIRST holder of the colliding value and every other
+    /// element that carries it, in document order.
+    /// </summary>
+    /// <param name="Primary">The first holder — the site a finding is anchored to.</param>
+    /// <param name="Related">The other holders, in document order. Never empty for a real collision.</param>
+    public sealed record DuplicateIdGroup(ProjectElement Primary, EquatableArray<ProjectElement> Related);
+
     public interface IIdAnalysis
     {
         /// <summary>Whether any element carries this id token. The dangling-reference rule's whole question.</summary>
@@ -60,6 +68,20 @@ namespace Ihc.Vis.Validation
 
         /// <summary>The elements that are NOT the first holder of their id COUNTER, in document order.</summary>
         EquatableArray<ProjectElement> DuplicateCounterHolders { get; }
+
+        /// <summary>
+        /// The same token collisions as <see cref="DuplicateTokenHolders"/>, GROUPED: each collision as its first
+        /// holder plus the others. A rule reporting one finding per collision needs the first holder too — it is
+        /// the site the reader repairs against — and the two holder lists deliberately do not contain it.
+        /// <para>
+        /// Derived in the same pass rather than re-grouped by a rule: "first holder wins, in document order" is
+        /// stated once here, and a rule re-deriving it would be a second answer to which element is the duplicate.
+        /// </para>
+        /// </summary>
+        EquatableArray<DuplicateIdGroup> DuplicateTokenGroups { get; }
+
+        /// <summary>The counter collisions, grouped the same way. Members share a COUNTER and differ in token.</summary>
+        EquatableArray<DuplicateIdGroup> DuplicateCounterGroups { get; }
 
         /// <summary>The highest id counter any element carries, or 0 when none does.</summary>
         long MaxCounter { get; }
@@ -287,12 +309,16 @@ namespace Ihc.Vis.Validation
             HashSet<string> tokens,
             EquatableArray<ProjectElement> duplicateTokenHolders,
             EquatableArray<ProjectElement> duplicateCounterHolders,
+            EquatableArray<DuplicateIdGroup> duplicateTokenGroups,
+            EquatableArray<DuplicateIdGroup> duplicateCounterGroups,
             long maxCounter,
             LastUniqueIdFault lastUniqueId)
         {
             this.tokens = tokens;
             DuplicateTokenHolders = duplicateTokenHolders;
             DuplicateCounterHolders = duplicateCounterHolders;
+            DuplicateTokenGroups = duplicateTokenGroups;
+            DuplicateCounterGroups = duplicateCounterGroups;
             MaxCounter = maxCounter;
             LastUniqueId = lastUniqueId;
         }
@@ -300,6 +326,10 @@ namespace Ihc.Vis.Validation
         public EquatableArray<ProjectElement> DuplicateTokenHolders { get; }
 
         public EquatableArray<ProjectElement> DuplicateCounterHolders { get; }
+
+        public EquatableArray<DuplicateIdGroup> DuplicateTokenGroups { get; }
+
+        public EquatableArray<DuplicateIdGroup> DuplicateCounterGroups { get; }
 
         public long MaxCounter { get; }
 
@@ -315,6 +345,15 @@ namespace Ihc.Vis.Validation
             ImmutableArray<ProjectElement>.Builder duplicateCounters = ImmutableArray.CreateBuilder<ProjectElement>();
             long maxCounter = 0;
 
+            // The first holder of each value, so a collision can be reported as ONE finding anchored at the site
+            // the reader repairs against. Insertion-ordered, so the groups come out in document order too.
+            Dictionary<string, ProjectElement> firstByToken = new(StringComparer.Ordinal);
+            Dictionary<int, ProjectElement> firstByCounter = [];
+            Dictionary<string, List<ProjectElement>> othersByToken = new(StringComparer.Ordinal);
+            Dictionary<int, List<ProjectElement>> othersByCounter = [];
+            List<string> collidedTokens = [];
+            List<int> collidedCounters = [];
+
             foreach (ProjectElement element in project.Root.DescendantsAndSelf())
             {
                 if (element.GetAttribute("id") is not { } token)
@@ -327,8 +366,17 @@ namespace Ihc.Vis.Validation
                     // A duplicate token is not examined further: its counter and type code are the FIRST holder's
                     // business, and reporting them again would say the same collision twice.
                     duplicateTokens.Add(element);
+                    if (!othersByToken.TryGetValue(token, out List<ProjectElement>? sharing))
+                    {
+                        othersByToken[token] = sharing = [];
+                        collidedTokens.Add(token);
+                    }
+
+                    sharing.Add(element);
                     continue;
                 }
+
+                firstByToken[token] = element;
 
                 if (!ElementId.TryParse(token, out ElementId id))
                 {
@@ -338,6 +386,17 @@ namespace Ihc.Vis.Validation
                 if (!counters.Add(id.Counter))
                 {
                     duplicateCounters.Add(element);
+                    if (!othersByCounter.TryGetValue(id.Counter, out List<ProjectElement>? sharing))
+                    {
+                        othersByCounter[id.Counter] = sharing = [];
+                        collidedCounters.Add(id.Counter);
+                    }
+
+                    sharing.Add(element);
+                }
+                else
+                {
+                    firstByCounter[id.Counter] = element;
                 }
 
                 if (id.Counter > maxCounter)
@@ -350,6 +409,8 @@ namespace Ihc.Vis.Validation
                 tokens,
                 duplicateTokens.ToImmutable(),
                 duplicateCounters.ToImmutable(),
+                [.. collidedTokens.Select(t => new DuplicateIdGroup(firstByToken[t], [.. othersByToken[t]]))],
+                [.. collidedCounters.Select(c => new DuplicateIdGroup(firstByCounter[c], [.. othersByCounter[c]]))],
                 maxCounter,
                 FaultOf(project.LastUniqueId, maxCounter));
         }

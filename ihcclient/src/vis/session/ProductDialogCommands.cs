@@ -114,7 +114,7 @@ namespace Ihc.Vis.Session
                 // condition answers "is this number outside its bounds", and nothing else.
                 if (OutsideBounds(field, edit.Value) is { } outside)
                 {
-                    return EditVerdict.Refuse(EditRefusalCodes.FieldOutOfRange, outside);
+                    return EditVerdict.Refuse(outside.Code, outside.Message);
                 }
             }
             return EditVerdict.Allow;
@@ -144,10 +144,18 @@ namespace Ihc.Vis.Session
                 : (EditRefusalCodes.FieldValueRule, rule.Refusal);
 
         /// <summary>
-        /// The refusal sentence when a numeric field's value falls outside the bounds its own catalog element
-        /// declares, or null when it does not. Blank and unparseable values are not this condition.
+        /// Which coded refusal a numeric field's value earns when it falls outside the bounds its own catalog
+        /// element declares, or null when it does not. Blank and unparseable values are not this condition.
+        /// <para>
+        /// The identity and the sentence BOTH come from <see cref="EditRefusalProblems.FieldBounds"/> (D05).
+        /// This site used to author four sentences of its own, one per bound shape, under a single code whose
+        /// catalogue row declared a template none of them matched — so the row described words no user saw. The
+        /// site now decides nothing about wording: it reports which bounds the field declares and what was
+        /// submitted, and the owner beside the codes answers with the row's own sentence, bound.
+        /// </para>
         /// </summary>
-        private static string? OutsideBounds(DialogDescriptorField field, string? value)
+        private static (ProblemCode Code, string Message)? OutsideBounds(
+            DialogDescriptorField field, string? value)
         {
             if (field.Minimum is null && field.Maximum is null)
             {
@@ -160,21 +168,8 @@ namespace Ihc.Vis.Session
                 return null;
             }
 
-            if (field.Minimum is { } min && number < min)
-            {
-                return Sentence(field);
-            }
-
-            return field.Maximum is { } max && number > max ? Sentence(field) : null;
+            return EditRefusalProblems.FieldBounds(field.Caption, field.Minimum, field.Maximum, number);
         }
-
-        private static string Sentence(DialogDescriptorField field) => (field.Minimum, field.Maximum) switch
-        {
-            ({ } min, { } max) => $"Feltet '{field.Caption}' skal være mellem {min} og {max}.",
-            ({ } min, null) => $"Feltet '{field.Caption}' skal være mindst {min}.",
-            (null, { } max) => $"Feltet '{field.Caption}' skal være højst {max}.",
-            _ => $"Feltet '{field.Caption}' ligger uden for sit tilladte område.",
-        };
 
         internal override void Execute(ProjectEditor editor)
         {

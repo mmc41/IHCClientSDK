@@ -147,6 +147,18 @@ namespace Ihc.Vis.Validation
 
         /// <summary>The entry is retired or ruled out, so no rule may implement it.</summary>
         CodeNotActive,
+
+        /// <summary>
+        /// The rule's emission shape contradicts the <see cref="FindingShape"/> its entry declares — a
+        /// <see cref="FindingShape.PrimaryWithRelated"/> row reporting a lone site, or a single-site row
+        /// reporting a group.
+        /// <para>
+        /// The declaration is not decoration: it is what tells a consumer whether N findings are N repairs or one,
+        /// and whether a finding has other sites worth navigating to. A row that declares a group and emits
+        /// singletons publishes a promise the engine does not keep, and nothing but this fault notices.
+        /// </para>
+        /// </summary>
+        ShapeContradictsDeclaration,
     }
 
     /// <summary>
@@ -276,6 +288,15 @@ namespace Ihc.Vis.Validation
             if (rule.Inspection is not null && rule.Entry.Faces != RuleFaces.WholeProject)
             {
                 return RuleRegistrationFault.TraversalCannotServeFace;
+            }
+
+            // The half of the shape contract that IS decidable without running anything: a declarative rule
+            // reports through Report and has no way to name a related site, so declaring a group is a
+            // contradiction the composition can be failed on. The other half — a TRAVERSAL that declares a group
+            // and then emits singletons — cannot be seen from a delegate, and is enforced at the emission itself.
+            if (rule.Constraints is not null && rule.Entry.Shape == FindingShape.PrimaryWithRelated)
+            {
+                return RuleRegistrationFault.ShapeContradictsDeclaration;
             }
 
             return TargetIsKnown(rule.Entry.Target) ? null : RuleRegistrationFault.UnknownTarget;

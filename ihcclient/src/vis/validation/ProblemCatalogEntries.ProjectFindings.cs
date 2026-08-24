@@ -461,8 +461,14 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Ugyldig værdi")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("value", ProblemArgumentType.AttributeValue),
+                    new ProblemArgumentSlot("attribute", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("allowed", ProblemArgumentType.AttributeValue),
+                ]),
+                "Ugyldig værdi '{value}' i attributten '{attribute}' på <{tag}>. Tilladte værdier: {allowed}.")
             {
                 Diagnostic = "attribute {attribute}='{value}' on '{tag}' is not one of ({allowed})",
                 Evidence = EvidenceMark.Unknown,
@@ -483,8 +489,12 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Tegn kan ikke gemmes")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("attribute", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                ]),
+                "Tegn kan ikke gemmes i attributten '{attribute}' på <{tag}>.")
             {
                 Diagnostic = "attribute '{attribute}' on '{tag}' has non-ISO-8859-1 text",
                 Evidence = EvidenceMark.Unknown,
@@ -504,8 +514,12 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Mangler påkrævet attribut")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("attribute", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                ]),
+                "Den påkrævede attribut '{attribute}' mangler på <{tag}>.")
             {
                 Diagnostic = "required attribute '{attribute}' missing on '{tag}'",
                 Evidence = EvidenceMark.Unknown,
@@ -526,8 +540,12 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Ukendt attribut")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("attribute", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                ]),
+                "Ukendt attribut '{attribute}' på <{tag}>.")
             {
                 Diagnostic = "attribute '{attribute}' on '{tag}' is not declared in the element's inline-DTD block or the schema registry (serialization will fail)",
                 Evidence = EvidenceMark.Unknown,
@@ -675,23 +693,57 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
-        /// More addressed TERMINALS in one direction than the target controller holds: the project cannot be
-        /// uploaded as it stands.
-        /// PREDICATE: with a declared capability profile, the count of addressed terminals of one direction is
-        /// above <c>AddressesPerDirection</c>. Evaluated once per direction, which is why the shape is
-        /// <see cref="FindingShape.OnePerOccurrence"/> — a project can be over on both.
-        /// ITS OWN ROW (D2), and the one that made the split necessary: this counts KLEMMER, and reporting it
-        /// through a sentence that says "moduler" told the reader the wrong unit for the number beside it. The
-        /// direction is not an argument, because a direction is a word and an argument is data; a reader who needs
-        /// to know which one reads the two module rows beside this one.
+        /// RETIRED. It counted addressed terminals in ONE direction but named neither, so a project over on both
+        /// produced two findings a reader could tell apart only by their numbers — and the numbers are the one
+        /// thing that does not say which direction they are about.
+        /// <para>
+        /// Its own entry argued the direction "is not an argument, because a direction is a word and an argument
+        /// is data", and that argument still holds: the fix is not to smuggle a word into a slot but to SPLIT the
+        /// row, exactly as <c>capacity-modules-exceeded</c> split into a per-direction pair. Each successor then
+        /// names its direction in its own Danish sentence and carries only numbers as arguments.
+        /// </para>
+        /// <para>
+        /// It stays here rather than being deleted, and is never re-pointed at one of its successors, for the
+        /// reason its own predecessor states: a published id that quietly came to mean something narrower is
+        /// worse than one that is gone. Keeping the row keeps the id reserved.
+        /// </para>
+        /// PREDICATE: none. Nothing implements a retired code.
+        /// </summary>
+        private static ProblemCatalogEntry CapacityAddresses =>
+            new ProblemCatalogEntry(
+                new ProblemCode("capacity-addresses"),
+                ProblemCatalogSection.ProjectFindings,
+                ValidationCategory.ProjectStructure,
+                CatalogDisposition.Error,
+                RuleKind.UserContentRule,
+                RuleFaces.WholeProject,
+                default,
+                FindingShape.OnePerOccurrence,
+                default,
+                "",
+                ProblemCodeStatus.Retired)
+            {
+                Diagnostic = "Split into capacity-input-addresses and capacity-output-addresses; this id is "
+                    + "reserved and never re-used.",
+                Evidence = EvidenceMark.Unknown,
+            };
+
+        /// <summary>
+        /// More addressed INPUT terminals than the target controller holds: the project cannot be uploaded as it
+        /// stands.
+        /// PREDICATE: with a declared capability profile, the count of addressed input terminals is above
+        /// <c>AddressesPerDirection</c>.
+        /// TWO ROWS RATHER THAN ONE WITH A DIRECTION ARGUMENT, following its module siblings: a direction is a
+        /// WORD, and a word in an argument slot makes the message untranslatable and the row's arguments something
+        /// other than data. Naming it in the sentence is what lets the arguments stay numbers.
         /// THE LIMIT IS DATA: 128 comes from the vendor datasheet and is corroborated by the address encoding
         /// (8x16 and 16x8 both land on 128).
         /// NOT EVALUATED WITHOUT A PROFILE (D21), and unwitnessable at any practical fixture size; the boundary
         /// tests declare a low limit instead.
         /// </summary>
-        private static ProblemCatalogEntry CapacityAddresses =>
+        private static ProblemCatalogEntry CapacityInputAddresses =>
             new ProblemCatalogEntry(
-                new ProblemCode("capacity-addresses"),
+                new ProblemCode("capacity-input-addresses"),
                 ProblemCatalogSection.ProjectFindings,
                 ValidationCategory.ProjectStructure,
                 CatalogDisposition.Error,
@@ -704,9 +756,37 @@ namespace Ihc.Vis.Validation
                     new ProblemArgumentSlot("used", ProblemArgumentType.Integer),
                     new ProblemArgumentSlot("limit", ProblemArgumentType.Integer),
                 ]),
-                "Projektet bruger {used} af {limit} klemmer på én datalinjeretning.")
+                "Projektet bruger {used} af {limit} indgangsklemmer.")
             {
-                Diagnostic = "Addressed terminals in one direction exceed the declared controller limit.",
+                Diagnostic = "Addressed input terminals exceed the declared controller limit.",
+                Evidence = EvidenceMark.Unknown,
+                RequiresControllerLimits = true,
+            };
+
+        /// <summary>
+        /// More addressed OUTPUT terminals than the target controller holds.
+        /// SEE <c>capacity-input-addresses</c> for why the two directions are two rows rather than one with a
+        /// direction argument, and for the limits-are-data and no-profile-no-evaluation notes, which apply
+        /// unchanged.
+        /// </summary>
+        private static ProblemCatalogEntry CapacityOutputAddresses =>
+            new ProblemCatalogEntry(
+                new ProblemCode("capacity-output-addresses"),
+                ProblemCatalogSection.ProjectFindings,
+                ValidationCategory.ProjectStructure,
+                CatalogDisposition.Error,
+                RuleKind.UserContentRule,
+                RuleFaces.WholeProject,
+                default,
+                FindingShape.OnePerOccurrence,
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("used", ProblemArgumentType.Integer),
+                    new ProblemArgumentSlot("limit", ProblemArgumentType.Integer),
+                ]),
+                "Projektet bruger {used} af {limit} udgangsklemmer.")
+            {
+                Diagnostic = "Addressed output terminals exceed the declared controller limit.",
                 Evidence = EvidenceMark.Unknown,
                 RequiresControllerLimits = true,
             };
@@ -812,8 +892,12 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Uventet placering")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("parent", ProblemArgumentType.SchemaName),
+                ]),
+                "Uventet placering: <{tag}> ligger under <{parent}>.")
             {
                 Diagnostic = "<{tag}> under <{parent}> is outside the modeled containment rules (spec ch. 03/04/06)",
                 Evidence = EvidenceMark.Unknown,
@@ -833,10 +917,19 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.PrimaryWithRelated,
-                default,
-                "Dobbelt klemmeadresse")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("value", ProblemArgumentType.AttributeValue),
+                    new ProblemArgumentSlot("count", ProblemArgumentType.Integer),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                ]),
+                // ONE sentence for the whole collision, because the row declares one finding for it. The
+                // terminals' own names are not lost: each site of the group carries its own text, so the reader
+                // gets them beside the locators they can navigate to instead of two of them spliced into a
+                // sentence that could only ever name two.
+                "Dobbelt klemmeadresse '{value}': {count} klemmer på <{tag}> deler adressen.")
             {
-                Diagnostic = "address_dataline='{value}' on '{tag}' '{name}' duplicates the address of '{other}' (addresses are unique per direction)",
+                Diagnostic = "address_dataline='{value}' is claimed by {count} '{tag}' terminals (addresses are unique per direction)",
                 Evidence = EvidenceMark.Refused,
             };
 
@@ -854,8 +947,12 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Ugyldig klemmeadresse")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("value", ProblemArgumentType.AttributeValue),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                ]),
+                "Ugyldig klemmeadresse '{value}' på <{tag}>.")
             {
                 Diagnostic = "address_dataline='{value}' on '{tag}' is not a _0x hex token",
                 Evidence = EvidenceMark.Unknown,
@@ -875,8 +972,13 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Klemmeadresse uden for området")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("value", ProblemArgumentType.AttributeValue),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("maximum", ProblemArgumentType.Integer),
+                ]),
+                "Klemmeadressen '{value}' på <{tag}> er uden for det gyldige område 1-{maximum}.")
             {
                 Diagnostic = "address_dataline='{value}' on '{tag}' is outside the legal 1-{maximum} module range",
                 Evidence = EvidenceMark.Unknown,
@@ -1080,8 +1182,8 @@ namespace Ihc.Vis.Validation
                 FindingShape.OnePerOccurrence,
                 EquatableArray.Create<ProblemArgumentSlot>(
                 [
-                    new ProblemArgumentSlot("variable", ProblemArgumentType.AuthoredName),
                     new ProblemArgumentSlot("value", ProblemArgumentType.AttributeValue),
+                    new ProblemArgumentSlot("variable", ProblemArgumentType.AuthoredName),
                 ]),
                 "Startværdien '{value}' på '{variable}' sættes af et program ved hver opstart.")
             {
@@ -1446,8 +1548,11 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Ukendt elementtype")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                ]),
+                "Ukendt elementtype <{tag}>.")
             {
                 Diagnostic = "element type '{tag}' is not declared in the project's inline DTD or the schema registry (cannot be serialized)",
                 Evidence = EvidenceMark.Unknown,
@@ -1639,8 +1744,13 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Ugyldig starttilstand")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("inivalue", ProblemArgumentType.AttributeValue),
+                    new ProblemArgumentSlot("name", ProblemArgumentType.AuthoredName),
+                    new ProblemArgumentSlot("typedef", ProblemArgumentType.AuthoredName),
+                ]),
+                "Ugyldig starttilstand '{inivalue}' på enumerator-variablen '{name}': den findes ikke i enumeratortypen '{typedef}'.")
             {
                 Diagnostic = "inivalue='{inivalue}' on resource_enum '{name}' is not a value of its typedef enum '{typedef}'",
                 Evidence = EvidenceMark.Unknown,
@@ -1660,8 +1770,13 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Enumeratortype mangler")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("typedef", ProblemArgumentType.AuthoredName),
+                    new ProblemArgumentSlot("name", ProblemArgumentType.AuthoredName),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                ]),
+                "Enumeratortype mangler: typedef='{typedef}' på enumerator-variablen '{name}' peger på <{tag}>, ikke på en enumeratortype.")
             {
                 Diagnostic = "typedef='{typedef}' on resource_enum '{name}' references a <{tag}>, not an enum_definition",
                 Evidence = EvidenceMark.Unknown,
@@ -1742,8 +1857,13 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Reference uden for blokken")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("attribute", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("value", ProblemArgumentType.AttributeValue),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                ]),
+                "Reference uden for blokken: {attribute}='{value}' på <{tag}> peger uden for funktionsblokken.")
             {
                 Diagnostic = "{attribute}='{value}' on '{tag}' references an element outside its function block (programming references must stay within one functionblock)",
                 Evidence = EvidenceMark.Unknown,
@@ -1763,8 +1883,14 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Klemme i forkert beholder")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("id", ProblemArgumentType.ElementIdentity),
+                    new ProblemArgumentSlot("expected", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("actual", ProblemArgumentType.SchemaName),
+                ]),
+                "Klemme i forkert beholder: <{tag}> i funktionsblokken '{id}' skal ligge under <{expected}>, ikke under <{actual}>.")
             {
                 Diagnostic = "functionblock '{id}': {tag} must be under {expected}, not {actual}",
                 Evidence = EvidenceMark.Unknown,
@@ -1784,8 +1910,12 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Ugyldigt programindhold")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("id", ProblemArgumentType.ElementIdentity),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                ]),
+                "Ugyldigt programindhold i funktionsblokken '{id}': programbeholderen indeholder <{tag}>, men må kun indeholde simple programmer.")
             {
                 Diagnostic = "functionblock '{id}': programs contains '{tag}', but programs may hold only program_simple",
                 Evidence = EvidenceMark.Unknown,
@@ -1805,8 +1935,13 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Forkert blokopbygning")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("id", ProblemArgumentType.ElementIdentity),
+                    new ProblemArgumentSlot("expected", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("actual", ProblemArgumentType.SchemaName),
+                ]),
+                "Forkert blokopbygning i funktionsblokken '{id}': forventet [{expected}], men fandt [{actual}].")
             {
                 Diagnostic = "functionblock '{id}' must contain exactly the five containers [{expected}] in that order, but has [{actual}]",
                 Evidence = EvidenceMark.Unknown,
@@ -1826,8 +1961,13 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.PrimaryWithRelated,
-                default,
-                "Dobbelt id-tæller")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("id", ProblemArgumentType.ElementIdentity),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("count", ProblemArgumentType.Integer),
+                ]),
+                "Dobbelt id-tæller i '{id}' på <{tag}>: {count} id'er deler samme tæller.")
             {
                 Diagnostic = "duplicate id counter in '{id}' (element '{tag}')",
                 Evidence = EvidenceMark.Unknown,
@@ -1847,8 +1987,13 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.PrimaryWithRelated,
-                default,
-                "Dobbelt id")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("id", ProblemArgumentType.ElementIdentity),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("count", ProblemArgumentType.Integer),
+                ]),
+                "Dobbelt id '{id}' på <{tag}>: {count} elementer deler dette id.")
             {
                 Diagnostic = "duplicate id token '{id}' (element '{tag}')",
                 Evidence = EvidenceMark.Unknown,
@@ -1868,8 +2013,14 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Forkert id-typekode")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("id", ProblemArgumentType.ElementIdentity),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("actual", ProblemArgumentType.Integer),
+                    new ProblemArgumentSlot("expected", ProblemArgumentType.Integer),
+                ]),
+                "Forkert id-typekode i '{id}' på <{tag}>: typekoden er {actual}, men skulle være {expected}.")
             {
                 Diagnostic = "id '{id}' on '{tag}' has a type-code that disagrees with the element's kind",
                 Evidence = EvidenceMark.Unknown,
@@ -1889,8 +2040,12 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Ugyldigt id")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("id", ProblemArgumentType.ElementIdentity),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                ]),
+                "Ugyldigt id '{id}' på <{tag}>.")
             {
                 Diagnostic = "id '{id}' on '{tag}' is not a well-formed _0x hex token in the legal packed range (spec ch. 02)",
                 Evidence = EvidenceMark.Unknown,
@@ -1910,8 +2065,13 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Reference uden mål")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("attribute", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("value", ProblemArgumentType.AttributeValue),
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                ]),
+                "Reference uden mål: {attribute}='{value}' på <{tag}> peger ikke på noget element.")
             {
                 Diagnostic = "dangling {attribute}='{value}' on '{tag}' (no element has that id)",
                 Evidence = EvidenceMark.Unknown,
@@ -1948,6 +2108,13 @@ namespace Ihc.Vis.Validation
         /// <c>product_dataline</c> body. Nothing refuses, so there is no throw site to give an identity to, and
         /// this backlog introduces no new refusal — the row and the code disagree until a product ruling closes
         /// the gap, which is what the severity-times-operation matrix records.
+        /// <para>
+        /// ITS EMPTY TEMPLATE IS THE RECORD, not an omission: a row has a Danish sentence exactly when something
+        /// can raise it, and nothing raises this one. Authoring words here would assert a raiser that does not
+        /// exist. It stays Active rather than becoming <c>RuledOut</c> for the same reason — RuledOut is POSITIVE
+        /// knowledge ("examined, and not a defect"), which this row explicitly disclaims: the gap is undecided,
+        /// not closed. <c>NoRowHasWordsWithoutARaiserOrARaiserWithoutWords</c> holds both halves.
+        /// </para>
         /// </summary>
         private static ProblemCatalogEntry ImportCatalogWrongKind =>
             new ProblemCatalogEntry(
@@ -2002,8 +2169,15 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Ubrugt indlejret konstant")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("id", ProblemArgumentType.ElementIdentity),
+                    new ProblemArgumentSlot("parent", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("attribute", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("value", ProblemArgumentType.AttributeValue),
+                ]),
+                "Ubrugt indlejret konstant <{tag}> '{id}' i <{parent}>: forælderens {attribute} er '{value}' og peger ikke på den.")
             {
                 Diagnostic = "embedded constant <{tag}> '{id}' inside <{parent}> must be referenced by its parent's {attribute} (found '{value}')",
                 Evidence = EvidenceMark.Unknown,
@@ -2024,8 +2198,12 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Forbindelsen er ensidig")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("id", ProblemArgumentType.ElementIdentity),
+                ]),
+                "Forbindelsen er ensidig: <{tag}> '{id}' er ikke forbundet begge veje til en partner af den modsatte type.")
             {
                 Diagnostic = "{noun} {tag} '{id}' is not reciprocally linked to a live partner of the complementary kind",
                 Evidence = EvidenceMark.Unknown,
@@ -2852,7 +3030,11 @@ namespace Ihc.Vis.Validation
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
                 default,
-                FindingShape.OnePerOccurrence,
+                // PrimaryWithRelated, because that is what the rule EMITS: the duplicate program as the primary
+                // and the program it copies as its related site. It declared OnePerOccurrence, which promised a
+                // consumer there was nothing else to navigate to — and the copy is the one thing a reader needs
+                // to see before deleting anything.
+                FindingShape.PrimaryWithRelated,
                 EquatableArray.Create<ProblemArgumentSlot>(
                 [
                     new ProblemArgumentSlot("block", ProblemArgumentType.AuthoredName),
@@ -3249,8 +3431,11 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OneFinding,
-                default,
-                "Id-tælleren er opbrugt")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("value", ProblemArgumentType.AttributeValue),
+                ]),
+                "Id-tælleren er opbrugt: last_unique_id '{value}' overskrider loftet for 24-bit id-tællere.")
             {
                 Diagnostic = "last_unique_id '{value}' exceeds the 24-bit id counter ceiling (0xffffff)",
                 Evidence = EvidenceMark.Unknown,
@@ -3291,8 +3476,11 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OneFinding,
-                default,
-                "Ugyldig id-tæller")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("value", ProblemArgumentType.AttributeValue),
+                ]),
+                "Ugyldig id-tæller: last_unique_id '{value}' er ikke et _0x-hextoken.")
             {
                 Diagnostic = "last_unique_id '{value}' is not a _0x hex token",
                 Evidence = EvidenceMark.Unknown,
@@ -3526,8 +3714,14 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Uventet programopbygning")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("id", ProblemArgumentType.ElementIdentity),
+                    new ProblemArgumentSlot("expected", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("actual", ProblemArgumentType.SchemaName),
+                ]),
+                "Uventet programopbygning i <{tag}> '{id}': forventet [{expected}], men fandt [{actual}].")
             {
                 Diagnostic = "'{tag}' '{id}' does not have the vendor skeleton [{expected}] (found [{actual}])",
                 Evidence = EvidenceMark.Unknown,
@@ -3547,8 +3741,12 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OneFinding,
-                default,
-                "Uventet rækkefølge i roden")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("actual", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("expected", ProblemArgumentType.SchemaName),
+                ]),
+                "Uventet rækkefølge i roden: rodens børn er [{actual}]; forventet [{expected}].")
             {
                 Diagnostic = "the root's children are [{actual}]; a vendor file has the seven fixed children [{expected}] in that order",
                 Evidence = EvidenceMark.Unknown,
@@ -3569,8 +3767,11 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Nyere projektversion")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("version", ProblemArgumentType.AttributeValue),
+                ]),
+                "Nyere projektversion: version_major='{version}' er nyere end version 4, som dette værktøj understøtter.")
             {
                 Diagnostic = "version_major='{version}': IHC Visual silently rejects project versions above 4 (spec ch. 10 10.5)",
                 Evidence = EvidenceMark.Unknown,
@@ -3668,8 +3869,12 @@ namespace Ihc.Vis.Validation
                 RuleFaces.WholeProject,
                 default,
                 FindingShape.OnePerOccurrence,
-                default,
-                "Scenerækken er ensidig")
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("tag", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("id", ProblemArgumentType.ElementIdentity),
+                ]),
+                "Scenerækken er ensidig: <{tag}> '{id}' er ikke forbundet begge veje til en partner af den modsatte type.")
             {
                 Diagnostic = "{noun} {tag} '{id}' is not reciprocally linked to a live partner of the complementary kind",
                 Evidence = EvidenceMark.Unknown,
@@ -4142,6 +4347,8 @@ namespace Ihc.Vis.Validation
             CapacityInputModules,
             CapacityOutputModules,
             CapacityAddresses,
+            CapacityInputAddresses,
+            CapacityOutputAddresses,
             CapacityResourcesHigh,
             CapacityWirelessExceeded,
             Containment,

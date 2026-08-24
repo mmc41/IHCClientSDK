@@ -13,16 +13,18 @@ using Ihc.Vis.Projects;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The four CAPACITY rows: what the target controller can hold, and the one limit that is the file's own.
+    /// The seven CAPACITY rows: what the target controller can hold, and the one limit that is the file's own.
     ///
-    /// <para><b>Three of the four are not evaluated without a declared capability profile</b>, and that is the
+    /// <para><b>Six of the seven are not evaluated without a declared capability profile</b>, and that is the
     /// whole point of D21's controller case: their limit is not in the <c>.vis</c> file, so validating against a
     /// default would mean the same project is valid on one workstation and invalid on another. Each declares
     /// <see cref="ProblemCatalogEntry.RequiresControllerLimits"/>, so the profile skips it rather than the rule
     /// having to handle absence.</para>
     ///
     /// <para><b>Their limits are DATA, never constants here.</b> 8 input modules, 16 output modules and 128
-    /// addresses per direction come from the datasheet and are corroborated by the address chooser's own bounds; 64
+    /// addresses per direction come from the datasheet and are corroborated by the address chooser's own bounds
+    /// (the module and address limits are one row PER DIRECTION, which is how each names its direction in its own
+    /// Danish sentence instead of leaving a reader to tell two findings apart by their numbers); 64
     /// wireless devices comes from vendor help — and because that source says <i>"bør maksimalt … af hensyn til en
     /// fornuftig responstid"</i>, a RECOMMENDATION, the wireless row is a Warning rather than the Error the
     /// catalogue first stated. The resource ceiling has NO vendor source and says so where it lives.</para>
@@ -33,7 +35,7 @@ namespace Ihc.Vis.Validation
     /// </summary>
     public static class CapacityRules
     {
-        /// <summary>The four rules, ready to register against the catalogue.</summary>
+        /// <summary>The seven rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {
@@ -41,7 +43,8 @@ namespace Ihc.Vis.Validation
             return ImmutableArray.Create(
                 Rule(catalog, "capacity-input-modules", Modules(isOutput: false)),
                 Rule(catalog, "capacity-output-modules", Modules(isOutput: true)),
-                Rule(catalog, "capacity-addresses", AddressesExceeded),
+                Rule(catalog, "capacity-input-addresses", AddressesExceeded(isOutput: false)),
+                Rule(catalog, "capacity-output-addresses", AddressesExceeded(isOutput: true)),
                 Rule(catalog, "capacity-wireless-exceeded", WirelessExceeded),
                 Rule(catalog, "capacity-modem-multiple", ModemMultiple),
                 Rule(catalog, "capacity-resources-high", ResourcesHigh(catalog)));
@@ -57,9 +60,13 @@ namespace Ihc.Vis.Validation
         /// <para>
         /// ONE DIRECTION PER RULE (D2). These were one rule with the terminals check, sharing the sentence
         /// "Projektet bruger {used} af {limit} moduler." — which was false of the terminals count and could not be
-        /// made true, because a direction is a WORD and the argument contract carries data. The three also could
-        /// not be filtered or counted apart while they shared an id. Splitting them is the same move this
-        /// catalogue already made for <c>dataline-address</c>, for the same reason.
+        /// made true, because a direction is a WORD and the argument contract carries data. They also could not be
+        /// filtered or counted apart while they shared an id. Splitting them is the same move this catalogue
+        /// already made for <c>dataline-address</c>, and made AGAIN for the terminals count itself: the successor
+        /// row still named no direction, so it split per direction too.</para>
+        /// <para>
+        /// Four rows now, two per quantity: <c>capacity-input-modules</c> / <c>capacity-output-modules</c> and
+        /// <c>capacity-input-addresses</c> / <c>capacity-output-addresses</c>.
         /// </para>
         /// </summary>
         /// <param name="isOutput">Which direction's data lines this rule counts.</param>
@@ -91,23 +98,23 @@ namespace Ihc.Vis.Validation
         /// repaired one fault to discover the other.
         /// </para>
         /// </summary>
-        private static void AddressesExceeded(IProjectInspection inspection)
+        private static ProjectInspection AddressesExceeded(bool isOutput) => inspection =>
         {
             if (inspection.Controller is not { } limits)
             {
                 return;
             }
 
-            foreach (bool isOutput in new[] { false, true })
+            // ONE DIRECTION PER RULE, like the module rows above. Looping both directions inside one rule made a
+            // project over on both emit two findings under one code, distinguishable only by their numbers — and
+            // the numbers are the one thing that cannot say which direction they count.
+            int addressed = Addresses(inspection.Analyses, isOutput).Count();
+            if (addressed > limits.AddressesPerDirection)
             {
-                int addressed = Addresses(inspection.Analyses, isOutput).Count();
-                if (addressed > limits.AddressesPerDirection)
-                {
-                    inspection.Report(null, Arguments(
-                        ("used", addressed), ("limit", limits.AddressesPerDirection)));
-                }
+                inspection.Report(null, Arguments(
+                    ("used", addressed), ("limit", limits.AddressesPerDirection)));
             }
-        }
+        };
 
         /// <summary>
         /// More wireless products than the controller should carry: response time degrades.

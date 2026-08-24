@@ -20,10 +20,10 @@
 #
 # ROWS THAT AGREE ARE NOT LISTED -- the matrix is the disagreement set, so an empty file would mean
 # the catalogue and the code say the same thing everywhere.
-attr-latin1	Fatal error	Error	refuses	ihcclient/src/vis/io/ProjectSerializer.cs:63	WholeProject	refuses-but-not-fatal	two faces: reports at validate, refuses at the operation — both are intended
-attr-required	Error	Error	refuses	ihcclient/src/vis/io/ProjectSerializer.cs:175	WholeProject	refuses-but-not-fatal	two faces: reports at validate, refuses at the operation — both are intended
-attr-undeclared	Fatal error	Error	refuses	ihcclient/src/vis/io/ProjectSerializer.cs:165	WholeProject	refuses-but-not-fatal	two faces: reports at validate, refuses at the operation — both are intended
-element-undeclared	Fatal error	Error	refuses	ihcclient/src/vis/io/ProjectSerializer.cs:117	WholeProject	refuses-but-not-fatal	two faces: reports at validate, refuses at the operation — both are intended
+attr-latin1	Fatal error	Error	refuses	ihcclient/src/vis/io/ProjectSerializer.cs:74	WholeProject	refuses-but-not-fatal	two faces: reports at validate, refuses at the operation — both are intended
+attr-required	Error	Error	refuses	ihcclient/src/vis/io/ProjectSerializer.cs:199	WholeProject	refuses-but-not-fatal	two faces: reports at validate, refuses at the operation — both are intended
+attr-undeclared	Fatal error	Error	refuses	ihcclient/src/vis/io/ProjectSerializer.cs:188	WholeProject	refuses-but-not-fatal	two faces: reports at validate, refuses at the operation — both are intended
+element-undeclared	Fatal error	Error	refuses	ihcclient/src/vis/io/ProjectSerializer.cs:140	WholeProject	refuses-but-not-fatal	two faces: reports at validate, refuses at the operation — both are intended
 import-catalog-wrong-kind	Fatal error	Refusal	proceeds	-	-	fatal-but-proceeds	product decision: no posture change (D13) — a new refusal needs a ruling, not a task
 load-truncated	-	Refusal	proceeds	-	-	ruled-out	investigated: not separately decidable, and already reported under another id
 root-version	Fatal error	Error	proceeds	-	WholeProject	fatal-but-proceeds	product decision: no posture change (D13) — a new refusal needs a ruling, not a task

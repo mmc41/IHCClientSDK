@@ -242,8 +242,10 @@ namespace Ihc.Vis.Tests
             ProjectElement first = Tree.Node("dataline_input", "_0x2a", []);
             ProjectElement second = Tree.Node("dataline_output", "_0x2a", []);
             Project project = ProjectWith(first, second);
+            // PrimaryWithRelated, because this rule reports a GROUP: the engine now refuses an emission that
+            // contradicts the declared shape, so a fixture may not declare one shape and emit the other either.
             ProblemCatalogEntry entry = Entry("id-duplicate-token", ValidationCategory.FileIntegrity,
-                CatalogDisposition.Error, "Dobbelt id");
+                CatalogDisposition.Error, "Dobbelt id") with { Shape = FindingShape.PrimaryWithRelated };
 
             WholeProjectValidator validator = new(Compose(
                 [(entry, i => i.ReportGroup(first, EquatableArray.Create<ProjectElement>([second]), default))]).Rules);

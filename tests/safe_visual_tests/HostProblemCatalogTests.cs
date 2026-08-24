@@ -185,17 +185,41 @@ public class HostProblemCatalogTests
     }
 
     /// <summary>
-    /// The site's sentence and the catalogue's template are the SAME WORDS — the agreement assertion every family
-    /// in this run carries, because a code whose entry says one thing while its raising site says another is worse
-    /// than an uncoded message: it is a governed lie. The site keeps the literal until T042 routes it, so this is
-    /// what stands between the two copies in the meantime.
+    /// ONE OWNER for the catch-all sentence. It used to be written twice — on the catalogue entry that governs
+    /// <c>app.openvisual.unexpected</c> and again as a view-model constant — with a test standing between the
+    /// copies to keep them equal. A test that compares two copies is what you write when you cannot remove one;
+    /// the shell now READS the entry, so there is nothing to drift and nothing to compare.
+    /// <para>
+    /// Asserted as a source scan rather than by comparing the two members, because comparing them is exactly the
+    /// assertion this replaces: it would pass just as well with the duplicate restored.
+    /// </para>
     /// </summary>
     [Test]
-    public void TheShellsCatchAllSentenceIsTheCataloguesTemplate()
+    public void TheCatchAllSentenceIsWrittenOnceInTheApplication()
     {
-        Assert.That(HostProblemCatalog.Unexpected.MessageTemplate,
-            Is.EqualTo(MainWindowViewModel.UnexpectedErrorMessage),
-            "the entry's template and the shell's own constant are the same words, in both directions");
+        string root = Path.Combine(RepositoryRoot(), "applications", "ihc_openvisual");
+        string[] carrying =
+        [
+            .. Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
+                .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
+                        StringComparison.Ordinal)
+                    && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+                        StringComparison.Ordinal))
+                .Where(f => File.ReadAllText(f, Encoding.UTF8)
+                    .Contains("Handlingen kunne ikke gennemføres på grund af en intern fejl",
+                        StringComparison.Ordinal))
+                .Select(f => Path.GetFileName(f))
+                .Order(StringComparer.Ordinal),
+        ];
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(carrying, Is.EqualTo(new[] { "HostProblemCatalog.cs" }).AsCollection,
+                "the sentence belongs to the entry that governs its code, and to nothing else");
+            Assert.That(MainWindowViewModel.UnexpectedErrorMessage,
+                Is.EqualTo(HostProblemCatalog.Unexpected.MessageTemplate),
+                "and the shell shows exactly what that entry says");
+        });
     }
 
     /// <summary>
@@ -217,6 +241,35 @@ public class HostProblemCatalogTests
             Assert.That(problem.Cause, Is.SameAs(cause));
             Assert.That(ProblemPresenter.Text(problem), Does.EndWith(" [app.openvisual.unexpected]"),
                 "and it renders through the shell's ONE path, same as any SDK problem");
+        });
+    }
+
+    /// <summary>
+    /// A markdown table is LINE-ORIENTED: a newline inside a cell ends the row, and everything after it stops
+    /// being a table at all. One host label spans three lines by design — the report-not-openable sentence puts
+    /// the file path on its own line — so the rendered appendix silently lost every row after it.
+    /// <para>
+    /// Asserted as a COUNT rather than by looking for that one label: the defect is a property of the renderer,
+    /// and the next multi-line label would reintroduce it.
+    /// </para>
+    /// </summary>
+    [Test]
+    public void TheRenderedTableHasExactlyOneLinePerHostCode()
+    {
+        string[] lines = Render(HostProblemCatalog.Current).Split('\n');
+        string[] rows = [.. lines.Where(line => line.StartsWith("| `", StringComparison.Ordinal))];
+        string[] continuations =
+        [
+            .. lines.Where(line => line.Contains(" |", StringComparison.Ordinal)
+                && !line.StartsWith('|')),
+        ];
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rows, Has.Length.EqualTo(HostProblemCatalog.Current.Total),
+                "one table row per host code — a label carrying a newline renders as several");
+            Assert.That(continuations, Is.Empty,
+                "a cell's text escaped its row and is no longer in the table: " + string.Join(" / ", continuations));
         });
     }
 
@@ -333,12 +386,21 @@ public class HostProblemCatalogTests
         foreach (ProblemCatalogEntry row in catalog.Entries.OrderBy(e => e.Code.Value, StringComparer.Ordinal))
         {
             page.Append($"| `{row.Code.Value}` | {row.Disposition} | {row.Kind} | {row.Status} ");
-            page.Append($"| {(row.MessageTemplate.Length == 0 ? "*(to author)*" : row.MessageTemplate)} |\n");
+            page.Append($"| {Cell(row.MessageTemplate)} |\n");
         }
 
         page.Append($"\n**Total: {catalog.Total} host code{(catalog.Total == 1 ? string.Empty : "s")}.**\n");
         return page.ToString().Trim('\n');
     }
+
+    /// <summary>
+    /// One template as ONE table cell. A markdown table is line-oriented, so a newline inside a cell ends the row
+    /// and everything after it stops being a table — and one host label spans three lines by design, putting the
+    /// report's file path on its own line. The break is PRESERVED as a table-cell line break rather than dropped:
+    /// the sentence was written with it for a reason.
+    /// </summary>
+    private static string Cell(string template) =>
+        template.Length == 0 ? "*(to author)*" : template.Replace("\n", "<br>", StringComparison.Ordinal);
 
     /// <summary>The checkout root, for the explicit regeneration only.</summary>
     private static string RepositoryRoot()

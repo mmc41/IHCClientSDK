@@ -62,8 +62,8 @@ internal sealed class ProjectReportWorkflow(
         {
             ActivityExtensions.SetError(activity, ex);
             logger.LogError(ex, "Failed to generate the {Kind} {Mode} report for browser view", kind, mode);
-            await dialogs.ShowProblemAsync(ReportFailedTitle,
-                HostProblems.Narrate(HostProblems.ReportViewFailed(ex), ex));
+            await RaisedProblemDisplay.ShowAsync(
+                dialogs, ReportFailedTitle, HostProblems.ReportViewFailed(ex), ex);
         }
     }
 
@@ -93,8 +93,8 @@ internal sealed class ProjectReportWorkflow(
         {
             ActivityExtensions.SetError(activity, ex);
             logger.LogError(ex, "Failed to save the {Kind} {Mode} report", kind, mode);
-            await dialogs.ShowProblemAsync(ReportFailedTitle,
-                HostProblems.Narrate(HostProblems.ReportSaveFailed(ex), ex));
+            await RaisedProblemDisplay.ShowAsync(
+                dialogs, ReportFailedTitle, HostProblems.ReportSaveFailed(ex), ex);
         }
     }
 

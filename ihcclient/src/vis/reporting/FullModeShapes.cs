@@ -93,7 +93,12 @@ namespace Ihc.Vis.Reporting
         {
             ImmutableArray<ProblemCode> order =
                 [.. DocumentationRules.ProductChecksInReportOrder, .. DocumentationRules.TerminalChecksInReportOrder];
-            int RankOf(ValidationFinding finding) => order.IndexOf(finding.Code);
+            // An UNRANKED code sorts LAST, not first. IndexOf returns -1 for "not found", and -1 ahead of every
+            // real rank put the rows whose position was never declared in front of the rows whose position the
+            // vendor appendix witnesses. The Documentation category is wider than the eight ranked codes — every
+            // name-* row is in it — so this was reachable with ordinary content, not a contrived code.
+            int RankOf(ValidationFinding finding) =>
+                order.IndexOf(finding.Code) is int rank && rank >= 0 ? rank : int.MaxValue;
 
             var subjects = ImmutableArray.CreateBuilder<(ValidationFinding, ProjectElement, int)>();
             int arrival = 0;
@@ -116,7 +121,9 @@ namespace Ihc.Vis.Reporting
                     // on TKey = object, which compiles and then surprises the first reader of group.Key.
                     .GroupBy(entry => entry.Item2, (IEqualityComparer<ProjectElement?>)ReferenceEqualityComparer.Instance)
                     .OrderBy(group => group.Min(entry => entry.Item3))
-                    .SelectMany(group => group.OrderBy(entry => RankOf(entry.Item1)))
+                    // Arrival breaks a rank tie, which is what LINQ's stable sort already did implicitly — stated
+                    // now because the unranked rows all share one rank and would otherwise rely on that.
+                    .SelectMany(group => group.OrderBy(entry => RankOf(entry.Item1)).ThenBy(entry => entry.Item3))
                     .Select(entry => (entry.Item1, entry.Item2)),
             ];
         }

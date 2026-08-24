@@ -286,6 +286,19 @@ public interface IDialogService
     /// </summary>
     Task ShowProblemAsync(string title, ProblemChain chain);
 
+    /// <summary>
+    /// Shows a set of INDEPENDENT problems — a head naming the failure as a whole, then every item, each as its
+    /// own complete entry. The shape a refused save or upload has when validation stopped it: the head says the
+    /// operation will not proceed and how many errors block it, and the items are those errors.
+    /// <para>
+    /// It is a separate overload rather than a flag because the two composition rules are the inverse of each
+    /// other. Rendering an aggregate by the chain's rule would show one finding and silently discard the rest;
+    /// rendering a chain by this one would show a single failure twice. The type decides, so no site can choose
+    /// wrongly.
+    /// </para>
+    /// </summary>
+    Task ShowProblemAsync(string title, ProblemAggregate aggregate);
+
     /// <summary>Opens a project file picker; returns the chosen path, or null if cancelled.</summary>
     Task<string?> PickOpenProjectAsync(string? initialDirectory);
 

@@ -109,13 +109,14 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
-        /// A SAVE that will not proceed because the project failed validation. The head of an aggregate: the
-        /// errors are its items, and each keeps its own catalogue id.
+        /// An EDIT SESSION that will not open because the document carries something an edit could not survive —
+        /// today, an attribute no schema declares. The head of a cause/detail pair; the cause keeps its own
+        /// published id.
         /// PREDICATE: none — it is the disposition of an operation, not a condition detected by a scan.
         /// </summary>
-        private static ProblemCatalogEntry IoSaveValidationFailed =>
+        private static ProblemCatalogEntry EditOpenRefused =>
             new ProblemCatalogEntry(
-                new ProblemCode("io.save"),
+                OperationCodes.EditOpen,
                 ProblemCatalogSection.OperationOutcomes,
                 null,
                 CatalogDisposition.Refusal,
@@ -124,7 +125,32 @@ namespace Ihc.Vis.Validation
                 default,
                 FindingShape.OneFinding,
                 default,
-                "Projektet kunne ikke gemmes")
+                OperationCodes.EditOpenLabel)
+            {
+                Diagnostic = "The document cannot be opened for editing; the cause carries which condition stopped it.",
+                Evidence = EvidenceMark.Authored,
+            };
+
+        /// <summary>
+        /// A SAVE that will not proceed because the project failed validation. The head of an aggregate: the
+        /// errors are its items, and each keeps its own catalogue id.
+        /// PREDICATE: none — it is the disposition of an operation, not a condition detected by a scan.
+        /// </summary>
+        private static ProblemCatalogEntry IoSaveValidationFailed =>
+            new ProblemCatalogEntry(
+                OperationCodes.Save,
+                ProblemCatalogSection.OperationOutcomes,
+                null,
+                CatalogDisposition.Refusal,
+                RuleKind.OperationOutcome,
+                RuleFaces.None,
+                default,
+                FindingShape.OneFinding,
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("count", ProblemArgumentType.Integer),
+                ]),
+                OperationCodes.SaveLabel)
             {
                 Diagnostic = "The save was abandoned because the project failed validation; nothing was written.",
                 Evidence = EvidenceMark.Authored,
@@ -185,6 +211,7 @@ namespace Ihc.Vis.Validation
             IoLoad,
             InternalUnexpected,
             IoSaveValidationFailed,
+            EditOpenRefused,
         ];
 
         /// <summary>Every declaration in every section — what <see cref="ProblemCatalog.Current"/> is built from.</summary>

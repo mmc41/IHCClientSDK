@@ -23,6 +23,23 @@ namespace Ihc.Vis.Problems
         /// diagnostic-only paths that have not been given codes yet.
         /// </summary>
         ProblemChain? Problems { get; }
+
+        /// <summary>
+        /// The head and its N independent items, when the refusal is an AGGREGATE rather than a chain; <c>null</c>
+        /// for every refusal that is one failure with one cause — which is all of them but the validation one.
+        /// <para>
+        /// It is a DEFAULTED member and the interface was widened rather than split. A sibling interface would
+        /// have meant two type tests at every catch site, and forgetting the second reproduces the very bug this
+        /// fixes: a validation refusal falling through the coded path to its English exception message. Defaulting
+        /// keeps every existing implementer — the five sealed ones here and any outside this assembly — compiling
+        /// untouched, so widening the contract costs nobody a change.
+        /// </para>
+        /// <para>
+        /// A carrier answers ONE of the two. The shapes are not interchangeable: rendering an aggregate as a chain
+        /// discards all but one of N findings, and rendering a chain as an aggregate shows one failure twice.
+        /// </para>
+        /// </summary>
+        ProblemAggregate? Aggregate => null;
     }
 
     /// <summary>

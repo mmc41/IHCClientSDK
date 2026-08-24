@@ -525,7 +525,7 @@ namespace Ihc.Vis
                 ProjectValidationResult validation = ProjectVerification.Run(project, StructuralProfile);
                 if (!validation.IsValid)
                 {
-                    throw new ProjectValidationException(new ProblemCode("io.save"), validation);
+                    throw new ProjectValidationException(OperationCodes.Save, validation);
                 }
             }
             Project toWrite = options.WriteMetadataVerbatim
@@ -997,6 +997,36 @@ namespace Ihc.Vis
                     project, ValidationProfile.Categorized with { Library = library.Value });
                 activity?.SetReturnValue(result);
                 return result;
+            });
+        }
+
+        /// <summary>
+        /// The same categorized run as <see cref="ValidateCategorized"/>, in the engine's STRUCTURED finding
+        /// shape: each finding keeps its problem, its primary site and every RELATED site.
+        /// <para>
+        /// It is the door a frontend needs and could not have. The flat
+        /// <see cref="ProjectValidationFinding"/> carries one locator, so a grouped rule's other sites — the
+        /// remaining elements sharing a duplicate id, the rest of an under-populated module — were dropped at
+        /// this boundary and could not be listed or navigated to. Reaching them meant naming
+        /// <c>IWholeProjectValidator</c>, which the architecture forbids a GUI (L5): a shell that could construct
+        /// an executor would be a second composition root for the engine. This accessor gives the shape without
+        /// the port.
+        /// </para>
+        /// <para>
+        /// <see cref="ValidateCategorized"/> stays the door for the flat shape; the two are ONE run's output in
+        /// two forms, not two pipelines with their own rules.
+        /// </para>
+        /// </summary>
+        /// <param name="project">The project to validate.</param>
+        public EquatableArray<ValidationFinding> ValidateStructured(Project project)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return RunTraced(nameof(ValidateStructured), activity =>
+            {
+                EquatableArray<ValidationFinding> findings = ProjectVerification.RunStructured(
+                    project, ValidationProfile.Categorized with { Library = library.Value });
+                activity?.SetReturnValue(findings.Length);
+                return findings;
             });
         }
 

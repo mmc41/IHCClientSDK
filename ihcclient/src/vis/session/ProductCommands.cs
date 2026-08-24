@@ -102,7 +102,9 @@ namespace Ihc.Vis.Session
             bool isOutput = handle.Tag == "dataline_output";
             if (!DatalineAddress.TryEncode(Result.DataLine, Result.Terminal, isOutput, out string addressToken))
             {
-                throw new EditRefusedException("Klemmenummeret ligger uden for datalinjens område.");
+                throw new EditRefusedException(
+                    EditRefusalCodes.TerminalAddressRange,
+                    "Klemmenummeret ligger uden for datalinjens område.");
             }
             handle.SetAttribute("address_dataline", addressToken);
             handle.SetAttribute("cable_colour", Result.CableColour);

@@ -193,6 +193,10 @@ namespace Ihc.Vis.Tests
                 RuleRegistrationFault.TraversalCannotServeFace,
                 RuleRegistrationFault.UnknownTarget,
                 RuleRegistrationFault.CodeNotActive,
+
+                // Exercised by FindingShapeContractTests: at registration for a declarative rule declaring a
+                // group, and at the emission itself for a traversal whose emissions registration cannot see.
+                RuleRegistrationFault.ShapeContradictsDeclaration,
             ];
 
             Assert.That(exercised, Is.EquivalentTo(Enum.GetValues<RuleRegistrationFault>()));

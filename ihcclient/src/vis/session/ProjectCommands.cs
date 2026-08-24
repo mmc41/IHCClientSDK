@@ -700,23 +700,22 @@ namespace Ihc.Vis
     /// reference cascade; a non-deletable node reports <see cref="NotDeletable"/>.</summary>
     public enum DeleteKind { NotDeletable, Link, Locality, General }
 
-    /// <summary>The non-mutating impact of deleting a node (US-009/US-053), for the GUI's confirm-before-delete flow:
-    /// whether it can be deleted, whether that needs confirmation (it cascades), and which delete <see cref="Kind"/>
-    /// dispatches. The confirmation WORDING stays app-side (D05); this decides only the kind and whether a confirm is
-    /// needed. For a <see cref="DeleteKind.General"/> node <see cref="NeedsConfirm"/> doubles as the reference-cascade
-    /// flag the <c>DeleteNode</c> command takes.
-    /// <para><see cref="Reason"/> is null when the node IS deletable, and otherwise carries the SDK's own Danish
-    /// sentence saying why not — so the GUI states the specific reason ("… er en katalogdefineret klemme …",
-    /// "Denne node er inde i en låst funktionsblok …") rather than authoring a generic copy. The engine already
-    /// computed it; before this it was discarded at the boundary and replaced with "Denne node kan ikke slettes."</para>
-    /// </summary>
     /// <summary>
-    /// What deleting one node would cost, and — when it cannot be deleted — WHY, as a coded
-    /// <see cref="Problem"/> rather than a bare sentence (D5).
+    /// The non-mutating impact of deleting a node (US-009/US-053), for the GUI's confirm-before-delete flow:
+    /// whether it can be deleted, whether that needs confirmation (it cascades), which delete <see cref="Kind"/>
+    /// dispatches, and — when it cannot be deleted — WHY, as a coded <see cref="Problem"/> rather than a bare
+    /// sentence (D5).
+    /// <para>
+    /// The confirmation WORDING stays app-side (D05); this decides only the kind and whether a confirm is needed.
+    /// For a <see cref="DeleteKind.General"/> node <see cref="NeedsConfirm"/> doubles as the reference-cascade
+    /// flag the <c>DeleteNode</c> command takes.
+    /// </para>
     /// <para>
     /// Carrying the whole problem is what lets a shell forward the refusal instead of re-deciding it: the four
     /// reasons a delete is refused are four codes, and a shell that received only prose could group, count and
-    /// filter none of them. <see cref="Reason"/> is DERIVED from it, so the sentence and the identity cannot
+    /// filter none of them. It also keeps the SPECIFIC sentence — "… er en katalogdefineret klemme …", "Denne
+    /// node er inde i en låst funktionsblok …" — where a shell once replaced it with a generic "Denne node kan
+    /// ikke slettes." <see cref="Reason"/> is DERIVED from the problem, so the sentence and the identity cannot
     /// become two different things.
     /// </para>
     /// </summary>

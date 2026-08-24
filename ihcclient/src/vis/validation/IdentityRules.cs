@@ -72,23 +72,33 @@ namespace Ihc.Vis.Validation
             }
         }
 
-        /// <summary>Two elements carrying the same id token: every reference to it is ambiguous.</summary>
-        private static void DuplicateTokens(IProjectInspection inspection)
-        {
-            foreach (ProjectElement element in inspection.Analyses.Ids.DuplicateTokenHolders)
-            {
-                inspection.Report(element, Arguments(
-                    ("id", element.GetAttribute("id") ?? string.Empty), ("tag", element.Tag)));
-            }
-        }
+        /// <summary>
+        /// Two elements carrying the same id token: every reference to it is ambiguous.
+        /// <para>
+        /// ONE finding per collision, as the row's <see cref="FindingShape.PrimaryWithRelated"/> declares —
+        /// anchored at the FIRST holder, with the others as related sites. It used to report one finding per
+        /// duplicate holder, which contradicted the declared shape three ways at once: N-1 findings for one
+        /// repair, no relation between them, and the first holder — the element a reader must compare against —
+        /// never named at all.
+        /// </para>
+        /// </summary>
+        private static void DuplicateTokens(IProjectInspection inspection) =>
+            ReportCollisions(inspection, inspection.Analyses.Ids.DuplicateTokenGroups);
 
         /// <summary>Two ids sharing a counter: the id space stops being a bijection and the next minted id may collide.</summary>
-        private static void DuplicateCounters(IProjectInspection inspection)
+        private static void DuplicateCounters(IProjectInspection inspection) =>
+            ReportCollisions(inspection, inspection.Analyses.Ids.DuplicateCounterGroups);
+
+        /// <summary>The shared emission for both collision rows: the same shape, the same arguments.</summary>
+        private static void ReportCollisions(
+            IProjectInspection inspection, EquatableArray<DuplicateIdGroup> groups)
         {
-            foreach (ProjectElement element in inspection.Analyses.Ids.DuplicateCounterHolders)
+            foreach (DuplicateIdGroup group in groups)
             {
-                inspection.Report(element, Arguments(
-                    ("id", element.GetAttribute("id") ?? string.Empty), ("tag", element.Tag)));
+                inspection.ReportGroup(group.Primary, group.Related, Arguments(
+                    ("id", group.Primary.GetAttribute("id") ?? string.Empty),
+                    ("tag", group.Primary.Tag),
+                    ("count", group.Related.Length + 1)));
             }
         }
 

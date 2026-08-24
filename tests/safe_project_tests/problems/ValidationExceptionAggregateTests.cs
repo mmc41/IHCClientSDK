@@ -128,7 +128,9 @@ namespace Ihc.Vis.Tests
 
                 ProjectValidationException thrown = new(new ProblemCode("io.save"),
                     ResultWith((ValidationSeverity.Error, "attr-required", "Mangler påkrævet attribut")));
-                Assert.That(thrown.Problems.Head.Message, Is.EqualTo("Projektet kunne ikke gemmes"),
+                // The row's template BOUND with the head's own count — the head is the row, not a prefix of it.
+                Assert.That(thrown.Problems.Head.Message,
+                    Is.EqualTo("Projektet kunne ikke gemmes: 1 fejl skal rettes først."),
                     "the head's Danish comes from the catalogue entry, not from the throwing code");
             });
         }

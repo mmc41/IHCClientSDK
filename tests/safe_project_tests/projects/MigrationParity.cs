@@ -91,10 +91,22 @@ namespace Ihc.Vis.Tests
             string.Join('\t', finding.Severity, finding.Code.Value, finding.Category,
                 finding.Primary?.Locator ?? "-", finding.Problem.Message);
 
+        /// <summary>
+        /// The recorded row as the engine must reproduce it. The CATEGORY comes from the entry because a
+        /// migration moves it on purpose; the MESSAGE comes from the recording.
+        /// <para>
+        /// The message used to be read from <see cref="ProblemCatalogEntry.MessageTemplate"/> too, which was only
+        /// ever right for a row whose sentence has no argument slots — the template and the message are then the
+        /// same string. A row that surfaces its arguments produces a BOUND message, so a template-based
+        /// expectation would demand the engine emit a literal <c>{tag}</c>. The recording already holds the bound
+        /// sentence, and it is regenerated deliberately and diffed, so comparing against it is the stronger check:
+        /// the fixture's rule set and the production rule set must say the same words.
+        /// </para>
+        /// </summary>
         private static string Expected(string[] recorded)
         {
             Catalog.TryGet(new ProblemCode(recorded[2]), out ProblemCatalogEntry entry);
-            return string.Join('\t', recorded[1], recorded[2], entry.Category, recorded[4], entry.MessageTemplate);
+            return string.Join('\t', recorded[1], recorded[2], entry.Category, recorded[4], recorded[5]);
         }
     }
 }

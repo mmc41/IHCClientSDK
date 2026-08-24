@@ -51,7 +51,8 @@ namespace Ihc.Vis.Tests
         [Test]
         public void ANonLatin1AttributeIsRefusedAsAttrLatin1() =>
             AssertRefusal(RefusedBySerializer(Minimal(("icon", "€"))),
-                SaveRefusalCodes.AttrLatin1, "ISO-8859-1");
+                SaveRefusalCodes.AttrLatin1, "ISO-8859-1",
+                "Tegn kan ikke gemmes i attributten 'icon' på <utcs_project>.");
 
         [Test]
         public void AMissingRequiredAttributeIsRefusedAsAttrRequired()
@@ -59,13 +60,15 @@ namespace Ihc.Vis.Tests
             Project project = new(new ProjectElement("utcs_project", null,
                 [("version_major", "4"), ("version_minor", "0"), ("id1", "_0x1"), ("id2", "_0x2")], []));
 
-            AssertRefusal(RefusedBySerializer(project), SaveRefusalCodes.AttrRequired, "#REQUIRED");
+            AssertRefusal(RefusedBySerializer(project), SaveRefusalCodes.AttrRequired, "#REQUIRED",
+                "Den påkrævede attribut 'last_unique_id' mangler på <utcs_project>.");
         }
 
         [Test]
         public void AnUndeclaredAttributeIsRefusedAsAttrUndeclared() =>
             AssertRefusal(RefusedBySerializer(Minimal(("no_such_attribute", "x"))),
-                SaveRefusalCodes.AttrUndeclared, "is not declared");
+                SaveRefusalCodes.AttrUndeclared, "is not declared",
+                "Ukendt attribut 'no_such_attribute' på <utcs_project>.");
 
         [Test]
         public void AnUndeclaredElementTypeIsRefusedAsElementUndeclared()
@@ -75,7 +78,8 @@ namespace Ihc.Vis.Tests
                 Children = [new ProjectElement("no_such_element_type", null, [], [])],
             });
 
-            AssertRefusal(RefusedBySerializer(project), SaveRefusalCodes.ElementUndeclared, "No schema for");
+            AssertRefusal(RefusedBySerializer(project), SaveRefusalCodes.ElementUndeclared, "No schema for",
+                "Ukendt elementtype <no_such_element_type>.");
         }
 
         /// <summary>
@@ -251,16 +255,29 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        /// <param name="refusal">The exception the serializer raised.</param>
+        /// <param name="identity">The registry member, carrying the TEMPLATE.</param>
+        /// <param name="diagnosticFragment">A fragment of the English sentence for the log.</param>
+        /// <param name="bound">
+        /// The Danish sentence as the user reads it. Null for a row whose label declares no slots, where the
+        /// template IS the sentence; a row that surfaces its arguments passes the bound form, so this asserts the
+        /// raising site actually filled the slots instead of showing an installer a literal <c>{tag}</c>.
+        /// </param>
         private static void AssertRefusal(
-            RefusedOperationException refusal, RefusalIdentity identity, string diagnosticFragment)
+            RefusedOperationException refusal,
+            RefusalIdentity identity,
+            string diagnosticFragment,
+            string? bound = null)
         {
             Assert.Multiple(() =>
             {
                 Assert.That(refusal.Problems, Is.Not.Null, "a refused save carries its operation and its cause");
                 Assert.That(refusal.Problems!.Operation.Code, Is.EqualTo(OperationCodes.Save));
                 Assert.That(refusal.Problems.Cause.Code, Is.EqualTo(identity.Cause));
-                Assert.That(refusal.Problems.Cause.Message, Is.EqualTo(identity.CauseLabel),
+                Assert.That(refusal.Problems.Cause.Message, Is.EqualTo(bound ?? identity.CauseLabel),
                     "the Danish sentence the user reads");
+                Assert.That(refusal.Problems.Cause.Message, Does.Not.Contain("{"),
+                    "and no slot reaches the user still spelled as its own placeholder");
                 Assert.That(refusal.Message, Does.Contain(diagnosticFragment).IgnoreCase,
                     "and the English diagnostic is unchanged — it was joined, not replaced");
             });

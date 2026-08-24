@@ -12,8 +12,9 @@ using Ihc.Vis.Projects;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// Four of the five FUNCTION-BLOCK SHAPE rows: a block that does nothing, one nothing can reach, one that says
-    /// the same thing twice, and one that no longer matches the library entry it claims.
+    /// The five FUNCTION-BLOCK SHAPE rows: a block that does nothing, one nothing can reach, one that says the
+    /// same thing twice, one that no longer matches the library entry it claims, and one whose locked content was
+    /// edited after locking.
     ///
     /// <para><b><c>logic-block-locked-content</c> IS here now, and it took a ruling to get here (D27).</b> Its
     /// condition is content edited AFTER locking, and the error fixture's witness is an attribute edit — a
@@ -45,7 +46,7 @@ namespace Ihc.Vis.Validation
         private static readonly ImmutableHashSet<string> IncidentalAttributes =
             ["id", "name", "icon", "note"];
 
-        /// <summary>The four implemented rules, ready to register against the catalogue.</summary>
+        /// <summary>The five implemented rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {

@@ -211,7 +211,7 @@ internal static class HostProblemCatalog
     internal static ProblemCatalogEntry ProjectOpenFailed => Outcome(
         HostProblemCodes.ProjectOpenFailed,
         "Projektet '{path}' kunne ikke åbnes.",
-        "Opening the project failed; where the SDK refused with a code, that code is the chain's operation.",
+        "Opening the project failed; where the SDK refused with a code, its cause is the sentence shown.",
         new ProblemArgumentSlot("path", ProblemArgumentType.Path));
 
     /// <summary>The project could not be written.</summary>
@@ -342,15 +342,20 @@ internal static class HostProblems
             new ProblemArgument("name", name), new ProblemArgument("path", path));
 
     /// <summary>
-    /// How an SDK-raised exception is SHOWN: the shell's own framing as the CAUSE, under the SDK's operation code
-    /// as the operation — T006's one-child CHAIN, so exactly one sentence reaches the installer and it is the more
+    /// How an SDK-raised exception is SHOWN: the shell's own framing as the OPERATION, over the SDK's coded cause
+    /// as the cause — a one-child CHAIN, so exactly one sentence reaches the installer and it is the more
     /// specific one.
     /// <para>
-    /// The shell's sentence is the more specific here, and that is measured rather than assumed: the SDK's coded
-    /// cause says which KIND of failure this was (<i>Filen er tom</i>, <i>Ugyldig katalogfil</i>) where the
-    /// shell's names the FILE the installer chose — and naming the file is what US-062 and the startup-path test
-    /// require. The SDK's cause is not lost: every one of these sites logs the exception, which carries its code
-    /// and its English detail.
+    /// Which of the two is the more specific is the whole decision, and it is the SDK's (D01). Its cause says
+    /// which KIND of failure this was — <i>Filen er tom</i>, <i>Ugyldig katalogfil</i> — where the shell's
+    /// framing names the FILE the installer picked a moment ago and therefore already knows. Only the cause is
+    /// rendered, so framing it as the cause showed an installer <i>which</i> file failed and never <i>why</i>.
+    /// </para>
+    /// <para>
+    /// The framing is not lost by becoming the operation: it keeps its code and its bound path for the dialog
+    /// title and the log, and every one of these sites logs the exception besides. Where the SDK raised no coded
+    /// cause there is nothing more specific to show, so the framing stays the rendered cause under the shell's
+    /// catch-all — the asymmetry is deliberate and is pinned by <c>NarratedProblemTests</c>.
     /// </para>
     /// </summary>
     /// <param name="framing">The shell's coded problem for this site.</param>
@@ -359,7 +364,7 @@ internal static class HostProblems
     {
         ArgumentNullException.ThrowIfNull(raised);
         return raised is IProblemCarrier { Problems: { } chain }
-            ? new ProblemChain(chain.Operation, framing)
+            ? new ProblemChain(framing, chain.Cause)
             : new ProblemChain(Unexpected(raised), framing);
     }
 

@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Threading;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 
 namespace Ihc.Vis.Session
@@ -201,13 +202,49 @@ namespace Ihc.Vis.Session
             catch (EditRefusedException ex)   // a deep guard refuses only inside Execute
             {
                 ActivityExtensions.SetError(activity, ex);
-                // A deep guard has no verdict to take a code from — it refused from inside Execute, after the
-                // gate allowed. edit.deep-guard is the code that says exactly that.
-                return new EditOutcome(EditStatus.Refused, label, ex.Message, null, EditRefusalCodes.DeepGuard);
+                // The guard's OWN code, not a blanket edit.deep-guard. A deep guard refused from inside Execute
+                // after the gate allowed, which is a fact about where it was raised; what was refused is the
+                // guard's to say, and it says it. Sites that name nothing still report edit.deep-guard, because
+                // that is what the exception defaults its code to.
+                return new EditOutcome(EditStatus.Refused, label, ex.Message, null, ex.Code);
             }
-            catch (Exception ex)   // any other failure (incl. engine InvalidOperationException on a malformed doc)
+            catch (Exception ex)
             {
                 ActivityExtensions.SetError(activity, ex);
+
+                // A CODED refusal raised below the gate is a REFUSAL, not a failure. The contract's central claim
+                // is that one catch shape covers every coded refusal, so this asks for the interface rather than
+                // for a list of exception types — an edit-open guard and a refused write both arrive carrying a
+                // Danish sentence and a published cause id. Without this branch a caller got the engine's ENGLISH
+                // diagnostic under EditStatus.Failed, which is invariant 10 breached at the last step.
+                //
+                // One catch with a test inside, rather than two catches with a `when` filter: CA1508 cannot see
+                // through an exception filter and reports the test as always true.
+                if (ex is IProblemCarrier carrier)
+                {
+                    // BOTH shapes, in ONE place. A carrier answers with a chain or with an aggregate, and
+                    // matching only the chain is precisely the half-honoured contract the widened interface was
+                    // chosen to prevent — a site that tests for one shape and forgets the other reports a coded
+                    // refusal as an untyped failure. Two tests here cost nothing because there is one such site;
+                    // the rejected sibling-interface design would have needed them at every one.
+                    if (carrier.Problems is { } refusal)
+                    {
+                        return new EditOutcome(
+                            EditStatus.Refused, label, refusal.Cause.Message, null, refusal.Cause.Code);
+                    }
+
+                    if (carrier.Aggregate is { } aggregate)
+                    {
+                        // The HEAD, which names the operation and how much is wrong. An EditOutcome has room for
+                        // one sentence, so the items do not fit — a caller that needs them asks the validation
+                        // door, which is where a set of findings belongs.
+                        return new EditOutcome(
+                            EditStatus.Refused, label, aggregate.Head.Message, null, aggregate.Head.Code);
+                    }
+                }
+
+                // Anything else is broken rather than refused (incl. an engine InvalidOperationException on a
+                // malformed doc): its English text goes to the caller's log, not to an installer's dialog.
                 return new EditOutcome(EditStatus.Failed, label, ex.Message, null);
             }
 
@@ -322,7 +359,7 @@ namespace Ihc.Vis.Session
                 }
                 catch (EditRefusedException ex)   // a deep guard refuses only inside Execute — a refusal, not a fault
                 {
-                    return PreviewOutcome.Refused(ex.Message, EditRefusalCodes.DeepGuard);
+                    return PreviewOutcome.Refused(ex.Message, ex.Code);
                 }
                 catch (Exception ex)   // an unexpected engine fault — surfaced, not swallowed as "nothing to preview" (D05)
                 {

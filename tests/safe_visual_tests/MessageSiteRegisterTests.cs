@@ -284,9 +284,15 @@ public class MessageSiteRegisterTests
     }
 
     /// <summary>
-    /// The coded door is actually USED where the register says a site is coded: the scan finds a
-    /// <c>ShowProblemAsync</c> call in each of the four files the register names, so a row cannot claim a code
-    /// while the site still hands over a string.
+    /// The coded door is actually USED where the register says a site is coded, so a row cannot claim a code while
+    /// the site still hands over a string.
+    /// <para>
+    /// TWO spellings count, because there are two ways to reach the same door. A site that knows which SHAPE it
+    /// has calls <c>ShowProblemAsync</c> directly; a site catching an exception routes through
+    /// <c>RaisedProblemDisplay.ShowAsync</c>, which picks the shape the exception carries and then calls that
+    /// very door. Accepting only the literal name would fail a site for using the SHARED decision instead of
+    /// repeating it — the opposite of what this register is for.
+    /// </para>
     /// </summary>
     [Test]
     public void TheCodedDoorIsUsedInEveryFileTheRegisterNames()
@@ -306,7 +312,10 @@ public class MessageSiteRegisterTests
             {
                 string path = Path.Combine(root, file.Replace('/', Path.DirectorySeparatorChar));
                 Assert.That(File.Exists(path), Is.True, path);
-                Assert.That(Occurrences(File.ReadAllText(path), ".ShowProblemAsync("), Is.GreaterThan(0), file);
+                string source = File.ReadAllText(path);
+                Assert.That(
+                    Occurrences(source, ".ShowProblemAsync(") + Occurrences(source, "RaisedProblemDisplay.ShowAsync("),
+                    Is.GreaterThan(0), file);
             }
         });
     }

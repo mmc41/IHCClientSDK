@@ -12,7 +12,9 @@ what a scan reads, and it is recoverable from the code alone — `ProblemCode.Is
 in the codebase that answers it.
 
 OpenVisual mints into `app.openvisual.*`, and only for **operation outcomes** — something the app itself
-refused or could not carry through, such as declining a crash-recovery prompt or a dialog the user cancelled.
+refused or could not carry through, such as a transfer attempted with no controller connected
+(`controller-required-send`) or a report that was written but could not be opened in a viewer
+(`report-not-openable`).
 A host never authors a *finding* about a project: findings are statements about the `.vis` file, the SDK owns
 the file, and a second opinion about it minted in an app is how two catalogues start disagreeing.
 
@@ -26,9 +28,12 @@ same checks apply here as to the SDK's own families:
   exists to catch.
 - **Arguments are declared, typed and arity-checked** — data (names, ids, numbers), never words or sentence
   fragments, so the message stays translatable as one unit.
-- **User-facing text is Danish**, following the same phrasing standard as the SDK's: a short fixed label
-  (*Gendannelse afvist*), never a sentence assembled at render time. The English engine sentence travels in
-  the diagnostic slot and goes to the log.
+- **User-facing text is Danish**, following the same phrasing standard as the SDK's. A row is one whole
+  sentence, written on the entry — either fixed (*Rapporten kunne ikke vises.*) or carrying declared slots
+  (*Funktionsblokken '{name}' kunne ikke gemmes som '{path}'.*), which the producer binds. What is forbidden is
+  ASSEMBLY: a sentence stitched together at render time out of fragments, which is untranslatable as a unit and
+  is why the argument contract carries data rather than words. The English engine sentence travels in the
+  diagnostic slot and goes to the log.
 - **Retirement reserves the id.** Nothing here is ever deleted and reused for a different condition.
 
 ## Rows
@@ -58,9 +63,7 @@ classify project content the SDK owns.
 | `app.openvisual.edit-failed` | Refusal | OperationOutcome | Active | Redigeringen kunne ikke gennemføres på grund af en intern fejl. Ændringen blev ikke gemt. |
 | `app.openvisual.project-open-failed` | Refusal | OperationOutcome | Active | Projektet '{path}' kunne ikke åbnes. |
 | `app.openvisual.project-save-failed` | Refusal | OperationOutcome | Active | Projektet kunne ikke gemmes som '{path}'. |
-| `app.openvisual.report-not-openable` | Refusal | OperationOutcome | Active | Rapporten blev dannet, men kunne ikke åbnes i en fremviser.
-Filen ligger her:
-{path} |
+| `app.openvisual.report-not-openable` | Refusal | OperationOutcome | Active | Rapporten blev dannet, men kunne ikke åbnes i en fremviser.<br>Filen ligger her:<br>{path} |
 | `app.openvisual.report-save-failed` | Refusal | OperationOutcome | Active | Rapporten kunne ikke gemmes. |
 | `app.openvisual.report-view-failed` | Refusal | OperationOutcome | Active | Rapporten kunne ikke vises. |
 | `app.openvisual.telemetry-host-missing` | Refusal | OperationOutcome | Active | Der er ikke konfigureret nogen telemetri-vært i ihcsettings.json. |

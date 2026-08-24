@@ -51,7 +51,13 @@ namespace Ihc.Vis.Schema
                     // both of these from it — a refusal the gate cannot see is one that can be changed quietly.
                     if (refusing is { } identity)
                     {
-                        throw new RefusedOperationException(identity, diagnostic);
+                        // The caller's label declares which attribute on which element; this guard is the only
+                        // place that knows them, so it binds them in.
+                        throw new RefusedOperationException(
+                            identity.Binding(
+                                new ProblemArgument("attribute", name),
+                                new ProblemArgument("tag", element.Tag)),
+                            diagnostic);
                     }
 
                     throw new InvalidOperationException(diagnostic);
@@ -59,13 +65,31 @@ namespace Ihc.Vis.Schema
             }
         }
 
-        /// <summary>Applies <see cref="GuardNoUnknownAttributes(ProjectElement, ElementSchema)"/> to a whole subtree (edit-session open).</summary>
+        /// <summary>Applies <see cref="GuardNoUnknownAttributes(ProjectElement, ElementSchema)"/> to a whole subtree.</summary>
         public static void GuardTreeNoUnknownAttributes(ProjectElement element, ProjectSchemaView view)
         {
             GuardNoUnknownAttributes(element, view.Get(element.Tag));
             foreach (ProjectElement child in element.Children)
             {
                 GuardTreeNoUnknownAttributes(child, view);
+            }
+        }
+
+        /// <summary>
+        /// The same subtree walk, refusing with the caller's identity — what edit-session open uses, so a
+        /// document it will not open says WHICH attribute stopped it under a code, instead of reaching a caller
+        /// as an untyped failure.
+        /// </summary>
+        /// <param name="element">The subtree root to check.</param>
+        /// <param name="view">The schema view the element's DTD blocks resolve through.</param>
+        /// <param name="refusing">The operation being refused and the cause's published id.</param>
+        public static void GuardTreeNoUnknownAttributes(
+            ProjectElement element, ProjectSchemaView view, RefusalIdentity refusing)
+        {
+            GuardNoUnknownAttributes(element, view.Get(element.Tag), refusing);
+            foreach (ProjectElement child in element.Children)
+            {
+                GuardTreeNoUnknownAttributes(child, view, refusing);
             }
         }
 

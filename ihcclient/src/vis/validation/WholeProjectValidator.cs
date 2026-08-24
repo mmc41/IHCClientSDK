@@ -90,7 +90,11 @@ namespace Ihc.Vis.Validation
                         RunConstraints(analyses, rule, collector);
                     }
                 }
-                catch (Exception ex) when (profile.FailurePolicy == RuleFailurePolicy.ReportAndContinue)
+                // A shape violation is a COMPOSITION error, not a project defect, so it is deliberately outside
+                // the report-and-continue net: swallowing it would turn "this rule contradicts its declaration"
+                // into one more finding about the user's file, which is the opposite of what it means.
+                catch (Exception ex) when (ex is not RuleRegistrationException
+                    && profile.FailurePolicy == RuleFailurePolicy.ReportAndContinue)
                 {
                     emitted.Add(new Emission(
                         rule.Entry,
@@ -154,19 +158,44 @@ namespace Ihc.Vis.Validation
                     EquatableArray<FindingLocation>.Empty);
             }
 
+            // BOTH texts bind from the same arguments. Binding only the message left the English diagnostic —
+            // the one text written for the person reading the log — carrying its slots as literal placeholders.
             Problem problem = new(entry.Code, string.Empty, emission.Arguments, entry.Diagnostic);
-            problem = problem with { Message = entry.BindTemplate(problem) };
+            problem = problem with { Message = entry.BindTemplate(problem), Diagnostic = entry.BindDiagnostic(problem) };
+
+            // A GROUPED finding gives every site its own text; a single-site one leaves it null, because there
+            // the finding's own message already says everything. Without this a duplicate-id group listed N
+            // locators with nothing to tell them apart, so a reader could navigate to them but not read them —
+            // which is the difference between one navigable finding and N anonymous anchors.
+            bool grouped = emission.Related.Length > 0;
 
             return new ValidationFinding(
                 problem,
                 profile.SeverityFor(entry),
                 entry.Category ?? ValidationCategory.FileIntegrity,
-                Locate(emission.Primary, null),
-                emission.Related.Select(r => Locate(r, null)!).ToImmutableArray());
+                Locate(emission.Primary, grouped ? DescribeSite(emission.Primary) : null),
+                emission.Related.Select(r => Locate(r, DescribeSite(r))!).ToImmutableArray());
         }
 
         private static FindingLocation? Locate(ProjectElement? element, string? message) =>
             element is null ? null : new FindingLocation(element.GetAttribute("id") ?? element.Tag, element.Id, message);
+
+        /// <summary>
+        /// One site of a group, as the reader must be able to tell it from its siblings.
+        /// <para>
+        /// The AUTHORED NAME comes first because that is what distinguishes two sites of the same collision: a
+        /// duplicate id makes every site's locator identical, so a label built from the id alone would read the
+        /// same N times and tell the reader nothing. The id is the fallback for an unnamed element and the bare
+        /// tag the last resort.
+        /// </para>
+        /// </summary>
+        private static string? DescribeSite(ProjectElement? element) => element switch
+        {
+            null => null,
+            { } e when e.GetAttribute("name") is { Length: > 0 } name => $"<{e.Tag}> '{name}'",
+            { } e when e.GetAttribute("id") is { Length: > 0 } id => $"<{e.Tag}> '{id}'",
+            { } e => $"<{e.Tag}>",
+        };
 
         private static (int Scan, string Code, string Locator, string Message, int Sequence) SortKey(
             Emission emission, Dictionary<ProjectElement, int> scanOrder) =>
@@ -237,14 +266,34 @@ namespace Ihc.Vis.Validation
 
             public IProjectAnalyses Analyses { get; }
 
-            public void Report(ProjectElement? element, EquatableArray<ProblemArgument> arguments) =>
+            public void Report(ProjectElement? element, EquatableArray<ProblemArgument> arguments)
+            {
+                // The half of the shape contract a delegate hides from registration. A row that DECLARES a group
+                // and then emits singletons publishes a promise the engine does not keep — N findings for one
+                // repair, no relation between them — and before this the two duplicate-id rows and
+                // dataline-address-duplicate did exactly that, unnoticed.
+                if (entry.Shape == FindingShape.PrimaryWithRelated)
+                {
+                    throw new RuleRegistrationException(
+                        entry.Code, RuleRegistrationFault.ShapeContradictsDeclaration);
+                }
+
                 sink.Add(new Emission(entry, element, EquatableArray<ProjectElement>.Empty, arguments, sink.Count, null));
+            }
 
             public void ReportGroup(
                 ProjectElement primary,
                 EquatableArray<ProjectElement> related,
-                EquatableArray<ProblemArgument> arguments) =>
+                EquatableArray<ProblemArgument> arguments)
+            {
+                if (entry.Shape != FindingShape.PrimaryWithRelated)
+                {
+                    throw new RuleRegistrationException(
+                        entry.Code, RuleRegistrationFault.ShapeContradictsDeclaration);
+                }
+
                 sink.Add(new Emission(entry, primary, related, arguments, sink.Count, null));
+            }
         }
     }
 }

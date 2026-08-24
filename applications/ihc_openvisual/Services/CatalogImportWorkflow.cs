@@ -32,6 +32,13 @@ internal sealed class CatalogImportWorkflow(
     /// says stopped rather than failed (US-062).</summary>
     private const string ImportStoppedTitle = "Import stoppet";
 
+    /// <summary>
+    /// US-062's "naming it", now that the box's SENTENCE is the SDK's cause (D01): the offending file names the
+    /// TITLE, so the installer reads which file in the caption and why in the body, rather than which file twice
+    /// and why not at all.
+    /// </summary>
+    private static string Naming(string title, string path) => $"{title}: {Path.GetFileName(path)}";
+
     private static IEnumerable<string> EnumerateCatalogFiles(string dir) =>
         Directory.EnumerateFiles(dir, "*.*", SearchOption.AllDirectories)
             .Where(f => f.EndsWith(".def", StringComparison.OrdinalIgnoreCase)
@@ -90,12 +97,12 @@ internal sealed class CatalogImportWorkflow(
         catch (Exception ex)
         {
             ActivityExtensions.SetError(activity, ex);
-            // The SDK's coded cause and its English detail go to the LOG; the installer reads the shell's own
-            // coded sentence, which names the file (US-062). One-child chain: the SDK's operation head over the
-            // shell's more specific cause, so exactly one sentence reaches the user (T006 case 2).
+            // One-child chain: the shell's framing as the operation over the SDK's coded cause, so exactly one
+            // sentence reaches the user and it says WHY the file was rejected (D01, case 2). The file itself is
+            // US-062's obligation and is carried by the title; the English detail goes to the log.
             logger.LogError(ex, "Failed to import catalog file {File}", path);
-            await dialogs.ShowProblemAsync(ImportFailedTitle,
-                HostProblems.Narrate(HostProblems.CatalogFileRejected(Path.GetFileName(path), ex), ex));
+            await RaisedProblemDisplay.ShowAsync(dialogs, Naming(ImportFailedTitle, path),
+                HostProblems.CatalogFileRejected(Path.GetFileName(path), ex), ex);
             return false;
         }
     }
@@ -130,8 +137,8 @@ internal sealed class CatalogImportWorkflow(
                     ActivityExtensions.SetError(activity, ex);
                     logger.LogError(ex, "Folder import stopped at {File}", file);
                     // The same one-child chain as the single-file site, with the batch count as a declared argument.
-                    await dialogs.ShowProblemAsync(ImportStoppedTitle, HostProblems.Narrate(
-                        HostProblems.CatalogImportStopped(Path.GetFileName(file), count, ex), ex));
+                    await RaisedProblemDisplay.ShowAsync(dialogs, Naming(ImportStoppedTitle, file),
+                        HostProblems.CatalogImportStopped(Path.GetFileName(file), count, ex), ex);
                     stopped = true;
                     break;   // stop at the first unreadable file (US-062)
                 }

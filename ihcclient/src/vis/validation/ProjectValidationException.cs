@@ -24,7 +24,7 @@ namespace Ihc.Vis.Validation
     /// beside it, not instead of it.
     /// </para>
     /// </summary>
-    public sealed class ProjectValidationException : InvalidOperationException
+    public sealed class ProjectValidationException : InvalidOperationException, IProblemCarrier
     {
         /// <summary>Builds the exception for an operation that stopped because validation failed.</summary>
         /// <param name="operation">The operation-level code — which operation will not proceed.</param>
@@ -48,6 +48,16 @@ namespace Ihc.Vis.Validation
         /// <summary>The operation-level code: which operation refused.</summary>
         public ProblemCode Operation => Problems.Head.Code;
 
+        /// <summary>
+        /// Null: this refusal is an aggregate, not a chain. Implemented EXPLICITLY because the class already
+        /// publishes a <see cref="Problems"/> of the aggregate shape, and two members of that name cannot
+        /// coexist — a caller holding the concrete type keeps the aggregate it always had.
+        /// </summary>
+        ProblemChain? IProblemCarrier.Problems => null;
+
+        /// <inheritdoc/>
+        ProblemAggregate? IProblemCarrier.Aggregate => Problems;
+
         private static ProblemAggregate Aggregate(ProblemCode operation, ProjectValidationResult result)
         {
             ProblemCatalog.Current.TryGet(operation, out ProblemCatalogEntry entry);
@@ -56,6 +66,10 @@ namespace Ihc.Vis.Validation
                 entry?.MessageTemplate ?? string.Empty,
                 EquatableArray.Create<ProblemArgument>([new ProblemArgument("count", result.Errors.Length)]),
                 $"The project failed validation with {result.Errors.Length} error(s).");
+
+            // BOUND, not raw. The count was already computed and already attached; taking the template verbatim
+            // discarded it one line later, so a reader was told the save failed and never how much was wrong.
+            head = head with { Message = entry?.BindTemplate(head) ?? head.Message };
 
             // The items are the ERRORS. Warnings never block an operation, so an aggregate explaining why one
             // stopped must not list them: a reader would be given repairs that change nothing about the refusal.

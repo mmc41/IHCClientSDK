@@ -98,14 +98,18 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(Count(Terminals(isOutput: false, lines: 1, perLine: 3), profile,
-                    "capacity-addresses"), Is.Zero, "AT the address limit");
+                    "capacity-input-addresses"), Is.Zero, "AT the address limit");
                 Assert.That(Count(Terminals(isOutput: false, lines: 1, perLine: 4), profile,
-                    "capacity-addresses"), Is.EqualTo(1),
+                    "capacity-input-addresses"), Is.EqualTo(1),
                     "four addressed terminals on one line is one module but four addresses");
                 Assert.That(Single(Terminals(isOutput: false, lines: 1, perLine: 4), profile,
-                    "capacity-addresses").Message,
-                    Is.EqualTo("Projektet bruger 4 af 3 klemmer på én datalinjeretning."),
-                    "KLEMMER, not moduler — the wrong unit is what forced the split");
+                    "capacity-input-addresses").Message,
+                    Is.EqualTo("Projektet bruger 4 af 3 indgangsklemmer."),
+                    "KLEMMER, not moduler — the wrong unit is what forced the first split; and the DIRECTION is "
+                    + "in the sentence, which is what forced the second");
+                Assert.That(Count(Terminals(isOutput: true, lines: 1, perLine: 4), profile,
+                    "capacity-output-addresses"), Is.EqualTo(1),
+                    "the output direction is its own row, so the two can never be told apart by number alone");
             });
         }
 
@@ -123,7 +127,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(Count(over, tight, "capacity-input-modules"), Is.EqualTo(1), "two lines over one");
-                Assert.That(Count(over, tight, "capacity-addresses"), Is.EqualTo(1), "eight terminals over three");
+                Assert.That(Count(over, tight, "capacity-input-addresses"), Is.EqualTo(1), "eight terminals over three");
             });
         }
 
@@ -247,7 +251,8 @@ namespace Ihc.Vis.Tests
             {
                 foreach (string code in new[]
                     {
-                        "capacity-input-modules", "capacity-output-modules", "capacity-addresses",
+                        "capacity-input-modules", "capacity-output-modules",
+                        "capacity-input-addresses", "capacity-output-addresses",
                         "capacity-wireless-exceeded", "capacity-resources-high",
                     })
                 {

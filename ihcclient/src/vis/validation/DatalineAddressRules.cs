@@ -89,7 +89,15 @@ namespace Ihc.Vis.Validation
         /// </summary>
         private static void Duplicates(IProjectInspection inspection)
         {
-            Dictionary<(string Direction, long Address), ProjectElement> seen = [];
+            // ONE finding per collision, which is what the row's PrimaryWithRelated shape declares. It used to
+            // Report one finding per LATER holder, so a three-way collision was told twice with nothing relating
+            // the two, and the declaration was a promise the rule did not keep.
+            //
+            // ANCHORED AT THE SECOND CLAIMANT, not the first: the first holds the address and the second is the
+            // one to re-address, so that is the site a reader acts on. This is the opposite of the duplicate-ID
+            // rows, where the collision is repaired by looking at both — and the difference is deliberate.
+            Dictionary<(string Direction, long Address), List<ProjectElement>> holders = [];
+            List<(string Direction, long Address)> order = [];
             foreach ((ProjectElement element, string address) in Addressed(inspection))
             {
                 if (!HexToken.TryParseValue(address, out long value)
@@ -100,18 +108,30 @@ namespace Ihc.Vis.Validation
                 }
 
                 (string, long) key = (element.Tag, value);
-                if (seen.TryGetValue(key, out ProjectElement? first))
+                if (!holders.TryGetValue(key, out List<ProjectElement>? sharing))
                 {
-                    inspection.Report(element, Arguments(
-                        ("value", address),
-                        ("tag", element.Tag),
-                        ("name", element.GetAttribute("name") ?? string.Empty),
-                        ("other", first.GetAttribute("name") ?? string.Empty)));
+                    holders[key] = sharing = [];
+                    order.Add(key);
                 }
-                else
+
+                sharing.Add(element);
+            }
+
+            foreach ((string Direction, long Address) key in order)
+            {
+                List<ProjectElement> sharing = holders[key];
+                if (sharing.Count < 2)
                 {
-                    seen[key] = element;
+                    continue;
                 }
+
+                // The ANCHOR's own token, not the first holder's: the group is keyed on the PARSED address, so
+                // two holders may spell it differently ("_0x5" and "_0x05") and the sentence must show the token
+                // that belongs to the element its locator points at.
+                inspection.ReportGroup(sharing[1], [sharing[0], .. sharing.Skip(2)], Arguments(
+                    ("value", sharing[1].GetAttribute("address_dataline") ?? string.Empty),
+                    ("count", sharing.Count),
+                    ("tag", key.Direction)));
             }
         }
 

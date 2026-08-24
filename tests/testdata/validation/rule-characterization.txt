@@ -491,39 +491,39 @@ fixture/Project6-Errors	Warning	logic-contending-writers	Logic	_0x10c10	Variable
 fixture/Project6-Errors	Warning	name-default	Documentation	_0x5532	Uændret standardnavn
 fixture/Project6-Errors	Warning	struct-locality-empty	ProjectStructure	_0x5532	Lokaliteten 'Lokalitet' indeholder hverken produkter eller blokke.
 synthetic/ids	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
-synthetic/ids	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/ids	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden: rodens børn er [groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules].
+synthetic/ids	Error	id-duplicate-counter	FileIntegrity	_0x2132	Dobbelt id-tæller i '_0x2132' på <group>: 2 id'er deler samme tæller.
+synthetic/ids	Error	id-duplicate-token	FileIntegrity	_0x2132	Dobbelt id '_0x2132' på <group>: 2 elementer deler dette id.
 synthetic/ids	Warning	struct-locality-empty	ProjectStructure	_0x2132	Lokaliteten 'First' indeholder hverken produkter eller blokke.
-synthetic/ids	Error	id-duplicate-token	FileIntegrity	_0x2132	Dobbelt id
 synthetic/ids	Warning	struct-locality-empty	ProjectStructure	_0x2132	Lokaliteten 'Same token' indeholder hverken produkter eller blokke.
-synthetic/ids	Error	id-duplicate-counter	FileIntegrity	_0x2131	Dobbelt id-tæller
-synthetic/ids	Error	id-typecode	FileIntegrity	_0x2131	Forkert id-typekode
+synthetic/ids	Error	id-typecode	FileIntegrity	_0x2131	Forkert id-typekode i '_0x2131' på <group>: typekoden er 49, men skulle være 50.
 synthetic/ids	Warning	struct-locality-empty	ProjectStructure	_0x2131	Lokaliteten 'Foreign type code' indeholder hverken produkter eller blokke.
-synthetic/ids	Error	id-wellformed	FileIntegrity	_0xzz	Ugyldigt id
+synthetic/ids	Error	id-wellformed	FileIntegrity	_0xzz	Ugyldigt id '_0xzz' på <group>.
 synthetic/ids	Warning	struct-locality-empty	ProjectStructure	_0xzz	Lokaliteten 'Unparseable' indeholder hverken produkter eller blokke.
 synthetic/schema	Warning	doc-no-enduser-products	Documentation	utcs_project	Ingen produkter til slutbrugerdokumentation
 synthetic/schema	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
-synthetic/schema	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
-synthetic/schema	Error	attr-enum-range	FileIntegrity	_0x5153	Ugyldig værdi
-synthetic/schema	Error	attr-required	FileIntegrity	_0x5153	Mangler påkrævet attribut
-synthetic/schema	Error	attr-undeclared	FileIntegrity	_0x5153	Ukendt attribut
+synthetic/schema	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden: rodens børn er [groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules].
+synthetic/schema	Error	attr-enum-range	FileIntegrity	_0x5153	Ugyldig værdi 'maybe' i attributten 'locked' på <product_dataline>. Tilladte værdier: yes | no.
+synthetic/schema	Error	attr-required	FileIntegrity	_0x5153	Den påkrævede attribut 'product_identifier' mangler på <product_dataline>.
+synthetic/schema	Error	attr-undeclared	FileIntegrity	_0x5153	Ukendt attribut 'bogus' på <product_dataline>.
 synthetic/schema	Warning	doc-cablenumber	Documentation	_0x5153	Mangler Kabelnummer
 synthetic/schema	Warning	doc-cabletype	Documentation	_0x5153	Mangler Kabeltype
 synthetic/schema	Warning	doc-documentation-tag	Documentation	_0x5153	Mangler Id-kode
 synthetic/schema	Warning	doc-position	Documentation	_0x5153	Mangler Placering
 synthetic/schema	Warning	doc-power-group	Documentation	_0x5153	Mangler Lysgruppe
 synthetic/schema	Warning	struct-product-no-terminals	ProjectStructure	_0x5153	Produktet 'Missing and undeclared' har ingen klemmer.
-synthetic/schema	Error	idref-dangling	FileIntegrity	_0x5349	Reference uden mål
-synthetic/schema	Error	attr-latin1	FileIntegrity	_0x5553	Tegn kan ikke gemmes
+synthetic/schema	Error	idref-dangling	FileIntegrity	_0x5349	Reference uden mål: scene_resource='_0xdead52' på <scenes> peger ikke på noget element.
+synthetic/schema	Error	attr-latin1	FileIntegrity	_0x5553	Tegn kan ikke gemmes i attributten 'name' på <product_dataline>.
 synthetic/schema	Warning	doc-cablenumber	Documentation	_0x5553	Mangler Kabelnummer
 synthetic/schema	Warning	doc-cabletype	Documentation	_0x5553	Mangler Kabeltype
 synthetic/schema	Warning	doc-documentation-tag	Documentation	_0x5553	Mangler Id-kode
 synthetic/schema	Warning	doc-position	Documentation	_0x5553	Mangler Placering
 synthetic/schema	Warning	doc-power-group	Documentation	_0x5553	Mangler Lysgruppe
 synthetic/schema	Warning	struct-product-no-terminals	ProjectStructure	_0x5553	Produktet 'Pris €' har ingen klemmer.
-synthetic/schema	Warning	containment	FileIntegrity	bogus_element	Uventet placering
-synthetic/schema	Error	element-undeclared	FileIntegrity	bogus_element	Ukendt elementtype
+synthetic/schema	Warning	containment	FileIntegrity	bogus_element	Uventet placering: <bogus_element> ligger under <group>.
+synthetic/schema	Error	element-undeclared	FileIntegrity	bogus_element	Ukendt elementtype <bogus_element>.
 synthetic/fb-locality	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
-synthetic/fb-locality	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/fb-locality	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden: rodens børn er [groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules].
 synthetic/fb-locality	Warning	struct-locality-no-devices	ProjectStructure	_0x2132	Lokaliteten 'Stue' indeholder kun funktionsblokke.
 synthetic/fb-locality	Warning	link-fb-input-unfed	Wiring	_0x6028	Funktionsblokken 'Owner' har ingen forbundne indgange.
 synthetic/fb-locality	Warning	name-note-missing	Documentation	_0x7011	Mangler Note
@@ -531,26 +531,26 @@ synthetic/fb-locality	Warning	logic-program-no-events	Logic	_0x661e	Programmet '
 synthetic/fb-locality	Warning	link-fb-input-unfed	Wiring	_0x8028	Funktionsblokken 'Borrower' har ingen forbundne indgange.
 synthetic/fb-locality	Warning	struct-orphan-block	ProjectStructure	_0x8028	Blokken 'Borrower' er ikke forbundet til resten af installationen.
 synthetic/fb-locality	Warning	name-note-missing	Documentation	_0x8911	Mangler Note
-synthetic/fb-locality	Error	fb-local-ref	Logic	_0x90c8	Reference uden for blokken
-synthetic/fb-locality	Error	inline-constant	Logic	_0x91c9	Ubrugt indlejret konstant
+synthetic/fb-locality	Error	fb-local-ref	Logic	_0x90c8	Reference uden for blokken: link1='_0x7011' på <event> peger uden for funktionsblokken.
+synthetic/fb-locality	Error	inline-constant	Logic	_0x91c9	Ubrugt indlejret konstant <resource_enum> '_0x920f' i <condition>: forælderens link2 er '_0x8911' og peger ikke på den.
 synthetic/fb-shape	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
-synthetic/fb-shape	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/fb-shape	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden: rodens børn er [groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules].
 synthetic/fb-shape	Warning	struct-locality-no-devices	ProjectStructure	_0x2132	Lokaliteten 'Stue' indeholder kun funktionsblokke.
-synthetic/fb-shape	Error	fb-shape	Logic	_0x6028	Forkert blokopbygning
+synthetic/fb-shape	Error	fb-shape	Logic	_0x6028	Forkert blokopbygning i funktionsblokken '_0x6028': forventet [inputs, outputs, settings, internalsettings, programs], men fandt [inputs, outputs].
 synthetic/fb-shape	Warning	logic-block-empty	Logic	_0x6028	Blokken 'Truncated' har ingen programmer.
 synthetic/fb-shape	Warning	struct-orphan-block	ProjectStructure	_0x6028	Blokken 'Truncated' er ikke forbundet til resten af installationen.
-synthetic/fb-shape	Warning	containment	FileIntegrity	_0x7011	Uventet placering
-synthetic/fb-shape	Error	fb-pin-container	Logic	_0x7011	Klemme i forkert beholder
-synthetic/fb-shape	Error	fb-programs	Logic	_0x8028	Ugyldigt programindhold
+synthetic/fb-shape	Warning	containment	FileIntegrity	_0x7011	Uventet placering: <resource_input> ligger under <outputs>.
+synthetic/fb-shape	Error	fb-pin-container	Logic	_0x7011	Klemme i forkert beholder: <resource_input> i funktionsblokken '_0x6028' skal ligge under <inputs>, ikke under <outputs>.
+synthetic/fb-shape	Error	fb-programs	Logic	_0x8028	Ugyldigt programindhold i funktionsblokken '_0x8028': programbeholderen indeholder <program_sub>, men må kun indeholde simple programmer.
 synthetic/fb-shape	Warning	logic-block-empty	Logic	_0x8028	Blokken 'Sub program' har ingen programmer.
 synthetic/fb-shape	Warning	logic-block-no-pins	Logic	_0x8028	Blokken 'Sub program' har hverken ind- eller udgange.
 synthetic/fb-shape	Warning	struct-orphan-block	ProjectStructure	_0x8028	Blokken 'Sub program' er ikke forbundet til resten af installationen.
-synthetic/fb-shape	Warning	containment	FileIntegrity	_0x861f	Uventet placering
+synthetic/fb-shape	Warning	containment	FileIntegrity	_0x861f	Uventet placering: <program_sub> ligger under <programs>.
 synthetic/fb-shape	Warning	logic-subprogram-no-conditions	Logic	_0x861f	Underprogrammet 'PSub' har ingen betingelser.
-synthetic/fb-shape	Warning	program-shape	Logic	_0x861f	Uventet programopbygning
+synthetic/fb-shape	Warning	program-shape	Logic	_0x861f	Uventet programopbygning i <program_sub> '_0x861f': forventet [conditions, actions, actions], men fandt [].
 synthetic/bijection	Warning	doc-no-enduser-products	Documentation	utcs_project	Ingen produkter til slutbrugerdokumentation
 synthetic/bijection	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
-synthetic/bijection	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/bijection	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden: rodens børn er [groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules].
 synthetic/bijection	Warning	doc-cablenumber	Documentation	_0x5153	Mangler Kabelnummer
 synthetic/bijection	Warning	doc-cabletype	Documentation	_0x5153	Mangler Kabeltype
 synthetic/bijection	Warning	doc-documentation-tag	Documentation	_0x5153	Mangler Id-kode
@@ -558,13 +558,13 @@ synthetic/bijection	Warning	doc-position	Documentation	_0x5153	Mangler Placering
 synthetic/bijection	Warning	doc-power-group	Documentation	_0x5153	Mangler Lysgruppe
 synthetic/bijection	Warning	doc-address	Documentation	_0x525b	Mangler Adresse
 synthetic/bijection	Warning	doc-cable-colour	Documentation	_0x525b	Mangler Ledningsfarve
-synthetic/bijection	Error	idref-dangling	FileIntegrity	_0x542d	Reference uden mål
-synthetic/bijection	Error	link-bijection	Wiring	_0x542d	Forbindelsen er ensidig
-synthetic/bijection	Error	idref-dangling	FileIntegrity	_0x554b	Reference uden mål
-synthetic/bijection	Error	scene-bijection	Scenes	_0x554b	Scenerækken er ensidig
+synthetic/bijection	Error	idref-dangling	FileIntegrity	_0x542d	Reference uden mål: link='_0xdead49' på <link_from_resource> peger ikke på noget element.
+synthetic/bijection	Error	link-bijection	Wiring	_0x542d	Forbindelsen er ensidig: <link_from_resource> '_0x542d' er ikke forbundet begge veje til en partner af den modsatte type.
+synthetic/bijection	Error	idref-dangling	FileIntegrity	_0x554b	Reference uden mål: link='_0xdead49' på <scene_link> peger ikke på noget element.
+synthetic/bijection	Error	scene-bijection	Scenes	_0x554b	Scenerækken er ensidig: <scene_link> '_0x554b' er ikke forbundet begge veje til en partner af den modsatte type.
 synthetic/dataline-address	Warning	doc-no-enduser-products	Documentation	utcs_project	Ingen produkter til slutbrugerdokumentation
 synthetic/dataline-address	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
-synthetic/dataline-address	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/dataline-address	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden: rodens børn er [groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules].
 synthetic/dataline-address	Warning	doc-cablenumber	Documentation	_0x5153	Mangler Kabelnummer
 synthetic/dataline-address	Warning	doc-cabletype	Documentation	_0x5153	Mangler Kabeltype
 synthetic/dataline-address	Warning	doc-documentation-tag	Documentation	_0x5153	Mangler Id-kode
@@ -573,46 +573,46 @@ synthetic/dataline-address	Warning	doc-power-group	Documentation	_0x5153	Mangler
 synthetic/dataline-address	Warning	doc-cable-colour	Documentation	_0x525a	Mangler Ledningsfarve
 synthetic/dataline-address	Warning	doc-not-linked	Documentation	_0x525a	Ikke forbundet
 synthetic/dataline-address	Warning	link-input-unconnected	Wiring	_0x525a	Indgangen 'A' er ikke forbundet.
-synthetic/dataline-address	Error	dataline-address-duplicate	Addressing	_0x535a	Dobbelt klemmeadresse
+synthetic/dataline-address	Error	dataline-address-duplicate	Addressing	_0x535a	Dobbelt klemmeadresse '_0x5': 2 klemmer på <dataline_input> deler adressen.
 synthetic/dataline-address	Warning	doc-cable-colour	Documentation	_0x535a	Mangler Ledningsfarve
 synthetic/dataline-address	Warning	doc-not-linked	Documentation	_0x535a	Ikke forbundet
 synthetic/dataline-address	Warning	link-input-unconnected	Wiring	_0x535a	Indgangen 'B' er ikke forbundet.
 synthetic/dataline-address	Warning	addr-module-partial	Addressing	_0x545a	Datalinje 10 bruger kun 1 af 16 klemmer.
-synthetic/dataline-address	Error	dataline-address-range	Addressing	_0x545a	Klemmeadresse uden for området
+synthetic/dataline-address	Error	dataline-address-range	Addressing	_0x545a	Klemmeadressen '_0x9c' på <dataline_input> er uden for det gyldige område 1-128.
 synthetic/dataline-address	Warning	doc-cable-colour	Documentation	_0x545a	Mangler Ledningsfarve
 synthetic/dataline-address	Warning	doc-not-linked	Documentation	_0x545a	Ikke forbundet
 synthetic/dataline-address	Warning	link-input-unconnected	Wiring	_0x545a	Indgangen 'C' er ikke forbundet.
-synthetic/dataline-address	Error	dataline-address-malformed	Addressing	_0x565a	Ugyldig klemmeadresse
+synthetic/dataline-address	Error	dataline-address-malformed	Addressing	_0x565a	Ugyldig klemmeadresse '_0xzz' på <dataline_input>.
 synthetic/dataline-address	Warning	doc-address	Documentation	_0x565a	Mangler Adresse
 synthetic/dataline-address	Warning	doc-cable-colour	Documentation	_0x565a	Mangler Ledningsfarve
 synthetic/dataline-address	Warning	doc-not-linked	Documentation	_0x565a	Ikke forbundet
 synthetic/dataline-address	Warning	link-input-unconnected	Wiring	_0x565a	Indgangen 'D' er ikke forbundet.
 synthetic/enum	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
-synthetic/enum	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/enum	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden: rodens børn er [enum_definitions, groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules].
 synthetic/enum	Warning	enum-def-single-value	Logic	_0x4147	Enumerator typen 'A' har kun én værdi, 'A1'.
 synthetic/enum	Warning	enum-value-unused	Logic	_0x4248	Værdien 'A1' i enumerator typen 'A' bruges ikke.
 synthetic/enum	Warning	enum-def-single-value	Logic	_0x4347	Enumerator typen 'B' har kun én værdi, 'B1'.
 synthetic/enum	Warning	enum-def-unused	Logic	_0x4347	Enumerator typen 'B' bruges ikke af nogen variabel.
 synthetic/enum	Warning	struct-locality-empty	ProjectStructure	_0x2132	Lokaliteten 'Stue' indeholder hverken produkter eller blokke.
-synthetic/enum	Warning	containment	FileIntegrity	_0x910f	Uventet placering
-synthetic/enum	Error	enum-inivalue	Logic	_0x910f	Ugyldig starttilstand
-synthetic/enum	Warning	containment	FileIntegrity	_0x930f	Uventet placering
-synthetic/enum	Error	enum-typedef	Logic	_0x930f	Enumeratortype mangler
+synthetic/enum	Warning	containment	FileIntegrity	_0x910f	Uventet placering: <resource_enum> ligger under <group>.
+synthetic/enum	Error	enum-inivalue	Logic	_0x910f	Ugyldig starttilstand '_0x4448' på enumerator-variablen 'Valg': den findes ikke i enumeratortypen 'A'.
+synthetic/enum	Warning	containment	FileIntegrity	_0x930f	Uventet placering: <resource_enum> ligger under <group>.
+synthetic/enum	Error	enum-typedef	Logic	_0x930f	Enumeratortype mangler: typedef='_0x2132' på enumerator-variablen 'Fejl' peger på <group>, ikke på en enumeratortype.
 synthetic/root-version	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
-synthetic/root-version	Error	luid-malformed	FileIntegrity	utcs_project	Ugyldig id-tæller
-synthetic/root-version	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
-synthetic/root-version	Error	root-version	FileIntegrity	utcs_project	Nyere projektversion
+synthetic/root-version	Error	luid-malformed	FileIntegrity	utcs_project	Ugyldig id-tæller: last_unique_id '_0xzz' er ikke et _0x-hextoken.
+synthetic/root-version	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden: rodens børn er [groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules].
+synthetic/root-version	Error	root-version	FileIntegrity	utcs_project	Nyere projektversion: version_major='5' er nyere end version 4, som dette værktøj understøtter.
 synthetic/luid-ceiling	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
-synthetic/luid-ceiling	Error	luid-ceiling	FileIntegrity	utcs_project	Id-tælleren er opbrugt
-synthetic/luid-ceiling	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/luid-ceiling	Error	luid-ceiling	FileIntegrity	utcs_project	Id-tælleren er opbrugt: last_unique_id '_0x1000000' overskrider loftet for 24-bit id-tællere.
+synthetic/luid-ceiling	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden: rodens børn er [groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules].
 synthetic/luid-low	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
 synthetic/luid-low	Error	luid-low	FileIntegrity	utcs_project	Id-tælleren er for lav
-synthetic/luid-low	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/luid-low	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden: rodens børn er [groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules].
 synthetic/luid-low	Warning	struct-locality-empty	ProjectStructure	_0x2132	Lokaliteten 'Stue' indeholder hverken produkter eller blokke.
 synthetic/containment	Warning	doc-no-enduser-products	Documentation	utcs_project	Ingen produkter til slutbrugerdokumentation
 synthetic/containment	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
-synthetic/containment	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
-synthetic/containment	Warning	containment	FileIntegrity	_0x5153	Uventet placering
+synthetic/containment	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden: rodens børn er [groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules].
+synthetic/containment	Warning	containment	FileIntegrity	_0x5153	Uventet placering: <product_dataline> ligger under <groups>.
 synthetic/containment	Warning	doc-cablenumber	Documentation	_0x5153	Mangler Kabelnummer
 synthetic/containment	Warning	doc-cabletype	Documentation	_0x5153	Mangler Kabeltype
 synthetic/containment	Warning	doc-documentation-tag	Documentation	_0x5153	Mangler Id-kode
@@ -621,7 +621,7 @@ synthetic/containment	Warning	doc-power-group	Documentation	_0x5153	Mangler Lysg
 synthetic/containment	Warning	struct-product-no-terminals	ProjectStructure	_0x5153	Produktet 'Loose product' har ingen klemmer.
 synthetic/modem-phone	Warning	doc-no-enduser-products	Documentation	utcs_project	Ingen produkter til slutbrugerdokumentation
 synthetic/modem-phone	Warning	doc-project-info-blank	Documentation	utcs_project	Mangler projektoplysninger
-synthetic/modem-phone	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden
+synthetic/modem-phone	Warning	root-children	FileIntegrity	utcs_project	Uventet rækkefølge i roden: rodens børn er [groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules].
 synthetic/modem-phone	Warning	struct-product-no-terminals	ProjectStructure	_0x5156	Produktet 'SMS modem' har ingen klemmer.
 synthetic/modem-phone	Warning	addr-modem-phonenumber-malformed	Addressing	_0x54cd	Telefonnummeret '+4' skal være på 3-20 tegn uden mellemrum og begynde med en landekode, f.eks. +45.
 synthetic/modem-phone	Warning	addr-modem-phonenumber-malformed	Addressing	_0x55cd	Telefonnummeret '4512345678' skal være på 3-20 tegn uden mellemrum og begynde med en landekode, f.eks. +45.

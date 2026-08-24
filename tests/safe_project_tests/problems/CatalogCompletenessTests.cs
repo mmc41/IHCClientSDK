@@ -69,6 +69,64 @@ namespace Ihc.Vis.Tests
                 + "matrix; introducing a refusal is a product decision, not a rule-authoring one."),
         ];
 
+        /// <summary>
+        /// A row has a Danish sentence EXACTLY WHEN something can raise it. Both directions matter and neither is
+        /// the other's restatement.
+        /// <list type="bullet">
+        /// <item><description>An implemented Active row with NO words would put an empty dialog in front of an
+        /// installer, because every presentation path renders a message whole. That is the defect this half
+        /// closes.</description></item>
+        /// <item><description>An unimplemented row WITH words asserts a raiser that does not exist — the reason
+        /// <c>import-catalog-wrong-kind</c> is deliberately wordless, and the reason authoring a sentence for it
+        /// would be a regression rather than a fix.</description></item>
+        /// </list>
+        /// <para>
+        /// Stated as one biconditional so the two cannot be satisfied separately, and so the interlock is
+        /// explicit: the day that row gains a raiser, <see cref="EveryActiveEntryHasSomethingBehindIt"/> goes red
+        /// until its <see cref="KnownUnimplemented"/> line is removed — and this test then requires the words.
+        /// </para>
+        /// <para>
+        /// Retired and ruled-out rows are exempt by construction: nothing mints them, so nothing can render them.
+        /// </para>
+        /// </summary>
+        [Test]
+        public void NoRowHasWordsWithoutARaiserOrARaiserWithoutWords()
+        {
+            IReadOnlyCollection<ProblemCode> implemented = Implemented();
+            ProblemCatalogEntry[] active =
+                [.. Catalog.Entries.Where(e => e.Status == ProblemCodeStatus.Active)];
+
+            string[] wordless =
+            [
+                .. active.Where(e => implemented.Contains(e.Code) && e.MessageTemplate.Length == 0)
+                    .Select(e => e.Code.Value).OrderBy(v => v, StringComparer.Ordinal),
+            ];
+            string[] raiserless =
+            [
+                .. active.Where(e => !implemented.Contains(e.Code) && e.MessageTemplate.Length > 0)
+                    .Select(e => e.Code.Value).OrderBy(v => v, StringComparer.Ordinal),
+            ];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(active, Is.Not.Empty, "sanity: the catalogue carries Active rows");
+                Assert.That(implemented, Is.Not.Empty, "sanity: something is implemented");
+                Assert.That(wordless, Is.Empty,
+                    "these rows CAN be raised and would show a user an empty message: "
+                    + string.Join(", ", wordless));
+                Assert.That(raiserless, Is.EqualTo(KnownUnauthored).AsCollection,
+                    "an Active row with words but no raiser asserts a raiser that does not exist; the exceptions "
+                    + "are declared and asserted exactly, so a new one fails here");
+            });
+        }
+
+        /// <summary>
+        /// The Active rows that carry words while nothing raises them — every one an operation head whose sentence
+        /// frames a refusal its CAUSES raise, so the head itself is never minted alone. Asserted exactly, in both
+        /// directions, like every other list in this file.
+        /// </summary>
+        private static readonly string[] KnownUnauthored = [];
+
         [Test]
         public void EveryActiveEntryHasSomethingBehindIt()
         {

@@ -69,13 +69,27 @@ public partial class NamePromptWindow : ResultDialog<string>
     // facade and hands the answer in, because a View may not drive ProjectAppService.
     private void OnOk(object? sender, RoutedEventArgs e)
     {
-        if (_blank?.Invoke(NameBox.Text) is { } blank)
+        // NO VALIDATOR MEANS NO DECISION, so OK commits nothing. It is not a fallback emptiness test: writing one
+        // here would be exactly the shell-side duplicate this window stopped carrying, and it would be a SECOND
+        // answer to a question the SDK already answers. Refusing is the honest outcome and matches what a blank
+        // name produces — the dialog stays open. Invoked with `?.` before, OK skipped the check and committed an
+        // unchecked name on this path.
+        if (_blank is null)
         {
-            NameError.Text = blank.Message;
+            NameBox.Focus();
+            return;
+        }
+
+        if (_blank(NameBox.Text) is { } blank)
+        {
+            // Rendered, not raw: the inline error carries the refusal's identity exactly as a dialog does (R18).
+            NameError.Text = ihc_openvisual.ViewModels.ProblemPresenter.Text(blank);
             NameError.IsVisible = true;
             NameBox.Focus();   // put the caret where the fix has to happen
             return;
         }
-        Accept(NameBox.Text!.Trim());
+        // No `!`: the box's text is null until it is touched, and the bang had nothing behind it — the validator
+        // above is what rules a null out, and only once there IS one.
+        Accept((NameBox.Text ?? string.Empty).Trim());
     }
 }

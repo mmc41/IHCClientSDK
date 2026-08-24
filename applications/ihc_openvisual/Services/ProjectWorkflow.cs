@@ -182,8 +182,8 @@ public sealed class ProjectWorkflow : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to open project {Path}", path);
-            await _dialogs.ShowProblemAsync(OpenFailedTitle,
-                HostProblems.Narrate(HostProblems.ProjectOpenFailed(path, ex), ex));
+            await RaisedProblemDisplay.ShowAsync(
+                _dialogs, OpenFailedTitle, HostProblems.ProjectOpenFailed(path, ex), ex);
             return false;
         }
     }
@@ -336,10 +336,11 @@ public sealed class ProjectWorkflow : IDisposable
         {
             Ihc.ActivityExtensions.SetError(activity, ex);
             _logger.LogError(ex, "Failed to save function block {Id} to {Path}", functionBlockId.ToToken(), filePath);
-            // The engine's message is DETAIL under a Danish sentence naming what failed and to where — never the
-            // whole message on its own, which left the installer reading a bare English diagnostic under a title.
-            await _dialogs.ShowProblemAsync(SaveFailedTitle,
-                HostProblems.Narrate(HostProblems.BlockExportFailed(name, filePath, ex), ex));
+            // The engine's English message is DETAIL, never the sentence: it goes to the log above, and the
+            // installer reads the SDK's own coded CAUSE (D01) — why the export failed, not merely which file it
+            // was writing, which the shell's framing already carries as the chain's operation.
+            await RaisedProblemDisplay.ShowAsync(
+                _dialogs, SaveFailedTitle, HostProblems.BlockExportFailed(name, filePath, ex), ex);
             return false;
         }
         EditOutcome outcome = await ApplyAsync(
@@ -551,8 +552,8 @@ public sealed class ProjectWorkflow : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save project {Path}", path);
-            await _dialogs.ShowProblemAsync(SaveFailedTitle,
-                HostProblems.Narrate(HostProblems.ProjectSaveFailed(path, ex), ex));
+            await RaisedProblemDisplay.ShowAsync(
+                _dialogs, SaveFailedTitle, HostProblems.ProjectSaveFailed(path, ex), ex);
             return false;
         }
     }

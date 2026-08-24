@@ -600,9 +600,65 @@ namespace Ihc.Vis.Validation
                     new ProblemArgumentSlot("minimum", ProblemArgumentType.Integer),
                     new ProblemArgumentSlot("maximum", ProblemArgumentType.Integer),
                 ]),
-                "Feltet {field} skal være mellem {minimum} og {maximum}.")
+                EditRefusalProblems.FieldOutOfRangeRefusal)
             {
-                Diagnostic = "The submitted value is outside the bounds the catalog element declares.",
+                Diagnostic = "The submitted value is outside the two bounds the catalog element declares.",
+                Evidence = EvidenceMark.Authored,
+            };
+
+        /// <summary>
+        /// The submitted value is below the only bound the field declares.
+        /// <para>
+        /// D05's second shape. It exists so the row can declare exactly the slot it can bind: a field with a
+        /// minimum and no maximum has no number for a <c>{maximum}</c> slot, and a template carrying one would
+        /// either render a placeholder or force the site to write its own sentence.
+        /// </para>
+        /// PREDICATE: none — it is raised by the command that refuses, never detected by a scan.
+        /// </summary>
+        private static ProblemCatalogEntry EditFieldBelowMinimum =>
+            new ProblemCatalogEntry(
+                EditRefusalCodes.FieldBelowMinimum,
+                ProblemCatalogSection.OperationOutcomes,
+                null,
+                CatalogDisposition.Refusal,
+                RuleKind.EditPrecondition,
+                RuleFaces.None,
+                default,
+                FindingShape.OneFinding,
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("field", ProblemArgumentType.AuthoredName),
+                    new ProblemArgumentSlot("minimum", ProblemArgumentType.Integer),
+                ]),
+                EditRefusalProblems.FieldBelowMinimumRefusal)
+            {
+                Diagnostic = "The submitted value is below the only bound the catalog element declares.",
+                Evidence = EvidenceMark.Authored,
+            };
+
+        /// <summary>
+        /// The submitted value is above the only bound the field declares. D05's third shape; the mirror of
+        /// <see cref="EditFieldBelowMinimum"/>.
+        /// PREDICATE: none — it is raised by the command that refuses, never detected by a scan.
+        /// </summary>
+        private static ProblemCatalogEntry EditFieldAboveMaximum =>
+            new ProblemCatalogEntry(
+                EditRefusalCodes.FieldAboveMaximum,
+                ProblemCatalogSection.OperationOutcomes,
+                null,
+                CatalogDisposition.Refusal,
+                RuleKind.EditPrecondition,
+                RuleFaces.None,
+                default,
+                FindingShape.OneFinding,
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("field", ProblemArgumentType.AuthoredName),
+                    new ProblemArgumentSlot("maximum", ProblemArgumentType.Integer),
+                ]),
+                EditRefusalProblems.FieldAboveMaximumRefusal)
+            {
+                Diagnostic = "The submitted value is above the only bound the catalog element declares.",
                 Evidence = EvidenceMark.Authored,
             };
 
@@ -1001,6 +1057,8 @@ namespace Ihc.Vis.Validation
             EditFieldValueRule,
             EditFieldPhonenumberMalformed,
             EditFieldOutOfRange,
+            EditFieldBelowMinimum,
+            EditFieldAboveMaximum,
             EditCaseBranchInvalid,
             EditNotALogRow,
             EditNotACommandGroup,

@@ -25,7 +25,22 @@ namespace Ihc.Vis.Problems
         ProblemCode Operation,
         string OperationLabel,
         ProblemCode Cause,
-        string CauseLabel);
+        string CauseLabel)
+    {
+        /// <summary>
+        /// The same identity with its <see cref="CauseLabel"/> bound from <paramref name="arguments"/> — for the
+        /// rows whose Danish sentence declares argument slots.
+        /// <para>
+        /// The REGISTRY member keeps the template, which is what the drift gate compares against the catalogue's
+        /// entry; the raising site, which is the only place that knows the values, binds a copy. That is how a
+        /// two-faced row — one that reports at validate and refuses at save — says the same sentence with the same
+        /// data on both faces, without the refusing site reading the catalogue it may not depend on.
+        /// </para>
+        /// </summary>
+        /// <param name="arguments">The values for the slots the label declares.</param>
+        public RefusalIdentity Binding(params ProblemArgument[] arguments) =>
+            this with { CauseLabel = ProblemTemplate.Bind(CauseLabel, arguments) };
+    }
 
     /// <summary>
     /// The operation heads every refusing layer shares.
@@ -47,8 +62,32 @@ namespace Ihc.Vis.Problems
         /// <summary>Writing a project — a save or an export.</summary>
         public static ProblemCode Save { get; } = new("io.save");
 
-        /// <summary>The Danish sentence for a refused save. Identified, never rendered beside its cause.</summary>
-        public const string SaveLabel = "Projektet kunne ikke gemmes";
+        /// <summary>
+        /// The Danish sentence for a refused save, and the <c>io.save</c> row's template verbatim.
+        /// <para>
+        /// It declares a <c>{count}</c> slot because the ONE place this sentence is ever RENDERED is the head of
+        /// the save-validation aggregate, where the number of blocking errors is what the reader needs. In a
+        /// cause/detail chain the operation is identified and never rendered beside its cause, so the unbound
+        /// form is not a sentence anybody reads — which is why one row can serve both without the chain needing
+        /// a number it does not have.
+        /// </para>
+        /// </summary>
+        public const string SaveLabel = "Projektet kunne ikke gemmes: {count} fejl skal rettes først.";
+
+        /// <summary>
+        /// Opening a project for EDITING — the read-to-write boundary, where the guards a save would fail on run
+        /// once, before a user invests any work.
+        /// <para>
+        /// It is an operation head like the others because the same causes refuse it: an undeclared attribute
+        /// stops an edit session opening for exactly the reason it stops a save, and the two must answer with the
+        /// same published cause id under different operations. Before this head existed the edit-open guard had
+        /// no operation to name, so it refused WITHOUT an identity and the session reported a generic failure.
+        /// </para>
+        /// </summary>
+        public static ProblemCode EditOpen { get; } = new("edit.open");
+
+        /// <summary>The Danish sentence for a refused edit-open. Identified, never rendered beside its cause.</summary>
+        public const string EditOpenLabel = "Projektet kunne ikke åbnes til redigering";
 
         /// <summary>Taking a catalog definition file in — a runtime import or the install-directory scan.</summary>
         public static ProblemCode ImportCatalog { get; } = new("import.catalog");

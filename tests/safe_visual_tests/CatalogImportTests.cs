@@ -115,7 +115,9 @@ public class CatalogImportTests
         Assert.Multiple(() =>
         {
             Assert.That(ok, Is.False);
-            Assert.That(harness.Dialogs.LastMessage, Does.Contain("broken.def"), "the error names the offending file");
+            // US-062 names the file; D01 gives the sentence to the SDK's cause, so the two live in title and body.
+            Assert.That(harness.Dialogs.LastMessageTitle, Does.Contain("broken.def"), "the error names the offending file");
+            Assert.That(harness.Dialogs.LastMessage, Does.Contain("katalogfil"), "and the body says why it was rejected");
             Assert.That(harness.ProjectService.GetAvailableProducts().Count, Is.EqualTo(before), "the available set is unchanged");
         });
     }
@@ -139,7 +141,9 @@ public class CatalogImportTests
         {
             Assert.That(outcome.Imported, Is.EqualTo(1), "the import stops at the first unreadable file, keeping earlier ones");
             Assert.That(outcome.Completed, Is.False, "and says it stopped — 1 imported here means something else than 1 of 1");
-            Assert.That(harness.Dialogs.LastMessage, Does.Contain("2_broken.def"), "the message names the offending file");
+            // US-062 names the file; D01 gives the sentence to the SDK's cause, so the two live in title and body.
+            Assert.That(harness.Dialogs.LastMessageTitle, Does.Contain("2_broken.def"), "the box names the offending file");
+            Assert.That(harness.Dialogs.LastMessage, Does.Contain("katalogfil"), "and the body says why it stopped there");
             Assert.That(harness.ProjectService.GetAvailableProducts().Count, Is.EqualTo(productsBefore + 1), "only the file before it imported");
         });
     }

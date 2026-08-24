@@ -78,6 +78,9 @@ public sealed class AvaloniaDialogService : IDialogService
     public Task ShowProblemAsync(string title, ProblemChain chain) =>
         ShowMessageAsync(title, ProblemPresenter.Text(chain));
 
+    public Task ShowProblemAsync(string title, ProblemAggregate aggregate) =>
+        ShowMessageAsync(title, ProblemPresenter.Text(aggregate));
+
     public async Task<string?> PickOpenProjectAsync(string? initialDirectory)
     {
         if (Owner is null)

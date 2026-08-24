@@ -15,6 +15,13 @@ namespace ihc_openvisual.Views;
 /// </summary>
 public partial class SceneValueWindow : ResultDialog<SceneValueResult>
 {
+    // The values the dialog opened with. An EMPTIED box commits the value it was opened with rather than a
+    // constant written here — the same rule the advanced-dimmer window follows, and for the same reason: a
+    // constant in the view is a second answer to "what is this field's value", and this one was WRONG. Zero is
+    // below the declared minimum for a scene level, so clearing the box committed a level the dialog's own
+    // bounds would have refused had the user typed it.
+    private SceneValueInput _opened = new(string.Empty, IsDimmer: false, On: false, 0, 0, 0);
+
     public SceneValueWindow()
     {
         InitializeComponent();
@@ -22,7 +29,7 @@ public partial class SceneValueWindow : ResultDialog<SceneValueResult>
 
     public static Task<SceneValueResult?> ShowAsync(Window owner, SceneValueInput input)
     {
-        var window = new SceneValueWindow { Title = input.Title };
+        var window = new SceneValueWindow { Title = input.Title, _opened = input };
         NumericFieldBounds.Apply(window.LevelBox, input.Level);
         NumericFieldBounds.Apply(window.RampMinutesBox, input.RampPart);
         NumericFieldBounds.Apply(window.RampSecondsBox, input.RampPart);
@@ -38,7 +45,7 @@ public partial class SceneValueWindow : ResultDialog<SceneValueResult>
     private void OnOk(object? sender, RoutedEventArgs e) =>
         Accept(new SceneValueResult(
             StateCombo.SelectedIndex == 1,
-            (int)(LevelBox.Value ?? 0),
-            (int)(RampMinutesBox.Value ?? 0),
-            (int)(RampSecondsBox.Value ?? 0)));
+            (int)(LevelBox.Value ?? _opened.LevelPercent),
+            (int)(RampMinutesBox.Value ?? _opened.RampMinutes),
+            (int)(RampSecondsBox.Value ?? _opened.RampSeconds)));
 }
