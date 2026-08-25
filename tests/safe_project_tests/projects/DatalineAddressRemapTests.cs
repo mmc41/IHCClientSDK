@@ -113,7 +113,7 @@ namespace Ihc.Vis.Tests
             // The observed //finding/@code set, through the shared oracle reader. It used to re-parse the
             // tab-separated recording's third cell here, which was a fourth place that knew the file's layout.
             string[] recorded =
-                [.. Ihc.Tests.Shared.FindingOracles.ReadAll().Select(f => f.Code).Distinct()];
+                [.. Ihc.Tests.Shared.FindingOracleHarness.ReadAll().Select(f => f.Code).Distinct()];
 
             Assert.Multiple(() =>
             {

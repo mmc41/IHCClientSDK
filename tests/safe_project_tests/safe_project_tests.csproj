@@ -26,8 +26,8 @@
   <ItemGroup>
     <!-- The report-oracle matrix, naming convention, pinned clock and byte assert, shared with
          safe_unit_tests (which owns the .html half of the same 24-oracle contract). -->
-    <Compile Include="..\shared\ReportOracles.cs" Link="shared\ReportOracles.cs" />
-    <Compile Include="..\shared\FindingOracles.cs" Link="shared\FindingOracles.cs" />
+    <Compile Include="..\shared\ReportOracleHarness.cs" Link="shared\ReportOracleHarness.cs" />
+    <Compile Include="..\shared\FindingOracleHarness.cs" Link="shared\FindingOracleHarness.cs" />
   </ItemGroup>
 
   <!-- Oracle fixtures live in tests\testdata\ and are shared with safe_unit_tests and

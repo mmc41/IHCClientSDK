@@ -1,18 +1,21 @@
 # IHCClientSDK
 
-**Unofficial .NET SDK for LK / Schneider Electric IHC home-automation controllers — control a live controller and edit its project files from C# / F# on Windows, Mac and Linux.**
+**Unofficial .NET SDK for IHC home-automation controllers — control a live controller and edit its project files from C# on Windows, Mac and Linux.**
 
 [![build](https://github.com/mmc41/IHCClientSDK/actions/workflows/build-validation.yml/badge.svg)](https://github.com/mmc41/IHCClientSDK/actions/workflows/build-validation.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE.md)
 
-This project is an **unofficial**, community-provided software development kit for [IHC (Intelligent House Concept)](https://www.lk.dk/professionel/produktoversigt/intelligente-systemer/ihc/) controllers from LK / Schneider Electric, with clients running Microsoft .NET on Windows, Mac and Linux variants (incl. Raspberry Pi). The project is released as open source. Please supply pull requests with tested changes. New contributors are welcome!
+This project is an **unofficial**, community-provided software development kit for [IHC (Intelligent House Concept)](https://www.lk.dk/professionel/produktoversigt/intelligente-systemer/ihc/) controllers.
+This project is **not** affiliated with or endorsed by Schneider Electric or Lauritz Knudsen (LK). The project supply API and clients running Microsoft .NET on Windows, Mac and Linux variants (incl. Raspberry Pi). The project is released as open source. Please supply pull requests with tested changes. New contributors are welcome!
 
 ## Why this SDK?
 
-Schneider Electric has not released a public SDK for IHC, and the controllers speak SOAP — a protocol modern .NET no longer supports out of the box. This SDK fills that gap for experienced .NET developers who want to integrate with their own IHC installation:
+Schneider Electric has not released a public SDK for IHC, and the controllers speak SOAP — a protocol modern .NET no longer supports out of the box. Also Schneider Electric has discontinuted IHC
+and official software updates are unlikely. Hence without new alternatives, IHC owners will soon face inoperatable software as well that may break in future Windows versions. This SDK provide
+open source alternatives to applications and fills that gap for experienced .NET developers who want to integrate with their own IHC installation.
 
 * **Control a live controller** through a fully async, high-level C# API (authentication, reading/writing IO resources, streaming value changes, users, time, notifications and more) that hides all SOAP details.
-* **Read, edit and create IHC Visual project files (`.vis`) offline** — load, validate, modify and save projects with byte-identical round-trips, without an IHC Visual installation, using a catalog of stock products and function blocks embedded in the SDK.
+* **Read, edit and create IHC Visual project files (`.vis`) offline** — load, validate, modify and save projects with byte-identical round-trips, without an IHC Visual installation.
 * **Run anywhere .NET runs** — Windows, Mac, Linux; (USB connection requires ethernet over USB driver only available on Windows)
 
 ## Features
@@ -117,7 +120,7 @@ See the [ihcclient README](ihcclient/README.md) for API details and [ARCHITECTUR
 All applications, utilities and examples are launched with `dotnet run --project <csproj>` from the repository root. Each needs an `ihcsettings.json` in the repo root (see [Configuration](#configuration)); the offline `.vis` and settings tools do not need a controller.
 
 | Project | Kind | Command |
-|---------|------|---------|
+| --------- | ------ | --------- |
 | IHC OpenVisual (`.vis` editor GUI) | Application | `dotnet run --project applications/ihc_openvisual/ihc_openvisual.csproj` |
 | IHC Lab (API explorer GUI) | Utility | `dotnet run --project utilities/ihc_lab/ihc_lab.csproj` |
 | IHC admin (settings download/upload) | Utility | `dotnet run --project utilities/ihc_admin/ihc_admin.csproj` |
@@ -261,17 +264,17 @@ The `.claude/skills/` folder contains two [Claude Code](https://claude.ai/code) 
 
 Queries this repo's OpenObserve logs and traces to tell you whether a run actually failed and why — after running any app/example/utility, or when investigating a reported bug, exception, silent failure, timeout or slow span. Much of what goes wrong at runtime (controller/SOAP failures, dropped telemetry, unhandled exceptions) is only visible in telemetry, not in the console.
 
-- Cross-platform, Python-standard-library only (no extra packages).
-- Requires OpenObserve running and the `telemetry` section configured in `ihcsettings.json` (see [OpenTelemetry using OpenObserve details](#opentelemetry-using-openobserve-details) above).
-- In Claude Code, ask it to "check OpenObserve for errors" after a run; it reads the settings and queries the collector, accounting for the short indexing delay.
+* Cross-platform, Python-standard-library only (no extra packages).
+* Requires OpenObserve running and the `telemetry` section configured in `ihcsettings.json` (see [OpenTelemetry using OpenObserve details](#opentelemetry-using-openobserve-details) above).
+* In Claude Code, ask it to "check OpenObserve for errors" after a run; it reads the settings and queries the collector, accounting for the short indexing delay.
 
 ### `aui-openvisual` — UI automation for the IHC OpenVisual app (Windows only)
 
 Drives the **IHC OpenVisual** desktop app (`applications/ihc_openvisual`) through Windows UI Automation for scripted GUI testing: launching it, navigating the locality/function trees, invoking toolbar/menu/context commands, expanding/collapsing and clicking nodes, reading tooltips, capturing the window, and checking a uniform JSON result. Useful for verifying a GUI change end-to-end in the real app rather than only in the headless test suites.
 
-- **Windows only** — it uses the Windows UI Automation API and errors with `Code=PlatformUnsupported` on macOS/Linux.
-- No install required: it uses the built-in `System.Windows.Automation` client via PowerShell (Windows PowerShell 5.1 or PowerShell 7).
-- Exposes a stable `domain.verb` command vocabulary with label-path node addressing; every command prints one JSON result and sets an exit code, so multi-step runs are scriptable and diffable.
+* **Windows only** — it uses the Windows UI Automation API and errors with `Code=PlatformUnsupported` on macOS/Linux.
+* No install required: it uses the built-in `System.Windows.Automation` client via PowerShell (Windows PowerShell 5.1 or PowerShell 7).
+* Exposes a stable `domain.verb` command vocabulary with label-path node addressing; every command prints one JSON result and sets an exit code, so multi-step runs are scriptable and diffable.
 
 Run the driver directly (build the app first with `dotnet build applications/ihc_openvisual/ihc_openvisual.csproj`):
 

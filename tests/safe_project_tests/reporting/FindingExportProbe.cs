@@ -24,11 +24,11 @@ namespace Ihc.Vis.Tests
     internal static class FindingExportProbe
     {
         /// <summary>
-        /// The clock every export fixture stamps its output with — <see cref="ReportOracles.PinnedInstant"/>,
+        /// The clock every export fixture stamps its output with — <see cref="ReportOracleHarness.PinnedInstant"/>,
         /// not a second literal. Two spellings of one pinned date is two dates to remember, and the report
         /// oracles already pin this one.
         /// </summary>
-        internal static DateTimeOffset Instant => ReportOracles.PinnedInstant;
+        internal static DateTimeOffset Instant => ReportOracleHarness.PinnedInstant;
 
         /// <summary>A project whose root carries a save stamp, which is all the writer reads from it.</summary>
         internal static Project Stamped(string id2 = "_0x2") =>

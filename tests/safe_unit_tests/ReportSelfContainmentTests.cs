@@ -29,12 +29,12 @@ namespace safe_unit_tests;
 public class ReportSelfContainmentTests
 {
     private static ProjectAppService App() =>
-        new(new IhcSettings(), new BuiltInCatalog(), ReportOracles.Clock());
+        new(new IhcSettings(), new BuiltInCatalog(), ReportOracleHarness.Clock());
 
     private static string TestData(params string[] parts) =>
         Path.Combine(new[] { TestContext.CurrentContext.TestDirectory, "testdata" }.Concat(parts).ToArray());
 
-    private static object[][] HtmlOracleCases() => [.. ReportOracles.Cases("html")];
+    private static object[][] HtmlOracleCases() => [.. ReportOracleHarness.Cases("html")];
 
     /// <summary>Anything that would make the browser fetch something: a scheme-qualified or protocol-relative URL,
     /// or a relative path in a resource attribute. <c>data:</c> and <c>#fragment</c> are excluded by the pattern.</summary>

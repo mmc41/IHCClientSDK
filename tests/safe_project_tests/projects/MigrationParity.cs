@@ -42,7 +42,7 @@ namespace Ihc.Vis.Tests
         /// </para>
         /// </summary>
         internal static ILookup<string, RecordedFinding> Recorded(ImmutableArray<string> ruleIds) =>
-            FindingOracles.ReadAll()
+            FindingOracleHarness.ReadAll()
                 .Where(finding => ruleIds.Contains(finding.Code))
                 .ToLookup(finding => finding.Case);
 

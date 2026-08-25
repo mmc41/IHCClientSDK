@@ -182,18 +182,18 @@ namespace Ihc.Vis.Tests
         /// <see cref="Regenerate_TheFindingsOracles"/> test, diff the emitted files, explain every changed line
         /// by a rule that changed in the same edit, and copy them over.</para>
         /// </summary>
-        [TestCaseSource(typeof(FindingOracles), nameof(FindingOracles.Cases), new object?[] { null })]
+        [TestCaseSource(typeof(FindingOracleHarness), nameof(FindingOracleHarness.Cases))]
         public void Corpus_ReproducesItsOracleByteForByte(string oracleFile, string caseName)
         {
             Func<Project> build = Corpus.Single(c => c.Case == caseName).Build;
-            var app = new ProjectAppService(Settings, new BuiltInCatalog(), FindingOracles.Clock());
+            var app = new ProjectAppService(Settings, new BuiltInCatalog(), FindingOracleHarness.Clock());
 
             using MemoryStream stream = new();
             app.ExportFindings(build(), stream, FindingExportOptions.Default with { SourceName = caseName })
                 .GetAwaiter().GetResult();
 
-            FindingOracles.AssertMatchesOracle(
-                File.ReadAllBytes(Path.Combine(FindingOracles.DefaultRoot, oracleFile)),
+            FindingOracleHarness.AssertMatchesOracle(
+                File.ReadAllBytes(Path.Combine(FindingOracleHarness.DefaultRoot, oracleFile)),
                 stream.ToArray(),
                 oracleFile);
         }
@@ -215,7 +215,7 @@ namespace Ihc.Vis.Tests
         public void TheCorpusWitnessesExactlyTheBaselineCodeCount()
         {
             string[] witnessed =
-                [.. FindingOracles.ReadAll().Select(f => f.Code).Distinct().OrderBy(id => id, StringComparer.Ordinal)];
+                [.. FindingOracleHarness.ReadAll().Select(f => f.Code).Distinct().OrderBy(id => id, StringComparer.Ordinal)];
 
             Assert.Multiple(() =>
             {
@@ -245,7 +245,7 @@ namespace Ihc.Vis.Tests
         [Category("OracleRegeneration")]
         public void Regenerate_TheFindingsOracles()
         {
-            var app = new ProjectAppService(Settings, new BuiltInCatalog(), FindingOracles.Clock());
+            var app = new ProjectAppService(Settings, new BuiltInCatalog(), FindingOracleHarness.Clock());
             string? directory = null;
             foreach ((string name, Func<Project> build) in Corpus)
             {
@@ -253,7 +253,7 @@ namespace Ihc.Vis.Tests
                 app.ExportFindings(build(), stream, FindingExportOptions.Default with { SourceName = name })
                     .GetAwaiter().GetResult();
                 directory = Path.GetDirectoryName(
-                    FindingOracles.WriteGenerated(FindingOracles.FileNameFor(name), stream.ToArray()));
+                    FindingOracleHarness.WriteGenerated(FindingOracleHarness.FileNameFor(name), stream.ToArray()));
             }
 
             TestContext.Out.WriteLine($"Wrote {Corpus.Length} findings oracles to {directory}.");

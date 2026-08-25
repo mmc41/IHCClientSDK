@@ -10,18 +10,18 @@ namespace Ihc.Vis.Tests
     /// committed <c>tests/testdata/reports/*.txt</c> oracle regenerates byte-identically through the public
     /// facade — in-memory generation with the DEFAULT unicode icon stand-ins (D5), UTF-8 no BOM + LF from the
     /// generator (S06), CRLF→LF normalization applied to the ORACLE side only. The coverage matrix, oracle
-    /// naming, pinned generation clock (S10) and byte assert are the shared <see cref="ReportOracles"/>
+    /// naming, pinned generation clock (S10) and byte assert are the shared <see cref="ReportOracleHarness"/>
     /// harness; the HTML half of the same contract lives in <c>safe_unit_tests</c>.
     /// </summary>
     public class ReportOracleTests
     {
         private static ProjectAppService App() =>
-            new(TestSetup.Settings, new BuiltInCatalog(), ReportOracles.Clock());
+            new(TestSetup.Settings, new BuiltInCatalog(), ReportOracleHarness.Clock());
 
         private static Project Load(string name) =>
             App().Load(new MemoryStream(TestData.ReadBytes(Path.Combine("projects", name)))).GetAwaiter().GetResult();
 
-        private static object[][] TxtOracleCases() => [.. ReportOracles.Cases("txt")];
+        private static object[][] TxtOracleCases() => [.. ReportOracleHarness.Cases("txt")];
 
         [TestCaseSource(nameof(TxtOracleCases))]
         public async Task TxtReport_RegeneratesOracle_ByteForByte(
@@ -32,7 +32,7 @@ namespace Ihc.Vis.Tests
 
             await App().GenerateReport(project, kind, mode, ReportMimeTypes.PlainText, output);
 
-            ReportOracles.AssertMatchesOracle(
+            ReportOracleHarness.AssertMatchesOracle(
                 TestData.ReadBytes(Path.Combine("reports", oracleFile)), output.ToArray(), oracleFile);
         }
 
@@ -58,7 +58,7 @@ namespace Ihc.Vis.Tests
                 await App().GenerateReport(
                     project, (ReportKind)oracleCase[2], (ReportMode)oracleCase[3], ReportMimeTypes.PlainText, output);
 
-                TestContext.Out.WriteLine(ReportOracles.WriteGenerated((string)oracleCase[0], output.ToArray()));
+                TestContext.Out.WriteLine(ReportOracleHarness.WriteGenerated((string)oracleCase[0], output.ToArray()));
             }
         }
     }

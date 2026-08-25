@@ -26,7 +26,7 @@ namespace Ihc.Vis.Tests
     public class ChannelsAndMetersTests
     {
         private static readonly Lazy<ProjectAppService> Service =
-            new(() => new ProjectAppService(TestSetup.Settings, new BuiltInCatalog(), ReportOracles.Clock()));
+            new(() => new ProjectAppService(TestSetup.Settings, new BuiltInCatalog(), ReportOracleHarness.Clock()));
 
         private static Project Load(string name) =>
             Service.Value.Load(new MemoryStream(TestData.ReadBytes(Path.Combine("projects", name))))

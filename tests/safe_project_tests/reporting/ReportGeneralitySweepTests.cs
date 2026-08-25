@@ -70,7 +70,7 @@ namespace Ihc.Vis.Tests
         // 27-fixture corpus would otherwise re-parse a 236 KB project dozens of times. Projects are
         // immutable and the assembly is [NonParallelizable], so sharing them is safe.
         private static readonly Lazy<ProjectAppService> Service =
-            new(() => new ProjectAppService(TestSetup.Settings, new BuiltInCatalog(), ReportOracles.Clock()));
+            new(() => new ProjectAppService(TestSetup.Settings, new BuiltInCatalog(), ReportOracleHarness.Clock()));
 
         private static readonly ConcurrentDictionary<string, Project> Loaded = new(StringComparer.Ordinal);
 

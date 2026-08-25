@@ -40,9 +40,9 @@ namespace Ihc.Vis.Tests
         private static ImmutableArray<Line> Load()
         {
             var lines = ImmutableArray.CreateBuilder<Line>();
-            foreach (string path in FindingOracles.Files())
+            foreach (string path in FindingOracleHarness.Files())
             {
-                string caseName = FindingOracles.CaseNameIn(path);
+                string caseName = FindingOracleHarness.CaseNameIn(path);
                 using FileStream stream = File.OpenRead(path);
                 foreach (XElement finding in XDocument.Load(stream).Root!.Elements("finding"))
                 {

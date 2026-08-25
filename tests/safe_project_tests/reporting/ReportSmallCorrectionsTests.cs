@@ -23,7 +23,7 @@ namespace Ihc.Vis.Tests
         private static readonly (string, string)[] NoAttributes = [];
 
         private static readonly Lazy<ProjectAppService> Service =
-            new(() => new ProjectAppService(TestSetup.Settings, new BuiltInCatalog(), ReportOracles.Clock()));
+            new(() => new ProjectAppService(TestSetup.Settings, new BuiltInCatalog(), ReportOracleHarness.Clock()));
 
         private static Project Probe(params ProjectElement[] children) =>
             new(Node("utcs_project", null,

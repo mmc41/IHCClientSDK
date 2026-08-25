@@ -473,7 +473,7 @@ namespace Ihc.Vis.Tests
         /// </para>
         /// </summary>
         private static ImmutableArray<(string RuleId, string Severity, string Category)> Recording() =>
-            [.. FindingOracles.ReadAll().Select(f => (f.Code, f.Severity, f.Category))];
+            [.. FindingOracleHarness.ReadAll().Select(f => (f.Code, f.Severity, f.Category))];
 
         /// <summary>The severity a disposition produces, as the recording spells it.</summary>
         private static string Expected(CatalogDisposition disposition) => disposition switch

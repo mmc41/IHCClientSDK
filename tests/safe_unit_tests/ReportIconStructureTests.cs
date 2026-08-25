@@ -29,7 +29,7 @@ public class ReportIconStructureTests
     [Test]
     public async Task DefaultUnicodeHtml_IsTheSvgVariant_WithSpriteRemoved_AndFragmentsAsStandIns()
     {
-        var app = new ProjectAppService(new IhcSettings(), new BuiltInCatalog(), ReportOracles.Clock());
+        var app = new ProjectAppService(new IhcSettings(), new BuiltInCatalog(), ReportOracleHarness.Clock());
         Project project = await app.Load(Path.Combine(
             TestContext.CurrentContext.TestDirectory, "testdata", "projects", "project5-Dokumentation.vis"));
 

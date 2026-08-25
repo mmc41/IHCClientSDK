@@ -26,7 +26,7 @@ namespace Ihc.Vis.Tests
         /// <summary>The declaration every file opens with, exactly — the encoding is not negotiable.</summary>
         private const string Declaration = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>";
 
-        private static ImmutableArray<string> Files => FindingOracles.Files();
+        private static ImmutableArray<string> Files => FindingOracleHarness.Files();
 
         /// <summary>
         /// Non-vacuity for everything below: an empty directory would satisfy "every file is well shaped" and
@@ -119,7 +119,7 @@ namespace Ihc.Vis.Tests
             ImmutableArray<string> expected =
             [
                 .. ValidationCharacterizationTests.Corpus
-                    .Select(c => FindingOracles.FileNameFor(c.Case))
+                    .Select(c => FindingOracleHarness.FileNameFor(c.Case))
                     .OrderBy(f => f, StringComparer.Ordinal),
             ];
             ImmutableArray<string> actual = [.. Files.Select(Path.GetFileName)!];
@@ -147,7 +147,7 @@ namespace Ihc.Vis.Tests
             ImmutableArray<string> cases = [.. ValidationCharacterizationTests.Corpus.Select(c => c.Case)];
 
             Assert.That(
-                Files.Select(FindingOracles.CaseNameIn).Except(cases), Is.Empty,
+                Files.Select(FindingOracleHarness.CaseNameIn).Except(cases), Is.Empty,
                 "a file recording a case the corpus does not have describes nothing that is still produced");
         }
     }

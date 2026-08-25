@@ -31,10 +31,10 @@
        $(OutDir)\testdata\... so they are reached the same way as in the other suites. -->
   <ItemGroup>
     <!-- The shared oracle harnesses, linked in the same way safe_project_tests and safe_unit_tests link them.
-         ReportOracles comes along because it owns the PINNED INSTANT both oracle families use: borrowing it is
+         ReportOracleHarness comes along because it owns the PINNED INSTANT both oracle families use: borrowing it is
          what keeps the findings oracles and the report oracles on one clock instead of two. -->
-    <Compile Include="..\shared\ReportOracles.cs" Link="shared\ReportOracles.cs" />
-    <Compile Include="..\shared\FindingOracles.cs" Link="shared\FindingOracles.cs" />
+    <Compile Include="..\shared\ReportOracleHarness.cs" Link="shared\ReportOracleHarness.cs" />
+    <Compile Include="..\shared\FindingOracleHarness.cs" Link="shared\FindingOracleHarness.cs" />
   </ItemGroup>
 
   <Import Project="..\TestData.props" />

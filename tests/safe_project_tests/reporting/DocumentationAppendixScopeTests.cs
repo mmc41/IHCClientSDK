@@ -36,7 +36,7 @@ namespace Ihc.Vis.Tests
         ];
 
         private static readonly Lazy<ProjectAppService> Service =
-            new(() => new ProjectAppService(TestSetup.Settings, new BuiltInCatalog(), ReportOracles.Clock()));
+            new(() => new ProjectAppService(TestSetup.Settings, new BuiltInCatalog(), ReportOracleHarness.Clock()));
 
         private static Project Probe(params ProjectElement[] localities) =>
             new(Node("utcs_project", null,

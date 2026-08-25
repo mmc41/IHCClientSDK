@@ -31,7 +31,7 @@ namespace Ihc.Vis.Tests
         private static readonly (string, string)[] NoAttributes = [];
 
         private static readonly Lazy<ProjectAppService> Service =
-            new(() => new ProjectAppService(TestSetup.Settings, new BuiltInCatalog(), ReportOracles.Clock()));
+            new(() => new ProjectAppService(TestSetup.Settings, new BuiltInCatalog(), ReportOracleHarness.Clock()));
 
         private static async Task<string[][]> Appendix(Project project)
         {

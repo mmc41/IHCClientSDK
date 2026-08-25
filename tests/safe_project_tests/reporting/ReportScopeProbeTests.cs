@@ -24,7 +24,7 @@ namespace Ihc.Vis.Tests
         private static readonly (string, string)[] NoAttributes = [];
 
         private static readonly Lazy<ProjectAppService> Service =
-            new(() => new ProjectAppService(TestSetup.Settings, new BuiltInCatalog(), ReportOracles.Clock()));
+            new(() => new ProjectAppService(TestSetup.Settings, new BuiltInCatalog(), ReportOracleHarness.Clock()));
 
         /// <summary>A minimal well-formed project whose <c>groups</c> holds the given localities.</summary>
         private static Project Probe(params ProjectElement[] localities) =>

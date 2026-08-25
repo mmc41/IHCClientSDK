@@ -25,7 +25,7 @@
   <ItemGroup>
     <!-- The report-oracle matrix, naming convention, pinned clock and byte assert, shared with
          safe_project_tests (which owns the .txt half of the same 24-oracle contract). -->
-    <Compile Include="..\shared\ReportOracles.cs" Link="shared\ReportOracles.cs" />
+    <Compile Include="..\shared\ReportOracleHarness.cs" Link="shared\ReportOracleHarness.cs" />
   </ItemGroup>
 
     <ItemGroup>

@@ -19,7 +19,7 @@ namespace Ihc.Vis.Tests
     {
         // The pinned report clock (S10) is also what makes two generation calls byte-comparable.
         private static ProjectAppService App() =>
-            new(TestSetup.Settings, new BuiltInCatalog(), ReportOracles.Clock());
+            new(TestSetup.Settings, new BuiltInCatalog(), ReportOracleHarness.Clock());
 
         private static Project Load() =>
             App().Load(new MemoryStream(TestData.ReadBytes(Path.Combine("projects", "project5-Dokumentation.vis"))))

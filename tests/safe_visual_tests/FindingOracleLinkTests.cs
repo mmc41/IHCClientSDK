@@ -27,10 +27,10 @@ public class FindingOracleLinkTests
         Assert.Multiple(() =>
         {
             Assert.That(
-                FindingOracles.FileNameFor("fixture/Project6-Errors"),
+                FindingOracleHarness.FileNameFor("fixture/Project6-Errors"),
                 Is.EqualTo("fixture-Project6-Errors.xml"));
             Assert.That(
-                FindingOracles.Clock().GetLocalNow(), Is.EqualTo(ReportOracles.PinnedInstant),
+                FindingOracleHarness.Clock().GetLocalNow(), Is.EqualTo(ReportOracleHarness.PinnedInstant),
                 "and on the one pinned instant both oracle families share");
         });
     }

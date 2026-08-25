@@ -46,9 +46,9 @@ namespace Ihc.Vis.Schema
                         $"Element '{element.Tag}'{Locate(element)} carries attribute '{name}' that is not declared " +
                         "in its canonical DTD block. The project's inline DTD or the schema registry must declare " +
                         "every attribute a project uses.";
-                    // Two statements rather than one conditional throw, deliberately: the error-origin
-                    // inventory finds origins by scanning for `throw new`, and a conditional expression hides
-                    // both of these from it — a refusal the gate cannot see is one that can be changed quietly.
+                    // Two statements rather than one conditional throw: the coded refusal and the uncoded
+                    // fall-through carry different exception types, and spelling each out keeps which is which
+                    // readable at the throw site.
                     if (refusing is { } identity)
                     {
                         // The caller's label declares which attribute on which element; this guard is the only

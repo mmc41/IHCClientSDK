@@ -337,7 +337,7 @@ public static class E2E
     private static ILookup<string, RecordedFinding>? _byCase;
 
     private static ILookup<string, RecordedFinding> ByCase() =>
-        _byCase ??= FindingOracles.ReadAll().ToLookup(finding => CaseLeaf(finding.Case));
+        _byCase ??= FindingOracleHarness.ReadAll().ToLookup(finding => CaseLeaf(finding.Case));
 
     /// <summary>
     /// A case name without its corpus folder, so a caller may pass <c>Project6-Errors</c> for a case the oracle
