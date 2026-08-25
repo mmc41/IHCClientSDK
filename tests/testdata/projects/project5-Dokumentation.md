@@ -6,9 +6,10 @@ It is the fixture for report/US-040/US-041/US-072 work and a byte-fidelity oracl
 
 **Provenance (A-1).** Authored **exclusively by driving LK IHC Visual** (`C:\Program Files (x86)\LK IHC
 Control\IHC Visual`, catalog 100 products / 72 function blocks) through the `ihcvisual` UI-automation
-MCP over six sittings (2026-07-30 … 2026-07-31). No byte of it was hand-edited — no text editor, no
-script, no SDK write path ever touched it. The authoring plan is `tmp/reportoracle-authoring.md`, the
-requirement spec `tmp/reportoracle.md`, and the full measurement log `tmp/reportoracle/runlog.md`.
+MCP over six sittings, 2026-07-30 … 2026-07-31. No byte of it was hand-edited — no text editor, no
+script, no SDK write path ever touched it. This document is the record of that authoring — §2 the
+C-id → witness table, §3 the questions it answered, §4 the maintenance rules and the re-authoring
+procedure.
 
 | Property | Value |
 |---|---|
@@ -147,8 +148,46 @@ Machine-checked against the landed bytes — **46 of 46 assertions pass**. Highl
    burning 13 ids each time. The measured delta is exactly `id2` + `last_unique_id` + `<modified>` +
    those two `enum_definition` blocks + their 3 `typedef`/`inivalue` references — no structural or
    content change. Expect that, not equality.
-4. **If it must be re-authored,** drive IHC Visual — never edit the XML. `tmp/reportoracle-authoring.md`
-   is self-resuming and carries the verified dialog control maps.
+4. **If it must be re-authored,** drive IHC Visual through the `ihcvisual` UI-automation MCP — never
+   edit the XML, and never write it from an SDK path. The procedure the original authoring followed:
+
+   - **Order — nothing before the thing it references.** Localities → enum types → module
+     documentation → products → product documentation fields (with §1's gaps left undone) → terminal
+     addresses/colours/notes → function blocks → FB-Z pins → links → scenes → programs → identity
+     (Projektinfo). Modules before addressing, pins before links, links before scenes, programs last.
+   - **Never delete, never unlock.** A delete burns id counters permanently and `last_unique_id` is
+     part of the oracle's bytes; unlocking FB-L strips the `locked="yes"` C-7.1 needs. Repair by
+     re-opening the last checkpoint, never by undoing forward — and checkpoint after every block
+     (Save As to a working copy, never over a committed fixture), because that is the only recovery
+     route.
+   - **ISO-8859-1 only.** No smart quotes, no en dash, no `€`: the vendor writer corrupts non-Latin-1
+     input silently (C-11.6), while Danish `æøåÆØÅ` through the driver is verified safe. Never open
+     the `.vis` in an editor to inspect it — read with `grep -a`, display through `iconv -f ISO-8859-1`.
+   - **A deliberate gap is a step you must NOT perform — then re-assert it on disk.** The vendor
+     auto-assigns sibling terminal addresses (§1), so re-check every gap in the *saved bytes* once its
+     neighbours are authored, and clear a self-filled address by choosing `ikke konfigureret`.
+   - **Judge the effect, never the envelope.** A driver verb can report success for something it
+     resolved statically while doing something else; confirm every write from the dialog, the tree or
+     the saved file, and end every failure path by cancelling the open modal — one left open surfaces
+     ten steps later as an unrelated failure.
+   - **The control map that cost the most to measure.** FB pin dialog: **213** Navn, **214** *Tekst til
+     funktionsdokumentation* (the note the report reads), **216** *Gem aktuel værdi* = the `backup`
+     flag, which must be set as a *check* rather than invoked or it silently does not land. The
+     initial-value control is **per type** — **215** combo (`Flag`, `Ugedag`, `Tilstand`), **217**
+     integer edit (`Tæller`, `Tal`, `Lys`, `Lysniveau`), **501** decimal edit taking a **Danish comma**
+     that the writer normalises to a dot (`21,5` → `inivalue="21.50"`), **219**/**218** date-time
+     pickers. A picker's callback segment (the milliseconds) takes **typed digits only**. Command ids:
+     Datalinie moduler 24587, Projektinfo 30501, Lokalitet 24769, Powerup hændelse 24770, program
+     elements 24874 Program / 24875 Under program / 24876 Logik gruppe / 24576 Ny case værdi.
+   - **Settle, then land.** Save → re-open → save until two consecutive saves differ only in `id2` and
+     `<modified>` (rule 3's re-hoist fires on the first load); the *settled* bytes are the oracle. Land
+     it by saving over the fixture path, and never open the landed file in IHC Visual again.
+   - **Two gaps are the driver's, not the vendor's.** P5's two *Vandringstid* pickers sit outside the
+     dialog's tab chain, so no keystroke can be aimed at them — `shutter_settings` stays
+     present-but-empty, which is legal vendor output and no C-requirement depends on it. And
+     `event_power` is refused on the command-message route: it was authored by walking the menu bar
+     with **real** keystrokes (Alt+I, four downs to *Specielle*, right, enter, counting the disabled
+     items), with the status bar as the oracle.
 5. Recommended follow-up (not part of this fixture): make the A-4/A-7 assertions permanent — a test
    asserting all eight punch-list checks fire and that P2 is absent. They were verified once, by hand,
    at authoring time.

@@ -11,8 +11,8 @@ namespace Ihc.Vis.Tests
     /// end must be a function-block pin — a product pin never links straight to another product pin, because
     /// every product-to-product path in IHC runs through a function block.
     /// <para>
-    /// The oracle is a 15-cell matrix driven against IHC Visual itself (`tmp\comptest\out\C2\census2.md` §C5,
-    /// findings F-058/F-059/F-060), corroborated by every follow-link in the vendor-authored `.vis` corpus
+    /// The oracle is a 15-cell matrix driven against IHC Visual itself (§C5 findings F-058/F-059/F-060),
+    /// corroborated by every follow-link in the vendor-authored `.vis` corpus
     /// (397 links over 21 projects): <c>dataline_input</c> and <c>airlink_input</c> hold a
     /// <c>link_from_resource</c> half 160/160 times and a <c>link_to_resource</c> half never;
     /// <c>resource_input</c> holds a to-half 314/314 and a from-half never; <c>resource_output</c> holds a

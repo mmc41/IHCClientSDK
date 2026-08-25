@@ -9,7 +9,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-20 (tmp/align-campaign-2026-08-10.md): the ORDER of a block section's programming-mode flyout.
+/// Alignment F-20: the ORDER of a block section's programming-mode flyout.
 ///
 /// <para>Measured 2026-08-11 on an unlocked block, all four of its sections:</para>
 /// <list type="table">

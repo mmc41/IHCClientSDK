@@ -7,7 +7,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-16 (tmp/align-campaign-2026-08-10.md): a block SECTION's context flyout follows the MODE.
+/// Alignment F-16: a block SECTION's context flyout follows the MODE.
 ///
 /// <para>Measured 2026-08-11 against the reference application on one unlocked block, the same section row read in
 /// both modes:</para>

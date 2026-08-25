@@ -16,7 +16,7 @@ namespace safe_visual_tests;
 /// <summary>
 /// W9 / F10 (uxparity2 T029): the bottom bar carries a controller-connection indicator.
 /// <para>
-/// Measured (`tmp/uxparity2/verify/V6/findings.md`): the reference application shows a network glyph with a red ✗ at
+/// Measured: the reference application shows a network glyph with a red ✗ at
 /// the right-hand end of its status bar; OpenVisual's bar held only the status text and a locale flag. The vendor's
 /// indicator was only ever observed DISCONNECTED, so the connected appearance is designed here rather than copied —
 /// what is copied is that the indicator exists, and where.

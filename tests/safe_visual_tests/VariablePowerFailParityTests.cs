@@ -11,7 +11,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-27 (tmp/align-campaign-2026-08-10.md): the variable properties dialog carries the power-loss
+/// Alignment F-27: the variable properties dialog carries the power-loss
 /// <i>Gem aktuel værdi</i> setting, as the reference application's does.
 ///
 /// <para>Measured 2026-08-11 on a <c>Flag</c> in a block's <i>Interne variable</i> section: the vendor's

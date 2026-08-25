@@ -31,6 +31,21 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <!-- The findings-export grammar, published in the package so a consumer validating an export does not
+         have to fetch it from the repository. 'Update' rather than 'Include': the file is already a None item
+         through the SDK's default glob, and only its packing needs saying.
+
+         Packed under schemas/ rather than as a contentFiles entry: it is a document to be read or handed to a
+         validator, not an input every consuming build should copy to its own output.
+
+         PackagePath names the destination FILE, not a folder. A trailing separator would make NuGet treat it
+         as a folder and append the item's own relative path, landing the file at schemas/schemas/. -->
+    <None Update="schemas\ihc_project_findings.xsd"
+          Pack="true"
+          PackagePath="schemas\ihc_project_findings.xsd" />
+  </ItemGroup>
+
+  <ItemGroup>
     <AdditionalFiles Include="PublicAPI.Shipped.txt" />
     <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
   </ItemGroup>

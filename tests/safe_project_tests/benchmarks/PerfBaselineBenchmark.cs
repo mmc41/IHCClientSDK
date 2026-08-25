@@ -27,8 +27,8 @@ namespace Ihc.Vis.Tests
     /// (&lt; 50 ms) and <b>undo/redo</b> (&lt; 50 ms) are measured as their logic — the scratch-session open +
     /// command apply / history step that <c>ProjectWorkflow.ApplyAsync</c> performs — which is the lower bound of
     /// the budget's "→ UI settled" figure. The Avalonia render / UI-settle remainder and the OTel-span
-    /// end-to-end capture are NOT measured here; they need an interactive app run (see
-    /// <c>tmp/refac-perf-baseline.md</c>). Numbers are machine-specific; the header records the machine.</para>
+    /// end-to-end capture are NOT measured here; they need an interactive app run. Numbers are
+    /// machine-specific; the header records the machine.</para>
     /// </summary>
     [Explicit("Perf benchmark: run manually in Release; not part of the gate.")]
     [Category("Benchmark")]

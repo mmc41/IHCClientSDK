@@ -10,7 +10,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-33 (tmp/align-campaign-2026-08-10.md): the terminal address editor picks its address from two
+/// Alignment F-33: the terminal address editor picks its address from two
 /// LISTS, as the reference application does — not from numeric spinners.
 ///
 /// <para>Measured 2026-08-11 on a <c>Lampeudtag</c>'s <c>Udgang</c>, driving the vendor's dialog through:</para>

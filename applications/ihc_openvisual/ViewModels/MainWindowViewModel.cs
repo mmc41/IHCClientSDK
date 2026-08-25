@@ -1377,7 +1377,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // measured against IHC Visual (uxparity S-12), where the Insert menu raises the product dialog and
             // Annuller leaves both the tree and the id counter untouched. (An earlier note here claimed the vendor
             // does not auto-open on insert; that came from a driver verb which posts the catalog command directly
-            // and skips the dialog — see tmp/uxparity/MCPFIXES.md.)
+            // and skips the dialog.)
             // Applied WITHOUT announcing it. The insert is committed here so the dialog can be built from the
             // placed element, but the installer can still press Annuller — and until they do not, the project has
             // not gained a product. Announcing at this point put "Produktet 'X' indsat under Y", in the completed
@@ -1577,7 +1577,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         Registry.Register(new CommandSpec("insert.locality", null,
             Surfaces.MenuBar | Surfaces.ContextMenu,
             Execute: _ => InsertLocality(),
-            // Alignment F-1 (tmp/align-campaign-2026-08-09.md): NO selection allows it — the vendor's bar item is
+            // Alignment F-1: NO selection allows it — the vendor's bar item is
             // enabled on a fresh project and inserts at the root, and InsertLocality never reads the selection. A
             // non-root selection stays refused-with-reason: the vendor silently no-ops there (measured
             // Code=NoEffect 2026-08-09), and the explained grey is the registered enhancement over that.

@@ -50,7 +50,7 @@ public class InsertMenuRouteTests : AvaloniaTestBase
     }
 
     /// <summary>
-    /// Alignment F-12b (tmp/align-campaign-2026-08-09.md): the vendor's Indsæt ▸ Program elementer lists
+    /// Alignment F-12b: the vendor's Indsæt ▸ Program elementer lists
     /// "Ny case værdi som angiver tilstand" FIRST (then Program, Under program, Logik gruppe), and its label
     /// carries no ellipsis — measured 2026-08-09, armed bar dump.
     /// </summary>
@@ -80,7 +80,7 @@ public class InsertMenuRouteTests : AvaloniaTestBase
     }
 
     /// <summary>
-    /// Alignment F-20 (tmp/align-campaign-2026-08-09.md): the vendor closes every node flyout with a separator
+    /// Alignment F-20: the vendor closes every node flyout with a separator
     /// immediately before Egenskaber (measured 2026-08-09 on a locality; story 11's inventory table shows the same
     /// on every node kind). The separator follows Egenskaber's own visibility gate, so the root flyout — which has
     /// no Egenskaber — does not end in a dangling rule.

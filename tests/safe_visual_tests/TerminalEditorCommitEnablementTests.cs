@@ -6,7 +6,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-32 (tmp/align-campaign-2026-08-10.md): the terminal address editor's <b>OK</b> and <b>Anvend</b>
+/// Alignment F-32: the terminal address editor's <b>OK</b> and <b>Anvend</b>
 /// stay disabled until something changes.
 ///
 /// <para>Measured 2026-08-11 on a <c>Lampeudtag</c>'s <c>Udgang</c>, both states of the same dialog: on open the

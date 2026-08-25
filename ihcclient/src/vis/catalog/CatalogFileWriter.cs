@@ -27,12 +27,14 @@ namespace Ihc.Vis.Catalog
     /// </para>
     /// <para>
     /// <b>Two layouts, two fidelity relations</b> (see <see cref="CatalogLayout"/>). For the SHIPPED corpus, whitespace
-    /// is not significant: those files are hand-formatted irregularly (mixed indent, blank lines, trailing spaces —
-    /// see <c>tmp/catalogfile-anatomy.md</c>), no reconstructor can derive that, so they are emitted in one fixed
-    /// canonical layout and compared <em>after normalizing whitespace</em>. For an EXPORT
-    /// (<see cref="CatalogLayout.Export"/>, save-to-library) the opposite holds: it is compared against a file the
-    /// vendor's own writer produced, whose layout is perfectly regular and therefore reproduced <em>to the byte</em>
-    /// (uxparity S-22). Either way everything semantic — element/attribute structure, attribute values and their
+    /// is not significant: those files are hand-formatted irregularly (mixed indent — even within one file — blank
+    /// lines between elements, trailing spaces, a close tag indented independently of its open tag), and no
+    /// reconstructor can derive that. Measured over the 173 shipped files: the best fully reconstructing writer
+    /// reproduced 157 of them byte-exactly, and the residual 16 demanded per-element verbatim whitespace echoing.
+    /// So they are emitted in one fixed canonical layout and compared <em>after normalizing whitespace</em>. For an
+    /// EXPORT (<see cref="CatalogLayout.Export"/>, save-to-library) the opposite holds: it is compared against a file
+    /// the vendor's own writer produced, whose layout is perfectly regular and therefore reproduced <em>to the
+    /// byte</em> (uxparity S-22). Either way everything semantic — element/attribute structure, attribute values and their
     /// escaping, ids, and the header's declared content — is reproduced exactly.
     /// </para>
     /// <para>
@@ -117,8 +119,8 @@ namespace Ihc.Vis.Catalog
             var document = new byte[preamble.Length + text.Length];
             preamble.CopyTo(document, 0);
             text.CopyTo(document, preamble.Length);
-            // The well-formedness gate (§2.3 of the plan of record): reparse the exact assembled bytes and only
-            // then touch the caller's stream — a typed refusal must leave the destination untouched.
+            // The well-formedness gate: reparse the exact assembled bytes and only then touch the caller's stream —
+            // a typed refusal must leave the destination untouched.
             if (CatalogWellFormedness.Check(document) is { } reason)
             {
                 throw new CatalogFormatException(

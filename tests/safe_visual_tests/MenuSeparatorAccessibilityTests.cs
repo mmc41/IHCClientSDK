@@ -12,7 +12,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-11 (tmp/align-campaign-2026-08-10.md): menu separators must reach the automation tree.
+/// Alignment F-11: menu separators must reach the automation tree.
 ///
 /// <para>Grouping is meaning. The reference application closes every node flyout with a rule before
 /// <i>Egenskaber</i>, and its File menu groups the file commands, the recent list and Luk into three blocks —

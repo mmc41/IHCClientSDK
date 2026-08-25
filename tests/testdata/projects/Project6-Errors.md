@@ -14,8 +14,10 @@ Eleven rows were falsified that way — see §5 below.
 **Provenance (A-1).** Authored **exclusively by driving LK IHC Visual 03.04.72.03** (`C:\Program Files
 (x86)\LK IHC Control\IHC Visual`, catalog 100 products / 72 function blocks) through the
 `IHCVisualAutomation` CLI (`app.exe`, published self-contained win-x86), elevated, on 2026-08-09.
-**No byte was hand-edited** — no text editor, no script, no SDK write path ever touched it. The live
-measurement log is `tmp/p6/measurements.md`; the design is `tmp/p6/design.md`.
+**No byte was hand-edited** — no text editor, no script, no SDK write path ever touched it. This
+document is the record of that authoring, and [`problem-catalogue.md`](../../../ihcclient/docs/problem-catalogue.md)
+§8 names it as the evidence of record for every row §5 below falsifies. The `M-n` labels used
+throughout are the authoring run's own measurement numbers, kept as citations.
 
 | Property | Value |
 |---|---|
@@ -139,7 +141,12 @@ none of them is an enumerator. See M-14.
 
 ## 5. Rows this fixture **falsifies** — do not "fix" these by editing the file
 
-Each was measured against the live application; the evidence is in `tmp/p6/measurements.md`.
+Each was measured against the live application, one row at a time. **This table is the record**: the
+*Evidence* column names the `M-n` measurement each row was logged under and the A/B that settled it, and
+reproducing one means re-driving the dialog the row names. All eleven are carried independently by
+[`problem-catalogue.md`](../../../ihcclient/docs/problem-catalogue.md) §8, which cites this document as
+its per-row evidence: nine are reclassified there as refusals into its §4, and `name-helpfile-missing`
+and `struct-modified-stale` left the finding set entirely for §6's deliberate non-findings.
 
 | Row | What IHC Visual does | Evidence |
 |---|---|---|

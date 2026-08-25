@@ -486,7 +486,7 @@ namespace Ihc.Vis.Session
         }
 
         /// <summary>
-        /// Alignment F-10 (tmp/align-campaign-2026-08-09.md): the id allocator is monotonic ACROSS history
+        /// Alignment F-10: the id allocator is monotonic ACROSS history
         /// navigation. Measured against the vendor 2026-08-09: insert→undo→insert allocates the NEXT counter
         /// (0x52 after 0x51), and a save straight after the undo still writes the RAISED <c>last_unique_id</c>
         /// (0x51 with no 0x51 element present — a permanent hole). So undo/redo restore the CONTENT, never the

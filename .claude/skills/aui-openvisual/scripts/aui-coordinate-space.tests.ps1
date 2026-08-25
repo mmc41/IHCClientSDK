@@ -233,10 +233,10 @@ Test-Case 'e10 no w/h rect keys remain in aui.ps1' '' ($shortKeys -join ', ')
 #     different spaces. The pixel dimensions of a PNG grabbed with CopyFromScreen are physical, and
 #     until now nothing in the envelope said so while the points beside it said nothing either.
 # ---------------------------------------------------------------------------
-$shot = New-ScreenshotMetadata -Path 'C:\tmp\aui-window-1.png' -Width 1750 -Height 1190 -Scope 'window'
+$shot = New-ScreenshotMetadata -Path 'C:\screenshots\aui-window-1.png' -Width 1750 -Height 1190 -Scope 'window'
 Test-Case 'f1 screenshot metadata: key order' 'path,width,height,space,scope,mimeType' (@($shot.Keys) -join ',')
 Test-Case 'f2 screenshot metadata: declares the measured native space' $script:NativeCoordSpace ([string]$shot.space)
-Test-Case 'f3 screenshot metadata: exact serialization' '{"path":"C:\\tmp\\aui-window-1.png","width":1750,"height":1190,"space":"physical","scope":"window","mimeType":"image/png"}' (ConvertTo-Json $shot -Compress -Depth 4)
+Test-Case 'f3 screenshot metadata: exact serialization' '{"path":"C:\\screenshots\\aui-window-1.png","width":1750,"height":1190,"space":"physical","scope":"window","mimeType":"image/png"}' (ConvertTo-Json $shot -Compress -Depth 4)
 # NO logical sibling here, deliberately: width/height are the PNG's real pixel count, and a "logical"
 # image size would name a file that does not exist at that size. `space` alone answers the only
 # question a caller has -- which space the pixels in this file are counted in.

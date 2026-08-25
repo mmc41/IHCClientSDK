@@ -10,7 +10,7 @@ namespace safe_visual_tests;
 /// W7 / F6 (uxparity2 T026): entering programming mode shows the block's variable sections OPEN — the block root and
 /// all four sections expanded — so the installer sees the block's data without expanding four nodes by hand.
 /// <para>
-/// Measured (`tmp/uxparity2/verify/V6/findings.md`): the reference application opens this pane with the root and all
+/// Measured: the reference application opens this pane with the root and all
 /// four sections <c>expanded=true</c> (87 nodes realized); OpenVisual opened it with the root collapsed and a single
 /// node. Configuration mode is deliberately NOT changed — a tree of collapsed blocks is correct there.
 /// </para>

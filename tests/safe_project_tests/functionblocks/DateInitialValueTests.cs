@@ -3,7 +3,7 @@ using Ihc.Vis.Session;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// Alignment F-41 (IHCReverseEnginneredInfo tmp/align-campaign-2026-08-10.md): a <c>resource_date</c>'s
+    /// Alignment F-41: a <c>resource_date</c>'s
     /// initial value is a DAY and a MONTH.
     ///
     /// <para>Measured 2026-08-11: the reference application's <c>Rediger Dato egenskaber</c> shows a picker

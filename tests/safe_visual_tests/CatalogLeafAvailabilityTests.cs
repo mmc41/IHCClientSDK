@@ -7,7 +7,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-8 (tmp/align-campaign-2026-08-10.md, owner ruling 2026-08-10): a catalog leaf on the menu bar
+/// Alignment F-8 (owner ruling 2026-08-10): a catalog leaf on the menu bar
 /// greys itself when its insert cannot run, exactly as the reference application greys one.
 ///
 /// <para>Measured divergence: the reference application greys every insertable leaf whose insert is not

@@ -3,7 +3,7 @@ using Ihc.Vis.Session;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// Alignment F-41 (IHCReverseEnginneredInfo tmp/align-campaign-2026-08-10.md): a <c>resource_weekday</c>'s
+    /// Alignment F-41: a <c>resource_weekday</c>'s
     /// initial value is one of seven TOKENS, so the value payload needs a token representation.
     ///
     /// <para>Measured 2026-08-11: the reference application's <c>Rediger Ugedag egenskaber</c> offers a combo of

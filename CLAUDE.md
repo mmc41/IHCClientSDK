@@ -124,6 +124,7 @@ default: throw new ArgumentOutOfRangeException(nameof(ioType), ioType, "Unknown 
 - Never re-save authentic `.vis`, `.def`, or `.ifb` oracles to make a test pass. Byte-fidelity tests and `.gitattributes` pin them; diagnose the product code instead.
 - Never commit credentials or expose `ihcsettings.json` contents. It is ignored by `.gitignore`; use the tracked templates when documentation needs an example.
 - Never link/refer fro repo files to files outside the repo or to folders that are gitignored (for example tmp files). Exception are links between gitignored files.
+- Add comments that refer to plans, have only tempoary value or does not add value compared to reading the source. Comments should generally be about WHY, not HOW or WHEN things are done.
 
 ## When Asking Questions
 

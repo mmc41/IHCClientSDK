@@ -28,6 +28,15 @@ namespace Ihc.Vis.Reporting
     /// <para><b>Attribute order is part of the format.</b> XML gives it no meaning, but a byte oracle does, and a
     /// reader scanning 618 lines in a terminal needs the left edge to stay column-comparable. So: machine-readable
     /// identity first, prose in the middle, payload last — and fixed regardless of which order the rows are in.</para>
+    ///
+    /// <para><b>No schema reference, deliberately.</b> The format HAS a published grammar —
+    /// <c>ihcclient/schemas/ihc_project_findings.xsd</c>, packed into the NuGet package under <c>schemas/</c> —
+    /// but the document does not name it. An <c>xsi:noNamespaceSchemaLocation</c> resolves against the
+    /// document's own directory, so naming it would oblige every export to travel with a copy of the schema to
+    /// mean anything, and would put two more attributes on the one line of the oracle corpus that is read by
+    /// eye in every regeneration diff. A consumer that wants to validate supplies the schema; the repository
+    /// applies it to the oracle corpus at build time instead. The document therefore stays standalone and
+    /// namespace-free, which is what every reader of these files already relies on.</para>
     /// </summary>
     internal static class FindingExportWriter
     {

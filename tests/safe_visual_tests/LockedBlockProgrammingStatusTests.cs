@@ -10,7 +10,7 @@ namespace safe_visual_tests;
 /// The block opens either way and authoring is withdrawn either way; what distinguishes the two is the status
 /// message, and a user who is not told cannot know why the authoring commands are missing.
 /// <para>
-/// Regression origin (uxparity2 T007/V4, <c>tmp/uxparity2/verify/V4/notes.md</c>): the locked wording existed in
+/// Regression origin (T007): the locked wording existed in
 /// source but was unreachable, so the status text was byte-identical for a locked and an unlocked block. The cause
 /// was reading lockedness from a tree node looked up AFTER the panes had been re-projected, instead of from the
 /// model. These tests pin the OBSERVABLE outcome, so they stay valid however the value is derived.

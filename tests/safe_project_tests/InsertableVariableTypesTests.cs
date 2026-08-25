@@ -9,7 +9,7 @@ namespace Ihc.Vis.Tests
     /// <summary>
     /// W1 / RC1 / D02-D03 (uxparity2 T013): the ENGINE owns "what may be inserted under this section", and a caller
     /// asks it rather than keeping a second copy of the rule. The vendor offers a function-block Input section its
-    /// signal type plus all 19 value types (measured live, <c>tmp/uxparity2/verify/V3/notes.md</c>), and
+    /// signal type plus all 19 value types (measured live), and
     /// <see cref="PlacementRules.OptionsFor"/> already models exactly that — what was missing was a public door onto
     /// it, which is what these tests pin.
     /// <para>

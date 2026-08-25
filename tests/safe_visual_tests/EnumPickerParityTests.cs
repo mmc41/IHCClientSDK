@@ -9,7 +9,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-21 (tmp/align-campaign-2026-08-10.md): the shape of the <c>Enum</c> type picker inside a block
+/// Alignment F-21: the shape of the <c>Enum</c> type picker inside a block
 /// section's flyout.
 ///
 /// <para>The vendor's submenu is <c>Ny type...</c>, a rule, then the existing types. Two questions that shape

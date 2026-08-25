@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+
+  <!--
+    Build-time schema validation of the findings-export oracles.
+
+    The oracle files carry no schema reference of their own — they are byte oracles read by eye in every
+    regeneration diff, and an xsi:noNamespaceSchemaLocation would add two attributes to that line and tie the
+    corpus to a copy of the schema sitting beside it. The association is made from outside the files instead,
+    and this is where it is enforced: `dotnet build` fails if any of the eighteen stops matching the grammar
+    the SDK ships. That makes it the ONLY gate on the grammar — no test asserts it, so do not remove this
+    import expecting the suites to notice.
+
+    The task is compiled inline by RoslynCodeTaskFactory, which ships with MSBuild — no package reference,
+    and it runs wherever the .NET SDK runs, so the Linux and macOS CI legs get it too.
+  -->
+
+  <PropertyGroup>
+    <FindingsSchema>$(MSBuildThisFileDirectory)..\ihcclient\schemas\ihc_project_findings.xsd</FindingsSchema>
+    <FindingsOracleDir>$(MSBuildThisFileDirectory)testdata\validation\</FindingsOracleDir>
+    <!-- Stamp file, so the target is skipped when neither the schema nor any oracle has moved.
+
+         Only the NAME is set here, and $(IntermediateOutputPath) is composed at the two use sites instead.
+         This file is imported before the SDK's own targets, so IntermediateOutputPath is still empty during
+         this PropertyGroup's evaluation; baking it in here would drop the stamp into the source tree. The
+         attributes below are expanded when the target is scheduled, by which time it is set. -->
+    <FindingsValidationStampName>findings-oracles.validated</FindingsValidationStampName>
+  </PropertyGroup>
+
+  <UsingTask TaskName="ValidateAgainstSchema"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <Schema ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <!-- No <Reference> for System.Xml: on .NET Core MSBuild those names are facades with no assembly file
+           to resolve, and RoslynCodeTaskFactory reports MSB3755 for them. The XML types come in through the
+           netstandard reference the factory adds by default. -->
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Xml" />
+      <Using Namespace="System.Xml.Schema" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+        if (!File.Exists(Schema))
+        {
+            Log.LogError("Findings schema not found at '{0}'.", Schema);
+            return false;
+        }
+
+        var schemas = new XmlSchemaSet();
+        schemas.Add(null, Schema);
+        schemas.Compile();
+
+        foreach (var item in Files)
+        {
+            string path = item.GetMetadata("FullPath");
+            string name = Path.GetFileName(path);
+
+            var settings = new XmlReaderSettings();
+            settings.ValidationType = ValidationType.Schema;
+            settings.Schemas = schemas;
+            // ReportValidationWarnings: without it, a document the schema does not describe validates
+            // silently against nothing and this target would pass on a file it never checked.
+            settings.ValidationFlags = XmlSchemaValidationFlags.ReportValidationWarnings;
+            settings.ValidationEventHandler += (sender, e) =>
+                Log.LogError(
+                    null, null, null, path,
+                    e.Exception == null ? 0 : e.Exception.LineNumber,
+                    e.Exception == null ? 0 : e.Exception.LinePosition,
+                    0, 0,
+                    "{0} does not match {1}: {2}", name, Path.GetFileName(Schema), e.Message);
+
+            int bound = 0;
+            // The stream is handed to the reader unread, so the ISO-8859-1 declaration decodes the bytes.
+            // Reading the file as text first would decode it as UTF-8 and mangle every Danish character
+            // before the validator saw it.
+            using (var stream = File.OpenRead(path))
+            using (var reader = XmlReader.Create(stream, settings))
+            {
+                while (reader.Read())
+                {
+                    if (reader.NodeType == XmlNodeType.Element &&
+                        reader.SchemaInfo != null &&
+                        reader.SchemaInfo.SchemaElement != null)
+                    {
+                        bound++;
+                    }
+                }
+            }
+
+            // Non-vacuity, per file: a validator that matched nothing reports no errors at all.
+            if (bound == 0)
+            {
+                Log.LogError(
+                    null, null, null, path, 0, 0, 0, 0,
+                    "{0}: no element was bound to a declaration in {1} — the file was not validated at all.",
+                    name, Path.GetFileName(Schema));
+            }
+        }
+
+        return !Log.HasLoggedErrors;
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <ItemGroup>
+    <!-- Outside the target, because Inputs/Outputs are evaluated BEFORE the target body runs: an item
+         populated inside it would still be empty when MSBuild decides whether the target is up to date. -->
+    <FindingsOracleFile Include="$(FindingsOracleDir)*.xml" />
+  </ItemGroup>
+
+  <Target Name="ValidateFindingsOracles"
+          BeforeTargets="Build"
+          Inputs="@(FindingsOracleFile);$(FindingsSchema)"
+          Outputs="$(IntermediateOutputPath)$(FindingsValidationStampName)">
+    <!-- A missing corpus is a broken import, not an empty success. -->
+    <Error Condition="'@(FindingsOracleFile)' == ''"
+           Text="No findings oracles found under $(FindingsOracleDir)." />
+
+    <ValidateAgainstSchema Files="@(FindingsOracleFile)" Schema="$(FindingsSchema)" />
+
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <Touch Files="$(IntermediateOutputPath)$(FindingsValidationStampName)" AlwaysCreate="true" />
+    <ItemGroup>
+      <!-- So `dotnet clean` takes the stamp with it and the next build re-validates. -->
+      <FileWrites Include="$(IntermediateOutputPath)$(FindingsValidationStampName)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

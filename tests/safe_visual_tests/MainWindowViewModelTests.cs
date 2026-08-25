@@ -2358,7 +2358,7 @@ public class MainWindowViewModelTests
     }
 
     /// <summary>
-    /// Alignment F-12 + F-13a (tmp/align-campaign-2026-08-09.md): the BAR's Indsæt ▸ Variable submenu is the
+    /// Alignment F-12 + F-13a: the BAR's Indsæt ▸ Variable submenu is the
     /// vendor's FIXED list — every palette type except Enum (the vendor bar never carries an Enum item; the
     /// section flyout owns the enum type picker), always present, with only ENABLEMENT varying. With no block
     /// section selected (configuration view) every item is greyed — the vendor shows its whole list disabled
@@ -2418,7 +2418,7 @@ public class MainWindowViewModelTests
     }
 
     /// <summary>
-    /// Alignment F-13c (tmp/align-campaign-2026-08-09.md): a block SECTION node's context flyout has NO
+    /// Alignment F-13c: a block SECTION node's context flyout has NO
     /// "Vis program" — the vendor omits it (measured 2026-08-09: the Indstillinger flyout is the type list +
     /// Enum + separator + Egenskaber, nothing else), and it is redundant on a section because reaching a section
     /// means you are already viewing the program. It stays on a block and on a pin (the S-28 jump-from-pin route).
@@ -2445,7 +2445,7 @@ public class MainWindowViewModelTests
     }
 
     /// <summary>
-    /// Alignment F-25 (tmp/align-campaign-2026-08-09.md): the bar Indsæt ▸ Variable items Indgang/Udgang advertise
+    /// Alignment F-25: the bar Indsæt ▸ Variable items Indgang/Udgang advertise
     /// their Ctrl+I/Ctrl+U shortcuts (the vendor's Variable menu shows them; the gestures are wired as window
     /// keybindings program.insertInput/insertOutput). Every other bar variable item carries no gesture hint.
     /// </summary>
@@ -2520,7 +2520,7 @@ public class MainWindowViewModelTests
         {
             // INVERTED (uxparity2 D02, the single inversion D13 authorises). This asserted "the Input section offers
             // only Input". The vendor was measured offering the section's signal type PLUS all 19 value types on both
-            // Input and Output (tmp/uxparity2/verify/V3/notes.md), US-027's narrower bullet was amended, and the
+            // Input and Output, US-027's narrower bullet was amended, and the
             // palette now asks the engine (ProjectAppService.GetInsertableVariableTypes) instead of encoding its own
             // section rule. PlacementRules already modelled exactly this — only the GUI's second copy was wrong.
             // Addressed by SDK TYPE, not by wording: what this test is about is which types a section offers, so the

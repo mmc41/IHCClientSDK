@@ -10,7 +10,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-41 (tmp/align-campaign-2026-08-10.md), first slice: a <b>Helligdag</b> variable has an editable
+/// Alignment F-41, first slice: a <b>Helligdag</b> variable has an editable
 /// initial value.
 ///
 /// <para>Censused 2026-08-11 across all 18 value types in the reference application's variable dialog: EVERY one

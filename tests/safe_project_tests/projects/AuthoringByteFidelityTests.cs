@@ -18,7 +18,7 @@ namespace Ihc.Vis.Tests
 
         // BL-E2: reconstructs Project1-SimpelWired.vis from scratch through the public builders and drives the
         // harness to byte-identity (88,321 = 88,321). The former "6-byte / enum-hoist id-allocation-order" gap was
-        // reverse-engineered (tmp/experiments/out/A1..A3) to be neither an enum-hoist nor an InsertTransform issue,
+        // reverse-engineered to be neither an enum-hoist nor an InsertTransform issue,
         // but pure USER-ACTION ORDER: IHC Visual allocates ids at action time, and the vendor wired the three Kip
         // links (6 ids) right after the Kip block — before starting the Entré room — whereas the original test
         // created all links last, shifting every later element by −6. Placing the Kip links immediately after the
@@ -58,7 +58,7 @@ namespace Ihc.Vis.Tests
                     FunctionBlockRef kip = stue.AddFunctionBlock(cat.FunctionBlock("1.1.01")).Locked();
                     kip.Setting("Timer", t => t.Minutes(3));
                     // Vendor wired the Kip block before starting the Entré room — allocation order 193–198
-                    // (output link first, then the two input links). See tmp/experiments/out/A1/findings.md.
+                    // (output link first, then the two input links).
                     editor.Link(kip.Output("Udgang"), lampOut);   // pair ① Kip.Udgang → Lamp.Udgang (193/194)
                     editor.Link(trykLeft, kip.Input("Kip"));      // pair ② Tryk (venstre) → Kip.Kip (195/196)
                     editor.Link(trykRight, kip.Input("Sluk"));    // pair ③ Tryk (højre) → Kip.Sluk (197/198)
@@ -94,7 +94,7 @@ namespace Ihc.Vis.Tests
         // M1 / V2 — repeated PIR (1.4.02) insert. IHC Visual allocates the 2nd block's three enum_definitions
         // (+their values) in document order but DISCARDS them because each duplicates the 1st block's enum by NAME
         // (these user enums carry no typeid), rewiring the references to the 1st block's defs and leaving the
-        // permanent 9-id hole 407–415 (R-enum; tmp/experiments/out/B3/findings.md Part A). Live-authored in IHC
+        // permanent 9-id hole 407–415 (R-enum). Live-authored in IHC
         // Visual 03.04.72.03 (B3 step02-pir2). Header stamps decode via PackedStamp (Day<<24|Hour<<16|Min<<8|Sec):
         // id1 _0x3101b23 → creation 3rd 16:27:35; id2 _0x3101c22 → save 3rd 16:28:34 (modified 16:28);
         // last_unique_id _0x2da (730). Install-free (SDK-embedded catalog).
@@ -156,7 +156,7 @@ namespace Ihc.Vis.Tests
         // program_sub/conditions/actions + a user enum). Built INCREMENTALLY as M3's surface lands: seed knob (3.2),
         // AutoProof name-lookup (3.3), AddEnumDefinition (3.4), ProgramBuilder (3.5), reorder/delete replay (3.6).
         // id1 _0x3071722 → creation 3rd 07:23:34; id2 _0x3072b2d → save 3rd 07:43:45 (modified 7:43);
-        // last_unique_id _0xf7 (247). Install-free (SDK-embedded catalog). See tmp/e3-divergence-log.md.
+        // last_unique_id _0xf7 (247). Install-free (SDK-embedded catalog).
         // The canonical 18-type value palette IHC Visual offers, in the fixed order it materializes them (blueprint
         // §PALETTE). Reused for the settings/internalsettings/inputs/outputs fills (each with its own head variations).
         private static readonly (string Tag, string Name)[] ValuePalette =
@@ -342,7 +342,7 @@ namespace Ihc.Vis.Tests
         // two "med logning" enum-dedup inserts, 6 catalog FBs (three carrying hoisted enums), a user global enum
         // "TestEnum" (0 values), three "Tom blok" empty FBs (one with 9 internal variables), 3 follow-links, and a
         // trailing new room "Lokalitet". id1 _0x1d0e2923 → creation 29th 14:41:35; id2 _0x1d143707 → save 29th
-        // 20:55:07 (modified 2026-06-29 20:55); last_unique_id _0x56c (1388). Install-free (SDK-embedded catalog). See tmp/e4-divergence-log.md.
+        // 20:55:07 (modified 2026-06-29 20:55); last_unique_id _0x56c (1388). Install-free (SDK-embedded catalog).
         // Drove to byte-identity (236,518 bytes) via the M4 first-divergence loop; gaps closed en route: NormalizeTokens
         // (airlink device_type "_0x080a"→"_0x80a"), the _0x4306 catalog-collision pick, InsertStamps (airlink
         // serialnumber + RS-485 channel_id null tokens "_0x0"), NormalizeEnums (s0 kWh accessibility typo

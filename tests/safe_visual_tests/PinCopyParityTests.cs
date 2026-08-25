@@ -7,7 +7,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-15/F-17 (tmp/align-campaign-2026-08-10.md): <i>Kopier</i> on a PIN follows whether the pin is a
+/// Alignment F-15/F-17: <i>Kopier</i> on a PIN follows whether the pin is a
 /// signal SOURCE — not whether it belongs to a product, and not its direction alone.
 ///
 /// <para>Measured 2026-08-11 on one project holding both families in identical state (no addressing, no links),

@@ -4,7 +4,7 @@ using Ihc.Vis.Session;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// Alignment F-41/F-44 (IHCReverseEnginneredInfo tmp/align-campaign-2026-08-10.md): the DECIMAL-valued resource
+    /// Alignment F-41/F-44: the DECIMAL-valued resource
     /// types store a fixed two-fraction-digit number, so the value payload needs a real representation.
     ///
     /// <para>Measured 2026-08-11 by driving the reference application's own dialogs and reading the bytes it saved

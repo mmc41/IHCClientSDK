@@ -6,7 +6,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-28 (tmp/align-campaign-2026-08-10.md): the initial-value field is called <b>Initial værdi</b>.
+/// Alignment F-28: the initial-value field is called <b>Initial værdi</b>.
 ///
 /// <para>Measured 2026-08-11 on a <c>Flag</c> in a block's <i>Interne variable</i> section: the reference
 /// application's <c>Rediger Flag egenskaber</c> captions that group <c>&amp;Initial værdi</c>. OpenVisual called

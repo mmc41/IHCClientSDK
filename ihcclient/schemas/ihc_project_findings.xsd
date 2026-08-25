@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ihc_project_findings.xsd — the grammar of a findings export, format version 1.
+
+  WHAT THIS DESCRIBES
+  The document ProjectAppService.ExportFindings writes: a flat, attribute-only list of validation
+  findings in the .vis encoding. The producer is FindingExportWriter; the recorded corpus of these
+  documents lives in tests/testdata/validation/ and is byte-compared against that writer, so this
+  schema and those files describe one format from two sides.
+
+  NO TARGET NAMESPACE — deliberately. The document is standalone and is read by `[xml]$doc =
+  Get-Content`, by spreadsheets and by XSLT, all of which a namespace makes harder and none of which
+  it helps. .vis carries none either. If the format is ever embedded in another document, that is a
+  version="2" question and gets its own schema.
+
+  THIS SCHEMA IS VERSION-SPECIFIC. @version is fixed at "1": a document declaring any other version
+  is not described here, which is the honest answer rather than validating it against the wrong
+  grammar.
+
+  WHAT A SCHEMA CANNOT SAY, AND WHERE IT IS SAID INSTEAD
+  Three parts of the byte contract are invisible to any validator, because they survive parsing:
+    * the ISO-8859-1 declaration, the absence of a BOM, and CRLF line ends
+    * attribute ORDER, which XML gives no meaning but the oracle files depend on
+    * the co-occurrence rule that @related_xpath appears only beside @related, pairing with it
+      entry-for-entry by position
+  All three are asserted over the bytes, in FindingOracleConformanceTests, FindingExportWriterTests
+  and FindingOracleCoverageTests respectively. This schema covers the vocabulary and the shape.
+
+  THE arg_* VOCABULARY mirrors the argument slots ProblemCatalog declares — a finding may only carry
+  slots its own catalogue row declares, so a new catalogue slot belongs in the block below as well.
+  The names are asserted against the live catalogue, not against this file, by
+  FindingOracleCoverageTests.EveryAttributeIsAFixedNameOrADeclaredSlot; this list is the same
+  vocabulary written down where an editor and an external consumer can see it.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           elementFormDefault="unqualified"
+           attributeFormDefault="unqualified">
+
+  <!-- ==================================================================================
+       Simple types — the value vocabularies
+       ================================================================================== -->
+
+  <xs:simpleType name="problemCode">
+    <xs:annotation>
+      <xs:documentation>
+        A catalogue code. Bare kebab-case for a .vis finding (name-empty, id-duplicate-token), or
+        dotted with one of the six known family prefixes for everything else (edit., io., import.,
+        bridge., internal., app.). A segment is lowercase ASCII letters and digits with single
+        interior hyphens. Mirrors ProblemCode.TryParse.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:token">
+      <xs:pattern value="[a-z0-9]+(-[a-z0-9]+)*|(edit|io|import|bridge|internal|app)(\.[a-z0-9]+(-[a-z0-9]+)*)+"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="problemCodeList">
+    <xs:annotation>
+      <xs:documentation>Space-separated codes. May be empty — no code is not the same as no attribute.</xs:documentation>
+    </xs:annotation>
+    <xs:list itemType="problemCode"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="severity">
+    <xs:annotation>
+      <xs:documentation>
+        ValidationSeverity, as the enum member name verbatim: one blocking tier and two advisory
+        ones. Not lowercased — @severities would otherwise have to repeat the mapping.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="Error"/>
+      <xs:enumeration value="Warning"/>
+      <xs:enumeration value="Info"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="severityList">
+    <xs:annotation>
+      <xs:documentation>
+        Space-separated tiers in enum order. May be empty: a caller that filtered every tier away
+        still records the fact, because "no findings of this tier" and "this tier was excluded" are
+        different facts and only this attribute tells them apart.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:list itemType="severity"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="category">
+    <xs:annotation>
+      <xs:documentation>
+        ValidationCategory, as the enum member name verbatim — the catalogue's eight check families.
+        The three-letter codes the catalogue prints (INT, WIR, ...) never appear here.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="FileIntegrity"/>
+      <xs:enumeration value="Wiring"/>
+      <xs:enumeration value="Logic"/>
+      <xs:enumeration value="Scenes"/>
+      <xs:enumeration value="Addressing"/>
+      <xs:enumeration value="DeviceSettings"/>
+      <xs:enumeration value="Documentation"/>
+      <xs:enumeration value="ProjectStructure"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="idToken">
+    <xs:annotation>
+      <xs:documentation>A .vis element id token, e.g. _0x2132.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:token">
+      <xs:pattern value="_0x[0-9a-fA-F]+"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="elementTag">
+    <xs:annotation>
+      <xs:documentation>A .vis element tag, e.g. utcs_project — what a finding names when the element carries no id.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:token">
+      <xs:pattern value="[A-Za-z_][A-Za-z0-9_.\-]*"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="locator">
+    <xs:annotation>
+      <xs:documentation>
+        Where a finding points: the element's id token when it has one, else its tag. A finding about
+        the project as a whole carries NO locator attribute at all, rather than a sentinel value.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:union memberTypes="idToken elementTag"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="locatorList">
+    <xs:annotation>
+      <xs:documentation>
+        Space-separated locators — XML's own IDREFS convention, which .vis already uses. Never
+        emitted empty: a finding with no related sites omits the attribute.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction>
+      <xs:simpleType>
+        <xs:list itemType="locator"/>
+      </xs:simpleType>
+      <xs:minLength value="1"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="nodePath">
+    <xs:annotation>
+      <xs:documentation>
+        A restricted positional path from the document root — element names plus 1-based same-tag
+        sibling indexes, e.g. /utcs_project/groups/group[2]. It selects exactly one node, which is
+        what makes it an identity rather than a hint; that property is asserted against the project
+        tree rather than expressible here. A step with no index claims a unique same-tag child.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:token">
+      <xs:pattern value="(/[A-Za-z_][A-Za-z0-9_.\-]*(\[[1-9][0-9]*\])?)+"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="nodePathList">
+    <xs:annotation>
+      <xs:documentation>
+        Space-separated paths. ALL or none: the list pairs with @related by POSITION, so a list with
+        holes would attach entry 2 to site 3. A group whose sites are only partly resolved carries no
+        list at all rather than a wrong one.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction>
+      <xs:simpleType>
+        <xs:list itemType="nodePath"/>
+      </xs:simpleType>
+      <xs:minLength value="1"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="savedStamp">
+    <xs:annotation>
+      <xs:documentation>
+        The project's save stamp (its id2 clock token), or empty when the project carries none.
+        Empty rather than absent, so the root's shape never varies.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:token">
+      <xs:pattern value="(_0x[0-9a-fA-F]+)?"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="exportTimestamp">
+    <xs:annotation>
+      <xs:documentation>
+        When the export was produced: an invariant-culture stamp with second resolution and an
+        explicit UTC offset, never a bare local time and never a fractional part — a machine-readable
+        stamp must not acquire a calendar or a separator from whoever ran the export.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:dateTime">
+      <xs:pattern value="\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+\-]\d{2}:\d{2}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="message">
+    <xs:annotation>
+      <xs:documentation>
+        The finding's sentence, in Danish, exactly as the catalogue bound it. Whitespace is PRESERVED
+        — this is prose a person reads, not a token. Never empty: every code has a catalogue template
+        behind it.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:minLength value="1"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="argumentValue">
+    <xs:annotation>
+      <xs:documentation>
+        One bound argument, formatted by the same formatter that filled the message — so a value is
+        never spelled one way inside the sentence and another way in the attribute beside it. Always
+        a string, whatever the slot's declared ProblemArgumentType: one slot name is declared with
+        different types by different codes, and this is the rendered form, not the raw datum.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string"/>
+  </xs:simpleType>
+
+  <!-- ==================================================================================
+       The finding
+       ================================================================================== -->
+
+  <xs:complexType name="finding">
+    <xs:annotation>
+      <xs:documentation>
+        One finding, on one line, with no child elements. The five required attributes are what every
+        reader of this format shares; the rest are conditional.
+      </xs:documentation>
+    </xs:annotation>
+
+    <!-- Machine-readable identity first, prose in the middle, payload last. -->
+    <xs:attribute name="severity" type="severity" use="required"/>
+    <xs:attribute name="code" type="problemCode" use="required"/>
+    <xs:attribute name="category" type="category" use="required"/>
+    <xs:attribute name="locator" type="locator" use="optional"/>
+    <xs:attribute name="message" type="message" use="required"/>
+
+    <!-- The arg_* block: the slots ProblemCatalog declares, in declared order per code, and only
+         those. A declared slot with nothing bound is omitted rather than emitted empty — "the rule
+         supplied nothing" is not a fact about the project. The arg_ prefix is load-bearing, not
+         decoration: the slot namespace grows with the catalogue and already contains id, element
+         and version, all of which this format uses or reserves. -->
+    <xs:attribute name="arg_action" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_actual" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_allowed" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_attribute" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_block" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_capacity" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_channel" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_count" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_drivers" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_element" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_enum" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_expected" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_field" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_from" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_id" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_identifier" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_index" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_inivalue" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_limit" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_line" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_localities" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_locality" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_master" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_masterType" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_maximum" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_members" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_meter" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_minimum" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_modem" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_name" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_noun" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_other" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_output" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_parent" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_pin" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_pinned" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_produced" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_product" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_program" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_scene" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_seconds" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_section" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_settings" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_slots" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_tag" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_to" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_type" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_typedef" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_untouched" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_used" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_users" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_value" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_variable" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_version" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_writers" type="argumentValue" use="optional"/>
+
+    <!-- The three widest and rarest attributes sit last, so the columns a reader scans stay in the
+         same place on every line. -->
+    <xs:attribute name="related" type="locatorList" use="optional"/>
+    <xs:attribute name="xpath" type="nodePath" use="optional"/>
+    <xs:attribute name="related_xpath" type="nodePathList" use="optional"/>
+  </xs:complexType>
+
+  <!-- ==================================================================================
+       The document
+       ================================================================================== -->
+
+  <xs:element name="ihc_project_findings">
+    <xs:annotation>
+      <xs:documentation>
+        A findings export. The findings appear in the sequence the producing caller handed over —
+        the writer never re-sorts — and @order is that caller's own label for the sequence. An export
+        with no findings is valid and meaningful: it says the run produced none.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="finding" type="finding" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+
+      <xs:attribute name="version" type="xs:token" use="required" fixed="1">
+        <xs:annotation>
+          <xs:documentation>The export format's own version — not the .vis format's, which does not appear here.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+
+      <xs:attribute name="source" type="xs:string" use="required">
+        <xs:annotation>
+          <xs:documentation>
+            What the file names itself: the open document's name for a host, the corpus case name for
+            an oracle. Empty when the caller supplied none — a Project is a pure in-memory model with
+            no path and no provenance, so this can only come from outside.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+
+      <xs:attribute name="generated" type="exportTimestamp" use="required"/>
+      <xs:attribute name="saved_stamp" type="savedStamp" use="required"/>
+
+      <xs:attribute name="order" type="xs:string" use="required">
+        <xs:annotation>
+          <xs:documentation>
+            What sequence this is, recorded verbatim. FREE TEXT by design, because only the caller
+            knows why that is the order: "production" for the engine's own deterministic key,
+            "host:severity desc" for a column the user clicked.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+
+      <xs:attribute name="severities" type="severityList" use="required">
+        <xs:annotation>
+          <xs:documentation>Which tiers the export was allowed to contain — a set, in enum order, not the caller's click order.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+
+      <xs:attribute name="rules_not_run" type="problemCodeList" use="required">
+        <xs:annotation>
+          <xs:documentation>
+            The codes this run could not EVALUATE — a rule needing controller limits or a library the
+            caller did not supply. Deliberately not the codes a profile chose to omit: a structural
+            profile skipping the whole Documentation family is a scope, not an apology.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

@@ -45,7 +45,7 @@ public class VariablePaletteCompletenessTests
     }
 
     /// <summary>
-    /// Alignment F-12 (tmp/align-campaign-2026-08-09.md): the palette lists in the VENDOR's Indsæt ▸ Variable menu
+    /// Alignment F-12: the palette lists in the VENDOR's Indsæt ▸ Variable menu
     /// order, measured 2026-08-09 (armed bar dump, configuration mode). The vendor's first item, Scenarie, is not a
     /// variable (US-024 owns scenes and it never reaches this palette); Enum is OpenVisual's own extra route (the
     /// vendor menu has no Enum item) and is appended last. Everything between is the vendor's order verbatim.

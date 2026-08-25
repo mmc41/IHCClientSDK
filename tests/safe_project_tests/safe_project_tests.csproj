@@ -34,6 +34,11 @@
        safe_visual_tests; this copies them to $(OutDir)\testdata\... . -->
   <Import Project="..\TestData.props" />
 
+  <!-- Fails the BUILD if a findings oracle stops matching the shipped schema. Imported by this suite alone
+       — it owns the oracles' byte contract, and importing it into all five would validate one corpus five
+       times per solution build. -->
+  <Import Project="..\ValidateFindingsOracles.targets" />
+
   <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">
     <!-- NB: Settings file is required for running/testing but allow build without the file to support compilation in a DevOps pipeline -->
     <Copy SourceFiles="..\..\ihcsettings.json" DestinationFolder="$(OutDir)" Condition="Exists('..\..\ihcsettings.json')" />

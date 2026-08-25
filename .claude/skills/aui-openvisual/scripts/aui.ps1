@@ -3067,7 +3067,7 @@ function Invoke-Mechanism-FileDialog {
 }
 
 # ── Structural dumps (the oracle for the comparison census) ──────────────────
-# Shared dump schema (see tmp/enabler.md section 4) so the vendor and OpenVisual dumps diff
+# Shared dump schema -- both drivers emit this shape so the vendor and OpenVisual dumps diff
 # mechanically: { pane, capturedAfter, root: { label, expanded, children[] } }. Labels are never
 # string-compared across the two apps (the vendor UI is Danish) -- only order, nesting and counts.
 

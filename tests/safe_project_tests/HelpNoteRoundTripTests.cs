@@ -9,7 +9,7 @@ namespace Ihc.Vis.Tests
     /// <summary>
     /// W5 / F9 (uxparity2 T020): a variable carries TWO documentation fields, not one. The reference application's
     /// properties dialog shows both — control id 214 <i>Tekst til funktionsdokumentation</i> and id 517
-    /// <i>Noter for hjælpetekst</i> (measured live, `tmp/uxparity2/verify/V2/notes.md`) — and the `.vis` grammar has
+    /// <i>Noter for hjælpetekst</i> (measured live) — and the `.vis` grammar has
     /// always declared the second as <c>note-2</c>. What was missing is an SDK read/write surface for it.
     /// <para>
     /// The risk this task carries is byte fidelity, so these tests are round-trip tests: <c>note-2</c> defaults to the

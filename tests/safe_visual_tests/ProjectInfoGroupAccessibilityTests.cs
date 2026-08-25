@@ -10,7 +10,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-38 (tmp/align-campaign-2026-08-10.md): the Projektinfo dialog's three group captions must reach
+/// Alignment F-38: the Projektinfo dialog's three group captions must reach
 /// AUTOMATION, not only the screen.
 ///
 /// <para>Measured 2026-08-11: the reference application draws three captioned group boxes — <c>Projekt

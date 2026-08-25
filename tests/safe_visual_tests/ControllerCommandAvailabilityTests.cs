@@ -6,8 +6,8 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-4 (tmp/align-campaign-2026-08-10.md, owner ruling 2026-08-11 "all button enablement is in
-/// scope"): the two controller-transfer commands are unavailable while no controller is connected, and say so.
+/// Alignment F-4 (owner ruling 2026-08-11 "all button enablement is in scope"): the two controller-transfer
+/// commands are unavailable while no controller is connected, and say so.
 ///
 /// <para>Measured on the reference application: <i>Hent projekt</i> (24579) and <i>Send projekt</i> (24580) are
 /// greyed on the toolbar AND on the Controller menu — on a fresh unnamed project and on a saved one alike, so

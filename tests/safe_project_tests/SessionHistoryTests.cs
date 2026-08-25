@@ -43,7 +43,7 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
-        /// Alignment F-10 (tmp/align-campaign-2026-08-09.md): the id allocator survives undo. Measured against the
+        /// Alignment F-10: the id allocator survives undo. Measured against the
         /// vendor 2026-08-09: insert→undo→insert allocates the NEXT counter (0x52 after 0x51), and a save straight
         /// after the undo still writes the RAISED last_unique_id (0x51 with no 0x51 element present — a permanent
         /// hole). Rolling the allocator back with the snapshot re-mints the undone element's counter for a

@@ -12,7 +12,7 @@ namespace safe_visual_tests;
 /// <summary>
 /// W5 / F9 / D11 (uxparity2 T021): a VARIABLE's properties dialog offers BOTH documentation fields — the function
 /// documentation and the installer help text — matching what the reference application shows (control ids 214 and
-/// 517, measured in `tmp/uxparity2/verify/V2/notes.md`). A LOCALITY keeps exactly two fields (Name + Note): D11 is
+/// 517, measured live). A LOCALITY keeps exactly two fields (Name + Note): D11 is
 /// explicit that US-007 already matches there and widening it would introduce a divergence, so that is pinned too.
 /// </summary>
 public class PinDocumentationFieldsTests : AvaloniaTestBase

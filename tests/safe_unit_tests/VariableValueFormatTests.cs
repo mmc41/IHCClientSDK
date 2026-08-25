@@ -9,7 +9,7 @@ namespace safe_unit_tests;
 
 /// <summary>
 /// W8 / F7 / D07 (uxparity2 T027): the rendered value of a typed variable row, one case per registry type,
-/// transcribed from the MEASURED table in `tmp/uxparity2/verify/V6/format-table.md`.
+/// transcribed from the MEASURED table.
 /// <para>
 /// D07 requires exact per-type parity, and the measurement showed the formats do not reduce to one rule: decimals
 /// differ by type (0/1/2/3), unit spacing differs by type, weekday and enum render a NAME, three types render

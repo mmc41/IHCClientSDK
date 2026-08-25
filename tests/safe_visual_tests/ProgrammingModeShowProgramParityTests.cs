@@ -7,7 +7,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-22 (tmp/align-campaign-2026-08-10.md): inside programming mode the reference application offers
+/// Alignment F-22: inside programming mode the reference application offers
 /// <i>Vis program</i> on <b>no</b> context flyout at all — you are already in the program.
 ///
 /// <para>Measured 2026-08-11 on an unlocked block, every row type the mode exposes, in both panes:</para>

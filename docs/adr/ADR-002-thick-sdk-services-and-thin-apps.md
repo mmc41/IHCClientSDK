@@ -425,16 +425,15 @@ projects. Retrospective documentation of a standing decision; no other stakehold
 
 2026-07-20: sole maintainer ruled the four facade-realization tradeoffs as explicit multiple-choice questions
 (one discoverable door; factories for every command; display interpretation frontend-owned; add
-`ExportFunctionBlock` and a `CreateNew` locality-language option now). Verbatim questions, options and rulings:
-`tmp/refac2ana.md` §7 (untracked analysis record).
+`ExportFunctionBlock` and a `CreateNew` locality-language option now). Three of the four rulings overrode the
+analyst's recommendation, and in one consistent direction: maximum uniformity and single-point discoverability on
+the *operation* surface (the first two), against a hard raw-values-only boundary on the *read/display* surface (the
+third). The rulings themselves are restated in the Decision above.
 
 2026-08-24: sole maintainer commissioned the validation record and ruled its scope (validation, extending this
 layering decision rather than restating it), then ruled that it belongs *inside* this record rather than beside
 it — hence the merge and the rename. Grounded in `ARCHITECTURE.md`, `CLAUDE.md`, the OpenVisual product
-specification, the architecture-test suites, and a code inventory of the facade doors and their GUI call sites;
-the detailed decision analysis, including an adversarial test against the planned future validation population, is
-recorded in `tmp/newcon.md`. That draft was never published as ADR-005, so the number stays free for the next
-decision.
-
-The `tmp/` analyses cited above are untracked working notes, not part of the record: every ruling they carry that
-still governs is restated in the Decision, so a reader without them loses nothing binding.
+specification, the architecture-test suites, and a code inventory of the facade doors and their GUI call sites.
+The design was also re-tested adversarially against the planned future validation population, and the outcome was
+that **every decision stands**, one normative sentence gaining a qualifier. Because the result merged into this
+record, no ADR-005 was published, so that number stays free for the next decision.

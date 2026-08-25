@@ -3,7 +3,7 @@ using Ihc.Vis.Session;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// Alignment F-41 (IHCReverseEnginneredInfo tmp/align-campaign-2026-08-10.md): a <c>resource_timertime</c>
+    /// Alignment F-41: a <c>resource_timertime</c>
     /// carries MILLISECONDS, so an initial-value write must set them.
     ///
     /// <para>Measured 2026-08-11 on the reference application's own dialogs, all three time-family types side by

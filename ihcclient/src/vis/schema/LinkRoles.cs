@@ -10,8 +10,9 @@ namespace Ihc.Vis.Schema
     /// matching kinds: the source end must produce a signal, the sink end must consume one, and at least one
     /// end must belong to a function block.
     /// <para>
-    /// Measured against IHC Visual over a 15-cell matrix (`tmp\comptest\out\C2\census2.md` §C5, findings
-    /// F-058/F-059/F-060) and corroborated by every follow-link in the vendor-authored corpus (397 links,
+    /// Measured against IHC Visual over a 15-cell matrix (§C5 findings F-058/F-059/F-060; those legal and illegal
+    /// cells are pinned by <c>tests/safe_project_tests/projects/LinkLegalityTests.cs</c>)
+    /// and corroborated by every follow-link in the vendor-authored corpus (397 links,
     /// 21 projects): a <c>dataline_input</c>/<c>airlink_input</c> is a from-half owner 160/160 times,
     /// <c>resource_output</c> 237/237, while <c>resource_input</c> owns a to-half 314/314 and
     /// <c>dataline_output</c> 83/83. No tag is ever seen in both roles.

@@ -44,7 +44,7 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
     /// <summary>
     /// uxparity2 T016 (D15) — on a LOCKED block, <c>view.showProgram</c> is ENABLED on the MENU BAR, not greyed.
     /// <para>
-    /// V1 measured both surfaces in both applications on BOTH fixtures (`tmp/uxparity2/verify/V1/notes.md`, 8/8 rows):
+    /// Both surfaces were measured in both applications on BOTH fixtures (8/8 rows):
     /// the reference application enables Cut/Copy/Delete/Show program on the bar AND the flyout for a locked block.
     /// The rule is neither fixture- nor surface-dependent, so the stricter bar reading this row used to encode does
     /// not exist. The earlier contradicting measurement was reproduced on demand as an ARMING artifact — reading the
@@ -110,8 +110,8 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
     /// <summary>
     /// uxparity2 T017 (D15) — REPLACES <c>LockedBlock_ContextOffers_BarGreys_CutDeleteShowProgram</c>, which asserted
     /// the menu bar GREYS Cut/Delete/Show program on a locked block. That was the S-28 reading, retired by V1: the
-    /// reference application enables all four cells on the bar AND the flyout, on both fixtures (8/8 rows,
-    /// `tmp/uxparity2/verify/V1/notes.md`). `view.showProgram` moved to its own test under T016; Cut and Delete are
+    /// reference application enables all four cells on the bar AND the flyout, on both fixtures (8/8 rows).
+    /// `view.showProgram` moved to its own test under T016; Cut and Delete are
     /// corrected here, so the bar and the flyout now agree for every locked-block structural command.
     /// </summary>
     [Test]
@@ -380,7 +380,7 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
     }
 
     /// <summary>
-    /// Alignment F-1 (tmp/align-campaign-2026-08-09.md) — Indsæt ▸ Lokalitet must be ENABLED with NO selection.
+    /// Alignment F-1 — Indsæt ▸ Lokalitet must be ENABLED with NO selection.
     /// Measured against the vendor 2026-08-09 on a fresh unnamed project: the bar item is enabled before anything
     /// is clicked, and invoking it inserts a locality named "Lokalitet" as the LAST child of the root (verified
     /// live, then undone). The execute path here is already selection-independent (InsertLocality inserts under

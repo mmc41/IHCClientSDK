@@ -13,7 +13,7 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Alignment F-42 (tmp/align-campaign-2026-08-10.md): the time editor shows a millisecond field only for the
+/// Alignment F-42: the time editor shows a millisecond field only for the
 /// types that HAVE one.
 ///
 /// <para>Measured 2026-08-11 on the reference application's three time-family dialogs: <c>Tidspunkt</c>

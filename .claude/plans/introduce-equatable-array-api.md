@@ -100,11 +100,10 @@ than a value record's identity, so they stay unless Step 6 finds them trivially 
 **D2 — Backup tree, or commit first? → (a) COMMIT/STASH FIRST.** The user commits or stashes the
 in-progress product-dialog work before Step 2. Rollback is then `git checkout -- <file>`.
 
-Consequences: `tmp/equatable-array-refactor/backup/` and `backup-manifest.md` are **not created** and
-are struck from §9; Step 1 collapses to the baseline record plus the focused-test run; §8 collapses to
-its stated D2(a) form; the §16.3 per-file backup obligation is struck. The standing rule that the
-executing agent never mutates git state is **unchanged** — the commit is the user's action, not the
-agent's.
+Consequences: the backup tree and `backup-manifest.md` are **not created** and are struck from §9;
+Step 1 collapses to the baseline record plus the focused-test run; §8 collapses to its stated D2(a)
+form; the §16.3 per-file backup obligation is struck. The standing rule that the executing agent
+never mutates git state is **unchanged** — the commit is the user's action, not the agent's.
 
 ### `EquatableArray<T>` design
 
@@ -170,7 +169,7 @@ This turns the convention into test feedback for future members and records inst
 **D2(a) shape**: baseline record plus the focused-test run. The backup tree, `backup-manifest.md` and
 the per-file backup obligation in §16.3 do not exist.
 
-- Record `git status --short` and `git diff --stat` in `tmp/equatable-array-refactor/baseline.md`.
+- Record `git status --short` and `git diff --stat`.
 - Run the current focused equality tests; record concise results in `verification.md`.
 - No baseline performance run: §7 gates on the benchmark's own absolute budgets after Step 7, not on a before/after delta, so a baseline figure would be unused data.
 - Completion: baseline files exist and are non-empty; baseline tests have a recorded outcome.
@@ -346,15 +345,14 @@ the drag-over probe (< 5 ms), commit (< 50 ms), undo/redo (< 50 ms), open (< 2 s
 - the migration preserves the same element-wise recursion and the same `HashCode.Combine` shape, so
   there is no algorithmic delta for a delta-comparison to find. "Materially regressed" was undefined.
 
-Run it once, after Step 7, and record each figure against its budget in
-`tmp/equatable-array-refactor/verification.md`. If a before/after comparison is kept anyway, both runs
-must happen **on the same machine in the same session** — the benchmark prints the machine in its header
-because the numbers are machine-specific.
+Run it once, after Step 7, and record each figure against its budget. If a before/after comparison is
+kept anyway, both runs must happen **on the same machine in the same session** — the benchmark prints
+the machine in its header because the numbers are machine-specific.
 
 ## 8. Rollback Strategy
 
 **D2(a) form.** The user commits or stashes the in-progress product-dialog work before Step 2, so
-version control is the rollback mechanism and no `tmp/` backup tree exists.
+version control is the rollback mechanism and no backup tree exists.
 
 1. Inspect the change with `git diff` / `git diff --stat`, scoped to the current step's files.
 2. Roll back by phase, not by broad repository operation: `git checkout -- <explicit file list>` for
@@ -374,8 +372,6 @@ version control is the rollback mechanism and no `tmp/` backup tree exists.
 | File | Purpose | Updated when |
 | --- | --- | --- |
 | `.claude/plans/introduce-equatable-array-api.md` | Authoritative scope, decisions, inline step status, and resumption point | Before starting and after completing/blocking every step |
-| `tmp/equatable-array-refactor/baseline.md` | Initial dirty-worktree summary, affected-file inventory, and baseline environment | Step 1 only, amended only if initial capture was incomplete |
-| `tmp/equatable-array-refactor/verification.md` | Concise command, result, test counts, failures, and each benchmark figure against its budget | After each focused or full verification run |
 
 `backup-manifest.md` and `backup/` are **struck by D2(a)** — version control is the rollback mechanism.
 
@@ -394,7 +390,11 @@ Progress must remain inline in this plan; do not create a separate `progress.txt
 | 7 | Complete downstream migration and architecture note | Step 6 | Solution builds with warnings as errors; docs accurately state convention | **done** (28 `AsImmutable*` sites + 4 residual `IsDefaultOrEmpty` audited — all justified boundaries, zero adapters, zero compat-only overloads; guard scoping questioned and confirmed correct (`AttrSchema` is internal); `ARCHITECTURE.md` challenge 3 extended; product docs untouched; build 0/0 under warnings-as-errors) |
 | 8 | Run full controller-free verification, performance comparison, and final diff audit | Step 7 | All gates pass; no unresolved audit or benchmark regression | **done** (2846/2846 across all 5 controller-free suites; build 0/0 warnings-as-errors; benchmark 1/1 with every path inside its own budget, commit & undo/redo ~18-33× headroom; 5-point diff audit clean — 12 handwritten pairs removed, 2 deliberate survivors intact, no set/map conversion, no mutable retention, no formatting churn, user's `8618556` work preserved) |
 
-**ALL 8 STEPS COMPLETE (2026-08-13).** Full results in `tmp/equatable-array-refactor/verification.md`.
+**ALL 8 STEPS COMPLETE (2026-08-13).** Final gate green: 2846/2846 tests across all five
+controller-free suites, and `dotnet build IHCClientSDK.sln` at 0 warnings / 0 errors under
+warnings-as-errors. The Release `PerfBaselineBenchmark` passed 1/1 with every path inside its own
+absolute budget — commit and undo/redo, the paths that reach `ProjectElement` equality, at ~18-33×
+headroom. No unresolved audit finding.
 
 Status values are `pending`, `in-progress (<concise note>)`, `done (<verification summary>)`, or `blocked (<specific cause>)`. Update a row before work starts and immediately after its completion or blockage.
 

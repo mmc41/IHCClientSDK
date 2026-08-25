@@ -4,7 +4,7 @@ using Ihc.Vis.Session;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// Alignment F-27 (IHCReverseEnginneredInfo tmp/align-campaign-2026-08-10.md): the power-loss
+    /// Alignment F-27: the power-loss
     /// <i>Gem aktuel værdi</i> setting belongs to every variable the format admits it on — not to outputs alone.
     ///
     /// <para>Measured 2026-08-11: the reference application's <c>Rediger Flag egenskaber</c> — the properties dialog

@@ -208,15 +208,34 @@ the fact. Do not hand it to `SetCursorPos` or do coordinate math on it -- every 
 is path-addressed, so address the node with `--path` (and `--tree`) instead. The point being declared
 is what makes a wrong landing diagnosable; it is not an invitation to re-use the number.
 
-### Cross-driver parity with the `ihcvisual` driver is UNVERIFIED
+### Cross-driver parity with the `ihcvisual` driver: measured, and it turns on one reading rule
 
-The `ihcvisual` driver for the vendor's IHC Visual app implements the same contract, and the two are
-intended to emit byte-identical schemas so one harness reader can parse both. **That agreement has
-not been observed:** the two drivers have never been run side by side in one session, so
-**cross-driver parity is UNVERIFIED**. Verifying it needs a single session running BOTH apps
-(IHC Visual elevated, OpenVisual at matching integrity), which is the separate plan
-`tmp/parity_crossdriver_elevated.md`. Until that plan runs, treat agreement between the two drivers
-as an intention, not a measured fact.
+The `ihcvisual` driver for the vendor's IHC Visual app implements the same contract, and the two were
+run side by side in one elevated session (IHC Visual elevated, OpenVisual at matching integrity) to
+find out whether one harness reader can parse both. It can: identical `display` blocks, and 74 live
+coordinate payloads across the two apps whose every published sibling reproduces by hand from the
+formula above, with **zero mismatches** -- including 11 rectangles that tell re-deriving the extent
+from BOTH corners apart from scaling it alone.
+
+**The condition, and it belongs to the contract rather than being a concession to it: read `space`
+PER PAYLOAD, never per driver.** The vendor driver's native space is not uniform across payload kinds
+-- `node right-click` publishes `space:"logical"` while `dialog read` publishes `space:"physical"` --
+where aui publishes `physical` for both. Both are conformant, since every payload declares its own
+space; but a reader that inferred a driver-wide space from one payload would misread every vendor
+dialog rectangle by the scale factor. That is a harness-authoring rule, not a driver defect.
+
+The two schemas are **contract-conformant and mutually parseable, not byte-identical**. The rectangle
+shape is identical on both; the point shape is not, and was never meant to be -- the sibling key is
+named for the space it holds, so the vendor's is `physical` and aui's is `logical`. Two further
+differences sit outside the coordinate contract, and neither driver is self-evidently wrong about
+either: index paths start one level apart (`--path 0` is the root's first child on the vendor, the
+root itself on aui, so **label paths are the safe cross-driver form**), and `capture window` reports a
+different extent basis (vendor `GetWindowRect`, which includes the invisible resize border; aui the
+UIA `BoundingRectangle` of the visible frame).
+
+**What is still unverified**, for want of the hardware to reach it: both apps ran on one monitor, at
+one scale, with both origins at (0,0), so a second monitor, a per-monitor scale, and a negative origin
+-- the case the round-half-away-from-zero-on-the-OFFSET rule exists for -- were never exercised.
 
 ### Tests
 

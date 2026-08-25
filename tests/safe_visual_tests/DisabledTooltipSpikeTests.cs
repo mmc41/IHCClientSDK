@@ -13,8 +13,7 @@ namespace safe_visual_tests;
 /// control? WPF needs <c>ShowOnDisabled</c>; Avalonia's behaviour was unproven, and T021's design branches on
 /// it — tooltip bindings alone (branch A) vs a window-level input handler writing the reason to the status bar
 /// (branch B). This test IS the runnable evidence: it hovers a disabled button carrying a tooltip in the
-/// headless session and pins whatever the platform actually does. The verdict is recorded in
-/// tmp/crudarch/proposal-backlog.md → Discoveries.
+/// headless session and pins whatever the platform actually does.
 /// </summary>
 public class DisabledTooltipSpikeTests : AvaloniaTestBase
 {

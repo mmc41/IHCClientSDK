@@ -12,8 +12,7 @@ needs confirming.
 
 > Rows A1–A2, B1–B4 and G1–G2 came from an architecture gap analysis on 2026-08-14 and were **revised
 > after external review** on the same day; the review corrected several of them and killed one outright.
-> Each section below is self-contained — the analysis it came from lives in `tmp/agaps.md`, which is
-> **untracked** (`.gitignore:11`) and therefore absent from a clean clone. Do not rely on those links.
+> Each section below is self-contained.
 
 ## Backlog
 
@@ -376,7 +375,8 @@ environment while unable to do half the work is a trap — name it for its job.
 - [ ] Add `.devcontainer/Dockerfile` as the **single source** of the native-dep list. It currently
       exists only as a `run:` step in `.github/workflows/build-validation.yml`, so what "Linux CI" means
       can drift with nothing local pinning it.
-- [ ] Add `.dockerignore`: `tmp/` (800 MB), `bin/`, `obj/`, `.git/`, `ihcsettings.json`.
+- [ ] Add `.dockerignore` covering the untracked scratch directory `.gitignore` already excludes (800 MB),
+      plus `bin/`, `obj/`, `.git/` and `ihcsettings.json`.
 - [ ] Add `scripts/test-linux.ps1` + `.sh`, matching the existing paired-script convention
       (`check-no-raw-tags.*`). No VS Code dependency.
 - [ ] **Decide — bin/obj sharing.** A bind mount puts the Linux and Windows builds on the same
@@ -610,7 +610,7 @@ entries are 3–5 lines each. The SDK needs the same two or three shape factorie
       mirroring the host's, with optional `target:`/`faces:` named arguments for the rows that differ.
 - [ ] Convert the three partials. Do it **mechanically and in one commit per partial**, and require the
       catalogue index (`ihcclient/docs/problem-catalogue.md`, generated from the declarations and compared
-      by a test) plus the findings oracles under `tests/testdata/validation/findings/` to be
+      by a test) plus the findings oracles under `tests/testdata/validation/` to be
       **byte-unchanged**. Any movement means the conversion changed a declaration, which is the whole risk.
 
 Deferred from the 2026-08-24 pass purely on **size** — it is the largest single duplication left, and it
@@ -641,7 +641,7 @@ to read.
 
 Declaring a target is **independent of the body kind** — ARCHITECTURE's exemption covers migrating bodies
 to `Constrain` (which moves oracles), not declaring the target on a traversal row, which moves nothing.
-Expect the findings oracles under `tests/testdata/validation/findings/` to be unchanged; if any of them
+Expect the findings oracles under `tests/testdata/validation/` to be unchanged; if any of them
 moves, something else changed with it.
 
 ### V5 · The duplicate scan written eight times
@@ -661,7 +661,7 @@ element is the duplicate."* The eight rule-local copies undo that for every key 
       about three lines and the blank-key rule is stated once.
 
 This is the case `RuleBuilder` exists for, and none of the eight uses it. Behaviour-preserving: the
-findings oracles under `tests/testdata/validation/findings/` must not move.
+findings oracles under `tests/testdata/validation/` must not move.
 
 ### V4 · Facts recomputed per rule within one run
 
@@ -800,8 +800,11 @@ consumer appears or a reclassification actually surprises someone.
 - **Dead popup entries are never offered** (F-106/F-109): float+float `+` · int−int and int←float `−` ·
   counter two-operand `−` · int×int `×` · the 2-operand `Timer ->` event · the `Timer <` condition
   (authors express "less than" by swapping the operands of `>`).
-- **Never invent method tokens** (D09). The token oracle is `tmp/prgmode/out/method-map.md` (e2 +
-  progmode3 rows) attested by `tests/testdata/projects/project4-PrgTokens.vis` and `…-round2.vis`.
+- **Never invent method tokens** (D09). The token oracle is
+  `ihcclient/src/vis/programs/ProgramMethodCatalog.cs` — it carries every `_0x` token with the F-number
+  that attests it — and it is pinned by the committed oracles
+  `tests/testdata/projects/project4-PrgTokens.vis` and `…-round2.vis`, whose token inventories are
+  written out in `tests/testdata/testdataoverview.md`.
 - The F-096 vendor quirk (`= Timer +` greyed until a Timertid pin exists) must **not** be copied.
 - **No transport resilience policy** (ruled 2026-08-14). No retry, backoff, or circuit breaker on the
   controller path: the transport addresses a controller on the same LAN, not a WAN dependency, so the

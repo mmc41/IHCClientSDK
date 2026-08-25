@@ -9,7 +9,7 @@ namespace ihc_openvisual.ViewModels;
 /// Renders a typed variable's value the way a variable row shows it (US-027, uxparity2 W8/F7) — the presentation half
 /// of a row label, kept Avalonia-free so every type can be unit-tested.
 /// <para>
-/// The formats are MEASURED, not chosen: `tmp/uxparity2/verify/V6/format-table.md` captures the rendered label for
+/// The formats are MEASURED, not chosen: the rendered label was captured for
 /// all 21 registry types. They do not reduce to one rule — the decimal places differ by type (0/1/2/3), the unit
 /// spacing differs by type, two types render a NAME rather than a number, three render nothing at all, and a date
 /// drops its stored year. So this is a per-type table, deliberately, rather than a clever general formatter.

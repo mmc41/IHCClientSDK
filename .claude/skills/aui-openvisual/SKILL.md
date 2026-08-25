@@ -224,9 +224,12 @@ is **omitted** rather than faked, and `space` is still emitted.
 an input: every pointing command is path-addressed, so use `--path` (and `--tree`). Full contract,
 including the rounding rule and the lossiness caveat, in `references/addressing.md`.
 
-> **Cross-driver parity with the `ihcvisual` driver is UNVERIFIED.** Both drivers implement this
-> contract and are intended to emit identical schemas, but they have never been run side by side in
-> one session. Closing that needs the separate elevated plan `tmp/parity_crossdriver_elevated.md`.
+> **Read `space` per PAYLOAD, never per driver.** The vendor-side `ihcvisual` driver implements this
+> same contract, and a side-by-side run of both apps agreed everywhere the two could be compared —
+> but its native space varies by payload kind, where aui publishes `physical` throughout, so a
+> driver-wide assumption misreads whole payload classes. The schemas are contract-conformant and
+> mutually parseable, not byte-identical. Still untested, because no such hardware was reachable: a
+> second monitor, a per-monitor scale, and a negative monitor origin.
 
 Value-level tests: `scripts/aui-coordinate-space.tests.ps1` for the coordinate contract and
 `scripts/aui-options.tests.ps1` for the CLI grammar (plain scripts, no Pester, nothing to install —
