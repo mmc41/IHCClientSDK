@@ -141,6 +141,7 @@ better copy of the file, a re-export, or a repair.
 | `element-undeclared` | INT | Fatal error | Save · Export | An element type is declared neither in the file's inline DTD nor in the schema registry | The element has no declared rendering — writing the file would lose it |
 | `attr-undeclared` | INT | Fatal error | Save · Export | An attribute is declared neither in the element's inline-DTD block nor in the registry | The value has no declared rendering — writing the file would lose it |
 | `attr-latin1` | INT | Fatal error | Save · Export | An attribute value carries text outside ISO-8859-1 | The `.vis` encoding cannot represent it; writing would mangle or drop characters |
+| `attr-required` | INT | Fatal error | Save · Export | A `#REQUIRED` attribute is missing | The file would violate the DTD it declares inline — IHC Visual rejects the element |
 | `save-target-unwritable` | INT | Fatal error | Save · Export | The destination cannot be written (locked, read-only, missing, or out of space) | The write is abandoned before any existing file is touched |
 | `save-roundtrip-mismatch` | INT | Fatal error | Save · Export | Re-reading the just-written bytes does not reproduce the project | The file would not say what the project says; the write is rolled back |
 | `import-catalog-unparsable` | INT | Fatal error | Import | A `.def` / `.ifb` catalog file cannot be parsed | Nothing can be taken from it; the import is abandoned whole |
@@ -152,7 +153,6 @@ better copy of the file, a re-export, or a repair.
 | `id-duplicate-counter` | INT | Error | — | Two ids share a counter | The id space is no longer a bijection; the next minted id may collide |
 | `id-typecode` | INT | Error | — | An id's type-code disagrees with its element tag | IHC Visual resolves the element to the wrong kind |
 | `idref-dangling` | INT | Error | — | A reference attribute names an id no element carries | The reference resolves to nothing (the null token is a legal unwired state and is not this) |
-| `attr-required` | INT | Error | — | A `#REQUIRED` attribute is missing | IHC Visual rejects the element |
 | `attr-enum-range` | INT | Error | — | An enumerated attribute holds a value outside its declared set | The value has no defined meaning for reader or controller |
 | `luid-malformed` | INT | Error | — | `last_unique_id` is not a `_0x` hex token | No further id can be minted from a value that cannot be read |
 | `luid-low` | INT | Error | — | `last_unique_id` is absent or below the highest counter present | The next minted id collides with an existing element |

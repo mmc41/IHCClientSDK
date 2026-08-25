@@ -220,6 +220,13 @@ public class ProblemsNavigationTests
     /// Why the two tests above project directly instead of driving the panel: OpenVisual will not open a project
     /// whose ids collide at all. <c>ProjectEditor</c> refuses it — id-addressed editing would resolve first-match
     /// and silently edit the wrong element — and every open normalizes through an editor.
+    /// <para>
+    /// That refusal is CODED as of the edit-open identity work: it arrives as <c>id-duplicate-token</c> under
+    /// <c>edit.open</c> with its Danish sentence, where it used to arrive as a bare English
+    /// <c>InvalidOperationException</c> that the host could only report as its own generic
+    /// <c>app.openvisual.project-open-failed</c>. The dialog assertion below pins the better message; a host code
+    /// reappearing there would mean the SDK stopped naming its cause.
+    /// </para>
     /// </summary>
     /// <remarks>
     /// Kept beside them so the pair cannot drift apart: if the open path ever admits such a file (US-080 does
@@ -238,8 +245,14 @@ public class ProblemsNavigationTests
         Assert.Multiple(() =>
         {
             Assert.That(opened, Is.False);
-            Assert.That(rig.Harness.Dialogs.LastMessage, Does.Contain("app.openvisual.project-open-failed"),
-                "and it says so as a coded host problem rather than failing silently");
+            Assert.That(rig.Harness.Dialogs.LastMessage, Does.Contain("id-duplicate-token"),
+                "and it says so with the SDK's OWN cause. The host used to mint app.openvisual.project-open-failed "
+                + "here, because the guard threw a bare InvalidOperationException and there was no code to pass "
+                + "on; now that the guard carries an identity the host surfaces that refusal whole, and a "
+                + "host-minted code would be hiding a more specific one");
+            Assert.That(rig.Harness.Dialogs.LastMessage, Does.Contain("Dobbelt id"),
+                "in Danish, naming the offending id — which is the point of giving the guard an identity: the "
+                + "installer reads which id collided, not an English engine sentence");
             Assert.That(rig.Panel.Rows.Select(r => r.Code), Does.Not.Contain("id-duplicate-token"),
                 "so no duplicate-id finding is on screen — the panel is showing the starter project it fell "
                 + "back to, not the file that was asked for");

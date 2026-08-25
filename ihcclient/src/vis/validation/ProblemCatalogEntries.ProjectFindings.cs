@@ -502,6 +502,7 @@ namespace Ihc.Vis.Validation
 
         /// <summary>
         /// A <c>#REQUIRED</c> attribute is missing.
+        /// REFUSES: Save · Export.
         /// PREDICATE: authored by the task that implements this row.
         /// </summary>
         private static ProblemCatalogEntry AttrRequired =>
@@ -527,7 +528,13 @@ namespace Ihc.Vis.Validation
 
         /// <summary>
         /// An attribute is declared neither in the element's inline-DTD block nor in the registry.
-        /// REFUSES: Save · Export.
+        /// REFUSES: Save · Export; also refused at edit-open.
+        /// <para>
+        /// The edit-open half is named on purpose, even though §4's <c>Blocks</c> column publishes the FILE
+        /// LIFECYCLE only (Open/Save/Import/Export) and so cannot say it. A comment that hides a real refusal is
+        /// the defect this vocabulary exists to prevent, so these lines are deliberately wider than that column —
+        /// do not "align" them back to it.
+        /// </para>
         /// PREDICATE: authored by the task that implements this row.
         /// </summary>
         private static ProblemCatalogEntry AttrUndeclared =>
@@ -1975,6 +1982,14 @@ namespace Ihc.Vis.Validation
 
         /// <summary>
         /// Two elements carry the same id token.
+        /// REFUSES: Edit-open.
+        /// <para>
+        /// The only row here refused at edit-open and NOWHERE else: a save writes the bytes happily and validate
+        /// merely reports the condition, but editing addresses elements by id, so ambiguous ids would resolve
+        /// first-match and target the wrong element. §4's <c>Blocks</c> cell stays "—" because that column
+        /// publishes the file lifecycle only; the refusal is real all the same
+        /// (<c>EditOpenRefusalCodes.IdDuplicateToken</c>).
+        /// </para>
         /// PREDICATE: authored by the task that implements this row.
         /// </summary>
         private static ProblemCatalogEntry IdDuplicateToken =>
@@ -2107,7 +2122,9 @@ namespace Ihc.Vis.Validation
         /// <c>functionblock</c> body; reading a <c>.def</c> as a block yields an empty <c>master_type</c> and a
         /// <c>product_dataline</c> body. Nothing refuses, so there is no throw site to give an identity to, and
         /// this backlog introduces no new refusal — the row and the code disagree until a product ruling closes
-        /// the gap, which is what the severity-times-operation matrix records.
+        /// the gap. That disagreement is recorded by <c>CatalogCompletenessTests.KnownUnimplemented</c>, which
+        /// carries the reason, and the success it turns on is executed by
+        /// <c>ImportBridgeRefusalTests.ReadingAFileAsTheWrongCatalogKindStillSucceedsToday</c>.
         /// <para>
         /// ITS EMPTY TEMPLATE IS THE RECORD, not an omission: a row has a Danish sentence exactly when something
         /// can raise it, and nothing raises this one. Authoring words here would assert a raiser that does not
@@ -3754,7 +3771,16 @@ namespace Ihc.Vis.Validation
 
         /// <summary>
         /// <c>version_major</c> is above the highest supported version (4).
-        /// REFUSES: Open.
+        /// REFUSES: nothing today — and that is the point of this comment.
+        /// <para>
+        /// §4 PUBLISHES this row as "Fatal error / Open", but the reader checks version PRESENCE only
+        /// (<c>ProjectReader</c>), so a <c>version_major="5"</c> file opens and the row reports as an ordinary
+        /// Error finding. This comment used to claim the row refused the open, and was simply wrong: it described
+        /// the publication rather than the code. Closing the gap — refusing the open — is product decision D13, a
+        /// ruling rather than a task, and it is tripwired by
+        /// <c>LoadRefusalTests.AProjectAboveVersionFourStillOpensToday</c>, which fails the day someone codes the
+        /// refusal and forces the decision to be made consciously.
+        /// </para>
         /// PREDICATE: authored by the task that implements this row.
         /// </summary>
         private static ProblemCatalogEntry RootVersion =>

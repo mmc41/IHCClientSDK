@@ -20,7 +20,7 @@
 # not worked around here. Do NOT add working-tree-encoding: it would make the
 # working-tree bytes depend on the git client, and a client that ignores it
 # writes the wrong bytes.
-tests/testdata/validation/findings/*.xml   text eol=crlf
+tests/testdata/validation/*.xml   text eol=crlf
 
 # Report oracles: the SDK report generator emits LF, and the oracle tests strip
 # CR before comparing. Pin them to LF everywhere for a deterministic, churn-free

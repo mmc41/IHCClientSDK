@@ -67,7 +67,7 @@ namespace Ihc.Tests.Shared
 
         /// <summary>Where the oracle files sit beside the running test binary.</summary>
         public static string DefaultRoot =>
-            Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", "validation", "findings");
+            Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", "validation");
 
         /// <summary>
         /// The file a corpus case is recorded in. Fully mechanical — the case's <c>/</c> becomes <c>-</c> — so

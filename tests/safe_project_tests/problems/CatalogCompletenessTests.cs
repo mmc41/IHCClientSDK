@@ -67,8 +67,9 @@ namespace Ihc.Vis.Tests
             ("import-catalog-wrong-kind",
                 "No refusal exists to give an identity to: reading a .ifb as a product SUCCEEDS today (measured — "
                 + "an empty product_identifier and a functionblock body), so the row and the code disagree until a "
-                + "product ruling closes the gap. Recorded in the entry and in the severity-times-operation "
-                + "matrix; introducing a refusal is a product decision, not a rule-authoring one."),
+                + "product ruling closes the gap. Recorded in the entry, and the success it turns on is executed "
+                + "by ImportBridgeRefusalTests.ReadingAFileAsTheWrongCatalogKindStillSucceedsToday; introducing "
+                + "a refusal is a product decision, not a rule-authoring one."),
         ];
 
         /// <summary>
@@ -153,15 +154,15 @@ namespace Ihc.Vis.Tests
                     "nothing implemented may be undeclared, and no entry may be malformed. Defects: "
                     + string.Join(" | ", defects.Select(d => $"{d.Code.Value}: {d.Violation}")));
 
-                // EXACTLY the two known gaps: a third one fails here, and so does a gap that has been closed but
-                // whose line is still in the list.
+                // EXACTLY the gaps named in KnownUnimplemented: a new one fails here, and so does a gap that has
+                // been closed but whose line is still in the list.
                 Assert.That(uncovered,
                     Is.EqualTo(KnownUnimplemented.Select(k => k.Code).OrderBy(c => c, StringComparer.Ordinal))
                         .AsCollection,
                     "every Active entry needs a registered rule or a coded origin. The only permitted exceptions "
-                    + "are the two named in KnownUnimplemented, each with its reason and its owning task — if this "
-                    + "fails, either a new row was left unimplemented or a listed one was implemented and its "
-                    + "line should go.");
+                    + "are the gaps named in KnownUnimplemented, each with its reason and its owning task — if "
+                    + "this fails, either a new row was left unimplemented or a listed one was implemented and "
+                    + "its line should go.");
 
                 foreach ((string code, string why) in KnownUnimplemented)
                 {

@@ -27,6 +27,10 @@ namespace Ihc.Vis.Tests
         private static readonly byte[] MinimalProject = Encoding.Latin1.GetBytes(
             "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><utcs_project version_major=\"4\"></utcs_project>");
 
+        /// <summary>The same minimal document one major version above the highest this SDK models.</summary>
+        private static readonly byte[] VersionFiveProject = Encoding.Latin1.GetBytes(
+            "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><utcs_project version_major=\"5\"></utcs_project>");
+
         private static ProjectFormatException Refused(byte[] bytes) =>
             Assert.Throws<ProjectFormatException>(() => ProjectReader.Read(new MemoryStream(bytes)))!;
 
@@ -251,6 +255,41 @@ namespace Ihc.Vis.Tests
                 Assert.That(truncated.Status, Is.EqualTo(ProblemCodeStatus.RuledOut));
                 Assert.That(LoadRefusalCodes.All.Select(r => r.Cause.Value), Does.Not.Contain("load-truncated"),
                     "a ruled-out row has no code member, so nothing can mint it");
+            });
+        }
+
+        /// <summary>
+        /// A project one major version too NEW still opens, and that is the posture this test exists to hold
+        /// still — not to endorse.
+        ///
+        /// <para><b>The three faces disagree, deliberately and visibly.</b> The publication
+        /// (<c>problem-catalogue.md</c>, the <c>root-version</c> row) reads "Fatal error | Open": a reader that
+        /// refuses. The reader checks version_major's PRESENCE only (<see cref="ProjectReader"/>, beside the
+        /// <c>load-version-missing</c> guard), so the open succeeds. The validator reports the row as an Error
+        /// finding, which is the only face that fires today. <c>root-version</c> is therefore a catalogued row
+        /// with no member on <see cref="LoadRefusalCodes"/>, and nothing can mint it as a refusal.</para>
+        ///
+        /// <para><b>Why a test and not a bug report.</b> Closing the gap is a PRODUCT ruling (D13): refusing the
+        /// open protects a v5 file from being misread and saved back in a v4 shape, and also stops a user from
+        /// opening a file the vendor's own newer tool wrote. Neither direction is obviously right, so the ruling
+        /// is left unmade — and this test is the tripwire that forces it to be made CONSCIOUSLY. It fails the day
+        /// someone codes the refusal, which is the moment the publication, the reader and this comment have to be
+        /// reconciled in one change.</para>
+        /// </summary>
+        [Test]
+        public void AProjectAboveVersionFourStillOpensToday()
+        {
+            Project project = ProjectReader.Read(new MemoryStream(VersionFiveProject));
+            ProjectValidationResult validation = ProjectVerification.Structural(project);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(project.Root.Tag, Is.EqualTo("utcs_project"),
+                    "the reader checks version_major's presence, not its value — the open succeeds");
+                Assert.That(validation.Findings.Any(f => f.RuleId == "root-version"), Is.True,
+                    "the other face: validation reports it — errors: " + string.Join(" | ", validation.Errors));
+                Assert.That(LoadRefusalCodes.All.Select(r => r.Cause.Value), Does.Not.Contain("root-version"),
+                    "the published 'Fatal error | Open' cell has no member behind it, so no site can raise it");
             });
         }
 

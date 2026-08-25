@@ -827,6 +827,7 @@ Ihc.Vis.Session.EditRefusedException.Code.get -> Ihc.Vis.Problems.ProblemCode
 Ihc.Vis.Session.EditRefusedException.EditRefusedException(Ihc.Vis.Problems.ProblemCode code, string! message) -> void
 Ihc.Vis.Editing.EditOpenRefusalCodes
 static Ihc.Vis.Editing.EditOpenRefusalCodes.AttrUndeclared.get -> Ihc.Vis.Problems.RefusalIdentity
+static Ihc.Vis.Editing.EditOpenRefusalCodes.IdDuplicateToken.get -> Ihc.Vis.Problems.RefusalIdentity
 static Ihc.Vis.Editing.EditOpenRefusalCodes.All.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.RefusalIdentity>
 static Ihc.Vis.Problems.OperationCodes.EditOpen.get -> Ihc.Vis.Problems.ProblemCode
 const Ihc.Vis.Problems.OperationCodes.EditOpenLabel = "Projektet kunne ikke åbnes til redigering" -> string!

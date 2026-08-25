@@ -162,13 +162,19 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
-        /// The catalogue rates 22 project rows Fatal, but four of those also produce a finding today — three
-        /// schema guards that refuse a save and report at validate, and the version check the reader does not
-        /// actually perform. Those four are Errors here; the remaining 18 are refusals with no finding face at
-        /// all, which is exactly the population the operation-outcome work has to give a coded refusal.
+        /// Some project rows §4 publishes as Fatal also produce a finding today — the four schema guards that
+        /// refuse a save (and, for <c>attr-undeclared</c>, an edit-open) while reporting at validate, plus the
+        /// version check the reader does not actually perform. Those are <see cref="CatalogDisposition.Error"/>
+        /// entries here: two faces, published honestly, not a contradiction. The 18 refusals have no finding face
+        /// at all, which is exactly the population the operation-outcome work has to give a coded refusal.
+        ///
+        /// <para>The name carries no count for the reporting half deliberately. It said "Four" until
+        /// <c>attr-required</c>'s §4 row was corrected from "Error | —" to "Fatal error | Save · Export" — the row
+        /// had always refused the save, so the number was only ever a count of how many the DOCUMENT admitted.
+        /// The 18 does not move with it: nothing here reclassifies an entry.</para>
         /// </summary>
         [Test]
-        public void EighteenProjectRowsAreRefusalsAndTheFourReportingFatalsAreErrors()
+        public void EighteenProjectRowsAreRefusalsAndThePublishedFatalsThatReportAreErrors()
         {
             IReadOnlyList<ProblemCatalogEntry> project = InSection(ProblemCatalogSection.ProjectFindings);
 
@@ -176,7 +182,8 @@ namespace Ihc.Vis.Tests
             {
                 Assert.That(project.Count(e => e.Disposition == CatalogDisposition.Refusal), Is.EqualTo(18));
 
-                foreach (string reporting in new[] { "element-undeclared", "attr-undeclared", "attr-latin1", "root-version" })
+                foreach (string reporting in
+                    new[] { "element-undeclared", "attr-undeclared", "attr-latin1", "attr-required", "root-version" })
                 {
                     Assert.That(Catalog.TryGet(new ProblemCode(reporting), out ProblemCatalogEntry entry), Is.True, reporting);
                     Assert.That(entry.Disposition, Is.EqualTo(CatalogDisposition.Error), reporting);

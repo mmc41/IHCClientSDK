@@ -24,8 +24,9 @@ namespace Ihc.Vis.Tests
     /// <para><b>The fourth, <c>import-catalog-wrong-kind</c>, succeeds today</b> — measured, not assumed. D13
     /// says a Fatal row whose condition currently succeeds keeps today's posture and is recorded rather than
     /// given a new refusal, so this fixture pins what actually happens: a <c>.ifb</c> read as a product yields a
-    /// definition with an empty identifier and a <c>functionblock</c> body. That is the disagreement between
-    /// catalogue and code the matrix records, written down where it can be seen changing.</para>
+    /// definition with an empty identifier and a <c>functionblock</c> body. That disagreement between catalogue
+    /// and code is recorded by <c>CatalogCompletenessTests.KnownUnimplemented</c>, which carries the reason; this
+    /// fixture is the half that executes it, written down where it can be seen changing.</para>
     ///
     /// <para><b>Two operations, not one bridge.</b> A download and an upload are separate heads because what a
     /// user does next differs completely — nothing to fetch, versus a controller whose own state is now

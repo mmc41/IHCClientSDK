@@ -61,8 +61,8 @@ namespace Ihc.Vis.Io
             catch (EncoderFallbackException ex)
             {
                 NonLatin1Site? site = LocateNonLatin1(root);
-                // Named ONCE: the severity-times-operation matrix records where each code is raised, and a
-                // conditional naming the identity in both branches would report one throw as two sites.
+                // Named ONCE: a conditional naming the identity in both branches would spell one refusal as
+                // two sites.
                 ProblemArgument[] offender = site is { } found
                     ?
                     [

@@ -77,6 +77,48 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        /// <summary>A minimal project whose two groups carry the SAME id under different token spellings.</summary>
+        /// <remarks>
+        /// '_0x532' and '_0x0532' are different token strings but the same <c>ElementId</c>, which is precisely
+        /// the collision id-addressed editing cannot survive: every lookup matches by parsed id and would resolve
+        /// first-match.
+        /// </remarks>
+        private static Project WithDuplicateIds() =>
+            Tree.WithRoot(
+                Tree.Node("groups", "_0x2031", [("name", "L")],
+                    Tree.Node("group", "_0x532", [("name", "A")]),
+                    Tree.Node("group", "_0x0532", [("name", "B")])));
+
+        /// <summary>
+        /// The session half of the duplicate-id guard — the second kind of guard at this boundary, and the one
+        /// with no save-side sibling: an EDIT-MODEL precondition. A duplicate id is tolerated by save and merely
+        /// REPORTED by validate, but id-addressed editing would target the wrong element, so the open refuses.
+        /// The direct-throw half (identity, operation, bound Danish sentence) is asserted where the guard's own
+        /// test already lived, in <c>EditorGuardTests.Edit_DuplicateIds_AsLeadingZeroTokenVariants_AreRejected</c>;
+        /// this mirrors
+        /// <see cref="TheSessionReportsItAsARefusalWithItsCodeRatherThanAGenericFailure"/>: applying an edit to
+        /// such a document reports Refused with the code, where it used to report a generic Failed carrying the
+        /// English engine sentence.
+        /// </summary>
+        [Test]
+        public void TheSessionReportsTheDuplicateIdOpenAsARefusalWithItsCode()
+        {
+            ProjectDocumentSession session = new();
+            session.Open(WithDuplicateIds());
+
+            EditOutcome outcome = session.Apply(
+                new UpdateProjectInfo(ProjectInfoData.Empty with { Description = "Ny beskrivelse" }));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused),
+                    "a coded refusal below the gate is a refusal, not a failure");
+                Assert.That(outcome.Code.Value, Is.EqualTo("id-duplicate-token"));
+                Assert.That(outcome.Reason, Does.StartWith("Dobbelt id"),
+                    "the reason is the Danish sentence, not the English engine diagnostic");
+            });
+        }
+
         /// <summary>
         /// The drift gate's subject for this family: the registry's label is the catalogue row's template, so the
         /// copy the editing layer carries cannot drift from the copy the catalogue governs.

@@ -8,6 +8,7 @@ using System.Linq;
 using Ihc.Vis.Catalog;
 using Ihc.Vis.Io;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
@@ -134,16 +135,41 @@ namespace Ihc.Vis.Editing
                 // Dedup by the PARSED id, not the raw token: '_0x536' and '_0x0536' are distinct token strings but
                 // the SAME ElementId, and every id-addressed lookup (e.Id == id) matches by parsed id — so a
                 // token-only guard let exactly the first-match collision it exists to block slip through (review B3).
-                bool duplicate = ElementId.TryParse(token, out ElementId id) ? !seenIds.Add(id) : !seenTokens.Add(token);
+                ElementId? id = ElementId.ParseOrNull(token);
+                bool duplicate = id is { } parsed ? !seenIds.Add(parsed) : !seenTokens.Add(token);
                 if (duplicate)
                 {
-                    throw new InvalidOperationException(
+                    // WITH AN IDENTITY: the refusal names edit.open over the published id-duplicate-token cause,
+                    // so a session reports which id stopped the open, in Danish, rather than a bare engine
+                    // failure. The English sentence stays in .Message — the convention the coded and uncoded
+                    // guards share.
+                    string diagnostic =
                         $"Cannot edit: several elements share the id token '{token}', so id-addressed editing " +
                         "would silently target the wrong element. Repair the duplicate ids first " +
-                        $"({nameof(ProjectAppService)}.{nameof(ProjectAppService.Validate)} lists them).");
+                        $"({nameof(ProjectAppService)}.{nameof(ProjectAppService.Validate)} lists them).";
+                    throw new RefusedOperationException(
+                        EditOpenRefusalCodes.IdDuplicateToken.Binding(
+                            new ProblemArgument("id", token),
+                            new ProblemArgument("tag", element.Tag),
+                            new ProblemArgument("count", CountSharingTheIdentity(root, token, id))),
+                        diagnostic);
                 }
             }
         }
+
+        /// <summary>
+        /// How many elements share the offending identity, counted by the SAME dedup rule that triggered the
+        /// refusal — parsed <see cref="ElementId"/> when the token parses, raw token otherwise. Counting by any
+        /// other rule could report a number the guard did not act on.
+        /// </summary>
+        /// <param name="root">The tree being opened for editing.</param>
+        /// <param name="token">The raw id token the duplicate was detected on.</param>
+        /// <param name="id">The parsed identity, or null when <paramref name="token"/> is not a parseable token.</param>
+        private static int CountSharingTheIdentity(ProjectElement root, string token, ElementId? id) =>
+            id is { } parsed
+                ? ReferenceCount(root, "id", parsed)
+                : root.DescendantsAndSelf().Count(e =>
+                    string.Equals(e.GetAttribute("id"), token, StringComparison.Ordinal));
 
         internal IdAllocator Allocator => allocator;
 

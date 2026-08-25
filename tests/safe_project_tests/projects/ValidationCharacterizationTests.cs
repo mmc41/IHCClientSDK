@@ -12,7 +12,7 @@ namespace Ihc.Vis.Tests
     /// <summary>
     /// The characterization oracle for the validation engine: for every rule id the SDK emits today, the
     /// COMPLETE ordered finding tuple — severity, rule id, category, locator, message — recorded over a fixed
-    /// corpus and pinned byte-for-byte in <c>tests/testdata/validation/findings/</c>, one file per case. It is the
+    /// corpus and pinned byte-for-byte in <c>tests/testdata/validation/</c>, one file per case. It is the
     /// contract every engine-migration task asserts against, so a migration that silently drops a finding,
     /// reorders two, widens a locator or reworded a message fails here rather than in a reviewer's memory.
     ///
@@ -228,7 +228,7 @@ namespace Ihc.Vis.Tests
         /// <summary>
         /// Writes one findings-export oracle per corpus case into <c>findings.generated/</c> beside the test
         /// binary. <see cref="ExplicitAttribute"/> for the same reason the recording's regenerator is: adopting
-        /// the output is the deliberate act of copying it over <c>tests/testdata/validation/findings/</c>.
+        /// the output is the deliberate act of copying it over <c>tests/testdata/validation/</c>.
         ///
         /// <para><b>The export is a DEFAULT export but for the source name.</b> A project carries no filename,
         /// so <c>SourceName</c> is the one thing the SDK cannot supply and the one option this sets — everything
@@ -241,7 +241,7 @@ namespace Ihc.Vis.Tests
         /// </summary>
         [Test]
         [Explicit("Regenerates the checked-in findings oracles. Run deliberately, then copy the emitted files "
-            + "over tests/testdata/validation/findings/ and review the diff.")]
+            + "over tests/testdata/validation/ and review the diff.")]
         [Category("OracleRegeneration")]
         public void Regenerate_TheFindingsOracles()
         {

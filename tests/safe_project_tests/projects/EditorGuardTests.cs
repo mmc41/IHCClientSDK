@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
+
+using Ihc.Vis.Problems;
 
 using static Ihc.Vis.Tests.Tree;
 
@@ -32,8 +35,28 @@ namespace Ihc.Vis.Tests
                     Node("group", "_0x532", new[] { ("name", "A") }),
                     Node("group", "_0x0532", new[] { ("name", "B") })));
 
-            Assert.That(() => new Project(root).Edit(),
-                Throws.InvalidOperationException.With.Message.Contains("share the id"));
+            // Throws.InvalidOperationException matches by EXACT type, so the coded refusal — which derives from
+            // it — needs InstanceOf here, the same correction
+            // AttributePolicyTests.Edit_UndeclaredLoadedAttribute_ThrowsAtSessionOpen writes out.
+            RefusedOperationException refusal = Assert.Throws<RefusedOperationException>(
+                () => new Project(root).Edit())!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(refusal, Is.InstanceOf<InvalidOperationException>(),
+                    "the base type is unchanged, so every existing caller still catches it");
+                Assert.That(refusal.Message, Does.Contain("share the id"),
+                    "the English engine sentence stays in .Message, as the coded/uncoded convention requires");
+                Assert.That(refusal.Problems, Is.Not.Null, "the refusal carries an identity");
+                Assert.That(refusal.Problems!.Operation.Code, Is.EqualTo(OperationCodes.EditOpen));
+                Assert.That(refusal.Problems.Cause.Code.Value, Is.EqualTo("id-duplicate-token"),
+                    "the cause keeps the id the catalogue published for the condition");
+                Assert.That(refusal.Problems.Cause.Message,
+                    Is.EqualTo("Dobbelt id '_0x0532' på <group>: 2 elementer deler dette id."),
+                    "the Danish sentence is bound from the row's own template: the offending TOKEN, the element "
+                    + "that carries it, and how many elements share the identity — counted by the guard's own "
+                    + "dedup rule, which is the rule that triggered the refusal");
+            });
         }
 
         // ----- DeleteById: dangling references block the delete; strays never cascade innocents -----

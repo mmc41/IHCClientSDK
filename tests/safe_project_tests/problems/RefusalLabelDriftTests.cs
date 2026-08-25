@@ -90,6 +90,96 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
+        /// The ACKNOWLEDGED two-faced set: every cause a refusal registry declares whose catalogue entry is not a
+        /// <see cref="CatalogDisposition.Refusal"/> row — a row that REPORTS at validate and REFUSES at some
+        /// operation boundary. Each line carries the reason and the test that executes it, and the set is asserted
+        /// exactly, so a cause that becomes two-faced fails this gate until someone writes down why.
+        /// </summary>
+        private static readonly (string Code, string Why)[] TwoFacedCauses =
+        [
+            ("attr-latin1",
+                "Reports at validate as an Error finding; SaveRefusalCodes.AttrLatin1 refuses the save and the "
+                + "export, because bytes outside Latin-1 cannot be written in the encoding the file declares. "
+                + "Executed by SaveRefusalTests.ANonLatin1AttributeIsRefusedAsAttrLatin1."),
+            ("attr-required",
+                "Reports at validate as an Error finding; SaveRefusalCodes.AttrRequired refuses the save and the "
+                + "export, because the written file would violate the DTD it declares inline. Executed by "
+                + "SaveRefusalTests.AMissingRequiredAttributeIsRefusedAsAttrRequired."),
+            ("attr-undeclared",
+                "Reports at validate as an Error finding, and is the one cause refused on BOTH boundaries: "
+                + "SaveRefusalCodes.AttrUndeclared at save and export, EditOpenRefusalCodes.AttrUndeclared at "
+                + "edit-open — one row with two operations, not two rows. Executed by "
+                + "SaveRefusalTests.AnUndeclaredAttributeIsRefusedAsAttrUndeclared and "
+                + "EditOpenRefusalTests.OpeningForEditRefusesWithTheAttrUndeclaredCauseUnderEditOpen."),
+            ("id-duplicate-token",
+                "Reports at validate as an Error finding, and refuses EDIT-OPEN only — the one row here with no "
+                + "save-side sibling: the bytes are perfectly writable and a save tolerates them, but editing "
+                + "addresses elements by id, so ambiguous ids would target the wrong element. Refused by "
+                + "EditOpenRefusalCodes.IdDuplicateToken; executed by "
+                + "EditOpenRefusalTests.TheSessionReportsTheDuplicateIdOpenAsARefusalWithItsCode and "
+                + "EditorGuardTests.Edit_DuplicateIds_AsLeadingZeroTokenVariants_AreRejected."),
+            ("element-undeclared",
+                "Reports at validate as an Error finding; SaveRefusalCodes.ElementUndeclared refuses the save and "
+                + "the export, for the same inline-DTD reason as its attribute siblings. Executed by "
+                + "SaveRefusalTests.AnUndeclaredElementTypeIsRefusedAsElementUndeclared."),
+        ];
+
+        /// <summary>
+        /// The reverse direction of <see cref="EveryRefusalIdentityIsGovernedByAnEntry"/>: that test requires an
+        /// entry to EXIST for every declared refusal; this one requires every disagreement between the two to be
+        /// ACKNOWLEDGED. A cause whose entry says Error or Warning while a registry declares a refusal for it has
+        /// two faces — legitimate, and the SDK has several such rows — but it is exactly the shape that hides a
+        /// mistake, so it may not appear silently.
+        ///
+        /// <para><b>The derivation is deliberately broad.</b> The retired gate this replaces reflected over a
+        /// hard-coded roster of five registry types; this reads <see cref="Identities()"/>, which walks EVERY
+        /// sealed static class in the <see cref="RefusalIdentity"/> assembly. A registry added tomorrow is picked
+        /// up with no roster to edit — and can only ADD to the derived side, which the exact-set assert turns into
+        /// a visible failure rather than a silent gap.</para>
+        ///
+        /// <para><b><c>EditRefusalCodes</c> is out of scope by construction</b>, not by omission: it exposes bare
+        /// <see cref="ProblemCode"/>s (the dotted <c>edit.*</c> rows, all Refusal-disposition), never whole
+        /// identities, so <see cref="Identities()"/> cannot see it and nothing here needs to exclude it.</para>
+        /// </summary>
+        [Test]
+        public void TheCausesRefusedUnderANonRefusalEntryAreExactlyTheAcknowledgedSet()
+        {
+            ImmutableArray<string> derived =
+            [
+                .. Identities()
+                    .Select(pair => pair.Identity.Cause.Value)
+                    .Distinct(StringComparer.Ordinal)
+                    // A cause with NO entry is the other test's failure, not this one's: it would otherwise be
+                    // counted as "not a Refusal row" and reported here as a two-faced row it is not.
+                    .Where(cause => ProblemCatalog.Current.TryGet(new ProblemCode(cause), out ProblemCatalogEntry entry)
+                        && entry.Disposition != CatalogDisposition.Refusal)
+                    .OrderBy(cause => cause, StringComparer.Ordinal),
+            ];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(derived,
+                    Is.EqualTo(TwoFacedCauses.Select(row => row.Code).OrderBy(c => c, StringComparer.Ordinal))
+                        .AsCollection,
+                    "every cause that a registry refuses while its entry reports has to be acknowledged here with "
+                    + "its reason. If this fails, either a refusal identity was added for an Error or Warning row "
+                    + "— write the line, that is the acknowledgment — or a row was reclassified to Refusal and its "
+                    + "line should go.");
+
+                foreach ((string code, string why) in TwoFacedCauses)
+                {
+                    Assert.That(why, Has.Length.GreaterThan(80),
+                        $"{code}'s line has to carry its reasoning, or the list becomes a mute allow-list");
+                    Assert.That(ProblemCatalog.Current.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry),
+                        Is.True, code);
+                    Assert.That(entry.Disposition, Is.Not.EqualTo(CatalogDisposition.Refusal),
+                        $"{code} is listed as two-faced, so its entry must still be the REPORTING half; a Refusal "
+                        + "disposition means the disagreement is gone and the line should go with it");
+                }
+            });
+        }
+
+        /// <summary>
         /// The drift gate itself: cause label against cause template, operation label against operation template,
         /// for every identity in the SDK.
         /// </summary>
