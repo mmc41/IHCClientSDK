@@ -95,27 +95,40 @@
                      next to the Info toggle instead of at the far edge. The button docks Right and the original
                      StackPanel stays as the fill child, which leaves the existing chrome exactly where it was. -->
                 <DockPanel LastChildFill="True">
-                    <!-- Built to read as a fourth CHIP beside the three tier toggles, not as a dialog button:
-                         same glyph-then-word content shape, same mono face and size, same compact padding, and
-                         the same foreground so the row is one set rather than three chips and a stranger. The
-                         `chip` class carries all of that (see the styles at the top of this file) — the stock
-                         Fluent Button is 32px tall and paints its own foreground, which made the Problemer band
-                         the tallest in the window and the label a different colour from its neighbours. -->
-                    <Button Classes="chip"
-                            DockPanel.Dock="Right"
+                    <!-- The tooltip is on this WRAPPER, not on the button, and that is the whole reason the
+                         wrapper exists. A greyed button is the state whose tooltip matters most — it is the one
+                         carrying the sentence saying why the export is withheld — and a disabled control raises
+                         no pointer-enter of its own. It does pass it to the nearest ENABLED ancestor, so a
+                         padding-free Border one level up shows the reason where the button cannot (measured, both
+                         directions, in DisabledTooltipSpikeTests). Keep it padding-free: ProblemsPanelDensityTests
+                         measures the heading band's height, and this must not add to it. -->
+                    <Border DockPanel.Dock="Right"
+                            Background="Transparent"
                             VerticalAlignment="Center"
-                            Command="{Binding ExportCommand}"
-                            a:AutomationProperties.AutomationId="{x:Static vm:ProblemsPanelViewModel.ExportAutomationId}"
-                            a:AutomationProperties.Name="{x:Static vm:ProblemsPanelViewModel.ExportAccessibleName}"
-                            a:AutomationProperties.HelpText="{x:Static vm:ProblemsPanelViewModel.ExportHelpText}"
-                            ToolTip.Tip="{x:Static vm:ProblemsPanelViewModel.ExportHelpText}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <svg:Svg Width="12" Height="12"
-                                     Path="{x:Static vm:ProblemsPanelViewModel.ExportIcon}"
-                                     CurrentColor="{DynamicResource PaneHeaderIconColor}"/>
-                            <TextBlock Text="{x:Static vm:ProblemsPanelViewModel.ExportLabel}"/>
-                        </StackPanel>
-                    </Button>
+                            ToolTip.Tip="{Binding ExportHint}">
+                        <!-- Built to read as a fourth CHIP beside the three tier toggles, not as a dialog button:
+                             same glyph-then-word content shape, same mono face and size, same compact padding, and
+                             the same foreground so the row is one set rather than three chips and a stranger. The
+                             `chip` class carries all of that (see the styles at the top of this file) — the stock
+                             Fluent Button is 32px tall and paints its own foreground, which made the Problemer band
+                             the tallest in the window and the label a different colour from its neighbours.
+                             IsEnabled is BOUND rather than left to the command's own CanExecute, for the same
+                             reason every toolbar button binds its row's availability: leaving it implicit puts
+                             half the rule in the markup by omission. Both read the one gate, so they agree. -->
+                        <Button Classes="chip"
+                                Command="{Binding ExportCommand}"
+                                IsEnabled="{Binding ExportAvailability.Enabled}"
+                                a:AutomationProperties.AutomationId="{x:Static vm:ProblemsPanelViewModel.ExportAutomationId}"
+                                a:AutomationProperties.Name="{x:Static vm:ProblemsPanelViewModel.ExportAccessibleName}"
+                                a:AutomationProperties.HelpText="{Binding ExportHint}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <svg:Svg Width="12" Height="12"
+                                         Path="{x:Static vm:ProblemsPanelViewModel.ExportIcon}"
+                                         CurrentColor="{DynamicResource PaneHeaderIconColor}"/>
+                                <TextBlock Text="{x:Static vm:ProblemsPanelViewModel.ExportLabel}"/>
+                            </StackPanel>
+                        </Button>
+                    </Border>
 
                     <StackPanel Orientation="Horizontal" Spacing="12">
                         <TextBlock Name="ProblemsPanelHeader" Text="Problemer" VerticalAlignment="Center"

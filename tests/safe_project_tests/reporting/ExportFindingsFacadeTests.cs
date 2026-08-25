@@ -41,22 +41,34 @@ namespace Ihc.Vis.Tests
         // ----- the format constant -----
 
         /// <summary>
-        /// The extension mapping is extended, not forked. Its body defaults everything-not-plain-text to
-        /// HTML, so the new arm has to sit AHEAD of that default — appended after it, it would never be
-        /// reached and an XML export would be offered as <c>*.html</c>.
+        /// The findings export declares its OWN format, and the report mapping is left alone.
+        /// <para>
+        /// The two belong to different contracts and the separation is the assertion: <c>ReportMimeTypes</c>
+        /// publishes what <c>GenerateReport</c> accepts, and <c>GenerateReport</c> rejects
+        /// <c>application/xml</c> — so a member for it there would be the type contradicting its own summary,
+        /// and a caller who trusted the class name would get an exception. <c>ExportFindings</c> takes no
+        /// mimetype at all, so its format is a declaration rather than a second lookup table.
+        /// </para>
         /// </summary>
         [Test]
-        public void TheXmlMimeTypeMapsToTheXmlExtension()
+        public void TheFindingsExportDeclaresItsOwnFormat()
         {
             Assert.Multiple(() =>
             {
-                Assert.That(ReportMimeTypes.Xml, Is.EqualTo("application/xml"));
-                Assert.That(ReportMimeTypes.FileExtensionFor(ReportMimeTypes.Xml), Is.EqualTo("xml"));
+                Assert.That(FindingExportFormat.MimeType, Is.EqualTo("application/xml"));
+                Assert.That(FindingExportFormat.FileExtension, Is.EqualTo("xml"));
+
+                // The report mapping still answers for the two formats it is about, and still defaults the rest
+                // to HTML — the behaviour a host naming a report file depends on.
                 Assert.That(ReportMimeTypes.FileExtensionFor(ReportMimeTypes.PlainText), Is.EqualTo("txt"));
                 Assert.That(ReportMimeTypes.FileExtensionFor(ReportMimeTypes.Html), Is.EqualTo("html"));
                 Assert.That(
                     ReportMimeTypes.FileExtensionFor("application/octet-stream"), Is.EqualTo("html"),
                     "the everything-else default is unchanged");
+                Assert.That(
+                    ReportMimeTypes.FileExtensionFor(FindingExportFormat.MimeType), Is.EqualTo("html"),
+                    "and it does NOT special-case the findings mimetype: that value never reaches this mapping, "
+                    + "because a findings export is asked for by its own door and never by a format argument");
             });
         }
 

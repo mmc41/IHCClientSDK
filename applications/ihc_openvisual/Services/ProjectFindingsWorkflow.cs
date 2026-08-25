@@ -74,7 +74,7 @@ internal sealed class ProjectFindingsWorkflow(
                 return;   // no project open — the panel's state gate normally prevents this
             }
 
-            string? path = await dialogs.PickSaveReportAsync(SuggestedFileName(), ReportMimeTypes.Xml);
+            string? path = await dialogs.PickSaveFindingsAsync(SuggestedFileName());
             if (path is null)
             {
                 return;   // cancelled: nothing written, and nothing reported — the user said no
@@ -105,7 +105,6 @@ internal sealed class ProjectFindingsWorkflow(
     {
         string document = getDocumentName();
         string stem = System.IO.Path.GetFileNameWithoutExtension(document);
-        return $"{(stem.Length > 0 ? stem : document)}-fejlliste."
-            + ReportMimeTypes.FileExtensionFor(ReportMimeTypes.Xml);
+        return $"{(stem.Length > 0 ? stem : document)}-fejlliste.{FindingExportFormat.FileExtension}";
     }
 }

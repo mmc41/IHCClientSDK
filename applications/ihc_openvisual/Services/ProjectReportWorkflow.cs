@@ -40,7 +40,7 @@ internal sealed class ProjectReportWorkflow(
     /// surface through the standard message dialog; open failures are handled by
     /// <see cref="IDialogService.OpenExternalUrlAsync"/> itself.
     /// </summary>
-    public async Task ViewInBrowserAsync(ReportKind kind, ReportMode mode, string mimeType)
+    public async Task ViewInBrowserAsync(ReportKind kind, ReportMode mode, ReportFormat format)
     {
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectReportWorkflow)}.{nameof(ViewInBrowserAsync)}");
         try
@@ -49,8 +49,8 @@ internal sealed class ProjectReportWorkflow(
             {
                 return;   // no project open — the registry gate normally prevents this
             }
-            string path = Path.Combine(ViewDirectory, FileName(kind, mode, mimeType));
-            await service.GenerateReport(project, kind, mode, mimeType, path, IconsFor(mimeType));
+            string path = Path.Combine(ViewDirectory, FileName(kind, mode, format));
+            await service.GenerateReport(project, kind, mode, MimeTypeOf(format), path, IconsFor(format));
             // The handover to the OS is the last step of this workflow, so a handover that did not happen is a
             // failure of it — not a silent no-op that leaves the installer waiting for a window (UX review CORE-03).
             if (!await dialogs.OpenExternalUrlAsync(path))
@@ -69,11 +69,11 @@ internal sealed class ProjectReportWorkflow(
 
     /// <summary>
     /// T016 (R12): [Gem som…] — asks for a target path, suggested in the format the picker's format dropdown
-    /// chose, then generates the picked report via the facade to that file in that format: text/plain with the
-    /// default unicode stand-ins, HTML with the app's SVG icons. Generation and save failures surface through
-    /// the message dialog.
+    /// chose, then generates the picked report via the facade to that file in that format:
+    /// <see cref="ReportFormat.Text"/> with the default unicode stand-ins, <see cref="ReportFormat.Html"/> with
+    /// the app's SVG icons. Generation and save failures surface through the message dialog.
     /// </summary>
-    public async Task SaveAsAsync(ReportKind kind, ReportMode mode, string mimeType)
+    public async Task SaveAsAsync(ReportKind kind, ReportMode mode, ReportFormat format)
     {
         using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectReportWorkflow)}.{nameof(SaveAsAsync)}");
         try
@@ -82,12 +82,12 @@ internal sealed class ProjectReportWorkflow(
             {
                 return;   // no project open — the registry gate normally prevents this
             }
-            string? path = await dialogs.PickSaveReportAsync(FileName(kind, mode, mimeType), mimeType);
+            string? path = await dialogs.PickSaveReportAsync(FileName(kind, mode, format), format);
             if (path is null)
             {
                 return;   // cancelled
             }
-            await service.GenerateReport(project, kind, mode, mimeType, path, IconsFor(mimeType));
+            await service.GenerateReport(project, kind, mode, MimeTypeOf(format), path, IconsFor(format));
         }
         catch (Exception ex)
         {
@@ -102,14 +102,19 @@ internal sealed class ProjectReportWorkflow(
     // facade generates the bytes either way — so both routes name the failure identically.
     private const string ReportFailedTitle = "Rapport mislykkedes";
 
+    /// <summary>The facade mimetype a picked format generates as — the ONE place a <see cref="ReportFormat"/>
+    /// becomes a string, immediately beside the <c>GenerateReport</c> call that takes one.</summary>
+    private static string MimeTypeOf(ReportFormat format) =>
+        format == ReportFormat.Text ? ReportMimeTypes.PlainText : ReportMimeTypes.Html;
+
     /// <summary>The file name a generated report gets, carrying the extension of the picked format so the
     /// temp page and the save dialog's suggestion both match what the facade writes.</summary>
-    private static string FileName(ReportKind kind, ReportMode mode, string mimeType) =>
-        $"{kind}-{mode}.{ReportMimeTypes.FileExtensionFor(mimeType)}".ToLowerInvariant();
+    private static string FileName(ReportKind kind, ReportMode mode, ReportFormat format) =>
+        $"{kind}-{mode}.{ReportMimeTypes.FileExtensionFor(MimeTypeOf(format))}".ToLowerInvariant();
 
     /// <summary>The app's SVG icon mapping for HTML output; the SDK's default unicode stand-ins for text.</summary>
-    private static IReportIconProvider? IconsFor(string mimeType) =>
-        mimeType == ReportMimeTypes.PlainText ? null : new SvgReportIconProvider();
+    private static IReportIconProvider? IconsFor(ReportFormat format) =>
+        format == ReportFormat.Text ? null : new SvgReportIconProvider();
 
     /// <summary>Removes this run's viewing directory on shutdown, so the per-run scoping does not turn into
     /// per-run litter. Nothing to do when no report was ever viewed — the directory is created on first use.

@@ -2,4 +2,8 @@
   <path id="body" d="M6 4 H16 L20 8 V20 H6 Z"/>
   <rect id="shutter" x="12" y="4" width="4" height="4"/>
   <rect id="label" x="9" y="13" width="8" height="7"/>
+  <g id="mark" stroke="#B91C1C" stroke-width="1.5">
+    <path d="M11.75 15.25 L14.25 17.75"/>
+    <path d="M14.25 15.25 L11.75 17.75"/>
+  </g>
 </svg>

@@ -110,44 +110,57 @@ public sealed class AvaloniaDialogService : IDialogService
         return file?.TryGetLocalPath();
     }
 
-    public async Task<string?> PickSaveReportAsync(string suggestedFileName, string mimeType)
+    /// <summary>
+    /// How the save dialog describes ONE document this application writes: the Danish title over the dialog, the
+    /// Danish entry in its file-type filter, and the extension it defaults to.
+    /// </summary>
+    /// <remarks>
+    /// The three travel together because they are three views of one answer, and splitting them is how they came
+    /// apart: the dialog read "Gem rapport" with an "HTML-rapport" filter for every caller, which was true while
+    /// reports were the only caller and wrong on both lines for a findings list.
+    /// </remarks>
+    internal readonly record struct SaveFileDescription(string Title, string FileTypeLabel, string Extension);
+
+    /// <summary>How a generated report is offered. The extension comes from the SDK, which is where the
+    /// format↔extension mapping lives, so the name suggested here and the bytes written cannot drift apart.</summary>
+    internal static SaveFileDescription DescribeReport(ReportFormat format) => format switch
+    {
+        ReportFormat.Text => new("Gem rapport", "Tekstrapport", ReportMimeTypes.FileExtensionFor(ReportMimeTypes.PlainText)),
+        _ => new("Gem rapport", "HTML-rapport", ReportMimeTypes.FileExtensionFor(ReportMimeTypes.Html)),
+    };
+
+    /// <summary>How the Problemer panel's findings list is offered — one row, because it has one format.</summary>
+    internal static readonly SaveFileDescription FindingsList =
+        new("Gem fejlliste", "XML-fejlliste", FindingExportFormat.FileExtension);
+
+    public Task<string?> PickSaveReportAsync(string suggestedFileName, ReportFormat format) =>
+        PickSaveAsync(DescribeReport(format), suggestedFileName);
+
+    public Task<string?> PickSaveFindingsAsync(string suggestedFileName) =>
+        PickSaveAsync(FindingsList, suggestedFileName);
+
+    // The one picker call both doors delegate to. The caller already chose the format, so the dialog offers
+    // exactly that one rather than letting a typed extension contradict the choice; the suggested name carries
+    // the same extension, but it is a display string and never the format's source.
+    private async Task<string?> PickSaveAsync(SaveFileDescription description, string suggestedFileName)
     {
         if (Owner is null)
             return null;
-        // The picker's format dropdown already chose the format, so the dialog offers exactly that format rather
-        // than letting a typed extension contradict the choice. The format arrives as the mimetype the caller
-        // generates with — never re-derived from the suggested name, which is a display string.
-        //
-        // Title and file-type label are DERIVED from that same mimetype rather than fixed. They used to read
-        // "Gem rapport" and "HTML-rapport" for every caller, which was true while the only callers were reports;
-        // a findings export offered under both strings would be wrong on both lines. Deriving them here rather
-        // than adding a parameter keeps the port's signature — and every implementation of it — unchanged, and
-        // puts the mapping in the same place FileExtensionFor already lives.
-        string extension = ReportMimeTypes.FileExtensionFor(mimeType);
         IStorageFile? file = await Owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = SaveTitleFor(mimeType),
+            Title = description.Title,
             SuggestedFileName = suggestedFileName,
-            DefaultExtension = extension,
+            DefaultExtension = description.Extension,
             FileTypeChoices = new[]
             {
-                new FilePickerFileType(FileTypeLabelFor(mimeType)) { Patterns = new[] { "*." + extension } },
+                new FilePickerFileType(description.FileTypeLabel)
+                {
+                    Patterns = new[] { "*." + description.Extension },
+                },
             }
         });
         return file?.TryGetLocalPath();
     }
-
-    /// <summary>What the save dialog calls itself, per format. Danish, like every other string a user reads.</summary>
-    internal static string SaveTitleFor(string mimeType) =>
-        mimeType == ReportMimeTypes.Xml ? "Gem fejlliste" : "Gem rapport";
-
-    /// <summary>The file-type entry the picker's filter shows, per format.</summary>
-    internal static string FileTypeLabelFor(string mimeType) => mimeType switch
-    {
-        ReportMimeTypes.PlainText => "Tekstrapport",
-        ReportMimeTypes.Xml => "XML-fejlliste",
-        _ => "HTML-rapport",
-    };
 
     public async Task<string?> PickCatalogFileAsync()
     {

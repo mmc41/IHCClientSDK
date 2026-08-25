@@ -23,7 +23,8 @@ public class OutcomeReportingTests
         await vm.InitializeAsync();
         harness.Dialogs.OpenExternalUrlSucceeds = false;
 
-        await harness.Session.ViewReportInBrowserAsync(ReportKind.Installation, ReportMode.Standard, "text/html");
+        await harness.Session.ViewReportInBrowserAsync(
+            ReportKind.Installation, ReportMode.Standard, ReportFormat.Html);
 
         Assert.That(harness.Dialogs.LastMessage, Is.Not.Null.And.Contains("ikke åbnes"),
             "the failed handover is reported, and the message says where the generated file is");

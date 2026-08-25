@@ -278,13 +278,13 @@ public sealed class ProjectWorkflow : IDisposable
 
     /// <summary>Generates the picked report in the picked format (facade; SVG icons for HTML) to a temp file
     /// and opens it in the default browser (T015/R12) — delegates to the ProjectReportWorkflow collaborator.</summary>
-    public Task ViewReportInBrowserAsync(ReportKind kind, ReportMode mode, string mimeType) =>
-        _reports.ViewInBrowserAsync(kind, mode, mimeType);
+    public Task ViewReportInBrowserAsync(ReportKind kind, ReportMode mode, ReportFormat format) =>
+        _reports.ViewInBrowserAsync(kind, mode, format);
 
     /// <summary>[Gem som…] for the picked report (T016/R12): file dialog then facade generation to the chosen
     /// file in the picked format — delegates to the ProjectReportWorkflow collaborator.</summary>
-    public Task SaveReportAsAsync(ReportKind kind, ReportMode mode, string mimeType) =>
-        _reports.SaveAsAsync(kind, mode, mimeType);
+    public Task SaveReportAsAsync(ReportKind kind, ReportMode mode, ReportFormat format) =>
+        _reports.SaveAsAsync(kind, mode, format);
 
     /// <summary>[Eksportér…] for the Problemer panel's list (US-085): file dialog then facade export of the
     /// findings the panel handed over — delegates to the ProjectFindingsWorkflow collaborator.</summary>

@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Automation;
 using Avalonia.Headless.NUnit;
@@ -128,6 +129,73 @@ public class ProblemsExportCommandTests
         });
     }
 
+    // ── Why it is withheld ──────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A withheld export SAYS why, in the same <c>Availability</c> shape the registry hands the menu bar and the
+    /// toolbar. The two refused states carry DIFFERENT sentences on purpose: "nothing has been validated yet" and
+    /// "what you are looking at is out of date" are different things to wait for, and one shared sentence would
+    /// be wrong about one of them.
+    /// </summary>
+    [Test]
+    public async Task TheWithheldExportSaysWhy()
+    {
+        using ProblemsRig rig = new(Finding("a", ValidationSeverity.Error));
+
+        Availability validating = rig.Panel.ExportAvailability;
+        await rig.WithNewProjectAsync();
+        Availability offered = rig.Panel.ExportAvailability;
+        await rig.Harness.Session.NewAsync();
+        Availability moved = rig.Panel.ExportAvailability;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(validating.Enabled, Is.False);
+            Assert.That(validating.Reason, Is.EqualTo(ProblemsPanelViewModel.ExportWhileValidatingReason));
+            Assert.That(offered, Is.EqualTo(Availability.Allow), "an offered command carries no reason");
+            Assert.That(moved.Enabled, Is.False);
+            Assert.That(moved.Reason, Is.Not.Null.And.Not.Empty, "the moved document explains itself too");
+        });
+    }
+
+    /// <summary>The stale sentence specifically — reached by editing past a bound result rather than by
+    /// constructing the state, so it is the sentence a user actually meets.</summary>
+    [Test]
+    public async Task TheStaleExportNamesTheEdit()
+    {
+        using ProblemsRig rig = new(Finding("a", ValidationSeverity.Error));
+        await rig.WithNewProjectAsync();
+        await rig.Harness.Session.AddLocalityAsync();
+
+        Assert.That(
+            rig.Panel.State is ProblemsState.Stale ? rig.Panel.ExportAvailability.Reason : null,
+            Is.EqualTo(ProblemsPanelViewModel.ExportWhileStaleReason).Or.Null,
+            "a stale panel's reason is the edit one; a panel that already re-bound has no reason at all");
+    }
+
+    /// <summary>
+    /// The control announces ONE text, and it is the alternative of the two: what the file is while the export
+    /// can be written, why it cannot while it cannot. That is what makes a single tooltip and a single HelpText
+    /// binding correct rather than a lossy simplification.
+    /// </summary>
+    [Test]
+    public async Task TheHintIsTheHelpTextWhileAvailableAndTheReasonWhenNot()
+    {
+        using ProblemsRig rig = new(Finding("a", ValidationSeverity.Error));
+
+        Assert.That(rig.Panel.ExportHint, Is.EqualTo(ProblemsPanelViewModel.ExportWhileValidatingReason),
+            "withheld: the hint is the reason");
+
+        await rig.WithNewProjectAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rig.Panel.ExportHint, Is.EqualTo(ProblemsPanelViewModel.ExportHelpText),
+                "offered: the hint is what the file is");
+            Assert.That(ProblemsPanelViewModel.ExportHelpText, Is.EqualTo("Gem panelets liste som en XML-fil"));
+        });
+    }
+
     // ── Notification ────────────────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -140,6 +208,13 @@ public class ProblemsExportCommandTests
         using ProblemsRig rig = new(Finding("a", ValidationSeverity.Error));
         int notified = 0;
         rig.Panel.ExportCommand.CanExecuteChanged += (_, _) => notified++;
+        int availability = 0;
+        rig.Panel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(ProblemsPanelViewModel.ExportAvailability)
+                or nameof(ProblemsPanelViewModel.ExportHint))
+                availability++;
+        };
 
         await rig.WithNewProjectAsync();
 
@@ -147,6 +222,9 @@ public class ProblemsExportCommandTests
         {
             Assert.That(rig.Panel.State, Is.EqualTo(ProblemsState.Findings), "precondition");
             Assert.That(notified, Is.GreaterThan(0));
+            // The BOUND half of the same move: without this the button stays greyed under its stale sentence
+            // after the run completes, which is the same defect as the command not re-querying, one layer up.
+            Assert.That(availability, Is.GreaterThan(0), "the button's grey and its hint were told as well");
         });
     }
 
@@ -164,12 +242,20 @@ public class ProblemsExportCommandTests
 
         int notified = 0;
         rig.Panel.ExportCommand.CanExecuteChanged += (_, _) => notified++;
+        int availability = 0;
+        rig.Panel.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(ProblemsPanelViewModel.ExportAvailability)
+                or nameof(ProblemsPanelViewModel.ExportHint))
+                availability++;
+        };
         rig.Panel.Tiers[0].IsShown = false;
 
         Assert.Multiple(() =>
         {
             Assert.That(rig.Panel.Rows, Is.Empty, "precondition: the toggle really did move the rows");
             Assert.That(notified, Is.Zero);
+            Assert.That(availability, Is.Zero, "…and neither does the button's grey or its hint");
             Assert.That(rig.Panel.CanExport, Is.True, "and it is still offered");
         });
     }
@@ -279,6 +365,11 @@ public class ProblemsExportCommandTests
     /// the failure this guards against is a layout one: a horizontal <c>StackPanel</c> packs its children left
     /// and ignores alignment, so a button that "looks right" in the markup renders next to the Info toggle.
     /// </summary>
+    /// <remarks>
+    /// The two edges are translated into WINDOW space rather than read off <c>Bounds</c>, which is
+    /// parent-relative: the button now sits inside the tooltip-carrying wrapper (its own coordinate origin), so
+    /// a raw <c>Bounds.X</c> reads ~0 and the comparison would answer a question about the wrapper's interior.
+    /// </remarks>
     [AvaloniaTest]
     public async Task TheExportButtonSitsOnTheHeadingRightOfTheTierToggles()
     {
@@ -293,25 +384,64 @@ public class ProblemsExportCommandTests
         Control infos = window.GetVisualDescendants().OfType<Control>()
             .First(c => AutomationProperties.GetAutomationId(c) == rig.Panel.Infos.AutomationId);
 
-        double exportLeft = export.Bounds.X;
-        double infosRight = infos.Bounds.X + infos.Bounds.Width;
+        double exportLeft = InWindow(export, window).X;
+        double infosRight = InWindow(infos, window).X + infos.Bounds.Width;
         TextBlock title = window.GetVisualDescendants().OfType<TextBlock>()
             .First(t => t.Name == "ProblemsPanelHeader");
+        Border headingBand = title.FindAncestorOfType<Border>()!;
 
         Assert.Multiple(() =>
         {
             Assert.That(exportLeft, Is.GreaterThan(infosRight), "right of every tier toggle");
             Assert.That(
-                export.FindAncestorOfType<Border>(), Is.SameAs(title.FindAncestorOfType<Border>()),
+                export.GetVisualAncestors(), Does.Contain(headingBand),
                 "and in the same heading band as the title, not in the row area");
             Assert.That(
                 AutomationProperties.GetName(export), Is.EqualTo(ProblemsPanelViewModel.ExportAccessibleName));
             Assert.That(
-                AutomationProperties.GetHelpText(export), Is.EqualTo(ProblemsPanelViewModel.ExportHelpText));
+                AutomationProperties.GetHelpText(export), Is.EqualTo(rig.Panel.ExportHint),
+                "the announced text follows the panel's own hint, which is the reason while it is withheld");
         });
 
         window.Close();
     }
+
+    /// <summary>
+    /// The withheld button really is greyed, and the sentence saying why really is reachable — on the WRAPPER,
+    /// because a disabled control shows no tooltip of its own. Both halves are asserted on the rendered tree,
+    /// since a view-model that computes the right values and markup that binds neither is the failure here.
+    /// </summary>
+    [AvaloniaTest]
+    public async Task TheWithheldExportButtonIsGreyedAndItsWrapperCarriesTheReason()
+    {
+        using ProblemsShellRig rig = new();
+        await rig.Shell.InitializeAsync();
+        Window window = new MainWindow { DataContext = rig.Shell };
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        Button export = window.GetVisualDescendants().OfType<Button>()
+            .Single(b => AutomationProperties.GetAutomationId(b) == ProblemsPanelViewModel.ExportAutomationId);
+        Border wrapper = export.FindAncestorOfType<Border>()!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rig.Panel.CanExport, Is.False, "precondition: nothing is bound yet");
+            Assert.That(export.IsEffectivelyEnabled, Is.False, "the button is greyed");
+            Assert.That(ToolTip.GetTip(wrapper), Is.EqualTo(rig.Panel.ExportHint),
+                "and the wrapper — which a disabled child does pass its pointer to — carries the reason");
+            Assert.That(wrapper.Padding, Is.EqualTo(default(Thickness)),
+                "the wrapper adds no inset: the heading band's height is measured elsewhere");
+        });
+
+        window.Close();
+    }
+
+    // Where a control's top-left sits in the WINDOW's coordinates, so two controls in different parents can be
+    // compared at all. Falls back to the raw bounds only if the visual is not connected, which would fail the
+    // assertion that used it rather than silently passing.
+    private static Point InWindow(Control control, Window window) =>
+        control.TranslatePoint(default, window) ?? control.Bounds.Position;
 
     /// <summary>
     /// The button inherits the panel's own mono face and size. A default-styled button is set in the app font

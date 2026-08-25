@@ -60,26 +60,42 @@ namespace Ihc.Vis
         /// <summary>Plain text with the default 1–3 character unicode icon stand-ins.</summary>
         public const string PlainText = "text/plain";
 
-        /// <summary>
-        /// The findings export: a flat, attribute-only XML document in the <c>.vis</c> encoding
-        /// (<c>ProjectAppService.ExportFindings</c>). Not a <c>GenerateReport</c> format — it lives here
-        /// because the file extension and the save dialog's labels are the same mapping problem, and a second
-        /// constants class is what lets a picker offer an XML export under an HTML filter.
-        /// </summary>
-        public const string Xml = "application/xml";
-
         /// <summary>The file extension (without the dot) a report of <paramref name="mimeType"/> is written as — the
         /// one place the format↔extension mapping lives, so a caller naming a file and a caller configuring a save
-        /// dialog cannot drift apart. Anything other than <see cref="PlainText"/> or <see cref="Xml"/> is HTML,
-        /// matching what <c>GenerateReport</c> accepts.</summary>
-        public static string FileExtensionFor(string mimeType) => mimeType switch
-        {
-            // Ahead of the everything-else default, not after it: appended, this arm would never be reached
-            // and an XML export would be named and filtered as *.html.
-            PlainText => "txt",
-            Xml => "xml",
-            _ => "html",
-        };
+        /// dialog cannot drift apart. Anything other than <see cref="PlainText"/> is HTML, matching what
+        /// <c>GenerateReport</c> accepts.</summary>
+        /// <remarks>
+        /// The findings export is deliberately NOT a member of this mapping. It is not a report, <c>GenerateReport</c>
+        /// rejects its mimetype, and an arm for it here would put a value this class's own contract refuses inside
+        /// the type that publishes what that contract accepts. Its format is <see cref="FindingExportFormat"/>.
+        /// </remarks>
+        public static string FileExtensionFor(string mimeType) => mimeType == PlainText ? "txt" : "html";
+    }
+
+    /// <summary>
+    /// The format <see cref="ProjectAppService.ExportFindings(Projects.Project, string, FindingExportOptions?)"/>
+    /// writes: a flat, attribute-only XML document in the <c>.vis</c> encoding.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Two constants and no <c>…For(mimeType)</c> lookup, because there is nothing to look up: the findings export
+    /// has exactly ONE format, so a caller never chooses one and never passes one. That is what makes this a
+    /// declaration rather than a second copy of <see cref="ReportMimeTypes.FileExtensionFor"/> — the objection that
+    /// once argued for folding <c>application/xml</c> into <see cref="ReportMimeTypes"/> was about duplicating a
+    /// MAPPING, and there is no mapping here to duplicate.
+    /// </para>
+    /// <para>
+    /// Published rather than left implicit so the bytes the SDK writes and the name a host suggests for them stay
+    /// one fact — the same reason <see cref="ReportMimeTypes.FileExtensionFor"/> exists for reports.
+    /// </para>
+    /// </remarks>
+    public static class FindingExportFormat
+    {
+        /// <summary>The document's media type, for a host labelling it or serving it.</summary>
+        public const string MimeType = "application/xml";
+
+        /// <summary>The file extension (without the dot) a findings export is written as.</summary>
+        public const string FileExtension = "xml";
     }
 
     /// <summary>

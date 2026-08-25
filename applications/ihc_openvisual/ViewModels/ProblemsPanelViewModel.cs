@@ -527,6 +527,11 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
             // tier toggle — which moves the rows but never the state — correctly does not notify: under this
             // gate hiding a tier changes what the file contains, never whether it can be written.
             ExportCommand.NotifyCanExecuteChanged();
+            // The button's grey and the sentence explaining it move with the same state, so they are raised
+            // here too — a command that quietly stops executing while its control stays lit, or stays greyed
+            // under a stale reason, is the failure this block exists to prevent.
+            OnPropertyChanged(nameof(ExportAvailability));
+            OnPropertyChanged(nameof(ExportHint));
         }
 
         if (next == ProblemsState.Stale)
@@ -564,12 +569,27 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// <summary>What a screen reader announces, and what a driver addresses it by.</summary>
     public const string ExportAccessibleName = "Eksportér fejlliste";
 
-    /// <summary>The tooltip and help text, saying what the file is.</summary>
+    /// <summary>The tooltip and help text while the export is available, saying what the file is.</summary>
     public const string ExportHelpText = "Gem panelets liste som en XML-fil";
 
+    /// <summary>Why the export is withheld in <see cref="ProblemsState.Validating"/>: there is no bound list yet.</summary>
+    public const string ExportWhileValidatingReason = "Vent til valideringen er færdig.";
+
+    /// <summary>Why it is withheld in <see cref="ProblemsState.Stale"/>: the rows are about a superseded tree.</summary>
+    public const string ExportWhileStaleReason = "Projektet er ændret siden listen blev dannet.";
+
     /// <summary>
-    /// Whether the panel's list can be written to a file, which is a CORRECTNESS gate rather than a UX one: the
-    /// two states it excludes are exactly the two in which the file's header would contradict its body.
+    /// Whether the panel's list can be written to a file — and, when it cannot, the Danish sentence saying why.
+    ///
+    /// <para>An <see cref="Availability"/> rather than a bare bool, and that is the point of it: this is the same
+    /// value the command registry hands every persistent surface, so a greyed export explains itself exactly as a
+    /// greyed menu or toolbar item does (US-044/QC-06) instead of being the one dead control in the window that
+    /// says nothing. The command stays panel-local — its gate is a fact about the result THIS panel is showing,
+    /// which is why the registry's ShellContext is the wrong home for it — but what it looks like when refused is
+    /// not a place to invent a second vocabulary.</para>
+    ///
+    /// <para>The gate is a CORRECTNESS gate rather than a UX one: the two states it excludes are exactly the two
+    /// in which the file's header would contradict its body.</para>
     /// <list type="bullet">
     /// <item><description><see cref="ProblemsState.Validating"/> — nothing is bound. A file naming the current
     /// project and holding no findings would read as a clean bill of health.</description></item>
@@ -583,7 +603,30 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// file from the clean one and must stay reachable.
     /// </para>
     /// </summary>
-    public bool CanExport => State is ProblemsState.Clean or ProblemsState.Findings;
+    public Availability ExportAvailability => State switch
+    {
+        ProblemsState.Clean or ProblemsState.Findings => Availability.Allow,
+        ProblemsState.Stale => Availability.Disabled(ExportWhileStaleReason),
+        _ => Availability.Disabled(ExportWhileValidatingReason),
+    };
+
+    /// <inheritdoc cref="ExportAvailability"/>
+    /// <remarks>Read off <see cref="ExportAvailability"/> rather than off <see cref="State"/> a second time, so
+    /// the command's predicate and the button's grey cannot come to disagree about the same states.</remarks>
+    public bool CanExport => ExportAvailability.Enabled;
+
+    /// <summary>
+    /// The ONE text the export control announces and shows on hover: what the file is while the export is
+    /// available, and why it is not while it is not.
+    /// </summary>
+    /// <remarks>
+    /// One property rather than a static help text plus a conditional reason, because the two are alternatives
+    /// and a control has one tooltip. It reaches a screen reader through <c>HelpText</c>, which IS announced on a
+    /// disabled control, and a sighted user through a tooltip on the button's WRAPPER — a disabled control raises
+    /// no pointer-enter of its own but does pass it to the nearest enabled ancestor (measured;
+    /// <c>DisabledTooltipSpikeTests</c>).
+    /// </remarks>
+    public string ExportHint => ExportAvailability.Reason ?? ExportHelpText;
 
     /// <summary>
     /// The export gesture, as a command the view binds.

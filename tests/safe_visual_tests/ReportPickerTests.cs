@@ -39,8 +39,8 @@ public class ReportPickerTests
                 $"{commandId} opens the shared picker dialog");
             Assert.That(harness.Dialogs.LastReportPickerViewModel!.SelectedKind.Kind, Is.EqualTo(expected),
                 $"{commandId} pre-selects its report in the type dropdown");
-            Assert.That(harness.Dialogs.LastReportPickerViewModel!.SelectedFormat.MimeType,
-                Is.EqualTo(ReportMimeTypes.Html),
+            Assert.That(harness.Dialogs.LastReportPickerViewModel!.SelectedFormat.Format,
+                Is.EqualTo(ReportFormat.Html),
                 $"{commandId} opens the picker with HTML pre-selected in the format dropdown");
         }
         Assert.That(harness.Dialogs.ShowReportPickerCalls, Is.EqualTo(MenuEntries.Length));
@@ -79,12 +79,15 @@ public class ReportPickerTests
         MainWindowViewModel vm = harness.CreateViewModel();
         await vm.Registry.Commands["file.new"].ExecuteAsync(null);
 
-        foreach (string mimeType in new[] { ReportMimeTypes.Html, ReportMimeTypes.PlainText })
+        // Over every member of the format enum, not over a hand-kept pair: a third format could not then be
+        // added to the dropdown without this test either covering it or failing to find its expected bytes.
+        foreach (ReportFormat format in Enum.GetValues<ReportFormat>())
         {
             await vm.Registry.Commands["reports.functions"].ExecuteAsync(null);
             ReportPickerViewModel picker = harness.Dialogs.LastReportPickerViewModel!;
-            picker.SelectedFormat = picker.Formats.Single(format => format.MimeType == mimeType);
-            string extension = mimeType == ReportMimeTypes.PlainText ? ".txt" : ".html";
+            picker.SelectedFormat = picker.Formats.Single(option => option.Format == format);
+            string mimeType = format == ReportFormat.Text ? ReportMimeTypes.PlainText : ReportMimeTypes.Html;
+            string extension = format == ReportFormat.Text ? ".txt" : ".html";
             string target = harness.TempPath("t016-report" + extension);
             harness.Dialogs.SaveReportPath = target;
 
@@ -93,14 +96,16 @@ public class ReportPickerTests
             using var expected = new MemoryStream();
             await harness.ProjectService.GenerateReport(harness.Session.Current!, ReportKind.Functions,
                 ReportMode.Standard, mimeType, expected,
-                mimeType == ReportMimeTypes.Html ? new SvgReportIconProvider() : null);   // the app's icon mapping for HTML
+                format == ReportFormat.Html ? new SvgReportIconProvider() : null);   // the app's icon mapping for HTML
             Assert.Multiple(() =>
             {
+                Assert.That(harness.Dialogs.LastReportFormat, Is.EqualTo(format),
+                    "the report door is the one asked, for the picked format");
                 Assert.That(harness.Dialogs.LastReportSuggestedName, Does.EndWith(extension),
-                    $"the save dialog is suggested a {mimeType} file name");
+                    $"the save dialog is suggested a {format} file name");
                 Assert.That(File.Exists(target), Is.True, "[Gem som…] writes the chosen file");
                 Assert.That(File.ReadAllBytes(target), Is.EqualTo(expected.ToArray()),
-                    $"the picked {mimeType} format generates the facade's bytes for that format");
+                    $"the picked {format} format generates the facade's bytes for that format");
             });
         }
     }
@@ -153,7 +158,7 @@ public class ReportPickerTests
         await vm.Registry.Commands["reports.installation"].ExecuteAsync(null);
         ReportPickerViewModel picker = harness.Dialogs.LastReportPickerViewModel!;
 
-        picker.SelectedFormat = picker.Formats.Single(format => format.MimeType == ReportMimeTypes.PlainText);
+        picker.SelectedFormat = picker.Formats.Single(option => option.Format == ReportFormat.Text);
         await picker.ViewInBrowserCommand.ExecuteAsync(null);
 
         string? opened = harness.Dialogs.LastOpenedUrl;

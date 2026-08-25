@@ -64,8 +64,9 @@ public class FindingsExportWorkflowTests
     }
 
     /// <summary>
-    /// The picker is asked for an XML file, named after the open document. The mime type is what drives the
-    /// dialog's title, its filter label and its extension, so passing the wrong one is not cosmetic.
+    /// The FINDINGS door is the one asked, and the suggested name is the open document's with the findings
+    /// extension. Which door was reached is what decides the dialog's title, its filter label and its extension,
+    /// so reaching the report one would be wrong on all three.
     /// </summary>
     [Test]
     public async Task TheSaveDialogIsAskedForAnXmlFileNamedAfterTheDocument()
@@ -78,8 +79,11 @@ public class FindingsExportWorkflowTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.LastReportMimeType, Is.EqualTo(ReportMimeTypes.Xml));
-            Assert.That(harness.Dialogs.LastReportSuggestedName, Does.EndWith("-fejlliste.xml"));
+            Assert.That(harness.Dialogs.AskedForFindings, Is.True);
+            Assert.That(harness.Dialogs.LastReportFormat, Is.Null, "…and never the report door");
+            Assert.That(
+                harness.Dialogs.LastReportSuggestedName,
+                Does.EndWith($"-fejlliste.{FindingExportFormat.FileExtension}"));
         });
     }
 
@@ -101,8 +105,7 @@ public class FindingsExportWorkflowTests
             // the destination question and stopped on the answer, rather than never getting that far. Asserting
             // instead that some temp path holds no file would prove nothing — the fake was never given one, so
             // no run of any implementation could have created it.
-            Assert.That(harness.Dialogs.LastReportMimeType, Is.EqualTo(ReportMimeTypes.Xml),
-                "the destination was asked for");
+            Assert.That(harness.Dialogs.AskedForFindings, Is.True, "the destination was asked for");
             Assert.That(harness.Dialogs.LastProblem, Is.Null, "cancelling is not a failure");
             Assert.That(harness.Dialogs.LastMessage, Is.Null, "and nothing was shown either");
         });
@@ -163,24 +166,31 @@ public class FindingsExportWorkflowTests
     // ── The picker's own strings ────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// The save dialog names itself from the FORMAT, not from a constant. It used to say "Gem rapport" with an
-    /// "HTML-rapport" filter for every caller, which was true while reports were the only caller and is wrong
-    /// on both lines for a findings list.
+    /// Each document this app writes is described ONCE — title, filter label and extension together — and a
+    /// findings list is described as itself. It used to say "Gem rapport" with an "HTML-rapport" filter for
+    /// every caller, which was true while reports were the only caller and is wrong on both lines for a
+    /// findings list.
     /// </summary>
     [Test]
-    public void TheSaveDialogDerivesItsTitleAndFilterLabelFromTheFormat()
+    public void EachSavedDocumentIsDescribedByItsOwnRow()
     {
+        AvaloniaDialogService.SaveFileDescription findings = AvaloniaDialogService.FindingsList;
+        AvaloniaDialogService.SaveFileDescription html = AvaloniaDialogService.DescribeReport(ReportFormat.Html);
+        AvaloniaDialogService.SaveFileDescription text = AvaloniaDialogService.DescribeReport(ReportFormat.Text);
+
         Assert.Multiple(() =>
         {
-            Assert.That(AvaloniaDialogService.SaveTitleFor(ReportMimeTypes.Xml), Is.EqualTo("Gem fejlliste"));
-            Assert.That(AvaloniaDialogService.SaveTitleFor(ReportMimeTypes.Html), Is.EqualTo("Gem rapport"));
-            Assert.That(AvaloniaDialogService.SaveTitleFor(ReportMimeTypes.PlainText), Is.EqualTo("Gem rapport"));
+            Assert.That(findings.Title, Is.EqualTo("Gem fejlliste"));
+            Assert.That(findings.FileTypeLabel, Is.EqualTo("XML-fejlliste"));
+            Assert.That(findings.Extension, Is.EqualTo(FindingExportFormat.FileExtension));
 
-            Assert.That(AvaloniaDialogService.FileTypeLabelFor(ReportMimeTypes.Xml), Is.EqualTo("XML-fejlliste"));
-            Assert.That(AvaloniaDialogService.FileTypeLabelFor(ReportMimeTypes.Html), Is.EqualTo("HTML-rapport"));
-            Assert.That(
-                AvaloniaDialogService.FileTypeLabelFor(ReportMimeTypes.PlainText), Is.EqualTo("Tekstrapport"),
-                "the two report labels are unchanged — this is an addition, not a re-wording");
+            // The two report rows are unchanged — this was an addition, never a re-wording.
+            Assert.That(html.Title, Is.EqualTo("Gem rapport"));
+            Assert.That(html.FileTypeLabel, Is.EqualTo("HTML-rapport"));
+            Assert.That(html.Extension, Is.EqualTo("html"));
+            Assert.That(text.Title, Is.EqualTo("Gem rapport"));
+            Assert.That(text.FileTypeLabel, Is.EqualTo("Tekstrapport"));
+            Assert.That(text.Extension, Is.EqualTo("txt"));
         });
     }
 }

@@ -35,7 +35,8 @@ public sealed class NullDialogService : IDialogService
     public Task<string?> PromptForNameAsync(NamePromptInput input) => Task.FromResult<string?>(null);
     public Task<ProjectInfoData?> EditProjectInfoAsync(ProjectInfoData current, ProjectInfoSuggestions suggestions) => Task.FromResult<ProjectInfoData?>(null);
     public Task ShowReportPickerAsync(IReportPickerViewModel viewModel) => Task.CompletedTask;
-    public Task<string?> PickSaveReportAsync(string suggestedFileName, string mimeType) => Task.FromResult<string?>(null);
+    public Task<string?> PickSaveReportAsync(string suggestedFileName, ReportFormat format) => Task.FromResult<string?>(null);
+    public Task<string?> PickSaveFindingsAsync(string suggestedFileName) => Task.FromResult<string?>(null);
     public Task ShowModuleMapAsync(DatalineModuleMap map) => Task.CompletedTask;
     public Task<string?> PickCatalogFileAsync() => Task.FromResult<string?>(null);
     public Task<string?> PickCatalogFolderAsync() => Task.FromResult<string?>(null);

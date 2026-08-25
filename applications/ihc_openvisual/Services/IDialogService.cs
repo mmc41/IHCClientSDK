@@ -16,6 +16,26 @@ namespace ihc_openvisual.Services;
 /// the instance to the picker window as its DataContext.</summary>
 public interface IReportPickerViewModel;
 
+/// <summary>
+/// Which of the two documentation-report formats the picker chose (R12/D4) — the value that travels from its
+/// format dropdown through the report workflow to the save dialog.
+/// </summary>
+/// <remarks>
+/// An enum rather than the facade mimetype string it eventually becomes. The mimetype is what
+/// <c>ProjectAppService.GenerateReport</c> takes, and it stays a string there because that is the shipped SDK
+/// contract; but between the dropdown and that one call it was a string carrying a value the SDK's own report
+/// class published and its report generator rejected. Two members means an unrepresentable format cannot be
+/// constructed, so no arm anywhere has to throw on one.
+/// </remarks>
+public enum ReportFormat
+{
+    /// <summary>A self-contained HTML page, generated with the app's SVG icon mapping.</summary>
+    Html,
+
+    /// <summary>Plain text, generated with the SDK's default unicode icon stand-ins.</summary>
+    Text,
+}
+
 /// <summary>The installer's answer to a "save changes before closing?" prompt.</summary>
 public enum SaveChangesResult
 {
@@ -389,11 +409,20 @@ public interface IDialogService
     /// entry, mode choice, and the view/save actions — bound through the <see cref="IReportPickerViewModel"/> seam.</summary>
     Task ShowReportPickerAsync(IReportPickerViewModel viewModel);
 
-    /// <summary>Opens the save dialog for a generated report in the format the picker chose, given as the
-    /// <paramref name="mimeType"/> the report is generated with (the suggested name carries that format's
-    /// extension too, but it is a display string, not the format's source). Returns the chosen path, or null
-    /// when the installer cancels.</summary>
-    Task<string?> PickSaveReportAsync(string suggestedFileName, string mimeType);
+    /// <summary>Opens the save dialog for a generated report in the <paramref name="format"/> the picker chose
+    /// (the suggested name carries that format's extension too, but it is a display string, not the format's
+    /// source). Returns the chosen path, or null when the installer cancels.</summary>
+    Task<string?> PickSaveReportAsync(string suggestedFileName, ReportFormat format);
+
+    /// <summary>Opens the save dialog for the Problemer panel's findings list (US-085). Returns the chosen path,
+    /// or null when the installer cancels.</summary>
+    /// <remarks>
+    /// A door of its own rather than a third value on <see cref="PickSaveReportAsync"/>'s format, and the reason
+    /// is the dialog's own strings: a findings list is not a report, so it is offered under its own title and its
+    /// own filter label. It also takes no format argument at all — <c>ExportFindings</c> writes exactly one — so
+    /// there is no way to ask for a findings file in a report's format, or the reverse.
+    /// </remarks>
+    Task<string?> PickSaveFindingsAsync(string suggestedFileName);
 
     /// <summary>Opens the read-only data-line module map dialog (US-050).</summary>
     Task ShowModuleMapAsync(DatalineModuleMap map);

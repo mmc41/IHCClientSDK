@@ -15,9 +15,9 @@ public sealed record ReportKindOption(ReportKind Kind, string Title)
     public override string ToString() => Title;
 }
 
-/// <summary>One output-format choice in the picker's format dropdown, carrying the facade mimetype it
-/// selects; displays as its short format name.</summary>
-public sealed record ReportFormatOption(string MimeType, string Title)
+/// <summary>One output-format choice in the picker's format dropdown, carrying the format it selects;
+/// displays as its short format name.</summary>
+public sealed record ReportFormatOption(ReportFormat Format, string Title)
 {
     public override string ToString() => Title;
 }
@@ -31,12 +31,12 @@ public sealed record ReportFormatOption(string MimeType, string Title)
 /// </summary>
 public sealed partial class ReportPickerViewModel : ObservableObject, IReportPickerViewModel
 {
-    private readonly Func<ReportKind, ReportMode, string, Task> _viewInBrowser;
-    private readonly Func<ReportKind, ReportMode, string, Task> _saveAs;
+    private readonly Func<ReportKind, ReportMode, ReportFormat, Task> _viewInBrowser;
+    private readonly Func<ReportKind, ReportMode, ReportFormat, Task> _saveAs;
 
     public ReportPickerViewModel(ReportKind preselected,
-        Func<ReportKind, ReportMode, string, Task> viewInBrowser,
-        Func<ReportKind, ReportMode, string, Task> saveAs)
+        Func<ReportKind, ReportMode, ReportFormat, Task> viewInBrowser,
+        Func<ReportKind, ReportMode, ReportFormat, Task> saveAs)
     {
         _viewInBrowser = viewInBrowser ?? throw new ArgumentNullException(nameof(viewInBrowser));
         _saveAs = saveAs ?? throw new ArgumentNullException(nameof(saveAs));
@@ -58,8 +58,8 @@ public sealed partial class ReportPickerViewModel : ObservableObject, IReportPic
     /// suggested file name.</summary>
     public IReadOnlyList<ReportFormatOption> Formats { get; } = new[]
     {
-        new ReportFormatOption(ReportMimeTypes.Html, "HTML"),
-        new ReportFormatOption(ReportMimeTypes.PlainText, "TXT"),
+        new ReportFormatOption(ReportFormat.Html, "HTML"),
+        new ReportFormatOption(ReportFormat.Text, "TXT"),
     };
 
     [ObservableProperty] private ReportFormatOption _selectedFormat;
@@ -77,11 +77,11 @@ public sealed partial class ReportPickerViewModel : ObservableObject, IReportPic
 
     /// <summary>[Vis]: generate the picked kind × mode × format and open it (US-063 flow).</summary>
     [RelayCommand]
-    private Task ViewInBrowser() => _viewInBrowser(SelectedKind.Kind, Mode, SelectedFormat.MimeType);
+    private Task ViewInBrowser() => _viewInBrowser(SelectedKind.Kind, Mode, SelectedFormat.Format);
 
     /// <summary>[Gem som…]: pick a target file and generate the picked kind × mode × format to it.</summary>
     [RelayCommand]
-    private Task SaveAs() => _saveAs(SelectedKind.Kind, Mode, SelectedFormat.MimeType);
+    private Task SaveAs() => _saveAs(SelectedKind.Kind, Mode, SelectedFormat.Format);
 
     private ReportMode Mode => IsFullMode ? ReportMode.Full : ReportMode.Standard;
 }

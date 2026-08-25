@@ -135,11 +135,27 @@ public sealed class FakeDialogService : IDialogService
     public Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName) => Task.FromResult(SavePath);
     public string? SaveReportPath { get; set; }
     public string? LastReportSuggestedName { get; private set; }
-    public string? LastReportMimeType { get; private set; }
-    public Task<string?> PickSaveReportAsync(string suggestedFileName, string mimeType)
+
+    /// <summary>The format the last REPORT save dialog was opened for, or null if none has been.</summary>
+    public ReportFormat? LastReportFormat { get; private set; }
+
+    /// <summary>Whether the last save dialog was the findings list's own door rather than a report's. The two
+    /// are separate methods on the port, so which one a caller reached is the assertion — there is no longer a
+    /// mimetype travelling through one door that a test could read a format off.</summary>
+    public bool AskedForFindings { get; private set; }
+
+    public Task<string?> PickSaveReportAsync(string suggestedFileName, ReportFormat format)
     {
         LastReportSuggestedName = suggestedFileName;
-        LastReportMimeType = mimeType;
+        LastReportFormat = format;
+        AskedForFindings = false;
+        return Task.FromResult(SaveReportPath);
+    }
+
+    public Task<string?> PickSaveFindingsAsync(string suggestedFileName)
+    {
+        LastReportSuggestedName = suggestedFileName;
+        AskedForFindings = true;
         return Task.FromResult(SaveReportPath);
     }
     public string? CatalogFilePath { get; set; }

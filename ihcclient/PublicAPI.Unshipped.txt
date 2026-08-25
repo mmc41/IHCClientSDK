@@ -13,6 +13,7 @@ Ihc.Vis.Validation.ValidationProfile.Library.get -> Ihc.Vis.Validation.ILibraryB
 Ihc.Vis.Validation.ValidationProfile.Library.init -> void
 static Ihc.Vis.Validation.FieldMetadataFace.Stricter(Ihc.Vis.Validation.FieldConstraintMetadata into, Ihc.Vis.Validation.FieldConstraintMetadata from) -> Ihc.Vis.Validation.FieldConstraintMetadata
 static Ihc.Vis.Session.EditRefusalCodes.FieldPhonenumberMalformed.get -> Ihc.Vis.Problems.ProblemCode
+Ihc.Vis.FindingExportFormat
 Ihc.Vis.FindingExportOptions
 Ihc.Vis.FindingExportOptions.<Clone>$() -> Ihc.Vis.FindingExportOptions!
 Ihc.Vis.FindingExportOptions.Equals(Ihc.Vis.FindingExportOptions? other) -> bool
@@ -560,7 +561,8 @@ Ihc.Vis.Validation.WholeProjectValidator
 Ihc.Vis.Validation.WholeProjectValidator.Validate(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
 Ihc.Vis.Validation.WholeProjectValidator.WholeProjectValidator(Ihc.Vis.Validation.RuleSet! rules) -> void
 Ihc.Vis.Validation.WiringRules
-const Ihc.Vis.ReportMimeTypes.Xml = "application/xml" -> string!
+const Ihc.Vis.FindingExportFormat.FileExtension = "xml" -> string!
+const Ihc.Vis.FindingExportFormat.MimeType = "application/xml" -> string!
 const Ihc.Vis.Problems.OperationCodes.BridgeDownloadLabel = "Projektet kunne ikke hentes fra controlleren" -> string!
 const Ihc.Vis.Problems.OperationCodes.BridgeUploadLabel = "Projektet kunne ikke sendes til controlleren" -> string!
 const Ihc.Vis.Problems.OperationCodes.ImportCatalogLabel = "Katalogfilen kunne ikke indlæses" -> string!
