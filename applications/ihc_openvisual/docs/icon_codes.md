@@ -184,6 +184,35 @@ These never carry `icon` and render from the DTD default (`_0x0`, **except `reso
 
 ---
 
+## 6b. Severity glyphs — not element icons at all
+
+Four assets in `Assets/` carry no `icon` code and map to no `.vis` element, because they are not
+about project content: they classify a *finding* or a *refusal*, which is something the application
+says about the project rather than something the project contains. They are listed here so the next
+author finds them instead of drawing a fifth.
+
+| Asset | Stands for | Construction | Used by |
+| --- | --- | --- | --- |
+| `severity-error.svg` | **Fejl** — blocks a save/upload | ring + diagonal cross | Problemer panel: severity column, Fejl filter toggle |
+| `severity-warning.svg` | **Advarsel** — advisory | triangle + bang bar/dot | Problemer panel: severity column, Advarsel filter toggle |
+| `severity-info.svg` | **Information** — advisory, lower | ring + tittle/stem | Problemer panel: severity column, Information filter toggle |
+| `severity-fatal.svg` | A **refusal** — an operation that could not proceed | octagon + bang | Dialog refusal presentation only |
+
+Two things about this set are load-bearing:
+
+- **`severity-fatal.svg` is not a fourth tier.** A refusal is not a finding — it is a coded
+  `Problem` off a different method — so it has no row in the panel and no place in its severity
+  column or filter toggles. The panel wires exactly the first three, and a test asserts that no
+  wired path contains `fatal`.
+- **The glyph never carries the meaning alone.** Every severity cell and every filter toggle pairs
+  the icon with its Danish word (Fejl / Advarsel / Information), because shape and colour are not a
+  readable severity for everyone, and the tier is the first thing a row has to say.
+
+Colour comes from the app's state layer at runtime (§5 of `icons_design.md`): the glyphs are
+`currentColor`-only, which is what lets one asset read correctly in both themes.
+
+---
+
 ## 7. Text-only rendering — Unicode stand-ins
 
 Plain-text surfaces cannot embed the SVGs: `.txt` report exports, console/CLI tree dumps, log and

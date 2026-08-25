@@ -1,5 +1,4 @@
 #nullable enable
-using System.Collections.Immutable;
 
 namespace Ihc.Vis.Products
 {

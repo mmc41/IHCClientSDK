@@ -9,6 +9,8 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -58,11 +60,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "logic-master-block-modified", MasterBlockModified),
                 Rule(catalog, "logic-block-locked-content", LockedContentEdited));
         }
-
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
 
         /// <summary>
         /// A block with no programs: it never does anything.
@@ -320,19 +317,10 @@ namespace Ihc.Vis.Validation
             }
         }
 
-        private static IEnumerable<ProjectElement> Blocks(IProjectAnalyses analyses) =>
-            analyses.WithTag("functionblock");
-
         private static IEnumerable<ProjectElement> Programs(ProjectElement block) =>
             Section(block, ProgramsContainer).Where(c => c.Tag == ProgramTag);
 
         private static IEnumerable<ProjectElement> Section(ProjectElement block, string container) =>
             block.FindChild(container) is { } section ? section.Children : [];
-
-        private static string Name(ProjectElement element) =>
-            element.GetAttribute("name") is { Length: > 0 } name ? name : element.Tag;
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] bindings) =>
-            [.. bindings.Select(b => new ProblemArgument(b.Name, b.Value))];
     }
 }

@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Immutable;
-using System.Globalization;
 
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;

@@ -9,6 +9,8 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -49,11 +51,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "addr-dimmer-channel-unassigned", ChannelUnassigned),
                 Rule(catalog, "addr-dimmer-channel-duplicate", ChannelDuplicate));
         }
-
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
 
         /// <summary>
         /// A module carrying almost nothing while another module of the same direction is also in use: the stray
@@ -230,18 +227,5 @@ namespace Ihc.Vis.Validation
 
         private static IEnumerable<ProjectElement> Channels(IProjectAnalyses analyses) =>
             analyses.WithTag(DimmerChannelTag);
-
-        /// <summary>The declared threshold, or a registration fault when the entry does not carry it.</summary>
-        private static double Threshold(ProblemCatalog catalog, string code, string name) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-            && entry.Thresholds.FirstOrDefault(t => t.Name == name) is { } threshold
-                ? threshold.Value
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
-
-        private static string Name(ProjectElement element) =>
-            element.GetAttribute("name") is { Length: > 0 } name ? name : element.Tag;
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] bindings) =>
-            [.. bindings.Select(b => new ProblemArgument(b.Name, b.Value))];
     }
 }

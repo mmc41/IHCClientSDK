@@ -15,6 +15,7 @@ using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
+using Ihc.Vis.Validation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -45,6 +46,20 @@ public sealed class ProjectWorkflow : IDisposable
 
     private readonly string _catalogDir;
 
+    /// <param name="service">The SDK facade every operation below routes through.</param>
+    /// <param name="recent">The recent-projects store the open/save paths update.</param>
+    /// <param name="dialogs">Where a refusal or a confirmation is shown.</param>
+    /// <param name="loggerFactory">The host's logging pipeline, or none.</param>
+    /// <param name="catalogDir">Where persisted catalog imports live.</param>
+    /// <param name="installerIdentity">The installer identity store, or a private one.</param>
+    /// <param name="dataTables">The data-table store, or a private one.</param>
+    /// <param name="post">
+    /// The marshal back to the owning thread, supplied by the composition root because that is the only layer
+    /// allowed to name a UI framework. Everything below that touches a background result goes through THIS one —
+    /// see <see cref="Post"/>. A caller that omits it gets inline invocation, which is right in a single-threaded
+    /// test and wrong anywhere else.
+    /// </param>
+    /// <param name="timeProvider">The clock every debounce and delay in the shell runs on — see <see cref="Time"/>.</param>
     public ProjectWorkflow(
         ProjectAppService service,
         RecentProjectsStore recent,
@@ -52,11 +67,15 @@ public sealed class ProjectWorkflow : IDisposable
         ILoggerFactory? loggerFactory = null,
         string? catalogDir = null,
         InstallerIdentityStore? installerIdentity = null,
-        DataTableStore? dataTables = null)
+        DataTableStore? dataTables = null,
+        Action<Action>? post = null,
+        TimeProvider? timeProvider = null)
     {
         _service = service;
         _recent = recent;
         _dialogs = dialogs;
+        Post = post ?? (action => action());
+        Time = timeProvider ?? TimeProvider.System;
         // Not defaulted to CreateDefault(): an unconfigured session must not read (or write) the real user's
         // settings file, so tests and design-time instances start from an empty in-memory identity.
         InstallerIdentity = installerIdentity ?? new InstallerIdentityStore(
@@ -69,7 +88,30 @@ public sealed class ProjectWorkflow : IDisposable
         _reports = new ProjectReportWorkflow(_service, _dialogs, _logger, () => Current);
         _catalog = new CatalogImportWorkflow(_service, _dialogs, _logger, _catalogDir);
         _catalog.LoadPersisted();   // persisted imports load on startup (US-061)
+        // LAST, because it reads this workflow: everything it touches (Current, Version, LastChange, Post, Time,
+        // StateChanged) is assigned above. Eager rather than lazy so no reader can create it late and miss the
+        // document changes that already happened.
+        Validation = new ValidationMonitor(this, ValidateStructured);
     }
+
+    /// <summary>
+    /// The marshal back to the thread that owns the document. The composition root supplies it; a collaborator
+    /// that binds a background result reads it here rather than taking its own, so the whole app has ONE answer
+    /// to "how do I get back to the owning thread".
+    /// </summary>
+    public Action<Action> Post { get; }
+
+    /// <summary>The clock the shell's debounces and delays run on. A fake one makes every one of them testable.</summary>
+    public TimeProvider Time { get; }
+
+    /// <summary>
+    /// The continuous whole-project validation over the open document: what it found, and whether that BLOCKS.
+    /// <para>
+    /// It lives here rather than in the Problemer panel because the blocking answer is a fact about the document
+    /// that more than one thing asks — the transfer gate reads it whether or not the panel is open, or built.
+    /// </para>
+    /// </summary>
+    public ValidationMonitor Validation { get; }
 
     /// <summary>The app-data folder persisted catalog imports are copied into and loaded from on startup (US-061).</summary>
     private static string DefaultCatalogDir() => Path.Combine(
@@ -266,6 +308,19 @@ public sealed class ProjectWorkflow : IDisposable
     /// </summary>
     public IReadOnlyList<string> GetInsertableVariableTypes(ElementId containerId) =>
         Current is { } project ? _service.GetInsertableVariableTypes(project, containerId) : [];
+
+    /// <summary>
+    /// The whole-project validation run, in its STRUCTURED shape — one finding per problem, with the locations and
+    /// category a panel filters, sorts and navigates by.
+    /// </summary>
+    /// <remarks>
+    /// It takes the snapshot as a parameter rather than reading <see cref="Current"/>, and that is the point of the
+    /// signature: the caller is a BACKGROUND recompute, which must capture snapshot and version together on the UI
+    /// thread before the work starts (ADR-001, host contract step 1). A door reading <see cref="Current"/> itself
+    /// would take that read off the owning thread, where the pair is no longer atomic.
+    /// </remarks>
+    public EquatableArray<ValidationFinding> ValidateStructured(Project project) =>
+        _service.ValidateStructured(project);
 
     /// <summary>The catalog products as slim insert-menu items (<see cref="CatalogItem"/>) — what the insert menu binds to.</summary>
     public IReadOnlyList<CatalogItem> GetProductCatalogItems() => _service.GetProductCatalogItems();
@@ -603,6 +658,9 @@ public sealed class ProjectWorkflow : IDisposable
         StateChanged?.Invoke(this, EventArgs.Empty);
     }
 
+    // Validation is driven by StateChanged like any other reader — the monitor subscribes in its own constructor,
+    // so there is nothing to call here and no ordering between the two to get wrong.
+
     private bool _disposed;
 
     public void Dispose()
@@ -611,6 +669,9 @@ public sealed class ProjectWorkflow : IDisposable
             return;   // idempotent
         _disposed = true;
         _reports.Dispose();   // drops this process's report viewing directory
+        // Detaches its StateChanged handler and cancels any run still in flight, so no pool thread publishes a
+        // result about a document this workflow has already closed.
+        Validation.Dispose();
         // Close the document too — this workflow is the only type permitted to (arch-enforced), so nobody else can,
         // and a disposed workflow holding an open document's snapshot + full undo history is state nothing can reach.
         _document?.Close();

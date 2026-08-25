@@ -52,7 +52,7 @@ namespace Ihc.Vis.Validation
 
                     foreach (IValueConstraint constraint in sequence.Ordered)
                     {
-                        merged = Tighten(merged, constraint.Describe());
+                        merged = Stricter(merged, constraint.Describe());
                     }
                 }
 
@@ -92,9 +92,6 @@ namespace Ihc.Vis.Validation
         /// <param name="into">The metadata accumulated so far.</param>
         /// <param name="from">The metadata to merge in.</param>
         public static FieldConstraintMetadata Stricter(FieldConstraintMetadata into, FieldConstraintMetadata from) =>
-            Tighten(into, from);
-
-        private static FieldConstraintMetadata Tighten(FieldConstraintMetadata into, FieldConstraintMetadata from) =>
             new(
                 into.Required || from.Required,
                 Higher(into.Minimum, from.Minimum),

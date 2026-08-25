@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Immutable;
+using System.Linq;
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Validation;
@@ -37,6 +39,13 @@ internal static class HostProblemCodes
     /// <summary>Retrieving a project needs a connected controller (E10).</summary>
     public static ProblemCode ControllerRequiredRetrieve { get; } = new("app.openvisual.controller-required-retrieve");
 
+    /// <summary>
+    /// The project carries validation Errors, so the shell withholds the transfer. HOST-owned rather than SDK:
+    /// the SDK reports the findings, but the decision to gate an upload on them is this application's policy —
+    /// a console tool over the same engine is free to transfer anyway.
+    /// </summary>
+    public static ProblemCode ValidationErrorsBlockSend { get; } = new("app.openvisual.validation-errors-block-send");
+
     /// <summary>No telemetry host is configured, so there is nothing to open.</summary>
     public static ProblemCode TelemetryHostMissing { get; } = new("app.openvisual.telemetry-host-missing");
 
@@ -70,15 +79,22 @@ internal static class HostProblemCodes
     /// <summary>The function block could not be exported to a library file (US-021).</summary>
     public static ProblemCode BlockExportFailed { get; } = new("app.openvisual.block-export-failed");
 
-    /// <summary>Every code this app declares — the list the governance checks read.</summary>
-    public static EquatableArray<ProblemCode> All { get; } = EquatableArray.Create<ProblemCode>(
-    [
-        Unexpected, EditFailed, ControllerRequiredSend, ControllerRequiredRetrieve,
-        TelemetryHostMissing, TelemetryHostUnreachable,
-        CatalogFileRejected, CatalogFolderMissing, CatalogImportStopped,
-        ReportNotOpenable, ReportViewFailed, ReportSaveFailed,
-        ProjectOpenFailed, ProjectSaveFailed, BlockExportFailed,
-    ]);
+    /// <summary>
+    /// Every code this app declares — the list the governance checks read, taken from the CATALOGUE rather
+    /// than retyped beside it. The two lists named the same fifteen members in the same order and had to be
+    /// edited together, which is one list too many for a rule that exists to catch a forgotten code.
+    /// </summary>
+    /// <remarks>
+    /// A COMPUTED property, not a static field, and the difference is not stylistic. As a field it ran inside this
+    /// type's static initializer, which reads <see cref="HostProblemCatalog.Current"/>, whose own initializer
+    /// reads the codes above — a static-init cycle whose outcome depends on which of the two types a process
+    /// touches first. Touch a code first and both initialize; touch the catalogue first and this line observes a
+    /// half-built catalogue, dereferences null, and the whole family fails to initialize with a
+    /// <see cref="TypeInitializationException"/> that names neither cause. Computing on demand removes the cycle
+    /// outright; the list is read by governance and presentation, never in a loop.
+    /// </remarks>
+    public static EquatableArray<ProblemCode> All =>
+        HostProblemCatalog.Current.Entries.Select(e => e.Code).ToImmutableArray();
 }
 
 /// <summary>
@@ -107,7 +123,7 @@ internal static class HostProblemCatalog
     /// </summary>
     public static ProblemCatalog Current { get; } = ProblemCatalog.From(EquatableArray.Create<ProblemCatalogEntry>(
     [
-        Unexpected, EditFailed, ControllerRequiredSend, ControllerRequiredRetrieve,
+        Unexpected, EditFailed, ControllerRequiredSend, ControllerRequiredRetrieve, ValidationErrorsBlockSend,
         TelemetryHostMissing, TelemetryHostUnreachable,
         CatalogFileRejected, CatalogFolderMissing, CatalogImportStopped,
         ReportNotOpenable, ReportViewFailed, ReportSaveFailed,
@@ -145,6 +161,17 @@ internal static class HostProblemCatalog
         HostProblemCodes.ControllerRequiredRetrieve,
         "Hentning kræver en tilsluttet controller. Denne version kontakter ingen controller.",
         "Controller transfer is deferred (E10); this build never contacts a controller.");
+
+    /// <summary>
+    /// The upload gate's refusal. It names the PANEL rather than the findings, and carries no count: the sentence
+    /// is shown on a greyed menu row and in the status bar, where the panel is already on screen with the live
+    /// numbers — repeating a count here would be a second copy of a figure that changes on every edit, and the
+    /// one thing a user needs from this sentence is where to go and fix it.
+    /// </summary>
+    internal static ProblemCatalogEntry ValidationErrorsBlockSend => Outcome(
+        HostProblemCodes.ValidationErrorsBlockSend,
+        "Projektet indeholder fejl. Ret dem i Problemer-panelet, før projektet sendes.",
+        "The latest completed validation bound at least one Error finding; the shell withholds the transfer.");
 
     /// <summary>No telemetry host is configured in <c>ihcsettings.json</c>.</summary>
     internal static ProblemCatalogEntry TelemetryHostMissing => Outcome(

@@ -7,8 +7,9 @@ using System.Linq;
 using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
-using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
+
+using static Ihc.Vis.Validation.RuleAuthoring;
 
 namespace Ihc.Vis.Validation
 {
@@ -62,11 +63,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "dev-inivalue-overwritten", InitialValueOverwritten));
         }
 
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
-
         /// <summary>
         /// A program command assigning a variable declared read-only: the assignment is refused or ignored at
         /// runtime.
@@ -109,7 +105,7 @@ namespace Ihc.Vis.Validation
             double minimumConfigured = Threshold(catalog, "dev-setting-default", "MinimumConfiguredSettings");
             return inspection =>
             {
-                foreach (ProjectElement product in Products(inspection.Analyses))
+                foreach (ProjectElement product in AllProducts(inspection.Analyses))
                 {
                     ImmutableArray<ProjectElement> settings = [.. Settings(product)];
                     if (settings.Length == 0)
@@ -221,23 +217,5 @@ namespace Ihc.Vis.Validation
             product.Descendants()
                 .Where(e => e.Tag.EndsWith("_settings", StringComparison.Ordinal))
                 .SelectMany(group => group.Children);
-
-        private static IEnumerable<ProjectElement> Products(IProjectAnalyses analyses) =>
-            analyses.Elements.Where(e => ProductClassifier.IsProduct(e.Tag));
-
-        private static IEnumerable<ProjectElement> Blocks(IProjectAnalyses analyses) =>
-            analyses.WithTag("functionblock");
-
-        private static double Threshold(ProblemCatalog catalog, string code, string name) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-            && entry.Thresholds.FirstOrDefault(t => t.Name == name) is { } threshold
-                ? threshold.Value
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
-
-        private static string Name(ProjectElement element) =>
-            element.GetAttribute("name") is { Length: > 0 } name ? name : element.Tag;
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] bindings) =>
-            [.. bindings.Select(b => new ProblemArgument(b.Name, b.Value))];
     }
 }

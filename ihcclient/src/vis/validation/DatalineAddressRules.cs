@@ -10,6 +10,8 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -48,11 +50,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "dataline-address-range", OutOfRange),
                 Rule(catalog, "dataline-address-duplicate", Duplicates));
         }
-
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
 
         /// <summary>An address that is not a <c>_0x</c> hex token: it cannot be decoded at all.</summary>
         private static void Malformed(IProjectInspection inspection)
@@ -154,8 +151,5 @@ namespace Ihc.Vis.Validation
                 }
             }
         }
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] values) =>
-            values.Select(v => new ProblemArgument(v.Name, v.Value)).ToImmutableArray();
     }
 }

@@ -9,6 +9,8 @@ using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -48,11 +50,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "attr-latin1", NonLatin1Text),
                 Rule(catalog, "element-undeclared", UndeclaredElements));
         }
-
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
 
         /// <summary>
         /// A <c>#REQUIRED</c> attribute the element does not carry. Runs even when the element carries no
@@ -152,8 +149,5 @@ namespace Ihc.Vis.Validation
                 }
             }
         }
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] values) =>
-            values.Select(v => new ProblemArgument(v.Name, v.Value)).ToImmutableArray();
     }
 }

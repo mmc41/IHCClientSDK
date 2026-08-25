@@ -980,6 +980,12 @@ namespace Ihc.Vis
         private ValidationProfile StructuralProfile => ValidationProfile.ProjectOnly with { Library = library.Value };
 
         /// <summary>
+        /// The categorized profile with the same library port, for the same reason — stated once here
+        /// rather than spelled out at each of the two runs that read it.
+        /// </summary>
+        private ValidationProfile CategorizedProfile => ValidationProfile.Categorized with { Library = library.Value };
+
+        /// <summary>
         /// Validates a project against the FULL categorized verification (R10): the structural
         /// pre-serialize checklist (<see cref="Validate"/>) plus the documentation-completeness checks
         /// (<see cref="ValidationCategory.Documentation"/>, always
@@ -993,8 +999,7 @@ namespace Ihc.Vis
             {
                 // D27: the library port comes from the catalog this service already holds, so the two rows that
                 // need a library are evaluated here and skipped by a caller who validates without one.
-                ProjectValidationResult result = ProjectVerification.Run(
-                    project, ValidationProfile.Categorized with { Library = library.Value });
+                ProjectValidationResult result = ProjectVerification.Run(project, CategorizedProfile);
                 activity?.SetReturnValue(result);
                 return result;
             });
@@ -1023,8 +1028,8 @@ namespace Ihc.Vis
             ArgumentNullException.ThrowIfNull(project);
             return RunTraced(nameof(ValidateStructured), activity =>
             {
-                EquatableArray<ValidationFinding> findings = ProjectVerification.RunStructured(
-                    project, ValidationProfile.Categorized with { Library = library.Value });
+                EquatableArray<ValidationFinding> findings =
+                    ProjectVerification.RunStructured(project, CategorizedProfile);
                 activity?.SetReturnValue(findings.Length);
                 return findings;
             });

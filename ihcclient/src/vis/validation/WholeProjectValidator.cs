@@ -107,12 +107,11 @@ namespace Ihc.Vis.Validation
             }
 
             return emitted
-                .Select(e => Build(e, profile))
-                .Zip(emitted, (finding, e) => (Finding: finding, Key: SortKey(e, scanOrder)))
+                .Select(e => (Finding: Build(e, profile), Key: SortKey(e, scanOrder)))
                 .OrderBy(x => x.Key.Scan)
                 .ThenBy(x => x.Key.Code, StringComparer.Ordinal)
                 .ThenBy(x => x.Key.Locator, StringComparer.Ordinal)
-                .ThenBy(x => x.Key.Message, StringComparer.Ordinal)
+                .ThenBy(x => x.Key.Arguments, StringComparer.Ordinal)
                 .ThenBy(x => x.Key.Sequence)
                 .Select(x => x.Finding)
                 .ToImmutableArray();
@@ -197,7 +196,12 @@ namespace Ihc.Vis.Validation
             { } e => $"<{e.Tag}>",
         };
 
-        private static (int Scan, string Code, string Locator, string Message, int Sequence) SortKey(
+        /// <summary>
+        /// The deterministic ordering key. The fourth element is the emission's ARGUMENT VALUES joined — not the
+        /// finding's message, which does not exist yet: <see cref="Build"/> binds it afterwards. The arguments are
+        /// what distinguish two findings of the same code on the same element, which is the job this slot does.
+        /// </summary>
+        private static (int Scan, string Code, string Locator, string Arguments, int Sequence) SortKey(
             Emission emission, Dictionary<ProjectElement, int> scanOrder) =>
         (
             emission.Primary is { } element && scanOrder.TryGetValue(element, out int index) ? index : -1,

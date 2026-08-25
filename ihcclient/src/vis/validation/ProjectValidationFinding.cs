@@ -1,7 +1,14 @@
 #nullable enable
 namespace Ihc.Vis.Validation
 {
-    /// <summary>How severe a validation finding is for persisting the project.</summary>
+    /// <summary>
+    /// How severe a validation finding is for persisting the project.
+    /// <para>
+    /// One blocking tier and two advisory ones. The members are APPENDED, never reordered: the ordinals are
+    /// public API, so <see cref="Info"/> follows <see cref="Warning"/> rather than sitting where its severity
+    /// would put it in a hand-drawn scale.
+    /// </para>
+    /// </summary>
     public enum ValidationSeverity
     {
         /// <summary>A state the serializer, IHC Visual or the controller is known (or spec-required) to reject.</summary>
@@ -9,6 +16,13 @@ namespace Ihc.Vis.Validation
 
         /// <summary>A deviation vendor tooling tolerates — advisory for a GUI, never blocks a save/upload.</summary>
         Warning,
+
+        /// <summary>
+        /// Worth knowing, not worth acting on — the advisory tier BELOW <see cref="Warning"/>, for a host that
+        /// presents findings and must tell "you should fix this" from "you may care about this". Like
+        /// <see cref="Warning"/> it never blocks a save/upload.
+        /// </summary>
+        Info,
     }
 
     /// <summary>

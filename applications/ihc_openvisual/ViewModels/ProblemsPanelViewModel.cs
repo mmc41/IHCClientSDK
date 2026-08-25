@@ -1,0 +1,534 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using CommunityToolkit.Mvvm.ComponentModel;
+using Ihc.Vis;
+using Ihc.Vis.Model;
+using Ihc.Vis.Projects;
+using Ihc.Vis.Validation;
+using ihc_openvisual.Services;
+
+namespace ihc_openvisual.ViewModels;
+
+/// <summary>
+/// The four states the Problemer panel keeps distinct. They are a MODEL, not a rendering: the view decides what
+/// each looks like, but nothing may collapse two of them, and in particular nothing may let
+/// <see cref="Validating"/> read as <see cref="Clean"/>.
+/// </summary>
+public enum ProblemsState
+{
+    /// <summary>
+    /// No result is bound for the current document yet — the first run of a generation. The list area says so.
+    /// It must NEVER show the clean text: an unvalidated project reading as problem-free is a lie a user acts on.
+    /// </summary>
+    Validating,
+
+    /// <summary>Up to date, and the run produced nothing.</summary>
+    Clean,
+
+    /// <summary>Up to date, with rows to show.</summary>
+    Findings,
+
+    /// <summary>
+    /// The document has moved past the bound result — a quiet period is running or a run is in flight. The rows
+    /// STAY visible and clickable (stale-while-revalidate); the list is never blanked.
+    /// </summary>
+    Stale,
+}
+
+/// <summary>
+/// The Problemer panel's view-model: it READS a <see cref="ValidationMonitor"/> and presents what that found.
+///
+/// <para><b>It does not run the validation, and it does not decide what blocks.</b> Both live on the monitor,
+/// beside the document they are about, because the blocking answer is asked by the transfer gate too — a panel
+/// that owned it would be load-bearing for a gate that must work whether or not the panel was ever built. What
+/// is left here is presentation and only presentation: rows, the sort, the tier filters, the four states, and
+/// how long staleness must last before the panel says so.</para>
+///
+/// <para><b>What it does not do.</b> It holds no snapshot (every edit rebuilds the tree, so a retained one is
+/// stale immediately) and it names no UI framework — the marshal back to the owning thread arrives as a delegate,
+/// which is what lets the whole panel run deterministically in a test with no shell and no dispatcher.</para>
+/// </summary>
+public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposable
+{
+    /// <summary>
+    /// How long staleness must persist before the panel shows it. Below this a fast edit→validate cycle shows no
+    /// indicator at all, which is the whole point of having a threshold rather than flashing on every keystroke.
+    /// </summary>
+    public static readonly TimeSpan StaleIndicatorDelay = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// How far the row area drops while the panel is visibly stale. Dimmed, not hidden and not disabled: the rows
+    /// are the previous result and remain the best information there is.
+    /// </summary>
+    public const double StaleOpacity = 0.5;
+
+    /// <summary>
+    /// How long the dim takes to fade, in each direction. Short enough to feel immediate, long enough that the
+    /// change reads as the panel doing something rather than as the list flickering.
+    /// </summary>
+    public static readonly TimeSpan StaleFadeDuration = TimeSpan.FromMilliseconds(150);
+
+    /// <summary>Shown while the first result of a generation is still coming. Never the clean text.</summary>
+    public const string ValidatingText = "Validerer projektet…";
+
+    /// <summary>The empty-state text, shown only for a result that actually came back with nothing.</summary>
+    public const string CleanText = "Ingen problemer fundet";
+
+    private readonly ProjectWorkflow _session;
+    private readonly ValidationMonitor _validation;
+    private readonly Action<Action> _post;
+    private readonly Func<ElementId, bool>? _reveal;
+    private readonly ITimer _staleTimer;
+    private readonly EventHandler _onValidationChanged;
+
+    /// <summary>The result the rows were projected from, so an unchanged one is not projected twice.</summary>
+    private ValidationOutcome? _shown;
+
+    /// <summary>The generation the rows belong to, so a replacement empties the list before anything else.</summary>
+    private int _shownGeneration;
+
+    private bool _disposed;
+
+    /// <param name="session">The document the rows name elements in.</param>
+    /// <param name="validation">
+    /// The run this panel presents. Taken as a parameter rather than read off <paramref name="session"/> so a
+    /// test can drive every state transition over findings it wrote itself, without the cost — or the
+    /// unpredictability — of a real validation. The shell passes the session's own.
+    /// </param>
+    /// <param name="reveal">
+    /// Where a clicked row goes: reveals and selects an element, switching editing mode if the target needs it,
+    /// and answers whether it got there. Optional so the panel can be tested without a shell.
+    /// </param>
+    public ProblemsPanelViewModel(
+        ProjectWorkflow session,
+        ValidationMonitor validation,
+        Func<ElementId, bool>? reveal = null)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(validation);
+
+        _session = session;
+        _validation = validation;
+        _post = session.Post;
+        _reveal = reveal;
+        _staleTimer = session.Time.CreateTimer(_ => OnStaleThresholdElapsed(), null,
+            Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+
+        Columns =
+        [
+            Header(ProblemsColumn.Severity, "Alvor"),
+            Header(ProblemsColumn.Code, "Kode"),
+            Header(ProblemsColumn.Message, "Besked"),
+            Header(ProblemsColumn.Element, "Element"),
+            Header(ProblemsColumn.Category, "Kategori"),
+        ];
+
+        Tiers =
+        [
+            new ProblemsTierViewModel(ValidationSeverity.Error, "Vis eller skjul fejl", ResortRows),
+            new ProblemsTierViewModel(ValidationSeverity.Warning, "Vis eller skjul advarsler", ResortRows),
+            new ProblemsTierViewModel(ValidationSeverity.Info, "Vis eller skjul oplysninger", ResortRows),
+        ];
+        _tiers = Tiers.ToDictionary(t => t.Severity);
+        ShowSortOnHeaders();
+
+        ProblemsColumnViewModel Header(ProblemsColumn column, string title) => new(column, title, SortBy);
+
+        _onValidationChanged = (_, _) => OnValidationChanged();
+        _validation.Changed += _onValidationChanged;
+        // Sync to whatever the monitor already holds: it starts with the document, and this panel does not.
+        OnValidationChanged();
+    }
+
+    /// <summary>The findings of the last bound result, in the order the panel presents them.</summary>
+    /// <remarks>
+    /// A bulk collection because every one of the panel's interactive gestures — a bind, a tier toggle, a header
+    /// click — REPLACES the whole list, and a per-item <c>Add</c> would drive one round of container and selection
+    /// bookkeeping per row where a single Reset does.
+    /// </remarks>
+    public BulkObservableCollection<ProblemRowViewModel> Rows { get; } = [];
+
+    /// <summary>
+    /// The bound findings in the ENGINE's own order, kept so a re-sort starts from the document scan rather than
+    /// from whatever the previous sort left behind. That is what makes every sort stable in the way that matters:
+    /// rows with an equal key come out in document order, not in the order of the last sort.
+    /// </summary>
+    private readonly List<ProblemRowViewModel> _asScanned = [];
+
+    /// <summary>The five sortable headers, in screen order.</summary>
+    public IReadOnlyList<ProblemsColumnViewModel> Columns { get; }
+
+    /// <summary>
+    /// The three severity tiers, worst first — the filter toggles and their counts.
+    /// </summary>
+    /// <remarks>
+    /// A filter hides ROWS and nothing else. Every tier's count, the session's blocking answer and this panel's state
+    /// are all computed from the bound result, so switching a tier off never makes its findings look fixed.
+    /// </remarks>
+    public IReadOnlyList<ProblemsTierViewModel> Tiers { get; }
+
+    private readonly Dictionary<ValidationSeverity, ProblemsTierViewModel> _tiers;
+
+    /// <summary>The Fejl tier — its toggle and its count.</summary>
+    /// <remarks>
+    /// Named accessors rather than an indexer or a positional binding, because the markup binds each toggle by
+    /// name: <c>Tiers[0]</c> would tie the header row to the order this list happens to be built in, and a
+    /// reordering would silently move a label onto another tier's button. All three read the same table, so
+    /// there is still exactly one place a tier's word, glyph and count come from.
+    /// </remarks>
+    public ProblemsTierViewModel Errors => _tiers[ValidationSeverity.Error];
+
+    /// <inheritdoc cref="Errors"/>
+    public ProblemsTierViewModel Warnings => _tiers[ValidationSeverity.Warning];
+
+    /// <inheritdoc cref="Errors"/>
+    public ProblemsTierViewModel Infos => _tiers[ValidationSeverity.Info];
+
+    /// <summary>Which column the list is sorted by. Severity by default — worst first.</summary>
+    public ProblemsColumn SortColumn { get; private set; } = ProblemsColumn.Severity;
+
+    /// <summary>The sort direction. Two states, never three.</summary>
+    public bool SortAscending { get; private set; } = true;
+
+    /// <summary>
+    /// Sorts by <paramref name="column"/>, reversing the direction when it is already the sorted column.
+    /// </summary>
+    /// <remarks>
+    /// A newly chosen column always starts ASCENDING rather than inheriting the previous column's direction: the
+    /// direction belongs to the question being asked, and carrying it over silently answers a new question the
+    /// old way.
+    /// </remarks>
+    public void SortBy(ProblemsColumn column)
+    {
+        if (SortColumn == column)
+        {
+            SortAscending = !SortAscending;
+        }
+        else
+        {
+            SortColumn = column;
+            SortAscending = true;
+        }
+
+        ResortRows();
+        ShowSortOnHeaders();
+    }
+
+    /// <summary>Tells every header where the sort now is, so exactly one of them shows an arrow.</summary>
+    private void ShowSortOnHeaders()
+    {
+        foreach (ProblemsColumnViewModel header in Columns)
+            header.ShowSort(SortColumn, SortAscending);
+    }
+
+    /// <summary>
+    /// Re-projects <see cref="Rows"/> from the engine-ordered findings under the current sort.
+    /// </summary>
+    /// <remarks>
+    /// Collation is <b>da-DK</b> for every column carrying human text, and that is the point of not using a
+    /// default <c>OrderBy(string)</c>: Æ, Ø and Å are the last three letters of the Danish alphabet, and an
+    /// ordinal or invariant sort scatters them mid-alphabet — a name column a Danish reader cannot scan. The
+    /// Kode column is the exception and sorts ORDINALLY, because a kebab-case rule id is a machine identifier
+    /// rather than a word, and locale-aware collation of one would be an opinion about text that is not text.
+    /// </remarks>
+    private void ResortRows()
+    {
+        IEnumerable<ProblemRowViewModel> visible = _asScanned.Where(IsTierShown);
+        IEnumerable<ProblemRowViewModel> sorted = SortColumn switch
+        {
+            ProblemsColumn.Severity => Order(r => (int)r.Severity),
+            ProblemsColumn.Code => Order(r => r.Code, StringComparer.Ordinal),
+            ProblemsColumn.Message => Order(r => r.Message, DisplayOrder.Danish),
+            ProblemsColumn.Element => Order(r => r.ElementName, DisplayOrder.Danish),
+            ProblemsColumn.Category => Order(r => r.CategoryLabel, DisplayOrder.Danish),
+            _ => visible,
+        };
+
+        Rows.ReplaceAll(sorted);
+
+        IEnumerable<ProblemRowViewModel> Order<TKey>(Func<ProblemRowViewModel, TKey> key, IComparer<TKey>? comparer = null) =>
+            // OrderBy/OrderByDescending are both STABLE, which is what preserves the engine's document order
+            // among equal keys — the tie-break a reader navigating the tree depends on.
+            SortAscending ? visible.OrderBy(key, comparer) : visible.OrderByDescending(key, comparer);
+    }
+
+    // A severity with no tier of its own is SHOWN, never hidden: a tier is a filtering and grouping key and
+    // never a way to silence a finding, so an unrecognised one must fail towards visibility.
+    private bool IsTierShown(ProblemRowViewModel row) =>
+        !_tiers.TryGetValue(row.Severity, out ProblemsTierViewModel? tier) || tier.IsShown;
+
+    [ObservableProperty] private ProblemsState _state = ProblemsState.Validating;
+
+    /// <summary>
+    /// Whether the staleness indicator is showing. Separate from <see cref="ProblemsState.Stale"/> on purpose:
+    /// the panel is stale the instant an edit lands, but only SAYS so once that has lasted past
+    /// <see cref="StaleIndicatorDelay"/>.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RowsOpacity))]
+    private bool _isStaleIndicatorEngaged;
+
+    /// <summary>
+    /// The row area's opacity: full while up to date, <see cref="StaleOpacity"/> while visibly stale. The view
+    /// binds it through a transition, so the change is a fade rather than a jump — and only a fade, never a
+    /// disable: the rows stay clickable throughout.
+    /// </summary>
+    public double RowsOpacity => IsStaleIndicatorEngaged ? StaleOpacity : 1.0;
+
+    /// <summary>
+    /// The row the list has selected. Assigning one NAVIGATES — a single click is the whole gesture, and a
+    /// list's selection is what a single click produces.
+    /// </summary>
+    /// <remarks>
+    /// A row that names no element is left selected but goes nowhere. Clearing the selection instead would fight
+    /// the user's own click; leaving it selected, with the row's de-emphasis and tooltip saying why it leads
+    /// nowhere, is the honest answer.
+    /// </remarks>
+    [ObservableProperty] private ProblemRowViewModel? _selectedRow;
+
+    partial void OnSelectedRowChanged(ProblemRowViewModel? value)
+    {
+        if (value?.Element is { } element)
+            _reveal?.Invoke(element);
+    }
+
+    /// <summary>The list area's own text, for the two states that have one. Empty where the rows speak.</summary>
+    public string StateText => State switch
+    {
+        ProblemsState.Validating => ValidatingText,
+        ProblemsState.Clean => CleanText,
+        _ => string.Empty,
+    };
+
+    /// <summary>
+    /// Completes when no validation is running or pending. Tests await it instead of sleeping; nothing in the
+    /// panel reads it.
+    /// </summary>
+    public Task Idle => _validation.Idle;
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+        _disposed = true;
+        _validation.Changed -= _onValidationChanged;
+        _staleTimer.Dispose();
+    }
+
+    /// <summary>
+    /// The monitor moved: a result bound, the document moved past it, or the document was replaced. Runs on the
+    /// owning thread — the monitor marshals a completed run there before it publishes.
+    /// </summary>
+    private void OnValidationChanged()
+    {
+        if (_disposed)
+            return;
+
+        if (_validation.Generation != _shownGeneration)
+        {
+            // Cleared IMMEDIATELY: rows about the previous file must not survive one frame over the new one.
+            _shownGeneration = _validation.Generation;
+            _shown = null;
+            _asScanned.Clear();
+            Rows.Clear();
+            RecountRows();
+        }
+
+        // Reference identity, not value equality: the monitor hands back the SAME result object until a new run
+        // binds, so this skips re-projecting rows on every staleness or fault notification.
+        if (_validation.Result is { } outcome && !ReferenceEquals(outcome, _shown))
+        {
+            _shown = outcome;
+            Bind(outcome);
+        }
+
+        RefreshState();
+    }
+
+    /// <summary>Projects one bound result into rows. On the owning thread, so the snapshot read below is safe.</summary>
+    private void Bind(ValidationOutcome outcome)
+    {
+        // Resolving names needs the snapshot the run validated, and this is where it is safe to read it back off
+        // the session: the monitor publishes ONLY a result whose keys are still the latest it was notified with,
+        // so no change event has landed since — meaning Current is that very snapshot instance, not a successor.
+        Project? snapshot = _session.Current;
+
+        Dictionary<ElementId, ProjectElement?> byId =
+            snapshot is not null && outcome.Findings.Any(f => f.Primary?.Element is not null)
+                ? IndexById(snapshot)
+                : [];
+
+        _asScanned.Clear();
+        foreach (ValidationFinding finding in outcome.Findings)
+            _asScanned.Add(ToRow(finding, snapshot, byId));
+        ResortRows();
+        RecountRows();
+    }
+
+    /// <summary>
+    /// Every element in the snapshot that carries an id, keyed by it — <b>with a null value against an id that
+    /// more than one element carries</b>.
+    /// </summary>
+    /// <remarks>
+    /// <para>ONE walk of the tree, not one per finding. <c>Project.FindById</c> is a depth-first scan with a
+    /// delegate call per element, so resolving a name per row costs findings × elements — 150 rows over a
+    /// 2 000-element project is the normal case here, not the edge, and this runs on the owning thread.</para>
+    /// <para><b>A second holder ERASES the entry rather than being dropped.</b> A dictionary cannot hold two
+    /// elements under one key, and keeping the first is the one resolution that cannot be told apart from a
+    /// correct one: every row anchored at that token then wears the first holder's name and navigates there,
+    /// including the rows about the second. Recording the collision instead lets <see cref="ToRow"/> say what is
+    /// true — that the token names no single element — which is what the panel already does for the two other
+    /// shapes that name none (a malformed id, and a finding about the project as a whole).</para>
+    /// <para>The engine does not decide this for the panel: a duplicate <c>_0x</c> token is perfectly
+    /// well-formed, so it parses and <c>FindingLocation.Element</c> is non-null on every one of the colliding
+    /// sites. Whether two elements answer to it is a fact about the TREE, and this is where the tree is read.</para>
+    /// </remarks>
+    internal static Dictionary<ElementId, ProjectElement?> IndexById(Project snapshot)
+    {
+        Dictionary<ElementId, ProjectElement?> byId = [];
+        foreach (ProjectElement element in snapshot.Root.DescendantsAndSelf())
+        {
+            if (element.Id is { } id && !byId.TryAdd(id, element))
+                byId[id] = null;
+        }
+
+        return byId;
+    }
+
+    /// <summary>The Danish name of a severity tier.</summary>
+    public static string SeverityLabel(ValidationSeverity severity) => severity switch
+    {
+        ValidationSeverity.Error => "Fejl",
+        ValidationSeverity.Warning => "Advarsel",
+        ValidationSeverity.Info => "Information",
+        _ => severity.ToString(),
+    };
+
+    /// <summary>
+    /// The asset a tier's icon column shows. Three tiers, three glyphs — and deliberately NOT four:
+    /// <c>severity-fatal.svg</c> belongs to the refusal disposition, and a refusal is not a finding, so it has no
+    /// row to sit on and must never appear here.
+    /// </summary>
+    public static string SeverityIcon(ValidationSeverity severity) => severity switch
+    {
+        ValidationSeverity.Error => "/Assets/severity-error.svg",
+        ValidationSeverity.Warning => "/Assets/severity-warning.svg",
+        _ => "/Assets/severity-info.svg",
+    };
+
+    /// <summary>
+    /// The Danish name of a check family.
+    /// </summary>
+    /// <remarks>
+    /// The SDK offers two faces and neither belongs on a Danish screen: English member names
+    /// (<c>FileIntegrity</c>, <c>Wiring</c>, …) and three-letter short codes (<c>INT</c>, <c>WIR</c>, …). So the
+    /// panel names them, once, here. This is a TAXONOMY label — a filter and grouping key the host chooses, the
+    /// same way it chooses "Fejl" for a severity — not user-facing message text, so it does not breach the rule
+    /// that a message renders whole and is never re-worded downstream.
+    /// </remarks>
+    public static string CategoryLabel(ValidationCategory category) => category switch
+    {
+        ValidationCategory.FileIntegrity => "Filintegritet",
+        ValidationCategory.Wiring => "Forbindelser",
+        ValidationCategory.Logic => "Logik",
+        ValidationCategory.Scenes => "Scenarier",
+        ValidationCategory.Addressing => "Adressering",
+        ValidationCategory.DeviceSettings => "Enhedsindstillinger",
+        ValidationCategory.Documentation => "Dokumentation",
+        ValidationCategory.ProjectStructure => "Projektstruktur",
+        _ => category.ToString(),
+    };
+
+    /// <summary>One finding, projected against the snapshot the run validated and its <see cref="IndexById"/>.</summary>
+    internal static ProblemRowViewModel ToRow(
+        ValidationFinding finding, Project? snapshot, Dictionary<ElementId, ProjectElement?> byId)
+    {
+        ElementId? element = finding.Primary?.Element;
+
+        // The raw locator, not a blank: a whole-project row saying `utcs_project` tells a reader WHERE the engine
+        // looked, and an empty cell tells them nothing. It is also the fallback for an element whose name is
+        // present but EMPTY — which is exactly the `name-empty` row this panel exists to show, so NameOr rather
+        // than a null check: a canonicalized project omits an empty name, so it reads back as "" and never null.
+        string fallback = finding.Primary?.Locator ?? string.Empty;
+        string name = fallback;
+
+        if (element is { } id && snapshot is not null && byId.TryGetValue(id, out ProjectElement? holder))
+        {
+            if (holder is null)
+            {
+                // The index says TWO elements answer to this id, so the row keeps neither the name nor the
+                // anchor. Both would be the same guess at which of the two the finding is about — and the
+                // navigating half of that guess would act on it in silence, moving the tree to an element the
+                // row was never about. It leads nowhere instead, which is what its dimmed cell and its tooltip
+                // already say, and the locator left in the cell is the token the two share.
+                element = null;
+            }
+            else
+            {
+                name = snapshot.NameOr(holder, fallback);
+            }
+        }
+
+        return new ProblemRowViewModel(
+            finding.Severity, finding.Code.Value, finding.Problem.Message, finding.Category, element, name);
+    }
+
+    /// <summary>
+    /// Counts come from the BOUND RESULT, never from <see cref="Rows"/>. A count beside a filter toggle answers
+    /// "how many of these does the project have?", and computing it from the filtered list would answer "how many
+    /// are you currently looking at?" — which reads, on a tier that has just been switched off, as though its
+    /// findings had been fixed.
+    /// </summary>
+    private void RecountRows()
+    {
+        foreach (ProblemsTierViewModel tier in Tiers)
+            tier.Count = 0;
+
+        foreach (ProblemRowViewModel row in _asScanned)
+        {
+            if (_tiers.TryGetValue(row.Severity, out ProblemsTierViewModel? tier))
+                tier.Count++;
+        }
+    }
+
+    private void RefreshState()
+    {
+        ProblemsState next = _validation switch
+        {
+            { Result: null } => ProblemsState.Validating,
+            { IsStale: true } => ProblemsState.Stale,
+            // _asScanned, not Rows: the clean state is a statement about the RESULT, and a list emptied by the
+            // severity filters is not a clean project. Reading Rows here would tell a user who switched every
+            // tier off that their project is fine because they hid the evidence.
+            _ => _asScanned.Count == 0 ? ProblemsState.Clean : ProblemsState.Findings,
+        };
+
+        if (State != next)
+        {
+            State = next;
+            OnPropertyChanged(nameof(StateText));
+        }
+
+        if (next == ProblemsState.Stale)
+        {
+            _staleTimer.Change(StaleIndicatorDelay, Timeout.InfiniteTimeSpan);
+        }
+        else
+        {
+            _staleTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            IsStaleIndicatorEngaged = false;
+        }
+    }
+
+    private void OnStaleThresholdElapsed() =>
+        // Through the marshal: the clock's callback arrives on a pool thread, and this sets bound UI state.
+        _post(() =>
+        {
+            if (!_disposed && State == ProblemsState.Stale)
+                IsStaleIndicatorEngaged = true;
+        });
+}

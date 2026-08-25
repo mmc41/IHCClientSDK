@@ -3,6 +3,8 @@ using System;
 
 using Ihc.Vis.Model;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -35,8 +37,5 @@ namespace Ihc.Vis.Validation
             return definition.GetAttribute(SystemTypeAttribute) is not { Length: > 0 }
                 && Name(definition) != ProjectProjections.UserTextsTableName;
         }
-
-        private static string Name(ProjectElement element) =>
-            element.GetAttribute("name") is { Length: > 0 } name ? name : element.Tag;
     }
 }

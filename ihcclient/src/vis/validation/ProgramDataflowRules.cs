@@ -8,6 +8,8 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -63,11 +65,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "logic-self-trigger", SelfTrigger),
                 Rule(catalog, "logic-contending-writers", ContendingWriters));
         }
-
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
 
         /// <summary>
         /// An output pin wired to something but assigned by no program: the physical output can never change state.
@@ -363,11 +360,5 @@ namespace Ihc.Vis.Validation
                 }
             }
         }
-
-        private static string Name(ProjectElement element) =>
-            element.GetAttribute("name") is { Length: > 0 } name ? name : element.Tag;
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] bindings) =>
-            [.. bindings.Select(b => new ProblemArgument(b.Name, b.Value))];
     }
 }

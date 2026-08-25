@@ -9,6 +9,8 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -53,11 +55,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "enum-def-empty", Empty),
                 Rule(catalog, "enum-def-single-value", SingleValue));
         }
-
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
 
         /// <summary>
         /// Two values of one definition with the same name: the two states are indistinguishable to a reader.
@@ -204,11 +201,5 @@ namespace Ihc.Vis.Validation
 
         private static IEnumerable<ProjectElement> Values(ProjectElement definition) =>
             definition.Children.Where(c => c.Tag == ValueTag);
-
-        private static string Name(ProjectElement element) =>
-            element.GetAttribute("name") is { Length: > 0 } name ? name : element.Tag;
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] bindings) =>
-            [.. bindings.Select(b => new ProblemArgument(b.Name, b.Value))];
     }
 }

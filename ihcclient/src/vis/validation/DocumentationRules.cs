@@ -10,6 +10,8 @@ using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -77,7 +79,7 @@ namespace Ihc.Vis.Validation
                 string attribute = ProductAttributes[code.Value];
                 rules.Add(Rule(catalog, code, inspection =>
                 {
-                    foreach (ProjectElement product in DatalineProducts(inspection.Project))
+                    foreach (ProjectElement product in DatalineProducts(inspection))
                     {
                         if (IsBlank(product, attribute))
                         {
@@ -101,22 +103,21 @@ namespace Ihc.Vis.Validation
             return rules.ToImmutable();
         }
 
-        private static RuleDefinition Rule(ProblemCatalog catalog, ProblemCode code, ProjectInspection body) =>
-            catalog.TryGet(code, out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(code, RuleRegistrationFault.NoCatalogueEntry);
-
         private static void Terminals(IProjectInspection inspection, Func<ProjectElement, bool> incomplete)
         {
-            foreach (ProjectElement product in DatalineProducts(inspection.Project))
+            ITopologyAnalysis topology = inspection.Analyses.Topology;
+            foreach (ProjectElement terminal in inspection.Analyses.Elements)
             {
-                foreach (ProjectElement terminal in product.Descendants()
-                    .Where(c => c.Tag is "dataline_input" or "dataline_output"))
+                if (terminal.Tag is not ("dataline_input" or "dataline_output")
+                    || topology.NearestAncestorOrSelf(terminal, "product_dataline") is not { } product
+                    || !InLocalities(topology, product))
                 {
-                    if (incomplete(terminal))
-                    {
-                        inspection.Report(terminal, EquatableArray<ProblemArgument>.Empty);
-                    }
+                    continue;
+                }
+
+                if (incomplete(terminal))
+                {
+                    inspection.Report(terminal, EquatableArray<ProblemArgument>.Empty);
                 }
             }
         }
@@ -124,11 +125,18 @@ namespace Ihc.Vis.Validation
         /// <summary>
         /// Every data-line product under the project's localities, in document order — the report body's scope,
         /// reached by descent so a nested locality or a product two containers down is still visited exactly once.
+        /// <para>
+        /// Off the shared analyses, not off a fresh subtree walk: all eight rules in this file ask for the same
+        /// list, and this was the one module still opening its own <c>Descendants()</c> per rule.
+        /// </para>
         /// </summary>
-        private static IEnumerable<ProjectElement> DatalineProducts(Project project) =>
-            project.Child("groups") is { } groups
-                ? groups.Descendants().Where(e => e.Tag == "product_dataline")
-                : [];
+        private static IEnumerable<ProjectElement> DatalineProducts(IProjectInspection inspection) =>
+            inspection.Analyses.WithTag("product_dataline")
+                .Where(product => InLocalities(inspection.Analyses.Topology, product));
+
+        /// <summary>Whether the element sits under the project's localities, which is the report body's scope.</summary>
+        private static bool InLocalities(ITopologyAnalysis topology, ProjectElement element) =>
+            topology.NearestAncestorOrSelf(element, "groups") is not null;
 
         /// <summary>
         /// Whitespace counts as blank. This is the one place in the engine where an empty-but-present attribute is

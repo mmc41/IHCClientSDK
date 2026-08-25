@@ -10,6 +10,8 @@ using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -49,11 +51,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "capacity-modem-multiple", ModemMultiple),
                 Rule(catalog, "capacity-resources-high", ResourcesHigh(catalog)));
         }
-
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
 
         /// <summary>
         /// More data lines of one direction addressed than the target controller holds.
@@ -208,14 +205,5 @@ namespace Ihc.Vis.Validation
                 }
             }
         }
-
-        private static double Threshold(ProblemCatalog catalog, string code, string name) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-            && entry.Thresholds.FirstOrDefault(t => t.Name == name) is { } threshold
-                ? threshold.Value
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] bindings) =>
-            [.. bindings.Select(b => new ProblemArgument(b.Name, b.Value))];
     }
 }

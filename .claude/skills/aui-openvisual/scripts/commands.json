@@ -29,6 +29,11 @@
     "toolbarDump": "observe",
     "dialogRead": "observe",
     "readProperty": "observe",
+    "problemsState": "observe",
+    "problemsRows": "observe",
+    "problemsClick": "user",
+    "problemsToggle": "user",
+    "problemsSort": "user",
     "notImplemented": "unimplemented"
   },
   "commands": [
@@ -273,6 +278,55 @@
       "menuPath": "Vis/Statuslinie",
       "gates": [],
       "description": "Toggle status bar visibility (Vis > Statuslinie). Invoke as `view statusbar-toggle`."
+    },
+    {
+      "id": "view.problems.toggle",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "menu",
+      "menuPath": "Vis/view.toggleProblems",
+      "gates": [],
+      "description": "Show or hide the Problemer panel (Vis > Problemer). Invoke as `view problems-toggle`. It belongs to the view family, beside toolbar and statusbar, because it is a MENU row -- the problems.* verbs drive the panel's own controls. The path pins the menu item's AutomationId rather than its Danish label, per this file's note; the two sibling rows still pin labels and are left alone."
+    },
+    {
+      "id": "problems.state",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "problemsState",
+      "gates": [],
+      "description": "Read the Problemer panel: visibility, the four-state readiness (validating|clean|findings|stale), the state line's Danish text, whether a result is BOUND, whether the staleness indicator is engaged, the three live per-severity counts and how many rows are realized. Pass --wait to poll until a result is bound (--timeout ms, default 15000). WAIT BEFORE YOU ASSERT: the panel validates in the background, so for at least the 300ms debounce plus one whole-project run after a launch or an open it reports state=validating and NO counts are meaningful yet. A read taken before that is not wrong, it is early."
+    },
+    {
+      "id": "problems.rows",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "problemsRows",
+      "gates": [],
+      "description": "List the realized rows of the Problemer panel: index, code (the row's AutomationId), severity, message, element and bounding rect. The list VIRTUALIZES, so this reports what is realized rather than every finding -- read the counts from problems.state for the totals. Severity/message/element are split from the row's accessible name, which the app composes as '<Alvor>: <Besked> (<Element>)'."
+    },
+    {
+      "id": "problems.click",
+      "status": "confirmed",
+      "mutating": "noState",
+      "mechanism": "problemsClick",
+      "gates": [],
+      "description": "Click a Problemer row with real pointer input: --row <index|code|text>. A row that names an element reveals and selects it in the owning tree pane, entering or leaving programming mode if the target needs it; a row that names none changes nothing. REAL POINTER, not a selection call: the panel navigates from the selection a click produces, so setting the selection directly would reach the outcome by a path no user can take. Verify the effect with tree.selection, not from this verb's own envelope."
+    },
+    {
+      "id": "problems.toggle",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "problemsToggle",
+      "gates": [],
+      "description": "Flip one severity filter: --tier <error|warning|info>. Driven through the UIA Toggle pattern, the same door a keyboard or screen-reader user uses. Hiding a tier hides its ROWS ONLY -- its count, and the send gate, are unmoved, because hiding a finding is not fixing it. Reports before/after toggle state and how many rows remain shown."
+    },
+    {
+      "id": "problems.sort",
+      "status": "confirmed",
+      "mutating": "no",
+      "mechanism": "problemsSort",
+      "gates": [],
+      "description": "Sort the Problemer list by a column: --column <severity|code|message|element|category>. Invokes that column's header button, so a second call on the same column reverses the direction (two directions only -- there is no third state). Reports the row codes before and after plus whether the order actually moved."
     },
     {
       "id": "view.textSize",

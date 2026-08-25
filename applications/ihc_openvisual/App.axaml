@@ -64,6 +64,11 @@
             <x:Double x:Key="TitleFontSize">22</x:Double>
             <x:Double x:Key="BodyFontSize">12</x:Double>
             <x:Double x:Key="CaptionFontSize">11</x:Double>
+            <!-- The Problemer list's own size. A token of its own rather than a reuse of CaptionFontSize because
+                 it pairs with MonoFontFamily (chosen per platform in App.axaml.cs) and is tuned for a dense,
+                 log-like readout rather than for a caption — the two are free to diverge. ThemeService scales it
+                 with the rest, so Tekststørrelse still reaches the findings list. -->
+            <x:Double x:Key="MonoFontSize">11</x:Double>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -2,13 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Globalization;
 using System.Linq;
 
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
-using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
+
+using static Ihc.Vis.Validation.RuleAuthoring;
 
 namespace Ihc.Vis.Validation
 {
@@ -58,11 +58,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "doc-no-enduser-products", NoEnduserProducts));
         }
 
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
-
         /// <summary>
         /// Two spellings of one light group: the reports group one physical circuit under two headings.
         /// <para>
@@ -77,7 +72,7 @@ namespace Ihc.Vis.Validation
         private static void LightGroupSpellingVariants(IProjectInspection inspection)
         {
             Dictionary<string, string> firstSpelling = new(StringComparer.Ordinal);
-            foreach (ProjectElement product in Products(inspection.Analyses))
+            foreach (ProjectElement product in AllProducts(inspection.Analyses))
             {
                 if (product.GetAttribute(LightGroupAttribute) is not { } group || string.IsNullOrWhiteSpace(group))
                 {
@@ -163,7 +158,7 @@ namespace Ihc.Vis.Validation
         /// </summary>
         private static void NoEnduserProducts(IProjectInspection inspection)
         {
-            ImmutableArray<ProjectElement> products = [.. Products(inspection.Analyses)];
+            ImmutableArray<ProjectElement> products = [.. AllProducts(inspection.Analyses)];
             if (products.Length > 0
                 && !products.Any(p => p.GetAttribute(EnduserReportAttribute) == Marked))
             {
@@ -182,8 +177,5 @@ namespace Ihc.Vis.Validation
             string[] words = value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
             return string.Join(' ', words).ToLowerInvariant();
         }
-
-        private static IEnumerable<ProjectElement> Products(IProjectAnalyses analyses) =>
-            analyses.Elements.Where(e => ProductClassifier.IsProduct(e.Tag));
     }
 }

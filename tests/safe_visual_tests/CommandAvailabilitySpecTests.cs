@@ -573,8 +573,9 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
                                   "project.moduleMap", "controller.send",
                                   "reports.functions", "reports.installation", "reports.functionBlocks" };
         string[] alwaysOn = { "file.new", "file.open", "file.save", "app.exit", "view.toggleToolbar",
-                              "view.toggleStatusBar", "controller.retrieve", "catalog.importFile",
-                              "catalog.importFolder", "help.about", "app.settings", "app.telemetryDiagnostics" };
+                              "view.toggleStatusBar", "view.toggleProblems", "controller.retrieve",
+                              "catalog.importFile", "catalog.importFolder", "help.about", "app.settings",
+                              "app.telemetryDiagnostics" };
 
         Assert.Multiple(() =>
         {

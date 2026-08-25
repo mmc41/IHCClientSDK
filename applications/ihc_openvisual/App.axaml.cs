@@ -16,6 +16,10 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+        // The one token App.axaml cannot state: the monospace family is chosen per platform (none is embedded),
+        // and XAML has no platform switch. Written here, beside the sizes it pairs with, rather than in
+        // ThemeService — the family never changes at run time, so nothing re-writes it.
+        Resources["MonoFontFamily"] = new Avalonia.Media.FontFamily(Program.MonoFontFamily);
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -32,9 +36,15 @@ public partial class App : Application
             var projectService = new ProjectAppService(settings);
             var recent = RecentProjectsStore.CreateDefault();
             var dialogs = new AvaloniaDialogService(loggerFactory);
+            // The marshal for every background result the shell binds. It is supplied HERE, at the composition
+            // root, because this is the only layer allowed to name Avalonia — the workflow, its validation
+            // monitor and the worker all take it as a delegate. Background priority so binding a findings list
+            // never competes with input or render.
             var session = new ProjectWorkflow(projectService, recent, dialogs, loggerFactory,
                 installerIdentity: InstallerIdentityStore.CreateDefault(),
-                dataTables: DataTableStore.CreateDefault());
+                dataTables: DataTableStore.CreateDefault(),
+                post: action => Avalonia.Threading.Dispatcher.UIThread.Post(
+                    action, Avalonia.Threading.DispatcherPriority.Background));
             var themeService = new ThemeService();
             // Adopt the platform's high-contrast preference now and keep following it (US-001): Avalonia reports
             // the preference but ships no high-contrast theme, so the palette is ours to supply (BP-13).

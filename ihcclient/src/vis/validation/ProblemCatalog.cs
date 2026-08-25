@@ -70,19 +70,6 @@ namespace Ihc.Vis.Validation
         public EquatableArray<ProblemCatalogEntry> InSection(ProblemCatalogSection section) =>
             Entries.Where(e => e.Section == section).ToImmutableArray();
 
-        /// <summary>The entries one face consumes.</summary>
-        /// <param name="face">The face to list for.</param>
-        public EquatableArray<ProblemCatalogEntry> ForFace(RuleFaces face) =>
-            Entries.Where(e => (e.Faces & face) != 0).ToImmutableArray();
-
-        /// <summary>
-        /// The entries about one target — how the dialog face finds the rules for a field without executing
-        /// anything. This is why the catalogue must be introspectable METADATA and not only executable code.
-        /// </summary>
-        /// <param name="target">The (tag, attribute) pair to list for.</param>
-        public EquatableArray<ProblemCatalogEntry> ForTarget(RuleTarget target) =>
-            Entries.Where(e => e.Target == target).ToImmutableArray();
-
         /// <summary>
         /// Builds a catalogue from an explicit entry set — for tests needing a small or deliberately broken one,
         /// and for merging a host's own entries with <see cref="Current"/>'s.

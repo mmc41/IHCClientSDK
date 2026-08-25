@@ -73,7 +73,8 @@ to print every id with its `status` and one-line description. Highlights:
 | Dialogs | `dialog read`, `dialog set-text --field --text`, `dialog select-item`, `dialog set-check`, `dialog click-row --row/--column`, `dialog click --button`, `dialog cancel` |
 | Capture | `capture window`, `capture modal`, `capture control --id <AutomationId>`, `capture client` |
 | Project | `project new`, `project open --path`, `project save`, `project save-as --path [--overwrite]`, `project recent list` |
-| View/mode | `view configuration`, `programming enter`, `view toolbar-toggle`, `view statusbar-toggle` |
+| View/mode | `view configuration`, `programming enter`, `view toolbar-toggle`, `view statusbar-toggle`, `view problems-toggle` |
+| Problems panel | `problems state [--wait] [--timeout ms]`, `problems rows`, `problems click --row <n\|code\|text>`, `problems toggle --tier <error\|warning\|info>`, `problems sort --column <severity\|code\|message\|element\|category>` |
 | Tree nav | `tree select`, `tree dump`, `node select`, `node expand`, `node collapse`, `node double-click`, `node right-click`, `node tooltip` |
 | Gestures | `key send --gesture` (raw keys; refuses `{F5}`, gates `{DELETE}`) |
 | Menus | `menu invoke --id <AutomationId>`, `menu dump-context --path`, `menu dump-bar [--menu X] [--depth N] [--with-id]` |
@@ -100,6 +101,25 @@ row. It is effect-verified: `Ok` only if the selection lands on the row or a dia
 read-only until this has been run on it** — a screenshot and a control inventory show presentation
 only, so "the rows look inert" is an unexercised guess. Mirrors the vendor driver's `dialog.clickRow`,
 so both transcripts compare directly.
+
+**The Problemer panel answers asynchronously, so wait before you assert.** It is the one surface whose
+content the app produces in the background: after a launch or an open it spends at least the 300 ms
+debounce plus one whole-project validation reporting `state: "validating"`, and every count is
+meaningless until a result is bound. `problems state --wait` polls until `bound` is true (`--timeout`,
+default 15000 ms) — use it as the first step of any problems assertion. A read taken before that is not
+wrong, it is *early*, and the four-state field says which: `validating` (no result yet), `clean`,
+`findings`, `stale` (a previous result is showing while a newer run is outstanding).
+
+`problems rows` reports the rows that are **realized**, not every finding — the list virtualizes, so a
+short `rows` result over a large `warnings` count is normal rather than a discrepancy. Read totals from
+`problems state`. A row's `code` is its rule id, and `severity`/`message`/`element` are split from the
+accessible name the app composes as `<Alvor>: <Besked> (<Element>)`.
+
+Two behaviours are worth knowing before writing assertions against them. Hiding a tier with
+`problems toggle` hides its **rows only** — the tier's count and the Send-project gate are unmoved,
+because hiding a finding is not fixing it. And `problems click` uses **real pointer input**, so it needs
+the foreground like any other input verb; verify where it landed with `tree selection`, not from its own
+envelope, since the click's whole point is the tree selection it causes.
 
 **Safety note.** Input-synthesizing commands refuse to run unless the app verifiably holds the
 foreground (`Code=PreconditionMissing`), because a synthesized key goes to whatever window *is* in

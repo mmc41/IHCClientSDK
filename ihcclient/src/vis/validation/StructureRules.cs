@@ -10,6 +10,8 @@ using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -74,11 +76,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "program-shape", ProgramShape));
         }
 
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
-
         /// <summary>The root's children are not the seven fixed ones in the fixed order. Loads and works; deviates
         /// from every vendor-authored file.</summary>
         private static void RootChildren(IProjectInspection inspection)
@@ -128,7 +125,7 @@ namespace Ihc.Vis.Validation
         /// cannot be read or written as a function block at all.</summary>
         private static void BlockShape(IProjectInspection inspection)
         {
-            foreach (ProjectElement block in Blocks(inspection))
+            foreach (ProjectElement block in Blocks(inspection.Analyses))
             {
                 string[] actual = [.. block.Children.Select(c => c.Tag)];
                 if (!actual.SequenceEqual(FunctionBlockContainers))
@@ -145,7 +142,7 @@ namespace Ihc.Vis.Validation
         /// controller executes.</summary>
         private static void BlockPrograms(IProjectInspection inspection)
         {
-            foreach (ProjectElement block in Blocks(inspection))
+            foreach (ProjectElement block in Blocks(inspection.Analyses))
             {
                 if (block.FindChild("programs") is not { } programs)
                 {
@@ -167,7 +164,7 @@ namespace Ihc.Vis.Validation
         /// it lives.</summary>
         private static void PinContainers(IProjectInspection inspection)
         {
-            foreach (ProjectElement block in Blocks(inspection))
+            foreach (ProjectElement block in Blocks(inspection.Analyses))
             {
                 foreach (ProjectElement container in block.Children)
                 {
@@ -193,7 +190,7 @@ namespace Ihc.Vis.Validation
             IIdAnalysis ids = inspection.Analyses.Ids;
             ProjectSchemaView view = inspection.Project.SchemaView;
 
-            foreach (ProjectElement block in Blocks(inspection))
+            foreach (ProjectElement block in Blocks(inspection.Analyses))
             {
                 IReadOnlyList<ProjectElement> inBlock = block.DescendantsAndSelf();
                 HashSet<string> local = new(StringComparer.Ordinal);
@@ -233,7 +230,7 @@ namespace Ihc.Vis.Validation
         /// node that should own it.</summary>
         private static void InlineConstants(IProjectInspection inspection)
         {
-            foreach (ProjectElement block in Blocks(inspection))
+            foreach (ProjectElement block in Blocks(inspection.Analyses))
             {
                 foreach (ProjectElement leaf in block.DescendantsAndSelf())
                 {
@@ -290,11 +287,5 @@ namespace Ihc.Vis.Validation
                 }
             }
         }
-
-        private static IEnumerable<ProjectElement> Blocks(IProjectInspection inspection) =>
-            inspection.Analyses.WithTag("functionblock");
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] values) =>
-            values.Select(v => new ProblemArgument(v.Name, v.Value)).ToImmutableArray();
     }
 }

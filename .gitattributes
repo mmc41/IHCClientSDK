@@ -11,6 +11,17 @@
 *.def   text eol=crlf
 *.ifb   text eol=crlf
 
+# Findings-export oracles: real ExportFindings output, so the working tree must
+# hold the writer's exact bytes. Same treatment as the .vis oracles above and for
+# the same reason — the writer emits the .vis encoding (ISO-8859-1, no BOM) with
+# hardcoded CRLF, and the oracle test compares the bytes. Like those files these
+# are not valid UTF-8, so a UTF-8 diff viewer renders the Danish messages as
+# mojibake; that is the established trade for a byte-exact Latin-1 oracle and is
+# not worked around here. Do NOT add working-tree-encoding: it would make the
+# working-tree bytes depend on the git client, and a client that ignores it
+# writes the wrong bytes.
+tests/testdata/validation/findings/*.xml   text eol=crlf
+
 # Report oracles: the SDK report generator emits LF, and the oracle tests strip
 # CR before comparing. Pin them to LF everywhere for a deterministic, churn-free
 # checkout on all OSes (no autocrlf CRLF conversion on Windows).

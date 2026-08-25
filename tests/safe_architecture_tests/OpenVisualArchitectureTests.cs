@@ -722,6 +722,21 @@ namespace Ihc.Tests
                     "the field walk must actually yield fields for a Services type — scope without a working walk inspects nothing");
                 Assert.That(IsGuiStateOwner(typeof(global::ihc_openvisual.ViewModels.ProjectTreeProjector)), Is.False,
                     "the per-projection helper is the explicit transient exemption");
+                Assert.That(IsGuiStateOwner(typeof(global::ihc_openvisual.Services.ValidationWorker)), Is.False,
+                    "the background validation loop is the explicit ADR-001 capture-on-the-owning-thread exemption");
+                Assert.That(IsGuiStateOwner(typeof(global::ihc_openvisual.Services.ValidationRequest)), Is.False,
+                    "and so is the request it queues, which is what carries the captured snapshot");
+                // The exemption is bounded, and this is what bounds it: the worker's long-lived yardstick keeps
+                // KEYS only. Were it ever widened back to a whole request, a closed document's tree would stay
+                // rooted for the worker's lifetime — and the allowlist entry above would hide it.
+                var workerSnapshotFields = RetainedStateFields(typeof(global::ihc_openvisual.Services.ValidationWorker))
+                    .Where(f => RetainedModelType(f.FieldType) is not null)
+                    .Select(f => f.Name)
+                    .ToList();
+                Assert.That(workerSnapshotFields, Is.EqualTo(new[] { "_pending" }),
+                    "the single pending slot is the worker's ONLY snapshot field; its latest-seen yardstick keeps "
+                    + "generation/version keys only, and adding a second retaining field would need re-auditing "
+                    + "the exemption rather than inheriting it");
 
                 // The synthesised-type exclusion, armed against the real assembly: the registry's command bodies are
                 // async lambdas, so the view-model namespace genuinely contains Roslyn state machines whose hoisted
@@ -825,6 +840,19 @@ namespace Ihc.Tests
         {
             // Retains one snapshot for the duration of a single projection pass; never bound, never stored as UI state.
             typeof(global::ihc_openvisual.ViewModels.ProjectTreeProjector),
+
+            // The background validation loop and the request it queues. Same exemption as the projector, for a
+            // reason the threading ADR makes mandatory rather than convenient: a background recompute MUST capture
+            // its snapshot on the owning thread before the work starts (ADR-001 host contract, step 1), because two
+            // reads taken off that thread can already disagree about which document version they saw. Carrying the
+            // captured snapshot to the pool is therefore the sanctioned pattern, not a hoard — and re-reading it
+            // inside the worker, which is what "hold no Project" would force, is precisely the hazard the step
+            // exists to prevent. What keeps it honest: the worker holds AT MOST ONE snapshot, in the single pending
+            // slot, which is cleared the moment its run starts and overwritten wholesale by any newer request; the
+            // long-lived field beside it keeps generation/version KEYS only, so no closed document's tree is rooted
+            // past its run; and nothing here is ever bound — a snapshot reaches the compute delegate and nothing else.
+            typeof(global::ihc_openvisual.Services.ValidationWorker),
+            typeof(global::ihc_openvisual.Services.ValidationRequest),
         };
 
         // A type Roslyn synthesised rather than the author writing it: a lambda display class, or an async/iterator

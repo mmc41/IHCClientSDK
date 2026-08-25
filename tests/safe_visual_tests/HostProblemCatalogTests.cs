@@ -197,7 +197,7 @@ public class HostProblemCatalogTests
     [Test]
     public void TheCatchAllSentenceIsWrittenOnceInTheApplication()
     {
-        string root = Path.Combine(RepositoryRoot(), "applications", "ihc_openvisual");
+        string root = Path.Combine(ProblemsTestData.RepositoryRoot(), "applications", "ihc_openvisual");
         string[] carrying =
         [
             .. Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
@@ -299,7 +299,7 @@ public class HostProblemCatalogTests
     [Explicit("Rewrites the checked-in host appendix; run deliberately and review the diff.")]
     public void Regenerate_TheHostRowTable()
     {
-        string path = Path.Combine(RepositoryRoot(), "applications", "ihc_openvisual", "docs", "error-list.md");
+        string path = Path.Combine(ProblemsTestData.RepositoryRoot(), "applications", "ihc_openvisual", "docs", "error-list.md");
         string document = File.ReadAllText(path);
         string rendered = Render(HostProblemCatalog.Current);
 
@@ -402,17 +402,4 @@ public class HostProblemCatalogTests
     private static string Cell(string template) =>
         template.Length == 0 ? "*(to author)*" : template.Replace("\n", "<br>", StringComparison.Ordinal);
 
-    /// <summary>The checkout root, for the explicit regeneration only.</summary>
-    private static string RepositoryRoot()
-    {
-        for (DirectoryInfo? dir = new(TestContext.CurrentContext.TestDirectory); dir is not null; dir = dir.Parent)
-        {
-            if (File.Exists(Path.Combine(dir.FullName, "IHCClientSDK.sln")))
-            {
-                return dir.FullName;
-            }
-        }
-
-        throw new InvalidOperationException("repo root (IHCClientSDK.sln) not found above the test directory");
-    }
 }

@@ -69,6 +69,7 @@ classify project content the SDK owns.
 | `app.openvisual.telemetry-host-missing` | Refusal | OperationOutcome | Active | Der er ikke konfigureret nogen telemetri-vært i ihcsettings.json. |
 | `app.openvisual.telemetry-host-unreachable` | Refusal | OperationOutcome | Active | Telemetri-værten '{host}' kunne ikke åbnes. |
 | `app.openvisual.unexpected` | Refusal | OperationOutcome | Active | Handlingen kunne ikke gennemføres på grund af en intern fejl. Detaljerne er skrevet til loggen. |
+| `app.openvisual.validation-errors-block-send` | Refusal | OperationOutcome | Active | Projektet indeholder fejl. Ret dem i Problemer-panelet, før projektet sendes. |
 
-**Total: 15 host codes.**
+**Total: 16 host codes.**
 <!-- END GENERATED -->

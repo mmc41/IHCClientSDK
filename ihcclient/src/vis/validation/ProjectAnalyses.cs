@@ -190,12 +190,13 @@ namespace Ihc.Vis.Validation
 
         public ProjectAnalyses(Project project)
         {
-            ids = new Lazy<IIdAnalysis>(() => IdAnalysis.Of(project));
-            topology = new Lazy<ITopologyAnalysis>(() => TopologyAnalysis.Of(project));
+            ids = new Lazy<IIdAnalysis>(() => IdAnalysis.Of(project, elements!.Value));
+            topology = new Lazy<ITopologyAnalysis>(() => TopologyAnalysis.Of(elements!.Value));
 
             // The usage walk resolves ids, so it is built ON the topology analysis rather than beside it — one
             // token map for both, and the lazy chain keeps a run that needs neither from paying for either.
-            usage = new Lazy<IProgramUsageAnalysis>(() => ProgramUsageAnalysis.Of(project, topology.Value));
+            usage = new Lazy<IProgramUsageAnalysis>(
+                () => ProgramUsageAnalysis.Of(elements!.Value, topology.Value));
 
             elements = new Lazy<ImmutableArray<ProjectElement>>(
                 () => [.. project.Root.DescendantsAndSelf()]);
@@ -272,41 +273,43 @@ namespace Ihc.Vis.Validation
         public ProjectElement? ByToken(string? idToken) =>
             idToken is not null && byToken.TryGetValue(idToken, out ProjectElement? element) ? element : null;
 
-        internal static ITopologyAnalysis Of(Project project)
+        /// <summary>
+        /// Built over the run's shared element array rather than a walk of its own: the array is depth-first
+        /// pre-order, which is the order "first holder wins" is defined in, so one flat pass produces the same two
+        /// maps a recursive descent did — without the document being traversed a second time.
+        /// </summary>
+        /// <param name="elements">The run's materialised elements, in document order.</param>
+        internal static ITopologyAnalysis Of(ImmutableArray<ProjectElement> elements)
         {
             // Reference identity, not value equality: two distinct elements can carry identical content, and a
             // value-keyed map would silently give one of them the other's parent.
             Dictionary<ProjectElement, ProjectElement> parents = new(ReferenceEqualityComparer.Instance);
             Dictionary<string, ProjectElement> byToken = new(StringComparer.Ordinal);
-            Walk(project.Root, parents, byToken);
+
+            foreach (ProjectElement element in elements)
+            {
+                if (element.GetAttribute("id") is { } token)
+                {
+                    byToken.TryAdd(token, element);   // first holder wins, as the id analysis decides it
+                }
+
+                foreach (ProjectElement child in element.Children)
+                {
+                    parents[child] = element;
+                }
+            }
+
             return new TopologyAnalysis(parents, byToken);
-        }
-
-        private static void Walk(
-            ProjectElement element,
-            Dictionary<ProjectElement, ProjectElement> parents,
-            Dictionary<string, ProjectElement> byToken)
-        {
-            if (element.GetAttribute("id") is { } token)
-            {
-                byToken.TryAdd(token, element);   // first holder wins, as the id analysis decides it
-            }
-
-            foreach (ProjectElement child in element.Children)
-            {
-                parents[child] = element;
-                Walk(child, parents, byToken);
-            }
         }
     }
 
     /// <summary>The one walk over the ids.</summary>
     internal sealed class IdAnalysis : IIdAnalysis
     {
-        private readonly HashSet<string> tokens;
+        private readonly Dictionary<string, ProjectElement> firstByToken;
 
         private IdAnalysis(
-            HashSet<string> tokens,
+            Dictionary<string, ProjectElement> firstByToken,
             EquatableArray<ProjectElement> duplicateTokenHolders,
             EquatableArray<ProjectElement> duplicateCounterHolders,
             EquatableArray<DuplicateIdGroup> duplicateTokenGroups,
@@ -314,7 +317,7 @@ namespace Ihc.Vis.Validation
             long maxCounter,
             LastUniqueIdFault lastUniqueId)
         {
-            this.tokens = tokens;
+            this.firstByToken = firstByToken;
             DuplicateTokenHolders = duplicateTokenHolders;
             DuplicateCounterHolders = duplicateCounterHolders;
             DuplicateTokenGroups = duplicateTokenGroups;
@@ -335,12 +338,10 @@ namespace Ihc.Vis.Validation
 
         public LastUniqueIdFault LastUniqueId { get; }
 
-        public bool IsKnownToken(string token) => tokens.Contains(token);
+        public bool IsKnownToken(string token) => firstByToken.ContainsKey(token);
 
-        internal static IdAnalysis Of(Project project)
+        internal static IdAnalysis Of(Project project, ImmutableArray<ProjectElement> elements)
         {
-            HashSet<string> tokens = new(StringComparer.Ordinal);
-            HashSet<int> counters = [];
             ImmutableArray<ProjectElement>.Builder duplicateTokens = ImmutableArray.CreateBuilder<ProjectElement>();
             ImmutableArray<ProjectElement>.Builder duplicateCounters = ImmutableArray.CreateBuilder<ProjectElement>();
             long maxCounter = 0;
@@ -354,14 +355,14 @@ namespace Ihc.Vis.Validation
             List<string> collidedTokens = [];
             List<int> collidedCounters = [];
 
-            foreach (ProjectElement element in project.Root.DescendantsAndSelf())
+            foreach (ProjectElement element in elements)
             {
                 if (element.GetAttribute("id") is not { } token)
                 {
                     continue;
                 }
 
-                if (!tokens.Add(token))
+                if (!firstByToken.TryAdd(token, element))
                 {
                     // A duplicate token is not examined further: its counter and type code are the FIRST holder's
                     // business, and reporting them again would say the same collision twice.
@@ -376,14 +377,12 @@ namespace Ihc.Vis.Validation
                     continue;
                 }
 
-                firstByToken[token] = element;
-
                 if (!ElementId.TryParse(token, out ElementId id))
                 {
                     continue;
                 }
 
-                if (!counters.Add(id.Counter))
+                if (!firstByCounter.TryAdd(id.Counter, element))
                 {
                     duplicateCounters.Add(element);
                     if (!othersByCounter.TryGetValue(id.Counter, out List<ProjectElement>? sharing))
@@ -394,10 +393,6 @@ namespace Ihc.Vis.Validation
 
                     sharing.Add(element);
                 }
-                else
-                {
-                    firstByCounter[id.Counter] = element;
-                }
 
                 if (id.Counter > maxCounter)
                 {
@@ -406,7 +401,7 @@ namespace Ihc.Vis.Validation
             }
 
             return new IdAnalysis(
-                tokens,
+                firstByToken,
                 duplicateTokens.ToImmutable(),
                 duplicateCounters.ToImmutable(),
                 [.. collidedTokens.Select(t => new DuplicateIdGroup(firstByToken[t], [.. othersByToken[t]]))],

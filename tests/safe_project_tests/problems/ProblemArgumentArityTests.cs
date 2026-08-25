@@ -276,6 +276,97 @@ namespace Ihc.Vis.Tests
                 Is.EqualTo("Adresse 42 er allerede brugt af {ownr}"));
         }
 
+        /// <summary>
+        /// The THIRD direction, and the one nothing checked: what a rule actually BINDS at the raise site equals
+        /// what its catalogue row declares.
+        ///
+        /// <para><see cref="EverySdkPlaceholderIsADeclaredSlotAndEverySlotIsUsed"/> and
+        /// <see cref="EveryEntryDeclaringSlotsBindsThemWithoutLeavingAPlaceholder"/> both compare DECLARATIONS —
+        /// template against slots, in both directions. Neither runs a rule. So a rule that binds an argument its
+        /// own row does not declare, or omits one it does, passes both: the arguments simply do not reach the
+        /// template, and the finding still renders. Nothing downstream noticed, because
+        /// <c>ValidateCategorized</c> flattens arguments away before the characterization oracle records the
+        /// line.</para>
+        ///
+        /// <para>This runs the real rules over the real corpus and compares
+        /// <see cref="Problem.Arguments"/> to <c>entry.Slots</c> as a SET. It gates the fact directly, at the one
+        /// place it is decided, rather than inferring it from a serialized artifact — which is why it does not
+        /// wait on the findings export that made the gap visible.</para>
+        ///
+        /// <para><b>Three rows are grandfathered, each for a structural reason.</b> See
+        /// <see cref="UndeclaredAtTheRaiseSite"/> — the list is the exception, not the rule, and a FOURTH
+        /// mismatch fails here. It was five: the two rows that bound data nothing rendered were fixed rather
+        /// than listed.</para>
+        /// </summary>
+        [Test]
+        public void EveryRuleBindsExactlyTheArgumentsItsCatalogueRowDeclares()
+        {
+            var app = new ProjectAppService(TestSetup.Settings);
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+
+            Assert.Multiple(() =>
+            {
+                foreach ((string name, Func<Project> build) in ValidationCharacterizationTests.Corpus)
+                {
+                    foreach (ValidationFinding finding in app.ValidateStructured(build()))
+                    {
+                        string code = finding.Problem.Code.Value;
+                        if (!ProblemCatalog.Current.TryGet(finding.Problem.Code, out ProblemCatalogEntry entry))
+                        {
+                            Assert.Fail($"{name}: {code} has no catalogue entry");
+                            continue;
+                        }
+
+                        seen.Add(code);
+                        IEnumerable<string> declared = entry.Slots.Select(s => s.Name)
+                            .Concat(UndeclaredAtTheRaiseSite.TryGetValue(code, out string[]? extra) ? extra : []);
+
+                        Assert.That(finding.Problem.Arguments.Select(a => a.Name),
+                            Is.EquivalentTo(declared),
+                            $"{name}: {code} binds arguments its row does not declare, or omits declared ones");
+                    }
+                }
+            });
+
+            // Non-vacuity: the corpus must actually exercise rows that DECLARE slots, or the comparison above is
+            // 618 empty-set-equals-empty-set assertions.
+            int slotted = seen.Count(c =>
+                ProblemCatalog.Current.TryGet(new ProblemCode(c), out ProblemCatalogEntry e) && !e.Slots.IsEmpty);
+            Assert.That(slotted, Is.GreaterThan(20),
+                "the corpus must witness rules that declare slots, or this check compares nothing");
+        }
+
+        /// <summary>
+        /// The three rows whose raise site binds an argument their catalogue row does not declare, each with the
+        /// STRUCTURAL reason it must. <b>An exception list, not a rule</b> — a fourth mismatch fails
+        /// <see cref="EveryRuleBindsExactlyTheArgumentsItsCatalogueRowDeclares"/>.
+        ///
+        /// <para>It was five. <c>partner</c> and <c>maximum</c> were bound and rendered by NOTHING — no template,
+        /// no diagnostic — so they were data no reader could ever see, sitting in the production sort key. Both
+        /// are gone. Removing them was measured first, not assumed: the corpus recording is byte-identical, because
+        /// the argument join is only the FOURTH sort key and is reached solely when scan position, code and locator
+        /// all tie, which these rows never do.</para>
+        ///
+        /// <para><b>Why <c>noun</c> stays — a modelling gap, not a defect.</b> It is bound by
+        /// <c>ReciprocityAndEnumRules.Reciprocity</c> and rendered by the ENGLISH diagnostic
+        /// (<c>"{noun} {tag} '{id}' is not reciprocally linked…"</c>), never by the Danish message. But
+        /// <see cref="EverySdkPlaceholderIsADeclaredSlotAndEverySlotIsUsed"/> holds <c>Slots</c> equal to the
+        /// MESSAGE template's placeholders as a set, so declaring <c>noun</c> would force it into the Danish
+        /// sentence. The binding is legitimate and the model has no slot for it: <c>Slots</c> describes one of the
+        /// entry's two texts. Closing that gap means letting an entry declare a diagnostic-only slot.</para>
+        ///
+        /// <para><b>Why <c>luid-low</c>'s <c>value</c> stays — one shared raise site, three declarations.</b>
+        /// <c>IdentityRules.HighWaterMark</c> serves all three high-water-mark rules; <c>luid-ceiling</c> and
+        /// <c>luid-malformed</c> declare <c>{value}</c> and render it, while <c>luid-low</c>'s sentence takes no
+        /// data. Dropping it for that one row means branching the raise site the three rules exist to share.</para>
+        /// </summary>
+        private static readonly Dictionary<string, string[]> UndeclaredAtTheRaiseSite = new(StringComparer.Ordinal)
+        {
+            ["link-bijection"] = ["noun"],      // diagnostic-only: Slots cannot express it
+            ["scene-bijection"] = ["noun"],     // same
+            ["luid-low"] = ["value"],           // shared raise site; this row's sentence takes no data
+        };
+
         private static IReadOnlyList<string> Unbound(ProblemCatalogEntry entry, Problem problem)
         {
             string bound = entry.BindTemplate(problem);

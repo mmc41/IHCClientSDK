@@ -158,7 +158,7 @@ public class TextScaleAndContrastTests : AvaloniaTestBase
 
     // The workspace font tokens, resolved from the running application's resources.
     private static double[] FontTokens() =>
-        new[] { "WorkspaceFontSize", "TitleFontSize", "BodyFontSize", "CaptionFontSize" }
+        new[] { "WorkspaceFontSize", "TitleFontSize", "BodyFontSize", "CaptionFontSize", "MonoFontSize" }
             .Select(key => (double)Token(key)).ToArray();
 
     private static object Token(string key)

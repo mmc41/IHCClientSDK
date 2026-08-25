@@ -6,6 +6,7 @@ using System.Linq;
 
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
 
 namespace Ihc.Vis.Validation
 {
@@ -136,10 +137,6 @@ namespace Ihc.Vis.Validation
         private static readonly ImmutableHashSet<string> ProgramTags =
             ["program_simple", "program_sub", "program_case"];
 
-        /// <summary>The link halves whose presence means the value crosses the block boundary.</summary>
-        private static readonly ImmutableHashSet<string> LinkHalfTags =
-            ["link_from_resource", "link_to_resource", "scene_link"];
-
         private readonly ImmutableArray<VariableUsage> usages;
         private readonly ImmutableArray<CaseTest> caseTests;
         private readonly HashSet<string> triggered = new(StringComparer.Ordinal);
@@ -184,22 +181,30 @@ namespace Ihc.Vis.Validation
         public IReadOnlySet<string> ReferencedValueTokens => referencedValues;
 
         /// <summary>Walks every program row once and records what it touches.</summary>
-        /// <param name="project">The project to analyse.</param>
+        /// <param name="elements">Every element in document order — the walk the run already materialised.</param>
         /// <param name="topology">The topology analysis, for id resolution and the enclosing program.</param>
-        public static ProgramUsageAnalysis Of(Project project, ITopologyAnalysis topology)
+        public static ProgramUsageAnalysis Of(
+            ImmutableArray<ProjectElement> elements, ITopologyAnalysis topology)
         {
-            ArgumentNullException.ThrowIfNull(project);
             ArgumentNullException.ThrowIfNull(topology);
 
             var usages = ImmutableArray.CreateBuilder<VariableUsage>();
             var tests = ImmutableArray.CreateBuilder<CaseTest>();
             var referenced = new List<string>();
 
-            foreach (ProjectElement element in project.Root.DescendantsAndSelf())
+            foreach (ProjectElement element in elements)
             {
                 if (element.GetAttribute("inivalue") is { Length: > 0 } initial)
                 {
                     referenced.Add(initial);
+                }
+
+                // The tag test comes FIRST: only these four tags reach the switch, and Enclosing walks the parent
+                // chain to the root, so asking it about every element in the document was an O(depth) lookup
+                // discarded for the ~95% that are not program rows.
+                if (element.Tag is not ("event" or "condition" or "action" or "case_action"))
+                {
+                    continue;
                 }
 
                 if (Enclosing(topology, element) is not { } program)
@@ -252,7 +257,7 @@ namespace Ihc.Vis.Validation
         public bool IsLinked(ProjectElement variable)
         {
             ArgumentNullException.ThrowIfNull(variable);
-            return variable.Children.Any(c => LinkHalfTags.Contains(c.Tag));
+            return variable.Children.Any(c => ReciprocalTags.CrossBoundaryHalfTags.Contains(c.Tag));
         }
 
         public EquatableArray<VariableUsage> Of(ProjectElement program) =>

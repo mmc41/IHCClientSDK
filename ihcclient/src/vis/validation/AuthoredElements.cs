@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Frozen;
 using System.Linq;
 
 using Ihc.Vis.Model;
@@ -46,9 +47,16 @@ namespace Ihc.Vis.Validation
             && !tag.EndsWith("_module", StringComparison.Ordinal)
             && !tag.EndsWith("_modules", StringComparison.Ordinal);
 
+        /// <summary>
+        /// The four section tags a block declares its variables in, from the one list that names them. A set
+        /// rather than a scan of <see cref="FunctionBlockSections.All"/>: this is asked once per element by three
+        /// rules, and <c>resource_*</c> is the most numerous kind in a <c>.vis</c> file.
+        /// </summary>
+        private static readonly FrozenSet<string> DeclaringContainers =
+            FunctionBlockSections.All.Select(section => section.Container).ToFrozenSet(StringComparer.Ordinal);
+
         /// <summary>A variable DECLARED by a block, as opposed to one used as a program command's operand.</summary>
         internal static bool IsBlockVariable(ProjectElement variable, ITopologyAnalysis topology) =>
-            topology.Parent(variable) is { } parent
-            && FunctionBlockSections.All.Any(section => section.Container == parent.Tag);
+            topology.Parent(variable) is { } parent && DeclaringContainers.Contains(parent.Tag);
     }
 }

@@ -26,7 +26,12 @@ public sealed record ShellContext(
     // Whether a controller is reachable. An availability trigger like any other (alignment F-4): the two
     // transfer commands gate on it, so it is snapshot here rather than read live off the view-model, and it
     // changes only through the one RebuildContext.
-    bool ControllerConnected = false)
+    bool ControllerConnected = false,
+    // Whether the LATEST COMPLETED validation run bound at least one Error finding. False while nothing is bound
+    // (not yet validated, or a run still in flight), which is deliberate: "no result" is not evidence of a fault,
+    // and a gate refusing there would grey the transfer on every cold start. TRAILING and defaulted for the same
+    // reason ControllerConnected is — every existing construction site keeps compiling and keeps allowing.
+    bool ProjectHasValidationErrors = false)
 {
     /// <summary>The closed-shell context (no project, nothing selected) — the pre-initialization value.</summary>
     public static ShellContext Empty { get; } = new(
@@ -35,7 +40,8 @@ public sealed record ShellContext(
         InstallationPaneActive: false,
         Node: null, Clipboard: null,
         CanUndo: false, CanRedo: false,
-        ControllerConnected: false);
+        ControllerConnected: false,
+        ProjectHasValidationErrors: false);
 }
 
 /// <summary>A VALUE snapshot of the active tree row, projected from <see cref="TreeNodeViewModel"/> at rebuild

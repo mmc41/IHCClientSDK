@@ -70,10 +70,20 @@ internal static class DragDropTestSupport
     private const DragDropEffects Allowed = DragDropEffects.Move | DragDropEffects.Link;
 
     /// <summary>The window point at the centre of a node's OWN label. A TreeViewItem's bounds enclose its whole
-    /// expanded subtree, so its centre lands on a descendant row; the label is the node's own hit point.</summary>
+    /// expanded subtree, so its centre lands on a descendant row; the label is the node's own hit point.
+    /// <para>
+    /// The row is brought INTO VIEW first, and that step is load-bearing rather than tidy. A row scrolled out of
+    /// the tree's viewport still translates to a perfectly well-formed window point — one that lies outside the
+    /// tree, over whatever else the shell has laid out there. The gesture then targets that other control, and
+    /// the test fails as a DROP-LEGALITY failure ("expected locality B, was locality A") when what actually
+    /// happened is that the tree got shorter. Scrolling first keeps these tests about drag legality instead of
+    /// about how much vertical space the shell happens to give the trees.
+    /// </para></summary>
     public static Point RowPoint(this Window window, TreeNodeViewModel node)
     {
         TreeViewItem item = window.GetVisualDescendants().OfType<TreeViewItem>().First(i => ReferenceEquals(i.DataContext, node));
+        item.BringIntoView();
+        Dispatcher.UIThread.RunJobs();
         TextBlock label = item.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == node.DisplayName);
         return label.TranslatePoint(new Point(label.Bounds.Width / 2, label.Bounds.Height / 2), window)!.Value;
     }

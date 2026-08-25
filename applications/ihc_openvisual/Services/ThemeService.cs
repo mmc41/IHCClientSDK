@@ -25,6 +25,7 @@ public sealed class ThemeService : IThemeService
     private const double TitleFontSize = 22;
     private const double BodyFontSize = 12;
     private const double CaptionFontSize = 11;
+    private const double MonoFontSize = 11;        // the Problemer list's dense monospace readout
 
     // The high-contrast palette. Pure black/white ink on the maximum-contrast surface, which is the point: these
     // are not "a bit darker" versions of the ordinary tokens but a deliberately maximal-contrast set.
@@ -77,14 +78,16 @@ public sealed class ThemeService : IThemeService
             return;
 
         double factor = scale.Factor();
-        // All FOUR together: scaling the pane headers but not the tree labels — or vice versa — would break the
+        // All FIVE together: scaling the pane headers but not the tree labels — or vice versa — would break the
         // size hierarchy the design encodes, which is the whole point of a text-size setting (US-001). The
         // workspace token is the base every control that states no size of its own inherits, so it is what makes
-        // the tree labels (the bulk of the app's text) scale at all.
+        // the tree labels (the bulk of the app's text) scale at all. The Problemer list sets its own size and so
+        // would sit out a scale entirely if its token were left behind here.
         app.Resources["WorkspaceFontSize"] = WorkspaceFontSize * factor;
         app.Resources["TitleFontSize"] = TitleFontSize * factor;
         app.Resources["BodyFontSize"] = BodyFontSize * factor;
         app.Resources["CaptionFontSize"] = CaptionFontSize * factor;
+        app.Resources["MonoFontSize"] = MonoFontSize * factor;
     }
 
     public void ApplyContrast(bool isHighContrast)

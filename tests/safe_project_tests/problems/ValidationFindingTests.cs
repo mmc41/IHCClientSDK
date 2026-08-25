@@ -164,12 +164,22 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        /// <summary>
+        /// The scale grew a third value, and it is worth being precise about WHICH end it grew at.
+        /// <see cref="ValidationSeverity.Info"/> is an ADVISORY tier below <see cref="ValidationSeverity.Warning"/>,
+        /// added because a host that presents findings must tell "you should fix this" from "you may care about
+        /// this". A refusal is still not a finding — it is a <see cref="Problem"/> off a different method — so no
+        /// member here means "refused", and the blocking end of the scale is still exactly
+        /// <see cref="ValidationSeverity.Error"/>. A fourth member would need that same argument made again.
+        /// </summary>
         [Test]
-        public void SeverityStaysTwoLevelBecauseARefusalIsNotAFinding()
+        public void SeverityIsOneBlockingTierAndTwoAdvisoryOnesBecauseARefusalIsNotAFinding()
         {
             Assert.That(Enum.GetNames<ValidationSeverity>(), Is.EquivalentTo(new[]
             {
-                nameof(ValidationSeverity.Error), nameof(ValidationSeverity.Warning),
+                nameof(ValidationSeverity.Error),
+                nameof(ValidationSeverity.Warning),
+                nameof(ValidationSeverity.Info),
             }));
         }
     }

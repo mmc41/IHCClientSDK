@@ -1,6 +1,5 @@
 #nullable enable
 using System;
-using System.Linq;
 
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;

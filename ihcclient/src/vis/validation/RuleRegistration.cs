@@ -176,24 +176,40 @@ namespace Ihc.Vis.Validation
     public sealed class RuleSet
     {
         private readonly Dictionary<string, RuleDefinition> byCode;
+        private readonly Dictionary<RuleFaces, ImmutableArray<RuleDefinition>> byFace;
+        private readonly Dictionary<RuleTarget, ImmutableArray<RuleDefinition>> byTarget;
 
         private RuleSet(EquatableArray<RuleDefinition> rules)
         {
             Rules = rules;
             byCode = rules.ToDictionary(r => r.Entry.Code.Value, StringComparer.Ordinal);
+            Codes = rules.Select(r => r.Entry.Code).ToImmutableArray();
+
+            // The three views below are derived ONCE, here, for the reason the set itself is: it is built at
+            // composition and never changes. Re-filtering per call re-walked all ~112 rules and allocated a fresh
+            // array on every Validate and every DescribeField — the field face asks per dialog field.
+            byFace = new Dictionary<RuleFaces, ImmutableArray<RuleDefinition>>
+            {
+                [RuleFaces.WholeProject] = Select(rules, RuleFaces.WholeProject),
+                [RuleFaces.DialogMetadata] = Select(rules, RuleFaces.DialogMetadata),
+            };
+            byTarget = rules
+                .GroupBy(r => r.Entry.Target)
+                .ToDictionary(group => group.Key, group => group.ToImmutableArray());
         }
 
         /// <summary>Every registered rule, ordered by code.</summary>
         public EquatableArray<RuleDefinition> Rules { get; }
 
         /// <summary>Every code something implements — what a completeness check compares the catalogue against.</summary>
-        public EquatableArray<ProblemCode> Codes =>
-            Rules.Select(r => r.Entry.Code).ToImmutableArray();
+        public EquatableArray<ProblemCode> Codes { get; }
 
         /// <summary>The rules one face consumes.</summary>
         /// <param name="face">The face to list for.</param>
         public EquatableArray<RuleDefinition> ForFace(RuleFaces face) =>
-            Rules.Where(r => (r.Entry.Faces & face) != 0).ToImmutableArray();
+            byFace.TryGetValue(face, out ImmutableArray<RuleDefinition> found)
+                ? found
+                : Select(Rules, face);
 
         /// <summary>
         /// The rules about one target — how the dialog face finds the constraints on a field without executing
@@ -201,7 +217,12 @@ namespace Ihc.Vis.Validation
         /// </summary>
         /// <param name="target">The (tag, attribute) pair to list for.</param>
         public EquatableArray<RuleDefinition> ForTarget(RuleTarget target) =>
-            Rules.Where(r => r.Entry.Target == target).ToImmutableArray();
+            byTarget.TryGetValue(target, out ImmutableArray<RuleDefinition> found)
+                ? found
+                : ImmutableArray<RuleDefinition>.Empty;
+
+        private static ImmutableArray<RuleDefinition> Select(EquatableArray<RuleDefinition> rules, RuleFaces face) =>
+            rules.Where(r => (r.Entry.Faces & face) != 0).ToImmutableArray();
 
         /// <summary>Looks up one rule by its code.</summary>
         /// <param name="code">The code to find.</param>

@@ -609,14 +609,25 @@ function Get-AppProcess {
 $script:LaunchProblem = $null
 
 function Start-App {
-    param([int] $TimeoutSec = 40)
+    param([int] $TimeoutSec = 40, [string] $ProjectPath)
     $exe = Find-AppExe
     if (-not $exe) {
         $script:LaunchProblem = 'Could not find ihc_openvisual.exe: nothing under applications/ihc_openvisual/bin and nothing on PATH. Build it first: dotnet build applications/ihc_openvisual/ihc_openvisual.csproj'
         return $null
     }
-    # No launch arguments: the app comes up on the standard empty project with no start-up prompt.
-    Start-Process -FilePath $exe | Out-Null
+    # By default no launch arguments: the app comes up on the standard empty project with no start-up prompt.
+    #
+    # With --path, the file is passed as the app's OWN start-up argument -- the "Open with..." route it already
+    # supports. That is the only way to open a project without the file dialog, and the file dialog needs the
+    # foreground, which an automation host frequently cannot take. Before this, `--launch --path` silently
+    # ignored the path and left the caller driving the untitled empty project while believing it had the file
+    # open: a self-consistent, completely wrong answer. Note the app opens it AFTER the window is shown (so an
+    # open-failure dialog has an owner), so a caller must still wait for the title rather than for readiness.
+    if ($ProjectPath) {
+        Start-Process -FilePath $exe -ArgumentList @($ProjectPath) | Out-Null
+    } else {
+        Start-Process -FilePath $exe | Out-Null
+    }
     $win = Wait-MainWindow -TimeoutSec $TimeoutSec
     if (-not $win) {
         $script:LaunchProblem = "Started '$exe' but no main window appeared within $TimeoutSec s."
@@ -683,10 +694,10 @@ function Wait-MainWindow {
 }
 
 function Resolve-MainWindow {
-    param([switch] $Launch)
+    param([switch] $Launch, [string] $ProjectPath)
     $p = Get-AppProcess
     if (-not $p) {
-        if ($Launch) { return (Start-App) }
+        if ($Launch) { return (Start-App -ProjectPath $ProjectPath) }
         return $null
     }
     return (Wait-MainWindow -TimeoutSec 15 -ProcId $p.Id)
@@ -1152,7 +1163,8 @@ function Resolve-TreePath {
 
 # Bring a row into the viewport without selecting it. An off-screen row has no usable on-screen point,
 # so every coordinate gesture needs this; only SOME of them want the selection that used to come with it.
-function Show-TreeItem {
+# Any element offering ScrollItemPattern, not only a tree item -- the Problemer table's rows go through it too.
+function Show-ScrollableItem {
     param($El)
     $scroll = Get-Pattern $El ([System.Windows.Automation.ScrollItemPattern]::Pattern)
     if ($scroll) { try { $scroll.ScrollIntoView(); Start-Sleep -Milliseconds 150 } catch { } }
@@ -1171,7 +1183,7 @@ function Select-TreePath {
     # nothing. Bring it into view here, at the single call site every selection-relative command
     # already funnels through, so deep rows (e.g. a TV2 function block far down the pane) are
     # clickable at all.
-    Show-TreeItem $current
+    Show-ScrollableItem $current
     # verify caret landed
     if (-not $sip.Current.IsSelected) { return @{ ok = $false; code = 'TargetNotFound'; message = "Selection did not land on '$Path'." } }
     # Echo the RESOLVED LABEL, not the path we were handed. A command that repeats its own input can only
@@ -1406,10 +1418,10 @@ function Invoke-Mechanism-NodeDrag {
 
     $src = Resolve-TreePath $Window $fromTreeId $from
     if (-not $src.ok) { return (New-Result -Ok $false -Code $src.code -Message $src.message -Context (Get-Context $Window)) }
-    Show-TreeItem $src.element
+    Show-ScrollableItem $src.element
     $dst = Resolve-TreePath $Window $toTreeId $to
     if (-not $dst.ok) { return (New-Result -Ok $false -Code $dst.code -Message $dst.message -Context (Get-Context $Window)) }
-    Show-TreeItem $dst.element
+    Show-ScrollableItem $dst.element
 
     $crossPane = $fromTreeId -ne $toTreeId
     $sourceChildrenBefore = @()
@@ -1422,7 +1434,7 @@ function Invoke-Mechanism-NodeDrag {
     $guard = Assert-Foreground $Window
     if ($guard) { return $guard }
 
-    # Re-resolve both points AFTER any scrolling Show-TreeItem did, or the coordinates are stale.
+    # Re-resolve both points AFTER any scrolling Show-ScrollableItem did, or the coordinates are stale.
     $a = Get-TreeItemClickPoint (Resolve-TreePath $Window $fromTreeId $from).element
     $b = Get-TreeItemClickPoint (Resolve-TreePath $Window $toTreeId $to).element
     if (-not $a -or -not $b) {
@@ -1525,7 +1537,7 @@ function Invoke-Mechanism-RightClick {
     # Resolve WITHOUT selecting -- the whole point of the measurement.
     $r = Resolve-TreePath $Window $treeId $path
     if (-not $r.ok) { return (New-Result -Ok $false -Code $r.code -Message $r.message -Context (Get-Context $Window)) }
-    Show-TreeItem $r.element
+    Show-ScrollableItem $r.element
 
     $guard = Assert-Foreground $Window
     if ($guard) { return $guard }
@@ -3910,6 +3922,436 @@ function New-HelpResult {
     return (New-Result -Ok $true -Code 'Ok' -Message $message -Verified $true -Data $data)
 }
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Problemer panel
+#
+# The panel is a findings LIST that the app keeps up to date in the background, which makes it unlike every
+# other surface this driver reads: its content arrives asynchronously, so a read taken straight after a launch
+# or an open is not wrong, it is EARLY. That is why `problems state` reports a readiness state and
+# `problems wait` exists at all — a caller that asserts without waiting is asserting about the moment before
+# the answer arrived.
+#
+# The panel publishes exactly what a driver needs, so none of this scrapes layout: the three counts carry their
+# own AutomationIds, the state line carries one, the busy indicator carries one, and each row publishes its
+# finding's code as its id and the whole row as its accessible name.
+# ─────────────────────────────────────────────────────────────────────────────
+
+function Get-ProblemsPanel {
+    param($Window)
+    return (Find-ByAutomationId $Window 'ProblemsPanel')
+}
+
+function Get-ProblemsCount {
+    param($Panel, [string] $Tier)
+    $el = Find-ByAutomationId $Panel "problems.count.$Tier"
+    if (-not $el) { return $null }
+    $text = [string]$el.Current.Name
+    $value = 0
+    if ([int]::TryParse($text, [ref] $value)) { return $value }
+    return $null
+}
+
+# The four-state model, read off the two things the panel shows. "validating" is the one a caller must not
+# assert through: it means no result is bound yet.
+function Get-ProblemsState {
+    param($Panel)
+
+    $stateEl = Find-ByAutomationId $Panel 'ProblemsStateText'
+    $stateText = if ($stateEl) { [string]$stateEl.Current.Name } else { '' }
+    $stateShown = ($stateEl -and -not $stateEl.Current.IsOffscreen)
+
+    $spinner = Find-ByAutomationId $Panel 'ProblemsSpinner'
+    $busy = ($spinner -and -not $spinner.Current.IsOffscreen)
+
+    # ORDER MATTERS. Validating wins over everything: it is the state that says "no result yet", and reporting
+    # it as clean is exactly the lie the panel itself refuses to tell. Stale is next, because a stale panel is
+    # showing a PREVIOUS result. Only then do the two up-to-date states divide.
+    $state =
+        if ($stateShown -and $stateText -eq 'Validerer projektet…') { 'validating' }
+        elseif ($busy) { 'stale' }
+        elseif ($stateShown -and $stateText -eq 'Ingen problemer fundet') { 'clean' }
+        else { 'findings' }
+
+    return [ordered]@{
+        state          = $state
+        stateText      = $stateText
+        bound          = ($state -ne 'validating')
+        staleIndicator = $busy
+    }
+}
+
+function Get-ProblemsRowElements {
+    param($Panel)
+    $list = Find-ByAutomationId $Panel 'ProblemsList'
+    if (-not $list) { return @() }
+    $rows = @()
+    foreach ($el in $list.FindAll($script:Desc, [System.Windows.Automation.Condition]::TrueCondition)) {
+        $c = $null
+        try { $c = $el.Current } catch { continue }   # an element torn down mid-walk is not a finding
+        if (($c.ControlType.ProgrammaticName -replace '^ControlType\.', '') -ne 'ListItem') { continue }
+        $rows += $el
+    }
+    return $rows
+}
+
+# A row's accessible name is "<Alvor>: <Besked> (<Element>)" — composed by the app precisely so one read
+# answers what a row says. Splitting it here beats walking the cells: cell text is layout, the name is contract.
+function ConvertTo-ProblemsRow {
+    param($Element, [int] $Index, $Geometry)
+    $c = $Element.Current
+    $name = [string]$c.Name
+    $severity = ''
+    $message = $name
+    $element = ''
+    # The message is matched LAZILY and the element GREEDILY, so the split lands on the FIRST " (" rather than
+    # the last. Element names contain parentheses of their own -- a terminal reads "Tryk (øverst venstre)" -- and
+    # a greedy message would swallow "Ikke forbundet (Tryk" and leave "øverst venstre" as the element.
+    if ($name -match '^(?<sev>[^:]+):\s*(?<msg>.*?)\s\((?<el>.*)\)$') {
+        $severity = $Matches['sev']
+        $message = $Matches['msg']
+        $element = $Matches['el']
+    }
+    return [ordered]@{
+        index    = $Index
+        code     = [string]$c.AutomationId
+        severity = $severity
+        message  = $message
+        element  = $element
+        name     = $name
+        rect     = ConvertTo-RectDump $c.BoundingRectangle $Geometry
+    }
+}
+
+# Scroll the control under a point by whole wheel notches. Positive scrolls UP, negative DOWN.
+#
+# Built from the P/Invokes the native helper already exposes rather than as a new method on it: the compiled
+# type is resolved once per process and a freshly added member was not visible to the running script, so the
+# two-line composition here is what actually works from a cold invocation. SetCursorPos and mouse_event are
+# both public on that type, so nothing is reached around.
+#
+# THE WHEEL, not Page Down, wherever this is used: paging a list moves its SELECTION, and in this app a
+# selection is wired to navigation — a search scrolling past ninety rows would fire ninety navigations. A wheel
+# scroll changes what is visible and nothing else.
+function Invoke-WheelScroll {
+    param([int] $X, [int] $Y, [int] $Notches)
+    [Aui.Win32]::SetCursorPos($X, $Y) | Out-Null
+    Start-Sleep -Milliseconds 30
+    # A negative delta travels as an unsigned value; wrap it explicitly rather than casting a negative int.
+    $delta = [uint32](([long]$Notches * 120 + 4294967296) % 4294967296)
+    [Aui.Win32]::mouse_event(0x0800, 0, 0, $delta, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 30
+}
+
+# Find a row anywhere in the list, scrolling to reach it.
+#
+# The findings list VIRTUALIZES, so a row outside the viewport has no UIA element at all: it cannot be found,
+# read or clicked until it is scrolled into view. At the panel's default height only a handful of rows exist at
+# any moment, which without this would make every verb here reach the first few findings and nothing else --
+# a driver that can only ever click the top of a 150-row list.
+#
+# Paged with the list's own ScrollPattern, i.e. the same movement a Page Down produces, and bounded so a list
+# that refuses to move cannot spin.
+function Find-ProblemsRowByCode {
+    param($Panel, [string] $Code, [int] $MaxPages = 60)
+
+    $list = Find-ByAutomationId $Panel 'ProblemsList'
+    if (-not $list) { return $null }
+
+    # The scrollable is the list's own ScrollViewer, not the list: Avalonia gives the ListBox peer no Scroll
+    # pattern and puts it on the viewer inside the control template. Looking only at the list found nothing, and
+    # the search then "scrolled" a whole 150-row list without moving a pixel — reporting, perfectly politely,
+    # that a row present in the oracle did not exist.
+    $scroll = Get-Pattern $list ([System.Windows.Automation.ScrollPattern]::Pattern)
+    if (-not $scroll) {
+        foreach ($el in $list.FindAll($script:Desc, [System.Windows.Automation.Condition]::TrueCondition)) {
+            $candidate = Get-Pattern $el ([System.Windows.Automation.ScrollPattern]::Pattern)
+            if ($candidate -and $candidate.Current.VerticallyScrollable) { $scroll = $candidate; break }
+        }
+    }
+    # Where to put the cursor for a wheel scroll: the middle of the list.
+    $listRect = $list.Current.BoundingRectangle
+    $wheelX = [int]($listRect.X + $listRect.Width / 2)
+    $wheelY = [int]($listRect.Y + $listRect.Height / 2)
+
+    # START FROM THE TOP, always. The scroll offset survives between commands, so a search that began wherever
+    # the previous one stopped could only ever find rows BELOW that point — and would report a row that plainly
+    # exists as missing, depending on what ran before it. That is precisely how this failed the first time.
+    if ($scroll -and $scroll.Current.VerticallyScrollable) {
+        try { $scroll.SetScrollPercent([System.Windows.Automation.ScrollPattern]::NoScroll, 0) } catch { }
+        Start-Sleep -Milliseconds 120
+    } elseif ($listRect.Width -gt 0) {
+        for ($up = 0; $up -lt $MaxPages; $up++) {
+            $seen = @(Get-ProblemsRowElements $Panel | ForEach-Object { [string]$_.Current.AutomationId })
+            Invoke-WheelScroll $wheelX $wheelY 5
+            Start-Sleep -Milliseconds 100
+            $now = @(Get-ProblemsRowElements $Panel | ForEach-Object { [string]$_.Current.AutomationId })
+            if (($now -join '|') -eq ($seen -join '|')) { break }
+        }
+    }
+
+    for ($page = 0; $page -le $MaxPages; $page++) {
+        foreach ($el in Get-ProblemsRowElements $Panel) {
+            $c = $null
+            try { $c = $el.Current } catch { continue }
+            if ([string]$c.AutomationId -eq $Code -or [string]$c.Name -like "*$Code*") { return $el }
+        }
+
+        if ($scroll -and $scroll.Current.VerticallyScrollable) {
+            if ($scroll.Current.VerticalScrollPercent -ge 100) { break }
+            $scroll.ScrollVertical([System.Windows.Automation.ScrollAmount]::LargeIncrement)
+            Start-Sleep -Milliseconds 120
+            continue
+        }
+
+        # NO SCROLL PATTERN ANYWHERE. Avalonia gives neither the ListBox peer nor its inner ScrollViewer one, so
+        # the programmatic route does not exist here and the wheel is the remaining honest one.
+        #
+        # The WHEEL rather than Page Down, and the distinction is load-bearing: paging a list moves its
+        # SELECTION, the panel navigates from its selection, and a search scrolling past ninety findings would
+        # therefore fire ninety navigations and leave the tree wherever the last one landed. One of this
+        # feature's own tests asserts a selection is UNCHANGED across a search; with Page Down it could not be
+        # written truthfully. A wheel scroll changes what is visible and nothing else.
+        $before = @(Get-ProblemsRowElements $Panel | ForEach-Object { [string]$_.Current.AutomationId })
+        if ($before.Count -eq 0) { break }
+        Invoke-WheelScroll $wheelX $wheelY -3
+        Start-Sleep -Milliseconds 120
+        $after = @(Get-ProblemsRowElements $Panel | ForEach-Object { [string]$_.Current.AutomationId })
+        # A list that will not move any further has nothing left to show.
+        if (($after -join '|') -eq ($before -join '|')) { break }
+    }
+    return $null
+}
+
+function Invoke-Mechanism-ProblemsState {
+    param($Spec, $Opts, $Window)
+    if (-not $Window) { return (New-Result -Ok $false -Code 'AppNotRunning' -Message 'App not running.') }
+
+    $wait = [bool](Test-SpecFlag $Opts 'wait')
+    $timeout = Get-OptInt $Opts @('timeout') 15000
+    if (-not $timeout.ok) { return (New-Result -Ok $false -Code 'InvalidInput' -Message $timeout.message) }
+    $timeoutMs = $timeout.value
+    $deadline = (Get-Date).AddMilliseconds($timeoutMs)
+
+    while ($true) {
+        $panel = Get-ProblemsPanel $Window
+        if (-not $panel) {
+            return (New-Result -Ok $false -Code 'ControlNotFound' `
+                -Message 'Problemer panel not found. It is hidden while Vis > Problemer is off -- turn it back on with view.problems.toggle.' `
+                -Context (Get-Context $Window))
+        }
+
+        $visible = -not $panel.Current.IsOffscreen
+        $state = Get-ProblemsState $panel
+        $rows = @(Get-ProblemsRowElements $panel)
+
+        $data = [ordered]@{
+            visible        = $visible
+            state          = $state.state
+            stateText      = $state.stateText
+            bound          = $state.bound
+            staleIndicator = $state.staleIndicator
+            errors         = Get-ProblemsCount $panel 'error'
+            warnings       = Get-ProblemsCount $panel 'warning'
+            infos          = Get-ProblemsCount $panel 'info'
+            visibleRows    = $rows.Count
+        }
+
+        if (-not $wait -or $state.bound) {
+            $msg = "Problemer: $($state.state), $($data.errors) fejl / $($data.warnings) advarsler / $($data.infos) oplysninger."
+            return (New-Result -Ok $true -Code 'Ok' -Message $msg -Verified $true `
+                -Context (Get-Context $Window) -Data $data)
+        }
+
+        if ((Get-Date) -gt $deadline) {
+            return (New-Result -Ok $false -Code 'Timeout' `
+                -Message "Still validating after ${timeoutMs}ms -- no result has been bound yet." `
+                -Context (Get-Context $Window) -Data $data)
+        }
+        Start-Sleep -Milliseconds 150
+    }
+}
+
+function Invoke-Mechanism-ProblemsRows {
+    param($Spec, $Opts, $Window)
+    if (-not $Window) { return (New-Result -Ok $false -Code 'AppNotRunning' -Message 'App not running.') }
+
+    $panel = Get-ProblemsPanel $Window
+    if (-not $panel) {
+        return (New-Result -Ok $false -Code 'ControlNotFound' `
+            -Message 'Problemer panel not found (Vis > Problemer is off).' -Context (Get-Context $Window))
+    }
+
+    $geometry = $null
+    $r = $panel.Current.BoundingRectangle
+    if (-not ([double]::IsInfinity($r.X) -or [double]::IsNaN($r.X))) {
+        $geometry = Get-MonitorGeometry -X ([int]$r.X) -Y ([int]$r.Y)
+    }
+
+    $elements = @(Get-ProblemsRowElements $panel)
+    $rows = @()
+    for ($i = 0; $i -lt $elements.Count; $i++) {
+        $rows += ConvertTo-ProblemsRow $elements[$i] $i $geometry
+    }
+
+    $state = Get-ProblemsState $panel
+    # The list VIRTUALIZES, so this is what is realized, not necessarily every finding. Saying so in the
+    # envelope keeps a caller from reading a short list as a small result.
+    $data = [ordered]@{
+        rowCount     = $rows.Count
+        virtualized  = $true
+        bound        = $state.bound
+        state        = $state.state
+        rows         = @($rows)
+    }
+    return (New-Result -Ok $true -Code 'Ok' -Message "Problemer: $($rows.Count) realized rows." `
+        -Verified $true -Context (Get-Context $Window) -Data $data)
+}
+
+function Invoke-Mechanism-ProblemsClick {
+    param($Spec, $Opts, $Window)
+    if (-not $Window) { return (New-Result -Ok $false -Code 'AppNotRunning' -Message 'App not running.') }
+    # Assert-Foreground returns $NULL on success and the failure result otherwise — so it is returned, never
+    # tested as a boolean. Read as one, `-not $null` is true and the verb reports "denied" in exactly the case
+    # where the foreground WAS acquired: the click then never fired, and the refusal named an environment
+    # problem that did not exist.
+    $denied = Assert-Foreground $Window
+    if ($denied) { return $denied }
+
+    $panel = Get-ProblemsPanel $Window
+    if (-not $panel) {
+        return (New-Result -Ok $false -Code 'ControlNotFound' `
+            -Message 'Problemer panel not found (Vis > Problemer is off).' -Context (Get-Context $Window))
+    }
+
+    $elements = @(Get-ProblemsRowElements $panel)
+    if ($elements.Count -eq 0) {
+        return (New-Result -Ok $false -Code 'ControlNotFound' `
+            -Message 'No rows are realized in the Problemer panel.' -Context (Get-Context $Window))
+    }
+
+    $rowOpt = Get-OptValue $Opts @('row') -NamedOnly
+    if (-not $rowOpt) {
+        return (New-Result -Ok $false -Code 'InvalidInput' -Message 'Pass --row <index|text>.')
+    }
+
+    $target = $null
+    $index = 0
+    if ([int]::TryParse($rowOpt, [ref] $index)) {
+        if ($index -lt 0 -or $index -ge $elements.Count) {
+            return (New-Result -Ok $false -Code 'InvalidInput' `
+                -Message "Row $index is out of range (0..$($elements.Count - 1) are realized).")
+        }
+        $target = $elements[$index]
+    } else {
+        # By code or text, SCROLLING to reach it: the list virtualizes, so a row further down does not exist as
+        # an element until the viewport reaches it. An index addresses realized rows only, which is why a caller
+        # wanting a specific finding should name its code rather than guess a position.
+        $target = Find-ProblemsRowByCode $panel $rowOpt
+        if (-not $target) {
+            return (New-Result -Ok $false -Code 'ControlNotFound' `
+                -Message "No row matches '$rowOpt' by code or by text, after scrolling the whole list.")
+        }
+    }
+
+    # Bring it fully into view before measuring: a row the scroll left straddling the viewport edge has bounds
+    # whose midpoint is outside the list, and the click would land on whatever is there instead.
+    Show-ScrollableItem $target
+
+    # A POINTER click, not a selection call: the panel navigates from the selection a click produces, and
+    # setting the selection directly would reach the outcome by a path no user can take -- which would make
+    # the transcript evidence of something other than the gesture under test.
+    $rect = $target.Current.BoundingRectangle
+    if ([double]::IsInfinity($rect.X) -or [double]::IsNaN($rect.X) -or $rect.Width -le 0) {
+        return (New-Result -Ok $false -Code 'ControlNotFound' -Message 'The row has no clickable bounds.')
+    }
+    $x = [int]($rect.X + [Math]::Min(60, $rect.Width / 2))
+    $y = [int]($rect.Y + $rect.Height / 2)
+    [Aui.Win32]::Click($x, $y)
+    Start-Sleep -Milliseconds 250
+
+    $data = [ordered]@{
+        clicked = ConvertTo-ProblemsRow $target 0 $null
+        point   = [ordered]@{ x = $x; y = $y }
+    }
+    return (New-Result -Ok $true -Code 'Ok' -Message "Clicked Problemer row '$($target.Current.AutomationId)'." `
+        -Verified $true -Context (Get-Context $Window) -Data $data)
+}
+
+function Invoke-Mechanism-ProblemsToggle {
+    param($Spec, $Opts, $Window)
+    if (-not $Window) { return (New-Result -Ok $false -Code 'AppNotRunning' -Message 'App not running.') }
+
+    $tier = Get-OptValue $Opts @('tier') -NamedOnly
+    if ($tier -notin @('error', 'warning', 'info')) {
+        return (New-Result -Ok $false -Code 'InvalidInput' -Message 'Pass --tier <error|warning|info>.')
+    }
+
+    $panel = Get-ProblemsPanel $Window
+    if (-not $panel) {
+        return (New-Result -Ok $false -Code 'ControlNotFound' `
+            -Message 'Problemer panel not found (Vis > Problemer is off).' -Context (Get-Context $Window))
+    }
+    $button = Find-ByAutomationId $panel "problems.filter.$tier"
+    if (-not $button) {
+        return (New-Result -Ok $false -Code 'ControlNotFound' -Message "Filter toggle for '$tier' not found.")
+    }
+
+    # Through the Toggle PATTERN, which is the same door a keyboard or a screen-reader user goes through.
+    $pattern = Get-Pattern $button ([System.Windows.Automation.TogglePattern]::Pattern)
+    if (-not $pattern) {
+        return (New-Result -Ok $false -Code 'PatternUnavailable' `
+            -Message "The '$tier' toggle exposes no Toggle pattern.")
+    }
+    $before = $pattern.Current.ToggleState
+    $pattern.Toggle()
+    Start-Sleep -Milliseconds 200
+    $after = (Get-Pattern $button ([System.Windows.Automation.TogglePattern]::Pattern)).Current.ToggleState
+
+    $rows = @(Get-ProblemsRowElements $panel).Count
+    $data = [ordered]@{ tier = $tier; before = "$before"; after = "$after"; visibleRows = $rows }
+    return (New-Result -Ok $true -Code 'Ok' -Message "Tier '$tier': $before -> $after ($rows rows shown)." `
+        -Verified ($before -ne $after) -Context (Get-Context $Window) -Data $data)
+}
+
+function Invoke-Mechanism-ProblemsSort {
+    param($Spec, $Opts, $Window)
+    if (-not $Window) { return (New-Result -Ok $false -Code 'AppNotRunning' -Message 'App not running.') }
+
+    $column = Get-OptValue $Opts @('column') -NamedOnly
+    if ($column -notin @('severity', 'code', 'message', 'element', 'category')) {
+        return (New-Result -Ok $false -Code 'InvalidInput' `
+            -Message 'Pass --column <severity|code|message|element|category>.')
+    }
+
+    $panel = Get-ProblemsPanel $Window
+    if (-not $panel) {
+        return (New-Result -Ok $false -Code 'ControlNotFound' `
+            -Message 'Problemer panel not found (Vis > Problemer is off).' -Context (Get-Context $Window))
+    }
+    $header = Find-ByAutomationId $panel "problems.sort.$column"
+    if (-not $header) {
+        return (New-Result -Ok $false -Code 'ControlNotFound' -Message "Sort header for '$column' not found.")
+    }
+
+    $before = @(Get-ProblemsRowElements $panel | ForEach-Object { [string]$_.Current.AutomationId })
+    $invoke = Get-Pattern $header ([System.Windows.Automation.InvokePattern]::Pattern)
+    if (-not $invoke) {
+        return (New-Result -Ok $false -Code 'PatternUnavailable' -Message "The '$column' header exposes no Invoke pattern.")
+    }
+    $invoke.Invoke()
+    Start-Sleep -Milliseconds 250
+    $after = @(Get-ProblemsRowElements $panel | ForEach-Object { [string]$_.Current.AutomationId })
+
+    $data = [ordered]@{
+        column   = $column
+        before   = @($before)
+        after    = @($after)
+        reordered = (($before -join '|') -ne ($after -join '|'))
+    }
+    return (New-Result -Ok $true -Code 'Ok' -Message "Sorted Problemer by '$column'." `
+        -Verified $true -Context (Get-Context $Window) -Data $data)
+}
+
 function Invoke-Command-Spec {
     param($Spec, $Opts, $Window)
     switch ($Spec.mechanism) {
@@ -3939,6 +4381,11 @@ function Invoke-Command-Spec {
         'dialogSelectItem' { Invoke-Mechanism-DialogSelectItem $Spec $Opts $Window }
         'dialogClickRow' { Invoke-Mechanism-DialogClickRow $Spec $Opts $Window }
         'dialogRead'     { Invoke-Mechanism-DialogRead     $Spec $Opts $Window }
+        'problemsState'  { Invoke-Mechanism-ProblemsState  $Spec $Opts $Window }
+        'problemsRows'   { Invoke-Mechanism-ProblemsRows   $Spec $Opts $Window }
+        'problemsClick'  { Invoke-Mechanism-ProblemsClick  $Spec $Opts $Window }
+        'problemsToggle' { Invoke-Mechanism-ProblemsToggle $Spec $Opts $Window }
+        'problemsSort'   { Invoke-Mechanism-ProblemsSort   $Spec $Opts $Window }
         'notImplemented' { Invoke-Mechanism-NotImplemented $Spec $Opts $Window }
         default          { Invoke-Mechanism-NotImplemented $Spec $Opts $Window }
     }
@@ -4047,7 +4494,10 @@ $window = $null
 try {
     Initialize-Uia
     $launch = $opts.ContainsKey('launch')
-    $window = Resolve-MainWindow -Launch:$launch
+    # --path alongside --launch names the project the app should COME UP ON. Only meaningful while launching;
+    # every other verb reads --path for its own purpose, and passing it here changes nothing for them.
+    $launchPath = if ($launch) { [string](Get-OptValue $opts @('path') -NamedOnly) } else { $null }
+    $window = Resolve-MainWindow -Launch:$launch -ProjectPath $launchPath
     # Publish it so "is this the main window?" is answerable by identity anywhere below (Get-OpenModalWindow,
     # Get-MenuBarRootKeySet) without re-resolving it or guessing from a title.
     $script:MainWindow = $window

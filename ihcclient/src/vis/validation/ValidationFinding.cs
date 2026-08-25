@@ -21,7 +21,12 @@ namespace Ihc.Vis.Validation
     /// </para>
     /// </summary>
     /// <param name="Locator">The raw <c>_0x</c> id token, else the element tag. Always present.</param>
-    /// <param name="Element">The parsed id, when the token is well-formed AND unambiguous.</param>
+    /// <param name="Element">
+    /// The parsed id, when the token is well-formed — and NOT a promise that one element answers to it. A
+    /// duplicate token parses like any other, so every site of a collision carries the same non-null id here and
+    /// a consumer that resolves one has to decide what to do about the second. (It cannot be decided here: how
+    /// many elements carry a token is a fact about the tree, and this type is about the finding.)
+    /// </param>
     /// <param name="Message">
     /// This location's OWN Danish text, for a related location that needs to say why it is listed. Null when the
     /// finding's own message says everything. This slot is what makes a duplicate-id group ONE navigable finding
@@ -46,7 +51,12 @@ namespace Ihc.Vis.Validation
     /// </para>
     /// </summary>
     /// <param name="Problem">The coded problem — identity, Danish message, arguments, English diagnostic.</param>
-    /// <param name="Severity">Two-level: Error or Warning. A refusal is not a finding, so there is no third.</param>
+    /// <param name="Severity">
+    /// Error, Warning or Info. One blocking tier and two advisory ones: the third value widens the ADVISORY end
+    /// of the scale — for a host that presents findings and must tell "you should fix this" from "you may care
+    /// about this" — and never the blocking end. A refusal is still not a finding: it is a
+    /// <see cref="Problem"/> off a different method, so no severity here ever means "refused".
+    /// </param>
     /// <param name="Category">
     /// The eight-category classification. NON-NULLABLE, unlike on a catalogue entry: a finding only ever comes
     /// from content the eight categories do classify, so the type the report groups by never has to answer "what

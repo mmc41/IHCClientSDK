@@ -81,7 +81,12 @@ namespace Ihc.Vis.Validation
 
         /// <summary>
         /// The operation cannot be carried through: nothing is opened, written or overwritten. Realised as a coded
-        /// refusal and NEVER as a finding, which is why no finding severity has a third member.
+        /// refusal and NEVER as a finding — so a refusal has no severity, and no severity means "refused".
+        /// <para>
+        /// This axis has three values while <see cref="ValidationSeverity"/> now has three FINDING tiers
+        /// (Error, Warning, Info). They are not the same three and do not line up: Info is a severity a finding
+        /// can carry, and until a row here can DECLARE it, no catalogue entry produces one.
+        /// </para>
         /// </summary>
         Refusal,
     }

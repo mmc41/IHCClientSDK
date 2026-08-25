@@ -36,6 +36,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // Stored so Dispose can detach them: an inline lambda cannot be unsubscribed, which would leak this view-model
     // through the longer-lived session / recent-store event sources (review Low).
     private readonly EventHandler _onSessionStateChanged;
+    private readonly EventHandler _onValidationChanged;
     private readonly EventHandler _onSessionCatalogChanged;
     private readonly EventHandler _onRecentChanged;
 
@@ -99,6 +100,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     public IAsyncRelayCommand ExitCommand => Registry.Commands["app.exit"];
     public IAsyncRelayCommand ToggleToolbarCommand => Registry.Commands["view.toggleToolbar"];
     public IAsyncRelayCommand ToggleStatusBarCommand => Registry.Commands["view.toggleStatusBar"];
+    public IAsyncRelayCommand ToggleProblemsCommand => Registry.Commands["view.toggleProblems"];
+
+    /// <summary>The Problemer panel's view-model — the findings list, its counts and its state.</summary>
+    public ProblemsPanelViewModel Problems { get; }
     public IAsyncRelayCommand ProjectInfoCommand => Registry.Commands["project.info"];
     public IAsyncRelayCommand ModuleMapCommand => Registry.Commands["project.moduleMap"];
     public IAsyncRelayCommand SendProjectCommand => Registry.Commands["controller.send"];
@@ -177,6 +182,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
     [ObservableProperty] private bool _isToolbarVisible = true;
     [ObservableProperty] private bool _isStatusBarVisible = true;
+
+    /// <summary>
+    /// Whether the Problemer panel is shown. Default TRUE: findings a user never sees are findings that do not
+    /// exist, and the panel is the app's only surface for them.
+    /// </summary>
+    /// <remarks>Session-only, like the toolbar and status-bar flags beside it — neither the flag nor the panel's
+    /// height is persisted, so a fresh shell always starts with the panel shown at its default height.</remarks>
+    [ObservableProperty] private bool _isProblemsPanelVisible = true;
     [ObservableProperty] private AppTheme _currentTheme;
     /// <summary>The active workspace text-size step (US-001) — what the <i>Vis ▸ Tekststørrelse</i> radio items check.</summary>
     [ObservableProperty] private TextScale _currentTextScale;
@@ -794,6 +807,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 if (parameter is TreeNodeViewModel node && !ReferenceEquals(node, SelectedNode))
                     SelectNode(node);
             });
+        // The Problemer panel PRESENTS the session's own validation; it does not run one. The marshal and the
+        // clock it needs for the staleness indicator come from the session too, which is where the composition
+        // root put them — so there is one answer to "which thread" and one clock, not one per view-model.
+        Problems = new ProblemsPanelViewModel(_session, _session.Validation, RevealAndSelect);
+
         RegisterCoreEditRows();
         RegisterNodeRows();
         RegisterProgrammingRows();
@@ -806,6 +824,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _session.StateChanged += _onSessionStateChanged;
         _session.CatalogChanged += _onSessionCatalogChanged;
         _recent.Changed += _onRecentChanged;
+        // The send gate reads the session's blocking answer out of the context snapshot, and a snapshot is only
+        // as current as its last rebuild — so a completed run that changes the answer has to trigger one, or the
+        // row stays at whatever it was when the selection last moved. Subscribed to the SESSION rather than to
+        // the panel: the gate must move with the validation whether or not the panel is open.
+        _onValidationChanged = (_, _) => RebuildContext();
+        _session.Validation.BlockingChanged += _onValidationChanged;
         BuildProductMenu();
         RefreshRecent();
         Refresh();
@@ -832,7 +856,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         _session.StateChanged -= _onSessionStateChanged;
         _session.CatalogChanged -= _onSessionCatalogChanged;
+        _session.Validation.BlockingChanged -= _onValidationChanged;
         _recent.Changed -= _onRecentChanged;
+        // Detaches its own workflow handler and cancels any validation still in flight, so no pool thread binds
+        // rows into a view-model the shell has already let go of.
+        Problems.Dispose();
     }
 
     // Rebuilds the product/function-block insertion menus from the current catalog (US-059/US-060: after an import
@@ -1041,6 +1069,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     private void ToggleStatusBar() => IsStatusBarVisible = !IsStatusBarVisible;
+
+    private void ToggleProblems() => IsProblemsPanelVisible = !IsProblemsPanelVisible;
 
     [RelayCommand]
     private void SetTheme(AppTheme theme)
@@ -1746,6 +1776,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         RegisterAppRow("app.exit", null, Sync(_ => Exit()), AllowGate);
         RegisterAppRow("view.toggleToolbar", null, Sync(_ => ToggleToolbar()), AllowGate);
         RegisterAppRow("view.toggleStatusBar", null, Sync(_ => ToggleStatusBar()), AllowGate);
+        RegisterAppRow("view.toggleProblems", null, Sync(_ => ToggleProblems()), AllowGate);
         RegisterAppRow("project.info", null, _ => ProjectInfo(), ProjectOpenGate);
         RegisterAppRow("project.moduleMap", null, _ => ModuleMap(), ProjectOpenGate);
         // Alignment F-4: both transfer commands need a controller, and are withheld — with a reason — without
@@ -1754,10 +1785,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // sends "to a connected controller" and every E10 scenario opens "Given a controller is connected".
         // Offering them while the status bar reads "Ikke forbundet til controller" advertised a transfer the
         // app knew it could not make, and answered with a message box what the indicator already said.
+        // The validation refusal sits AFTER the connection one, on purpose: without a controller the visible reason
+        // must stay the connection's, since a user with nothing attached is not helped by being told about
+        // findings for a transfer that could not happen anyway. It reads the LATEST COMPLETED bound result and
+        // never re-validates here — the accepted staleness is one debounce plus one run, and UploadTo's own
+        // validation remains the correctness gate at transfer time.
         RegisterAppRow("controller.send", "F5", _ => SendProject(),
             ctx => !ctx.ControllerConnected
                 ? EditVerdict.Refuse("Ingen controller er forbundet.")
-                : ProjectOpenGate(ctx),
+                : ctx.ProjectHasValidationErrors
+                    ? EditVerdict.Refuse(HostProblemCodes.ValidationErrorsBlockSend,
+                        HostProblemCatalog.ValidationErrorsBlockSend.MessageTemplate)
+                    : ProjectOpenGate(ctx),
             Surfaces.MenuBar | Surfaces.Toolbar);   // T020: a real toolbar button (persistent surface)
         RegisterAppRow("controller.retrieve", null, _ => RetrieveProject(),
             ctx => ctx.ControllerConnected
@@ -1950,26 +1989,76 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // coordinator calls back into after computing the opposite end (A-6/F-012).
     private void RevealAndSelectOpposite(ElementId oppositeId)
     {
-        bool inFunctionsPane = false;
-        if (FindNode(InstallationNodes, oppositeId) is { } installationNode)
+        if (RevealAndSelect(oppositeId))
+            StatusText = $"Hoppede til {SelectedNode?.DisplayName}.";
+    }
+
+    /// <summary>
+    /// Reveals and selects any element, switching editing mode if that is what it takes to make the element exist
+    /// on screen. Returns false when the id is in neither tree and in no block — so a caller can tell "nowhere to
+    /// go" from "went there".
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>It sets the OWNING PANE's selected property, never the aggregate.</b> Each tree binds its own
+    /// <c>SelectedInstallationNode</c>/<c>SelectedFunctionsNode</c>; <see cref="SelectNode"/> updates the
+    /// view-model's idea of the selection and moves nothing on screen, which is the failure this method exists to
+    /// avoid — and the reason its tests assert per pane rather than on <see cref="SelectedNode"/>.
+    /// </para>
+    /// <para>
+    /// <b>Mode-awareness, in the order that matters.</b> An element inside a block's program has no row in the
+    /// configuration tree at all, so entering programming mode is not a courtesy — it is what makes the target
+    /// exist. The reverse is equally true of a locality while a block's program is open. The current mode is
+    /// tried first, so an element already on screen never causes a mode switch.
+    /// </para>
+    /// </remarks>
+    public bool RevealAndSelect(ElementId id)
+    {
+        if (TryRevealInCurrentMode(id))
+            return true;
+
+        // Not on screen. It may live inside a block's program, which only the programming tree shows.
+        if (OwningFunctionBlockByAncestry(id) is { } blockId)
         {
-            ExpandAncestors(InstallationNodes, oppositeId);   // realize the target so the selection sticks (A-6)
+            EnterProgrammingMode(FindNode(FunctionNodes, blockId));
+            if (TryRevealInCurrentMode(id))
+                return true;
+        }
+
+        // Or the block's program is open over a configuration-tree target.
+        if (IsProgrammingMode)
+        {
+            LeaveProgrammingMode();
+            if (TryRevealInCurrentMode(id))
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool TryRevealInCurrentMode(ElementId id)
+    {
+        bool inFunctionsPane = false;
+        if (FindNode(InstallationNodes, id) is { } installationNode)
+        {
+            ExpandAncestors(InstallationNodes, id);   // realize the target so the selection sticks (A-6)
             SelectedInstallationNode = installationNode;
         }
-        else if (FindNode(FunctionNodes, oppositeId) is { } functionsNode)
+        else if (FindNode(FunctionNodes, id) is { } functionsNode)
         {
-            ExpandAncestors(FunctionNodes, oppositeId);
+            ExpandAncestors(FunctionNodes, id);
             SelectedFunctionsNode = functionsNode;
             inFunctionsPane = true;
         }
         else
         {
-            return;
+            return false;
         }
-        StatusText = $"Hoppede til {SelectedNode?.DisplayName}.";
+
         // Keyboard focus follows the caret across the panes (uxparity S-25) — otherwise the jump moves the selection
         // somewhere the arrow keys and F4 cannot reach without first pressing F6.
         JumpedToPane?.Invoke(this, inFunctionsPane);
+        return true;
     }
 
     /// <summary>Raised after an F4 jump so the view can move keyboard focus into the pane that now holds the caret
@@ -2193,7 +2282,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                     node.CanCut, node.CanCopy, node.CanReorder),
             Clipboard: _clipboardId is { } clipboardSource ? new ClipboardContext(clipboardSource, _clipboardIsCut) : null,
             CanUndo: _session.CanUndo, CanRedo: _session.CanRedo,
-            ControllerConnected: IsControllerConnected);
+            ControllerConnected: IsControllerConnected,
+            ProjectHasValidationErrors: _session.Validation.HasBlockingFindings);
         // The generated catalog leaves are gated on the same selection/pane inputs the registry rows are, but
         // they are ICommands rather than registry rows, so the sweep above does not reach them (alignment F-8).
         // Here, in the ONE funnel every availability trigger already passes through, rather than at each of the

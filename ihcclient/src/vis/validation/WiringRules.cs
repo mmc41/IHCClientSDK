@@ -6,9 +6,10 @@ using System.Linq;
 
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
-using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
+
+using static Ihc.Vis.Validation.RuleAuthoring;
 
 namespace Ihc.Vis.Validation
 {
@@ -66,11 +67,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "link-through-empty-block", ThroughEmptyBlock),
                 Rule(catalog, "link-pass-through", PassThrough));
         }
-
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
 
         /// <summary>
         /// A product input that owns no link half: the button or sensor is wired to nothing, so pressing it has no
@@ -189,7 +185,7 @@ namespace Ihc.Vis.Validation
         /// </summary>
         private static void ThroughEmptyBlock(IProjectInspection inspection)
         {
-            foreach (ProjectElement block in Blocks(inspection))
+            foreach (ProjectElement block in Blocks(inspection.Analyses))
             {
                 if (Programs(block).Length > 0)
                 {
@@ -232,7 +228,7 @@ namespace Ihc.Vis.Validation
         private static void PassThrough(IProjectInspection inspection)
         {
             ITopologyAnalysis topology = inspection.Analyses.Topology;
-            foreach (ProjectElement block in Blocks(inspection))
+            foreach (ProjectElement block in Blocks(inspection.Analyses))
             {
                 if (SingleCopyProgram(block) is not (ProjectElement input, ProjectElement output))
                 {
@@ -257,7 +253,7 @@ namespace Ihc.Vis.Validation
         private static void ReportUnwiredSide(
             IProjectInspection inspection, string container, Func<ProjectElement, bool> isPin)
         {
-            foreach (ProjectElement block in Blocks(inspection))
+            foreach (ProjectElement block in Blocks(inspection.Analyses))
             {
                 if (block.FindChild(container) is not { } section)
                 {
@@ -350,19 +346,11 @@ namespace Ihc.Vis.Validation
         private static IEnumerable<ProjectElement> Pins(IProjectInspection inspection, ImmutableHashSet<string> tags) =>
             inspection.Analyses.Elements.Where(e => tags.Contains(e.Tag));
 
-        private static IEnumerable<ProjectElement> Blocks(IProjectInspection inspection) =>
-            inspection.Analyses.WithTag("functionblock");
 
         private static ImmutableArray<ProjectElement> Programs(ProjectElement block) =>
             block.FindChild("programs") is { } programs
                 ? [.. programs.Children.Where(p => p.Tag is "program_simple" or "program_sub")]
                 : [];
 
-
-        private static string Name(ProjectElement element) =>
-            element.GetAttribute("name") is { Length: > 0 } name ? name : element.Tag;
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] bindings) =>
-            [.. bindings.Select(b => new ProblemArgument(b.Name, b.Value))];
     }
 }

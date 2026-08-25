@@ -37,6 +37,27 @@ Ordered by priority within each group.
 | **D1** | Rule on the two US-068 residuals (log-mark scope; stop-point / jump-to leaf routes) | Decision | **Blocked** — needs T018's Discoveries entry | [§D1](#d1--us-068-residuals) |
 | **O1** | PG-5 enum-editing oracle session — capture the value-id reallocation rule | Oracle | Todo | [§O1](#o1--pg-5-enum-editing-oracle-session) |
 | **P1** | `PerfBaselineBenchmark` is `[Explicit]` — the five perf budgets are measurable but never gated | Idea | Todo | [§P1](#p1--perf-benchmark-is-never-run) |
+| **V3** | The Fuld report opens its **own** validation run under a weaker profile than the facade's | Defect | Todo | [§V3](#v3--the-report-opens-its-own-validation-run) |
+| **V6** | The `edit.*` family — the largest — sits **outside** the reflective refusal drift gate | Defect | Todo | [§V6](#v6--the-edit-family-is-outside-the-drift-gate) |
+| **V9** | `ProblemConsoleFormat` drops **every finding** of a validation failure | Defect | Todo | [§V9](#v9--the-utility-loses-a-validation-failures-findings) |
+| **V8** | Two shell sites render `Problem.Message` raw, bypassing `ProblemPresenter` | Defect | Todo | [§V8](#v8--two-shell-sites-bypass-the-presenter) |
+| **V1** | ~190 catalogue entries hand-spell the same positional constructor; the host already has the fix | Task | Todo | [§V1](#v1--catalogue-entry-factories) |
+| **V2** | `Target` is `default` on ~140 of 141 finding rows, so the second engine face is **vacuous** | Task | Todo | [§V2](#v2--the-entry-target-is-undeclared) |
+| **V5** | The first-holder-wins duplicate scan is written out **eight times** | Task | Todo | [§V5](#v5--the-duplicate-scan-written-eight-times) |
+| **V4** | Work repeated **per rule** inside one run — the analyses stop short of three shared facts | Task | Todo | [§V4](#v4--facts-recomputed-per-rule-within-one-run) |
+| **V7** | The session refusal channel carries `(code, string)`; the shell re-assembles a `Problem` | Task | Todo | [§V7](#v7--the-session-refusal-channel-drops-its-arguments) |
+| **V13** | The executor invents severity/category for a thrown rule; catalogue invariants never run at build | Task | Todo | [§V13](#v13--a-thrown-rules-classification-is-invented) |
+| **V10** | Rule-test scaffolding: four helpers pasted into 14–19 files each | Task | Todo | [§V10](#v10--rule-test-scaffolding) |
+| **V11** | Four `severity-*.svg` assets ship in the binary and are referenced nowhere | Decision | **Needs decision** | [§V11](#v11--four-unreferenced-severity-icons) |
+| **V12** | The report appendix's order is a hard-coded per-code rank list read across a layer | Idea | Todo | [§V12](#v12--appendix-order-as-a-rank-list) |
+
+> Rows **V1–V13** came from a four-angle cleanup review of the rule-engine and problem-catalogue work
+> (`6bedab9..HEAD`) on **2026-08-24**. That pass **already landed** the mechanical wins — 63 duplicated
+> rule helpers folded into `RuleAuthoring`, two whole-document walks removed, dead `FindingCollector`
+> deleted, and eight further reuse/efficiency fixes — with all 4 010 controller-free tests green and the
+> characterization oracle unmoved. What is listed here is the **residue**: items that change behaviour,
+> move an oracle, touch public API, or are an owner's call, and so were deliberately not taken
+> unilaterally. Each row states which of those it is.
 
 **Withdrawn after review:** a proposed `IProjectDocument : IDisposable` item and a nullable-enable item —
 see [Standing constraints](#standing-constraints--do-not-reopen-without-new-evidence). Coverage
@@ -468,6 +489,307 @@ its numbers are machine-specific with no recorded baseline to compare against.
       committed per-machine baseline and a non-regression check. Low priority — the measurement exists,
       only the gate is missing.
 
+### V3 · The report opens its own validation run
+
+`FullModeShapes.cs:105` calls `ProjectRules.Validator.Validate(project, ValidationProfile.Categorized)`
+directly from `Ihc.Vis.Reporting` — a **second pipeline**, against the commitment `ProjectRules` states in
+its own doc comment (*"every lifecycle gate … reads the findings of a single run of these rules, never a
+second pipeline with its own rule set"*).
+
+It is not merely a duplicate run, it is a **weaker** one. `ProjectAppService` runs
+`ValidationProfile.Categorized with { Library = library.Value }` (now `CategorizedProfile`); the report
+runs the bare `Categorized`. Every `RequiresLibrary` row — today `logic-block-locked-content`, a
+`ValidationCategory.Logic` row — is therefore **skipped in the Fuld appendix** even when the report is
+generated through the service that holds the catalog. The appendix and the verification dialog can
+disagree about the same project, and each new declared context (D27) re-opens the divergence.
+
+There is a cost on top of the correctness gap: all three builders add the appendix
+(`InstallationReportBuilder.cs:140`, `FunctionsReportBuilder.cs:57`, `FunctionBlockReportBuilder.cs:97`),
+so exporting the three Fuld reports validates the same **immutable** project three times end to end.
+
+The same shape appears one layer down: `ProjectVerification.Structural`/`Categorized`
+(`ProjectVerification.cs:30,35`) remain shipped context-less statics that skip every context-declaring
+row, which is why `ProjectAppService` had to grow private `StructuralProfile`/`CategorizedProfile`
+properties beside them. Three call paths, three library answers.
+
+- [ ] Thread the facade's findings (or its profile) into `GenerateReport` so the appendix renders the run
+      that already happened, rather than opening one. Memoising per `Project` instance is a legitimate
+      cheaper variant — `Project` is immutable, so the result cannot go stale.
+- [ ] Decide the fate of the two context-less statics: make the context part of profile construction
+      (a `ValidationProfile.For(catalog)`-style factory), or delete them so a caller must state what it
+      can supply.
+- [ ] Reproduce first: a project with a locked library block, validated through the facade and rendered
+      to a Fuld report, must report the row in **both**.
+
+⚠️ Changing what the appendix contains **moves the `full-*` report oracles**. Treat the oracle move as
+part of the fix, not as a surprise — and follow the regeneration procedure rather than hand-editing.
+
+### V6 · The `edit.*` family is outside the drift gate
+
+Four refusal families expose `RefusalIdentity` (template + declared `{slot}`s + binding) and are swept
+**reflectively** by `RefusalLabelDriftTests.Identities()` (`:31-34`), which walks every registry type in
+the assembly. That gate's own doc records why the load family was converted: *"its registry exposed bare
+codes … it now exposes whole identities like its three siblings, so the gate is universal."*
+
+It is not universal. `EditRefusalCodes.cs` contains **no `RefusalIdentity` at all** — it exposes ~40 bare
+`ProblemCode`s, and `EditRefusalProblems` builds their Danish with C# interpolation. The reflective sweep
+cannot see any of it, and this is the **largest** family.
+
+The substitute is `RefusalLanguageTests.ACatalogueTemplateSaysWhatItsRefusalSiteSays` (`:528`), a
+hand-maintained sample of about a quarter of the family — and several of its sentences are **retyped as
+string literals in the test** (`(EditRefusalCodes.TerminalMissing, "Klemmen findes ikke længere.")`),
+which makes the test a *third* copy of the words rather than a comparison of the two that exist. Roughly
+thirty Danish sentences are duplicated between the catalogue and the session with nothing comparing them,
+and the sampling list has to be remembered on every new `edit.*` code.
+
+- [ ] Convert the edit family to `RefusalIdentity` with slot templates, like its four siblings. The
+      reflective gate then covers it with **no new test**, and the hand-maintained sample can be deleted
+      rather than extended.
+- [ ] While converting, fold in the second spelling: `EditRefusalProblems` binds some sentences by
+      interpolation (`:88, 92, 99, 103, 116`) and others through `ProblemTemplate.Bind` (`:123-129`), so
+      one family substitutes values two ways. `ProblemTemplate` lives in `Ihc.Vis.Problems`, which the
+      session layer already depends on — the layering rule is untouched by this.
+
+*Not* in scope: the deliberate duplication of a Danish sentence beside its refusing site. That is the
+documented layering rule (`Session`/`Io` must not depend on `Validation`); this row is about the sentences
+the gate cannot **check**, not about the copies themselves.
+
+### V9 · The utility loses a validation failure's findings
+
+`ProblemConsoleFormat.Describe(Exception)` (`:71`) matches only
+`IProblemCarrier { Problems: { } chain }`. But `ProjectValidationException` deliberately publishes
+`IProblemCarrier.Problems => null` (`ProjectValidationException.cs:55`) and exposes its content as
+`IProblemCarrier.Aggregate` instead (`:58`) — the two members cannot share a name.
+
+So the one exception shape that carries a *list of findings* falls through to `error.Message`, and the
+`ihc_project_download_upload` utility prints a bare sentence for a failed validation while every finding
+behind it is discarded. This is precisely the defect `RaisedProblemDisplay` exists to prevent on the GUI
+side, reproduced here because the shape decision was **copied rather than shared**.
+
+- [ ] Reproduce with a test: a project failing validation, rendered through `ProblemConsoleFormat`, must
+      list its findings.
+- [ ] Handle the aggregate case. Better than adding a second branch: lift the shape traversal
+      (chain → cause; aggregate → head + items; carrier → which) onto the problem layer as a small
+      visitor, leaving each medium only its **decoration** (`[code]` brackets, argument tail). The
+      catalogue doc's argument that a console is a different *medium* justifies different decoration — it
+      does not justify a second copy of the composition rules.
+
+### V8 · Two shell sites bypass the presenter
+
+`MainWindowViewModel.UserFacingRefusal` (`:560-568`) goes out of its way to route a status-bar refusal
+through `ProblemPresenter`, with the reason written at the site: *"so a refusal shown in the status bar
+carries the same bracketed identity it carries in a dialog (R18)."*
+
+`ProgramAuthoringCoordinator.cs:436` and `:450` do not — they pass `blank.Message` / `refusal.Message`
+straight to `setStatus`. These are the only two sites in the shell that skip the presenter, so the same
+refusal is identified on one surface and anonymous on another.
+
+- [ ] Give `setStatus` a `Problem` rather than a `string`, so the rendering happens once inside the shell
+      and a coordinator cannot format its own. That fixes the class, not the two instances.
+
+⚠️ This **changes user-visible text** (the bracketed identity appears where it did not). Check
+`RefusalIdentitySurfacesTests` and the message-site register before assuming it is free.
+
+### V1 · Catalogue entry factories
+
+`ProblemCatalogEntries.*` declares ~192 entries as hand-spelled positional constructors. All 49
+refusal/outcome entries repeat the identical five arguments (`ProblemCatalogSection.OperationOutcomes`,
+`null`, `CatalogDisposition.Refusal`, `RuleKind.*`, `RuleFaces.None`, `default`,
+`FindingShape.OneFinding`); the 141 finding entries repeat `ProblemCatalogSection.ProjectFindings` 141
+times, `RuleKind.UserContentRule` 118 times, `RuleFaces.WholeProject` 122 times and
+`FindingShape.OnePerOccurrence` 91 times. That is roughly **900–1000 lines** of boilerplate, and because
+the repeated arguments are four *distinct* enums, a copy that transposes two of them still compiles.
+
+The fix already exists in this codebase and was written for exactly this reason — in the **host**:
+`HostProblemCatalog.Outcome(code, template, diagnostic, params slots)`
+(`applications/ihc_openvisual/Services/HostProblemCatalog.cs:237`), whose doc says *"fifteen literal
+repetitions of the same five arguments would only be fifteen chances to get one wrong."* Its fifteen
+entries are 3–5 lines each. The SDK needs the same two or three shape factories.
+
+- [ ] Add `Finding(...)`, `EditRefusal(...)` and `Outcome(...)` factories to `ProblemCatalogEntries`,
+      mirroring the host's, with optional `target:`/`faces:` named arguments for the rows that differ.
+- [ ] Convert the three partials. Do it **mechanically and in one commit per partial**, and require the
+      catalogue index (`ihcclient/docs/problem-catalogue.md`, generated from the declarations and compared
+      by a test) plus `rule-characterization.txt` to be **byte-unchanged**. Any movement means the
+      conversion changed a declaration, which is the whole risk.
+
+Deferred from the 2026-08-24 pass purely on **size** — it is the largest single duplication left, and it
+is mechanical, not subtle.
+
+### V2 · The entry `Target` is undeclared
+
+`ProblemCatalogEntry.Target` is the declaration that says *what a row is about*. Exactly two entries in
+the SDK declare a real one; every other row passes `default`, i.e. whole-project — including rows that are
+demonstrably about one `(tag, attribute)` pair.
+
+The consequence is that the fact lives somewhere else instead. `DocumentationRules` keeps it in a private
+`ImmutableDictionary<string, string>` keyed by the literal code string
+(`["doc-cabletype"] = "cabletype"`), and `NamingRules` / `DocumentationCompletenessRules` keep their own
+`private const` copies of `documentation_tag`, `cablenumber`, `power_group`.
+
+So `RuleSet.ForTarget`, `FieldMetadataFace.DescribeField`/`ConstraintsOn` and the `UnknownTarget`
+registration guard are **vacuous for every shipped row but one**. The second engine face cannot answer for
+any field a dialog actually edits, and the registration check passes by construction. Any future
+"which rules govern this field" question — a tooltip, a coverage test, a field-level filter — has nothing
+to read.
+
+- [ ] Declare `Target` on the rows that have one, starting with the eight `doc-*` rows whose attribute is
+      already written down in `ProductAttributes`.
+- [ ] Have the rules read `entry.Target.Attribute` and delete the parallel maps and consts.
+- [ ] Re-point `FieldMetadataFaceTests` at a real shipped row rather than a synthetic one, so the face is
+      gated on shipped data.
+
+Declaring a target is **independent of the body kind** — ARCHITECTURE's exemption covers migrating bodies
+to `Constrain` (which moves oracles), not declaring the target on a traversal row, which moves nothing.
+Expect `rule-characterization.txt` to be unchanged; if it moves, something else changed with it.
+
+### V5 · The duplicate scan written eight times
+
+`NamingRules.cs:144` and `:175`, `EnumDefinitionRules.cs:80` and `:115`, `FunctionBlockShapeRules.cs:127`,
+`ProgramShapeRules.cs:149`, `ModuleAddressRules.cs:156`, `DeviceAddressRules.cs:141` are eight bodies of
+one shape: an ordinal `Dictionary<TKey, ProjectElement> seen`, a skip for a blank key,
+`TryGetValue` → `ReportGroup(current, [first], …)` else store. They differ only in scope, key selector and
+arguments — and they already disagree in small ways.
+
+`IdAnalysis` is a ninth implementation, and its doc comment argues that stating *"first holder wins, in
+document order"* **once** is load-bearing — *"a rule re-deriving it would be a second answer to which
+element is the duplicate."* The eight rule-local copies undo that for every key that is not an id.
+
+- [ ] Add one authoring form — `RuleBuilder.DuplicatesOf(scope, keyOf, argsOf)`, or a
+      `ReportFirstWinsDuplicates` helper beside `RuleAuthoring`. Each of the eight call sites collapses to
+      about three lines and the blank-key rule is stated once.
+
+This is the case `RuleBuilder` exists for, and none of the eight uses it. Behaviour-preserving:
+`rule-characterization.txt` must not move.
+
+### V4 · Facts recomputed per rule within one run
+
+The `IProjectAnalyses` contract is *"the analyses one run computes AT MOST ONCE, which any rule may
+read"*, and the 2026-08-24 pass finished its element-walk half. Three shared facts are still missing, so
+the work is done **per rule** instead:
+
+- `ModuleAddressRules.Modules()` (`:195`) scans every element and parses every data-line address to group
+  terminals into modules. `ModulePartial` and `ModuleMixedLocality` each call it — the whole grouping,
+  address parsing included, twice per run.
+- `ProgramDataflowRules.Collect(...)` builds two reference-keyed `HashSet` maps of triggers and writes;
+  `SelfTrigger` and `ContendingWriters` each call it — twice per run, identically.
+- `ProgramDataflowRules.Written(...)` (`:353`) scans **all** usages once **per variable**, driven by
+  `FlagNeverCleared` and `CounterNeverReset`; `TimerNeverStarted` (`:139`) does the same shape inline.
+  On U usages and V variables that is 3 × O(V·U) — on the order of a million reference comparisons on a
+  large project. `TriggerAncestors` (`:238`) is likewise recomputed from scratch for every writing program
+  of every contended variable.
+
+- [ ] Decide whether these become members on `IProjectAnalyses` / `IProgramUsageAnalysis` — the sanctioned
+      home for a shared fact — accepting that both are **public API** and the addition moves
+      `PublicAPI.Unshipped.txt`.
+- [ ] If so: a `WritesTo(variable)` lookup built in the walk that already produces the usages collapses
+      all three dataflow items at once.
+
+Deferred from the 2026-08-24 pass because it is a **public-interface** change, and because
+`IProjectAnalyses`'s own doc says an analysis arrives *with the rules that need it* — adding three is a
+design call, not a cleanup. Note the measured context before pricing it: `ValidateCategorized` is ~12.6 ms
+on the largest authentic project, so this is about **allocation and clarity**, not a user-visible stall.
+
+### V7 · The session refusal channel drops its arguments
+
+`EditVerdict.Refuse(code, reason)` (`SessionCoreTypes.cs:45`, and the same shape on `EditOutcome` and
+`PreviewOutcome`) carries a code and a loose string, while every other refusal channel in the SDK carries
+a whole `Problem`. `EditRefusalProblems` already exposes typed `Problem` factories, but the session's
+shared guards reach for the sibling `*Refusal(string)` helpers instead.
+
+The shell then **re-assembles** the value at the presentation site:
+`new Problem(outcome.Code, outcome.Reason ?? "", EquatableArray<ProblemArgument>.Empty)`
+(`MainWindowViewModel.cs:566`). The declared arguments are dropped for the whole session refusal channel,
+so a host cannot group or re-render by argument, and a presentation path is assembling a value the
+producer already had. Every new consumer of a refusal repeats the reconstruction.
+
+- [ ] Add `EditVerdict.Refuse(Problem)` (and the `EditOutcome`/`PreviewOutcome` equivalents), keeping the
+      string overload only for the sanctioned host-without-a-family case.
+- [ ] Delete the reconstruction in `MainWindowViewModel`.
+
+Pairs naturally with [§V6](#v6--the-edit-family-is-outside-the-drift-gate) — converting the edit family to
+`RefusalIdentity` is what gives these sites a `Problem` to pass.
+
+### V13 · A thrown rule's classification is invented
+
+`WholeProjectValidator.cs:155-156` turns a rule that throws into `ValidationSeverity.Error` +
+`entry.Category ?? ValidationCategory.FileIntegrity`, hard-coded — while `internal.unexpected` is declared
+`Refusal` with no category. The two facts the catalogue exists to own are decided **in the executor** for
+this one case. The same `?? FileIntegrity` sits on the normal path (`:175`), where it would silently
+mislabel any content entry that forgot a category.
+
+`CatalogInvariants.CategoryMisplaced` would catch that — but `ProblemCatalog.From` never runs it. The
+catalogue is validated only by a test, whereas `RuleSet.Create` validates at composition. The two halves of
+one gate are enforced at different times.
+
+- [ ] Declare an entry for *"a rule threw"* carrying its own category and Error disposition, read through
+      `SeverityFor` like every other row.
+- [ ] Run `CatalogInvariants.Check` at catalogue construction, so the entry set is gated where the rule set
+      already is.
+
+Small related residuals in the same executor, worth folding in rather than their own rows:
+`Build` binds the **English diagnostic** eagerly for every finding although it is documented as never shown
+to a user; and `SortKey` runs a `string.Join` per emission for a tiebreak consulted only after scan
+position, code and locator have all tied.
+
+### V10 · Rule-test scaffolding
+
+The new rule-test files under `tests/safe_project_tests/problems/` each paste the same four helpers:
+`Validate(project)` and `Count(project, ruleId)` in **14** files, `Token(tag, counter)` in **19**, and
+`Authentic(file)` in **14** — roughly 150 lines of identical scaffolding. The locality builder
+(`Tree.Node("groups", Token("groups", 0x20), …)`) is pasted about a dozen times with the *same* magic
+counters.
+
+Each `Validate` also constructs a fresh `ProjectAppService`, so a 30-case file builds 30 services and 30
+catalogs. A change to how these suites reach the engine is 14 edits with nothing failing if one is missed.
+
+- [ ] Put `Validate`, `Count`, `Token`, `Authentic` and a `Locality(...)` builder in one
+      `RuleTestHarness` beside `tests/safe_project_tests/helpers/Tree.cs` — where `Tree.WithRoot` already
+      lives, added in this same branch for the same reason and stopping one step short. Share one
+      `ProjectAppService`.
+- [ ] Leave the per-file fixture builders (`Dimmer`, `Modem`, `Block`) alone — those are the test content,
+      not scaffolding.
+
+Also: `HostProblemCatalogTests.RepositoryRoot()` (`:406`) is a line-for-line copy of
+`TestRepository.RequireRoot()`, and `TheCatchAllSentenceIsWrittenOnceInTheApplication` (`:200`) walks the
+live checkout with a hand-rolled `bin`/`obj` filter — while `safe_visual_tests.csproj:52-56` copies the GUI
+sources to `appsrc/` *specifically* so no test walks the checkout, which is how
+`MessageSiteRegisterTests.cs:252` does it.
+
+### V11 · Four unreferenced severity icons
+
+`applications/ihc_openvisual/Assets/severity-{error,fatal,info,warning}.svg` were added in this branch.
+They match the house style exactly (24×24 viewBox, `fill="none" stroke="currentColor" stroke-width="2"`,
+`aria-hidden`, named ids) and are packaged as Avalonia resources — but **no `.cs`, `.axaml` or doc
+references them**, and neither `docs/icons_design.md` nor `docs/icon_codes.md` was updated.
+
+They ship in the binary as dead weight, and when a findings pane eventually needs them a second set is as
+likely to be authored as these are to be found. They look **staged for planned work** rather than
+abandoned, which is why this is a decision and not a deletion.
+
+- [ ] Owner call: **wire them up** — register as constants on `NodeIcons.cs:14` (the existing `/Assets/*.svg`
+      registry) with a `Severity(ValidationSeverity)` selector mirroring `ControllerConnection(bool)`, and
+      add the rows to `docs/icon_codes.md` — or **delete them** until the pane that needs them exists.
+
+### V12 · Appendix order as a rank list
+
+`DocumentationRules.cs:46-59` declares two literal `ProblemCode[]` arrays fixing the documentation
+appendix's print order, and `FullModeShapes.cs:93-100` ranks by `IndexOf`, sorting anything unlisted to
+`int.MaxValue`. The DOCUMENTATION category is wider than those eight codes — every `name-*` row is in it —
+so the mechanism is explicitly "special cases plus a fallback".
+
+Two costs: adding or reclassifying a DOCUMENTATION row silently lands it at the end of the appendix and
+moves a byte-pinned oracle, with nothing at the rule site saying so; and a rule module now exports a
+**rendering** fact for one consumer.
+
+- [ ] Consider a declared rank (or an explicit "unranked") on the catalogue entry, so a new row states its
+      appendix position in the same declaration that states its category — the pattern the entry already
+      uses for every other cross-cutting fact.
+
+Kept as an `Idea`: the present arrangement is *documented* as a report-parity fact declared where the
+checks are, and `AppendixUnrankedOrderTests` already pins the fallback. Promote it only if a third
+consumer appears or a reclassification actually surprises someone.
+
 ---
 
 ## Standing constraints — do not reopen without new evidence
@@ -529,6 +851,23 @@ its numbers are machine-specific with no recorded baseline to compare against.
   **not** recorded in `PublicAPI.*.txt`: the baseline states what the SDK promises, and this is not it.
   **The premise expires if the wire path stops using `XmlSerializer`** — or before `ihcclient` is
   published as a NuGet package, which would turn a source-level detail into a distributed contract.
+- **The declarative constraint vocabulary is deliberately ahead of its callers** (2026-08-24). A cleanup
+  review flagged `ConstraintSequence` as an abstraction used once — `RuleBuilder.Constrain` has a single
+  SDK caller (`addr-modem-phonenumber-malformed`) and the sequence overload has none — and proposed
+  collapsing `RuleDefinition.Constraints` to a bare `IValueConstraint?`. **Do not.** The type documents
+  itself as *"authored and reserved"*, and `RuleBuilder`'s doc records the flip conditions for the larger
+  question it belongs to (adopt a validation library if the catalogue grows a large population of
+  per-element value predicates known at COMPILE time, or if rules must become asynchronous). Collapsing
+  the shape now would have to be undone by the second constraint on one code. Note the *related* item that
+  IS live: the rows that could be declarative are not, because their entries declare no target — that is
+  [§V2](#v2--the-entry-target-is-undeclared), and it is about the declaration, not the vocabulary.
+- **A refusing site repeats its Danish sentence beside its code, on purpose** (restated 2026-08-24). Three
+  independent reviewers flagged this as duplication in one pass, so it is recorded here rather than
+  re-argued each time. `Ihc.Vis.Session` and `Ihc.Vis.Io` must not depend on `Ihc.Vis.Validation`
+  (enforced by `tests/safe_architecture_tests/ValidationLayerArchitectureTests.cs`), so a site below the
+  engine cannot read the catalogue and carries its own copy, kept equal by a drift test. What is **not**
+  settled is whether that drift test actually covers the copy — for the largest family it does not, which
+  is [§V6](#v6--the-edit-family-is-outside-the-drift-gate).
 - **The GUI's `ConfigureAwait` and `Process.Start` bans stay architecture tests** (ruled 2026-08-17;
   `docs/adr/ADR-004-compile-time-bans-over-architecture-tests.md`). Moving them to banned-symbol entries
   was proposed and rejected on that ADR's own test: neither is a complete ban. `ConfigureAwait` is declared

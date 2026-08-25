@@ -9,6 +9,8 @@ using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -66,11 +68,6 @@ namespace Ihc.Vis.Validation
                     CableNumberAttribute,
                     tag => ProductClassifier.IsProduct(tag) || AuthoredElements.IsTerminal(tag))));
         }
-
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
 
         /// <summary>
         /// A nameable element with no name: it cannot be identified in a report or on site.
@@ -139,10 +136,15 @@ namespace Ihc.Vis.Validation
             ITopologyAnalysis topology = inspection.Analyses.Topology;
             foreach (ProjectElement parent in inspection.Analyses.Elements)
             {
+                if (parent.Children.Length == 0)
+                {
+                    continue;   // a leaf has no siblings to collide; the map below would be allocated for nothing
+                }
+
                 Dictionary<string, ProjectElement> seen = new(StringComparer.Ordinal);
                 foreach (ProjectElement child in parent.Children.Where(c => IsNameable(c, topology)))
                 {
-                    if (child.GetAttribute("name") is not { Length: > 0 } name || string.IsNullOrWhiteSpace(name))
+                    if (child.GetAttribute("name") is not { } name || string.IsNullOrWhiteSpace(name))
                     {
                         continue;   // a blank name is name-empty's finding, not a collision
                     }

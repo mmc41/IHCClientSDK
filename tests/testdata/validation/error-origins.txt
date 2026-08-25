@@ -66,4 +66,3 @@ ihcclient/src/vis/session/ProjectDocumentSession.cs	edit-verdict-refusal	1	edit	
 ihcclient/src/vis/session/ProjectDocumentSession.cs	preview-refusal	3	edit	Refusal
 ihcclient/src/vis/session/SessionCoreTypes.cs	edit-verdict-refusal	3	edit	Refusal
 ihcclient/src/vis/session/StructureCommands.cs	edit-verdict-refusal	3	edit	Refusal
-ihcclient/src/vis/validation/FindingCollector.cs	validation-finding	1	validation	Finding

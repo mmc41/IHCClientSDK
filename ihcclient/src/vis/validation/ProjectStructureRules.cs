@@ -8,6 +8,9 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
+
+using static Ihc.Vis.Validation.RuleAuthoring;
 
 namespace Ihc.Vis.Validation
 {
@@ -35,10 +38,6 @@ namespace Ihc.Vis.Validation
         /// <summary>The attribute holding an element's icon, and the token that means "none".</summary>
         private const string IconAttribute = "icon";
 
-        /// <summary>The link halves whose presence means something outside reaches in.</summary>
-        private static readonly ImmutableHashSet<string> LinkHalfTags =
-            ["link_from_resource", "link_to_resource", "scene_link"];
-
         /// <summary>The five rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
@@ -51,11 +50,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "struct-orphan-block", OrphanBlock),
                 Rule(catalog, "struct-icon-default", IconLeftDefault));
         }
-
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
 
         /// <summary>
         /// A locality holding neither a product nor a block: an empty room in the tree and in the reports.
@@ -150,7 +144,7 @@ namespace Ihc.Vis.Validation
             foreach (ProjectElement element in inspection.Analyses.Elements)
             {
                 ProjectElement? host = topology.NearestAncestorOrSelf(element, "functionblock");
-                if (LinkHalfTags.Contains(element.Tag) && host is not null)
+                if (ReciprocalTags.CrossBoundaryHalfTags.Contains(element.Tag) && host is not null)
                 {
                     reached.Add(host);   // the block is wired
                 }
@@ -229,11 +223,5 @@ namespace Ihc.Vis.Validation
 
         private static IEnumerable<ProjectElement> Blocks(ProjectElement locality) =>
             locality.Children.Where(c => c.Tag == "functionblock");
-
-        private static string Name(ProjectElement element) =>
-            element.GetAttribute("name") is { Length: > 0 } name ? name : element.Tag;
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] bindings) =>
-            [.. bindings.Select(b => new ProblemArgument(b.Name, b.Value))];
     }
 }

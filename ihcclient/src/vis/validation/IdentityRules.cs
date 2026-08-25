@@ -11,6 +11,8 @@ using Ihc.Vis.Schema;
 
 using TypeCode = Ihc.Vis.Schema.TypeCode;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -48,11 +50,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "luid-ceiling", HighWaterMark(LastUniqueIdFault.AboveCeiling)),
                 Rule(catalog, "luid-low", HighWaterMark(LastUniqueIdFault.BelowHighWaterMark)));
         }
-
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
 
         /// <summary>
         /// An id that is not a well-formed <c>_0x</c> hex token in the legal packed range — nothing can reference
@@ -162,9 +159,13 @@ namespace Ihc.Vis.Validation
                 return;
             }
 
+            // ONLY the value. The high-water maximum was bound here too and rendered by nothing — neither
+            // template nor diagnostic names it — so it was data no reader could ever see, sitting in the
+            // production sort key. `value` is still bound for all three faults because the raise site is
+            // shared; `luid-low`'s sentence takes no data, and splitting the site to drop it there would
+            // duplicate the one implementation these three rules exist to share.
             inspection.Report(inspection.Project.Root, Arguments(
-                ("value", inspection.Project.LastUniqueId ?? string.Empty),
-                ("maximum", inspection.Analyses.Ids.MaxCounter)));
+                ("value", inspection.Project.LastUniqueId ?? string.Empty)));
         };
 
         private static HashSet<ProjectElement> Holders(EquatableArray<ProjectElement> elements)
@@ -179,9 +180,6 @@ namespace Ihc.Vis.Validation
 
             return set;
         }
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] values) =>
-            values.Select(v => new ProblemArgument(v.Name, v.Value)).ToImmutableArray();
 
     }
 }

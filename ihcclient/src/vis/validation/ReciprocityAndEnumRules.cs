@@ -9,6 +9,8 @@ using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -54,11 +56,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "enum-inivalue", EnumInitialValue));
         }
 
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
-
         /// <summary>
         /// One reciprocal-pair check. Every wired half must point at a live partner of the COMPLEMENTARY kind
         /// that points back at it.
@@ -94,8 +91,7 @@ namespace Ihc.Vis.Validation
                 {
                     inspection.Report(half, Arguments(
                         ("noun", noun), ("tag", half.Tag),
-                        ("id", half.GetAttribute("id") ?? string.Empty),
-                        ("partner", partnerId ?? string.Empty)));
+                        ("id", half.GetAttribute("id") ?? string.Empty)));
                     continue;
                 }
 
@@ -168,20 +164,14 @@ namespace Ihc.Vis.Validation
         /// </summary>
         private static IEnumerable<(ProjectElement Element, ProjectElement Definition)> TypedEnums(IProjectInspection inspection)
         {
-            Dictionary<string, ProjectElement> byId = new(StringComparer.Ordinal);
-            foreach (ProjectElement element in inspection.Analyses.Elements)
-            {
-                if (element.GetAttribute("id") is { } id)
-                {
-                    byId.TryAdd(id, element);
-                }
-            }
-
+            // Resolution goes through the topology analysis, which IS the first-holder-wins id map, rather
+            // than a second one built per rule from a second scan of every element.
+            ITopologyAnalysis topology = inspection.Analyses.Topology;
             foreach (ProjectElement element in inspection.Analyses.WithTag("resource_enum"))
             {
                 if (element.GetAttribute("typedef") is { } typedef
                     && typedef != ElementId.NullToken
-                    && byId.TryGetValue(typedef, out ProjectElement? definition))
+                    && topology.ByToken(typedef) is { } definition)
                 {
                     yield return (element, definition);
                 }
@@ -202,8 +192,5 @@ namespace Ihc.Vis.Validation
 
             return map.ToImmutable();
         }
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] values) =>
-            values.Select(v => new ProblemArgument(v.Name, v.Value)).ToImmutableArray();
     }
 }

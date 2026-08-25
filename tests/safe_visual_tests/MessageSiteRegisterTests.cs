@@ -86,6 +86,14 @@ public class MessageSiteRegisterTests
         new("MainWindowViewModel.RetrieveProject", Owner.Host, HostProblemCodes.ControllerRequiredRetrieve,
             "The sibling of the send site. TWO codes rather than one: the sentences differ in their opening "
             + "words, and the site used to assemble each from a fragment plus a shared tail at render time."),
+        new("MainWindowViewModel.RegisterAppRows/controller.send gate", Owner.Host,
+            HostProblemCodes.ValidationErrorsBlockSend,
+            "A GATE's refusal, not a dialog — the sentence reaches the user as the greyed row's tooltip and as "
+            + "the status-bar line a refused F5 writes. It is registered all the same: the register's question is "
+            + "who owns a user-facing sentence, not which control carries it, and a reason shown on a menu row is "
+            + "read by exactly the same person as one shown in a box. Host-owned because gating an upload on "
+            + "findings is THIS application's policy — the SDK reports the findings and takes no view on whether "
+            + "a transfer may proceed."),
         new("MainWindowViewModel.InsertFunctionBlockAsync", Owner.Sdk, EditRefusalCodes.LibraryBlockMissing,
             "The catalog is the SDK's, so the reason no such block exists is the SDK's to word (T043)."),
         new("MainWindowViewModel.Delete", Owner.Sdk, EditRefusalCodes.DeletionRefusedCatalogPin,

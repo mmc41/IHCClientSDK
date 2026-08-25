@@ -7,6 +7,7 @@
         xmlns:svc="using:ihc_openvisual.Services"
         xmlns:conv="using:ihc_openvisual.Converters"
         xmlns:controls="using:ihc_openvisual.Controls"
+        xmlns:views="using:ihc_openvisual.Views"
         xmlns:a="using:Avalonia.Automation"
         xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="680"
@@ -390,6 +391,13 @@
                 <controls:AccessibleMenuItem Header="_Statuslinie" ToggleType="CheckBox"
                           a:AutomationProperties.AutomationId="view.toggleStatusBar"
                           IsChecked="{Binding IsStatusBarVisible}" Command="{Binding ToggleStatusBarCommand}"/>
+                <!-- A DELIBERATE divergence: the reference application has no problems panel, so this row has no
+                     vendor counterpart to match. It follows the two toggle rows above exactly — checkable,
+                     always available, session-only state — so the one new thing in the Vis menu behaves like the
+                     things already there. -->
+                <controls:AccessibleMenuItem Header="_Problemer" ToggleType="CheckBox"
+                          a:AutomationProperties.AutomationId="view.toggleProblems"
+                          IsChecked="{Binding IsProblemsPanelVisible}" Command="{Binding ToggleProblemsCommand}"/>
                 <controls:AccessibleMenuItem Header="_Vis program" Command="{Binding EnterProgrammingModeCommand}" InputGesture="F3"
                           a:AutomationProperties.AutomationId="view.showProgram"
                           IsEnabled="{Binding Registry.Bar[view.showProgram].Enabled}"
@@ -737,8 +745,29 @@
             </Grid>
         </Border>
 
+        <!-- ============ Fill: the two tree panes, then the Problemer panel below them ============ -->
+        <!-- ORDER MATTERS, and not in the way a DockPanel would suggest. The panel must sit ABOVE the status bar,
+             which is already docked Bottom — so it cannot simply be another Bottom-docked child declared later:
+             a GridSplitter only resizes when its PARENT is a Grid, and one docked into a DockPanel silently
+             no-ops on drag, leaving a panel that looks resizable and is not. So the DockPanel's fill child is a
+             row Grid: trees, splitter, panel. That keeps the panel above the status bar AND actually resizable. -->
+        <!-- The panel's row is an ABSOLUTE height, not Auto, and the panel inside it states no height of its own.
+             That pairing is the whole resize contract: a GridSplitter writes a pixel height into the ROW, so a
+             panel carrying its own Height would keep that height inside a row the drag had just resized — leaving
+             a dead band above and below it when dragged open, and a panel overhanging into the status bar with its
+             lower findings unclickable when dragged shut. The two MinHeights are floors a drag may not cross: the
+             panel may not squeeze the trees away, and the trees may not squeeze the panel to a sliver — hiding it
+             is what the Vis row is for. The row is zeroed and restored in code-behind as the panel is toggled; an
+             absolute row would otherwise keep its band reserved behind a hidden panel. -->
+        <Grid Name="WorkspaceGrid">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" MinHeight="120"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="180" MinHeight="72"/>
+            </Grid.RowDefinitions>
+
         <!-- ============ Two tree panes with a splitter ============ -->
-        <Grid ColumnDefinitions="*,Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,*">
             <!-- Both panes are Region landmarks rather than Main/Complementary: they carry equal weight in this
                  shell, and Main is singular. A Region is only navigable if it is NAMED, so each takes its pane
                  header as its accessible name — which also keeps the two apart in a landmark list. -->
@@ -787,6 +816,23 @@
                           ItemContainerTheme="{StaticResource TreeNodeItemTheme}"
                           ItemTemplate="{StaticResource TreeNodeTemplate}"/>
             </DockPanel>
+        </Grid>
+
+        <!-- Same reasoning as the vertical PaneSplitter above: Avalonia exposes no drag pattern to UI Automation,
+             so this control is reached by focusing it and using the arrow keys — which needs it findable and
+             announced. Collapsed with the panel, so a hidden panel leaves no orphan grab handle behind. -->
+        <GridSplitter Grid.Row="1" Height="4" ResizeDirection="Rows"
+                      IsVisible="{Binding IsProblemsPanelVisible}"
+                      a:AutomationProperties.AutomationId="ProblemsSplitter"
+                      a:AutomationProperties.Name="Problemer-panelopdeler"
+                      a:AutomationProperties.HelpText="Brug op- og ned-piletast til at ændre panelets højde"
+                      Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+
+        <!-- No Height here: the ROW carries it (see the RowDefinitions above), and the panel stretches into
+             whatever the splitter left. Both the height and the visibility flag are SESSION-ONLY — nothing about
+             the panel is persisted. -->
+        <views:ProblemsPanel x:Name="ProblemsPanelHost" Grid.Row="2"
+                             IsVisible="{Binding IsProblemsPanelVisible}"/>
         </Grid>
     </DockPanel>
 </Window>

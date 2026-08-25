@@ -1,0 +1,253 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:a="using:Avalonia.Automation"
+             xmlns:vm="using:ihc_openvisual.ViewModels"
+             xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="180"
+             x:Class="ihc_openvisual.Views.ProblemsPanel"
+             x:DataType="vm:MainWindowViewModel"
+
+             a:AutomationProperties.AutomationId="ProblemsPanel"
+             a:AutomationProperties.LandmarkType="Region"
+             a:AutomationProperties.AccessibilityView="Control"
+             a:AutomationProperties.Name="Problemer"
+
+             FontFamily="{DynamicResource MonoFontFamily}"
+             FontSize="{DynamicResource MonoFontSize}">
+
+    <!-- The panel reads as a LOG, not as a form: a small monospace face, set once here and inherited by
+         everything below, and rows packed tight enough that the default height shows findings rather than three
+         of them. That is the whole difference between this region and the rest of the shell — a findings list is
+         scanned in bulk and its columns line up under each other, which a proportional UI font does not do.
+         Both tokens are DynamicResource, so Vis ▸ Tekststørrelse still scales the panel with everything else.
+         The styles below are the controls the inherited size does NOT reach: Fluent's Button and ToggleButton
+         themes set FontSize on the control itself, which wins over an inherited one. -->
+    <UserControl.Styles>
+        <Style Selector="ToggleButton">
+            <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}"/>
+            <Setter Property="FontSize" Value="{DynamicResource MonoFontSize}"/>
+            <Setter Property="Padding" Value="6,1"/>
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}"/>
+            <Setter Property="FontSize" Value="{DynamicResource MonoFontSize}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <UserControl.Resources>
+        <!-- Every column header is this: a BUTTON carrying its own sort command, plus an arrow that
+             is empty on all but the sorted column. A button rather than a click-handled label because
+             sorting must be reachable without a mouse — focusable, Enter/Space-activatable, and
+             announced as something you can press. Carrying the command on the column view-model is
+             what lets this template bind entirely within itself, with no reach up to an ancestor's
+             DataContext. -->
+        <DataTemplate x:Key="ProblemsSortHeader" x:DataType="vm:ProblemsColumnViewModel">
+            <Button Command="{Binding SortCommand}"
+                    Background="Transparent" BorderThickness="0" Padding="4,1"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                    a:AutomationProperties.AutomationId="{Binding AutomationId}"
+                    a:AutomationProperties.Name="{Binding Title}"
+                    a:AutomationProperties.HelpText="Sortér efter denne kolonne">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding SortGlyph}"/>
+                </StackPanel>
+            </Button>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <!-- The id, landmark and name sit on the USERCONTROL above, not on this Border. The shell binds the panel's
+         visibility on the UserControl, so an id one level in would address an element that stays visible and
+         zero-offset while the thing a user sees is hidden or moved — a driver reading "the panel is still shown"
+         off a hidden panel. It is a Region landmark rather than a Complementary one for the same
+         reason the two tree panes are: a Region is only navigable once NAMED, and the Danish pane title is the
+         name a screen-reader user hears in a landmark list. -->
+    <!-- The DataContext switch happens HERE rather than on the UserControl, and the placement is deliberate: the
+         shell binds this control's IsVisible against ITS OWN view-model, so retargeting one level up would break
+         that binding. Everything inside binds to the panel's view-model. -->
+    <Border DataContext="{Binding Problems}" x:DataType="vm:ProblemsPanelViewModel"
+            Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+            BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+            BorderThickness="0,1,0,0">
+        <DockPanel>
+            <!-- Header row. The chrome the panel grows — per-severity toggles with live counts, and the state
+                 line — lands here; the skeleton carries the title alone so the region is identifiable before it
+                 has anything to say. -->
+            <Border DockPanel.Dock="Top" Background="{DynamicResource PaneHeaderBackgroundBrush}" Padding="10,3">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <TextBlock Name="ProblemsPanelHeader" Text="Problemer" VerticalAlignment="Center"
+                               Foreground="{DynamicResource PaneHeaderForegroundBrush}"
+                               FontWeight="SemiBold"/>
+
+                    <!-- The busy indicator, and deliberately an INDETERMINATE one. The engine exposes no progress
+                         hook, so a percentage here would be invented — and an invented number is worse than an
+                         honest "working". It appears only once staleness has outlasted the threshold, so a normal
+                         sub-second edit→validate cycle never shows it. -->
+                    <ProgressBar Name="ProblemsSpinner" Width="80" Height="4" VerticalAlignment="Center"
+                                 IsIndeterminate="True"
+                                 IsVisible="{Binding IsStaleIndicatorEngaged}"
+                                 a:AutomationProperties.AutomationId="ProblemsSpinner"
+                                 a:AutomationProperties.Name="Validerer"
+                                 ToolTip.Tip="Projektet valideres…"/>
+
+                    <!-- The three tier filters. ToggleButtons rather than checkboxes because each one carries its
+                         tier's icon and live count, and because a ToggleButton exposes UI Automation's Toggle
+                         pattern — so a driver flips a tier the same way a user does. They stay three elements
+                         rather than an ItemsControl over the tier list for that same reason: the container an
+                         ItemsControl generates would sit between the driver and the Toggle pattern.
+                         Every varying value is BOUND from the view-model's tier table — the word, the glyph, the
+                         ids and the count are the same ones the tier's ROWS show, so a renamed asset or a
+                         re-worded tier cannot move the rows and leave these buttons behind.
+                         The COUNT beside each one is of the whole result, not of the visible rows: switching a
+                         tier off must never look like its findings were fixed. -->
+                    <ToggleButton a:AutomationProperties.AutomationId="{Binding Errors.AutomationId}"
+                                  a:AutomationProperties.Name="{Binding Errors.Label}"
+                                  a:AutomationProperties.HelpText="{Binding Errors.HelpText}"
+                                  IsChecked="{Binding Errors.IsShown, Mode=TwoWay}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <svg:Svg Width="12" Height="12" Path="{Binding Errors.Icon}"
+                                     CurrentColor="{DynamicResource IconColor}"/>
+                            <TextBlock Text="{Binding Errors.Label}"/>
+                            <TextBlock Text="{Binding Errors.Count}" FontWeight="SemiBold"
+                                       a:AutomationProperties.AutomationId="{Binding Errors.CountAutomationId}"/>
+                        </StackPanel>
+                    </ToggleButton>
+
+                    <ToggleButton a:AutomationProperties.AutomationId="{Binding Warnings.AutomationId}"
+                                  a:AutomationProperties.Name="{Binding Warnings.Label}"
+                                  a:AutomationProperties.HelpText="{Binding Warnings.HelpText}"
+                                  IsChecked="{Binding Warnings.IsShown, Mode=TwoWay}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <svg:Svg Width="12" Height="12" Path="{Binding Warnings.Icon}"
+                                     CurrentColor="{DynamicResource IconColor}"/>
+                            <TextBlock Text="{Binding Warnings.Label}"/>
+                            <TextBlock Text="{Binding Warnings.Count}" FontWeight="SemiBold"
+                                       a:AutomationProperties.AutomationId="{Binding Warnings.CountAutomationId}"/>
+                        </StackPanel>
+                    </ToggleButton>
+
+                    <ToggleButton a:AutomationProperties.AutomationId="{Binding Infos.AutomationId}"
+                                  a:AutomationProperties.Name="{Binding Infos.Label}"
+                                  a:AutomationProperties.HelpText="{Binding Infos.HelpText}"
+                                  IsChecked="{Binding Infos.IsShown, Mode=TwoWay}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <svg:Svg Width="12" Height="12" Path="{Binding Infos.Icon}"
+                                     CurrentColor="{DynamicResource IconColor}"/>
+                            <TextBlock Text="{Binding Infos.Label}"/>
+                            <TextBlock Text="{Binding Infos.Count}" FontWeight="SemiBold"
+                                       a:AutomationProperties.AutomationId="{Binding Infos.CountAutomationId}"/>
+                        </StackPanel>
+                    </ToggleButton>
+                </StackPanel>
+            </Border>
+
+            <!-- The findings list. A TableView, which derives from ListBox and therefore virtualizes by default —
+                 not a nicety: one corpus project alone reaches 150 rows, and realizing every one of them is the
+                 difference between a panel that opens and one that stalls.
+                 The row container publishes the finding's CODE as its AutomationId and the whole row as its
+                 accessible name. Containers realized from an ItemsSource take their identity from the bound item
+                 (the same rule the tree rows follow, which publish their node kind), so this is where a row's
+                 automation identity has to come from. -->
+            <!-- The list and its state line share one cell, so the text sits OVER the list area rather than
+                 pushing it around: the list is never blanked (a stale panel keeps its rows), and the line is
+                 shown only in the two states that have something to say.
+                 The fade lives on this container, not on the rows, so the whole area dims as one — and it is a
+                 TRANSITION, so the change reads as the panel working rather than as the list flickering. -->
+            <Grid Name="ProblemsRowArea"
+                  a:AutomationProperties.AutomationId="ProblemsRowArea"
+                  Opacity="{Binding RowsOpacity}">
+                <Grid.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+                    </Transitions>
+                </Grid.Transitions>
+            <TableView Name="ProblemsContent"
+                       a:AutomationProperties.AutomationId="ProblemsList"
+                       a:AutomationProperties.Name="Problemer"
+                       ItemsSource="{Binding Rows}"
+                       SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
+                       CanUserResizeColumns="True"
+                       BorderThickness="0">
+                <TableView.Styles>
+                    <!-- The header template is applied through the header's own ContentTemplate, not through
+                         TableViewColumn.HeaderTemplate: measured on Avalonia 12.1.1, the column-level property
+                         does not reach the header's ContentPresenter, which then falls back to ToString() and
+                         renders a plain unclickable title. A TableViewColumnHeader is a ContentControl, so this
+                         is the property that decides what it shows. -->
+                    <Style Selector="TableViewColumnHeader">
+                        <Setter Property="ContentTemplate" Value="{StaticResource ProblemsSortHeader}"/>
+                        <Setter Property="Padding" Value="0"/>
+                    </Style>
+                    <!-- DENSITY. Fluent lays a TableView out for touch: 6,9,6,12 around every row and around
+                         the column-header band, which is 38px per finding — four of them in the panel's default
+                         height, out of the 150 one corpus project produces. A findings list is read in bulk, so
+                         it is packed like a log: one line of text plus a hairline of breathing room.
+                         The row's inset is its own Padding, so a setter reaches it. The HEADER band's is a
+                         literal on an unnamed Border inside the TableView's template, and a local value beats
+                         every style setter (measured on 12.1.1 — both `/template/ Border` and a path through
+                         ContentPanel leave it at 6,9,6,12). Pulling the presenter back with a negative margin is
+                         what is left; the numbers below cancel all but ~2px of that inset. -->
+                    <Style Selector="TableViewColumnHeadersPresenter">
+                        <Setter Property="Margin" Value="0,-7,0,-10"/>
+                    </Style>
+                    <Style Selector="TableViewRow" x:DataType="vm:ProblemRowViewModel">
+                        <Setter Property="Padding" Value="6,3"/>
+                        <Setter Property="MinHeight" Value="0"/>
+                        <Setter Property="a:AutomationProperties.AutomationId" Value="{Binding Code}"/>
+                        <Setter Property="a:AutomationProperties.Name" Value="{Binding AccessibleText}"/>
+                        <!-- Says, before the click, where the row leads — or that it leads nowhere. -->
+                        <Setter Property="ToolTip.Tip" Value="{Binding NavigationHint}"/>
+                    </Style>
+                </TableView.Styles>
+                <!-- Each header binds its column view-model by ELEMENT NAME, not by plain {Binding}. A
+                     TableViewColumn is not in the logical tree, so it inherits no DataContext at all and a plain
+                     binding silently resolves to null — measured: the header template was applied but rendered
+                     nothing, because its Content was null. Naming the table and reaching its DataContext is what
+                     gives the columns a source. -->
+                <TableView.Columns>
+                    <!-- Alvor is a GLYPH plus its Danish word, never the glyph alone: colour and shape are not a
+                         readable severity for anyone who cannot see them, and the tier is the first thing a row
+                         has to say. -->
+                    <TableViewColumn Header="{Binding #ProblemsContent.((vm:ProblemsPanelViewModel)DataContext).Columns[0]}"
+                                     Width="120">
+                        <TableViewColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:ProblemRowViewModel">
+                                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <svg:Svg Width="12" Height="12" Path="{Binding SeverityIcon}"
+                                             CurrentColor="{DynamicResource IconColor}"/>
+                                    <TextBlock Text="{Binding SeverityLabel}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </TableViewColumn.CellTemplate>
+                    </TableViewColumn>
+                    <TableViewColumn Header="{Binding #ProblemsContent.((vm:ProblemsPanelViewModel)DataContext).Columns[1]}" Width="200" Binding="{Binding Code}"/>
+                    <TableViewColumn Header="{Binding #ProblemsContent.((vm:ProblemsPanelViewModel)DataContext).Columns[2]}" Width="*" Binding="{Binding Message}"/>
+                    <TableViewColumn Header="{Binding #ProblemsContent.((vm:ProblemsPanelViewModel)DataContext).Columns[3]}" Width="180">
+                        <!-- A cell template rather than a plain binding, so a row that leads nowhere is visibly
+                             dimmer than one that does. The row is still listed — it is a real finding — it just
+                             does not invite a click that would do nothing. -->
+                        <TableViewColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:ProblemRowViewModel">
+                                <TextBlock Text="{Binding ElementName}" Opacity="{Binding ElementEmphasis}"
+                                           VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </TableViewColumn.CellTemplate>
+                    </TableViewColumn>
+                    <TableViewColumn Header="{Binding #ProblemsContent.((vm:ProblemsPanelViewModel)DataContext).Columns[4]}" Width="160" Binding="{Binding CategoryLabel}"/>
+                </TableView.Columns>
+            </TableView>
+
+                <!-- Never disabled and never hit-test-blocked: the rows a stale panel is showing are the previous
+                     result, which is still the best information available, so they stay clickable while dimmed. -->
+                <TextBlock Name="ProblemsStateText"
+                           a:AutomationProperties.AutomationId="ProblemsStateText"
+                           Text="{Binding StateText}"
+                           IsVisible="{Binding StateText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Opacity="0.7"/>
+            </Grid>
+        </DockPanel>
+    </Border>
+</UserControl>

@@ -10,6 +10,8 @@ using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 
+using static Ihc.Vis.Validation.RuleAuthoring;
+
 namespace Ihc.Vis.Validation
 {
     /// <summary>
@@ -67,14 +69,11 @@ namespace Ihc.Vis.Validation
                     (int)Threshold(cat, entry.Code.Value, "MaxPhoneNumberLength"))));
         }
 
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
-
         /// <summary>
-        /// The declarative sibling of <see cref="Rule"/>: a row whose body is a value constraint rather than a
-        /// traversal, so the whole-project face and the field-metadata face read ONE definition.
+        /// The declarative sibling of
+        /// <see cref="RuleAuthoring.Rule(ProblemCatalog, string, ProjectInspection)"/>: a row whose body is a
+        /// value constraint rather than a traversal, so the whole-project face and the field-metadata face
+        /// read ONE definition.
         /// </summary>
         private static RuleDefinition Constraint(
             ProblemCatalog catalog,
@@ -94,7 +93,7 @@ namespace Ihc.Vis.Validation
         /// </summary>
         private static void NotCommissioned(IProjectInspection inspection)
         {
-            foreach (ProjectElement product in Products(inspection.Analyses))
+            foreach (ProjectElement product in AllProducts(inspection.Analyses))
             {
                 if (product.GetAttribute(SerialAttribute) is not null && !IsCommissioned(product))
                 {
@@ -263,8 +262,7 @@ namespace Ihc.Vis.Validation
         /// channel 1 different channels.
         /// </summary>
         private static string Normalise(string token) =>
-            token.StartsWith("_0x", StringComparison.Ordinal)
-            && long.TryParse(token.AsSpan(3), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out long value)
+            HexToken.TryParseValue(token, out long value)
                 ? value.ToString(CultureInfo.InvariantCulture)
                 : token.Trim();
 
@@ -280,20 +278,5 @@ namespace Ihc.Vis.Validation
 
             return current;
         }
-
-        private static IEnumerable<ProjectElement> Products(IProjectAnalyses analyses) =>
-            analyses.Elements.Where(e => ProductClassifier.IsProduct(e.Tag));
-
-        private static double Threshold(ProblemCatalog catalog, string code, string name) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-            && entry.Thresholds.FirstOrDefault(t => t.Name == name) is { } threshold
-                ? threshold.Value
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
-
-        private static string Name(ProjectElement element) =>
-            element.GetAttribute("name") is { Length: > 0 } name ? name : element.Tag;
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] bindings) =>
-            [.. bindings.Select(b => new ProblemArgument(b.Name, b.Value))];
     }
 }

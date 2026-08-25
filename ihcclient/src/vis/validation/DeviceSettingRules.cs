@@ -7,8 +7,9 @@ using System.Linq;
 
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
-using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
+
+using static Ihc.Vis.Validation.RuleAuthoring;
 
 namespace Ihc.Vis.Validation
 {
@@ -61,11 +62,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "dev-dimmer-load-mode-auto", LoadModeAutomatic),
                 Rule(catalog, "dev-shutter-traveltime-zero", TravelTimeZero));
         }
-
-        private static RuleDefinition Rule(ProblemCatalog catalog, string code, ProjectInspection body) =>
-            catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry)
-                ? new RuleBuilder(entry).Inspect(body).Build()
-                : throw new RuleRegistrationException(new ProblemCode(code), RuleRegistrationFault.NoCatalogueEntry);
 
         /// <summary>
         /// A dimmer whose stored fade rates are BOTH zero: it switches hard instead of fading.
@@ -153,7 +149,7 @@ namespace Ihc.Vis.Validation
         /// </summary>
         private static void TravelTimeZero(IProjectInspection inspection)
         {
-            foreach (ProjectElement product in Products(inspection.Analyses))
+            foreach (ProjectElement product in AllProducts(inspection.Analyses))
             {
                 if (Setting(product, TravelUpTag) is null && Setting(product, TravelDownTag) is null)
                 {
@@ -171,10 +167,7 @@ namespace Ihc.Vis.Validation
 
         /// <summary>Every product carrying a dimmer-settings group.</summary>
         private static IEnumerable<ProjectElement> Dimmers(IProjectInspection inspection) =>
-            Products(inspection.Analyses).Where(p => p.FindDescendantOrSelf(e => e.Tag == "dimmer_settings") is not null);
-
-        private static IEnumerable<ProjectElement> Products(IProjectAnalyses analyses) =>
-            analyses.Elements.Where(e => ProductClassifier.IsProduct(e.Tag));
+            AllProducts(inspection.Analyses).Where(p => p.FindDescendantOrSelf(e => e.Tag == "dimmer_settings") is not null);
 
         /// <summary>The product's setting element of that tag, or null when it carries none.</summary>
         private static ProjectElement? Setting(ProjectElement product, string tag) =>
@@ -190,11 +183,5 @@ namespace Ihc.Vis.Validation
             && long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out long value)
                 ? value
                 : null;
-
-        private static string Name(ProjectElement element) =>
-            element.GetAttribute("name") is { Length: > 0 } name ? name : element.Tag;
-
-        private static EquatableArray<ProblemArgument> Arguments(params (string Name, object Value)[] bindings) =>
-            [.. bindings.Select(b => new ProblemArgument(b.Name, b.Value))];
     }
 }

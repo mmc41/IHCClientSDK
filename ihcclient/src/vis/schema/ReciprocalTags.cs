@@ -29,6 +29,14 @@ namespace Ihc.Vis.Schema
             FollowLinkFromTag, FollowLinkToTag,
         };
 
+        /// <summary>
+        /// Every half tag whose presence on a row means the value CROSSES the function-block boundary: the two
+        /// follow-link halves plus the scene back-reference. Read by the program usage analysis and by the
+        /// structure rules, so a renamed half tag cannot leave a stale literal behind in either.
+        /// </summary>
+        public static readonly IReadOnlySet<string> CrossBoundaryHalfTags =
+            FollowLinkHalfTags.Concat(new[] { SceneLinkTag }).ToHashSet(StringComparer.Ordinal);
+
         /// <summary>The scene member row tags — the value-carrying half inside a product's <c>scenes</c> container
         /// (its partner <c>scene_link</c> lives inside the FB's <c>resource_scene</c> pin).</summary>
         public static readonly IReadOnlySet<string> SceneMemberTags = new HashSet<string>(StringComparer.Ordinal)

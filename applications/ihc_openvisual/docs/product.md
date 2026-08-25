@@ -61,6 +61,17 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
 - Refuses to save text the `.vis` character repertoire cannot store — naming the offending element and
   character — where the original writes an unparsable file.
   *Pinned by:* `Latin1SaveRefusalTests`.
+- A permanent **Problemer panel** lists the project's validation findings and keeps them current as the project
+  is edited, where the original validates on demand and reports into a dialog. The difference is when a fault is
+  found rather than what counts as one: a dialog reports only when asked, so a fault surfaces at save or transfer
+  time — the most expensive moment to learn about it — while a panel that revalidates in the background surfaces
+  it while the work that caused it is still in hand. Each row navigates to the element it is about in one click,
+  the three severity tiers filter independently with live counts, and Error findings withhold controller
+  transfer. The panel deliberately offers no way to suppress or acknowledge a finding: a rule id is a filtering
+  and grouping key, and a silenced finding is invisible to the next reader with nothing recording who accepted it.
+  *Pinned by:* `ProblemsPanelSkeletonTests`
+  (`ThePanelSitsBetweenTheTreesAndTheStatusBarNotBelowIt`, `TheVisRowTogglesThePanelAndIsAlwaysAvailable`),
+  `ProblemsListTests.TheBoundRowsAreExactlyTheEnginesFindingsWithTheirMessagesVerbatim`.
 - Suggestion drop-downs (*Placering*, *Identifikationskode*, *Kabeltype* and the cable-colour fields) offer the
   **values already used in the open project**, where the original offers a **machine-local history** of what was
   typed on that installation. The original's list therefore differs between two people opening the same project
@@ -509,7 +520,7 @@ block; manage a personal library.
 
 **Functional Requirements**:
 
-- FR-8.1: Validate on demand and before save/transfer; findings are listed with severity and one-click navigation to the offending element.
+- FR-8.1: Validate CONTINUOUSLY — the project is revalidated in the background as it is edited, and the findings are listed in a permanent panel with their severity, code, message, element and category, filterable per severity with live counts, sortable per column, and navigable to the offending element in one click. **Error findings withhold controller transfer**; the advisory tiers never do. A project that has not been validated yet is not treated as faulty. (The word for a blocking finding is *Error*, never "fatal": a fatal condition is a refusal, which is a different thing from a finding and never appears in the panel.)
 - FR-8.2: Unlimited undo/redo across all edit operations within a session — no configured step cap, bounded only by process memory. **Prefer making an irreversible action undoable over guarding it with a dialog** — no project mutation currently needs the guard.
 - FR-8.3: Ids of existing elements are never renumbered or reused; deletions leave holes (ids are monotonic and never recycled).
 - FR-8.4: **Catalog-owned structure is not editable.** A product's pins exist because its catalog type declares them, so they cannot be deleted, reordered, or inserted into — the commands are absent, and the engine refuses them whatever route asks.

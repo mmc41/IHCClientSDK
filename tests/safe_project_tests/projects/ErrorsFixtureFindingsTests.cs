@@ -451,7 +451,7 @@ namespace Ihc.Vis.Tests
             Project project = Load();
             var result = new ProjectAppService(Settings).ValidateCategorized(project);
 
-            // A finding names its subject by that element's raw `id` attribute (FindingCollector.Locate),
+            // A finding names its subject by that element's raw `id` attribute (WholeProjectValidator.Locate),
             // so the control's own id plus every id beneath it is the set that must never appear.
             string[] cleanIds = project.Root.DescendantsAndSelf()
                 .Where(e => e.GetAttribute("name") == CleanProduct)

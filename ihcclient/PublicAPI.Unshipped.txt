@@ -329,8 +329,6 @@ Ihc.Vis.Validation.ModuleAddressRules
 Ihc.Vis.Validation.NamingRules
 Ihc.Vis.Validation.ProblemCatalog
 Ihc.Vis.Validation.ProblemCatalog.Entries.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ProblemCatalogEntry!>
-Ihc.Vis.Validation.ProblemCatalog.ForFace(Ihc.Vis.Validation.RuleFaces face) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ProblemCatalogEntry!>
-Ihc.Vis.Validation.ProblemCatalog.ForTarget(Ihc.Vis.Validation.RuleTarget target) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ProblemCatalogEntry!>
 Ihc.Vis.Validation.ProblemCatalog.InSection(Ihc.Vis.Validation.ProblemCatalogSection section) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ProblemCatalogEntry!>
 Ihc.Vis.Validation.ProblemCatalog.Total.get -> int
 Ihc.Vis.Validation.ProblemCatalog.TryGet(Ihc.Vis.Problems.ProblemCode code, out Ihc.Vis.Validation.ProblemCatalogEntry! entry) -> bool
@@ -386,6 +384,7 @@ Ihc.Vis.Validation.ProjectStructureRules
 Ihc.Vis.Validation.ProjectValidationException.Operation.get -> Ihc.Vis.Problems.ProblemCode
 Ihc.Vis.Validation.ProjectValidationException.Problems.get -> Ihc.Vis.Problems.ProblemAggregate!
 Ihc.Vis.Validation.ProjectValidationException.ProjectValidationException(Ihc.Vis.Problems.ProblemCode operation, Ihc.Vis.Validation.ProjectValidationResult! result) -> void
+Ihc.Vis.Validation.ProjectValidationResult.Infos.get -> System.Collections.Immutable.ImmutableArray<string!>
 Ihc.Vis.Validation.ProjectVerification
 Ihc.Vis.Validation.ReciprocityAndEnumRules
 Ihc.Vis.Validation.RequiredFieldConstraint
@@ -513,6 +512,7 @@ Ihc.Vis.Validation.ValidationProfile.Overrides.get -> Ihc.Vis.Model.EquatableArr
 Ihc.Vis.Validation.ValidationProfile.Overrides.init -> void
 Ihc.Vis.Validation.ValidationProfile.SeverityFor(Ihc.Vis.Validation.ProblemCatalogEntry! entry) -> Ihc.Vis.Validation.ValidationSeverity
 Ihc.Vis.Validation.ValidationProfile.ValidationProfile(string! Name, Ihc.Vis.Validation.ProfileAudience Audience, Ihc.Vis.Validation.ControllerCapabilityLimits? Controller, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.SeverityOverride> Overrides) -> void
+Ihc.Vis.Validation.ValidationSeverity.Info = 2 -> Ihc.Vis.Validation.ValidationSeverity
 Ihc.Vis.Validation.ValueConstraintVerdict
 Ihc.Vis.Validation.ValueConstraintVerdict.Arguments.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgument>
 Ihc.Vis.Validation.ValueConstraintVerdict.Arguments.init -> void

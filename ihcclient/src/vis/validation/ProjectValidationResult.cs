@@ -10,7 +10,7 @@ namespace Ihc.Vis.Validation
     /// resolution, reciprocal link/scene bijection, function-block child sequence, Latin-1
     /// encodability, ...). <see cref="Errors"/> keeps the flat message list; <see cref="Findings"/> carries
     /// the structured form (severity, rule id, locator) a GUI filters and navigates by. <see cref="IsValid"/>
-    /// means no <see cref="ValidationSeverity.Error"/> findings — warnings alone leave a project valid.
+    /// means no <see cref="ValidationSeverity.Error"/> findings — the advisory tiers alone leave a project valid.
     /// </summary>
     public sealed record ProjectValidationResult(bool IsValid, EquatableArray<string> Errors)
     {
@@ -33,7 +33,7 @@ namespace Ihc.Vis.Validation
             return new ProjectValidationResult(errors.IsEmpty, errors) { Findings = findings };
         }
 
-        /// <summary>Every finding (errors and warnings), in document-scan order.</summary>
+        /// <summary>Every finding, whatever its severity, in document-scan order.</summary>
         public EquatableArray<ProjectValidationFinding> Findings { get; init; } = [];
 
         /// <summary>The warning messages (vendor-tolerated deviations; never block a save/upload).</summary>
@@ -41,6 +41,12 @@ namespace Ihc.Vis.Validation
         /// <see cref="Findings"/> it derives from is the stored member equality compares.</remarks>
         public ImmutableArray<string> Warnings =>
             [.. Findings.Where(f => f.Severity == ValidationSeverity.Warning).Select(f => f.Message)];
+
+        /// <summary>The informational messages (advisory only; never block a save/upload).</summary>
+        /// <remarks>The <see cref="Warnings"/> pattern one tier down: computed from <see cref="Findings"/>, so
+        /// it has no backing field and carries no equality significance of its own.</remarks>
+        public ImmutableArray<string> Infos =>
+            [.. Findings.Where(f => f.Severity == ValidationSeverity.Info).Select(f => f.Message)];
 
         // Equality and hashing are the record's, over both EquatableArray members. Findings still participates,
         // which is what keeps a warnings-only result (valid, no errors, but carrying warning findings) distinct

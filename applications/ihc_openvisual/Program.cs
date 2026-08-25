@@ -116,6 +116,21 @@ internal sealed class Program
     internal const string AppFontFamily = "fonts:Inter#Inter";
 
     /// <summary>
+    /// The face for the app's one DENSE, COLUMN-ALIGNED readout — the Problemer list. Inter is a proportional UI
+    /// font: excellent for labels, wrong for a findings log, where a rule id and a code read as a column and
+    /// digits should line up under each other.
+    /// <para>Picked per platform, like <see cref="SymbolFontFallbacks"/> above and for the same reason: the app
+    /// embeds no monospace family, and naming one the machine does not have buys nothing. These three ship with
+    /// their platforms and all three carry æ/ø/å. If one is somehow absent the font manager falls back to the
+    /// app default, which costs the alignment but never the text — a legibility choice, not a correctness one,
+    /// which is exactly why it is allowed to depend on the platform where the embedded UI font may not.</para>
+    /// </summary>
+    internal static string MonoFontFamily =>
+        OperatingSystem.IsWindows() ? "Consolas"
+        : OperatingSystem.IsMacOS() ? "Menlo"
+        : "DejaVu Sans Mono";
+
+    /// <summary>
     /// Registers the embedded Inter font AND makes it the default family. Both halves are needed and only the first
     /// is obvious: <c>WithInterFont()</c> alone merely makes the collection resolvable — the package declares no
     /// default family name — so every control that states no <c>FontFamily</c> would still render in whatever the

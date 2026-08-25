@@ -67,6 +67,48 @@ public partial class MainWindow : Window
         // twice per keypress. handledEventsToo stays, because the tunnel reaches the window before anything below
         // it can mark the key handled.
         AddHandler(KeyDownEvent, OnTreeNavigationKeyDown, RoutingStrategies.Tunnel, handledEventsToo: true);
+
+        // The Problemer row follows the panel's visibility (see below). The design height and floor are read from
+        // the markup rather than repeated here, so the row's size stays stated in ONE place. Wired to the realized
+        // panel rather than to the view-model so it holds through a DataContext swap, which HookViewModel already
+        // has to cope with.
+        RowDefinition problemsRow = WorkspaceGrid.RowDefinitions[ProblemsRow];
+        _problemsRowHeight = problemsRow.Height;
+        _problemsRowFloor = problemsRow.MinHeight;
+        ProblemsPanelHost.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == IsVisibleProperty)
+                ApplyProblemsRowHeight();
+        };
+    }
+
+    // ── The Problemer panel's row height ──────────────────────────────────────────────────────────────────────
+    // The row is ABSOLUTE so the splitter can size it (an Auto row sizes to content, and a findings list has no
+    // natural height), which leaves one thing markup cannot express: an absolute row keeps its band whether or not
+    // anything is in it, so hiding the panel would blank a stripe above the status bar instead of giving the space
+    // back to the trees. Zeroing the row on hide closes that, and remembering the height first is what makes the
+    // Vis row round-trip — a user who dragged the panel taller gets THAT panel back, not the factory 180.
+    private const int ProblemsRow = 2;
+    private readonly double _problemsRowFloor;
+    private GridLength _problemsRowHeight;
+
+    private void ApplyProblemsRowHeight()
+    {
+        RowDefinition row = WorkspaceGrid.RowDefinitions[ProblemsRow];
+        if (ProblemsPanelHost.IsVisible)
+        {
+            row.MinHeight = _problemsRowFloor;
+            row.Height = _problemsRowHeight;
+        }
+        else
+        {
+            // Capture what the splitter left BEFORE zeroing the row. The floor goes to zero with it: a MinHeight
+            // outliving the panel would reserve exactly the band this is here to release.
+            if (row.Height.IsAbsolute && row.Height.Value > 0)
+                _problemsRowHeight = row.Height;
+            row.MinHeight = 0;
+            row.Height = new GridLength(0);
+        }
     }
 
     // Attaches the drag SOURCE and drop TARGET handlers to a tree (A-30 — both panes share this wiring).

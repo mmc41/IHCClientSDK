@@ -389,7 +389,11 @@ public sealed class ShellHarness : IDisposable
             ? new ProjectAppService(new IhcSettings())
             : new ProjectAppService(new IhcSettings(), new Ihc.Vis.Catalog.BuiltInCatalog(), timeProvider);
         // The catalog dir is a subfolder of TempDir so Restart(dir) reuses it (US-061).
-        Session = new ProjectWorkflow(ProjectService, Recent, Dialogs, null, Path.Combine(TempDir, "catalog"));
+        // The marshal is SYNCHRONOUS here and the clock is whatever the test injected: the workflow's validation
+        // monitor uses both, and a test that could not advance the debounce would hang rather than fail.
+        Session = new ProjectWorkflow(
+            ProjectService, Recent, Dialogs, null, Path.Combine(TempDir, "catalog"),
+            post: action => action(), timeProvider: timeProvider);
     }
 
     public static ShellHarness Create(System.TimeProvider? timeProvider = null) =>
@@ -410,6 +414,8 @@ public sealed class ShellHarness : IDisposable
     /// <see cref="CapturingLoggerFactory"/>) when the test needs to prove a failure reached the logging pipeline,
     /// and <paramref name="theme"/> (the real <c>ThemeService</c>) when it needs the appearance choices to reach
     /// the running application's resources rather than being recorded inertly.</summary>
+    /// <para>The marshal and the clock the Problemer panel runs on come from <see cref="Session"/>, so a test
+    /// that needs a controllable debounce passes its clock to <see cref="Create"/> rather than here.</para>
     public MainWindowViewModel CreateViewModel(ILoggerFactory? loggerFactory = null, IThemeService? theme = null) =>
         new(Session, Dialogs, Recent, theme ?? new NullThemeService(), null, loggerFactory);
 
