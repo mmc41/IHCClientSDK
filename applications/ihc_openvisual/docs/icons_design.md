@@ -17,7 +17,9 @@ The set is a **modern flat-line** icon family for the IHC OpenVisual app: single
 2. **Monochrome glyph + a separate state-colour layer.** Every glyph is drawn in a single ink
    (`currentColor`). Colour is never baked into a glyph — the app applies it to signal **state**
    (see §5). This keeps icons legible without colour (accessibility) and makes colour mean *state*,
-   not decoration.
+   not decoration. The **severity family is the one exception** (§5.1): those four glyphs pin a
+   signal ink on the sub-shape that carries the badness, because the badness is not the whole
+   glyph and one runtime ink cannot say two things.
 3. **Legible at 16 px.** Icons render in a tree row at 16 px. Every design must survive downscaling
    with no fused or lost strokes. This is the hardest constraint and it wins over detail.
 4. **Keep the grammar.** The set has a small visual language (§4). Reuse it; don't reinvent it.
@@ -38,7 +40,7 @@ Every icon file MUST follow these. They are mechanically checked (§7).
 | Namespace | `xmlns="http://www.w3.org/2000/svg"` on the root (required by Avalonia's Skia SVG loader) |
 | Accessibility | `aria-hidden="true"` on the root — icons are **decorative**; they always sit beside a text label. No `role`, no `<title>` |
 | Identifiers | a **semantic `id`** on every drawn element (e.g. `id="pole"`, `id="pennant"`, `id="check"`) |
-| Colour | **`currentColor` only** — no hex/named colours, no gradients |
+| Colour | **`currentColor` only** — no hex/named colours, no gradients. Sole exception: the severity family's two declared signal inks (§5.1) |
 | Forbidden | no `<text>`, no `style=` attributes, no filters, no `<image>`, no embedded raster |
 | Budgets | ≤ 2048 bytes/file · ≤ 12 path commands per `<path>` · ≤ 2 decimal places |
 
@@ -141,6 +143,33 @@ Because glyphs are monochrome, the same SVG serves every state — you set the c
 For example `fb-lk.svg` is drawn in `currentColor` and the tree colours it red via the `fb` token;
 there is no separate red asset.
 
+### 5.1 The severity family's baked signal ink (the one exception)
+
+`severity-error.svg`, `severity-warning.svg`, `severity-info.svg` and `severity-fatal.svg` are the
+only glyphs allowed a colour literal, and they carry **at most two** — an allow-list, not a licence:
+
+| Ink | Value | Pairs with | Carried by |
+|---|---|---|---|
+| signal red | `#B91C1C` | `ErrorBrush` (light) — the red a refusing dialog writes in | `severity-error` cross · all of `severity-fatal` |
+| signal blue | `#1E5AA8` | `PaneHeaderBackgroundBrush` — the Problemer heading's brand blue, fixed in both themes | `severity-warning` bang bar + dot |
+
+**Why these four break rule 2.** A severity glyph says two things at once — *which* mark (the shape)
+and *how bad* (the ink) — and the mark carrying the badness is a **sub-shape**: the error ring stays
+theme ink while its cross goes red. One `CurrentColor` sets one ink for the whole glyph, so it
+cannot express both. The rule the family keeps instead:
+
+- **Only the signal shape is coloured; the surround stays `currentColor`.** That surround is what
+  keeps the glyph readable on a dark surface, where a baked light-theme red would sink. The
+  exception is `severity-fatal`, which colours whole — it is the one severity glyph that appears
+  alone in a dialog rather than as a row among neighbouring tiers.
+- **The ink is never the only carrier.** Every severity cell and filter toggle pairs its glyph with
+  the Danish tier word, so the meaning survives colour-blindness and a greyscale render.
+- **The literals are copies of App.axaml tokens** — an SVG cannot reference an Avalonia resource.
+  `SeverityIconConformanceTests.TheSignalInksAreTheAppsOwnLightThemeTokens` reads them back out of
+  `App.axaml`, so retuning a brush fails the build until the artwork follows.
+
+Adding a colour to any *other* glyph is still wrong; use the runtime state layer above.
+
 ### Avalonia usage
 
 Render with `Avalonia.Svg.Skia` and drive the ink through the control so `currentColor` follows the
@@ -185,9 +214,10 @@ render → inspect → fix* is what keeps the set consistent.
 - [ ] `viewBox="0 0 24 24"`, artwork within 2 … 22, glyph optically centered in ~3 … 21.
 - [ ] Root: `xmlns`, `aria-hidden="true"`, `fill="none" stroke="currentColor" stroke-width="2"`,
       round cap/join.
-- [ ] `currentColor` only — no colours, gradients, filters, `style=`, `<text>`.
+- [ ] `currentColor` only — no colours, gradients, filters, `style=`, `<text>`. (A severity glyph
+      may pin a signal ink from §5.1's two-value allow-list, on the signal shape only.)
 - [ ] Semantic `id` on every drawn element.
-- [ ] Filled sub-shapes (if any) use `fill="currentColor" stroke="none"`; only `W-MIXED-STYLE` /
+- [ ] Filled sub-shapes (if any) pair their fill with `stroke="none"`; only `W-MIXED-STYLE` /
       `W-SET-STYLE` warnings remain.
 - [ ] Grammar respected: `→` in / `←` out; correct arrow weight; box silhouette distinct; group =
       shadow-offset cue.

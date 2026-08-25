@@ -193,10 +193,10 @@ author finds them instead of drawing a fifth.
 
 | Asset | Stands for | Construction | Used by |
 | --- | --- | --- | --- |
-| `severity-error.svg` | **Fejl** — blocks a save/upload | ring + diagonal cross | Problemer panel: severity column, Fejl filter toggle |
-| `severity-warning.svg` | **Advarsel** — advisory | triangle + bang bar/dot | Problemer panel: severity column, Advarsel filter toggle |
-| `severity-info.svg` | **Information** — advisory, lower | ring + tittle/stem | Problemer panel: severity column, Information filter toggle |
-| `severity-fatal.svg` | A **refusal** — an operation that could not proceed | octagon + bang | Dialog refusal presentation only |
+| `severity-error.svg` | **Fejl** — blocks a save/upload | ring (theme ink) + diagonal cross in signal red | Problemer panel: severity column, Fejl filter toggle |
+| `severity-warning.svg` | **Advarsel** — advisory | triangle (theme ink) + bang bar/dot in the heading blue | Problemer panel: severity column, Advarsel filter toggle |
+| `severity-info.svg` | **Information** — advisory, lower | ring + tittle/stem, theme ink throughout | Problemer panel: severity column, Information filter toggle |
+| `severity-fatal.svg` | A **refusal** — an operation that could not proceed | octagon + diagonal cross, both in signal red | Dialog refusal presentation only |
 
 Two things about this set are load-bearing:
 
@@ -208,8 +208,12 @@ Two things about this set are load-bearing:
   the icon with its Danish word (Fejl / Advarsel / Information), because shape and colour are not a
   readable severity for everyone, and the tier is the first thing a row has to say.
 
-Colour comes from the app's state layer at runtime (§5 of `icons_design.md`): the glyphs are
-`currentColor`-only, which is what lets one asset read correctly in both themes.
+These four are the icon set's **only** glyphs that pin a colour of their own (§5.1 of
+`icons_design.md`). The signal ink sits on the mark that carries the badness — the cross, the bang —
+while the surround stays `currentColor`, which is what lets one asset read correctly in both themes;
+`severity-fatal.svg` colours whole because it appears alone in a dialog rather than as a row among
+neighbouring tiers. The two inks, `#B91C1C` and `#1E5AA8`, are copies of `App.axaml`'s `ErrorBrush`
+and `PaneHeaderBackgroundBrush`, and a test fails if either drifts.
 
 ---
 
