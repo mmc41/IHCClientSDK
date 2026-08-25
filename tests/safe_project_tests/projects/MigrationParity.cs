@@ -1,10 +1,9 @@
 #nullable enable
 using System;
 using System.Collections.Immutable;
-using System.IO;
 using System.Linq;
-using System.Text;
 
+using Ihc.Tests.Shared;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Validation;
 
@@ -27,21 +26,25 @@ namespace Ihc.Vis.Tests
     {
         private static ProblemCatalog Catalog => ProblemCatalog.Current;
 
+        /// <summary>How a comparison row shows a finding that names no element.</summary>
+        private const string NoLocator = "<none>";
+
         /// <summary>One corpus case by name, built through the same fixtures the recording was made from.</summary>
         internal static Project CorpusCase(string name) =>
             ValidationCharacterizationTests.Corpus.Single(c => c.Case == name).Build();
 
-        /// <summary>The recorded rows for the given rule ids, grouped by corpus case.</summary>
-        internal static ILookup<string, string[]> Recorded(ImmutableArray<string> ruleIds)
-        {
-            string path = TestData.PathOf("validation", "rule-characterization.txt");
-            Assert.That(File.Exists(path), Is.True, $"the characterization recording is missing at {path}");
-            return File.ReadAllLines(path, Encoding.UTF8)
-                .Where(line => line.Length > 0 && !line.StartsWith('#'))
-                .Select(line => line.Split('\t'))
-                .Where(cells => ruleIds.Contains(cells[2]))
-                .ToLookup(cells => cells[0], cells => cells);
-        }
+        /// <summary>
+        /// The recorded findings for the given codes, grouped by corpus case.
+        /// <para>
+        /// Through the shared oracle reader, so the cells arrive already named. This used to split each line on
+        /// tabs and index into the result, which was a fourth copy of the recording's column layout and an
+        /// unchecked assumption that column 2 held the code.
+        /// </para>
+        /// </summary>
+        internal static ILookup<string, RecordedFinding> Recorded(ImmutableArray<string> ruleIds) =>
+            FindingOracles.ReadAll()
+                .Where(finding => ruleIds.Contains(finding.Code))
+                .ToLookup(finding => finding.Case);
 
         /// <summary>
         /// Asserts the given rules reproduce the recording for their own ids, per corpus case. Fails the whole
@@ -52,13 +55,13 @@ namespace Ihc.Vis.Tests
         internal static void AssertReproducesRecording(ImmutableArray<string> ruleIds, RuleSet rules)
         {
             WholeProjectValidator engine = new(rules);
-            ILookup<string, string[]> recorded = Recorded(ruleIds);
+            ILookup<string, RecordedFinding> recorded = Recorded(ruleIds);
 
             Assert.That(recorded, Is.Not.Empty, "the corpus must witness these rules, or this gate is vacuous");
 
             Assert.Multiple(() =>
             {
-                foreach (IGrouping<string, string[]> forCase in recorded)
+                foreach (IGrouping<string, RecordedFinding> forCase in recorded)
                 {
                     string[] produced = [.. engine.Validate(CorpusCase(forCase.Key), ValidationProfile.Categorized)
                         .Select(Row)
@@ -87,12 +90,17 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        private static string Row(ValidationFinding finding) =>
-            string.Join('\t', finding.Severity, finding.Code.Value, finding.Category,
-                finding.Primary?.Locator ?? "-", finding.Problem.Message);
+        /// <summary>
+        /// A produced finding as a comparison row. Internal so the schema-rule fixture builds its rows the same
+        /// way: two fixtures formatting one tuple by hand is how the two sides come to disagree about a cell.
+        /// </summary>
+        internal static string Row(ValidationFinding finding) =>
+            Format(
+                finding.Severity.ToString(), finding.Code.Value, finding.Category.ToString(),
+                finding.Primary?.Locator, finding.Problem.Message);
 
         /// <summary>
-        /// The recorded row as the engine must reproduce it. The CATEGORY comes from the entry because a
+        /// The recorded finding as the engine must reproduce it. The CATEGORY comes from the entry because a
         /// migration moves it on purpose; the MESSAGE comes from the recording.
         /// <para>
         /// The message used to be read from <see cref="ProblemCatalogEntry.MessageTemplate"/> too, which was only
@@ -103,10 +111,29 @@ namespace Ihc.Vis.Tests
         /// the fixture's rule set and the production rule set must say the same words.
         /// </para>
         /// </summary>
-        private static string Expected(string[] recorded)
+        internal static string Expected(RecordedFinding recorded)
         {
-            Catalog.TryGet(new ProblemCode(recorded[2]), out ProblemCatalogEntry entry);
-            return string.Join('\t', recorded[1], recorded[2], entry.Category, recorded[4], recorded[5]);
+            Catalog.TryGet(new ProblemCode(recorded.Code), out ProblemCatalogEntry entry);
+            // An entry's category is nullable; the recording rendered a null one as an empty cell, and that is
+            // preserved rather than corrected here — a migration gate is not the place to change what a cell
+            // means.
+            return Format(
+                recorded.Severity, recorded.Code, entry.Category?.ToString() ?? string.Empty,
+                recorded.Locator, recorded.Message);
         }
+
+        /// <summary>
+        /// The ONE place a comparison row is spelled, so both sides render an absent locator identically.
+        /// <para>
+        /// That is what the move to XML made load-bearing. The tab-separated recording carried a <c>-</c>
+        /// sentinel for a finding that names no element — a sentinel no row in the corpus ever actually used —
+        /// while the new format records absence as a MISSING attribute, which reads back as <c>null</c>. Two
+        /// independently written formatters would have disagreed the first time a whole-project finding appeared
+        /// in a migrated rule's set, comparing "-" against "" while both sides were right about their own half.
+        /// </para>
+        /// </summary>
+        private static string Format(
+            string severity, string code, string category, string? locator, string message) =>
+            string.Join('\t', severity, code, category, locator ?? NoLocator, message);
     }
 }

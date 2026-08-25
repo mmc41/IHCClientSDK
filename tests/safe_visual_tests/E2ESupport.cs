@@ -7,6 +7,8 @@ using System.Text;
 using System.Text.Json;
 using NUnit.Framework;
 
+using Ihc.Tests.Shared;
+
 namespace safe_visual_tests;
 
 /// <summary>
@@ -315,33 +317,45 @@ public static class E2E
     /// file name would match nothing. That is exactly what happened when this helper was first written, and it
     /// failed LOUDLY rather than silently because every test using it asserts the row count is non-zero first.
     /// </param>
-    public static IReadOnlyList<OracleRow> OracleRows(string caseName)
-    {
-        string oracle = Path.Combine(
-            ProblemsTestData.RepositoryRoot(), "tests", "testdata", "validation", "rule-characterization.txt");
+    public static IReadOnlyList<OracleRow> OracleRows(string caseName) =>
+    [
+        .. ByCase()[caseName].Select(finding => new OracleRow(
+            finding.Severity, finding.Code, finding.Category, finding.Locator ?? NoLocator, finding.Message)),
+    ];
 
-        List<OracleRow> rows = [];
-        foreach (string line in File.ReadLines(oracle))
-        {
-            if (line.Length == 0 || line[0] == '#')
-                continue;
+    /// <summary>
+    /// The whole corpus, grouped by case leaf and read ONCE. The files are committed oracles and cannot change
+    /// under a run, while a fixture asks for its case repeatedly — so re-opening and re-parsing all eighteen per
+    /// question was work no caller wanted. An <see cref="ILookup{TKey, TElement}"/> also answers an unknown case
+    /// with an empty sequence rather than throwing, which is the behaviour the previous filter had.
+    /// <para>
+    /// Assigned on first use rather than in a field initializer: a missing or corrupt oracle then surfaces as
+    /// that reader's own exception on the test that asked, instead of a type-initializer failure on every other
+    /// test this support class serves.
+    /// </para>
+    /// </summary>
+    private static ILookup<string, RecordedFinding>? _byCase;
 
-            // case <TAB> severity <TAB> rule-id <TAB> category <TAB> locator <TAB> message
-            string[] fields = line.Split('\t');
-            if (fields.Length < 6)
-                continue;
+    private static ILookup<string, RecordedFinding> ByCase() =>
+        _byCase ??= FindingOracles.ReadAll().ToLookup(finding => CaseLeaf(finding.Case));
 
-            string current = fields[0];
-            int slash = current.LastIndexOf('/');
-            if (slash >= 0)
-                current = current[(slash + 1)..];
-            if (!string.Equals(current, caseName, StringComparison.Ordinal))
-                continue;
+    /// <summary>
+    /// A case name without its corpus folder, so a caller may pass <c>Project6-Errors</c> for a case the oracle
+    /// records as <c>fixture/Project6-Errors</c>.
+    /// <para>
+    /// Load-bearing, and quietly so: both classes that consume these rows are <c>[Explicit]</c>, so dropping
+    /// this would not fail any default run — it would simply match nothing, and every assertion built on an
+    /// empty list would pass. That is why the non-explicit row-count test exists beside it.
+    /// </para>
+    /// </summary>
+    private static string CaseLeaf(string caseName) =>
+        caseName.LastIndexOf('/') is var slash && slash >= 0 ? caseName[(slash + 1)..] : caseName;
 
-            rows.Add(new OracleRow(fields[1], fields[2], fields[3], fields[4], fields[5]));
-        }
-        return rows;
-    }
+    /// <summary>
+    /// What a row shows for a finding that names no element. The oracle records absence as a MISSING attribute,
+    /// which reads back as null; these rows keep the non-null shape their four consumers were written against.
+    /// </summary>
+    private const string NoLocator = "-";
 
     /// <summary>One recorded finding: the oracle's own six columns.</summary>
     public sealed record OracleRow(string Severity, string Code, string Category, string Locator, string Message);

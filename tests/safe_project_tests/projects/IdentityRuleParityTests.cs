@@ -58,7 +58,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = MigrationParity.CorpusCase("synthetic/luid-ceiling");
             string[] recordedForCase = [.. MigrationParity.Recorded(MigratedIds)["synthetic/luid-ceiling"]
-                .Select(cells => cells[2])];
+                .Select(finding => finding.Code)];
 
             string[] produced = [.. new WholeProjectValidator(Rules())
                 .Validate(project, ValidationProfile.Categorized)

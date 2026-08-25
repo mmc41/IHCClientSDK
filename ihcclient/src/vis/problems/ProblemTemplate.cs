@@ -82,8 +82,13 @@ namespace Ihc.Vis.Problems
         /// <summary>
         /// A value as a template renders it. Invariant culture on purpose: a bound number is part of a sentence
         /// pinned by tests and oracles, so it may not change with the machine's locale.
+        /// <para>
+        /// Internal rather than private because the findings export writes the same argument values a second
+        /// time, as <c>arg_*</c> attributes beside the message they are already inside. A second formatter is
+        /// exactly how one number ends up spelled two ways on one line, so both renderings go through this one.
+        /// </para>
         /// </summary>
-        private static string Format(object value) =>
+        internal static string Format(object value) =>
             value as string ?? (value as IFormattable)?.ToString(null, CultureInfo.InvariantCulture)
             ?? value.ToString() ?? string.Empty;
     }

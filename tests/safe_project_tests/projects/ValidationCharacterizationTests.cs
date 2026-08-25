@@ -1,9 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Text;
+
+using Ihc.Tests.Shared;
 
 using static Ihc.Vis.Tests.Tree;
 
@@ -12,7 +12,7 @@ namespace Ihc.Vis.Tests
     /// <summary>
     /// The characterization oracle for the validation engine: for every rule id the SDK emits today, the
     /// COMPLETE ordered finding tuple — severity, rule id, category, locator, message — recorded over a fixed
-    /// corpus and pinned byte-for-byte in <c>tests/testdata/validation/rule-characterization.txt</c>. It is the
+    /// corpus and pinned byte-for-byte in <c>tests/testdata/validation/findings/</c>, one file per case. It is the
     /// contract every engine-migration task asserts against, so a migration that silently drops a finding,
     /// reorders two, widens a locator or reworded a message fails here rather than in a reviewer's memory.
     ///
@@ -43,9 +43,11 @@ namespace Ihc.Vis.Tests
     /// order is a property of the validator rather than of the fixture.</description></item>
     /// </list>
     ///
-    /// <para><b>The map.</b> <c>tests/testdata/validation/rule-id-map.txt</c> declares, per recorded rule id,
-    /// the id(s) the engine may emit in its place, the message it may carry and the category it may move to. It
-    /// is the mechanism that lets an INTENDED change pass while an undeclared one still fails.</para>
+    /// <para><b>How an intended change lands.</b> There is no declaration file and no remap columns: the gate
+    /// is byte equality per case, so a rule that changes moves bytes and the only way through is to regenerate
+    /// the oracles, diff them, explain every changed line by a rule that changed in the same edit, and adopt
+    /// them. A map that declared renames could not coexist with that — if the bytes must match, a declared
+    /// rename fails anyway — so the map was retired with the recording it policed.</para>
     ///
     /// <para><b>The recording was re-made ONCE</b>, at the task that switched the pipeline from the shipped
     /// validators to the engine, and that is the only time it moves. What changed in that diff, and nothing
@@ -53,20 +55,12 @@ namespace Ihc.Vis.Tests
     /// declared splits of one id; the message on the 27 structural ids became the Danish fixed label with the
     /// English sentence relocated to the diagnostic; the category moved off the transitional <c>Structural</c>
     /// value onto the catalogue's own; and the ORDER became the executor's — document position, then ordinal
-    /// rule id — instead of the old pipeline's pass order. Every map row reads "=" again as a result, which is
-    /// the post-migration state rather than a disabled gate: the next undeclared change still fails.</para>
+    /// rule id — instead of the old pipeline's pass order. It moved a second time when the recording became
+    /// these XML files, and that move was proved rather than reviewed: a temporary test zipped the two
+    /// artifacts and required all 618 findings to agree, per case, in order.</para>
     /// </summary>
     public class ValidationCharacterizationTests
     {
-        private const string OracleFile = "validation/rule-characterization.txt";
-        private const string MapFile = "validation/rule-id-map.txt";
-
-        /// <summary>The map cell meaning "unchanged" — the same id, or the message as recorded.</summary>
-        private const string Unchanged = "=";
-
-        /// <summary>The rendered stand-in for a finding that names no element.</summary>
-        private const string NoLocator = "-";
-
         /// <summary>
         /// The rule ids the SDK emits over the corpus. It was 35 before the engine took over — 27 structural plus
         /// 8 documentation — 37 after, because one id that covered three distinct conditions SPLIT into three, and
@@ -176,236 +170,96 @@ namespace Ihc.Vis.Tests
         // ----- the pinned recording -----
 
         /// <summary>
-        /// The whole corpus reproduces the recorded findings: same count, same order, same tuple — modulo the
-        /// changes <c>rule-id-map.txt</c> declares. This is the parity gate the migration tasks assert against.
+        /// THE parity gate: each corpus case's export reproduces its oracle BYTE FOR BYTE.
+        ///
+        /// <para><b>Per case rather than over one flattened list</b>, so a rule that moves produces a diff in
+        /// the one file it affects instead of a shifted comparison across all eighteen. It is also stricter
+        /// than the tab-separated recording it replaces: that recorded six cells per finding, while these files
+        /// carry the arguments, the related sites, the exact node paths and the run's own caveats — so a change
+        /// in any of them now fails here instead of passing unnoticed.</para>
+        ///
+        /// <para><b>An intended change is adopted, not asserted around.</b> Run the <c>[Explicit]</c>
+        /// <see cref="Regenerate_TheFindingsOracles"/> test, diff the emitted files, explain every changed line
+        /// by a rule that changed in the same edit, and copy them over.</para>
         /// </summary>
-        [Test]
-        public void Corpus_ReproducesTheRecordedFindings()
+        [TestCaseSource(typeof(FindingOracles), nameof(FindingOracles.Cases), new object?[] { null })]
+        public void Corpus_ReproducesItsOracleByteForByte(string oracleFile, string caseName)
         {
-            ImmutableArray<string> actual = Produce();
-            ImmutableArray<string> recorded = ReadRecording();
-            ImmutableDictionary<string, RuleMapping> map = ReadMap();
+            Func<Project> build = Corpus.Single(c => c.Case == caseName).Build;
+            var app = new ProjectAppService(Settings, new BuiltInCatalog(), FindingOracles.Clock());
 
-            var problems = new List<string>();
-            for (int i = 0; i < Math.Min(recorded.Length, actual.Length); i++)
-            {
-                if (Difference(recorded[i], actual[i], map) is { } difference)
-                {
-                    problems.Add($"  #{i + 1}: {difference}");
-                }
-            }
-            for (int i = actual.Length; i < recorded.Length; i++)
-            {
-                problems.Add($"  #{i + 1}: no longer reported — recorded '{recorded[i]}'");
-            }
-            for (int i = recorded.Length; i < actual.Length; i++)
-            {
-                problems.Add($"  #{i + 1}: newly reported — '{actual[i]}'");
-            }
+            using MemoryStream stream = new();
+            app.ExportFindings(build(), stream, FindingExportOptions.Default with { SourceName = caseName })
+                .GetAwaiter().GetResult();
 
-            Assert.That(problems, Is.Empty,
-                $"The validation output diverged from the recording ({recorded.Length} recorded, "
-                + $"{actual.Length} produced). An INTENDED change is declared in {MapFile}; an unintended one is "
-                + "a regression in the migration. Differences:" + Environment.NewLine
-                + string.Join(Environment.NewLine, problems.Take(40))
-                + (problems.Count > 40 ? $"{Environment.NewLine}  … and {problems.Count - 40} more" : string.Empty));
+            FindingOracles.AssertMatchesOracle(
+                File.ReadAllBytes(Path.Combine(FindingOracles.DefaultRoot, oracleFile)),
+                stream.ToArray(),
+                oracleFile);
         }
 
         /// <summary>
-        /// The map governs exactly the recorded rule ids — no unmapped id (which would let an undeclared remap
-        /// through) and no stale entry for an id the corpus no longer witnesses. The count is pinned at 35
-        /// because that is the migration baseline: a 36th rule id is new work, and it surfaces here first.
+        /// The tripwire: how many distinct codes the corpus witnesses. A 94th is new work and surfaces here
+        /// first, before it reaches an oracle diff nobody was expecting.
+        ///
+        /// <para><b>What used to be here, and why it is gone.</b> This assertion sat inside a check that the
+        /// rule-id MAP governed exactly these codes — the map being the mechanism that let an intended rename
+        /// land green without regenerating the recording in the same commit. Byte equality and a rename
+        /// declaration are mutually exclusive: if the bytes must match, a declared rename fails anyway. So the
+        /// map went, and the workflow it existed for is now regenerate, diff, explain, adopt. The map was in no
+        /// case an independent observation — the same regenerator wrote it and the recording from one array —
+        /// and with the rename columns gone its whole remaining content was the number below, spelled 93
+        /// times.</para>
         /// </summary>
         [Test]
-        public void Map_GovernsExactlyTheRecordedRuleIds()
+        public void TheCorpusWitnessesExactlyTheBaselineCodeCount()
         {
-            string[] recorded = [.. ReadRecording().Select(RuleIdOf).Distinct().OrderBy(id => id, StringComparer.Ordinal)];
-            string[] mapped = [.. ReadMap().Keys.OrderBy(id => id, StringComparer.Ordinal)];
+            string[] witnessed =
+                [.. FindingOracles.ReadAll().Select(f => f.Code).Distinct().OrderBy(id => id, StringComparer.Ordinal)];
 
             Assert.Multiple(() =>
             {
-                Assert.That(mapped, Is.EqualTo(recorded).AsCollection,
-                    "every recorded rule id needs a map entry, and the map may not carry an id the corpus does not witness");
-                Assert.That(recorded, Has.Length.EqualTo(BaselineRuleIdCount),
-                    "the corpus witnesses the 27 structural plus 8 documentation rule ids of the migration baseline");
+                Assert.That(witnessed, Has.Length.EqualTo(BaselineRuleIdCount),
+                    $"the corpus witnesses {BaselineRuleIdCount} distinct codes across the 18 oracle files");
+                Assert.That(witnessed, Is.Unique, "a code is counted once however many findings carry it");
             });
         }
 
         /// <summary>
-        /// Rewrites the recording and, when it is absent, seeds the identity map. <see cref="ExplicitAttribute"/>
-        /// so it never runs in the gate: it writes the files next to the test binary, and adopting them is the
-        /// deliberate act of copying them over <c>tests/testdata/validation/</c> — which the Definition of Done
-        /// only permits in a task that names its oracle impact up front.
-        /// <para><b>The map half is seeded as an ALL-IDENTITY map</b>, so copying it over a map that declares a
-        /// real remapping would erase that declaration — which is exactly the change the map exists to record.
-        /// Diff it; adopt the rows that are new and keep the ones that say something.</para>
+        /// Writes one findings-export oracle per corpus case into <c>findings.generated/</c> beside the test
+        /// binary. <see cref="ExplicitAttribute"/> for the same reason the recording's regenerator is: adopting
+        /// the output is the deliberate act of copying it over <c>tests/testdata/validation/findings/</c>.
+        ///
+        /// <para><b>The export is a DEFAULT export but for the source name.</b> A project carries no filename,
+        /// so <c>SourceName</c> is the one thing the SDK cannot supply and the one option this sets — everything
+        /// else (the production order, all three tiers, the not-run caveat) is what an ordinary export writes.
+        /// That is what keeps the oracle an example of the real format rather than a shape only the test
+        /// produces.</para>
+        ///
+        /// <para><b>The clock is pinned</b>, so <c>@generated</c> is the same byte on every machine. It is the
+        /// same instant the report oracles use, borrowed rather than redeclared.</para>
         /// </summary>
         [Test]
-        [Explicit("Regenerates the checked-in characterization oracle. Run deliberately, then copy the emitted "
-            + "files over tests/testdata/validation/ and review the diff.")]
+        [Explicit("Regenerates the checked-in findings oracles. Run deliberately, then copy the emitted files "
+            + "over tests/testdata/validation/findings/ and review the diff.")]
         [Category("OracleRegeneration")]
-        public void Regenerate_TheRecording()
+        public void Regenerate_TheFindingsOracles()
         {
-            ImmutableArray<string> lines = Produce();
-            string directory = TestContext.CurrentContext.TestDirectory;
+            var app = new ProjectAppService(Settings, new BuiltInCatalog(), FindingOracles.Clock());
+            string? directory = null;
+            foreach ((string name, Func<Project> build) in Corpus)
+            {
+                using MemoryStream stream = new();
+                app.ExportFindings(build(), stream, FindingExportOptions.Default with { SourceName = name })
+                    .GetAwaiter().GetResult();
+                directory = Path.GetDirectoryName(
+                    FindingOracles.WriteGenerated(FindingOracles.FileNameFor(name), stream.ToArray()));
+            }
 
-            Write(Path.Combine(directory, "rule-characterization.generated.txt"),
-                [
-                    "# The validation characterization oracle: every finding the SDK produces over the corpus in",
-                    "# ValidationCharacterizationTests, in production order. One finding per line, tab-separated:",
-                    "#",
-                    "#   case <TAB> severity <TAB> rule-id <TAB> category <TAB> locator <TAB> message",
-                    "#",
-                    "# The locator is '-' when the finding names no element. This is the PRE-migration recording and",
-                    "# is never rewritten to make a migration pass: an intended rule-id or message change is declared",
-                    "# in rule-id-map.txt instead. Regenerate with the [Explicit] Regenerate_TheRecording test.",
-                    "",
-                    .. lines,
-                ]);
-
-            string mapPath = Path.Combine(directory, "rule-id-map.generated.txt");
-            Write(mapPath,
-                [
-                    "# The old-to-new rule-id map for the validation-engine migration. Tab-separated:",
-                    "#",
-                    "#   recorded-rule-id <TAB> emitted-rule-id(s) <TAB> emitted-message <TAB> emitted-category",
-                    "#",
-                    "# '=' means unchanged: the same id, or the message and category exactly as rule-characterization.txt",
-                    "# records them. A rule that SPLITS lists its successors comma-separated; one whose user-facing message is",
-                    "# translated to its Danish fixed label puts that label in the third cell, and one that moves category names",
-                    "# its new one in the fourth. Declaring a change here is what makes it intended; an undeclared one fails",
-                    "# Corpus_ReproducesTheRecordedFindings.",
-                    "#",
-                    "# Every row reads '=' right now, and that is the post-migration state rather than a disabled gate: the",
-                    "# recording was re-made once, at the task that switched the pipeline to the engine, so recorded and produced",
-                    "# agree again. The columns stay because the NEXT change needs them -- and because a change made without",
-                    "# declaring it here still fails.",
-                    "",
-                    .. lines.Select(RuleIdOf).Distinct().OrderBy(id => id, StringComparer.Ordinal)
-                        .Select(id => string.Join('\t', id, Unchanged, Unchanged, Unchanged)),
-                ]);
-
-            TestContext.Out.WriteLine($"Wrote {lines.Length} findings to {directory}.");
+            TestContext.Out.WriteLine($"Wrote {Corpus.Length} findings oracles to {directory}.");
         }
 
         // ----- rendering, reading and comparison -----
-
-        private static ImmutableArray<string> Produce()
-        {
-            var app = new ProjectAppService(Settings);
-            var lines = ImmutableArray.CreateBuilder<string>();
-            foreach ((string name, Func<Project> build) in Corpus)
-            {
-                foreach (ProjectValidationFinding finding in app.ValidateCategorized(build()).Findings)
-                {
-                    lines.Add(string.Join('\t', name, finding.Severity, finding.RuleId, finding.Category,
-                        finding.Locator ?? NoLocator, finding.Message));
-                }
-            }
-            return lines.ToImmutable();
-        }
-
-        /// <summary>
-        /// One declared mapping: which id(s) may replace <paramref name="RecordedRuleId"/>, the message that
-        /// replaces the recorded one, and the category it moves to. Null in either slot means the recorded value
-        /// still stands.
-        /// <para>
-        /// The CATEGORY cell exists because every migrated rule changes it. Today's rules all carry the
-        /// transitional <c>Structural</c> value, which has no single successor — the catalogue distributes them
-        /// across the eight real categories — so a migration that could not declare a category change would have
-        /// to choose between failing this gate and leaving the classification wrong.
-        /// </para>
-        /// </summary>
-        private sealed record RuleMapping(
-            string RecordedRuleId,
-            ImmutableArray<string> EmittedRuleIds,
-            string? EmittedMessage,
-            string? EmittedCategory);
-
-        /// <summary>
-        /// The one recorded-versus-produced comparison, or null when they agree. Case, severity, category and
-        /// locator must match exactly; the rule id must be one the map declares for the recorded id; the message
-        /// must be the recorded one unless the map declares a replacement.
-        /// </summary>
-        private static string? Difference(string recorded, string produced, ImmutableDictionary<string, RuleMapping> map)
-        {
-            string[] was = recorded.Split('\t');
-            string[] now = produced.Split('\t');
-            if (was.Length != 6 || now.Length != 6)
-            {
-                return $"malformed row (recorded {was.Length} cells, produced {now.Length}, expected 6)";
-            }
-            if (!map.TryGetValue(was[2], out RuleMapping? mapping))
-            {
-                return $"rule id '{was[2]}' has no entry in {MapFile}";
-            }
-
-            string[] labels = ["case", "severity", "rule id", "category", "locator", "message"];
-            for (int cell = 0; cell < 6; cell++)
-            {
-                bool agrees = cell switch
-                {
-                    2 => mapping.EmittedRuleIds.Contains(now[2], StringComparer.Ordinal),
-                    3 => now[3] == (mapping.EmittedCategory ?? was[3]),
-                    5 => now[5] == (mapping.EmittedMessage ?? was[5]),
-                    _ => now[cell] == was[cell],
-                };
-                if (!agrees)
-                {
-                    string expected = cell switch
-                    {
-                        2 => string.Join(" or ", mapping.EmittedRuleIds),
-                        3 => mapping.EmittedCategory ?? was[3],
-                        5 => mapping.EmittedMessage ?? was[5],
-                        _ => was[cell],
-                    };
-                    return $"{was[0]} {was[2]}: {labels[cell]} expected '{expected}', produced '{now[cell]}'";
-                }
-            }
-            return null;
-        }
-
-        private static string RuleIdOf(string line) => line.Split('\t')[2];
-
-        private static ImmutableArray<string> ReadRecording() => [.. Payload(OracleFile)];
-
-        private static ImmutableDictionary<string, RuleMapping> ReadMap()
-        {
-            var map = ImmutableDictionary.CreateBuilder<string, RuleMapping>(StringComparer.Ordinal);
-            foreach (string line in Payload(MapFile))
-            {
-                string[] cells = line.Split('\t');
-                Assert.That(cells, Has.Length.EqualTo(4), $"{MapFile}: expected four tab-separated cells in '{line}'");
-                ImmutableArray<string> emitted = cells[1] == Unchanged
-                    ? [cells[0]]
-                    : [.. cells[1].Split(',').Select(id => id.Trim())];
-                map.Add(cells[0], new RuleMapping(
-                    cells[0],
-                    emitted,
-                    cells[2] == Unchanged ? null : cells[2],
-                    cells[3] == Unchanged ? null : cells[3]));
-            }
-            return map.ToImmutable();
-        }
-
-        /// <summary>The file's content rows: comments and blank lines dropped, so both artifacts stay
-        /// self-documenting without the readers carrying that knowledge twice.</summary>
-        private static IEnumerable<string> Payload(string name)
-        {
-            string path = TestData.PathOf(name);
-            Assert.That(File.Exists(path), Is.True,
-                $"the checked-in artifact '{name}' is missing — regenerate it with the [Explicit] "
-                + $"{nameof(Regenerate_TheRecording)} test and copy it into tests/testdata/validation/");
-            return File.ReadAllLines(path, Encoding.UTF8)
-                .Where(line => line.Length > 0 && !line.StartsWith('#'));
-        }
-
-        /// <summary>Writes an artifact as UTF-8 without BOM and LF endings — the form the checked-in copies
-        /// carry, so regenerating one produces a diff of the findings that moved and nothing else. The readers
-        /// are line-based, so a checkout that converts the endings changes nothing.</summary>
-        private static void Write(string path, IEnumerable<string> lines) =>
-            File.WriteAllText(path, string.Join('\n', lines) + '\n',
-                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
         // ----- corpus builders -----
 

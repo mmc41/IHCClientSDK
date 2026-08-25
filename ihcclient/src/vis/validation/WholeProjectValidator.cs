@@ -62,6 +62,7 @@ namespace Ihc.Vis.Validation
             ArgumentNullException.ThrowIfNull(profile);
 
             ProjectAnalyses analyses = new(project);
+            ElementNodePath paths = new(analyses);
             Dictionary<ProjectElement, int> scanOrder = ScanOrder(analyses);
             List<Emission> emitted = [];
 
@@ -107,7 +108,7 @@ namespace Ihc.Vis.Validation
             }
 
             return emitted
-                .Select(e => (Finding: Build(e, profile), Key: SortKey(e, scanOrder)))
+                .Select(e => (Finding: Build(paths, e, profile), Key: SortKey(e, scanOrder)))
                 .OrderBy(x => x.Key.Scan)
                 .ThenBy(x => x.Key.Code, StringComparer.Ordinal)
                 .ThenBy(x => x.Key.Locator, StringComparer.Ordinal)
@@ -144,7 +145,7 @@ namespace Ihc.Vis.Validation
             }
         }
 
-        private static ValidationFinding Build(Emission emission, ValidationProfile profile)
+        private static ValidationFinding Build(ElementNodePath paths, Emission emission, ValidationProfile profile)
         {
             ProblemCatalogEntry entry = emission.Entry;
             if (emission.Failure is { } failure)
@@ -172,12 +173,27 @@ namespace Ihc.Vis.Validation
                 problem,
                 profile.SeverityFor(entry),
                 entry.Category ?? ValidationCategory.FileIntegrity,
-                Locate(emission.Primary, grouped ? DescribeSite(emission.Primary) : null),
-                emission.Related.Select(r => Locate(r, DescribeSite(r))!).ToImmutableArray());
+                Locate(paths, emission.Primary, grouped ? DescribeSite(emission.Primary) : null),
+                emission.Related.Select(r => Locate(paths, r, DescribeSite(r))!).ToImmutableArray());
         }
 
-        private static FindingLocation? Locate(ProjectElement? element, string? message) =>
-            element is null ? null : new FindingLocation(element.GetAttribute("id") ?? element.Tag, element.Id, message);
+        /// <summary>
+        /// One site, as the three anchors a consumer can use: the raw locator, the parsed id when there is one,
+        /// and — only where the locator does not select exactly one node — the exact path to it.
+        /// <para>
+        /// The path is decided HERE and nowhere later because this is the last place the element itself is known.
+        /// Downstream, a consumer holds the locator string and no tree, so a malformed or shared token would be
+        /// unrecoverable.
+        /// </para>
+        /// </summary>
+        private static FindingLocation? Locate(ElementNodePath paths, ProjectElement? element, string? message) =>
+            element is null
+                ? null
+                : new FindingLocation(
+                    element.GetAttribute("id") ?? element.Tag,
+                    element.Id,
+                    message,
+                    paths.WhenLocatorIsAmbiguous(element));
 
         /// <summary>
         /// One site of a group, as the reader must be able to tell it from its siblings.

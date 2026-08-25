@@ -1065,6 +1065,110 @@ namespace Ihc.Vis
                 bytes => File.WriteAllBytesAsync(path, bytes));
         }
 
+        /// <summary>
+        /// Exports the project's findings as an ISO-8859-1 XML document — the <c>.vis</c> encoding: no BOM,
+        /// CRLF, three-space indent — for archiving, diffing, or handing to a support case.
+        /// <para>
+        /// This runs the SAME categorized validation <see cref="ValidateCategorized"/> and
+        /// <see cref="ValidateStructured"/> run, so the file and the screen cannot report different rule sets.
+        /// The generation timestamp comes from the injected <see cref="TimeProvider"/>.
+        /// </para>
+        /// </summary>
+        /// <param name="project">The project to validate and export.</param>
+        /// <param name="output">Where the document's bytes go.</param>
+        /// <param name="options">What the caller knows and the SDK does not — the source name above all
+        /// (a <see cref="Project"/> carries no path); null means <see cref="FindingExportOptions.Default"/>.</param>
+        public Task ExportFindings(Project project, Stream output, FindingExportOptions? options = null)
+        {
+            ArgumentNullException.ThrowIfNull(output);
+            ArgumentNullException.ThrowIfNull(project);
+            return ExportFindingsCore(
+                project, OwnRun(project), options, bytes => output.WriteAsync(bytes).AsTask());
+        }
+
+        /// <summary>
+        /// File convenience overload of <see cref="ExportFindings(Project, Stream, FindingExportOptions?)"/>:
+        /// writes the document to <paramref name="path"/>, overwriting an existing file.
+        /// </summary>
+        /// <param name="project">The project to validate and export.</param>
+        /// <param name="path">The file to write.</param>
+        /// <param name="options">As on the stream overload.</param>
+        public Task ExportFindings(Project project, string path, FindingExportOptions? options = null)
+        {
+            ArgumentNullException.ThrowIfNull(path);
+            ArgumentNullException.ThrowIfNull(project);
+            return ExportFindingsCore(
+                project, OwnRun(project), options, bytes => File.WriteAllBytesAsync(path, bytes));
+        }
+
+        /// <summary>
+        /// Exports a caller-supplied sequence VERBATIM — the door a frontend uses so its file and its screen
+        /// cannot disagree.
+        /// <para>
+        /// Nothing here re-sorts, re-filters or re-validates: a host that shows a filtered, re-sorted list
+        /// hands that list over and gets exactly it. Which tiers were included is not derivable from the
+        /// findings that survived the filter, so the caller states it in
+        /// <see cref="FindingExportOptions.Severities"/>, and what sequence this is in
+        /// <see cref="FindingExportOptions.Order"/>.
+        /// </para>
+        /// </summary>
+        /// <param name="project">The project the findings are about — read for its save stamp.</param>
+        /// <param name="findings">The sequence to emit, in the order it is to appear.</param>
+        /// <param name="output">Where the document's bytes go.</param>
+        /// <param name="options">As on the stream overload.</param>
+        public Task ExportFindings(Project project, IReadOnlyList<ValidationFinding> findings, Stream output,
+            FindingExportOptions? options = null)
+        {
+            ArgumentNullException.ThrowIfNull(output);
+            ArgumentNullException.ThrowIfNull(project);
+            ArgumentNullException.ThrowIfNull(findings);
+            return ExportFindingsCore(
+                project, () => findings, options, bytes => output.WriteAsync(bytes).AsTask());
+        }
+
+        /// <summary>
+        /// File convenience overload of
+        /// <see cref="ExportFindings(Project, IReadOnlyList{ValidationFinding}, Stream, FindingExportOptions?)"/>:
+        /// writes the document to <paramref name="path"/>, overwriting an existing file. This is the pair a
+        /// host actually uses — it has a save dialog and wants a file, not a stream to manage.
+        /// </summary>
+        /// <param name="project">The project the findings are about — read for its save stamp.</param>
+        /// <param name="findings">The sequence to emit, in the order it is to appear.</param>
+        /// <param name="path">The file to write.</param>
+        /// <param name="options">As on the stream overload.</param>
+        public Task ExportFindings(Project project, IReadOnlyList<ValidationFinding> findings, string path,
+            FindingExportOptions? options = null)
+        {
+            ArgumentNullException.ThrowIfNull(path);
+            ArgumentNullException.ThrowIfNull(project);
+            ArgumentNullException.ThrowIfNull(findings);
+            return ExportFindingsCore(
+                project, () => findings, options, bytes => File.WriteAllBytesAsync(path, bytes));
+        }
+
+        // The service's own run, as the two validating overloads state it — once, so a change of profile cannot
+        // reach one of them and not the other.
+        private Func<IReadOnlyList<ValidationFinding>> OwnRun(Project project) =>
+            () => ProjectVerification.RunStructured(project, CategorizedProfile);
+
+        // The one write path all four overloads share; they differ only in where the findings come from and
+        // where the bytes go. As with GenerateReport, the sink runs after the document is complete, so a
+        // failure mid-format never leaves a truncated file.
+        //
+        // The findings arrive as a THUNK rather than a list so that the validating overloads' run happens inside
+        // the traced scope, like GenerateReport's generation does — an eagerly evaluated argument would have run
+        // the whole engine before this method was entered, outside the span and synchronously on the caller's
+        // thread. For the verbatim overloads the thunk simply hands back the list it was given.
+        private Task ExportFindingsCore(Project project, Func<IReadOnlyList<ValidationFinding>> findings,
+            FindingExportOptions? options, Func<byte[], Task> write) =>
+            RunTracedAsync(nameof(ExportFindings), async activity =>
+            {
+                byte[] bytes = FindingExportWriter.Write(
+                    project, findings(), CategorizedProfile, options, timeProvider.GetLocalNow());
+                await write(bytes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                activity?.SetReturnValue(bytes.Length);
+            });
+
         // The one generation path both overloads share; they differ only in the sink. The sink runs after
         // generation succeeds, so a rejected mimetype never leaves a truncated file (or a partial stream).
         private Task GenerateReportCore(Project project, ReportKind kind, ReportMode mode, string mimeType,

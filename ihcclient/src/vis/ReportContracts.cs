@@ -1,5 +1,9 @@
 #nullable enable
+using System;
 using System.Collections.Generic;
+
+using Ihc.Vis.Model;
+using Ihc.Vis.Validation;
 
 namespace Ihc.Vis
 {
@@ -56,11 +60,26 @@ namespace Ihc.Vis
         /// <summary>Plain text with the default 1–3 character unicode icon stand-ins.</summary>
         public const string PlainText = "text/plain";
 
+        /// <summary>
+        /// The findings export: a flat, attribute-only XML document in the <c>.vis</c> encoding
+        /// (<c>ProjectAppService.ExportFindings</c>). Not a <c>GenerateReport</c> format — it lives here
+        /// because the file extension and the save dialog's labels are the same mapping problem, and a second
+        /// constants class is what lets a picker offer an XML export under an HTML filter.
+        /// </summary>
+        public const string Xml = "application/xml";
+
         /// <summary>The file extension (without the dot) a report of <paramref name="mimeType"/> is written as — the
         /// one place the format↔extension mapping lives, so a caller naming a file and a caller configuring a save
-        /// dialog cannot drift apart. Anything other than <see cref="PlainText"/> is HTML, matching what
-        /// <c>GenerateReport</c> accepts.</summary>
-        public static string FileExtensionFor(string mimeType) => mimeType == PlainText ? "txt" : "html";
+        /// dialog cannot drift apart. Anything other than <see cref="PlainText"/> or <see cref="Xml"/> is HTML,
+        /// matching what <c>GenerateReport</c> accepts.</summary>
+        public static string FileExtensionFor(string mimeType) => mimeType switch
+        {
+            // Ahead of the everything-else default, not after it: appended, this arm would never be reached
+            // and an XML export would be named and filtered as *.html.
+            PlainText => "txt",
+            Xml => "xml",
+            _ => "html",
+        };
     }
 
     /// <summary>
@@ -91,5 +110,52 @@ namespace Ihc.Vis
         /// Return null/empty for no block (the default provider contributes none; text output never has one).
         /// </summary>
         string? GetDefinitionsBlock(string mimeType, IReadOnlyCollection<string> iconKeys);
+    }
+
+    /// <summary>
+    /// What a findings export says about itself that the findings cannot say for themselves: where the list came
+    /// from, what sequence it is in, and which tiers it was allowed to contain.
+    /// <para>
+    /// Every member is something the SDK genuinely does not know. A <see cref="Projects.Project"/> is a pure in-memory
+    /// model with no path, no filename and no provenance, so <see cref="SourceName"/> has to be supplied; the
+    /// writer never re-sorts, so <see cref="Order"/> is the caller's own label for the sequence it handed over;
+    /// and which severities a list was filtered to is a fact about the CALLER's filter, not about the findings
+    /// that survived it — an export with no Info rows and an export that excluded the Info tier look identical
+    /// from the inside.
+    /// </para>
+    /// <para>
+    /// It lives in the root contract namespace rather than beside the writer: <c>Ihc.Vis.Reporting</c> is the
+    /// report PIPELINE and is internal by architecture rule, while what a caller passes in is contract.
+    /// <c>ReportMimeTypes</c> and <c>ReportKind</c> are here for the same reason.
+    /// </para>
+    /// </summary>
+    public sealed record FindingExportOptions
+    {
+        /// <summary>All three tiers, in enum order — what an unfiltered export includes.</summary>
+        public static EquatableArray<ValidationSeverity> AllSeverities { get; } =
+            EquatableArray.CreateRange(Enum.GetValues<ValidationSeverity>());
+
+        /// <summary>
+        /// What the file names itself: the open document's name for a host, the corpus case name for the oracle.
+        /// Null becomes an empty attribute rather than a missing one, so the root's shape never varies.
+        /// </summary>
+        public string? SourceName { get; init; }
+
+        /// <summary>
+        /// What sequence this is, recorded verbatim as <c>@order</c>. Free text, because the writer emits what it
+        /// is handed and only the caller knows why that is the order: <c>production</c> for the engine's own
+        /// deterministic key, <c>host:severity desc</c> for a column the user clicked.
+        /// </summary>
+        public string Order { get; init; } = "production";
+
+        /// <summary>
+        /// Which tiers the caller included. Recorded on EVERY export, including the empty case, because absence
+        /// of a tier's findings and exclusion of the tier are different facts and only this one distinguishes
+        /// them.
+        /// </summary>
+        public EquatableArray<ValidationSeverity> Severities { get; init; } = AllSeverities;
+
+        /// <summary>An unfiltered production export of an unnamed source.</summary>
+        public static FindingExportOptions Default { get; } = new();
     }
 }

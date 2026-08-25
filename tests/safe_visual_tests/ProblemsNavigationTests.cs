@@ -38,8 +38,7 @@ public class ProblemsNavigationTests
     private static ProblemRowViewModel RowFor(ProblemsShellRig rig, ElementId? element, string locator = "utcs_project")
     {
         ProblemRowViewModel row = new(
-            ValidationSeverity.Warning, "doc-name-empty", "Navnet mangler.",
-            ValidationCategory.Documentation, element, element is null ? locator : "navn");
+            About(element, locator), element, element is null ? locator : "navn");
         rig.Panel.Rows.Add(row);
         return row;
     }

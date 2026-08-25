@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<ihc_project_findings version="1" source="authentic/project5-Dokumentation" generated="2026-07-30T12:00:00+00:00" saved_stamp="_0x1f0b0b15" order="production" severities="Error Warning Info" rules_not_run="capacity-input-addresses capacity-input-modules capacity-output-addresses capacity-output-modules capacity-resources-high capacity-wireless-exceeded">
+   <finding severity="Warning" code="doc-documentation-tag" category="Documentation" locator="_0x5a53" message="Mangler Id-kode"/>
+   <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x1232d" message="Følg-linket går mellem lokaliteterne 'Stue' og 'Etage 1'." arg_from="Stue" arg_to="Etage 1"/>
+   <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x1252d" message="Følg-linket går mellem lokaliteterne 'Stue' og 'Teknik'." arg_from="Stue" arg_to="Teknik"/>
+   <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x1272d" message="Følg-linket går mellem lokaliteterne 'Stue' og 'Teknik'." arg_from="Stue" arg_to="Teknik"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x5d5a" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x1292d" message="Følg-linket går mellem lokaliteterne 'Stue' og 'Etage 1'." arg_from="Stue" arg_to="Etage 1"/>
+   <finding severity="Warning" code="doc-address" category="Documentation" locator="_0x5e5a" message="Mangler Adresse"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x5e5a" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="doc-not-linked" category="Documentation" locator="_0x5e5a" message="Ikke forbundet"/>
+   <finding severity="Warning" code="link-input-unconnected" category="Wiring" locator="_0x5e5a" message="Indgangen 'Tryk (nederst højre)' er ikke forbundet." arg_pin="Tryk (nederst højre)"/>
+   <finding severity="Warning" code="addr-module-partial" category="Addressing" locator="_0x625b" message="Datalinje 1 bruger kun 1 af 8 klemmer." arg_line="1" arg_used="1" arg_capacity="8"/>
+   <finding severity="Warning" code="scene-output-also-linked" category="Scenes" locator="_0x625b" message="Udgangen 'Udgang' styres både af et scenarie og af et følg-link." arg_output="Udgang"/>
+   <finding severity="Warning" code="doc-cablenumber" category="Documentation" locator="_0x6453" message="Mangler Kabelnummer"/>
+   <finding severity="Warning" code="doc-cabletype" category="Documentation" locator="_0x6453" message="Mangler Kabeltype"/>
+   <finding severity="Warning" code="addr-module-partial" category="Addressing" locator="_0x655a" message="Datalinje 8 bruger kun 1 af 16 klemmer." arg_line="8" arg_used="1" arg_capacity="16"/>
+   <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x12b2d" message="Følg-linket går mellem lokaliteterne 'Stue' og 'Etage 1'." arg_from="Stue" arg_to="Etage 1"/>
+   <finding severity="Warning" code="doc-position" category="Documentation" locator="_0x6653" message="Mangler Placering"/>
+   <finding severity="Warning" code="doc-power-group" category="Documentation" locator="_0x6653" message="Mangler Lysgruppe"/>
+   <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x12d2d" message="Følg-linket går mellem lokaliteterne 'Stue' og 'Etage 1'." arg_from="Stue" arg_to="Etage 1"/>
+   <finding severity="Warning" code="doc-not-linked" category="Documentation" locator="_0x705a" message="Ikke forbundet"/>
+   <finding severity="Warning" code="link-input-unconnected" category="Wiring" locator="_0x705a" message="Indgangen 'Lux / Temperatur sensor' er ikke forbundet." arg_pin="Lux / Temperatur sensor"/>
+   <finding severity="Warning" code="addr-wireless-not-commissioned" category="Addressing" locator="_0x7154" message="Produktet 'Jalousi 2 tast (lokal lås)' har intet serienummer." arg_product="Jalousi 2 tast (lokal lås)"/>
+   <finding severity="Warning" code="link-input-unconnected" category="Wiring" locator="_0x745c" message="Indgangen 'Tryk (venstre)' er ikke forbundet." arg_pin="Tryk (venstre)"/>
+   <finding severity="Warning" code="link-input-unconnected" category="Wiring" locator="_0x755c" message="Indgangen 'Tryk (højre)' er ikke forbundet." arg_pin="Tryk (højre)"/>
+   <finding severity="Warning" code="addr-wireless-not-commissioned" category="Addressing" locator="_0x7e54" message="Produktet 'Modtager relæ' har intet serienummer." arg_product="Modtager relæ"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2232" message="Lokaliteten 'Entré' indeholder hverken produkter eller blokke." arg_locality="Entré"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2332" message="Lokaliteten 'Køkken' indeholder hverken produkter eller blokke." arg_locality="Køkken"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2432" message="Lokaliteten 'Soveværelse' indeholder hverken produkter eller blokke." arg_locality="Soveværelse"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2532" message="Lokaliteten 'Værelse' indeholder hverken produkter eller blokke." arg_locality="Værelse"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2632" message="Lokaliteten 'Bad' indeholder hverken produkter eller blokke." arg_locality="Bad"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2732" message="Lokaliteten 'Bryggers' indeholder hverken produkter eller blokke." arg_locality="Bryggers"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2832" message="Lokaliteten 'Garage' indeholder hverken produkter eller blokke." arg_locality="Garage"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2932" message="Lokaliteten 'Kælder' indeholder hverken produkter eller blokke." arg_locality="Kælder"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2a32" message="Lokaliteten 'Udendørs' indeholder hverken produkter eller blokke." arg_locality="Udendørs"/>
+   <finding severity="Warning" code="struct-locality-no-devices" category="ProjectStructure" locator="_0x5132" message="Lokaliteten 'Etage 1' indeholder kun funktionsblokke." arg_locality="Etage 1"/>
+   <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x12f2d" message="Følg-linket går mellem lokaliteterne 'Etage 1' og 'Stue'." arg_from="Etage 1" arg_to="Stue"/>
+   <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x1312d" message="Følg-linket går mellem lokaliteterne 'Etage 1' og 'Stue'." arg_from="Etage 1" arg_to="Stue"/>
+   <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x1352d" message="Følg-linket går mellem lokaliteterne 'Etage 1' og 'Teknik'." arg_from="Etage 1" arg_to="Teknik"/>
+   <finding severity="Warning" code="logic-variable-write-only" category="Logic" locator="_0x11010" message="Variablen 'Timer' i 'Doku zoo' tilskrives, men læses aldrig." arg_variable="Timer" arg_block="Doku zoo"/>
+   <finding severity="Warning" code="logic-variable-write-only" category="Logic" locator="_0x1110d" message="Variablen 'Tidspunkt' i 'Doku zoo' tilskrives, men læses aldrig." arg_variable="Tidspunkt" arg_block="Doku zoo"/>
+   <finding severity="Warning" code="dev-backup-missing" category="DeviceSettings" locator="_0x1130c" message="Variablen 'Tæller' i 'Doku zoo' gemmes ikke ved strømsvigt." arg_variable="Tæller" arg_block="Doku zoo"/>
+   <finding severity="Warning" code="dev-inivalue-overwritten" category="DeviceSettings" locator="_0x1140b" message="Startværdien '42' på 'Tal' sættes af et program ved hver opstart." arg_value="42" arg_variable="Tal"/>
+   <finding severity="Warning" code="dev-backup-missing" category="DeviceSettings" locator="_0x1150f" message="Variablen 'Tilstand' i 'Doku zoo' gemmes ikke ved strømsvigt." arg_variable="Tilstand" arg_block="Doku zoo"/>
+   <finding severity="Warning" code="dev-inivalue-overwritten" category="DeviceSettings" locator="_0x1150f" message="Startværdien '_0x5648' på 'Tilstand' sættes af et program ved hver opstart." arg_value="_0x5648" arg_variable="Tilstand"/>
+   <finding severity="Warning" code="logic-variable-write-only" category="Logic" locator="_0x1160e" message="Variablen 'Dato' i 'Doku zoo' tilskrives, men læses aldrig." arg_variable="Dato" arg_block="Doku zoo"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x11709" message="Variablen 'Ugedag' i 'Doku zoo' bruges ikke af noget program." arg_variable="Ugedag" arg_block="Doku zoo"/>
+   <finding severity="Warning" code="dev-backup-missing" category="DeviceSettings" locator="_0x1180a" message="Variablen 'Flag' i 'Doku zoo' gemmes ikke ved strømsvigt." arg_variable="Flag" arg_block="Doku zoo"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x11920" message="Variablen 'Helligdag' i 'Doku zoo' bruges ikke af noget program." arg_variable="Helligdag" arg_block="Doku zoo"/>
+   <finding severity="Warning" code="dev-inivalue-overwritten" category="DeviceSettings" locator="_0x11a14" message="Startværdien '21.50' på 'Temperatur' sættes af et program ved hver opstart." arg_value="21.50" arg_variable="Temperatur"/>
+   <finding severity="Warning" code="logic-variable-write-only" category="Logic" locator="_0x11a14" message="Variablen 'Temperatur' i 'Doku zoo' tilskrives, men læses aldrig." arg_variable="Temperatur" arg_block="Doku zoo"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x11b27" message="Variablen 'Fugt' i 'Doku zoo' bruges ikke af noget program." arg_variable="Fugt" arg_block="Doku zoo"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x11c16" message="Variablen 'Lys' i 'Doku zoo' bruges ikke af noget program." arg_variable="Lys" arg_block="Doku zoo"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x11d13" message="Variablen 'Lysniveau' i 'Doku zoo' bruges ikke af noget program." arg_variable="Lysniveau" arg_block="Doku zoo"/>
+   <finding severity="Warning" code="dev-inivalue-overwritten" category="DeviceSettings" locator="_0x11e15" message="Startværdien '3.14' på 'Kommatal' sættes af et program ved hver opstart." arg_value="3.14" arg_variable="Kommatal"/>
+   <finding severity="Warning" code="logic-variable-write-only" category="Logic" locator="_0x11e15" message="Variablen 'Kommatal' i 'Doku zoo' tilskrives, men læses aldrig." arg_variable="Kommatal" arg_block="Doku zoo"/>
+   <finding severity="Warning" code="logic-program-no-events" category="Logic" locator="_0x1091e" message="Programmet 'Program' har ingen hændelser." arg_program="Program"/>
+   <finding severity="Warning" code="logic-subprogram-no-conditions" category="Logic" locator="_0x15e1f" message="Underprogrammet 'Under program' har ingen betingelser." arg_program="Under program"/>
+   <finding severity="Warning" code="dev-setting-default" category="DeviceSettings" locator="_0x8158" message="Produktet 'IHC LED Dimmer 2 kanaler' har 1 af 12 indstillinger på fabriksværdien." arg_product="IHC LED Dimmer 2 kanaler" arg_untouched="1" arg_settings="12" related="_0xa474"/>
+   <finding severity="Warning" code="addr-dimmer-channel-unassigned" category="Addressing" locator="_0x837b" message="Kanalen 'LED Dimmer kanal 1' har ingen kanal-id." arg_channel="LED Dimmer kanal 1"/>
+   <finding severity="Warning" code="addr-dimmer-channel-unassigned" category="Addressing" locator="_0x947b" message="Kanalen 'LED Dimmer kanal 2' har ingen kanal-id." arg_channel="LED Dimmer kanal 2"/>
+   <finding severity="Warning" code="dev-setting-default" category="DeviceSettings" locator="_0xa556" message="Produktet 'SMS Modem' har 30 af 31 indstillinger på fabriksværdien." arg_product="SMS Modem" arg_untouched="30" arg_settings="31" related="_0xa9cd _0xaacd _0xabcd _0xaccd _0xadcd _0xaecd _0xafcd _0xb0cd _0xb1cd _0xb2cd _0xb4cd _0xb5cd _0xb6cd _0xb7cd _0xb8cd _0xb9cd _0xbacd _0xbbcd _0xbccd _0xbdcd _0xbfcd _0xc0cd _0xc1cd _0xc2cd _0xc3cd _0xc4cd _0xc5cd _0xc6cd _0xc7cd _0xc8cd"/>
+   <finding severity="Warning" code="struct-product-no-terminals" category="ProjectStructure" locator="_0xa556" message="Produktet 'SMS Modem' har ingen klemmer." arg_product="SMS Modem"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0xd828" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x1332d" message="Følg-linket går mellem lokaliteterne 'Teknik' og 'Stue'." arg_from="Teknik" arg_to="Stue"/>
+   <finding severity="Warning" code="logic-block-no-pins" category="Logic" locator="_0xfa28" message="Blokken 'Tom blok' har hverken ind- eller udgange." arg_block="Tom blok"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0xfa28" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="struct-orphan-block" category="ProjectStructure" locator="_0xfa28" message="Blokken 'Tom blok' er ikke forbundet til resten af installationen." arg_block="Tom blok"/>
+   <finding severity="Warning" code="logic-program-no-events" category="Logic" locator="_0x1001e" message="Programmet 'Program' har ingen hændelser." arg_program="Program"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x5332" message="Lokaliteten 'Tom lokalitet' indeholder hverken produkter eller blokke." arg_locality="Tom lokalitet"/>
+</ihc_project_findings>

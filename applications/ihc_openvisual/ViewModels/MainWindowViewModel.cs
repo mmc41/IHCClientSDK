@@ -810,7 +810,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // The Problemer panel PRESENTS the session's own validation; it does not run one. The marshal and the
         // clock it needs for the staleness indicator come from the session too, which is where the composition
         // root put them — so there is one answer to "which thread" and one clock, not one per view-model.
-        Problems = new ProblemsPanelViewModel(_session, _session.Validation, RevealAndSelect);
+        Problems = new ProblemsPanelViewModel(
+            _session, _session.Validation, RevealAndSelect, _session.ExportFindingsAsync);
 
         RegisterCoreEditRows();
         RegisterNodeRows();

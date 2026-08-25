@@ -414,4 +414,86 @@ public class ProblemsPanelViewModelTests
             rig.Dispose();
         }
     }
+    /// <summary>
+    /// Each row keeps the very <see cref="ValidationFinding"/> it was projected from, established by REFERENCE.
+    ///
+    /// <para><b>Why identity and not an index.</b> Comparing <c>Rows[i]</c> against <c>outcome.Findings[i]</c>
+    /// would pass on a row that had merely been rebuilt from equal data, and would keep passing if the panel
+    /// ever filtered or re-sorted between the two lists — which it does. Only reference identity says "this row
+    /// is about THAT finding", which is the property an export needs: the file is built from each visible row's
+    /// finding, so a row holding a look-alike would export a look-alike.</para>
+    ///
+    /// <para>The projection is exercised through <c>ToRow</c> directly, so the finding handed in is a value this
+    /// test holds and can compare against, rather than one recovered from the panel's own output.</para>
+    /// </summary>
+    [Test]
+    public void ARowKeepsTheVeryFindingItWasProjectedFrom()
+    {
+        ValidationFinding finding = Finding(
+            "doc-name-empty", ValidationSeverity.Warning, "Navnet mangler.",
+            ValidationCategory.Documentation, new FindingLocation("utcs_project", null, null));
+
+        ProblemRowViewModel row = ProblemsPanelViewModel.ToRow(finding, null, []);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(row.Finding, Is.SameAs(finding), "the instance, not an equal one");
+            Assert.That(row.Severity, Is.EqualTo(finding.Severity));
+            Assert.That(row.Code, Is.EqualTo(finding.Code.Value));
+            Assert.That(row.Message, Is.EqualTo(finding.Problem.Message));
+            Assert.That(row.Category, Is.EqualTo(finding.Category));
+        });
+    }
+
+    /// <summary>
+    /// The retained finding survives the collision branch, which is the one that DROPS the row's anchor. A row
+    /// that leads nowhere is still about a real finding, and an export of it must carry that finding's own
+    /// locator and path — the very things the panel deliberately stopped showing.
+    /// </summary>
+    [Test]
+    public void ARowWhoseAnchorWasDroppedStillKeepsItsFinding()
+    {
+        ElementId shared = ElementId.ParseOrNull("_0x2132")!.Value;
+        ValidationFinding finding = Finding(
+            "id-duplicate-token", ValidationSeverity.Error, "Dobbelt id.",
+            ValidationCategory.FileIntegrity,
+            new FindingLocation("_0x2132", shared, null, "/utcs_project/groups/group[1]"));
+
+        ProblemRowViewModel row = ProblemsPanelViewModel.ToRow(
+            finding, null, new Dictionary<ElementId, ProjectElement?> { [shared] = null });
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(row.Finding, Is.SameAs(finding));
+            Assert.That(
+                row.Finding.Primary!.Xpath, Is.EqualTo("/utcs_project/groups/group[1]"),
+                "the exact node the panel could not choose between is still on the finding");
+        });
+    }
+
+    /// <summary>
+    /// Every row the panel binds carries a finding — asserted over a real projected list rather than over a
+    /// hand-called <c>ToRow</c>, so the binding path cannot lose it.
+    /// </summary>
+    [Test]
+    public async Task EveryBoundRowCarriesItsFinding()
+    {
+        using Rig rig = new();
+        await rig.OpenAsync();
+        rig.Body = _ => System.Collections.Immutable.ImmutableArray.Create(
+            Finding("doc-name-empty", ValidationSeverity.Warning, "Navnet mangler.",
+                ValidationCategory.Documentation, new FindingLocation("utcs_project", null, null)),
+            Finding("prj-capacity-exceeded", ValidationSeverity.Warning, "For mange moduler.",
+                ValidationCategory.ProjectStructure, null));
+        await rig.SettleAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rig.Panel.Rows, Has.Count.EqualTo(2), "non-vacuity");
+            Assert.That(rig.Panel.Rows.Select(r => r.Finding), Is.All.Not.Null);
+            Assert.That(
+                rig.Panel.Rows.Select(r => r.Finding.Code.Value),
+                Is.EqualTo(new[] { "doc-name-empty", "prj-capacity-exceeded" }));
+        });
+    }
 }

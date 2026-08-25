@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
 using System.Linq;
-using System.Text;
+
+using Ihc.Tests.Shared;
 
 namespace Ihc.Vis.Tests
 {
@@ -42,17 +42,11 @@ namespace Ihc.Vis.Tests
         private static WholeProjectValidator Engine() =>
             new(RuleSet.Create(Catalog, SchemaConformanceRules.All(Catalog)));
 
-        /// <summary>The recorded rows for the migrated ids, per corpus case, in the order they were recorded.</summary>
-        private static ILookup<string, string[]> Recorded()
-        {
-            string path = TestData.PathOf("validation", "rule-characterization.txt");
-            Assert.That(File.Exists(path), Is.True, $"the characterization recording is missing at {path}");
-            return File.ReadAllLines(path, Encoding.UTF8)
-                .Where(l => l.Length > 0 && !l.StartsWith('#'))
-                .Select(l => l.Split('\t'))
-                .Where(cells => MigratedIds.Contains(cells[2]))
-                .ToLookup(cells => cells[0], cells => cells);
-        }
+        /// <summary>
+        /// The recorded findings for the migrated ids, per corpus case — through the shared machinery, so this
+        /// fixture and every other migration fixture select and group the recording the same way.
+        /// </summary>
+        private static ILookup<string, RecordedFinding> Recorded() => MigrationParity.Recorded(MigratedIds);
 
         [Test]
         public void EveryMigratedRuleIsDeclaredInTheCatalogueWithADanishLabelAndAnEnglishDiagnostic()
@@ -78,28 +72,24 @@ namespace Ihc.Vis.Tests
         public void TheEngineReproducesTheRecordedTuplesForTheMigratedIds()
         {
             WholeProjectValidator engine = Engine();
-            ILookup<string, string[]> recorded = Recorded();
+            ILookup<string, RecordedFinding> recorded = Recorded();
 
             Assert.That(recorded, Is.Not.Empty, "the corpus must witness these rules, or this gate is vacuous");
 
             Assert.Multiple(() =>
             {
-                foreach (IGrouping<string, string[]> forCase in recorded)
+                foreach (IGrouping<string, RecordedFinding> forCase in recorded)
                 {
                     Project project = CorpusCase(forCase.Key);
-                    string[] produced = [.. engine.Validate(project, ValidationProfile.Categorized)
-                        .Select(f => $"{f.Severity}\t{f.Code.Value}\t{f.Category}\t{f.Primary?.Locator ?? "-"}\t{f.Problem.Message}")
-                        .OrderBy(row => row, StringComparer.Ordinal)];
 
-                    // The CATEGORY is the entry's, because a migration moves it on purpose. The MESSAGE is the
-                    // recording's: these six rows surface their arguments, so the produced sentence is BOUND and
-                    // an expectation taken from the raw template would demand a literal '{tag}'.
+                    // Both rows come from the SHARED builders, so the produced and recorded sides cannot spell a
+                    // cell differently — an absent locator above all, which the two artifacts represent
+                    // differently in their own terms.
+                    string[] produced = [.. engine.Validate(project, ValidationProfile.Categorized)
+                        .Select(MigrationParity.Row)
+                        .OrderBy(row => row, StringComparer.Ordinal)];
                     string[] expected = [.. forCase
-                        .Select(cells =>
-                        {
-                            Catalog.TryGet(new ProblemCode(cells[2]), out ProblemCatalogEntry entry);
-                            return $"{cells[1]}\t{cells[2]}\t{entry.Category}\t{cells[4]}\t{cells[5]}";
-                        })
+                        .Select(MigrationParity.Expected)
                         .OrderBy(row => row, StringComparer.Ordinal)];
 
                     Assert.That(produced, Is.EqualTo(expected).AsCollection, forCase.Key);

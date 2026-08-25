@@ -1,6 +1,6 @@
 ---
 version: 0.1.0
-last-updated: 2026-08-24
+last-updated: 2026-08-25
 status: draft
 ---
 
@@ -17,9 +17,11 @@ that faults are found while the project is being built rather than when it is be
 
 **Scope:** a bottom panel listing the current findings with severity, code, message, element and category;
 continuous background revalidation as the project changes; per-severity filtering with live counts; per-column
-sorting; one-click navigation to the offending element; and withholding controller transfer while the project
-carries errors. Out of scope: suppressing or acknowledging a finding (deliberately foreclosed — an id is a
-filtering key, never a way to silence a finding), authoring new rules, and any report output (E9 owns reports).
+sorting; one-click navigation to the offending element; saving the panel's own list as a file; and withholding
+controller transfer while the project carries errors. Out of scope: suppressing or acknowledging a finding
+(deliberately foreclosed — an id is a filtering key, never a way to silence a finding), authoring new rules, and
+the documentation reports (E9 owns those; this epic's export is the findings list itself, not a document about
+the project).
 
 **Deliberate vendor divergence:** the original authoring tool has no equivalent surface. It validates on demand
 and reports into a dialog, so this epic has no vendor behaviour to match and is registered as an enhancement in
@@ -120,6 +122,43 @@ errors, **so that** I do not commission an installation the controller will reje
 - MUST: **Given** no controller is connected, **when** *Send projekt* is withheld, **then** the reason given is
   the missing controller — the nearer obstacle first.
 
-**Readiness:** Ready — every criterion above is observable in the headless suites, and the panel is additionally
-driven end to end through UI Automation on Windows. The one criterion no automated test covers is the visual
-quality of the ~150 ms dim animation, which is a rendering property rather than behaviour.
+**Readiness:** Ready — every criterion in US-080 to US-084 is observable in the headless suites, and the panel
+is additionally driven end to end through UI Automation on Windows. The one criterion no automated test covers
+is the visual quality of the ~150 ms dim animation, which is a rendering property rather than behaviour.
+
+## US-085 — Export the findings list
+
+**As an** IHC installer, **I want** to save the panel's list as a file, **so that** I can keep it beside the
+project, compare it with a later one, or send it to whoever is helping me.
+
+**Acceptance criteria**
+
+- MUST: **Given** a validated project with findings, **when** the export is chosen and a destination given,
+  **then** a file is written holding those findings, and it names the project, the save it describes and the
+  moment it was produced.
+- MUST: **Given** a validated project with nothing wrong, **when** the export is chosen, **then** it is
+  available and writes a file holding no findings — a record that this save was checked and was clean is worth
+  keeping, and is the same statement the panel is already making.
+- MUST: **Given** the panel is still validating, **when** the export is offered, **then** it is withheld: there
+  is no list yet, and a file naming the current project while holding nothing would read as a clean bill of
+  health.
+- MUST: **Given** the project has been edited past the findings on screen, **when** the export is offered,
+  **then** it is withheld — the file would describe a superseded project while naming the current one, and
+  would say so nowhere.
+- MUST: **Given** findings have been hidden by a severity filter, **when** the list is exported, **then** the
+  file holds exactly the findings on screen, **and** it records which severities were included, so a short file
+  cannot be mistaken for a short list of problems.
+- MUST: **Given** every severity filter is switched off, **when** the list is exported, **then** the file holds
+  no findings and records that none were included — this file and the clean project's file must not read alike.
+- MUST: **Given** a column has been sorted, **when** the list is exported, **then** the file's findings are in
+  the order the panel shows them.
+- MUST: **Given** the export is chosen, **when** the destination is not given, **then** nothing is written and
+  nothing is reported.
+- MUST: **Given** a destination that cannot be written, **when** the export is attempted, **then** the failure
+  is reported in Danish, naming what failed, and the panel is left as it was.
+- SHOULD: **Given** the panel is hidden, **when** the export is wanted, **then** it is reached by showing the
+  panel again — the export belongs to the panel, as its filters and sorting already do.
+
+**Readiness:** Ready — every criterion above is observable in `safe_visual_tests`: the four states gate the
+command's availability, and the written file's contents are compared against the panel's visible rows. The
+save dialog itself is a native window and is exercised through the dialog port rather than driven.

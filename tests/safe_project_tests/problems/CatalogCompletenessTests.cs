@@ -10,6 +10,8 @@ using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
 using Ihc.Vis.Validation;
 
+using Ihc.Tests.Shared;
+
 namespace Ihc.Vis.Tests
 {
     /// <summary>
@@ -461,16 +463,17 @@ namespace Ihc.Vis.Tests
             }
         }
 
-        /// <summary>The characterization recording, as (rule id, severity, category) triples.</summary>
+        /// <summary>
+        /// The recorded findings, as (code, severity, category) triples.
+        /// <para>
+        /// Read through the shared oracle reader, which reaches the copy beside the test binary. It used to
+        /// walk up to the checkout root and parse the tab-separated recording itself: that hard-coded the
+        /// repository layout into a test, and it read a file the build does not put where the test runs, so it
+        /// passed or failed on whether the SOURCE tree happened to be there at all.
+        /// </para>
+        /// </summary>
         private static ImmutableArray<(string RuleId, string Severity, string Category)> Recording() =>
-        [
-            .. File.ReadAllLines(Path.Combine(TestRepository.RequireRoot(), "tests", "testdata", "validation",
-                    "rule-characterization.txt"))
-                .Where(line => line.Length > 0 && !line.StartsWith('#'))
-                .Select(line => line.Split('\t'))
-                .Where(cells => cells.Length >= 4)
-                .Select(cells => (cells[2], cells[1], cells[3])),
-        ];
+            [.. FindingOracles.ReadAll().Select(f => (f.Code, f.Severity, f.Category))];
 
         /// <summary>The severity a disposition produces, as the recording spells it.</summary>
         private static string Expected(CatalogDisposition disposition) => disposition switch

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<ihc_project_findings version="1" source="synthetic/bijection" generated="2026-07-30T12:00:00+00:00" saved_stamp="_0x2" order="production" severities="Error Warning Info" rules_not_run="capacity-input-addresses capacity-input-modules capacity-output-addresses capacity-output-modules capacity-resources-high capacity-wireless-exceeded">
+   <finding severity="Warning" code="doc-no-enduser-products" category="Documentation" locator="utcs_project" message="Ingen produkter til slutbrugerdokumentation"/>
+   <finding severity="Warning" code="doc-project-info-blank" category="Documentation" locator="utcs_project" message="Mangler projektoplysninger"/>
+   <finding severity="Warning" code="root-children" category="FileIntegrity" locator="utcs_project" message="Uventet rækkefølge i roden: rodens børn er [groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules]." arg_actual="groups" arg_expected="modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules"/>
+   <finding severity="Warning" code="doc-cablenumber" category="Documentation" locator="_0x5153" message="Mangler Kabelnummer"/>
+   <finding severity="Warning" code="doc-cabletype" category="Documentation" locator="_0x5153" message="Mangler Kabeltype"/>
+   <finding severity="Warning" code="doc-documentation-tag" category="Documentation" locator="_0x5153" message="Mangler Id-kode"/>
+   <finding severity="Warning" code="doc-position" category="Documentation" locator="_0x5153" message="Mangler Placering"/>
+   <finding severity="Warning" code="doc-power-group" category="Documentation" locator="_0x5153" message="Mangler Lysgruppe"/>
+   <finding severity="Warning" code="doc-address" category="Documentation" locator="_0x525b" message="Mangler Adresse"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x525b" message="Mangler Ledningsfarve"/>
+   <finding severity="Error" code="idref-dangling" category="FileIntegrity" locator="_0x542d" message="Reference uden mål: link='_0xdead49' på &lt;link_from_resource&gt; peger ikke på noget element." arg_attribute="link" arg_value="_0xdead49" arg_tag="link_from_resource"/>
+   <finding severity="Error" code="link-bijection" category="Wiring" locator="_0x542d" message="Forbindelsen er ensidig: &lt;link_from_resource&gt; '_0x542d' er ikke forbundet begge veje til en partner af den modsatte type." arg_tag="link_from_resource" arg_id="_0x542d"/>
+   <finding severity="Error" code="idref-dangling" category="FileIntegrity" locator="_0x554b" message="Reference uden mål: link='_0xdead49' på &lt;scene_link&gt; peger ikke på noget element." arg_attribute="link" arg_value="_0xdead49" arg_tag="scene_link"/>
+   <finding severity="Error" code="scene-bijection" category="Scenes" locator="_0x554b" message="Scenerækken er ensidig: &lt;scene_link&gt; '_0x554b' er ikke forbundet begge veje til en partner af den modsatte type." arg_tag="scene_link" arg_id="_0x554b"/>
+</ihc_project_findings>

@@ -228,8 +228,12 @@ public class ProblemsListTests
         Assert.That(rig.Panel.Rows, Is.Empty, "precondition: nothing has validated yet");
 
         ProblemRowViewModel mine = new(
-            ValidationSeverity.Warning, "doc-name-empty", "Navnet mangler.",
-            ValidationCategory.Documentation, null, "utcs_project");
+            new ValidationFinding(
+                new Problem(new ProblemCode("doc-name-empty"), "Navnet mangler.",
+                    EquatableArray<ProblemArgument>.Empty),
+                ValidationSeverity.Warning, ValidationCategory.Documentation,
+                new FindingLocation("utcs_project", null, null), EquatableArray<FindingLocation>.Empty),
+            null, "utcs_project");
         rig.Panel.Rows.Add(mine);
         Dispatcher.UIThread.RunJobs();
 

@@ -15,36 +15,61 @@ namespace ihc_openvisual.ViewModels;
 /// <para><b>Identity is an <see cref="ElementId"/>, never an element reference.</b> Every edit rebuilds the
 /// immutable tree, so a retained element goes stale on the next keystroke — the row keeps the id and lets the
 /// navigation step resolve it against whatever the current tree is.</para>
+///
+/// <para><b>Holding the <see cref="Finding"/> does not breach that.</b> The rule is about retaining a
+/// <see cref="ProjectElement"/>, which is a node in a tree the next edit replaces. A
+/// <see cref="ValidationFinding"/> is not a node: it is the immutable RESULT of one validation run, and its
+/// <c>Primary.Locator</c> and <c>Primary.Xpath</c> describe the tree that run saw. It goes stale in the same
+/// sense the whole result does — which is a state the panel already models and refuses to export from — rather
+/// than in the sense a retained element does, where the object silently ceases to be part of any live tree.</para>
 /// </summary>
 public sealed partial class ProblemRowViewModel : ObservableObject
 {
     public ProblemRowViewModel(
-        ValidationSeverity severity,
-        string code,
-        string message,
-        ValidationCategory category,
+        ValidationFinding finding,
         ElementId? element,
         string elementName)
     {
-        Severity = severity;
-        Code = code;
-        Message = message;
-        Category = category;
+        Finding = finding;
         Element = element;
         ElementName = elementName;
     }
 
+    /// <summary>
+    /// The finding this row was projected from, kept whole.
+    /// <para>
+    /// It is what an export of the panel's list is built from, and that is why it is retained rather than
+    /// re-derived: the file must hold the findings the user is actually looking at, and a row that had only the
+    /// columns could not produce one. The columns below all READ from it instead of copying it, so a row and
+    /// its finding cannot come to disagree.
+    /// </para>
+    /// <para>
+    /// Note the two things the row deliberately shows differently from what this carries: a duplicate-id row
+    /// drops its <see cref="Element"/> anchor and its resolved name, while the finding still knows the locator
+    /// and the exact node. That asymmetry is intended — the panel cannot choose between two holders, the file
+    /// does not have to.
+    /// </para>
+    /// <para>
+    /// Internal, unlike the columns beside it. Those are what a view renders; this is what the EXPORT is built
+    /// from, and it reaches the problem's raw arguments and the catalogue's slots. A binding path into those
+    /// would be a presentation path re-deriving user-facing text, which is exactly what the whole-message rule
+    /// forbids — so the type does not offer one. The app's sources compile into the UI test assembly, so the
+    /// fidelity tests read it unchanged.
+    /// </para>
+    /// </summary>
+    internal ValidationFinding Finding { get; }
+
     /// <summary>Which tier the finding is in — what the icon column and the filter toggles read.</summary>
-    public ValidationSeverity Severity { get; }
+    public ValidationSeverity Severity => Finding.Severity;
 
     /// <summary>The finding's kebab-case code (<c>Problem.Code.Value</c>) — the Kode column and the id sort key.</summary>
-    public string Code { get; }
+    public string Code => Finding.Code.Value;
 
     /// <summary>The Danish sentence, verbatim from the problem. Never re-derived, never re-worded.</summary>
-    public string Message { get; }
+    public string Message => Finding.Problem.Message;
 
     /// <summary>The check family the finding belongs to — the Kategori column and its sort key.</summary>
-    public ValidationCategory Category { get; }
+    public ValidationCategory Category => Finding.Category;
 
     /// <summary>
     /// The navigation anchor: the parsed id of the finding's primary site, or null when it has none.

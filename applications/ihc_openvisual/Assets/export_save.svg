@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <path id="body" d="M6 4 H16 L20 8 V20 H6 Z"/>
+  <rect id="shutter" x="12" y="4" width="4" height="4"/>
+  <rect id="label" x="9" y="13" width="8" height="7"/>
+</svg>

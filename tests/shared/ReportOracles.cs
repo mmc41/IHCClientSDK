@@ -20,8 +20,11 @@ namespace Ihc.Tests.Shared
     internal static class ReportOracles
     {
         /// <summary>The instant every <c>full-*</c> oracle's generation timestamp is pinned to (S10):
-        /// 2026-07-30 12:00, local on every machine.</summary>
-        private static readonly DateTimeOffset PinnedInstant = new(2026, 7, 30, 12, 0, 0, TimeSpan.Zero);
+        /// 2026-07-30 12:00, local on every machine.
+        /// <para>Internal rather than private because the findings oracles pin the SAME instant. Two constants
+        /// would be two magic dates to remember and one more thing that can silently diverge; one instant, read
+        /// by both families, cannot.</para></summary>
+        internal static readonly DateTimeOffset PinnedInstant = new(2026, 7, 30, 12, 0, 0, TimeSpan.Zero);
 
         // The report-kind stem each oracle filename carries.
         private static readonly (ReportKind Kind, string Stem)[] Kinds =

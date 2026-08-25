@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<ihc_project_findings version="1" source="authentic/project3-KompleksWired" generated="2026-07-30T12:00:00+00:00" saved_stamp="_0x1d143707" order="production" severities="Error Warning Info" rules_not_run="capacity-input-addresses capacity-input-modules capacity-output-addresses capacity-output-modules capacity-resources-high capacity-wireless-exceeded">
+   <finding severity="Warning" code="enum-value-unused" category="Logic" locator="_0x2eb48" message="Værdien 'Kun efterløb' i enumerator typen 'PIR funktion' bruges ikke." arg_value="Kun efterløb" arg_enum="PIR funktion"/>
+   <finding severity="Warning" code="enum-def-empty" category="Logic" locator="_0x51147" message="Enumerator typen 'TestEnum æøå äö &quot;x&quot;' har ingen værdier." arg_enum="TestEnum æøå äö &quot;x&quot;"/>
+   <finding severity="Warning" code="enum-def-unused" category="Logic" locator="_0x51147" message="Enumerator typen 'TestEnum æøå äö &quot;x&quot;' bruges ikke af nogen variabel." arg_enum="TestEnum æøå äö &quot;x&quot;"/>
+   <finding severity="Warning" code="doc-cablenumber" category="Documentation" locator="_0x5153" message="Mangler Kabelnummer"/>
+   <finding severity="Warning" code="doc-cabletype" category="Documentation" locator="_0x5153" message="Mangler Kabeltype"/>
+   <finding severity="Warning" code="doc-documentation-tag" category="Documentation" locator="_0x5153" message="Mangler Id-kode"/>
+   <finding severity="Warning" code="doc-position" category="Documentation" locator="_0x5153" message="Mangler Placering"/>
+   <finding severity="Warning" code="doc-power-group" category="Documentation" locator="_0x5153" message="Mangler Lysgruppe"/>
+   <finding severity="Warning" code="doc-address" category="Documentation" locator="_0x525a" message="Mangler Adresse"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x525a" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x5542d" message="Følg-linket går mellem lokaliteterne 'Stue &amp; Køkken &quot;åben&quot;' og 'Værelse'." arg_from="Stue &amp; Køkken &quot;åben&quot;" arg_to="Værelse"/>
+   <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x5562d" message="Følg-linket går mellem lokaliteterne 'Stue &amp; Køkken &quot;åben&quot;' og 'Værelse'." arg_from="Stue &amp; Køkken &quot;åben&quot;" arg_to="Værelse"/>
+   <finding severity="Warning" code="doc-address" category="Documentation" locator="_0x535a" message="Mangler Adresse"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x535a" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x5582d" message="Følg-linket går mellem lokaliteterne 'Stue &amp; Køkken &quot;åben&quot;' og 'Værelse'." arg_from="Stue &amp; Køkken &quot;åben&quot;" arg_to="Værelse"/>
+   <finding severity="Warning" code="doc-cablenumber" category="Documentation" locator="_0x5453" message="Mangler Kabelnummer"/>
+   <finding severity="Warning" code="doc-cabletype" category="Documentation" locator="_0x5453" message="Mangler Kabeltype"/>
+   <finding severity="Warning" code="doc-documentation-tag" category="Documentation" locator="_0x5453" message="Mangler Id-kode"/>
+   <finding severity="Warning" code="doc-position" category="Documentation" locator="_0x5453" message="Mangler Placering"/>
+   <finding severity="Warning" code="doc-power-group" category="Documentation" locator="_0x5453" message="Mangler Lysgruppe"/>
+   <finding severity="Warning" code="doc-address" category="Documentation" locator="_0x555b" message="Mangler Adresse"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x555b" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="doc-not-linked" category="Documentation" locator="_0x555b" message="Ikke forbundet"/>
+   <finding severity="Warning" code="doc-cablenumber" category="Documentation" locator="_0x5753" message="Mangler Kabelnummer"/>
+   <finding severity="Warning" code="doc-cabletype" category="Documentation" locator="_0x5753" message="Mangler Kabeltype"/>
+   <finding severity="Warning" code="doc-documentation-tag" category="Documentation" locator="_0x5753" message="Mangler Id-kode"/>
+   <finding severity="Warning" code="doc-position" category="Documentation" locator="_0x5753" message="Mangler Placering"/>
+   <finding severity="Warning" code="doc-power-group" category="Documentation" locator="_0x5753" message="Mangler Lysgruppe"/>
+   <finding severity="Warning" code="doc-address" category="Documentation" locator="_0x585b" message="Mangler Adresse"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x585b" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="doc-not-linked" category="Documentation" locator="_0x585b" message="Ikke forbundet"/>
+   <finding severity="Warning" code="link-output-undriven" category="Wiring" locator="_0x585b" message="Udgangen 'Lampe' styres ikke af noget." arg_pin="Lampe"/>
+   <finding severity="Warning" code="link-fb-input-unfed" category="Wiring" locator="_0x8b28" message="Funktionsblokken '1.1.01.e. Kip tænd sluk' har ingen forbundne indgange." arg_block="1.1.01.e. Kip tænd sluk" related="_0x8d11 _0x8e11 _0x8f11 _0x9011 _0x9111"/>
+   <finding severity="Warning" code="link-fb-output-unused" category="Wiring" locator="_0x8b28" message="Funktionsblokken '1.1.01.e. Kip tænd sluk' har ingen forbundne udgange." arg_block="1.1.01.e. Kip tænd sluk" related="_0x9312 _0x9412 _0x9512 _0x964a _0x974a"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0x8b28" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="struct-orphan-block" category="ProjectStructure" locator="_0x8b28" message="Blokken '1.1.01.e. Kip tænd sluk' er ikke forbundet til resten af installationen." arg_block="1.1.01.e. Kip tænd sluk"/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0x964a" message="Scenariet 'Scenarie Tænd' har ingen medlemmer." arg_scene="Scenarie Tænd"/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0x974a" message="Scenariet 'Scenarie Sluk' har ingen medlemmer." arg_scene="Scenarie Sluk"/>
+   <finding severity="Warning" code="logic-contending-writers" category="Logic" locator="_0x9910" message="Variablen 'Timer' tilskrives af 5 programmer med uafhængige udløsere." arg_variable="Timer" arg_writers="5"/>
+   <finding severity="Warning" code="doc-cablenumber" category="Documentation" locator="_0x5953" message="Mangler Kabelnummer"/>
+   <finding severity="Warning" code="doc-cabletype" category="Documentation" locator="_0x5953" message="Mangler Kabeltype"/>
+   <finding severity="Warning" code="doc-documentation-tag" category="Documentation" locator="_0x5953" message="Mangler Id-kode"/>
+   <finding severity="Warning" code="doc-position" category="Documentation" locator="_0x5953" message="Mangler Placering"/>
+   <finding severity="Warning" code="doc-power-group" category="Documentation" locator="_0x5953" message="Mangler Lysgruppe"/>
+   <finding severity="Warning" code="doc-address" category="Documentation" locator="_0x5a5a" message="Mangler Adresse"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x5a5a" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="doc-not-linked" category="Documentation" locator="_0x5a5a" message="Ikke forbundet"/>
+   <finding severity="Warning" code="link-input-unconnected" category="Wiring" locator="_0x5a5a" message="Indgangen 'Tilstedeværelses indikering' er ikke forbundet." arg_pin="Tilstedeværelses indikering"/>
+   <finding severity="Warning" code="doc-cablenumber" category="Documentation" locator="_0x5b53" message="Mangler Kabelnummer"/>
+   <finding severity="Warning" code="doc-cabletype" category="Documentation" locator="_0x5b53" message="Mangler Kabeltype"/>
+   <finding severity="Warning" code="doc-documentation-tag" category="Documentation" locator="_0x5b53" message="Mangler Id-kode"/>
+   <finding severity="Warning" code="doc-position" category="Documentation" locator="_0x5b53" message="Mangler Placering"/>
+   <finding severity="Warning" code="doc-power-group" category="Documentation" locator="_0x5b53" message="Mangler Lysgruppe"/>
+   <finding severity="Warning" code="doc-address" category="Documentation" locator="_0x5c5b" message="Mangler Adresse"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x5c5b" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="doc-not-linked" category="Documentation" locator="_0x5c5b" message="Ikke forbundet"/>
+   <finding severity="Warning" code="link-fb-input-unfed" category="Wiring" locator="_0x2e528" message="Funktionsblokken '1.4.02.a. PIR styring ' har ingen forbundne indgange." arg_block="1.4.02.a. PIR styring " related="_0x2f011 _0x2f111 _0x2f211 _0x2f311 _0x2f411 _0x2f511 _0x2f611 _0x2f711"/>
+   <finding severity="Warning" code="link-fb-output-unused" category="Wiring" locator="_0x2e528" message="Funktionsblokken '1.4.02.a. PIR styring ' har ingen forbundne udgange." arg_block="1.4.02.a. PIR styring " related="_0x2f912 _0x2fa12 _0x2fb12 _0x2fc12 _0x2fd4a _0x2fe4a"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0x2e528" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="struct-orphan-block" category="ProjectStructure" locator="_0x2e528" message="Blokken '1.4.02.a. PIR styring ' er ikke forbundet til resten af installationen." arg_block="1.4.02.a. PIR styring "/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0x2fd4a" message="Scenariet 'Scenarie tænd' har ingen medlemmer." arg_scene="Scenarie tænd"/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0x2fe4a" message="Scenariet 'Scenarie sluk' har ingen medlemmer." arg_scene="Scenarie sluk"/>
+   <finding severity="Warning" code="logic-block-locked-content" category="Logic" locator="_0x3010f" message="Den låste blok '1.4.02.a. PIR styring ' har ændret 'PIR funktion'." arg_block="1.4.02.a. PIR styring " arg_variable="PIR funktion"/>
+   <finding severity="Warning" code="logic-block-locked-content" category="Logic" locator="_0x3020f" message="Den låste blok '1.4.02.a. PIR styring ' har ændret 'PIR funktion nat'." arg_block="1.4.02.a. PIR styring " arg_variable="PIR funktion nat"/>
+   <finding severity="Warning" code="dev-backup-missing" category="DeviceSettings" locator="_0x3030f" message="Variablen 'Manuel tænding' i '1.4.02.a. PIR styring ' gemmes ikke ved strømsvigt." arg_variable="Manuel tænding" arg_block="1.4.02.a. PIR styring "/>
+   <finding severity="Warning" code="logic-block-locked-content" category="Logic" locator="_0x3030f" message="Den låste blok '1.4.02.a. PIR styring ' har ændret 'Manuel tænding'." arg_block="1.4.02.a. PIR styring " arg_variable="Manuel tænding"/>
+   <finding severity="Warning" code="logic-contending-writers" category="Logic" locator="_0x30510" message="Variablen 'Blokkering efter manuel sluk' tilskrives af 3 programmer med uafhængige udløsere." arg_variable="Blokkering efter manuel sluk" arg_writers="3"/>
+   <finding severity="Warning" code="logic-self-trigger" category="Logic" locator="_0x4141e" message="Programmet 'Manuel sluk blinker med diode' udløses af 'Kvittér med blink efter manuel sluk', som det selv tilskriver." arg_program="Manuel sluk blinker med diode" arg_variable="Kvittér med blink efter manuel sluk"/>
+   <finding severity="Warning" code="doc-cablenumber" category="Documentation" locator="_0x5e53" message="Mangler Kabelnummer"/>
+   <finding severity="Warning" code="doc-cabletype" category="Documentation" locator="_0x5e53" message="Mangler Kabeltype"/>
+   <finding severity="Warning" code="doc-documentation-tag" category="Documentation" locator="_0x5e53" message="Mangler Id-kode"/>
+   <finding severity="Warning" code="doc-position" category="Documentation" locator="_0x5e53" message="Mangler Placering"/>
+   <finding severity="Warning" code="doc-power-group" category="Documentation" locator="_0x5e53" message="Mangler Lysgruppe"/>
+   <finding severity="Warning" code="doc-address" category="Documentation" locator="_0x695a" message="Mangler Adresse"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x695a" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="doc-not-linked" category="Documentation" locator="_0x695a" message="Ikke forbundet"/>
+   <finding severity="Warning" code="link-input-unconnected" category="Wiring" locator="_0x695a" message="Indgangen 'Temperatur sensor indgang' er ikke forbundet." arg_pin="Temperatur sensor indgang"/>
+   <finding severity="Warning" code="doc-cablenumber" category="Documentation" locator="_0x6a53" message="Mangler Kabelnummer"/>
+   <finding severity="Warning" code="doc-cabletype" category="Documentation" locator="_0x6a53" message="Mangler Kabeltype"/>
+   <finding severity="Warning" code="doc-documentation-tag" category="Documentation" locator="_0x6a53" message="Mangler Id-kode"/>
+   <finding severity="Warning" code="doc-position" category="Documentation" locator="_0x6a53" message="Mangler Placering"/>
+   <finding severity="Warning" code="doc-power-group" category="Documentation" locator="_0x6a53" message="Mangler Lysgruppe"/>
+   <finding severity="Warning" code="doc-address" category="Documentation" locator="_0x745a" message="Mangler Adresse"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x745a" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="doc-not-linked" category="Documentation" locator="_0x745a" message="Ikke forbundet"/>
+   <finding severity="Warning" code="link-input-unconnected" category="Wiring" locator="_0x745a" message="Indgangen 'Lux / Temperatur sensor' er ikke forbundet." arg_pin="Lux / Temperatur sensor"/>
+   <finding severity="Warning" code="link-fb-input-unfed" category="Wiring" locator="_0x42a28" message="Funktionsblokken '2.1.01.a. Ur, med 1 tidspunkt' har ingen forbundne indgange." arg_block="2.1.01.a. Ur, med 1 tidspunkt" related="_0x42c11"/>
+   <finding severity="Warning" code="link-fb-output-unused" category="Wiring" locator="_0x42a28" message="Funktionsblokken '2.1.01.a. Ur, med 1 tidspunkt' har ingen forbundne udgange." arg_block="2.1.01.a. Ur, med 1 tidspunkt" related="_0x42e12 _0x42f12 _0x43012 _0x4314a _0x4324a"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0x42a28" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="struct-orphan-block" category="ProjectStructure" locator="_0x42a28" message="Blokken '2.1.01.a. Ur, med 1 tidspunkt' er ikke forbundet til resten af installationen." arg_block="2.1.01.a. Ur, med 1 tidspunkt"/>
+   <finding severity="Warning" code="logic-contending-writers" category="Logic" locator="_0x42e12" message="Variablen 'Udgang fra ur' tilskrives af 2 programmer med uafhængige udløsere." arg_variable="Udgang fra ur" arg_writers="2"/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0x4314a" message="Scenariet 'Scenarie Tænd' har ingen medlemmer." arg_scene="Scenarie Tænd"/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0x4324a" message="Scenariet 'Scenarie Sluk' har ingen medlemmer." arg_scene="Scenarie Sluk"/>
+   <finding severity="Warning" code="doc-cablenumber" category="Documentation" locator="_0x7553" message="Mangler Kabelnummer"/>
+   <finding severity="Warning" code="doc-cabletype" category="Documentation" locator="_0x7553" message="Mangler Kabeltype"/>
+   <finding severity="Warning" code="doc-documentation-tag" category="Documentation" locator="_0x7553" message="Mangler Id-kode"/>
+   <finding severity="Warning" code="doc-position" category="Documentation" locator="_0x7553" message="Mangler Placering"/>
+   <finding severity="Warning" code="doc-power-group" category="Documentation" locator="_0x7553" message="Mangler Lysgruppe"/>
+   <finding severity="Warning" code="doc-address" category="Documentation" locator="_0x765b" message="Mangler Adresse"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x765b" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="doc-not-linked" category="Documentation" locator="_0x765b" message="Ikke forbundet"/>
+   <finding severity="Warning" code="link-output-undriven" category="Wiring" locator="_0x765b" message="Udgangen 'Touch' styres ikke af noget." arg_pin="Touch"/>
+   <finding severity="Warning" code="doc-address" category="Documentation" locator="_0x775b" message="Mangler Adresse"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x775b" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="doc-not-linked" category="Documentation" locator="_0x775b" message="Ikke forbundet"/>
+   <finding severity="Warning" code="link-output-undriven" category="Wiring" locator="_0x775b" message="Udgangen 'Sluk' styres ikke af noget." arg_pin="Sluk"/>
+   <finding severity="Warning" code="addr-wireless-not-commissioned" category="Addressing" locator="_0x7e54" message="Produktet 'Dimmer Universal' har intet serienummer." arg_product="Dimmer Universal"/>
+   <finding severity="Warning" code="dev-setting-default" category="DeviceSettings" locator="_0x7e54" message="Produktet 'Dimmer Universal' har 1 af 6 indstillinger på fabriksværdien." arg_product="Dimmer Universal" arg_untouched="1" arg_settings="6" related="_0x8a74"/>
+   <finding severity="Warning" code="link-fb-input-unfed" category="Wiring" locator="_0xf528" message="Funktionsblokken '1.2.04.e. Trådløs / Bus lysdæmper' har ingen forbundne indgange." arg_block="1.2.04.e. Trådløs / Bus lysdæmper" related="_0x10511 _0x10611 _0x10711 _0x10811 _0x10911 _0x10b11"/>
+   <finding severity="Warning" code="link-fb-output-unused" category="Wiring" locator="_0xf528" message="Funktionsblokken '1.2.04.e. Trådløs / Bus lysdæmper' har ingen forbundne udgange." arg_block="1.2.04.e. Trådløs / Bus lysdæmper" related="_0x10d4a _0x10e4a _0x11012"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0xf528" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="struct-orphan-block" category="ProjectStructure" locator="_0xf528" message="Blokken '1.2.04.e. Trådløs / Bus lysdæmper' er ikke forbundet til resten af installationen." arg_block="1.2.04.e. Trådløs / Bus lysdæmper"/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0x10d4a" message="Scenariet 'Højt niveau' har ingen medlemmer." arg_scene="Højt niveau"/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0x10e4a" message="Scenariet 'Lavt niveau' har ingen medlemmer." arg_scene="Lavt niveau"/>
+   <finding severity="Warning" code="dev-inivalue-overwritten" category="DeviceSettings" locator="_0x10f0f" message="Startværdien '_0xfc48' på 'Lysdæmper status' sættes af et program ved hver opstart." arg_value="_0xfc48" arg_variable="Lysdæmper status"/>
+   <finding severity="Warning" code="logic-block-locked-content" category="Logic" locator="_0x10f0f" message="Den låste blok '1.2.04.e. Trådløs / Bus lysdæmper' har ændret 'Lysdæmper status'." arg_block="1.2.04.e. Trådløs / Bus lysdæmper" arg_variable="Lysdæmper status"/>
+   <finding severity="Warning" code="logic-block-locked-content" category="Logic" locator="_0x1120f" message="Den låste blok '1.2.04.e. Trådløs / Bus lysdæmper' har ændret 'Kort reguleringstryk tænder'." arg_block="1.2.04.e. Trådløs / Bus lysdæmper" arg_variable="Kort reguleringstryk tænder"/>
+   <finding severity="Warning" code="dev-backup-missing" category="DeviceSettings" locator="_0x11c0a" message="Variablen 'Reg. retning' i '1.2.04.e. Trådløs / Bus lysdæmper' gemmes ikke ved strømsvigt." arg_variable="Reg. retning" arg_block="1.2.04.e. Trådløs / Bus lysdæmper"/>
+   <finding severity="Warning" code="logic-contending-writers" category="Logic" locator="_0x11d0a" message="Variablen 'Oneshot man' tilskrives af 2 programmer med uafhængige udløsere." arg_variable="Oneshot man" arg_writers="2"/>
+   <finding severity="Warning" code="logic-timer-unused" category="Logic" locator="_0x13810" message="Timeren 'Timer' startes ikke af noget program." arg_variable="Timer"/>
+   <finding severity="Warning" code="logic-timer-unused" category="Logic" locator="_0x17010" message="Timeren 'Timer' startes ikke af noget program." arg_variable="Timer"/>
+   <finding severity="Warning" code="logic-timer-unused" category="Logic" locator="_0x19210" message="Timeren 'Timer' startes ikke af noget program." arg_variable="Timer"/>
+   <finding severity="Warning" code="logic-timer-unused" category="Logic" locator="_0x1c910" message="Timeren 'Timer' startes ikke af noget program." arg_variable="Timer"/>
+   <finding severity="Warning" code="logic-self-trigger" category="Logic" locator="_0x29b1e" message="Programmet 'Status' udløses af 'Status check', som det selv tilskriver." arg_program="Status" arg_variable="Status check"/>
+   <finding severity="Warning" code="addr-wireless-not-commissioned" category="Addressing" locator="_0x7854" message="Produktet 'Tryk 2 tast' har intet serienummer." arg_product="Tryk 2 tast"/>
+   <finding severity="Warning" code="link-input-unconnected" category="Wiring" locator="_0x795c" message="Indgangen 'Tryk (venstre)' er ikke forbundet." arg_pin="Tryk (venstre)"/>
+   <finding severity="Warning" code="link-input-unconnected" category="Wiring" locator="_0x7a5c" message="Indgangen 'Tryk (højre)' er ikke forbundet." arg_pin="Tryk (højre)"/>
+   <finding severity="Warning" code="addr-wireless-not-commissioned" category="Addressing" locator="_0x7b54" message="Produktet 'Lampeudtag' har intet serienummer." arg_product="Lampeudtag"/>
+   <finding severity="Warning" code="link-fb-output-unused" category="Wiring" locator="_0x47028" message="Funktionsblokken '4.1.01. AND (&quot;Og&quot;- blok)' har ingen forbundne udgange." arg_block="4.1.01. AND (&quot;Og&quot;- blok)" related="_0x47d12 _0x47e12 _0x47f12 _0x4804a _0x4814a"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0x47028" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0x4804a" message="Scenariet 'Scenarie Tænd' har ingen medlemmer." arg_scene="Scenarie Tænd"/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0x4814a" message="Scenariet 'Scenarie Sluk' har ingen medlemmer." arg_scene="Scenarie Sluk"/>
+   <finding severity="Warning" code="struct-locality-no-devices" category="ProjectStructure" locator="_0x2632" message="Lokaliteten 'Bad' indeholder kun funktionsblokke." arg_locality="Bad"/>
+   <finding severity="Warning" code="logic-block-no-pins" category="Logic" locator="_0x54b28" message="Blokken 'Tom blok' har hverken ind- eller udgange." arg_block="Tom blok"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0x54b28" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="struct-orphan-block" category="ProjectStructure" locator="_0x54b28" message="Blokken 'Tom blok' er ikke forbundet til resten af installationen." arg_block="Tom blok"/>
+   <finding severity="Warning" code="logic-program-no-events" category="Logic" locator="_0x5511e" message="Programmet 'Program' har ingen hændelser." arg_program="Program"/>
+   <finding severity="Warning" code="struct-locality-no-devices" category="ProjectStructure" locator="_0x2732" message="Lokaliteten 'Bryggers' indeholder kun funktionsblokke." arg_locality="Bryggers"/>
+   <finding severity="Warning" code="link-fb-input-unfed" category="Wiring" locator="_0x4b928" message="Funktionsblokken '4.1.04. Driftstimetæller' har ingen forbundne indgange." arg_block="4.1.04. Driftstimetæller" related="_0x4bb11 _0x4bc11"/>
+   <finding severity="Warning" code="link-fb-output-unused" category="Wiring" locator="_0x4b928" message="Funktionsblokken '4.1.04. Driftstimetæller' har ingen forbundne udgange." arg_block="4.1.04. Driftstimetæller" related="_0x4be12"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0x4b928" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="struct-orphan-block" category="ProjectStructure" locator="_0x4b928" message="Blokken '4.1.04. Driftstimetæller' er ikke forbundet til resten af installationen." arg_block="4.1.04. Driftstimetæller"/>
+   <finding severity="Warning" code="logic-self-trigger" category="Logic" locator="_0x4d61e" message="Programmet 'Sekundt' udløses af '½sec', som det selv tilskriver." arg_program="Sekundt" arg_variable="½sec"/>
+   <finding severity="Warning" code="logic-self-trigger" category="Logic" locator="_0x4e31e" message="Programmet 'Opdatering' udløses af 'Sekund', som det selv tilskriver." arg_program="Opdatering" arg_variable="Sekund"/>
+   <finding severity="Warning" code="logic-block-no-pins" category="Logic" locator="_0x55a28" message="Blokken 'Tom blok' har hverken ind- eller udgange." arg_block="Tom blok"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0x55a28" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="struct-orphan-block" category="ProjectStructure" locator="_0x55a28" message="Blokken 'Tom blok' er ikke forbundet til resten af installationen." arg_block="Tom blok"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x56309" message="Variablen 'Ugedag' i 'Tom blok' bruges ikke af noget program." arg_variable="Ugedag" arg_block="Tom blok"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x5640b" message="Variablen 'Tal' i 'Tom blok' bruges ikke af noget program." arg_variable="Tal" arg_block="Tom blok"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x5650a" message="Variablen 'Flag' i 'Tom blok' bruges ikke af noget program." arg_variable="Flag" arg_block="Tom blok"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x5660c" message="Variablen 'Tæller' i 'Tom blok' bruges ikke af noget program." arg_variable="Tæller" arg_block="Tom blok"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x5670e" message="Variablen 'Dato' i 'Tom blok' bruges ikke af noget program." arg_variable="Dato" arg_block="Tom blok"/>
+   <finding severity="Warning" code="logic-timer-unused" category="Logic" locator="_0x56810" message="Timeren 'Timer' startes ikke af noget program." arg_variable="Timer"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x56810" message="Variablen 'Timer' i 'Tom blok' bruges ikke af noget program." arg_variable="Timer" arg_block="Tom blok"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x56915" message="Variablen 'Kommatal' i 'Tom blok' bruges ikke af noget program." arg_variable="Kommatal" arg_block="Tom blok"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x56a27" message="Variablen 'Fugtighed' i 'Tom blok' bruges ikke af noget program." arg_variable="Fugtighed" arg_block="Tom blok"/>
+   <finding severity="Warning" code="logic-variable-unused" category="Logic" locator="_0x56b14" message="Variablen 'Temperatur' i 'Tom blok' bruges ikke af noget program." arg_variable="Temperatur" arg_block="Tom blok"/>
+   <finding severity="Warning" code="logic-program-no-events" category="Logic" locator="_0x5601e" message="Programmet 'Program' har ingen hændelser." arg_program="Program"/>
+   <finding severity="Warning" code="struct-locality-no-devices" category="ProjectStructure" locator="_0x2832" message="Lokaliteten 'Garage' indeholder kun funktionsblokke." arg_locality="Garage"/>
+   <finding severity="Warning" code="logic-block-no-pins" category="Logic" locator="_0x51228" message="Blokken 'Tom blok' har hverken ind- eller udgange." arg_block="Tom blok"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0x51228" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="struct-orphan-block" category="ProjectStructure" locator="_0x51228" message="Blokken 'Tom blok' er ikke forbundet til resten af installationen." arg_block="Tom blok"/>
+   <finding severity="Warning" code="logic-program-no-events" category="Logic" locator="_0x5181e" message="Programmet 'Program' har ingen hændelser." arg_program="Program"/>
+   <finding severity="Warning" code="addr-dimmer-channel-unassigned" category="Addressing" locator="_0x5297b" message="Kanalen 'LED Dimmer kanal 1' har ingen kanal-id." arg_channel="LED Dimmer kanal 1"/>
+   <finding severity="Warning" code="addr-dimmer-channel-unassigned" category="Addressing" locator="_0x53a7b" message="Kanalen 'LED Dimmer kanal 2' har ingen kanal-id." arg_channel="LED Dimmer kanal 2"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2a32" message="Lokaliteten 'Udendørs' indeholder hverken produkter eller blokke." arg_locality="Udendørs"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0x56c32" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x56c32" message="Lokaliteten 'Lokalitet' indeholder hverken produkter eller blokke." arg_locality="Lokalitet"/>
+</ihc_project_findings>

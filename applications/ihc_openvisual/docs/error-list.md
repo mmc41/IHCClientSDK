@@ -61,6 +61,7 @@ classify project content the SDK owns.
 | `app.openvisual.controller-required-retrieve` | Refusal | OperationOutcome | Active | Hentning kræver en tilsluttet controller. Denne version kontakter ingen controller. |
 | `app.openvisual.controller-required-send` | Refusal | OperationOutcome | Active | Afsendelse kræver en tilsluttet controller. Denne version kontakter ingen controller. |
 | `app.openvisual.edit-failed` | Refusal | OperationOutcome | Active | Redigeringen kunne ikke gennemføres på grund af en intern fejl. Ændringen blev ikke gemt. |
+| `app.openvisual.findings-export-failed` | Refusal | OperationOutcome | Active | Fejllisten kunne ikke gemmes. |
 | `app.openvisual.project-open-failed` | Refusal | OperationOutcome | Active | Projektet '{path}' kunne ikke åbnes. |
 | `app.openvisual.project-save-failed` | Refusal | OperationOutcome | Active | Projektet kunne ikke gemmes som '{path}'. |
 | `app.openvisual.report-not-openable` | Refusal | OperationOutcome | Active | Rapporten blev dannet, men kunne ikke åbnes i en fremviser.<br>Filen ligger her:<br>{path} |
@@ -71,5 +72,5 @@ classify project content the SDK owns.
 | `app.openvisual.unexpected` | Refusal | OperationOutcome | Active | Handlingen kunne ikke gennemføres på grund af en intern fejl. Detaljerne er skrevet til loggen. |
 | `app.openvisual.validation-errors-block-send` | Refusal | OperationOutcome | Active | Projektet indeholder fejl. Ret dem i Problemer-panelet, før projektet sendes. |
 
-**Total: 16 host codes.**
+**Total: 17 host codes.**
 <!-- END GENERATED -->

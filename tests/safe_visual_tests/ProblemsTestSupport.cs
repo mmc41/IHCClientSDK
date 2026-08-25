@@ -78,13 +78,22 @@ internal sealed class ProblemsRig : IDisposable
     {
     }
 
+    /// <summary>Every export request the panel handed over, in order — what an export test asserts against.</summary>
+    public List<FindingsExportRequest> Exported { get; } = [];
+
     public ProblemsRig(Func<Ihc.Vis.Projects.Project, EquatableArray<ValidationFinding>> validate)
     {
         Harness = ShellHarness.Create(Clock);
         // A monitor of its own rather than the session's: the panel is the thing under test here, and it must be
         // drivable over findings the test chose rather than over whatever the real engine happens to produce.
         Validation = new ValidationMonitor(Harness.Session, validate);
-        Panel = new ProblemsPanelViewModel(Harness.Session, Validation);
+        // The export delegate RECORDS rather than writes: what the panel decides to export is the panel's
+        // behaviour, and where it ends up is the workflow's.
+        Panel = new ProblemsPanelViewModel(Harness.Session, Validation, export: request =>
+        {
+            Exported.Add(request);
+            return Task.CompletedTask;
+        });
     }
 
     /// <summary>Advances past the quiet period and waits for the run it starts to finish.</summary>

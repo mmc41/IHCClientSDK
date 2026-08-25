@@ -34,6 +34,20 @@
             <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}"/>
             <Setter Property="FontSize" Value="{DynamicResource MonoFontSize}"/>
         </Style>
+        <!-- A heading CHIP: the export button, matched to the three tier ToggleButtons it sits beside. Every
+             setter here has a counterpart in the ToggleButton style above, so the four controls in that row are
+             one set. It is a class rather than a plain `Button` selector because the five sort-column headers
+             are Buttons too, and they are a different thing entirely — a header row, not a chip. -->
+        <Style Selector="Button.chip">
+            <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}"/>
+            <Setter Property="FontSize" Value="{DynamicResource MonoFontSize}"/>
+            <Setter Property="Padding" Value="6,1"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <!-- The header band's own ink. Measured, not assumed: the three tier chips render their labels
+                 WHITE (they are checked ToggleButtons), while a stock Button renders BLACK — which on the brand
+                 blue is the one control in the row a reader has to look for. -->
+            <Setter Property="Foreground" Value="{DynamicResource PaneHeaderForegroundBrush}"/>
+        </Style>
     </UserControl.Styles>
 
     <UserControl.Resources>
@@ -76,71 +90,99 @@
                  line — lands here; the skeleton carries the title alone so the region is identifiable before it
                  has anything to say. -->
             <Border DockPanel.Dock="Top" Background="{DynamicResource PaneHeaderBackgroundBrush}" Padding="10,3">
-                <StackPanel Orientation="Horizontal" Spacing="12">
-                    <TextBlock Name="ProblemsPanelHeader" Text="Problemer" VerticalAlignment="Center"
-                               Foreground="{DynamicResource PaneHeaderForegroundBrush}"
-                               FontWeight="SemiBold"/>
-
-                    <!-- The busy indicator, and deliberately an INDETERMINATE one. The engine exposes no progress
-                         hook, so a percentage here would be invented — and an invented number is worse than an
-                         honest "working". It appears only once staleness has outlasted the threshold, so a normal
-                         sub-second edit→validate cycle never shows it. -->
-                    <ProgressBar Name="ProblemsSpinner" Width="80" Height="4" VerticalAlignment="Center"
-                                 IsIndeterminate="True"
-                                 IsVisible="{Binding IsStaleIndicatorEngaged}"
-                                 a:AutomationProperties.AutomationId="ProblemsSpinner"
-                                 a:AutomationProperties.Name="Validerer"
-                                 ToolTip.Tip="Projektet valideres…"/>
-
-                    <!-- The three tier filters. ToggleButtons rather than checkboxes because each one carries its
-                         tier's icon and live count, and because a ToggleButton exposes UI Automation's Toggle
-                         pattern — so a driver flips a tier the same way a user does. They stay three elements
-                         rather than an ItemsControl over the tier list for that same reason: the container an
-                         ItemsControl generates would sit between the driver and the Toggle pattern.
-                         Every varying value is BOUND from the view-model's tier table — the word, the glyph, the
-                         ids and the count are the same ones the tier's ROWS show, so a renamed asset or a
-                         re-worded tier cannot move the rows and leave these buttons behind.
-                         The COUNT beside each one is of the whole result, not of the visible rows: switching a
-                         tier off must never look like its findings were fixed. -->
-                    <ToggleButton a:AutomationProperties.AutomationId="{Binding Errors.AutomationId}"
-                                  a:AutomationProperties.Name="{Binding Errors.Label}"
-                                  a:AutomationProperties.HelpText="{Binding Errors.HelpText}"
-                                  IsChecked="{Binding Errors.IsShown, Mode=TwoWay}">
+                <!-- A DockPanel, not the StackPanel this used to be. A horizontal StackPanel packs its children
+                     left and ignores HorizontalAlignment on them, so the export button would silently render
+                     next to the Info toggle instead of at the far edge. The button docks Right and the original
+                     StackPanel stays as the fill child, which leaves the existing chrome exactly where it was. -->
+                <DockPanel LastChildFill="True">
+                    <!-- Built to read as a fourth CHIP beside the three tier toggles, not as a dialog button:
+                         same glyph-then-word content shape, same mono face and size, same compact padding, and
+                         the same foreground so the row is one set rather than three chips and a stranger. The
+                         `chip` class carries all of that (see the styles at the top of this file) — the stock
+                         Fluent Button is 32px tall and paints its own foreground, which made the Problemer band
+                         the tallest in the window and the label a different colour from its neighbours. -->
+                    <Button Classes="chip"
+                            DockPanel.Dock="Right"
+                            VerticalAlignment="Center"
+                            Command="{Binding ExportCommand}"
+                            a:AutomationProperties.AutomationId="{x:Static vm:ProblemsPanelViewModel.ExportAutomationId}"
+                            a:AutomationProperties.Name="{x:Static vm:ProblemsPanelViewModel.ExportAccessibleName}"
+                            a:AutomationProperties.HelpText="{x:Static vm:ProblemsPanelViewModel.ExportHelpText}"
+                            ToolTip.Tip="{x:Static vm:ProblemsPanelViewModel.ExportHelpText}">
                         <StackPanel Orientation="Horizontal" Spacing="4">
-                            <svg:Svg Width="12" Height="12" Path="{Binding Errors.Icon}"
-                                     CurrentColor="{DynamicResource IconColor}"/>
-                            <TextBlock Text="{Binding Errors.Label}"/>
-                            <TextBlock Text="{Binding Errors.Count}" FontWeight="SemiBold"
-                                       a:AutomationProperties.AutomationId="{Binding Errors.CountAutomationId}"/>
+                            <svg:Svg Width="12" Height="12"
+                                     Path="{x:Static vm:ProblemsPanelViewModel.ExportIcon}"
+                                     CurrentColor="{DynamicResource PaneHeaderIconColor}"/>
+                            <TextBlock Text="{x:Static vm:ProblemsPanelViewModel.ExportLabel}"/>
                         </StackPanel>
-                    </ToggleButton>
+                    </Button>
 
-                    <ToggleButton a:AutomationProperties.AutomationId="{Binding Warnings.AutomationId}"
-                                  a:AutomationProperties.Name="{Binding Warnings.Label}"
-                                  a:AutomationProperties.HelpText="{Binding Warnings.HelpText}"
-                                  IsChecked="{Binding Warnings.IsShown, Mode=TwoWay}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <svg:Svg Width="12" Height="12" Path="{Binding Warnings.Icon}"
-                                     CurrentColor="{DynamicResource IconColor}"/>
-                            <TextBlock Text="{Binding Warnings.Label}"/>
-                            <TextBlock Text="{Binding Warnings.Count}" FontWeight="SemiBold"
-                                       a:AutomationProperties.AutomationId="{Binding Warnings.CountAutomationId}"/>
-                        </StackPanel>
-                    </ToggleButton>
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Name="ProblemsPanelHeader" Text="Problemer" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource PaneHeaderForegroundBrush}"
+                                   FontWeight="SemiBold"/>
 
-                    <ToggleButton a:AutomationProperties.AutomationId="{Binding Infos.AutomationId}"
-                                  a:AutomationProperties.Name="{Binding Infos.Label}"
-                                  a:AutomationProperties.HelpText="{Binding Infos.HelpText}"
-                                  IsChecked="{Binding Infos.IsShown, Mode=TwoWay}">
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <svg:Svg Width="12" Height="12" Path="{Binding Infos.Icon}"
-                                     CurrentColor="{DynamicResource IconColor}"/>
-                            <TextBlock Text="{Binding Infos.Label}"/>
-                            <TextBlock Text="{Binding Infos.Count}" FontWeight="SemiBold"
-                                       a:AutomationProperties.AutomationId="{Binding Infos.CountAutomationId}"/>
-                        </StackPanel>
-                    </ToggleButton>
-                </StackPanel>
+                        <!-- The busy indicator, and deliberately an INDETERMINATE one. The engine exposes no progress
+                             hook, so a percentage here would be invented — and an invented number is worse than an
+                             honest "working". It appears only once staleness has outlasted the threshold, so a normal
+                             sub-second edit→validate cycle never shows it. -->
+                        <ProgressBar Name="ProblemsSpinner" Width="80" Height="4" VerticalAlignment="Center"
+                                     IsIndeterminate="True"
+                                     IsVisible="{Binding IsStaleIndicatorEngaged}"
+                                     a:AutomationProperties.AutomationId="ProblemsSpinner"
+                                     a:AutomationProperties.Name="Validerer"
+                                     ToolTip.Tip="Projektet valideres…"/>
+
+                        <!-- The three tier filters. ToggleButtons rather than checkboxes because each one carries its
+                             tier's icon and live count, and because a ToggleButton exposes UI Automation's Toggle
+                             pattern — so a driver flips a tier the same way a user does. They stay three elements
+                             rather than an ItemsControl over the tier list for that same reason: the container an
+                             ItemsControl generates would sit between the driver and the Toggle pattern.
+                             Every varying value is BOUND from the view-model's tier table — the word, the glyph, the
+                             ids and the count are the same ones the tier's ROWS show, so a renamed asset or a
+                             re-worded tier cannot move the rows and leave these buttons behind.
+                             The COUNT beside each one is of the whole result, not of the visible rows: switching a
+                             tier off must never look like its findings were fixed. -->
+                        <ToggleButton a:AutomationProperties.AutomationId="{Binding Errors.AutomationId}"
+                                      a:AutomationProperties.Name="{Binding Errors.Label}"
+                                      a:AutomationProperties.HelpText="{Binding Errors.HelpText}"
+                                      IsChecked="{Binding Errors.IsShown, Mode=TwoWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <svg:Svg Width="12" Height="12" Path="{Binding Errors.Icon}"
+                                         CurrentColor="{DynamicResource IconColor}"/>
+                                <TextBlock Text="{Binding Errors.Label}"/>
+                                <TextBlock Text="{Binding Errors.Count}" FontWeight="SemiBold"
+                                           a:AutomationProperties.AutomationId="{Binding Errors.CountAutomationId}"/>
+                            </StackPanel>
+                        </ToggleButton>
+
+                        <ToggleButton a:AutomationProperties.AutomationId="{Binding Warnings.AutomationId}"
+                                      a:AutomationProperties.Name="{Binding Warnings.Label}"
+                                      a:AutomationProperties.HelpText="{Binding Warnings.HelpText}"
+                                      IsChecked="{Binding Warnings.IsShown, Mode=TwoWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <svg:Svg Width="12" Height="12" Path="{Binding Warnings.Icon}"
+                                         CurrentColor="{DynamicResource IconColor}"/>
+                                <TextBlock Text="{Binding Warnings.Label}"/>
+                                <TextBlock Text="{Binding Warnings.Count}" FontWeight="SemiBold"
+                                           a:AutomationProperties.AutomationId="{Binding Warnings.CountAutomationId}"/>
+                            </StackPanel>
+                        </ToggleButton>
+
+                        <ToggleButton a:AutomationProperties.AutomationId="{Binding Infos.AutomationId}"
+                                      a:AutomationProperties.Name="{Binding Infos.Label}"
+                                      a:AutomationProperties.HelpText="{Binding Infos.HelpText}"
+                                      IsChecked="{Binding Infos.IsShown, Mode=TwoWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <svg:Svg Width="12" Height="12" Path="{Binding Infos.Icon}"
+                                         CurrentColor="{DynamicResource IconColor}"/>
+                                <TextBlock Text="{Binding Infos.Label}"/>
+                                <TextBlock Text="{Binding Infos.Count}" FontWeight="SemiBold"
+                                           a:AutomationProperties.AutomationId="{Binding Infos.CountAutomationId}"/>
+                            </StackPanel>
+                        </ToggleButton>
+                    </StackPanel>
+                </DockPanel>
             </Border>
 
             <!-- The findings list. A TableView, which derives from ListBox and therefore virtualizes by default —

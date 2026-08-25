@@ -25,9 +25,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- .vis project oracles, .def product / .ifb function-block catalog oracles, and the report oracles
-         (.html pages plus their plain-text .txt companions). -->
-    <None Include="$(SharedTestDataRoot)**\*.vis;$(SharedTestDataRoot)**\*.def;$(SharedTestDataRoot)**\*.ifb;$(SharedTestDataRoot)**\*.html;$(SharedTestDataRoot)**\*.txt"
+    <!-- .vis project oracles, .def product / .ifb function-block catalog oracles, the report oracles
+         (.html pages plus their plain-text .txt companions), and the findings-export oracles (.xml).
+
+         The .xml oracles are ISO-8859-1, CRLF and BOM-less, so they carry raw bytes above 0x7F that
+         no UTF-8 decoder would round-trip. MSBuild copies a None item verbatim: it never decodes,
+         re-encodes or normalizes line endings, so the copy in each output directory is byte-identical
+         to the source. Verified by SHA-256 comparison when this glob was added, over a probe file
+         carrying 0xE5, 0xE6, 0xF8 and CRLF line ends. -->
+    <None Include="$(SharedTestDataRoot)**\*.vis;$(SharedTestDataRoot)**\*.def;$(SharedTestDataRoot)**\*.ifb;$(SharedTestDataRoot)**\*.html;$(SharedTestDataRoot)**\*.txt;$(SharedTestDataRoot)**\*.xml"
           LinkBase="testdata"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

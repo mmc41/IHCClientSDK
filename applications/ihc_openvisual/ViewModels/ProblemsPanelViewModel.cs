@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Ihc.Vis;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
@@ -82,6 +83,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     private readonly ValidationMonitor _validation;
     private readonly Action<Action> _post;
     private readonly Func<ElementId, bool>? _reveal;
+    private readonly Func<FindingsExportRequest, Task>? _export;
     private readonly ITimer _staleTimer;
     private readonly EventHandler _onValidationChanged;
 
@@ -103,10 +105,16 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// Where a clicked row goes: reveals and selects an element, switching editing mode if the target needs it,
     /// and answers whether it got there. Optional so the panel can be tested without a shell.
     /// </param>
+    /// <param name="export">
+    /// Where the panel's list goes when the user asks for it. A delegate rather than a service, for the same
+    /// reason <paramref name="reveal"/> is one: the panel decides WHAT is exported and must not learn about
+    /// dialogs, files or the app service to do it. Optional so the panel can be tested without a shell.
+    /// </param>
     public ProblemsPanelViewModel(
         ProjectWorkflow session,
         ValidationMonitor validation,
-        Func<ElementId, bool>? reveal = null)
+        Func<ElementId, bool>? reveal = null,
+        Func<FindingsExportRequest, Task>? export = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(validation);
@@ -115,6 +123,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         _validation = validation;
         _post = session.Post;
         _reveal = reveal;
+        _export = export;
         _staleTimer = session.Time.CreateTimer(_ => OnStaleThresholdElapsed(), null,
             Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 
@@ -134,6 +143,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
             new ProblemsTierViewModel(ValidationSeverity.Info, "Vis eller skjul oplysninger", ResortRows),
         ];
         _tiers = Tiers.ToDictionary(t => t.Severity);
+        ExportCommand = new AsyncRelayCommand(Export, () => CanExport);
         ShowSortOnHeaders();
 
         ProblemsColumnViewModel Header(ProblemsColumn column, string title) => new(column, title, SortBy);
@@ -473,8 +483,9 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
             }
         }
 
-        return new ProblemRowViewModel(
-            finding.Severity, finding.Code.Value, finding.Problem.Message, finding.Category, element, name);
+        // The finding travels WHOLE. The row reads its columns off it rather than copying them, and an export
+        // of the panel's list is built from it — so what the user sees and what the file holds are one value.
+        return new ProblemRowViewModel(finding, element, name);
     }
 
     /// <summary>
@@ -511,6 +522,11 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         {
             State = next;
             OnPropertyChanged(nameof(StateText));
+
+            // Inside the STATE-CHANGED block on purpose. Export is gated on State and on nothing else, so a
+            // tier toggle — which moves the rows but never the state — correctly does not notify: under this
+            // gate hiding a tier changes what the file contains, never whether it can be written.
+            ExportCommand.NotifyCanExecuteChanged();
         }
 
         if (next == ProblemsState.Stale)
@@ -531,4 +547,74 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
             if (!_disposed && State == ProblemsState.Stale)
                 IsStaleIndicatorEngaged = true;
         });
+    // ── Export ──────────────────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>The export control's automation id — a fourth sibling of the panel's own vocabulary.</summary>
+    public const string ExportAutomationId = "problems.export";
+
+    /// <summary>What the button says.</summary>
+    public const string ExportLabel = "Eksportér…";
+
+    /// <summary>
+    /// The button's glyph. Beside the label rather than instead of it: the three tier chips it sits with are
+    /// icon-and-word, and a lone glyph in that row would be the one control a reader has to hover to identify.
+    /// </summary>
+    public const string ExportIcon = "/Assets/export_save.svg";
+
+    /// <summary>What a screen reader announces, and what a driver addresses it by.</summary>
+    public const string ExportAccessibleName = "Eksportér fejlliste";
+
+    /// <summary>The tooltip and help text, saying what the file is.</summary>
+    public const string ExportHelpText = "Gem panelets liste som en XML-fil";
+
+    /// <summary>
+    /// Whether the panel's list can be written to a file, which is a CORRECTNESS gate rather than a UX one: the
+    /// two states it excludes are exactly the two in which the file's header would contradict its body.
+    /// <list type="bullet">
+    /// <item><description><see cref="ProblemsState.Validating"/> — nothing is bound. A file naming the current
+    /// project and holding no findings would read as a clean bill of health.</description></item>
+    /// <item><description><see cref="ProblemsState.Stale"/> — the findings describe a SUPERSEDED tree while the
+    /// file's source and save stamp would name the current one, and it would say so nowhere.</description></item>
+    /// </list>
+    /// <para>
+    /// <see cref="ProblemsState.Clean"/> is deliberately included: a file saying "this save, these tiers, nothing
+    /// found" is a legitimate record, and it is the statement the panel is already making. So is a panel with
+    /// every tier switched off — that writes an empty list which SAYS it included no tiers, which is a different
+    /// file from the clean one and must stay reachable.
+    /// </para>
+    /// </summary>
+    public bool CanExport => State is ProblemsState.Clean or ProblemsState.Findings;
+
+    /// <summary>
+    /// The export gesture, as a command the view binds.
+    /// <para>
+    /// Constructed rather than declared with <c>[RelayCommand(CanExecute = …)]</c>, and that is an architecture
+    /// rule rather than a style choice: the toolkit attribute's predicate competes with the command registry's
+    /// Gate, which is the shell's single source of command enablement, so the GUI does not use it anywhere. The
+    /// panel's tier toggles and sort headers are built the same way — this is a fourth sibling of theirs, not a
+    /// registry row.
+    /// </para>
+    /// </summary>
+    public IAsyncRelayCommand ExportCommand { get; }
+
+    /// <summary>
+    /// Hands the visible list to whoever knows where files go. This decides WHAT is exported and nothing else.
+    /// <para>
+    /// <see cref="Rows"/> is already filtered by the tier toggles and ordered by the chosen column, so one
+    /// projection satisfies both fidelity requirements at once — the file holds the rows on screen, in the order
+    /// they are on screen. The findings travel whole, so the file carries what the panel could not show.
+    /// </para>
+    /// </summary>
+    private Task Export() =>
+        _export?.Invoke(new FindingsExportRequest(
+            [.. Rows.Select(r => r.Finding)],
+            $"host:{SortColumn.ToString().ToLowerInvariant()}{(SortAscending ? string.Empty : " desc")}",
+            // Enum order, never click order: the attribute states a SET, and two users who hid the same tiers in
+            // a different sequence must produce the same file. Tiers is built in enum order and IsShown does not
+            // reorder it, so this is belt and braces — but the property is asserted rather than assumed.
+            [.. Tiers.Where(t => t.IsShown).Select(t => t.Severity).Order()]))
+        ?? Task.CompletedTask;
 }
+
+// FindingsExportRequest — what this panel hands over — is declared beside its CONSUMER in
+// Services/ProjectFindingsWorkflow.cs, as ValidationRequest is beside ValidationWorker.

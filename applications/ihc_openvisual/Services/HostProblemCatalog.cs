@@ -79,6 +79,9 @@ internal static class HostProblemCodes
     /// <summary>The function block could not be exported to a library file (US-021).</summary>
     public static ProblemCode BlockExportFailed { get; } = new("app.openvisual.block-export-failed");
 
+    /// <summary>The findings list could not be written to the chosen file (US-085).</summary>
+    public static ProblemCode FindingsExportFailed { get; } = new("app.openvisual.findings-export-failed");
+
     /// <summary>
     /// Every code this app declares — the list the governance checks read, taken from the CATALOGUE rather
     /// than retyped beside it. The two lists named the same fifteen members in the same order and had to be
@@ -128,6 +131,7 @@ internal static class HostProblemCatalog
         CatalogFileRejected, CatalogFolderMissing, CatalogImportStopped,
         ReportNotOpenable, ReportViewFailed, ReportSaveFailed,
         ProjectOpenFailed, ProjectSaveFailed, BlockExportFailed,
+        FindingsExportFailed,
     ]));
 
     /// <summary>
@@ -233,6 +237,16 @@ internal static class HostProblemCatalog
         HostProblemCodes.ReportSaveFailed,
         "Rapporten kunne ikke gemmes.",
         "Report generation or writing failed; the engine's English text goes to the log.");
+
+    /// <summary>
+    /// The findings list could not be written (US-085). Its sentence says LIST rather than report, because the
+    /// panel's export and the documentation reports fail for different reasons, and a user who sees this one
+    /// never asked for a report.
+    /// </summary>
+    internal static ProblemCatalogEntry FindingsExportFailed => Outcome(
+        HostProblemCodes.FindingsExportFailed,
+        "Fejllisten kunne ikke gemmes.",
+        "Writing the findings export failed; the engine's English text goes to the log.");
 
     /// <summary>The project file could not be opened. It names the file, which the startup-path test requires.</summary>
     internal static ProblemCatalogEntry ProjectOpenFailed => Outcome(
@@ -347,6 +361,10 @@ internal static class HostProblems
     /// <param name="cause">The originating exception; its English text becomes the diagnostic.</param>
     public static Problem ReportSaveFailed(Exception cause) =>
         Bind(HostProblemCatalog.ReportSaveFailed, Detail(cause), cause);
+
+    /// <summary>The panel's findings list could not be written to the chosen file (US-085).</summary>
+    public static Problem FindingsExportFailed(Exception cause) =>
+        Bind(HostProblemCatalog.FindingsExportFailed, Detail(cause), cause);
 
     /// <summary>The project file could not be opened.</summary>
     /// <param name="path">The file the installer asked for.</param>

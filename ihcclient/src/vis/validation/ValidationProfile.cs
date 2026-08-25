@@ -106,18 +106,32 @@ namespace Ihc.Vis.Validation
         public bool Includes(ProblemCatalogEntry entry)
         {
             ArgumentNullException.ThrowIfNull(entry);
-            if (entry.RequiresControllerLimits && Controller is null)
-            {
-                return false;
-            }
+            return CanEvaluate(entry)
+                && (Audience == ProfileAudience.Categorized
+                    || entry.Category != ValidationCategory.Documentation);
+        }
 
-            if (entry.RequiresLibrary && Library is null)
-            {
-                return false;
-            }
-
-            return Audience == ProfileAudience.Categorized
-                || entry.Category != ValidationCategory.Documentation;
+        /// <summary>
+        /// The EVALUABILITY half of <see cref="Includes"/> on its own: whether this profile was given what the
+        /// rule needs to run at all.
+        /// <para>
+        /// Separate from the audience half because one consumer needs exactly this half and not the other. A
+        /// findings export states which rules could not be evaluated, and a profile that legitimately omits a
+        /// whole category for its AUDIENCE has not failed to evaluate anything — listing those would turn a
+        /// deliberate scope into an apology. Stating the predicate once is what keeps a third capability flag
+        /// from reaching one reader and not the other.
+        /// </para>
+        /// <para>
+        /// Internal: <see cref="Includes"/> remains the public question. This half has one in-assembly reader,
+        /// and sharing a predicate is not a reason to widen the SDK's surface.
+        /// </para>
+        /// </summary>
+        /// <param name="entry">The catalogue entry to test.</param>
+        internal bool CanEvaluate(ProblemCatalogEntry entry)
+        {
+            ArgumentNullException.ThrowIfNull(entry);
+            return (!entry.RequiresControllerLimits || Controller is not null)
+                && (!entry.RequiresLibrary || Library is not null);
         }
 
         /// <summary>The severity this rule takes here: its disposition, unless an override names it.</summary>

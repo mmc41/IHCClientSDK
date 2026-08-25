@@ -58,8 +58,8 @@ public class ProblemsPanelE2ETests
             Assert.That(state.Text("state"), Is.EqualTo("findings"));
             Assert.That(expectedWarnings, Is.GreaterThan(0), "sanity: the oracle must actually describe this fixture");
             Assert.That(state.Int("warnings"), Is.EqualTo(expectedWarnings),
-                "the Advarsel count equals the fixture's row count in rule-characterization.txt, read from the "
-                + "oracle at run time rather than typed here twice");
+                "the Advarsel count equals the fixture's finding count in its own findings oracle, read at run "
+                + "time rather than typed here twice");
             Assert.That(state.Int("errors"), Is.Zero, "this fixture carries no Error rows");
             Assert.That(state.Int("infos"), Is.Zero, "and no rule emits Info yet");
         });

@@ -51,6 +51,11 @@
             <!-- Theme-independent tokens -->
             <SolidColorBrush x:Key="PaneHeaderBackgroundBrush" Color="#FF1E5AA8"/>
             <SolidColorBrush x:Key="PaneHeaderForegroundBrush" Color="#FFFFFFFF"/>
+            <!-- Glyph ink for a control sitting ON the header band. The same white as the header's text, and
+                 theme-independent for the same reason the band is: an icon drawn in the workspace IconColor
+                 (#FF303030 light, #FFE0E0E0 dark) is near-invisible against the brand blue. A Color rather than
+                 a Brush because that is what the SVG control's CurrentColor takes. -->
+            <Color x:Key="PaneHeaderIconColor">#FFFFFFFF</Color>
             <SolidColorBrush x:Key="LinkBrush" Color="#FF3B82F6"/>
             <!-- The workspace font scale (US-001 SHOULD). These are the DESIGN sizes at Tekststørrelse = Normal;
                  ThemeService overwrites all three together when a step is chosen, which is why every consumer

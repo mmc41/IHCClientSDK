@@ -42,6 +42,8 @@ public sealed class ProjectWorkflow : IDisposable
     // T019: the non-lifecycle concerns split into their own collaborators — reporting and catalog imports/persist.
     // ProjectWorkflow retains the document lifecycle + editing/history.
     private readonly ProjectReportWorkflow _reports;
+
+    private readonly ProjectFindingsWorkflow _findings;
     private readonly CatalogImportWorkflow _catalog;
 
     private readonly string _catalogDir;
@@ -86,6 +88,9 @@ public sealed class ProjectWorkflow : IDisposable
         _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<ProjectWorkflow>();
         _catalogDir = catalogDir ?? DefaultCatalogDir();
         _reports = new ProjectReportWorkflow(_service, _dialogs, _logger, () => Current);
+        // The document NAME is what the SDK cannot supply: a Project carries no path, so the source a
+        // findings file records has to come from the session that opened it.
+        _findings = new ProjectFindingsWorkflow(_service, _dialogs, _logger, () => Current, () => DocumentName);
         _catalog = new CatalogImportWorkflow(_service, _dialogs, _logger, _catalogDir);
         _catalog.LoadPersisted();   // persisted imports load on startup (US-061)
         // LAST, because it reads this workflow: everything it touches (Current, Version, LastChange, Post, Time,
@@ -280,6 +285,10 @@ public sealed class ProjectWorkflow : IDisposable
     /// file in the picked format — delegates to the ProjectReportWorkflow collaborator.</summary>
     public Task SaveReportAsAsync(ReportKind kind, ReportMode mode, string mimeType) =>
         _reports.SaveAsAsync(kind, mode, mimeType);
+
+    /// <summary>[Eksportér…] for the Problemer panel's list (US-085): file dialog then facade export of the
+    /// findings the panel handed over — delegates to the ProjectFindingsWorkflow collaborator.</summary>
+    public Task ExportFindingsAsync(FindingsExportRequest request) => _findings.ExportAsync(request);
 
     /// <summary>Reads the current project/customer/installer information (US-039) to prefill the dialog. Delegates
     /// to the SDK projection (<c>Ihc.Vis.ProjectProjections</c>) over <see cref="Current"/>.</summary>

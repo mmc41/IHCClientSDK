@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<ihc_project_findings version="1" source="authentic/Project1-SimpelWired" generated="2026-07-30T12:00:00+00:00" saved_stamp="_0x1b0f051b" order="production" severities="Error Warning Info" rules_not_run="capacity-input-addresses capacity-input-modules capacity-output-addresses capacity-output-modules capacity-resources-high capacity-wireless-exceeded">
+   <finding severity="Warning" code="enum-value-unused" category="Logic" locator="_0xd048" message="Værdien 'Kun efterløb' i enumerator typen 'PIR funktion' bruges ikke." arg_value="Kun efterløb" arg_enum="PIR funktion"/>
+   <finding severity="Warning" code="addr-module-partial" category="Addressing" locator="_0x555b" message="Datalinje 1 bruger kun 1 af 8 klemmer." arg_line="1" arg_used="1" arg_capacity="8"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x555b" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="scene-output-also-linked" category="Scenes" locator="_0x555b" message="Udgangen 'Udgang' styres både af et scenarie og af et følg-link." arg_output="Udgang"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0x5728" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0x624a" message="Scenariet 'Scenarie Tænd' har ingen medlemmer." arg_scene="Scenarie Tænd"/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0x634a" message="Scenariet 'Scenarie Sluk' har ingen medlemmer." arg_scene="Scenarie Sluk"/>
+   <finding severity="Warning" code="logic-contending-writers" category="Logic" locator="_0x6510" message="Variablen 'Timer' tilskrives af 5 programmer med uafhængige udløsere." arg_variable="Timer" arg_writers="5"/>
+   <finding severity="Warning" code="addr-module-partial" category="Addressing" locator="_0xc85b" message="Datalinje 2 bruger kun 1 af 8 klemmer." arg_line="2" arg_used="1" arg_capacity="8"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0xc85b" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="scene-output-also-linked" category="Scenes" locator="_0xc85b" message="Udgangen 'Udgang' styres både af et scenarie og af et følg-link." arg_output="Udgang"/>
+   <finding severity="Warning" code="name-default" category="Documentation" locator="_0xca28" message="Uændret standardnavn"/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0xe24a" message="Scenariet 'Scenarie tænd' har ingen medlemmer." arg_scene="Scenarie tænd"/>
+   <finding severity="Warning" code="scene-empty" category="Scenes" locator="_0xe34a" message="Scenariet 'Scenarie sluk' har ingen medlemmer." arg_scene="Scenarie sluk"/>
+   <finding severity="Warning" code="logic-block-locked-content" category="Logic" locator="_0xe60f" message="Den låste blok '1.4.02.a. PIR styring ' har ændret 'PIR funktion'." arg_block="1.4.02.a. PIR styring " arg_variable="PIR funktion"/>
+   <finding severity="Warning" code="logic-block-locked-content" category="Logic" locator="_0xe70f" message="Den låste blok '1.4.02.a. PIR styring ' har ændret 'PIR funktion nat'." arg_block="1.4.02.a. PIR styring " arg_variable="PIR funktion nat"/>
+   <finding severity="Warning" code="dev-backup-missing" category="DeviceSettings" locator="_0xe80f" message="Variablen 'Manuel tænding' i '1.4.02.a. PIR styring ' gemmes ikke ved strømsvigt." arg_variable="Manuel tænding" arg_block="1.4.02.a. PIR styring "/>
+   <finding severity="Warning" code="logic-block-locked-content" category="Logic" locator="_0xe80f" message="Den låste blok '1.4.02.a. PIR styring ' har ændret 'Manuel tænding'." arg_block="1.4.02.a. PIR styring " arg_variable="Manuel tænding"/>
+   <finding severity="Warning" code="logic-contending-writers" category="Logic" locator="_0xea10" message="Variablen 'Blokkering efter manuel sluk' tilskrives af 3 programmer med uafhængige udløsere." arg_variable="Blokkering efter manuel sluk" arg_writers="3"/>
+   <finding severity="Warning" code="logic-self-trigger" category="Logic" locator="_0x1f91e" message="Programmet 'Manuel sluk blinker med diode' udløses af 'Kvittér med blink efter manuel sluk', som det selv tilskriver." arg_program="Manuel sluk blinker med diode" arg_variable="Kvittér med blink efter manuel sluk"/>
+   <finding severity="Warning" code="addr-module-partial" category="Addressing" locator="_0x2105a" message="Datalinje 3 bruger kun 1 af 16 klemmer." arg_line="3" arg_used="1" arg_capacity="16"/>
+   <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x2105a" message="Mangler Ledningsfarve"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2332" message="Lokaliteten 'Køkken' indeholder hverken produkter eller blokke." arg_locality="Køkken"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2432" message="Lokaliteten 'Soveværelse' indeholder hverken produkter eller blokke." arg_locality="Soveværelse"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2532" message="Lokaliteten 'Værelse' indeholder hverken produkter eller blokke." arg_locality="Værelse"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2632" message="Lokaliteten 'Bad' indeholder hverken produkter eller blokke." arg_locality="Bad"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2732" message="Lokaliteten 'Bryggers' indeholder hverken produkter eller blokke." arg_locality="Bryggers"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2832" message="Lokaliteten 'Garage' indeholder hverken produkter eller blokke." arg_locality="Garage"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2932" message="Lokaliteten 'Kælder' indeholder hverken produkter eller blokke." arg_locality="Kælder"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2a32" message="Lokaliteten 'Udendørs' indeholder hverken produkter eller blokke." arg_locality="Udendørs"/>
+</ihc_project_findings>

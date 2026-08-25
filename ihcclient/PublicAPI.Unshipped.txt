@@ -13,6 +13,20 @@ Ihc.Vis.Validation.ValidationProfile.Library.get -> Ihc.Vis.Validation.ILibraryB
 Ihc.Vis.Validation.ValidationProfile.Library.init -> void
 static Ihc.Vis.Validation.FieldMetadataFace.Stricter(Ihc.Vis.Validation.FieldConstraintMetadata into, Ihc.Vis.Validation.FieldConstraintMetadata from) -> Ihc.Vis.Validation.FieldConstraintMetadata
 static Ihc.Vis.Session.EditRefusalCodes.FieldPhonenumberMalformed.get -> Ihc.Vis.Problems.ProblemCode
+Ihc.Vis.FindingExportOptions
+Ihc.Vis.FindingExportOptions.<Clone>$() -> Ihc.Vis.FindingExportOptions!
+Ihc.Vis.FindingExportOptions.Equals(Ihc.Vis.FindingExportOptions? other) -> bool
+Ihc.Vis.FindingExportOptions.FindingExportOptions() -> void
+Ihc.Vis.FindingExportOptions.Order.get -> string!
+Ihc.Vis.FindingExportOptions.Order.init -> void
+Ihc.Vis.FindingExportOptions.Severities.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationSeverity>
+Ihc.Vis.FindingExportOptions.Severities.init -> void
+Ihc.Vis.FindingExportOptions.SourceName.get -> string?
+Ihc.Vis.FindingExportOptions.SourceName.init -> void
+Ihc.Vis.ProjectAppService.ExportFindings(Ihc.Vis.Projects.Project! project, string! path, Ihc.Vis.FindingExportOptions? options = null) -> System.Threading.Tasks.Task!
+Ihc.Vis.ProjectAppService.ExportFindings(Ihc.Vis.Projects.Project! project, System.Collections.Generic.IReadOnlyList<Ihc.Vis.Validation.ValidationFinding!>! findings, string! path, Ihc.Vis.FindingExportOptions? options = null) -> System.Threading.Tasks.Task!
+Ihc.Vis.ProjectAppService.ExportFindings(Ihc.Vis.Projects.Project! project, System.Collections.Generic.IReadOnlyList<Ihc.Vis.Validation.ValidationFinding!>! findings, System.IO.Stream! output, Ihc.Vis.FindingExportOptions? options = null) -> System.Threading.Tasks.Task!
+Ihc.Vis.ProjectAppService.ExportFindings(Ihc.Vis.Projects.Project! project, System.IO.Stream! output, Ihc.Vis.FindingExportOptions? options = null) -> System.Threading.Tasks.Task!
 Ihc.Vis.ProjectAppService.DescribeField(Ihc.Vis.Validation.RuleTarget target) -> Ihc.Vis.Validation.FieldConstraintMetadata
 Ihc.Vis.ProjectAppService.MissingRequiredField(string? value) -> Ihc.Vis.Problems.Problem?
 Ihc.Vis.Session.EditOutcome.Code.get -> Ihc.Vis.Problems.ProblemCode
@@ -270,15 +284,17 @@ Ihc.Vis.Validation.FieldMetadataFace.extension(Ihc.Vis.Validation.RuleSet!).Cons
 Ihc.Vis.Validation.FieldMetadataFace.extension(Ihc.Vis.Validation.RuleSet!).DescribeField(Ihc.Vis.Validation.RuleTarget target) -> Ihc.Vis.Validation.FieldConstraintMetadata
 Ihc.Vis.Validation.FindingLocation
 Ihc.Vis.Validation.FindingLocation.<Clone>$() -> Ihc.Vis.Validation.FindingLocation!
-Ihc.Vis.Validation.FindingLocation.Deconstruct(out string? Locator, out Ihc.Vis.Model.ElementId? Element, out string? Message) -> void
+Ihc.Vis.Validation.FindingLocation.Deconstruct(out string? Locator, out Ihc.Vis.Model.ElementId? Element, out string? Message, out string? Xpath) -> void
 Ihc.Vis.Validation.FindingLocation.Element.get -> Ihc.Vis.Model.ElementId?
 Ihc.Vis.Validation.FindingLocation.Element.init -> void
 Ihc.Vis.Validation.FindingLocation.Equals(Ihc.Vis.Validation.FindingLocation? other) -> bool
-Ihc.Vis.Validation.FindingLocation.FindingLocation(string? Locator, Ihc.Vis.Model.ElementId? Element, string? Message) -> void
+Ihc.Vis.Validation.FindingLocation.FindingLocation(string? Locator, Ihc.Vis.Model.ElementId? Element, string? Message, string? Xpath = null) -> void
 Ihc.Vis.Validation.FindingLocation.Locator.get -> string?
 Ihc.Vis.Validation.FindingLocation.Locator.init -> void
 Ihc.Vis.Validation.FindingLocation.Message.get -> string?
 Ihc.Vis.Validation.FindingLocation.Message.init -> void
+Ihc.Vis.Validation.FindingLocation.Xpath.get -> string?
+Ihc.Vis.Validation.FindingLocation.Xpath.init -> void
 Ihc.Vis.Validation.FindingShape
 Ihc.Vis.Validation.FindingShape.OneFinding = 0 -> Ihc.Vis.Validation.FindingShape
 Ihc.Vis.Validation.FindingShape.OnePerOccurrence = 1 -> Ihc.Vis.Validation.FindingShape
@@ -544,6 +560,7 @@ Ihc.Vis.Validation.WholeProjectValidator
 Ihc.Vis.Validation.WholeProjectValidator.Validate(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
 Ihc.Vis.Validation.WholeProjectValidator.WholeProjectValidator(Ihc.Vis.Validation.RuleSet! rules) -> void
 Ihc.Vis.Validation.WiringRules
+const Ihc.Vis.ReportMimeTypes.Xml = "application/xml" -> string!
 const Ihc.Vis.Problems.OperationCodes.BridgeDownloadLabel = "Projektet kunne ikke hentes fra controlleren" -> string!
 const Ihc.Vis.Problems.OperationCodes.BridgeUploadLabel = "Projektet kunne ikke sendes til controlleren" -> string!
 const Ihc.Vis.Problems.OperationCodes.ImportCatalogLabel = "Katalogfilen kunne ikke indlæses" -> string!
@@ -552,6 +569,9 @@ const Ihc.Vis.Problems.OperationCodes.SaveLabel = "Projektet kunne ikke gemmes: 
 const Ihc.Vis.Session.EditRefusals.NoProjectOpenRefusal = "Der er ikke åbnet et projekt." -> string!
 const Ihc.Vis.Session.EditRefusals.StaleBaseVersionRefusal = "Projektet er ændret, siden denne redigering blev forberedt." -> string!
 const Ihc.Vis.Validation.ControllerCapabilityLimits.AuthoredResourceCeiling = 2000 -> int
+override Ihc.Vis.FindingExportOptions.Equals(object? obj) -> bool
+override Ihc.Vis.FindingExportOptions.GetHashCode() -> int
+override Ihc.Vis.FindingExportOptions.ToString() -> string!
 override Ihc.Vis.Problems.Problem.Equals(object? obj) -> bool
 override Ihc.Vis.Problems.Problem.GetHashCode() -> int
 override Ihc.Vis.Problems.Problem.ToString() -> string!
@@ -603,6 +623,10 @@ override Ihc.Vis.Validation.VariableUsage.GetHashCode() -> int
 override Ihc.Vis.Validation.VariableUsage.ToString() -> string!
 static Ihc.App.BridgeRefusalCodes.ControllerDeclined.get -> Ihc.Vis.Problems.RefusalIdentity
 static Ihc.App.BridgeRefusalCodes.ControllerNoProject.get -> Ihc.Vis.Problems.RefusalIdentity
+static Ihc.Vis.FindingExportOptions.AllSeverities.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationSeverity>
+static Ihc.Vis.FindingExportOptions.Default.get -> Ihc.Vis.FindingExportOptions!
+static Ihc.Vis.FindingExportOptions.operator !=(Ihc.Vis.FindingExportOptions? left, Ihc.Vis.FindingExportOptions? right) -> bool
+static Ihc.Vis.FindingExportOptions.operator ==(Ihc.Vis.FindingExportOptions? left, Ihc.Vis.FindingExportOptions? right) -> bool
 static Ihc.Vis.Catalog.ImportRefusalCodes.CatalogUnparsable.get -> Ihc.Vis.Problems.RefusalIdentity
 static Ihc.Vis.Io.LoadRefusalCodes.All.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.RefusalIdentity>
 static Ihc.Vis.Io.LoadRefusalCodes.CharacterData.get -> Ihc.Vis.Problems.RefusalIdentity

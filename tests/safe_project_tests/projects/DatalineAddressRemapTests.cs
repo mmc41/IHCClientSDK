@@ -110,11 +110,10 @@ namespace Ihc.Vis.Tests
         [Test]
         public void TheRecordingCarriesTheThreeSuccessorsAndNotTheOldId()
         {
-            string[] recorded = [.. System.IO.File
-                .ReadAllLines(TestData.PathOf("validation", "rule-characterization.txt"), System.Text.Encoding.UTF8)
-                .Where(line => line.Length > 0 && !line.StartsWith('#'))
-                .Select(line => line.Split('	')[2])
-                .Distinct()];
+            // The observed //finding/@code set, through the shared oracle reader. It used to re-parse the
+            // tab-separated recording's third cell here, which was a fourth place that knew the file's layout.
+            string[] recorded =
+                [.. Ihc.Tests.Shared.FindingOracles.ReadAll().Select(f => f.Code).Distinct()];
 
             Assert.Multiple(() =>
             {

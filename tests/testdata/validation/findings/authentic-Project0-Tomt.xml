@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<ihc_project_findings version="1" source="authentic/Project0-Tomt" generated="2026-07-30T12:00:00+00:00" saved_stamp="_0x1b100605" order="production" severities="Error Warning Info" rules_not_run="capacity-input-addresses capacity-input-modules capacity-output-addresses capacity-output-modules capacity-resources-high capacity-wireless-exceeded">
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2132" message="Lokaliteten 'Stue' indeholder hverken produkter eller blokke." arg_locality="Stue"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2232" message="Lokaliteten 'Entré' indeholder hverken produkter eller blokke." arg_locality="Entré"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2332" message="Lokaliteten 'Køkken' indeholder hverken produkter eller blokke." arg_locality="Køkken"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2432" message="Lokaliteten 'Soveværelse' indeholder hverken produkter eller blokke." arg_locality="Soveværelse"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2532" message="Lokaliteten 'Værelse' indeholder hverken produkter eller blokke." arg_locality="Værelse"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2632" message="Lokaliteten 'Bad' indeholder hverken produkter eller blokke." arg_locality="Bad"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2732" message="Lokaliteten 'Bryggers' indeholder hverken produkter eller blokke." arg_locality="Bryggers"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2832" message="Lokaliteten 'Garage' indeholder hverken produkter eller blokke." arg_locality="Garage"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2932" message="Lokaliteten 'Kælder' indeholder hverken produkter eller blokke." arg_locality="Kælder"/>
+   <finding severity="Warning" code="struct-locality-empty" category="ProjectStructure" locator="_0x2a32" message="Lokaliteten 'Udendørs' indeholder hverken produkter eller blokke." arg_locality="Udendørs"/>
+</ihc_project_findings>

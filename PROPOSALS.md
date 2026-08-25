@@ -610,8 +610,8 @@ entries are 3–5 lines each. The SDK needs the same two or three shape factorie
       mirroring the host's, with optional `target:`/`faces:` named arguments for the rows that differ.
 - [ ] Convert the three partials. Do it **mechanically and in one commit per partial**, and require the
       catalogue index (`ihcclient/docs/problem-catalogue.md`, generated from the declarations and compared
-      by a test) plus `rule-characterization.txt` to be **byte-unchanged**. Any movement means the
-      conversion changed a declaration, which is the whole risk.
+      by a test) plus the findings oracles under `tests/testdata/validation/findings/` to be
+      **byte-unchanged**. Any movement means the conversion changed a declaration, which is the whole risk.
 
 Deferred from the 2026-08-24 pass purely on **size** — it is the largest single duplication left, and it
 is mechanical, not subtle.
@@ -641,7 +641,8 @@ to read.
 
 Declaring a target is **independent of the body kind** — ARCHITECTURE's exemption covers migrating bodies
 to `Constrain` (which moves oracles), not declaring the target on a traversal row, which moves nothing.
-Expect `rule-characterization.txt` to be unchanged; if it moves, something else changed with it.
+Expect the findings oracles under `tests/testdata/validation/findings/` to be unchanged; if any of them
+moves, something else changed with it.
 
 ### V5 · The duplicate scan written eight times
 
@@ -659,8 +660,8 @@ element is the duplicate."* The eight rule-local copies undo that for every key 
       `ReportFirstWinsDuplicates` helper beside `RuleAuthoring`. Each of the eight call sites collapses to
       about three lines and the blank-key rule is stated once.
 
-This is the case `RuleBuilder` exists for, and none of the eight uses it. Behaviour-preserving:
-`rule-characterization.txt` must not move.
+This is the case `RuleBuilder` exists for, and none of the eight uses it. Behaviour-preserving: the
+findings oracles under `tests/testdata/validation/findings/` must not move.
 
 ### V4 · Facts recomputed per rule within one run
 

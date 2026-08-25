@@ -14,6 +14,11 @@ namespace Ihc.Vis.Validation
     /// and unambiguous.
     /// </para>
     /// <para>
+    /// <see cref="Xpath"/> is the third, and it exists because the first two leave a gap rather than because a
+    /// third was wanted: where the locator does NOT select one element, neither of them names the site. It is
+    /// present only there.
+    /// </para>
+    /// <para>
     /// There is no source-position anchor. Every pre-parse fault — byte-order mark, declared encoding, not-XML,
     /// truncation — is a REFUSAL, and a refusal produces a <see cref="Problem"/> rather than a finding, so a
     /// position could never reach this type. Where a byte offset must reach a user it is a declared
@@ -32,7 +37,24 @@ namespace Ihc.Vis.Validation
     /// finding's own message says everything. This slot is what makes a duplicate-id group ONE navigable finding
     /// instead of N.
     /// </param>
-    public sealed record FindingLocation(string? Locator, ElementId? Element, string? Message);
+    /// <param name="Xpath">
+    /// The exact node, as a restricted positional path — element names plus same-tag sibling indexes — for the
+    /// locators that do not select one. Null, which is the overwhelming majority, means <see cref="Locator"/>
+    /// already identifies the element and nothing further is needed.
+    /// <para>
+    /// It is a THIRD anchor rather than a replacement because it answers a question the other two cannot. A
+    /// locator is ambiguous from two opposite directions: a token TWO elements carry selects neither, and a
+    /// MALFORMED token selects nothing at all. Both leave a reader unable to say which node a finding is about,
+    /// and only something built from the element itself can say it.
+    /// </para>
+    /// <para>
+    /// Populated where the element is still in hand and NEVER reconstructed downstream: a consumer holds neither
+    /// the tree the path is relative to nor, for a malformed token, anything to reconstruct it from. And it cannot
+    /// be derived from <see cref="Element"/> being null, which is true of the document root and of any element
+    /// with no <c>id</c> attribute — neither of them ambiguous — as well as of a malformed token, which is.
+    /// </para>
+    /// </param>
+    public sealed record FindingLocation(string? Locator, ElementId? Element, string? Message, string? Xpath = null);
 
     /// <summary>
     /// One finding, as the engine produces it: a <see cref="Problem"/> plus the classification and location that

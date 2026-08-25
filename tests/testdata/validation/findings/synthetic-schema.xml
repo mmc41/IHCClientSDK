@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<ihc_project_findings version="1" source="synthetic/schema" generated="2026-07-30T12:00:00+00:00" saved_stamp="_0x2" order="production" severities="Error Warning Info" rules_not_run="capacity-input-addresses capacity-input-modules capacity-output-addresses capacity-output-modules capacity-resources-high capacity-wireless-exceeded">
+   <finding severity="Warning" code="doc-no-enduser-products" category="Documentation" locator="utcs_project" message="Ingen produkter til slutbrugerdokumentation"/>
+   <finding severity="Warning" code="doc-project-info-blank" category="Documentation" locator="utcs_project" message="Mangler projektoplysninger"/>
+   <finding severity="Warning" code="root-children" category="FileIntegrity" locator="utcs_project" message="Uventet rækkefølge i roden: rodens børn er [groups]; forventet [modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules]." arg_actual="groups" arg_expected="modified, customer_info, installer_info, project_info, enum_definitions, groups, documentation_modules"/>
+   <finding severity="Error" code="attr-enum-range" category="FileIntegrity" locator="_0x5153" message="Ugyldig værdi 'maybe' i attributten 'locked' på &lt;product_dataline&gt;. Tilladte værdier: yes | no." arg_value="maybe" arg_attribute="locked" arg_tag="product_dataline" arg_allowed="yes | no"/>
+   <finding severity="Error" code="attr-required" category="FileIntegrity" locator="_0x5153" message="Den påkrævede attribut 'product_identifier' mangler på &lt;product_dataline&gt;." arg_attribute="product_identifier" arg_tag="product_dataline"/>
+   <finding severity="Error" code="attr-undeclared" category="FileIntegrity" locator="_0x5153" message="Ukendt attribut 'bogus' på &lt;product_dataline&gt;." arg_attribute="bogus" arg_tag="product_dataline"/>
+   <finding severity="Warning" code="doc-cablenumber" category="Documentation" locator="_0x5153" message="Mangler Kabelnummer"/>
+   <finding severity="Warning" code="doc-cabletype" category="Documentation" locator="_0x5153" message="Mangler Kabeltype"/>
+   <finding severity="Warning" code="doc-documentation-tag" category="Documentation" locator="_0x5153" message="Mangler Id-kode"/>
+   <finding severity="Warning" code="doc-position" category="Documentation" locator="_0x5153" message="Mangler Placering"/>
+   <finding severity="Warning" code="doc-power-group" category="Documentation" locator="_0x5153" message="Mangler Lysgruppe"/>
+   <finding severity="Warning" code="struct-product-no-terminals" category="ProjectStructure" locator="_0x5153" message="Produktet 'Missing and undeclared' har ingen klemmer." arg_product="Missing and undeclared"/>
+   <finding severity="Error" code="idref-dangling" category="FileIntegrity" locator="_0x5349" message="Reference uden mål: scene_resource='_0xdead52' på &lt;scenes&gt; peger ikke på noget element." arg_attribute="scene_resource" arg_value="_0xdead52" arg_tag="scenes"/>
+   <finding severity="Error" code="attr-latin1" category="FileIntegrity" locator="_0x5553" message="Tegn kan ikke gemmes i attributten 'name' på &lt;product_dataline&gt;." arg_attribute="name" arg_tag="product_dataline"/>
+   <finding severity="Warning" code="doc-cablenumber" category="Documentation" locator="_0x5553" message="Mangler Kabelnummer"/>
+   <finding severity="Warning" code="doc-cabletype" category="Documentation" locator="_0x5553" message="Mangler Kabeltype"/>
+   <finding severity="Warning" code="doc-documentation-tag" category="Documentation" locator="_0x5553" message="Mangler Id-kode"/>
+   <finding severity="Warning" code="doc-position" category="Documentation" locator="_0x5553" message="Mangler Placering"/>
+   <finding severity="Warning" code="doc-power-group" category="Documentation" locator="_0x5553" message="Mangler Lysgruppe"/>
+   <finding severity="Warning" code="struct-product-no-terminals" category="ProjectStructure" locator="_0x5553" message="Produktet 'Pris &#8364;' har ingen klemmer." arg_product="Pris &#8364;"/>
+   <finding severity="Warning" code="containment" category="FileIntegrity" locator="bogus_element" message="Uventet placering: &lt;bogus_element&gt; ligger under &lt;group&gt;." arg_tag="bogus_element" arg_parent="group"/>
+   <finding severity="Error" code="element-undeclared" category="FileIntegrity" locator="bogus_element" message="Ukendt elementtype &lt;bogus_element&gt;." arg_tag="bogus_element"/>
+</ihc_project_findings>

@@ -29,6 +29,14 @@
 
   <!-- Catalog-import tests read the synthetic .def/.ifb oracles; this copies them to
        $(OutDir)\testdata\... so they are reached the same way as in the other suites. -->
+  <ItemGroup>
+    <!-- The shared oracle harnesses, linked in the same way safe_project_tests and safe_unit_tests link them.
+         ReportOracles comes along because it owns the PINNED INSTANT both oracle families use: borrowing it is
+         what keeps the findings oracles and the report oracles on one clock instead of two. -->
+    <Compile Include="..\shared\ReportOracles.cs" Link="shared\ReportOracles.cs" />
+    <Compile Include="..\shared\FindingOracles.cs" Link="shared\FindingOracles.cs" />
+  </ItemGroup>
+
   <Import Project="..\TestData.props" />
 
   <!-- crudarch T023: the registry<->XAML consistency test parses the window's own markup — the SUBJECT under

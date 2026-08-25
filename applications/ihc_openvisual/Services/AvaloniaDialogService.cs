@@ -117,20 +117,37 @@ public sealed class AvaloniaDialogService : IDialogService
         // The picker's format dropdown already chose the format, so the dialog offers exactly that format rather
         // than letting a typed extension contradict the choice. The format arrives as the mimetype the caller
         // generates with — never re-derived from the suggested name, which is a display string.
-        bool asText = mimeType == ReportMimeTypes.PlainText;
+        //
+        // Title and file-type label are DERIVED from that same mimetype rather than fixed. They used to read
+        // "Gem rapport" and "HTML-rapport" for every caller, which was true while the only callers were reports;
+        // a findings export offered under both strings would be wrong on both lines. Deriving them here rather
+        // than adding a parameter keeps the port's signature — and every implementation of it — unchanged, and
+        // puts the mapping in the same place FileExtensionFor already lives.
         string extension = ReportMimeTypes.FileExtensionFor(mimeType);
         IStorageFile? file = await Owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Gem rapport",
+            Title = SaveTitleFor(mimeType),
             SuggestedFileName = suggestedFileName,
             DefaultExtension = extension,
             FileTypeChoices = new[]
             {
-                new FilePickerFileType(asText ? "Tekstrapport" : "HTML-rapport") { Patterns = new[] { "*." + extension } },
+                new FilePickerFileType(FileTypeLabelFor(mimeType)) { Patterns = new[] { "*." + extension } },
             }
         });
         return file?.TryGetLocalPath();
     }
+
+    /// <summary>What the save dialog calls itself, per format. Danish, like every other string a user reads.</summary>
+    internal static string SaveTitleFor(string mimeType) =>
+        mimeType == ReportMimeTypes.Xml ? "Gem fejlliste" : "Gem rapport";
+
+    /// <summary>The file-type entry the picker's filter shows, per format.</summary>
+    internal static string FileTypeLabelFor(string mimeType) => mimeType switch
+    {
+        ReportMimeTypes.PlainText => "Tekstrapport",
+        ReportMimeTypes.Xml => "XML-fejlliste",
+        _ => "HTML-rapport",
+    };
 
     public async Task<string?> PickCatalogFileAsync()
     {

@@ -149,6 +149,14 @@ public class MessageSiteRegisterTests
             "Same as the view site, for the save half.",
             "one-child chain when the exception carries one"),
 
+        // ---- ProjectFindingsWorkflow ----
+        new("ProjectFindingsWorkflow.ExportAsync", Owner.Host, HostProblemCodes.FindingsExportFailed,
+            "Writing the findings export is the SDK's, but it raises no coded refusal for a failed write, so "
+            + "the shell states the outcome of its own action. Its own code rather than the report one: the "
+            + "user asked for the panel's list, and being told a REPORT failed would name something they never "
+            + "requested.",
+            "one-child chain when the exception carries one"),
+
         // ---- ProjectWorkflow ----
         new("ProjectWorkflow.OpenAsync", Owner.Host, HostProblemCodes.ProjectOpenFailed,
             "The SDK's load refusals are coded and Danish, but they name the CONDITION, not the file; the "
@@ -229,7 +237,7 @@ public class MessageSiteRegisterTests
             }
 
             Assert.That(Register.Count(s => s.Composition.Contains("chain", StringComparison.Ordinal)),
-                Is.EqualTo(7), "the seven sites that wrap an SDK failure, each declaring a one-child chain");
+                Is.EqualTo(8), "the eight sites that wrap an SDK failure, each declaring a one-child chain");
         });
     }
 
