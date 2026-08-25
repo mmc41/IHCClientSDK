@@ -231,7 +231,7 @@ public class ProblemsSortingTests
         using ProblemsRig rig = await PanelWith(Row(ValidationSeverity.Warning, "a", "A.", "Stue"));
 
         Assert.That(rig.Panel.Columns.Select(c => c.Title),
-            Is.EqualTo(new[] { "Alvor", "Kode", "Besked", "Element", "Kategori" }));
+            Is.EqualTo(new[] { "Alvor", "Kategori", "Besked", "Element", "Kode" }));
     }
 
     // ── The realized headers ────────────────────────────────────────────────────────────────────────────────

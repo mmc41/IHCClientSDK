@@ -261,12 +261,22 @@
                      binding silently resolves to null — measured: the header template was applied but rendered
                      nothing, because its Content was null. Naming the table and reaching its DataContext is what
                      gives the columns a source. -->
+                <!-- COLUMN WIDTHS. The three fixed left/right columns are cut to what their content actually
+                     needs at the design text size, not to a round number, because every pixel they do not use
+                     goes to Besked — the one column holding a sentence, and the only one sized `*`. Measured in
+                     the panel's own face (Consolas 11), with the 12px a TableViewCell adds around every cell:
+                     Alvor 12px icon + 6 gap + "Information" 67 + 12 = 97; Kategori's longest of eight fixed
+                     labels, "Enhedsindstillinger", 115 + 12 = 127. Both are set to fit EVERY value they can
+                     hold, since both vocabularies are closed and small. Kode is the one that is not: its ids
+                     run from 8 to 32 characters, so it is cut to the 90th percentile of the corpus (24 chars,
+                     157) rather than to the 32-character worst case — and trims with an ellipsis, so a cut id
+                     reads as cut rather than as a shorter id that also exists. All five stay user-resizable. -->
                 <TableView.Columns>
                     <!-- Alvor is a GLYPH plus its Danish word, never the glyph alone: colour and shape are not a
                          readable severity for anyone who cannot see them, and the tier is the first thing a row
                          has to say. -->
                     <TableViewColumn Header="{Binding #ProblemsContent.((vm:ProblemsPanelViewModel)DataContext).Columns[0]}"
-                                     Width="120">
+                                     Width="100">
                         <TableViewColumn.CellTemplate>
                             <DataTemplate x:DataType="vm:ProblemRowViewModel">
                                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
@@ -277,7 +287,7 @@
                             </DataTemplate>
                         </TableViewColumn.CellTemplate>
                     </TableViewColumn>
-                    <TableViewColumn Header="{Binding #ProblemsContent.((vm:ProblemsPanelViewModel)DataContext).Columns[1]}" Width="200" Binding="{Binding Code}"/>
+                    <TableViewColumn Header="{Binding #ProblemsContent.((vm:ProblemsPanelViewModel)DataContext).Columns[1]}" Width="130" Binding="{Binding CategoryLabel}"/>
                     <TableViewColumn Header="{Binding #ProblemsContent.((vm:ProblemsPanelViewModel)DataContext).Columns[2]}" Width="*" Binding="{Binding Message}"/>
                     <TableViewColumn Header="{Binding #ProblemsContent.((vm:ProblemsPanelViewModel)DataContext).Columns[3]}" Width="180">
                         <!-- A cell template rather than a plain binding, so a row that leads nowhere is visibly
@@ -290,7 +300,17 @@
                             </DataTemplate>
                         </TableViewColumn.CellTemplate>
                     </TableViewColumn>
-                    <TableViewColumn Header="{Binding #ProblemsContent.((vm:ProblemsPanelViewModel)DataContext).Columns[4]}" Width="160" Binding="{Binding CategoryLabel}"/>
+                    <TableViewColumn Header="{Binding #ProblemsContent.((vm:ProblemsPanelViewModel)DataContext).Columns[4]}" Width="160">
+                        <!-- A cell template rather than a plain binding, for the ellipsis: this is the one column
+                             narrower than its longest value, and a kebab-case id cut mid-word would read as a
+                             complete id rather than as a truncation. -->
+                        <TableViewColumn.CellTemplate>
+                            <DataTemplate x:DataType="vm:ProblemRowViewModel">
+                                <TextBlock Text="{Binding Code}" TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center"/>
+                            </DataTemplate>
+                        </TableViewColumn.CellTemplate>
+                    </TableViewColumn>
                 </TableView.Columns>
             </TableView>
 

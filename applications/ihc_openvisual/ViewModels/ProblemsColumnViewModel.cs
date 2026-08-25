@@ -10,8 +10,8 @@ public enum ProblemsColumn
     /// <summary>Alvor — the severity tier.</summary>
     Severity,
 
-    /// <summary>Kode — the finding's kebab-case code.</summary>
-    Code,
+    /// <summary>Kategori — the check family, by its Danish label.</summary>
+    Category,
 
     /// <summary>Besked — the Danish sentence.</summary>
     Message,
@@ -19,8 +19,8 @@ public enum ProblemsColumn
     /// <summary>Element — the element name, or the raw locator where there is no element.</summary>
     Element,
 
-    /// <summary>Kategori — the check family, by its Danish label.</summary>
-    Category,
+    /// <summary>Kode — the finding's kebab-case code.</summary>
+    Code,
 }
 
 /// <summary>

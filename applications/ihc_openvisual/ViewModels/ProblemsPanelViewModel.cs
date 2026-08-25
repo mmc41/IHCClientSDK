@@ -130,10 +130,10 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         Columns =
         [
             Header(ProblemsColumn.Severity, "Alvor"),
-            Header(ProblemsColumn.Code, "Kode"),
+            Header(ProblemsColumn.Category, "Kategori"),
             Header(ProblemsColumn.Message, "Besked"),
             Header(ProblemsColumn.Element, "Element"),
-            Header(ProblemsColumn.Category, "Kategori"),
+            Header(ProblemsColumn.Code, "Kode"),
         ];
 
         Tiers =
@@ -251,10 +251,10 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         IEnumerable<ProblemRowViewModel> sorted = SortColumn switch
         {
             ProblemsColumn.Severity => Order(r => (int)r.Severity),
-            ProblemsColumn.Code => Order(r => r.Code, StringComparer.Ordinal),
+            ProblemsColumn.Category => Order(r => r.CategoryLabel, DisplayOrder.Danish),
             ProblemsColumn.Message => Order(r => r.Message, DisplayOrder.Danish),
             ProblemsColumn.Element => Order(r => r.ElementName, DisplayOrder.Danish),
-            ProblemsColumn.Category => Order(r => r.CategoryLabel, DisplayOrder.Danish),
+            ProblemsColumn.Code => Order(r => r.Code, StringComparer.Ordinal),
             _ => visible,
         };
 

@@ -181,7 +181,7 @@ public class ProblemsListTests
         TableView table = window.GetLogicalDescendants().OfType<TableView>().Single();
 
         Assert.That(table.Columns.Select(c => c.Header?.ToString()),
-            Is.EqualTo(new[] { "Alvor", "Kode", "Besked", "Element", "Kategori" }));
+            Is.EqualTo(new[] { "Alvor", "Kategori", "Besked", "Element", "Kode" }));
 
         window.Close();
     }
