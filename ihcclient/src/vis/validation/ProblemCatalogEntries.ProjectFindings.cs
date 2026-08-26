@@ -998,7 +998,7 @@ namespace Ihc.Vis.Validation
         /// <c>resource_integer</c>, <c>resource_enum</c> — the four that declare a <c>backup</c> attribute
         /// defaulting to <c>no</c>) whose <c>backup</c> is not <c>yes</c>, where at least one OTHER state
         /// variable of the same block is marked.
-        /// SCOPED BY MEASUREMENT to BLOCK VARIABLES ALONE (error-list §8): the same <i>Gem aktuel værdi</i>
+        /// SCOPED BY MEASUREMENT to BLOCK VARIABLES ALONE: the same <i>Gem aktuel værdi</i>
         /// control appears on terminals, but every <c>dataline_output</c> and <c>airlink_relay</c> ships
         /// <c>backup="yes"</c> and an input terminal declares no such attribute — so a walk over every
         /// backup-capable element would report most of a project. A test asserts that no terminal is ever

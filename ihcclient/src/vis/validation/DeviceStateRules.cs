@@ -132,7 +132,7 @@ namespace Ihc.Vis.Validation
         /// A block state variable not marked to survive a power failure, in a block where another variable IS
         /// marked: the installation returns to its initial state after an outage.
         /// <para>
-        /// SUBJECT: BLOCK VARIABLES ALONE, measured (error-list §8): the same <i>Gem aktuel værdi</i> control
+        /// SUBJECT: BLOCK VARIABLES ALONE, measured: the same <i>Gem aktuel værdi</i> control
         /// appears on terminals too, but every <c>dataline_output</c> and <c>airlink_relay</c> ships
         /// <c>backup="yes"</c> and an input terminal declares no such attribute — so a walk over every
         /// backup-capable element would report most of a project. STATE variables only: the four kinds that

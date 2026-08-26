@@ -52,10 +52,6 @@
          every registered difference must name the test that would fail if it drifted back. -->
     <None Include="..\..\applications\ihc_openvisual\docs\product.md"
           Link="appdocs\product.md" CopyToOutputDirectory="PreserveNewest" />
-    <!-- T041: the host problem appendix, for the same reason — its row table is RENDERED from the
-         app.openvisual.* declarations and compared, so the published document cannot fall behind the code. -->
-    <None Include="..\..\applications\ihc_openvisual\docs\error-list.md"
-          Link="appdocs\error-list.md" CopyToOutputDirectory="PreserveNewest" />
     <!-- T042: the GUI's own sources are the SUBJECT of the message-site fitness check — it must see EVERY file,
          not a list someone remembers to extend, so this is a glob with bin/obj excluded. Copied beside the
          binaries like the markup and docs above; no test walks into the checkout. -->

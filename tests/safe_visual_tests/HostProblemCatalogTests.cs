@@ -18,9 +18,8 @@ namespace safe_visual_tests;
 ///
 /// <para>What is proven here: every host code is in the reserved family and well formed; ids are unique across
 /// EVERY family rather than merely within this one; every declared code has an entry and every entry a declared
-/// code; the family is restricted to operation OUTCOMES and a host-authored FINDING is rejected; the user-facing
-/// text is Danish with the English engine sentence kept in the diagnostic slot; and the published row table is
-/// rendered from the declarations rather than maintained by hand.</para>
+/// code; the family is restricted to operation OUTCOMES and a host-authored FINDING is rejected; and the
+/// user-facing text is Danish with the English engine sentence kept in the diagnostic slot.</para>
 ///
 /// <para>The finding restriction needs its own check and cannot borrow the SDK's: a host entry declaring a project
 /// finding is schema-LEGAL — <see cref="CatalogInvariants"/> would pass it — which is exactly why the family's
@@ -29,15 +28,6 @@ namespace safe_visual_tests;
 public class HostProblemCatalogTests
 {
     private const string ReservedPrefix = "app.openvisual.";
-
-    private const string BeginMarker =
-        "<!-- GENERATED: host rows — rendered from the declarations; do not edit by hand -->";
-
-    private const string EndMarker = "<!-- END GENERATED -->";
-
-    /// <summary>The appendix as the gate sees it: the copy the build drops beside the test binaries.</summary>
-    private static string AppendixCopyPath =>
-        Path.Combine(TestContext.CurrentContext.TestDirectory, "appdocs", "error-list.md");
 
     [Test]
     public void EveryHostCodeIsInTheReservedFamilyAndWellFormed()
@@ -245,75 +235,6 @@ public class HostProblemCatalogTests
     }
 
     /// <summary>
-    /// A markdown table is LINE-ORIENTED: a newline inside a cell ends the row, and everything after it stops
-    /// being a table at all. One host label spans three lines by design — the report-not-openable sentence puts
-    /// the file path on its own line — so the rendered appendix silently lost every row after it.
-    /// <para>
-    /// Asserted as a COUNT rather than by looking for that one label: the defect is a property of the renderer,
-    /// and the next multi-line label would reintroduce it.
-    /// </para>
-    /// </summary>
-    [Test]
-    public void TheRenderedTableHasExactlyOneLinePerHostCode()
-    {
-        string[] lines = Render(HostProblemCatalog.Current).Split('\n');
-        string[] rows = [.. lines.Where(line => line.StartsWith("| `", StringComparison.Ordinal))];
-        string[] continuations =
-        [
-            .. lines.Where(line => line.Contains(" |", StringComparison.Ordinal)
-                && !line.StartsWith('|')),
-        ];
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(rows, Has.Length.EqualTo(HostProblemCatalog.Current.Total),
-                "one table row per host code — a label carrying a newline renders as several");
-            Assert.That(continuations, Is.Empty,
-                "a cell's text escaped its row and is no longer in the table: " + string.Join(" / ", continuations));
-        });
-    }
-
-    /// <summary>
-    /// The published appendix's row table is RENDERED from the declarations and compared here, so the document
-    /// cannot fall behind the code (D24). Same shape as the SDK catalogue's generated index, pointed at the host's
-    /// own artifact — governance follows the owner.
-    /// </summary>
-    [Test]
-    public void TheRenderedRowTableMatchesTheCheckedInAppendix()
-    {
-        string expected = Render(HostProblemCatalog.Current);
-        string actual = ReadGeneratedRegion(File.ReadAllText(AppendixCopyPath));
-
-        Assert.That(actual, Is.EqualTo(expected),
-            "the checked-in host appendix is stale — run the [Explicit] Regenerate_TheHostRowTable test and "
-            + "review the diff");
-    }
-
-    /// <summary>
-    /// Regenerates the checked-in appendix region. <see cref="ExplicitAttribute"/> for the reason the SDK's
-    /// counterpart is: a test that rewrites the artifact it compares against passes unconditionally. Being
-    /// explicit is also what lets it write to the SOURCE tree — the gate tests read the copied appendix beside the
-    /// binaries, never the checkout.
-    /// </summary>
-    [Test]
-    [Explicit("Rewrites the checked-in host appendix; run deliberately and review the diff.")]
-    public void Regenerate_TheHostRowTable()
-    {
-        string path = Path.Combine(ProblemsTestData.RepositoryRoot(), "applications", "ihc_openvisual", "docs", "error-list.md");
-        string document = File.ReadAllText(path);
-        string rendered = Render(HostProblemCatalog.Current);
-
-        int begin = document.IndexOf(BeginMarker, StringComparison.Ordinal);
-        string updated = begin < 0
-            ? document.TrimEnd('\n') + "\n\n" + BeginMarker + "\n" + rendered + "\n" + EndMarker + "\n"
-            : document[..begin] + BeginMarker + "\n" + rendered + "\n"
-              + document[document.IndexOf(EndMarker, begin, StringComparison.Ordinal)..];
-
-        File.WriteAllText(path, updated, new UTF8Encoding(false));
-        TestContext.Out.WriteLine($"rewrote the host row table in {path}");
-    }
-
-    /// <summary>
     /// Why an entry is not something this family may author. A list rather than a bool so the failure names the
     /// offending axis, and shared by the pin and its armed counterpart so both judge by one rule.
     /// </summary>
@@ -359,47 +280,5 @@ public class HostProblemCatalogTests
             .GetProperties(BindingFlags.Public | BindingFlags.Static)
             .Where(p => p.PropertyType == typeof(ProblemCode))
             .Select(p => (ProblemCode)p.GetValue(null)!)];
-
-    private static string ReadGeneratedRegion(string document)
-    {
-        int begin = document.IndexOf(BeginMarker, StringComparison.Ordinal);
-        Assert.That(begin, Is.GreaterThanOrEqualTo(0),
-            $"the host appendix has no generated region; expected the marker {BeginMarker}");
-
-        int body = begin + BeginMarker.Length;
-        int end = document.IndexOf(EndMarker, body, StringComparison.Ordinal);
-        Assert.That(end, Is.GreaterThan(body), "the generated region has no end marker");
-
-        return document[body..end].Trim('\n', '\r');
-    }
-
-    private static string Render(ProblemCatalog catalog)
-    {
-        StringBuilder page = new();
-        page.Append("\nEvery code this app mints, as the code itself declares it. This table is RENDERED from\n");
-        page.Append("`applications/ihc_openvisual/Services/HostProblemCatalog.cs` and compared by a test, so it\n");
-        page.Append("cannot fall behind the declarations. Edit the declarations, not this table.\n\n");
-        page.Append("There is no category column: this family authors operation outcomes, and the eight categories\n");
-        page.Append("classify project content the SDK owns.\n\n");
-        page.Append("| Id | Costs | Kind | Status | Danish label |\n");
-        page.Append("| --- | --- | --- | --- | --- |\n");
-        foreach (ProblemCatalogEntry row in catalog.Entries.OrderBy(e => e.Code.Value, StringComparer.Ordinal))
-        {
-            page.Append($"| `{row.Code.Value}` | {row.Disposition} | {row.Kind} | {row.Status} ");
-            page.Append($"| {Cell(row.MessageTemplate)} |\n");
-        }
-
-        page.Append($"\n**Total: {catalog.Total} host code{(catalog.Total == 1 ? string.Empty : "s")}.**\n");
-        return page.ToString().Trim('\n');
-    }
-
-    /// <summary>
-    /// One template as ONE table cell. A markdown table is line-oriented, so a newline inside a cell ends the row
-    /// and everything after it stops being a table — and one host label spans three lines by design, putting the
-    /// report's file path on its own line. The break is PRESERVED as a table-cell line break rather than dropped:
-    /// the sentence was written with it for a reason.
-    /// </summary>
-    private static string Cell(string template) =>
-        template.Length == 0 ? "*(to author)*" : template.Replace("\n", "<br>", StringComparison.Ordinal);
 
 }

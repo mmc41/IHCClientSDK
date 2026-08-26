@@ -2,7 +2,7 @@
 scope: Navigation hub for the IHC OpenVisual documentation — the product specification, the epic/user-story behavioural spec, vendor-alignment/verification docs, and icon references
 exclusions: These docs specify WHAT the app must do, not HOW (implementation) or WHEN (plans); no spec content lives in this hub
 research_date: 2026-08-11
-latest_update: 2026-08-14 — E17 (integrated component help) added under stories/
+latest_update: 2026-08-26 — error-list.md retired; error_catalog.md added (problem catalogue authoring requirements)
 ---
 
 # IHC OpenVisual Documentation Index
@@ -34,7 +34,12 @@ latest_update: 2026-08-14 — E17 (integrated component help) added under storie
 | --- | --- | --- | --- |
 | [checklist.md](checklist.md) | Scope contract for comparing OpenVisual with vendor IHC Visual: dimensions, oracle choice, evidence rules, verdicts | comparison dimensions, reference oracle, evidence, verdict, maintenance rule | 172 |
 | [alignment-coverage.md](alignment-coverage.md) | Coverage ledger recording what has been measured per checklist dimension — answers "what has nobody looked at?" | coverage cells, dialogs, set-valued dimensions, state axes, driver gaps | 162 |
-| [error-list.md](error-list.md) | Host problem appendix: the reserved `app.openvisual.*` code family, what may be minted into it, and the governance it follows. The `.vis` findings catalogue itself moved to [`ihcclient/docs/problem-catalogue.md`](../../../ihcclient/docs/problem-catalogue.md) | reserved host family, operation outcomes, code ownership, Danish labels, id reservation | 37 |
+
+### Problem catalogue
+
+| Document | Description | Key Topics | Lines |
+| --- | --- | --- | --- |
+| [error_catalog.md](error_catalog.md) | Authoring requirements for the problem catalogue: the data, formats and wiring needed to add a fatal error, error, warning, information item or host operation outcome. Covers the SDK's `.vis` catalogue and this app's reserved `app.openvisual.*` family; the declarations are the truth, and per-row evidence lives in [`ihcclient/docs/problem-catalogue.md`](../../../ihcclient/docs/problem-catalogue.md) | entry fields, code families, categories, dispositions, Danish templates, argument slots, thresholds, list tiers, gates, oracles | 505 |
 
 ### Icon language
 
@@ -55,14 +60,20 @@ latest_update: 2026-08-14 — E17 (integrated component help) added under storie
 6. Data Requirements / Glossary
 7. Test Oracles / Test Data / Source Code / Companion Specifications / Standards and Specifications
 
-#### [error-list.md](error-list.md) — host problem appendix
+#### [error_catalog.md](error_catalog.md) — problem catalogue authoring requirements
 
-1. What belongs here — the reserved `app.openvisual.*` family, operation outcomes only
-2. The rules this family follows — uniqueness, entries, typed arguments, Danish labels, id reservation
-3. Rows — rendered from `Services/HostProblemCatalog.cs` and compared by a test; add a declaration, then regenerate
+1. Which catalogue owns the item — SDK findings and refusals vs. this app's reserved `app.openvisual.*` family
+2. The item kinds and the axes each sets — fatal error (cause and operation head), edit precondition, error, warning, information, host outcome; what "fatal" does and does not mean; the eight categories
+3. Required data — every field of a catalogue entry, with formats and allowed values
+4. The identifier / 5. The Danish message template / 6. Declared argument slots / 7. Thresholds / 8. The predicate
+9. Wiring — the code edits an item needs, per kind
+10. Gates a new item must pass, the exact population pins it moves, and the two committed oracle sets
+11. The four list tiers — why Fatal needs a declared `RefusedOperations` rather than a fourth severity, and Information a fourth `CatalogDisposition` member
+12. Changing, retiring and ruling out
 
-> The `.vis` findings are NOT here. Every project finding and coded refusal the SDK reports lives in the SDK's master artifact,
-> [`ihcclient/docs/problem-catalogue.md`](../../../ihcclient/docs/problem-catalogue.md); this file is the host family alone.
+> No row inventory lives here. The compiled declarations are the truth —
+> `ihcclient/src/vis/validation/ProblemCatalogEntries.*.cs` and `Services/HostProblemCatalog.cs` — and the per-row
+> evidence and rationale are in [`ihcclient/docs/problem-catalogue.md`](../../../ihcclient/docs/problem-catalogue.md).
 
 #### [icon_codes.md](icon_codes.md) — icon selection reference
 

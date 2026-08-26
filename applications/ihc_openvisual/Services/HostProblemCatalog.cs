@@ -114,9 +114,8 @@ internal static class HostProblemCodes
 /// start disagreeing. <c>HostProblemCatalogTests</c> pins that, and pins it against a seeded finding rather than
 /// only over the rows that happen to exist.</para>
 ///
-/// <para><b>The published table is rendered FROM these declarations</b> into
-/// <c>applications/ihc_openvisual/docs/error-list.md</c> and compared by a test, exactly as the SDK's catalogue
-/// index is (D24): the code is the truth, and a document cannot fall behind it.</para>
+/// <para><b>These declarations are the only truth.</b> The family has no published row table to keep in step:
+/// enumerate <see cref="Current"/> to learn what this app can report.</para>
 /// </summary>
 internal static class HostProblemCatalog
 {
