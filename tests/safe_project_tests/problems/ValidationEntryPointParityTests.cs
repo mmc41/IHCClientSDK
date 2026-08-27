@@ -81,6 +81,56 @@ namespace Ihc.Vis.Tests
                 "audience is the ONLY declared difference between the two entry points");
         }
 
+        /// <summary>
+        /// The third parity, on a different axis: the FLAT face and the STRUCTURED face are one run seen twice,
+        /// so every field they share has to agree.
+        ///
+        /// <para><b>The field that did not.</b> The flattening dropped
+        /// <see cref="ProjectValidationFinding.Diagnostic"/>, so the English sentence read null for everything
+        /// the engine produced — and that loss was invisible from the flat side alone, because a null field looks
+        /// exactly like a row that has no English text to carry. What it cost is one call further on:
+        /// <see cref="ProjectValidationException"/> builds its aggregate items from these findings, so a refused
+        /// upload listed every item in Danish alone, with nothing naming which attribute or which tag, on the one
+        /// path a developer reads.</para>
+        ///
+        /// <para><b>Compared by ZIP, not as sets.</b> The flat face is a projection of the structured one, so a
+        /// reordering is a defect of the same kind and deserves the same failure. LOCATION is the one thing that
+        /// legitimately does not survive — the flat type has a locator where the structured one has sites — so
+        /// the locator is compared and the related sites are not.</para>
+        /// </summary>
+        [TestCase("Project1-SimpelWired.vis")]
+        [TestCase("project3-KompleksWired.vis")]
+        [TestCase("project5-Dokumentation.vis")]
+        [TestCase("Project6-Errors.vis")]
+        public void TheFlatFaceKeepsEveryFieldItSharesWithTheStructuredOne(string file)
+        {
+            Project project = Authentic(file);
+            ValidationProfile profile = ValidationProfile.Categorized;
+
+            ProjectValidationFinding[] flat = [.. ProjectVerification.Run(project, profile).Findings];
+            ValidationFinding[] structured = [.. ProjectVerification.RunStructured(project, profile)];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(flat, Has.Length.EqualTo(structured.Length), "the flattening drops no finding");
+
+                // Without this the zip below would be satisfied by null == null on every row, and the field this
+                // test exists for would go untested on a corpus that happens to carry no English text.
+                Assert.That(structured.Any(f => f.Problem.Diagnostic is { Length: > 0 }), Is.True,
+                    "this file really does produce diagnostic-bearing findings");
+
+                foreach ((ProjectValidationFinding one, ValidationFinding other) in flat.Zip(structured))
+                {
+                    Assert.That(one.RuleId, Is.EqualTo(other.Code.Value), "the rows are paired in order");
+                    Assert.That(one.Severity, Is.EqualTo(other.Severity), one.RuleId);
+                    Assert.That(one.Category, Is.EqualTo(other.Category), one.RuleId);
+                    Assert.That(one.Locator, Is.EqualTo(other.Primary?.Locator), one.RuleId);
+                    Assert.That(one.Message, Is.EqualTo(other.Problem.Message), one.RuleId);
+                    Assert.That(one.Diagnostic, Is.EqualTo(other.Problem.Diagnostic), one.RuleId);
+                }
+            });
+        }
+
         private static string Render(ProjectValidationFinding finding) =>
             $"{finding.Severity}\t{finding.RuleId}\t{finding.Category}\t{finding.Locator}\t{finding.Message}";
     }

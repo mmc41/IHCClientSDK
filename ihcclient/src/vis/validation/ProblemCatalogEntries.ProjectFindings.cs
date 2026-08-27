@@ -496,6 +496,7 @@ namespace Ihc.Vis.Validation
                 ]),
                 "Tegn kan ikke gemmes i attributten '{attribute}' på <{tag}>.")
             {
+                RefusedOperations = [OperationCodes.Save],
                 Diagnostic = "attribute '{attribute}' on '{tag}' has non-ISO-8859-1 text",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -522,6 +523,7 @@ namespace Ihc.Vis.Validation
                 ]),
                 "Den påkrævede attribut '{attribute}' mangler på <{tag}>.")
             {
+                RefusedOperations = [OperationCodes.Save],
                 Diagnostic = "required attribute '{attribute}' missing on '{tag}'",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -530,10 +532,10 @@ namespace Ihc.Vis.Validation
         /// An attribute is declared neither in the element's inline-DTD block nor in the registry.
         /// REFUSES: Save · Export; also refused at edit-open.
         /// <para>
-        /// The edit-open half is named on purpose, even though §4's <c>Blocks</c> column publishes the FILE
-        /// LIFECYCLE only (Open/Save/Import/Export) and so cannot say it. A comment that hides a real refusal is
-        /// the defect this vocabulary exists to prevent, so these lines are deliberately wider than that column —
-        /// do not "align" them back to it.
+        /// The edit-open half is named on purpose, and was named here while §4's <c>Blocks</c> column still
+        /// published the FILE LIFECYCLE only (Open/Save/Import/Export) and could not say it. That column now
+        /// carries one word per head and publishes it too, but the discipline stands on its own: a comment that
+        /// hides a real refusal is the defect this vocabulary exists to prevent.
         /// </para>
         /// PREDICATE: authored by the task that implements this row.
         /// </summary>
@@ -554,6 +556,7 @@ namespace Ihc.Vis.Validation
                 ]),
                 "Ukendt attribut '{attribute}' på <{tag}>.")
             {
+                RefusedOperations = [OperationCodes.Save, OperationCodes.EditOpen],
                 Diagnostic = "attribute '{attribute}' on '{tag}' is not declared in the element's inline-DTD block or the schema registry (serialization will fail)",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -1561,6 +1564,7 @@ namespace Ihc.Vis.Validation
                 ]),
                 "Ukendt elementtype <{tag}>.")
             {
+                RefusedOperations = [OperationCodes.Save],
                 Diagnostic = "element type '{tag}' is not declared in the project's inline DTD or the schema registry (cannot be serialized)",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -1846,6 +1850,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Controlleren afviste projektet")
             {
+                RefusedOperations = [OperationCodes.BridgeUpload],
                 Diagnostic = "The controller declined StoreProject after entering change mode; its project state is uncertain and must be re-checked before retrying.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -1986,9 +1991,10 @@ namespace Ihc.Vis.Validation
         /// <para>
         /// The only row here refused at edit-open and NOWHERE else: a save writes the bytes happily and validate
         /// merely reports the condition, but editing addresses elements by id, so ambiguous ids would resolve
-        /// first-match and target the wrong element. §4's <c>Blocks</c> cell stays "—" because that column
-        /// publishes the file lifecycle only; the refusal is real all the same
-        /// (<c>EditOpenRefusalCodes.IdDuplicateToken</c>).
+        /// first-match and target the wrong element. §4 publishes that refusal in its <c>Blocks</c> cell as
+        /// "Edit-open" while its Severity cell reads Error: that column's Fatal wording is §2's FILE lifecycle,
+        /// and this row refuses none of it (<c>EditOpenRefusalCodes.IdDuplicateToken</c>). The panel reads the
+        /// declaration instead, so the row lists under <c>Fatale fejl</c> all the same.
         /// </para>
         /// PREDICATE: authored by the task that implements this row.
         /// </summary>
@@ -2010,6 +2016,7 @@ namespace Ihc.Vis.Validation
                 ]),
                 "Dobbelt id '{id}' på <{tag}>: {count} elementer deler dette id.")
             {
+                RefusedOperations = [OperationCodes.EditOpen],
                 Diagnostic = "duplicate id token '{id}' (element '{tag}')",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2111,6 +2118,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Ugyldig katalogfil")
             {
+                RefusedOperations = [OperationCodes.ImportCatalog],
                 Diagnostic = "The catalog definition file could not be parsed; nothing can be taken from it and the import is abandoned whole.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2146,6 +2154,12 @@ namespace Ihc.Vis.Validation
                 default,
                 "")
             {
+                // Declared though nothing raises it yet, unlike the empty template above. The two record
+                // different things: the template is WORDS A USER READS, which may not be invented for a
+                // condition that never occurs, while this names which operation a Refusal disposition refuses —
+                // a fact the disposition already asserts and this merely spells. Leaving it empty would publish
+                // a Fatal row that names no operation, which §7 forbids.
+                RefusedOperations = [OperationCodes.ImportCatalog],
                 Evidence = EvidenceMark.Unknown,
             };
 
@@ -2168,6 +2182,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Intet projekt på controlleren")
             {
+                RefusedOperations = [OperationCodes.BridgeDownload],
                 Diagnostic = "The controller returned no project — it likely has none stored; check IsIHCProjectAvailable() before downloading.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2491,6 +2506,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Filen har et UTF-16-BOM")
             {
+                RefusedOperations = [OperationCodes.Load],
                 Diagnostic = "A UTF-16 byte-order mark precedes the document; every byte offset is wrong.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2513,6 +2529,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Filen har et UTF-8-BOM")
             {
+                RefusedOperations = [OperationCodes.Load],
                 Diagnostic = "A UTF-8 byte-order mark precedes the document; .vis is ISO-8859-1 with no BOM.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2535,6 +2552,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Filen indeholder tekst i et element")
             {
+                RefusedOperations = [OperationCodes.Load],
                 Diagnostic = "An element contains character data; the model is attribute-only, so opening would silently drop the text at the next save.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2557,6 +2575,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "For dyb elementstruktur")
             {
+                RefusedOperations = [OperationCodes.Load],
                 Diagnostic = "Element nesting exceeds the supported depth; a legal project never nests that deep.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2579,6 +2598,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Ugyldig indbygget DTD")
             {
+                RefusedOperations = [OperationCodes.Load],
                 Diagnostic = "The inline DTD block cannot be parsed, so nothing can be validated or written back.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2601,6 +2621,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Filen er tom")
             {
+                RefusedOperations = [OperationCodes.Load],
                 Diagnostic = "The stream holds no bytes — not a project file; a zero-length copy or a failed transfer.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2623,6 +2644,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Forkert tegnkodning")
             {
+                RefusedOperations = [OperationCodes.Load],
                 Diagnostic = "The XML declaration names an encoding other than ISO-8859-1, so text would be read in one encoding and written back in another.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2645,6 +2667,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Filen er komprimeret")
             {
+                RefusedOperations = [OperationCodes.Load],
                 Diagnostic = "The content is gzip-compressed: a raw controller project blob that was never decompressed.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2667,6 +2690,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Filen er ikke gyldig XML")
             {
+                RefusedOperations = [OperationCodes.Load],
                 Diagnostic = "The document is not well-formed XML: truncation, a partial write, or not a project file.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2689,6 +2713,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Ikke en projektfil")
             {
+                RefusedOperations = [OperationCodes.Load],
                 Diagnostic = "The root element is not the project root; another XML file was opened as a project.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2704,6 +2729,10 @@ namespace Ihc.Vis.Validation
         /// reader keeps its own end-of-document guard, and that guard now refuses under
         /// <c>load-not-xml</c> with its precise English diagnostic intact. Kept as an entry so nobody
         /// re-proposes the row.
+        /// REFUSES: Open — declared even though the row is ruled out, because the head is a property of the
+        /// CONDITION and not of the wiring: were this ever decidable it would refuse the open and nothing else.
+        /// Every Refusal-disposition row names the operation it stops, so the absence of a head means "not a
+        /// refusal" rather than "a refusal of something unstated"; §4 still omits the row, on its status.
         /// </summary>
         private static ProblemCatalogEntry LoadTruncated =>
             new ProblemCatalogEntry(
@@ -2719,6 +2748,7 @@ namespace Ihc.Vis.Validation
                 "Filen er afkortet",
                 ProblemCodeStatus.RuledOut)
             {
+                RefusedOperations = [OperationCodes.Load],
                 Diagnostic = "The document ends inside an open element; the missing tail cannot be reconstructed.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -2741,6 +2771,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Mangler projektversion")
             {
+                RefusedOperations = [OperationCodes.Load],
                 Diagnostic = "The root carries no version_major, so the file cannot be identified as a project of any version.",
                 Evidence = EvidenceMark.Unknown,
             };
@@ -3822,6 +3853,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Projektet kan ikke gemmes uden tab")
             {
+                RefusedOperations = [OperationCodes.Save],
                 Diagnostic = "Re-parsing the written bytes does not reproduce the in-memory project; the model "
                     + "holds state the .vis format cannot represent, and the write is abandoned.",
                 Evidence = EvidenceMark.Unknown,
@@ -3845,6 +3877,7 @@ namespace Ihc.Vis.Validation
                 default,
                 "Filen kunne ikke skrives")
             {
+                RefusedOperations = [OperationCodes.Save],
                 Diagnostic = "The destination could not be written — locked, read-only, missing, or out of "
                     + "space; nothing was changed on disk.",
                 Evidence = EvidenceMark.Unknown,

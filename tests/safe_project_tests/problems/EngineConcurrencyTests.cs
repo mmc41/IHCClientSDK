@@ -129,6 +129,7 @@ namespace Ihc.Vis.Tests
             [
                 typeof(ProblemCatalog), typeof(ProblemCatalogEntry), typeof(RuleSet), typeof(RuleDefinition),
                 typeof(ValidationProfile), typeof(ControllerCapabilityLimits), typeof(ConstraintSequence),
+                typeof(ControllerFirmwareVersion), typeof(DeclaredFirmwareBound),
             ];
 
             Assert.Multiple(() =>

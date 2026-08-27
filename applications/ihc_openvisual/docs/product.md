@@ -66,7 +66,7 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   found rather than what counts as one: a dialog reports only when asked, so a fault surfaces at save or transfer
   time — the most expensive moment to learn about it — while a panel that revalidates in the background surfaces
   it while the work that caused it is still in hand. Each row navigates to the element it is about in one click,
-  the three severity tiers filter independently with live counts, and Error findings withhold controller
+  the four tiers filter independently with live counts, and Error findings withhold controller
   transfer. The panel deliberately offers no way to suppress or acknowledge a finding: a rule id is a filtering
   and grouping key, and a silenced finding is invisible to the next reader with nothing recording who accepted it.
   *Pinned by:* `ProblemsPanelSkeletonTests`
@@ -520,7 +520,7 @@ block; manage a personal library.
 
 **Functional Requirements**:
 
-- FR-8.1: Validate CONTINUOUSLY — the project is revalidated in the background as it is edited, and the findings are listed in a permanent panel with their severity, code, message, element and category, filterable per severity with live counts, sortable per column, and navigable to the offending element in one click. **Error findings withhold controller transfer**; the advisory tiers never do. A project that has not been validated yet is not treated as faulty. (The word for a blocking finding is *Error*, never "fatal": a fatal condition is a refusal, which is a different thing from a finding and never appears in the panel.)
+- FR-8.1: Validate CONTINUOUSLY — the project is revalidated in the background as it is edited, and the findings are listed in a permanent panel with their severity, code, message, element and category, filterable per tier with live counts, sortable per column, and navigable to the offending element in one click. The list has **four tiers** — *Fatale fejl*, *Fejl*, *Advarsler*, *Information* — each filtering independently. **Error findings withhold controller transfer**; the advisory tiers never do. A project that has not been validated yet is not treated as faulty. (A **Fatale fejl** row is an Error finding whose rule also REFUSES an operation — an undeclared attribute stops the save as well as being reported. It is a presentation tier, not a fourth severity: such a row is an Error like any other, so it withholds transfer for exactly the reason the *Fejl* tier does, and separating the two tells the user which faults must be repaired before the project can even be written. A refusal that produces no finding at all — an unopenable file — is still not a panel row, having no project to be a row in.)
 - FR-8.2: Unlimited undo/redo across all edit operations within a session — no configured step cap, bounded only by process memory. **Prefer making an irreversible action undoable over guarding it with a dialog** — no project mutation currently needs the guard.
 - FR-8.3: Ids of existing elements are never renumbered or reused; deletions leave holes (ids are monotonic and never recycled).
 - FR-8.4: **Catalog-owned structure is not editable.** A product's pins exist because its catalog type declares them, so they cannot be deleted, reordered, or inserted into — the commands are absent, and the engine refuses them whatever route asks.

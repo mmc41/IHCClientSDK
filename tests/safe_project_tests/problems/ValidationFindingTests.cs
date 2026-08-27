@@ -140,11 +140,15 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
+                // RefusedOperations is a CLASSIFICATION the row declares, not a producer marker: it says what the
+                // condition costs, which is the same answer whichever face found it. That is precisely the
+                // property the absences below protect, so carrying it does not relax them.
                 Assert.That(members, Is.EquivalentTo(new[]
                 {
                     nameof(ValidationFinding.Problem), nameof(ValidationFinding.Severity),
                     nameof(ValidationFinding.Category), nameof(ValidationFinding.Primary),
                     nameof(ValidationFinding.Related), nameof(ValidationFinding.Code),
+                    nameof(ValidationFinding.RefusedOperations),
                 }));
 
                 foreach (string marker in new[] { "Producer", "ExecutorKind", "Origin", "Source" })
@@ -195,21 +199,29 @@ namespace Ihc.Vis.Tests
         /// service's categorized run. Not <c>ProjectRules.Validator.Validate(project, ValidationProfile.Categorized)</c>,
         /// which is nine findings short — the service's own profile carries the library port two rows need (D27),
         /// and a denominator that quietly differed from the oracle's would make every count below unfalsifiable.
+        ///
+        /// <para>Run ONCE for the fixture. Rebuilding the corpus rereads and reparses six authentic <c>.vis</c>
+        /// files and revalidates all eighteen cases; the result is immutable and every caller only reads it,
+        /// so a second run could differ from the first only by being slower.</para>
         /// </summary>
-        private static ImmutableArray<(string Case, ValidationFinding Finding)> CorpusFindings()
-        {
-            var app = new ProjectAppService(TestSetup.Settings);
-            var found = ImmutableArray.CreateBuilder<(string, ValidationFinding)>();
-            foreach ((string name, Func<Project> build) in ValidationCharacterizationTests.Corpus)
-            {
-                foreach (ValidationFinding finding in app.ValidateStructured(build()))
-                {
-                    found.Add((name, finding));
-                }
-            }
+        private static ImmutableArray<(string Case, ValidationFinding Finding)> CorpusFindings() =>
+            LazyCorpusFindings.Value;
 
-            return found.ToImmutable();
-        }
+        private static readonly Lazy<ImmutableArray<(string Case, ValidationFinding Finding)>>
+            LazyCorpusFindings = new(() =>
+            {
+                var app = new ProjectAppService(TestSetup.Settings);
+                var found = ImmutableArray.CreateBuilder<(string, ValidationFinding)>();
+                foreach ((string name, Func<Project> build) in ValidationCharacterizationTests.Corpus)
+                {
+                    foreach (ValidationFinding finding in app.ValidateStructured(build()))
+                    {
+                        found.Add((name, finding));
+                    }
+                }
+
+                return found.ToImmutable();
+            });
 
         /// <summary>
         /// WHICH sites carry a path, measured over the whole corpus — the property that makes
@@ -296,6 +308,67 @@ namespace Ihc.Vis.Tests
                     related.Where(r => r.Xpath is not null).Select(r => (r.Locator, r.Xpath)),
                     Is.EqualTo(new[] { ("_0x2132", "/utcs_project/groups/group[2]") }),
                     "the second holder of the shared token, which its locator cannot distinguish from the first");
+            });
+        }
+
+        /// <summary>
+        /// A finding carries the operations its row refuses, so a host can tell a FATAL error from an ordinary
+        /// one without reading the SDK catalogue — which the layer rules forbid it doing
+        /// (<c>ValidationLayerArchitectureTests</c> L5 bars the app from <c>ProblemCatalog.Current</c>). The
+        /// finding is therefore the only door, and this is what comes through it.
+        /// <para>
+        /// Both halves are witnessed by the corpus rather than constructed: <c>attr-undeclared</c> refuses the
+        /// save and the edit-open while reporting at validate — the two-faced row the whole tier exists for —
+        /// and <c>name-empty</c> is an ordinary finding that refuses nothing, which is the overwhelming majority.
+        /// </para>
+        /// </summary>
+        [Test]
+        public void AFindingCarriesTheOperationsItsRowRefuses()
+        {
+            ILookup<string, ValidationFinding> byCode =
+                CorpusFindings().ToLookup(f => f.Finding.Code.Value, f => f.Finding);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(byCode["attr-undeclared"], Is.Not.Empty, "the corpus must witness the refusing row");
+                foreach (ValidationFinding finding in byCode["attr-undeclared"])
+                {
+                    Assert.That(finding.RefusedOperations,
+                        Is.EquivalentTo(new[] { OperationCodes.Save, OperationCodes.EditOpen }));
+                }
+
+                Assert.That(byCode["name-empty"], Is.Not.Empty, "and the ordinary row, or the contrast is vacuous");
+                foreach (ValidationFinding finding in byCode["name-empty"])
+                {
+                    Assert.That(finding.RefusedOperations, Is.Empty);
+                }
+            });
+        }
+
+        /// <summary>
+        /// The projection itself, over every finding the corpus produces: what a finding carries is what its
+        /// entry declares, never a second copy that can drift. Asserted across the whole corpus rather than for
+        /// the two rows above, so a row gaining a refusal is covered the day it does.
+        /// </summary>
+        [Test]
+        public void EveryFindingsRefusedOperationsAreExactlyItsEntrysDeclaration()
+        {
+            ImmutableArray<(string Case, ValidationFinding Finding)> findings = CorpusFindings();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(findings, Is.Not.Empty, "the corpus is the evidence; an empty read proves nothing");
+                foreach ((string name, ValidationFinding finding) in findings)
+                {
+                    Assert.That(
+                        ProblemCatalog.Current.TryGet(finding.Code, out ProblemCatalogEntry entry), Is.True,
+                        finding.Code.Value);
+                    Assert.That(finding.RefusedOperations, Is.EqualTo(entry.RefusedOperations),
+                        $"{name}: {finding.Code.Value}");
+                }
+
+                Assert.That(findings.Any(f => f.Finding.RefusedOperations.Length > 0), Is.True,
+                    "at least one corpus finding must refuse something, or the projection is untested");
             });
         }
     }

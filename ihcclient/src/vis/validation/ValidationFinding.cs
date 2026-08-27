@@ -101,5 +101,21 @@ namespace Ihc.Vis.Validation
         /// consumer filters by and the code the message belongs to cannot become two different things.
         /// </summary>
         public ProblemCode Code => Problem.Code;
+
+        /// <summary>
+        /// The operations this finding's row refuses, projected from its catalogue entry — empty for the great
+        /// majority, which refuse nothing.
+        /// <para>
+        /// It is CARRIED rather than looked up because a host may not read the catalogue: the layer rules bar a
+        /// frontend from <see cref="ProblemCatalog.Current"/>, so the finding is the only door this fact has. A
+        /// presentation layer telling a fatal error from an ordinary one asks the finding, and gets an answer
+        /// that came from the declaration.
+        /// </para>
+        /// <para>
+        /// It does NOT change what <see cref="Severity"/> means: "fatal" is the PAIR — an Error whose row refuses
+        /// something — read together, never one derived from the other.
+        /// </para>
+        /// </summary>
+        public EquatableArray<ProblemCode> RefusedOperations { get; init; }
     }
 }

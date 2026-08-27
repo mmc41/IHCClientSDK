@@ -138,11 +138,12 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
 
         Tiers =
         [
-            new ProblemsTierViewModel(ValidationSeverity.Error, "Vis eller skjul fejl", ResortRows),
-            new ProblemsTierViewModel(ValidationSeverity.Warning, "Vis eller skjul advarsler", ResortRows),
-            new ProblemsTierViewModel(ValidationSeverity.Info, "Vis eller skjul oplysninger", ResortRows),
+            new ProblemsTierViewModel(ProblemsTier.Fatal, "Vis eller skjul fatale fejl", ResortRows),
+            new ProblemsTierViewModel(ProblemsTier.Error, "Vis eller skjul fejl", ResortRows),
+            new ProblemsTierViewModel(ProblemsTier.Warning, "Vis eller skjul advarsler", ResortRows),
+            new ProblemsTierViewModel(ProblemsTier.Info, "Vis eller skjul oplysninger", ResortRows),
         ];
-        _tiers = Tiers.ToDictionary(t => t.Severity);
+        _tiers = Tiers.ToDictionary(t => t.Tier);
         ExportCommand = new AsyncRelayCommand(Export, () => CanExport);
         ShowSortOnHeaders();
 
@@ -173,7 +174,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     public IReadOnlyList<ProblemsColumnViewModel> Columns { get; }
 
     /// <summary>
-    /// The three severity tiers, worst first — the filter toggles and their counts.
+    /// The four tiers, worst first — the filter toggles and their counts.
     /// </summary>
     /// <remarks>
     /// A filter hides ROWS and nothing else. Every tier's count, the session's blocking answer and this panel's state
@@ -181,22 +182,25 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// </remarks>
     public IReadOnlyList<ProblemsTierViewModel> Tiers { get; }
 
-    private readonly Dictionary<ValidationSeverity, ProblemsTierViewModel> _tiers;
+    private readonly Dictionary<ProblemsTier, ProblemsTierViewModel> _tiers;
 
-    /// <summary>The Fejl tier — its toggle and its count.</summary>
+    /// <summary>The Fatale fejl tier — its toggle and its count.</summary>
     /// <remarks>
     /// Named accessors rather than an indexer or a positional binding, because the markup binds each toggle by
     /// name: <c>Tiers[0]</c> would tie the header row to the order this list happens to be built in, and a
-    /// reordering would silently move a label onto another tier's button. All three read the same table, so
+    /// reordering would silently move a label onto another tier's button. All four read the same table, so
     /// there is still exactly one place a tier's word, glyph and count come from.
     /// </remarks>
-    public ProblemsTierViewModel Errors => _tiers[ValidationSeverity.Error];
+    public ProblemsTierViewModel Fatals => _tiers[ProblemsTier.Fatal];
+
+    /// <inheritdoc cref="Fatals"/>
+    public ProblemsTierViewModel Errors => _tiers[ProblemsTier.Error];
 
     /// <inheritdoc cref="Errors"/>
-    public ProblemsTierViewModel Warnings => _tiers[ValidationSeverity.Warning];
+    public ProblemsTierViewModel Warnings => _tiers[ProblemsTier.Warning];
 
     /// <inheritdoc cref="Errors"/>
-    public ProblemsTierViewModel Infos => _tiers[ValidationSeverity.Info];
+    public ProblemsTierViewModel Infos => _tiers[ProblemsTier.Info];
 
     /// <summary>Which column the list is sorted by. Severity by default — worst first.</summary>
     public ProblemsColumn SortColumn { get; private set; } = ProblemsColumn.Severity;
@@ -250,7 +254,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         IEnumerable<ProblemRowViewModel> visible = _asScanned.Where(IsTierShown);
         IEnumerable<ProblemRowViewModel> sorted = SortColumn switch
         {
-            ProblemsColumn.Severity => Order(r => (int)r.Severity),
+            ProblemsColumn.Severity => Order(r => (int)r.Tier),
             ProblemsColumn.Category => Order(r => r.CategoryLabel, DisplayOrder.Danish),
             ProblemsColumn.Message => Order(r => r.Message, DisplayOrder.Danish),
             ProblemsColumn.Element => Order(r => r.ElementName, DisplayOrder.Danish),
@@ -266,10 +270,10 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
             SortAscending ? visible.OrderBy(key, comparer) : visible.OrderByDescending(key, comparer);
     }
 
-    // A severity with no tier of its own is SHOWN, never hidden: a tier is a filtering and grouping key and
-    // never a way to silence a finding, so an unrecognised one must fail towards visibility.
+    // A row whose tier has no toggle of its own is SHOWN, never hidden: a tier is a filtering and grouping
+    // key and never a way to silence a finding, so an unrecognised one must fail towards visibility.
     private bool IsTierShown(ProblemRowViewModel row) =>
-        !_tiers.TryGetValue(row.Severity, out ProblemsTierViewModel? tier) || tier.IsShown;
+        !_tiers.TryGetValue(row.Tier, out ProblemsTierViewModel? tier) || tier.IsShown;
 
     [ObservableProperty] private ProblemsState _state = ProblemsState.Validating;
 
@@ -409,25 +413,74 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         return byId;
     }
 
-    /// <summary>The Danish name of a severity tier.</summary>
-    public static string SeverityLabel(ValidationSeverity severity) => severity switch
+    /// <summary>
+    /// Which tier a row belongs to — the ONE place a finding is classified, read by the filter, the counts and
+    /// the row's own chrome alike. A second classifier would let the tier a row is counted under and the tier it
+    /// is hidden by become different answers.
+    /// </summary>
+    /// <remarks>
+    /// Every arm is NAMED and the default throws, here and in the three below. A discard arm would have quietly
+    /// filed a severity nobody had thought about — a fifth member, a cast integer off a stale binding — as
+    /// Information, which is the one tier a user is least likely to look at. Better a loud failure at the
+    /// classifier than a finding that silently disappears into the bottom of the list.
+    /// </remarks>
+    public static ProblemsTier TierOf(ValidationFinding finding) => finding.Severity switch
     {
-        ValidationSeverity.Error => "Fejl",
-        ValidationSeverity.Warning => "Advarsel",
-        ValidationSeverity.Info => "Information",
-        _ => severity.ToString(),
+        // The PAIR is the definition, and neither half alone: an Error that refuses nothing is ordinary, and a
+        // Warning that refused something would not be blocking. The fact travels ON the finding — the panel may
+        // not read the SDK catalogue — so this asks the row it was given and nothing else.
+        ValidationSeverity.Error when finding.RefusedOperations.Length > 0 => ProblemsTier.Fatal,
+        ValidationSeverity.Error => ProblemsTier.Error,
+        ValidationSeverity.Warning => ProblemsTier.Warning,
+        ValidationSeverity.Info => ProblemsTier.Info,
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(finding), finding.Severity, "Unknown validation severity"),
     };
 
     /// <summary>
-    /// The asset a tier's icon column shows. Three tiers, three glyphs — and deliberately NOT four:
-    /// <c>severity-fatal.svg</c> belongs to the refusal disposition, and a refusal is not a finding, so it has no
-    /// row to sit on and must never appear here.
+    /// The severity a tier reports as — the value the findings export records, since the file format speaks the
+    /// SDK's severities and not the panel's tiers.
     /// </summary>
-    public static string SeverityIcon(ValidationSeverity severity) => severity switch
+    /// <inheritdoc cref="TierOf" path="/remarks"/>
+    public static ValidationSeverity SeverityOf(ProblemsTier tier) => tier switch
     {
-        ValidationSeverity.Error => "/Assets/severity-error.svg",
-        ValidationSeverity.Warning => "/Assets/severity-warning.svg",
-        _ => "/Assets/severity-info.svg",
+        // Fatal and Error are ONE severity. That is why the export cannot state its tier filters through
+        // severities alone, and why hiding one of the two tiers is invisible in that attribute.
+        ProblemsTier.Fatal => ValidationSeverity.Error,
+        ProblemsTier.Error => ValidationSeverity.Error,
+        ProblemsTier.Warning => ValidationSeverity.Warning,
+        ProblemsTier.Info => ValidationSeverity.Info,
+        _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, "Unknown problems tier"),
+    };
+
+    /// <summary>
+    /// The Danish name of a tier, in the SINGULAR — the same string labels the filter chip and each ROW's
+    /// Alvor cell, and a row is one finding. That is why this reads "Fatal fejl" and not "Fatale fejl", and
+    /// why the Warning tier is "Advarsel" and not "Advarsler". The specification names the tiers in the
+    /// plural because it is describing groups; the UI names one finding at a time.
+    /// </summary>
+    /// <inheritdoc cref="TierOf" path="/remarks"/>
+    public static string TierLabel(ProblemsTier tier) => tier switch
+    {
+        ProblemsTier.Fatal => "Fatal fejl",
+        ProblemsTier.Error => "Fejl",
+        ProblemsTier.Warning => "Advarsel",
+        ProblemsTier.Info => "Information",
+        _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, "Unknown problems tier"),
+    };
+
+    /// <summary>
+    /// The asset a tier's icon column shows — one glyph per tier, and the same one on the filter toggle and on
+    /// every row of that tier.
+    /// </summary>
+    /// <inheritdoc cref="TierOf" path="/remarks"/>
+    public static string TierIcon(ProblemsTier tier) => tier switch
+    {
+        ProblemsTier.Fatal => "/Assets/severity-fatal.svg",
+        ProblemsTier.Error => "/Assets/severity-error.svg",
+        ProblemsTier.Warning => "/Assets/severity-warning.svg",
+        ProblemsTier.Info => "/Assets/severity-info.svg",
+        _ => throw new ArgumentOutOfRangeException(nameof(tier), tier, "Unknown problems tier"),
     };
 
     /// <summary>
@@ -501,7 +554,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
 
         foreach (ProblemRowViewModel row in _asScanned)
         {
-            if (_tiers.TryGetValue(row.Severity, out ProblemsTierViewModel? tier))
+            if (_tiers.TryGetValue(row.Tier, out ProblemsTierViewModel? tier))
                 tier.Count++;
         }
     }
@@ -655,7 +708,10 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
             // Enum order, never click order: the attribute states a SET, and two users who hid the same tiers in
             // a different sequence must produce the same file. Tiers is built in enum order and IsShown does not
             // reorder it, so this is belt and braces — but the property is asserted rather than assumed.
-            [.. Tiers.Where(t => t.IsShown).Select(t => t.Severity).Order()]))
+            [.. Tiers.Where(t => t.IsShown).Select(t => t.Severity).Distinct().Order()],
+            // Both Error tiers, stated separately, because the severity set above collapses them into one
+            // value: showing only Fatale fejl and showing every error both record "Error".
+            new ErrorTierFilter(Fatals.IsShown, Errors.IsShown)))
         ?? Task.CompletedTask;
 }
 

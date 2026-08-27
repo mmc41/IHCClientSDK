@@ -28,7 +28,12 @@ namespace Ihc.Vis.Tests
                 ValidationSeverity.Error,
                 ValidationCategory.FileIntegrity,
                 primary,
-                EquatableArray.CreateRange(related));
+                EquatableArray.CreateRange(related))
+            {
+                // The real id-duplicate-token row refuses the edit-open, and carrying it here is what keeps
+                // the order assertion below a statement about EVERY fixed attribute rather than most of them.
+                RefusedOperations = ImmutableArray.Create(OperationCodes.EditOpen),
+            };
 
             byte[] bytes = FindingExportWriter.Write(
                 FindingExportProbe.Stamped(), [finding], ValidationProfile.Categorized, FindingExportOptions.Default, FindingExportProbe.Instant);
@@ -230,7 +235,7 @@ namespace Ihc.Vis.Tests
                     FindingExportProbe.AttributeNames(line),
                     Is.EqualTo(new[]
                     {
-                        "severity", "code", "category", "locator", "message",
+                        "severity", "code", "category", "blocks", "locator", "message",
                         "related", "xpath", "related_xpath",
                     }));
                 Assert.That(

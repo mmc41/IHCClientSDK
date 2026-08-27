@@ -129,6 +129,19 @@ namespace Ihc.Vis
     }
 
     /// <summary>
+    /// A producer's two ERROR filters, where it has two: the findings whose row also REFUSES an operation, and
+    /// the rest. Both are <see cref="ValidationSeverity.Error"/>, which is the whole reason this exists.
+    /// <para>
+    /// BOTH states are carried rather than only the refusing one, because the file states them both
+    /// unconditionally. A single flag would have been readable only against a rule about when it is present,
+    /// and that rule would have lived in every producer rather than in the format.
+    /// </para>
+    /// </summary>
+    /// <param name="Refusing">Whether findings whose row refuses an operation were included.</param>
+    /// <param name="Ordinary">Whether the Error findings whose row refuses nothing were included.</param>
+    public readonly record struct ErrorTierFilter(bool Refusing, bool Ordinary);
+
+    /// <summary>
     /// What a findings export says about itself that the findings cannot say for themselves: where the list came
     /// from, what sequence it is in, and which tiers it was allowed to contain.
     /// <para>
@@ -170,6 +183,19 @@ namespace Ihc.Vis
         /// them.
         /// </summary>
         public EquatableArray<ValidationSeverity> Severities { get; init; } = AllSeverities;
+
+        /// <summary>
+        /// How the caller's two ERROR filters stood, when it has two — null when it presents Error findings under
+        /// a single filter, which is the SDK's own default and every producer's until a host splits them.
+        /// <para>
+        /// It exists because <see cref="Severities"/> cannot answer the question on its own. A host may separate
+        /// the Error findings whose row REFUSES an operation from the rest, and both halves are
+        /// <see cref="ValidationSeverity.Error"/> — so a list filtered to the refusing half and a list filtered
+        /// to all errors record exactly the same severity, and a reader cannot tell a deliberately narrow file
+        /// from a complete one.
+        /// </para>
+        /// </summary>
+        public ErrorTierFilter? ErrorTiers { get; init; }
 
         /// <summary>An unfiltered production export of an unnamed source.</summary>
         public static FindingExportOptions Default { get; } = new();

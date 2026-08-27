@@ -4,7 +4,6 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text.RegularExpressions;
 
 using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
@@ -216,7 +215,7 @@ namespace Ihc.Vis.Tests
                 {
                     Assert.That(Catalog.TryGet(new ProblemCode(ruleId), out ProblemCatalogEntry entry), Is.True,
                         ruleId);
-                    Assert.That(severity, Is.EqualTo(Expected(entry.Disposition)), ruleId);
+                    Assert.That(severity, Is.EqualTo(entry.Severity?.ToString()), ruleId);
                     Assert.That(category, Is.EqualTo(entry.Category?.ToString()), ruleId);
                 }
             });
@@ -228,34 +227,112 @@ namespace Ihc.Vis.Tests
         /// because a builder may not read the catalogue (L4) — so its severity and its entry's disposition are two
         /// independent copies of one decision. The recording cannot cover them: these findings are about
         /// <c>.def</c>/<c>.ifb</c> files, which the project corpus never validates.
+        ///
+        /// <para><b>Read from what is RAISED, not from the source text.</b> This scanned the SDK's sources for a
+        /// literal <c>ValidationSeverity.X, "code"</c> pair, and that reached four raises out of ten. The six
+        /// <c>grammar-*</c> advisories were invisible to it: they funnel through one shared <c>Warn</c> helper
+        /// whose single <c>new(ValidationSeverity.Warning, …)</c> names no code, so the pattern never matched one
+        /// of them and extending the advisor bought no cover. A scan is also blind in the other direction — it
+        /// would pass on a raise spelled correctly in a branch nothing reaches. Provoking each code answers both:
+        /// what is compared is a finding the raiser actually produced.</para>
         /// </summary>
         [Test]
         public void EveryDefinitionFindingsRaisedSeverityMatchesItsEntry()
         {
-            var raised = new List<(string Code, string Severity, string File)>();
-            foreach (string path in SourceFiles())
-            {
-                foreach (Match match in Regex.Matches(File.ReadAllText(path),
-                    @"ValidationSeverity\.(\w+),\s*""([a-z][a-z0-9-]+)"""))
-                {
-                    raised.Add((match.Groups[2].Value, match.Groups[1].Value, Path.GetFileName(path)));
-                }
-            }
+            ImmutableArray<(string Raiser, ProjectValidationFinding Finding)> raised =
+                DefinitionFindingProbe.Provoked();
 
             Assert.Multiple(() =>
             {
                 Assert.That(raised, Is.Not.Empty,
-                    "the builders raise their findings as literal severity + literal code pairs; matching none "
-                    + "would make this rule vacuous");
-                foreach ((string code, string severity, string file) in raised)
-                {
-                    Assert.That(Catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry), Is.True,
-                        $"{file} raises '{code}', which needs an entry");
-                    Assert.That(severity, Is.EqualTo(Expected(entry.Disposition)),
-                        $"{file} raises '{code}' as {severity} while its entry declares "
-                        + $"{entry.Disposition} — the entry is the truth");
-                }
+                    "the raisers are the evidence; provoking none would make this rule vacuous");
+                Assert.That(Disagreements(raised), Is.Empty);
             });
+        }
+
+        /// <summary>
+        /// The PROBE's reach: all ten catalog-definition codes, not the four a source scan could see. Asserted
+        /// so the gate cannot quietly shrink back to a subset — which is how it came to cover four in the first
+        /// place.
+        /// <para>
+        /// Stated once, here, though BOTH gates over the probe rest on it: this one and
+        /// <see cref="DefinitionLabelDriftTests"/>'s. It is one fact about
+        /// <see cref="DefinitionFindingProbe"/> rather than a fact about either question asked of it, and a
+        /// second copy would only be a second failure message for one missing row.
+        /// </para>
+        /// </summary>
+        [Test]
+        public void TheProbeReachesEveryCatalogDefinitionCode()
+        {
+            IEnumerable<string> declared = Catalog.Entries
+                .Where(e => e.Section == ProblemCatalogSection.CatalogDefinitionFindings)
+                .Select(e => e.Code.Value);
+
+            Assert.Multiple(() =>
+            {
+                // SupersetOf an EMPTY set passes whatever the probe does, so the population is asserted first.
+                Assert.That(declared, Is.Not.Empty, "the catalogue declares no definition rows at all");
+                Assert.That(
+                    DefinitionFindingProbe.Provoked().Select(p => p.Finding.RuleId),
+                    Is.SupersetOf(declared),
+                    "a catalog-definition row is declared that nothing provokes, so neither its severity nor "
+                    + "its Danish sentence is gated");
+            });
+        }
+
+        /// <summary>
+        /// The armed control. A check that cannot fail governs nothing, and this one is easy to break silently:
+        /// its whole population comes from provocations, so a disagreement it never meets is a disagreement it
+        /// never reports. Seeding one proves the comparison, not just the collection.
+        /// </summary>
+        [Test]
+        public void TheSeverityCheckFailsARaiseThatDisagreesWithItsEntry()
+        {
+            (string Raiser, ProjectValidationFinding Finding) real =
+                DefinitionFindingProbe.Provoked().First(p => p.Finding.RuleId == "scenes-without-output");
+
+            (string, ProjectValidationFinding) drifted =
+                (real.Raiser, real.Finding with { Severity = ValidationSeverity.Warning });
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(real.Finding.Severity, Is.EqualTo(ValidationSeverity.Error),
+                    "precondition: the entry declares this row an Error, so Warning is a real disagreement");
+                Assert.That(Disagreements([drifted]), Has.Length.EqualTo(1));
+                Assert.That(Disagreements([drifted]).Single(),
+                    Does.Contain("scenes-without-output").And.Contain("Warning").And.Contain("Error"));
+            });
+        }
+
+        /// <summary>
+        /// Every raise whose severity contradicts its entry's disposition, as sentences naming the raiser, the
+        /// code and both answers. A list rather than an assertion so the armed control above can feed it a seeded
+        /// row and read the result.
+        /// </summary>
+        private static ImmutableArray<string> Disagreements(
+            IEnumerable<(string Raiser, ProjectValidationFinding Finding)> raised)
+        {
+            var wrong = ImmutableArray.CreateBuilder<string>();
+            foreach ((string raiser, ProjectValidationFinding finding) in raised)
+            {
+                if (!Catalog.TryGet(new ProblemCode(finding.RuleId), out ProblemCatalogEntry entry))
+                {
+                    wrong.Add($"{raiser} raises '{finding.RuleId}', which needs an entry");
+                    continue;
+                }
+
+                // entry.Severity is the catalogue's OWN disposition→severity derivation, not a copy of it here:
+                // a second table in this fixture could only fall behind the one the product reads. Null means the
+                // row refuses instead of reporting, which no raiser may produce a finding for.
+                string? expected = entry.Severity?.ToString();
+                if (!string.Equals(finding.Severity.ToString(), expected, StringComparison.Ordinal))
+                {
+                    wrong.Add($"{raiser} raises '{finding.RuleId}' as {finding.Severity} while its entry declares "
+                        + $"{entry.Disposition}, i.e. {expected ?? "no finding at all"} — the entry is the truth");
+                }
+            }
+
+            return wrong.ToImmutable();
         }
 
         // ── required context is coverage, not absence ───────────────────────────────────────────────
@@ -476,11 +553,5 @@ namespace Ihc.Vis.Tests
         private static ImmutableArray<(string RuleId, string Severity, string Category)> Recording() =>
             [.. FindingOracleHarness.ReadAll().Select(f => (f.Code, f.Severity, f.Category))];
 
-        /// <summary>The severity a disposition produces, as the recording spells it.</summary>
-        private static string Expected(CatalogDisposition disposition) => disposition switch
-        {
-            CatalogDisposition.Error => nameof(ValidationSeverity.Error),
-            _ => nameof(ValidationSeverity.Warning),
-        };
     }
 }

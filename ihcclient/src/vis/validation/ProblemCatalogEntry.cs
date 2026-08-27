@@ -30,7 +30,9 @@ namespace Ihc.Vis.Validation
     /// lever, so there is no per-category configuration surface. Nullability is confined to the entry —
     /// a finding's category stays non-null, because a refusal produces no finding.
     /// </param>
-    /// <param name="Disposition">What this row costs: an Error finding, a Warning finding, or a refusal.</param>
+    /// <param name="Disposition">
+    /// What this row costs: an Error, Warning or Info finding, or a refusal.
+    /// </param>
     /// <param name="Kind">Which of the four rule kinds realises this row.</param>
     /// <param name="Faces">
     /// Which faces consume it. <see cref="RuleFaces.None"/> is correct for an operation outcome, which is realised
@@ -74,6 +76,26 @@ namespace Ihc.Vis.Validation
         public EquatableArray<DeclaredThreshold> Thresholds { get; init; }
 
         /// <summary>
+        /// The operations this row REFUSES, by their <see cref="OperationCodes"/> heads — empty for the rows that
+        /// refuse nothing, which is most of them.
+        /// <para>
+        /// This is a fact about the row that is independent of <see cref="Disposition"/>, and the two must not be
+        /// conflated. A <see cref="CatalogDisposition.Refusal"/> row refuses and reports nothing; a
+        /// <see cref="CatalogDisposition.Error"/> row that ALSO refuses — an undeclared attribute stops a save and
+        /// is a finding at validate — is what lets a host tell a fatal error from an ordinary one without asking
+        /// the catalogue at all: <see cref="ValidationFinding.RefusedOperations"/> carries it there.
+        /// </para>
+        /// <para>
+        /// The vocabulary is the HEAD SET, and the catalogue's §4 is now RENDERED from it — one published word per
+        /// head, none shared, the whole six expressible. It was not always: the column was hand-typed with four
+        /// file-lifecycle labels, could not say <c>edit.open</c> at all, and published "Import" for a controller
+        /// download. Those gaps are what made this a declared field rather than a reading of the prose, and
+        /// specifying it over that column would have rebuilt every one of them.
+        /// </para>
+        /// </summary>
+        public EquatableArray<ProblemCode> RefusedOperations { get; init; }
+
+        /// <summary>
         /// Whether this row needs a target controller's capability limits, which the project file cannot supply.
         /// A rule that needs them is absent from the default project-only profile — it does not run and does not
         /// report, rather than running against a guess.
@@ -99,6 +121,26 @@ namespace Ihc.Vis.Validation
         public bool RequiresLibrary { get; init; }
 
         /// <summary>
+        /// The controller firmware release that fixed this row's defect, for a row whose condition is a firmware or
+        /// shipped-block errata — null for every other row, which is nearly all of them.
+        /// <para>
+        /// <b>This is a NARROWING context, and that is why it is not a third bool.</b> The two flags above are
+        /// ENABLING: absent context means the rule does not run and does not report, because counting against a
+        /// limit nobody supplied would be a guess. Here the condition — this project uses the affected feature — is
+        /// a property of the file and is decided without any context at all. A declared target can only WITHHOLD a
+        /// finding it has already left behind, never create one. So the row reports by default, which is the whole
+        /// point: a guardrail that stayed silent until a controller was connected would be silent exactly while the
+        /// project is being designed.
+        /// </para>
+        /// <para>
+        /// It follows that this must NOT reach <see cref="ValidationProfile.CanEvaluate"/>. A row narrowed away by
+        /// a target WAS evaluable; publishing it in the export's could-not-evaluate list would tell the reader the
+        /// caller withheld context this row never needed.
+        /// </para>
+        /// </summary>
+        public DeclaredFirmwareBound? FirmwareBound { get; init; }
+
+        /// <summary>
         /// The finding severity this row reports as, or null when it refuses instead of reporting. Derived from
         /// <see cref="Disposition"/>, so the two axes cannot disagree.
         /// </summary>
@@ -106,6 +148,7 @@ namespace Ihc.Vis.Validation
         {
             CatalogDisposition.Error => ValidationSeverity.Error,
             CatalogDisposition.Warning => ValidationSeverity.Warning,
+            CatalogDisposition.Info => ValidationSeverity.Info,
             _ => null,
         };
 

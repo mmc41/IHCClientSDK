@@ -55,12 +55,14 @@ namespace Ihc.Vis.Validation
     }
 
     /// <summary>
-    /// What a catalogue row COSTS — one axis, three values, stated once.
+    /// What a catalogue row COSTS — one axis, stated once. Three of its values are FINDING tiers
+    /// (<see cref="Error"/>, <see cref="Warning"/>, <see cref="Info"/>) and the fourth, <see cref="Refusal"/>, is
+    /// not a finding at all.
     /// <para>
-    /// The insight that keeps this to three: "fatal" was carrying two unrelated meanings. One is <b>the operation
-    /// cannot proceed</b> — that is <see cref="Refusal"/>. The other is <b>this is catastrophic in effect</b> — a
-    /// dangling IDREF, a 24-bit id wrap — which is still an ordinary <see cref="Error"/> finding, because the file
-    /// opens and the user must be able to repair it.
+    /// The insight that keeps "fatal" off this axis: it was carrying two unrelated meanings. One is <b>the
+    /// operation cannot proceed</b> — that is <see cref="Refusal"/>. The other is <b>this is catastrophic in
+    /// effect</b> — a dangling IDREF, a 24-bit id wrap — which is still an ordinary <see cref="Error"/> finding,
+    /// because the file opens and the user must be able to repair it.
     /// </para>
     /// <para>
     /// A row that BOTH refuses an operation and reports a finding — an undeclared attribute refuses the save and
@@ -83,12 +85,32 @@ namespace Ihc.Vis.Validation
         /// The operation cannot be carried through: nothing is opened, written or overwritten. Realised as a coded
         /// refusal and NEVER as a finding — so a refusal has no severity, and no severity means "refused".
         /// <para>
-        /// This axis has three values while <see cref="ValidationSeverity"/> now has three FINDING tiers
-        /// (Error, Warning, Info). They are not the same three and do not line up: Info is a severity a finding
-        /// can carry, and until a row here can DECLARE it, no catalogue entry produces one.
+        /// This is the ONE value on the axis that is not a finding tier. The other three map onto
+        /// <see cref="ValidationSeverity"/> one for one; this one maps to null, which is what makes
+        /// <see cref="ProblemCatalogEntry.Severity"/> nullable.
         /// </para>
         /// </summary>
         Refusal,
+
+        /// <summary>
+        /// Worth KNOWING and nothing more — no repair is implied, and the author is not being asked to judge
+        /// anything. Reported as a <see cref="ValidationSeverity.Info"/> finding.
+        /// <para>
+        /// The tier below <see cref="Warning"/>, and the distinction is what the author is expected to DO: a
+        /// Warning asks for a judgement — is this a mistake or a deliberate state of a half-finished
+        /// installation? — while this asks for nothing.
+        /// </para>
+        /// <para>
+        /// APPENDED after <see cref="Refusal"/> rather than placed beside <see cref="Warning"/> where it belongs
+        /// by meaning, so that <see cref="Refusal"/> keeps its recorded value and the public-API baseline gains
+        /// a line instead of rewriting three. That is a smaller claim than it may look: nothing reads these
+        /// ordinals — no cast, no persistence, no ordering — and this enum has not shipped, so unlike
+        /// <see cref="ValidationSeverity"/> it carries no released ordinal promise. Declaration order here is
+        /// therefore not the tier order, and costs nothing by not being; the tier order is
+        /// <see cref="ValidationSeverity"/>'s.
+        /// </para>
+        /// </summary>
+        Info,
     }
 
     /// <summary>
@@ -170,6 +192,34 @@ namespace Ihc.Vis.Validation
     public sealed record DeclaredThreshold(
         string Name,
         double Value,
+        ThresholdConfidence Confidence,
+        string Evidence);
+
+    /// <summary>
+    /// The RELEASE that fixed a row's defect, as data — the firmware sibling of <see cref="DeclaredThreshold"/>,
+    /// and a separate type because a version is not a number: <see cref="DeclaredThreshold.Value"/> is a
+    /// <see cref="double"/>, and <c>3.3.21</c> crammed into one would compare wrongly and read as a quantity.
+    /// <para>
+    /// It states what is known about a defect the CONTROLLER has, not about the project. A row carrying one still
+    /// reports with no target declared — the bound is a NARROWING context, not an enabling one — so this type never
+    /// decides whether a rule runs, only whether a KNOWN target has already left the defect behind.
+    /// </para>
+    /// </summary>
+    /// <param name="Name">What the bound is about, referenced by the entry's predicate comment.</param>
+    /// <param name="FixedIn">
+    /// The first release carrying the fix, INCLUSIVE — a target at or past it is not affected. NULL where no
+    /// release is known to fix the defect at all, which is the case that keeps a row reporting against every target
+    /// however new, and the case the severity rule grades an Error.
+    /// </param>
+    /// <param name="Confidence">
+    /// How well-founded the bound is, on the same three grades a threshold uses. A vendor CLAIM that a release
+    /// fixed something, unverified here, is <see cref="ThresholdConfidence.VendorRecommendation"/> — not
+    /// <see cref="ThresholdConfidence.VendorDocumented"/>, which is for a bound this repository can check.
+    /// </param>
+    /// <param name="Evidence">The citation, or the explicit unconfirmed note for an authored one.</param>
+    public sealed record DeclaredFirmwareBound(
+        string Name,
+        ControllerFirmwareVersion? FixedIn,
         ThresholdConfidence Confidence,
         string Evidence);
 }

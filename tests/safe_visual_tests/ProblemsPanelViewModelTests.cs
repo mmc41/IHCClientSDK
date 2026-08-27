@@ -258,12 +258,23 @@ public class ProblemsPanelViewModelTests
         });
     }
 
+    /// <summary>
+    /// One count per tier, all four of them. The two that ship empty — Fatal and Info — are the reason this is
+    /// stated rather than assumed: no shipped rule emits either from the corpus, so a constructed row is the only
+    /// way to ask whether the counter exists at all.
+    /// <para>
+    /// The Fatal row also proves the counts and the CLASSIFIER agree. Fatal and Error are one severity, so a
+    /// counter reading the severity instead of <c>TierOf</c> would put this row under Errors and read 2/0 —
+    /// which is exactly what a name promising all four tiers would then be hiding.
+    /// </para>
+    /// </summary>
     [Test]
-    public async Task CountsAreKeptPerSeverityIncludingTheInfoTierThatShipsEmpty()
+    public async Task CountsAreKeptPerTierIncludingTheTwoThatShipEmpty()
     {
         using Rig rig = new();
         await rig.OpenAsync();
         rig.Body = _ => System.Collections.Immutable.ImmutableArray.Create(
+            ProblemsTestData.FatalFinding("z", "Filen kan ikke gemmes."),
             Finding("a", ValidationSeverity.Error, "Fejl."),
             Finding("b", ValidationSeverity.Warning, "Advarsel 1."),
             Finding("c", ValidationSeverity.Warning, "Advarsel 2."),
@@ -272,7 +283,9 @@ public class ProblemsPanelViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(rig.Panel.Errors.Count, Is.EqualTo(1));
+            Assert.That(rig.Panel.Fatals.Count, Is.EqualTo(1), "the refusing Error, counted apart from the rest");
+            Assert.That(rig.Panel.Errors.Count, Is.EqualTo(1),
+                "and NOT 2 — the ordinary tier excludes the refusing row rather than containing it");
             Assert.That(rig.Panel.Warnings.Count, Is.EqualTo(2));
             Assert.That(rig.Panel.Infos.Count, Is.EqualTo(1));
             Assert.That(rig.Validation.HasBlockingFindings, Is.True, "what the send gate reads");

@@ -1,4 +1,8 @@
 #nullable enable
+using System.Collections.Immutable;
+
+using Ihc.Vis.Model;
+
 namespace Ihc.Vis.Problems
 {
     /// <summary>
@@ -106,5 +110,13 @@ namespace Ihc.Vis.Problems
 
         /// <summary>The Danish sentence for a refused upload. Identified, never rendered beside its cause.</summary>
         public const string BridgeUploadLabel = "Projektet kunne ikke sendes til controlleren";
+
+        /// <summary>
+        /// Every operation head, so the set can be READ rather than re-listed. The catalogue's invariant on a
+        /// declared refusal needs it, and re-spelling six codes there would be a second copy of this vocabulary
+        /// with nothing keeping the two equal — which is the failure this whole class exists to prevent.
+        /// </summary>
+        public static EquatableArray<ProblemCode> All { get; } =
+            ImmutableArray.Create(Load, Save, EditOpen, ImportCatalog, BridgeDownload, BridgeUpload);
     }
 }

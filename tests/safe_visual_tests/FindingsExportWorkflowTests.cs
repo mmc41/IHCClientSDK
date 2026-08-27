@@ -35,7 +35,11 @@ public class FindingsExportWorkflowTests
                     new FindingLocation("utcs_project", null, null), EquatableArray<FindingLocation>.Empty),
             ]),
             "host:code desc",
-            EquatableArray.CreateRange<ValidationSeverity>([ValidationSeverity.Error, ValidationSeverity.Warning]));
+            EquatableArray.CreateRange<ValidationSeverity>([ValidationSeverity.Error, ValidationSeverity.Warning]),
+            // ASYMMETRIC on purpose: Fatale fejl hidden, Fejl shown. Both-shown was the state the writer also
+            // DERIVES from @severities when a producer passes no filter, so a file produced from it proves only
+            // that some value arrived — not that the panel's value did. "ordinary" can be reached no other way.
+            new ErrorTierFilter(Refusing: false, Ordinary: true));
 
     // ── The happy path ──────────────────────────────────────────────────────────────────────────────────────
 
@@ -59,6 +63,10 @@ public class FindingsExportWorkflowTests
             Assert.That(
                 text, Does.Contain(" severities=\"Error Warning\""),
                 "the tiers the panel included — which the findings themselves cannot say");
+            Assert.That(
+                text, Does.Contain(" error_tiers=\"ordinary\""),
+                "the panel's own split reached the file: a value the writer's fallback cannot produce, since "
+                + "that derives both halves together from @severities");
             Assert.That(harness.Dialogs.LastProblem, Is.Null, "a successful export reports nothing");
         });
     }

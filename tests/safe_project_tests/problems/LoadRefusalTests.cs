@@ -262,12 +262,13 @@ namespace Ihc.Vis.Tests
         /// A project one major version too NEW still opens, and that is the posture this test exists to hold
         /// still — not to endorse.
         ///
-        /// <para><b>The three faces disagree, deliberately and visibly.</b> The publication
-        /// (<c>problem-catalogue.md</c>, the <c>root-version</c> row) reads "Fatal error | Open": a reader that
-        /// refuses. The reader checks version_major's PRESENCE only (<see cref="ProjectReader"/>, beside the
-        /// <c>load-version-missing</c> guard), so the open succeeds. The validator reports the row as an Error
-        /// finding, which is the only face that fires today. <c>root-version</c> is therefore a catalogued row
-        /// with no member on <see cref="LoadRefusalCodes"/>, and nothing can mint it as a refusal.</para>
+        /// <para><b>The faces agree on paper and still leave a gap.</b> The reader checks version_major's
+        /// PRESENCE only (<see cref="ProjectReader"/>, beside the <c>load-version-missing</c> guard), so the open
+        /// succeeds. The validator reports the row as an Error finding, which is the only face that fires. The
+        /// publication (<c>problem-catalogue.md</c>, the <c>root-version</c> row) once read "Fatal error | Open"
+        /// and now reads "Error | —", generated from a declaration that refuses nothing — so the drift is gone
+        /// and what remains is the product question below. <c>root-version</c> is a catalogued row with no member
+        /// on <see cref="LoadRefusalCodes"/>, and nothing can mint it as a refusal.</para>
         ///
         /// <para><b>Why a test and not a bug report.</b> Closing the gap is a PRODUCT ruling (D13): refusing the
         /// open protects a v5 file from being misread and saved back in a v4 shape, and also stops a user from
@@ -289,7 +290,7 @@ namespace Ihc.Vis.Tests
                 Assert.That(validation.Findings.Any(f => f.RuleId == "root-version"), Is.True,
                     "the other face: validation reports it — errors: " + string.Join(" | ", validation.Errors));
                 Assert.That(LoadRefusalCodes.All.Select(r => r.Cause.Value), Does.Not.Contain("root-version"),
-                    "the published 'Fatal error | Open' cell has no member behind it, so no site can raise it");
+                    "no member carries this cause, which is why §4 publishes the row as 'Error | —'");
             });
         }
 

@@ -74,7 +74,7 @@ to print every id with its `status` and one-line description. Highlights:
 | Capture | `capture window`, `capture modal`, `capture control --id <AutomationId>`, `capture client` |
 | Project | `project new`, `project open --path`, `project save`, `project save-as --path [--overwrite]`, `project recent list` |
 | View/mode | `view configuration`, `programming enter`, `view toolbar-toggle`, `view statusbar-toggle`, `view problems-toggle` |
-| Problems panel | `problems state [--wait] [--timeout ms]`, `problems rows`, `problems click --row <n\|code\|text>`, `problems toggle --tier <error\|warning\|info>`, `problems sort --column <severity\|code\|message\|element\|category>` |
+| Problems panel | `problems state [--wait] [--timeout ms]`, `problems rows`, `problems click --row <n\|code\|text>`, `problems toggle --tier <fatal\|error\|warning\|info>`, `problems sort --column <severity\|code\|message\|element\|category>` |
 | Tree nav | `tree select`, `tree dump`, `node select`, `node expand`, `node collapse`, `node double-click`, `node right-click`, `node tooltip` |
 | Gestures | `key send --gesture` (raw keys; refuses `{F5}`, gates `{DELETE}`) |
 | Menus | `menu invoke --id <AutomationId>`, `menu dump-context --path`, `menu dump-bar [--menu X] [--depth N] [--with-id]` |
@@ -112,8 +112,11 @@ wrong, it is *early*, and the four-state field says which: `validating` (no resu
 
 `problems rows` reports the rows that are **realized**, not every finding — the list virtualizes, so a
 short `rows` result over a large `warnings` count is normal rather than a discrepancy. Read totals from
-`problems state`. A row's `code` is its rule id, and `severity`/`message`/`element` are split from the
-accessible name the app composes as `<Alvor>: <Besked> (<Element>)`.
+`problems state`, which reports all four tiers: `fatals`, `errors`, `warnings`, `infos`. The two error
+tiers are **disjoint** — a finding whose rule also refuses an operation is counted under `fatals` and not
+under `errors` — so "every blocking finding" is `fatals + errors`, and reading `errors` alone under-reports.
+A row's `code` is its rule id, and `severity`/`message`/`element` are split from the accessible name the
+app composes as `<Alvor>: <Besked> (<Element>)`.
 
 Two behaviours are worth knowing before writing assertions against them. Hiding a tier with
 `problems toggle` hides its **rows only** — the tier's count and the Send-project gate are unmoved,

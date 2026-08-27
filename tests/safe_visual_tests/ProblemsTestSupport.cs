@@ -27,6 +27,24 @@ internal static class ProblemsTestData
             EquatableArray<FindingLocation>.Empty);
 
     /// <summary>
+    /// An Error finding whose row also REFUSES an operation — what the panel lists under <c>Fatale fejl</c>.
+    /// <para>
+    /// Built here rather than taken from a project, for the reason the Info tier's findings are: the tier is a
+    /// property of the finding, so a constructed one exercises it exactly as a produced one would, and the
+    /// alternative is a fixture that has to keep containing a refusing row for the test to mean anything.
+    /// </para>
+    /// </summary>
+    public static ValidationFinding FatalFinding(
+        string code,
+        string message,
+        ValidationCategory category = ValidationCategory.FileIntegrity,
+        string locator = "Stue") =>
+        Finding(ValidationSeverity.Error, code, message, category, locator) with
+        {
+            RefusedOperations = ImmutableArray.Create(OperationCodes.Save, OperationCodes.EditOpen),
+        };
+
+    /// <summary>
     /// The checkout root, found by walking up from the test assembly to the solution file. Needed by anything
     /// that reaches SOURCE rather than build output — a driver script, a checked-in document to regenerate.
     /// </summary>

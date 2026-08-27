@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<ihc_project_findings version="1" source="authentic/project5-Dokumentation" generated="2026-07-30T12:00:00+00:00" saved_stamp="_0x1f0b0b15" order="production" severities="Error Warning Info" rules_not_run="capacity-input-addresses capacity-input-modules capacity-output-addresses capacity-output-modules capacity-resources-high capacity-wireless-exceeded">
+<ihc_project_findings version="1" source="authentic/project5-Dokumentation" generated="2026-07-30T12:00:00+00:00" saved_stamp="_0x1f0b0b15" order="production" severities="Error Warning Info" error_tiers="refusing ordinary" rules_not_run="capacity-input-addresses capacity-input-modules capacity-output-addresses capacity-output-modules capacity-resources-high capacity-wireless-exceeded">
    <finding severity="Warning" code="doc-documentation-tag" category="Documentation" locator="_0x5a53" message="Mangler Id-kode"/>
    <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x1232d" message="Følg-linket går mellem lokaliteterne 'Stue' og 'Etage 1'." arg_from="Stue" arg_to="Etage 1"/>
    <finding severity="Warning" code="link-crosses-locality" category="Wiring" locator="_0x1252d" message="Følg-linket går mellem lokaliteterne 'Stue' og 'Teknik'." arg_from="Stue" arg_to="Teknik"/>

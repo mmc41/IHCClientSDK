@@ -69,11 +69,19 @@ namespace Ihc.Vis.Validation
         /// The engine finding, in the shape existing callers read. The structured locations do not survive the
         /// conversion and are not meant to: the locator they collapse to is exactly what the flat shape has always
         /// carried, and the full form stays available one call further in.
+        /// <para>
+        /// The DIAGNOSTIC does survive, and the distinction is the point: a location is a shape this type does not
+        /// have, while the English sentence is a field it does. Dropping it here left
+        /// <see cref="ProjectValidationFinding.Diagnostic"/> null for everything the engine produced — so an
+        /// upload refusal listed its items in Danish alone, with no text naming which attribute or which tag, on
+        /// the one path a developer reads.
+        /// </para>
         /// </summary>
         private static ProjectValidationFinding Flatten(ValidationFinding finding) =>
             new(finding.Severity, finding.Code.Value, finding.Primary?.Locator, finding.Problem.Message)
             {
                 Category = finding.Category,
+                Diagnostic = finding.Problem.Diagnostic,
             };
     }
 }

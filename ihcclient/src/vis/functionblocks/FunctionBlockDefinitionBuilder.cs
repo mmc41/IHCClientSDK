@@ -348,7 +348,10 @@ namespace Ihc.Vis.FunctionBlocks
                 if (!program.HasEvents)
                 {
                     findings.Add(new ProjectValidationFinding(ValidationSeverity.Warning, "program-empty", null,
-                        "A program has no events, so it will never run."));
+                        "Program uden hændelser")
+                    {
+                        Diagnostic = "A program has no events, so it will never run.",
+                    });
                 }
             }
             // The grammar↔body advisories (non-blocking warnings; skipped for an Empty grammar) — over the decoded
@@ -369,10 +372,14 @@ namespace Ihc.Vis.FunctionBlocks
             var findings = ImmutableArray.CreateBuilder<ProjectValidationFinding>();
             if (!isEmptyTemplate && string.IsNullOrEmpty(masterName))
             {
-                findings.Add(new ProjectValidationFinding(ValidationSeverity.Error, "identity-missing", null,
-                    "The block needs a master_name (or AsEmptyTemplate for a Tom blok). master_type/master_version are "
-                    + "optional — many stock blocks carry no version, and a keyless user block carries no type (it is "
-                    + "then addressable only by name)."));
+                findings.Add(new ProjectValidationFinding(ValidationSeverity.Error, "block-identity-missing", null,
+                    "Mangler blokidentitet")
+                {
+                    Diagnostic =
+                        "The block needs a master_name (or AsEmptyTemplate for a Tom blok). "
+                        + "master_type/master_version are optional — many stock blocks carry no version, and a "
+                        + "keyless user block carries no type (it is then addressable only by name).",
+                });
             }
             return findings;
         }

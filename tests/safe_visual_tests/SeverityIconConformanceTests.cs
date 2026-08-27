@@ -30,12 +30,13 @@ namespace safe_visual_tests;
 /// </summary>
 public class SeverityIconConformanceTests
 {
-    /// <summary>The three tiers' assets — and deliberately NOT severity-fatal.svg.</summary>
+    /// <summary>
+    /// The four tiers' assets — every glyph the panel can show, and the whole family every check here
+    /// judges. <c>severity-fatal.svg</c> joined it when Fatale fejl became a tier of its own; it was the
+    /// refusal disposition's glyph before that, with no row to sit on.
+    /// </summary>
     private static readonly string[] TierAssets =
-        ["severity-error.svg", "severity-warning.svg", "severity-info.svg"];
-
-    /// <summary>Every severity glyph, tiers plus the refusal one, for the checks that judge the whole family.</summary>
-    private static readonly string[] AllSeverityAssets = [.. TierAssets, "severity-fatal.svg"];
+        ["severity-fatal.svg", "severity-error.svg", "severity-warning.svg", "severity-info.svg"];
 
     /// <summary>
     /// The signal inks, and the ONLY two colour literals a severity glyph may pin.
@@ -145,7 +146,7 @@ public class SeverityIconConformanceTests
     {
         Assert.Multiple(() =>
         {
-            foreach (string file in AllSeverityAssets)
+            foreach (string file in TierAssets)
             {
                 string svg = Read(file);
                 foreach (string forbidden in new[] { "<text", "style=", "<style", "gradient", "filter=", "<filter" })
@@ -177,7 +178,7 @@ public class SeverityIconConformanceTests
     {
         Assert.Multiple(() =>
         {
-            foreach (string file in AllSeverityAssets)
+            foreach (string file in TierAssets)
             {
                 Dictionary<string, string> expected = SignalInk[file];
 
@@ -231,7 +232,7 @@ public class SeverityIconConformanceTests
     {
         Assert.Multiple(() =>
         {
-            foreach (string file in AllSeverityAssets)
+            foreach (string file in TierAssets)
             {
                 foreach (XElement element in XDocument.Parse(Read(file)).Root!.Elements())
                 {
@@ -356,40 +357,38 @@ public class SeverityIconConformanceTests
 
     // ── R8: what the panel actually wires ───────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// One asset per TIER, wired through the tier table. It used to enumerate severities and assert that the
+    /// fatal glyph never appeared — correct while every tier was a severity, and doubly stale now: the panel
+    /// lists a Fatale fejl tier that wires exactly that glyph, and enumerating severities would no longer
+    /// reach every tier anyway, since two of them share one.
+    /// <para>
+    /// IN ORDER, against the asset list this fixture already drives its file loops from. Compared as a sequence
+    /// rather than a set because the tier order is worst-first and the icon column reads down it, and because
+    /// the expectation then comes from one declared list instead of a second copy of the four paths.
+    /// </para>
+    /// </summary>
     [Test]
-    public void ThePanelWiresExactlyTheseThreeAssetsAndNeverTheRefusalGlyph()
+    public void ThePanelWiresExactlyOneAssetPerTier()
     {
         string[] wired =
         [
-            .. Enum.GetValues<ValidationSeverity>().Select(ProblemsPanelViewModel.SeverityIcon).Distinct(),
+            .. Enum.GetValues<ProblemsTier>().Select(ProblemsPanelViewModel.TierIcon),
         ];
 
         Assert.Multiple(() =>
         {
-            Assert.That(wired, Is.EquivalentTo(TierAssets.Select(a => "/Assets/" + a)),
-                "one asset per tier, and no fourth");
-            Assert.That(wired.Any(w => w.Contains("fatal", StringComparison.OrdinalIgnoreCase)), Is.False,
-                "severity-fatal.svg belongs to the REFUSAL disposition. A refusal is not a finding, so it has no "
-                + "row and no tier here — it exists for the dialog side and must never appear in the panel");
+            Assert.That(wired, Is.Unique, "two tiers sharing a glyph would make the icon column ambiguous");
+            Assert.That(wired, Is.EqualTo(TierAssets.Select(a => "/Assets/" + a)).AsCollection,
+                "every tier asset is wired, nothing else is, and in the tier order the panel lists in");
         });
     }
 
-    /// <summary>
-    /// The refusal glyph is still a real, conformant asset — it is simply not the panel's. Checking it here keeps
-    /// the file honest without implying the panel uses it.
-    /// </summary>
-    [Test]
-    public void TheRefusalGlyphExistsAndIsConformantButUnusedByThePanel()
-    {
-        XElement root = XDocument.Parse(Read("severity-fatal.svg")).Root!;
-
-        Assert.Multiple(() =>
-        {
-            Assert.That((string?)root.Attribute("viewBox"), Is.EqualTo("0 0 24 24"));
-            Assert.That((string?)root.Attribute("stroke"), Is.EqualTo("currentColor"));
-            Assert.That(root.Elements().Select(e => (string?)e.Attribute("id")), Has.All.Not.Null);
-        });
-    }
+    // `severity-fatal.svg` had a test of its own here, asserting it was "conformant but unused by the panel".
+    // The panel now WIRES it, as the tier gate above shows, so the claim in its name was false — and once the
+    // glyph joined TierAssets its three assertions became a strict subset of the two loops above, which run
+    // every root-attribute and every semantic-id check over all four assets. A renamed duplicate would have
+    // been noise, so it is gone rather than restated.
 
     // ── The documentation ───────────────────────────────────────────────────────────────────────────────────
 
@@ -406,13 +405,13 @@ public class SeverityIconConformanceTests
 
         Assert.Multiple(() =>
         {
-            foreach (string file in TierAssets.Append("severity-fatal.svg"))
+            foreach (string file in TierAssets)
             {
                 Assert.That(map, Does.Contain(file), $"{file} is undocumented in icon_codes.md");
             }
 
             Assert.That(map, Does.Contain("Problemer"),
-                "and the map says where the three tier glyphs are used");
+                "and the map says where the four tier glyphs are used");
         });
     }
 }

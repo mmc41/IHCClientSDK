@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<ihc_project_findings version="1" source="authentic/Project1-SimpelWired" generated="2026-07-30T12:00:00+00:00" saved_stamp="_0x1b0f051b" order="production" severities="Error Warning Info" rules_not_run="capacity-input-addresses capacity-input-modules capacity-output-addresses capacity-output-modules capacity-resources-high capacity-wireless-exceeded">
+<ihc_project_findings version="1" source="authentic/Project1-SimpelWired" generated="2026-07-30T12:00:00+00:00" saved_stamp="_0x1b0f051b" order="production" severities="Error Warning Info" error_tiers="refusing ordinary" rules_not_run="capacity-input-addresses capacity-input-modules capacity-output-addresses capacity-output-modules capacity-resources-high capacity-wireless-exceeded">
    <finding severity="Warning" code="enum-value-unused" category="Logic" locator="_0xd048" message="Værdien 'Kun efterløb' i enumerator typen 'PIR funktion' bruges ikke." arg_value="Kun efterløb" arg_enum="PIR funktion"/>
    <finding severity="Warning" code="addr-module-partial" category="Addressing" locator="_0x555b" message="Datalinje 1 bruger kun 1 af 8 klemmer." arg_line="1" arg_used="1" arg_capacity="8"/>
    <finding severity="Warning" code="doc-cable-colour" category="Documentation" locator="_0x555b" message="Mangler Ledningsfarve"/>

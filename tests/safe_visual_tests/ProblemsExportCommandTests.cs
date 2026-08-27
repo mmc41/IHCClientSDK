@@ -249,7 +249,7 @@ public class ProblemsExportCommandTests
                 or nameof(ProblemsPanelViewModel.ExportHint))
                 availability++;
         };
-        rig.Panel.Tiers[0].IsShown = false;
+        rig.Panel.Errors.IsShown = false;
 
         Assert.Multiple(() =>
         {
@@ -317,6 +317,12 @@ public class ProblemsExportCommandTests
     /// <summary>
     /// The shown tiers, in ENUM order — not the order they were clicked. Two users who hid the same tiers in a
     /// different sequence must produce the same file.
+    /// <para>
+    /// The set is DEDUPLICATED, which the four-tier panel forced: Fatale fejl and Fejl are both
+    /// <see cref="ValidationSeverity.Error"/>, so a file would otherwise name Error twice. It also means this
+    /// attribute alone cannot say which of those two tiers was shown — the reason the export records its
+    /// fatal filter separately.
+    /// </para>
     /// </summary>
     [Test]
     public async Task TheRequestNamesTheShownSeveritiesInEnumOrder()
@@ -325,9 +331,9 @@ public class ProblemsExportCommandTests
         await rig.WithNewProjectAsync();
 
         // Off then on again, in a deliberately scrambled sequence, so click order and enum order differ.
-        rig.Panel.Tiers.Single(t => t.Severity == ValidationSeverity.Error).IsShown = false;
-        rig.Panel.Tiers.Single(t => t.Severity == ValidationSeverity.Info).IsShown = false;
-        rig.Panel.Tiers.Single(t => t.Severity == ValidationSeverity.Error).IsShown = true;
+        rig.Panel.Tiers.Single(t => t.Tier == ProblemsTier.Error).IsShown = false;
+        rig.Panel.Tiers.Single(t => t.Tier == ProblemsTier.Info).IsShown = false;
+        rig.Panel.Tiers.Single(t => t.Tier == ProblemsTier.Error).IsShown = true;
 
         await rig.Panel.ExportCommand.ExecuteAsync(null);
 

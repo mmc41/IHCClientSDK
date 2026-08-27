@@ -75,35 +75,57 @@ The **Fatal error** column is the `Refusal` disposition under the name §2 gives
 no `Fatal` value. Only CATEGORISED entries are counted, so this total is smaller than the
 catalogue's own: the operation-outcome heads carry no category, by design.
 
-| Code | Fatal error | Error | Warning | Total |
-| --- | --- | --- | --- | --- |
-| **INT** | 18 | 15 | 8 | 41 |
-| **WIR** | 0 | 1 | 8 | 9 |
-| **LOG** | 0 | 10 | 26 | 36 |
-| **SCN** | 0 | 2 | 7 | 9 |
-| **ADR** | 0 | 5 | 9 | 14 |
-| **DEV** | 0 | 1 | 8 | 9 |
-| **DOC** | 0 | 0 | 18 | 18 |
-| **PRJ** | 0 | 7 | 8 | 15 |
-| **Total** | **18** | **41** | **92** | **151** |
+**Information** reads 0 throughout: the disposition is declarable, and no row declares it yet.
+
+| Code | Fatal error | Error | Warning | Information | Total |
+| --- | --- | --- | --- | --- | --- |
+| **INT** | 18 | 16 | 8 | 0 | 42 |
+| **WIR** | 0 | 1 | 8 | 0 | 9 |
+| **LOG** | 0 | 10 | 26 | 0 | 36 |
+| **SCN** | 0 | 2 | 7 | 0 | 9 |
+| **ADR** | 0 | 5 | 9 | 0 | 14 |
+| **DEV** | 0 | 1 | 8 | 0 | 9 |
+| **DOC** | 0 | 0 | 18 | 0 | 18 |
+| **PRJ** | 0 | 7 | 8 | 0 | 15 |
+| **Total** | **18** | **42** | **92** | **0** | **152** |
 <!-- END GENERATED -->
 
 ## 2. Severity
 
-The three levels are separated by **what the user can still do**, not by how the condition is detected.
+The four levels are separated by **what the user can still do**, not by how the condition is detected.
 
 | Severity | Definition | The operation | Who decides |
 | --- | --- | --- | --- |
-| **Fatal error** | The project **cannot be opened, saved, exported or imported**. The tool cannot carry the operation through without losing or inventing content. | Refused. Nothing is opened, and nothing is written or overwritten. The fault is named, with the file and position where that is known. | Nobody — the operation is impossible |
+| **Fatal error** | The project **cannot be opened, saved, exported, imported, or transferred to or from the controller**. The tool cannot carry the operation through without losing or inventing content. | Refused. Nothing is opened, and nothing is written or overwritten. The fault is named, with the file and position where that is known. | Nobody — the operation is impossible |
 | **Error** | The operation succeeds, but this is **very likely a mistake, and it has a negative consequence**: a state IHC Visual or the controller rejects, or an installation that demonstrably cannot work. | Proceeds. The finding is reported for repair. | The tool — it is wrong regardless of intent |
 | **Warning** | This **might** be a mistake and might not. The project is well-formed and usable; the *installation* may be incomplete, contradictory or pointless — or deliberately so. | Proceeds. The finding is a punch-list item. | The user — only the author of the installation can judge |
+| **Information** | Nothing is wrong. Something about the project is worth **knowing** — no repair is implied, and no judgement is being asked for. | Proceeds. The finding is not a punch-list item. | Nobody — nothing is being called a mistake |
 
-The dividing lines: a Fatal error is about the **file operation** — it cannot be carried through. An
+The dividing lines: a Fatal error is about the **operation** — it cannot be carried through. An
 Error's negative consequence **holds whatever the author intended**, so the tool can call it wrong on
 its own. A Warning's consequence **depends on that intent**, so only the user can call it: the *Why
 it may be fine* column states the legitimate reading, and that column is why those rows are advisory.
+Information is the level below that: a Warning asks the author for a judgement, and this asks for
+nothing.
 
-Every Fatal row names the operation it refuses in the **Blocks** column: Open, Save, Import or Export.
+The bottom level is declarable but **unused** — the `Info` disposition exists and no row declares it,
+which is why §1's Information column reads 0 throughout. Reclassifying rows into it is a separate
+change with its own oracle diff.
+
+Every Fatal row names the operation it refuses in the **Blocks** column, and every operation the catalogue
+knows has a word there: **Open**, **Save · Export**, **Edit-open**, **Import**, **Download**, **Upload**. The
+column is generated from each row's declaration, so it cannot drift from what a site actually refuses.
+
+> **"Fatal error" names three different populations in this document, and they do not nest.** §1's generated
+> counts column is the `Refusal` DISPOSITION — 18 rows that refuse and report nothing, so none of them can
+> ever be a row in a findings list. §4's Severity cell is a different set of 21: the 17 of those 18 it
+> publishes (`load-truncated` is `RuledOut` and is argued in §6), plus four whose disposition is `Error`
+> because they also REPORT. It follows the definition at the head of this section, so it counts the file
+> lifecycle and the two transfers and nothing else — which is why `id-duplicate-token` carries a **Blocks**
+> cell there while its Severity cell reads *Error*: it refuses `edit.open` alone, and the project it describes
+> opens, saves and transfers normally. And OpenVisual's *Fatal fejl* tier is a third set of 5 — every `Error`
+> row that refuses ANYTHING, so those four plus `id-duplicate-token`. A reader computing "fatal" from the
+> disposition gets the complement of what the application shows.
 
 ## 3. Source
 
@@ -135,21 +157,21 @@ better copy of the file, a re-export, or a repair.
 | `load-dtd-malformed` | INT | Fatal error | Open | The inline DTD block cannot be parsed | The schema the file carries about itself is unusable, so nothing can be validated or written back |
 | `load-root-tag` | INT | Fatal error | Open | The root element is not `<utcs_project>` | Another XML file (a `.def`, `.ifb` or unrelated document) was opened as a project |
 | `load-version-missing` | INT | Fatal error | Open | The root carries no `version_major` | The file cannot be identified as an IHC project of any version |
-| `root-version` | INT | Fatal error | Open | `version_major` is above the highest supported version (4) | Written by a newer tool in a format this one does not model; opening it would misread content and saving would destroy it |
+| `root-version` | INT | Error | — | `version_major` is above the highest supported version (4) | Written by a newer tool in a format this one does not model; opening it would misread content and saving would destroy it. **Not a Fatal error:** nothing refuses an open under this cause — `StructureRules` reports it, and the row is declared `Error` |
 | `load-character-data` | INT | Fatal error | Open | An element contains character data | The `.vis` model is attribute-only; opening would silently drop the text at the next save |
 | `load-depth` | INT | Fatal error | Open | Element nesting exceeds the supported depth | Corrupt or hostile file; a legal project never nests that deep |
 | `element-undeclared` | INT | Fatal error | Save · Export | An element type is declared neither in the file's inline DTD nor in the schema registry | The element has no declared rendering — writing the file would lose it |
-| `attr-undeclared` | INT | Fatal error | Save · Export | An attribute is declared neither in the element's inline-DTD block nor in the registry | The value has no declared rendering — writing the file would lose it |
+| `attr-undeclared` | INT | Fatal error | Save · Export, Edit-open | An attribute is declared neither in the element's inline-DTD block nor in the registry | The value has no declared rendering — writing the file would lose it |
 | `attr-latin1` | INT | Fatal error | Save · Export | An attribute value carries text outside ISO-8859-1 | The `.vis` encoding cannot represent it; writing would mangle or drop characters |
 | `attr-required` | INT | Fatal error | Save · Export | A `#REQUIRED` attribute is missing | The file would violate the DTD it declares inline — IHC Visual rejects the element |
 | `save-target-unwritable` | INT | Fatal error | Save · Export | The destination cannot be written (locked, read-only, missing, or out of space) | The write is abandoned before any existing file is touched |
 | `save-roundtrip-mismatch` | INT | Fatal error | Save · Export | Re-reading the just-written bytes does not reproduce the project | The file would not say what the project says; the write is rolled back |
 | `import-catalog-unparsable` | INT | Fatal error | Import | A `.def` / `.ifb` catalog file cannot be parsed | Nothing can be taken from it; the import is abandoned whole |
 | `import-catalog-wrong-kind` | INT | Fatal error | Import | The imported file is not the catalog kind it is offered as | A product definition and a function block are not interchangeable |
-| `import-controller-no-project` | INT | Fatal error | Import | The controller holds no stored project to download | There is nothing to import |
-| `export-controller-declined` | INT | Fatal error | Export | The controller refused to store the uploaded project | The upload did not complete; the controller's project state must be re-checked before retrying |
+| `import-controller-no-project` | INT | Fatal error | Download | The controller holds no stored project to download | There is nothing to import |
+| `export-controller-declined` | INT | Fatal error | Upload | The controller refused to store the uploaded project | The upload did not complete; the controller's project state must be re-checked before retrying |
 | `id-wellformed` | INT | Error | — | An `id` is not a well-formed `_0x` hex token in the legal packed range | Nothing can reference the element reliably; id allocation cannot account for it |
-| `id-duplicate-token` | INT | Error | — | Two elements carry the same id token | Every reference to that id is ambiguous |
+| `id-duplicate-token` | INT | Error | Edit-open | Two elements carry the same id token | Every reference to that id is ambiguous |
 | `id-duplicate-counter` | INT | Error | — | Two ids share a counter | The id space is no longer a bijection; the next minted id may collide |
 | `id-typecode` | INT | Error | — | An id's type-code disagrees with its element tag | IHC Visual resolves the element to the wrong kind |
 | `idref-dangling` | INT | Error | — | A reference attribute names an id no element carries | The reference resolves to nothing (the null token is a legal unwired state and is not this) |
@@ -330,8 +352,10 @@ Conditions that look wrong but are normal in IHC projects, and must **not** be r
 
 ## 7. Behavioural requirements
 
-- MUST: A **Fatal error** aborts the operation, naming which of Open / Save / Import / Export was
-  refused and why, and leaves nothing opened, written or overwritten.
+- MUST: A **Fatal error** aborts the operation, naming which one was refused and why, and leaves
+  nothing opened, written or overwritten. §4's **Blocks** column publishes that name, and its
+  vocabulary is the whole operation set rather than a chosen four — so this requirement cannot
+  outgrow the words available to state it.
 - MUST: An **Error** and a **Warning** never abort an operation — the project still opens, saves,
   exports and imports.
 - MUST: A finding's severity does not depend on which command surfaced it: the same condition is the
@@ -675,10 +699,11 @@ prose, and they live as doc-comments on each declaration.
 | `struct-orphan-block` | PRJ | Warning | UserContentRule | Active | Blokken '{block}' er ikke forbundet til resten af installationen. |
 | `struct-product-no-terminals` | PRJ | Warning | UserContentRule | Active | Produktet '{product}' har ingen klemmer. |
 
-### Catalog-definition findings (10)
+### Catalog-definition findings (11)
 
 | Id | Cat | Costs | Kind | Status | Danish label |
 | --- | --- | --- | --- | --- | --- |
+| `block-identity-missing` | INT | Error | UserContentRule | Active | Mangler blokidentitet |
 | `grammar-dangling-idref` | INT | Warning | SchemaSerializationGuard | Active | Reference uden mål |
 | `grammar-duplicate-id` | INT | Warning | SchemaSerializationGuard | Active | Dobbelt id |
 | `grammar-enum-value` | INT | Warning | SchemaSerializationGuard | Active | Værdi uden for listen |
@@ -744,5 +769,5 @@ prose, and they live as doc-comments on each declaration.
 | `io.load` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke åbnes |
 | `io.save` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke gemmes: {count} fejl skal rettes først. |
 
-**Total: 200 entries.** 192 active, 4 retired, 4 ruled out.
+**Total: 201 entries.** 193 active, 4 retired, 4 ruled out.
 <!-- END GENERATED -->

@@ -350,19 +350,30 @@ namespace Ihc.Vis.Products
                 || TypeCode.ForTag(rootTag) is null)
             {
                 findings.Add(new ProjectValidationFinding(ValidationSeverity.Error, "identity-missing", rootTag,
-                    "The product needs a product_identifier, a display name and a known family root tag."));
+                    "Mangler produktidentitet")
+                {
+                    Diagnostic =
+                        "The product needs a product_identifier, a display name and a known family root tag.",
+                });
             }
             if (scenes is { } scenesName && lastResourceId is null)
             {
                 findings.Add(new ProjectValidationFinding(ValidationSeverity.Error, "scenes-without-output", scenesName,
-                    "AddScenes needs a preceding resource (typically an output) to bind its scene_resource to."));
+                    "Scener uden udgang")
+                {
+                    Diagnostic =
+                        "AddScenes needs a preceding resource (typically an output) to bind its scene_resource to.",
+                });
             }
             foreach (ProjectElement child in children)
             {
                 if (child.Tag == "resource_enum" && child.GetAttribute("typedef") is null)
                 {
                     findings.Add(new ProjectValidationFinding(ValidationSeverity.Error, "resource-enum-unwired",
-                        child.GetAttribute("name"), "A resource_enum has no typedef wired to an enum_definition."));
+                        child.GetAttribute("name"), "Enumerator ikke forbundet")
+                    {
+                        Diagnostic = "A resource_enum has no typedef wired to an enum_definition.",
+                    });
                 }
             }
             return findings;

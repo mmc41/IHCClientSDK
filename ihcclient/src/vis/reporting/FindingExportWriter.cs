@@ -16,10 +16,16 @@ namespace Ihc.Vis.Reporting
     /// <summary>
     /// The findings export writer: a flat, attribute-only XML document in the <c>.vis</c> encoding.
     ///
-    /// <para><b>A pure formatter.</b> It runs no validation, applies no filter and — this is the load-bearing
-    /// one — never re-sorts. It emits the sequence it is handed, in that sequence, so the file and whatever
-    /// produced the list cannot disagree. That is also what makes it byte-testable against a hand-built list
-    /// instead of only against a corpus run.</para>
+    /// <para><b>A pure formatter of the FINDINGS.</b> It validates no project, applies no filter and — this is
+    /// the load-bearing one — never re-sorts. It emits the sequence it is handed, in that sequence, so the file
+    /// and whatever produced the list cannot disagree. That is also what makes it byte-testable against a
+    /// hand-built list instead of only against a corpus run.</para>
+    ///
+    /// <para><b>The OPTIONS are checked, and that is a different thing.</b> Nothing here inspects a finding to
+    /// decide whether it belongs in the file. But <c>@severities</c> and <c>@error_tiers</c> are two statements
+    /// about one filter, so a caller supplying both may not make them contradict each other — that pair is
+    /// refused rather than written. Declining to emit a self-contradicting header is a property of the FORMAT,
+    /// not a filter over the content.</para>
     ///
     /// <para><b>Byte contract.</b> ISO-8859-1 with the matching declaration, no BOM, CRLF throughout, three
     /// spaces of indent per level — the same shape a <c>.vis</c> file has, because these files sit beside the
@@ -50,11 +56,14 @@ namespace Ihc.Vis.Reporting
         internal const string FindingTag = "finding";
 
         /// <summary>
-        /// The root's attributes, in emitted order. The two completeness caveats sit last, side by side, because
-        /// they are read together.
+        /// The root's attributes, in emitted order. The completeness caveats sit last, together, because they
+        /// are read together.
         /// </summary>
         internal static ImmutableArray<string> RootAttributes { get; } =
-            ["version", "source", "generated", "saved_stamp", "order", "severities", "rules_not_run"];
+        [
+            "version", "source", "generated", "saved_stamp", "order", "severities", "error_tiers",
+            "rules_not_run",
+        ];
 
         /// <summary>
         /// Every attribute name a <c>&lt;finding&gt;</c> may carry that is NOT an <c>arg_</c> slot, in emitted
@@ -67,7 +76,7 @@ namespace Ihc.Vis.Reporting
         /// </summary>
         internal static ImmutableArray<string> FixedFindingAttributes { get; } =
         [
-            "severity", "code", "category", "locator", "message",
+            "severity", "code", "category", "blocks", "locator", "message",
             "related", "xpath", "related_xpath",
         ];
 
@@ -97,6 +106,23 @@ namespace Ihc.Vis.Reporting
             ArgumentNullException.ThrowIfNull(profile);
 
             FindingExportOptions settings = options ?? FindingExportOptions.Default;
+            bool errorIncluded = settings.Severities.Contains(ValidationSeverity.Error);
+
+            // The two attributes are one statement written twice, so a caller that supplies both may not make
+            // them disagree. Refused here rather than reconciled: either half could be the one the caller meant,
+            // and a file that quietly picks for them is worse than no file — it reads as a complete export while
+            // being a narrow one, or the reverse. The DERIVED path is untouched (null ErrorTiers follows
+            // @severities by construction), and all-tiers-off stays legal: an export of nothing is honest.
+            if (settings.ErrorTiers is { } declared
+                && (declared.Refusing || declared.Ordinary) != errorIncluded)
+            {
+                throw new ArgumentException(
+                    $"ErrorTiers (Refusing={declared.Refusing}, Ordinary={declared.Ordinary}) contradicts "
+                    + $"Severities ({SeverityTokens(settings.Severities)}): "
+                    + "including either error tier requires Error among the severities, and excluding both "
+                    + "requires it absent.",
+                    nameof(options));
+            }
             var sb = new StringBuilder();
 
             sb.Append(XmlDeclaration).Append(Crlf);
@@ -131,12 +157,57 @@ namespace Ihc.Vis.Reporting
             AppendAttribute(sb, "saved_stamp", project.Id2 ?? string.Empty);
             AppendAttribute(sb, "order", options.Order);
 
-            // Enum order, not the caller's order: this attribute answers "which tiers could appear", and the
-            // answer is a set. Letting a caller's click order through would make two identical filters produce
-            // two different files.
-            AppendAttribute(sb, "severities", string.Join(' ', options.Severities.Order().Select(s => s.ToString())));
+            AppendAttribute(sb, "severities", SeverityTokens(options.Severities));
+
+            AppendAttribute(sb, "error_tiers", ErrorTiers(options));
+
             AppendAttribute(sb, "rules_not_run", string.Join(' ', RulesNotRun(profile)));
             sb.Append('>').Append(Crlf);
+        }
+
+        /// <summary>
+        /// The severity set as tokens, in ENUM order rather than the caller's: this attribute answers "which
+        /// tiers could appear", and the answer is a set. Letting a caller's click order through would make two
+        /// identical filters produce two different files.
+        /// <para>
+        /// One helper rather than the expression written twice, because the contradiction guard quotes this
+        /// attribute back at the caller — a separator or a spelling that changed in one place and not the other
+        /// would make the refusal describe a file the writer does not emit.
+        /// </para>
+        /// </summary>
+        private static string SeverityTokens(EquatableArray<ValidationSeverity> severities) =>
+            string.Join(' ', severities.Order().Select(s => s.ToString()));
+
+        /// <summary>
+        /// Which halves of the Error severity the caller included, as tokens.
+        /// <para>
+        /// ALWAYS emitted, and a list rather than a flag. The first shape tried was an optional boolean
+        /// present only when the two halves were filtered differently, so its ABSENCE carried the meaning
+        /// "both included". That inverts under every ordinary reading of an optional boolean — deserialising
+        /// to <c>bool</c>, or <c>(bool?)a ?? false</c> — turning the commonest state into its opposite. No
+        /// amount of schema documentation fixes a default that lies.
+        /// </para>
+        /// <para>
+        /// Empty when neither half was included, which is a state <c>@severities</c> also records by omitting
+        /// <c>Error</c>; the two agree by construction because both are computed from the same input. The
+        /// tokens are the SDK's own words: a producer that does not split its errors says
+        /// <c>refusing ordinary</c> or nothing at all, and never has to know the host's word "fatal".
+        /// </para>
+        /// </summary>
+        private static string ErrorTiers(FindingExportOptions options)
+        {
+            // A producer with no split follows @severities: Error in means both halves, Error out means
+            // neither. That keeps the two attributes consistent without the caller restating one of them.
+            bool bothHalves = options.Severities.Contains(ValidationSeverity.Error);
+            ErrorTierFilter tiers = options.ErrorTiers ?? new ErrorTierFilter(bothHalves, bothHalves);
+
+            return (tiers.Refusing, tiers.Ordinary) switch
+            {
+                (true, true) => "refusing ordinary",
+                (true, false) => "refusing",
+                (false, true) => "ordinary",
+                _ => string.Empty,
+            };
         }
 
         /// <summary>
@@ -164,6 +235,17 @@ namespace Ihc.Vis.Reporting
             AppendAttribute(sb, "severity", finding.Severity.ToString());
             AppendAttribute(sb, "code", finding.Code.Value);
             AppendAttribute(sb, "category", finding.Category.ToString());
+
+            // Beside the other three classification attributes rather than with the trailing sites, because it
+            // is one: it says what this row COSTS, which is the question @severity answers only half of. Two
+            // findings can share a severity and differ in whether the project can be written at all. Omitted
+            // entirely when the row refuses nothing, which is the overwhelming majority — an empty blocks="" and
+            // no attribute would be the same statement written two ways.
+            if (!finding.RefusedOperations.IsEmpty)
+            {
+                AppendAttribute(
+                    sb, "blocks", string.Join(' ', finding.RefusedOperations.Select(op => op.Value)));
+            }
 
             // A finding about the project as a whole has no site, and says so by carrying no locator at all
             // rather than a sentinel a reader would have to know to decode.

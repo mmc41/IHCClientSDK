@@ -109,9 +109,10 @@ public class ProblemsListTests
     {
         Assert.Multiple(() =>
         {
-            Assert.That(ProblemsPanelViewModel.SeverityLabel(ValidationSeverity.Error), Is.EqualTo("Fejl"));
-            Assert.That(ProblemsPanelViewModel.SeverityLabel(ValidationSeverity.Warning), Is.EqualTo("Advarsel"));
-            Assert.That(ProblemsPanelViewModel.SeverityLabel(ValidationSeverity.Info), Is.EqualTo("Information"));
+            Assert.That(ProblemsPanelViewModel.TierLabel(ProblemsTier.Fatal), Is.EqualTo("Fatal fejl"));
+            Assert.That(ProblemsPanelViewModel.TierLabel(ProblemsTier.Error), Is.EqualTo("Fejl"));
+            Assert.That(ProblemsPanelViewModel.TierLabel(ProblemsTier.Warning), Is.EqualTo("Advarsel"));
+            Assert.That(ProblemsPanelViewModel.TierLabel(ProblemsTier.Info), Is.EqualTo("Information"));
         });
     }
 
@@ -144,27 +145,9 @@ public class ProblemsListTests
 
     // ── R8: the icons ───────────────────────────────────────────────────────────────────────────────────────
 
-    [Test]
-    public void EachTierWiresItsOwnAssetAndTheRefusalGlyphIsNotOneOfThem()
-    {
-        string[] wired =
-        [
-            ProblemsPanelViewModel.SeverityIcon(ValidationSeverity.Error),
-            ProblemsPanelViewModel.SeverityIcon(ValidationSeverity.Warning),
-            ProblemsPanelViewModel.SeverityIcon(ValidationSeverity.Info),
-        ];
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(wired, Is.EqualTo(new[]
-            {
-                "/Assets/severity-error.svg", "/Assets/severity-warning.svg", "/Assets/severity-info.svg",
-            }));
-            Assert.That(wired.Any(path => path.Contains("fatal", StringComparison.OrdinalIgnoreCase)), Is.False,
-                "severity-fatal.svg is a REFUSAL disposition glyph. A refusal is not a finding, so it has no tier "
-                + "here and must never appear in the panel");
-        });
-    }
+    // The tier→asset wiring is gated by SeverityIconConformanceTests.ThePanelWiresExactlyOneAssetPerTier,
+    // which asks the same question against the asset list its own file loops read — so the expectation is a
+    // declared list rather than a fourth hand-typed copy of the four paths.
 
     // ── The realized table ──────────────────────────────────────────────────────────────────────────────────
 

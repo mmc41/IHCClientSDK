@@ -133,6 +133,66 @@
     <xs:union memberTypes="idToken elementTag"/>
   </xs:simpleType>
 
+  <xs:simpleType name="operationHead">
+    <xs:annotation>
+      <xs:documentation>
+        One of the six operations a finding's rule can refuse. ENUMERATED rather than matched as a
+        dotted code, because this vocabulary is closed and the catalogue enforces the same closure —
+        an entry declaring anything else is a CatalogViolation. A reader can therefore switch on
+        these six exhaustively.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="io.load"/>
+      <xs:enumeration value="io.save"/>
+      <xs:enumeration value="edit.open"/>
+      <xs:enumeration value="import.catalog"/>
+      <xs:enumeration value="bridge.download"/>
+      <xs:enumeration value="bridge.upload"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="operationHeadList">
+    <xs:annotation>
+      <xs:documentation>
+        Space-separated operation heads, the same convention the locator and code lists use. Never
+        emitted empty: a finding whose rule refuses nothing omits the attribute, so "refuses nothing"
+        and "refuses an empty set" cannot be written two different ways.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction>
+      <xs:simpleType>
+        <xs:list itemType="operationHead"/>
+      </xs:simpleType>
+      <xs:minLength value="1"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="errorTier">
+    <xs:annotation>
+      <xs:documentation>
+        One half of the Error severity, as a producer that separates them names it. "refusing" is a
+        finding whose rule also refuses an operation — it carries @blocks; "ordinary" is one that does
+        not.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:token">
+      <xs:enumeration value="refusing"/>
+      <xs:enumeration value="ordinary"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="errorTierList">
+    <xs:annotation>
+      <xs:documentation>
+        Space-separated error halves, in the order above. MAY be empty — unlike the other lists here,
+        because "no errors included" is a real state this attribute must be able to state rather than
+        express by absence.
+      </xs:documentation>
+    </xs:annotation>
+    <xs:list itemType="errorTier"/>
+  </xs:simpleType>
+
   <xs:simpleType name="locatorList">
     <xs:annotation>
       <xs:documentation>
@@ -244,6 +304,16 @@
     <xs:attribute name="severity" type="severity" use="required"/>
     <xs:attribute name="code" type="problemCode" use="required"/>
     <xs:attribute name="category" type="category" use="required"/>
+    <xs:attribute name="blocks" type="operationHeadList" use="optional">
+      <xs:annotation>
+        <xs:documentation>
+          The operations this finding's rule also REFUSES. Present only on a row that refuses one,
+          which is a small minority. It is independent of @severity and is what tells a blocking
+          finding the user can repair in place from one that stops the project being written at all:
+          both are severity="Error".
+        </xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
     <xs:attribute name="locator" type="locator" use="optional"/>
     <xs:attribute name="message" type="message" use="required"/>
 
@@ -364,6 +434,27 @@
       <xs:attribute name="severities" type="severityList" use="required">
         <xs:annotation>
           <xs:documentation>Which tiers the export was allowed to contain — a set, in enum order, not the caller's click order.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+
+      <xs:attribute name="error_tiers" type="errorTierList" use="required">
+        <xs:annotation>
+          <xs:documentation>
+            Which halves of the Error severity this list was filtered to: "refusing" (findings whose
+            rule also REFUSES an operation) and "ordinary" (the rest). Always present, possibly empty.
+
+            It exists because both halves are severity="Error", so @severities alone cannot tell a file
+            filtered to the refusing findings from one holding every error. It is a required list, not
+            an optional flag, so that no reader can arrive at a meaning by defaulting a missing value —
+            an empty list says "no errors included" and says it out loud. Findings carry the matching
+            per-row fact in @blocks.
+
+            Consistent with @severities, one way or the other: a producer that does not split its
+            errors leaves the value DERIVED, so "refusing ordinary" (or the empty list) follows Error
+            being listed there (or not); a producer that does split has the pair ENFORCED, because the
+            writer refuses to emit a header in which including either half disagrees with @severities.
+            A reader may therefore rely on the correspondence without checking it.
+          </xs:documentation>
         </xs:annotation>
       </xs:attribute>
 

@@ -59,8 +59,20 @@ public sealed partial class ProblemRowViewModel : ObservableObject
     /// </summary>
     internal ValidationFinding Finding { get; }
 
-    /// <summary>Which tier the finding is in — what the icon column and the filter toggles read.</summary>
+    /// <summary>
+    /// The finding's SEVERITY, verbatim from the engine — not its tier. The two stopped being one value
+    /// when Fatale fejl and Fejl came to share this one, so the icon column, the filter toggles and the
+    /// default sort all read <see cref="Tier"/> instead. This is the window the fidelity tests read the
+    /// engine's own answer through; nothing in the panel binds it.
+    /// </summary>
     public ValidationSeverity Severity => Finding.Severity;
+
+    /// <summary>
+    /// Which tier the row is listed under — the filter, the counts, the default sort and the row's own
+    /// chrome all read this one answer, so the tier a row is counted under cannot differ from the tier it
+    /// is hidden by.
+    /// </summary>
+    internal ProblemsTier Tier => ProblemsPanelViewModel.TierOf(Finding);
 
     /// <summary>The finding's kebab-case code (<c>Problem.Code.Value</c>) — the Kode column and the id sort key.</summary>
     public string Code => Finding.Code.Value;
@@ -102,10 +114,16 @@ public sealed partial class ProblemRowViewModel : ObservableObject
     public bool IsNavigable => Element is not null;
 
     /// <summary>The tier's Danish name — the Alvor column's text and part of the row's accessible name.</summary>
-    public string SeverityLabel => ProblemsPanelViewModel.SeverityLabel(Severity);
+    /// <remarks>
+    /// From the row's TIER rather than its severity, so a row sitting under the Fatale fejl toggle does not read
+    /// "Fejl". The two agreed while every tier was a severity; a tier narrower than a severity separates them,
+    /// and the panel's contract is that a filter button and its rows show the same word and the same glyph.
+    /// </remarks>
+    public string TierLabel => ProblemsPanelViewModel.TierLabel(Tier);
 
     /// <summary>The tier's icon asset — the Alvor column's glyph.</summary>
-    public string SeverityIcon => ProblemsPanelViewModel.SeverityIcon(Severity);
+    /// <inheritdoc cref="TierLabel" path="/remarks"/>
+    public string TierIcon => ProblemsPanelViewModel.TierIcon(Tier);
 
     /// <summary>The check family's Danish name — the Kategori column's text.</summary>
     public string CategoryLabel => ProblemsPanelViewModel.CategoryLabel(Category);
@@ -115,7 +133,7 @@ public sealed partial class ProblemRowViewModel : ObservableObject
     /// cells visually; to an automation client the row is one thing, so it says the tier, the sentence and where
     /// it is — in that order, because the tier is what decides whether the rest is worth hearing.
     /// </summary>
-    public string AccessibleText => $"{SeverityLabel}: {Message} ({ElementName})";
+    public string AccessibleText => $"{TierLabel}: {Message} ({ElementName})";
 
     /// <summary>
     /// How strongly the Element cell is drawn — full for a row you can click through to, dimmed for one you

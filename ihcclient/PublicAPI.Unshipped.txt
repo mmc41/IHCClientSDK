@@ -202,6 +202,7 @@ Ihc.Vis.Validation.CatalogDefect.Violation.get -> Ihc.Vis.Validation.CatalogViol
 Ihc.Vis.Validation.CatalogDefect.Violation.init -> void
 Ihc.Vis.Validation.CatalogDisposition
 Ihc.Vis.Validation.CatalogDisposition.Error = 0 -> Ihc.Vis.Validation.CatalogDisposition
+Ihc.Vis.Validation.CatalogDisposition.Info = 3 -> Ihc.Vis.Validation.CatalogDisposition
 Ihc.Vis.Validation.CatalogDisposition.Refusal = 2 -> Ihc.Vis.Validation.CatalogDisposition
 Ihc.Vis.Validation.CatalogDisposition.Warning = 1 -> Ihc.Vis.Validation.CatalogDisposition
 Ihc.Vis.Validation.CatalogInvariants
@@ -209,6 +210,9 @@ Ihc.Vis.Validation.CatalogViolation
 Ihc.Vis.Validation.CatalogViolation.CategoryMisplaced = 3 -> Ihc.Vis.Validation.CatalogViolation
 Ihc.Vis.Validation.CatalogViolation.DuplicateCode = 0 -> Ihc.Vis.Validation.CatalogViolation
 Ihc.Vis.Validation.CatalogViolation.EntryWithoutRule = 1 -> Ihc.Vis.Validation.CatalogViolation
+Ihc.Vis.Validation.CatalogViolation.RefusalWithoutRefusedOperation = 6 -> Ihc.Vis.Validation.CatalogViolation
+Ihc.Vis.Validation.CatalogViolation.RefusedOperationNotAnOperationHead = 4 -> Ihc.Vis.Validation.CatalogViolation
+Ihc.Vis.Validation.CatalogViolation.RefusedOperationOnAdvisoryDisposition = 5 -> Ihc.Vis.Validation.CatalogViolation
 Ihc.Vis.Validation.CatalogViolation.RuleWithoutEntry = 2 -> Ihc.Vis.Validation.CatalogViolation
 Ihc.Vis.Validation.CategoryExtensions
 Ihc.Vis.Validation.CategoryExtensions.extension(Ihc.Vis.Validation.ValidationCategory)
@@ -371,6 +375,8 @@ Ihc.Vis.Validation.ProblemCatalogEntry.Kind.init -> void
 Ihc.Vis.Validation.ProblemCatalogEntry.MessageTemplate.get -> string!
 Ihc.Vis.Validation.ProblemCatalogEntry.MessageTemplate.init -> void
 Ihc.Vis.Validation.ProblemCatalogEntry.ProblemCatalogEntry(Ihc.Vis.Problems.ProblemCode Code, Ihc.Vis.Validation.ProblemCatalogSection Section, Ihc.Vis.Validation.ValidationCategory? Category, Ihc.Vis.Validation.CatalogDisposition Disposition, Ihc.Vis.Validation.RuleKind Kind, Ihc.Vis.Validation.RuleFaces Faces, Ihc.Vis.Validation.RuleTarget Target, Ihc.Vis.Validation.FindingShape Shape, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgumentSlot> Slots, string! MessageTemplate, Ihc.Vis.Problems.ProblemCodeStatus Status = Ihc.Vis.Problems.ProblemCodeStatus.Active) -> void
+Ihc.Vis.Validation.ProblemCatalogEntry.RefusedOperations.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemCode>
+Ihc.Vis.Validation.ProblemCatalogEntry.RefusedOperations.init -> void
 Ihc.Vis.Validation.ProblemCatalogEntry.RequiresControllerLimits.get -> bool
 Ihc.Vis.Validation.ProblemCatalogEntry.RequiresControllerLimits.init -> void
 Ihc.Vis.Validation.ProblemCatalogEntry.Section.get -> Ihc.Vis.Validation.ProblemCatalogSection
@@ -502,6 +508,8 @@ Ihc.Vis.Validation.ValidationFinding.Primary.get -> Ihc.Vis.Validation.FindingLo
 Ihc.Vis.Validation.ValidationFinding.Primary.init -> void
 Ihc.Vis.Validation.ValidationFinding.Problem.get -> Ihc.Vis.Problems.Problem!
 Ihc.Vis.Validation.ValidationFinding.Problem.init -> void
+Ihc.Vis.Validation.ValidationFinding.RefusedOperations.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemCode>
+Ihc.Vis.Validation.ValidationFinding.RefusedOperations.init -> void
 Ihc.Vis.Validation.ValidationFinding.Related.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.FindingLocation!>
 Ihc.Vis.Validation.ValidationFinding.Related.init -> void
 Ihc.Vis.Validation.ValidationFinding.Severity.get -> Ihc.Vis.Validation.ValidationSeverity
@@ -510,6 +518,7 @@ Ihc.Vis.Validation.ValidationFinding.ValidationFinding(Ihc.Vis.Problems.Problem!
 Ihc.Vis.Validation.ValidationGate
 Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>)
 Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>).Errors.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
+Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>).Infos.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
 Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>).IsValid.get -> bool
 Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>).Warnings.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
 Ihc.Vis.Validation.ValidationProfile
@@ -650,6 +659,7 @@ static Ihc.Vis.Io.SaveRefusalCodes.AttrUndeclared.get -> Ihc.Vis.Problems.Refusa
 static Ihc.Vis.Io.SaveRefusalCodes.ElementUndeclared.get -> Ihc.Vis.Problems.RefusalIdentity
 static Ihc.Vis.Io.SaveRefusalCodes.RoundTripMismatch.get -> Ihc.Vis.Problems.RefusalIdentity
 static Ihc.Vis.Io.SaveRefusalCodes.TargetUnwritable.get -> Ihc.Vis.Problems.RefusalIdentity
+static Ihc.Vis.Problems.OperationCodes.All.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemCode>
 static Ihc.Vis.Problems.OperationCodes.BridgeDownload.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Problems.OperationCodes.BridgeUpload.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Problems.OperationCodes.ImportCatalog.get -> Ihc.Vis.Problems.ProblemCode
@@ -785,6 +795,7 @@ static Ihc.Vis.Validation.StructureRules.All(Ihc.Vis.Validation.ProblemCatalog! 
 static Ihc.Vis.Validation.ValidationFinding.operator !=(Ihc.Vis.Validation.ValidationFinding? left, Ihc.Vis.Validation.ValidationFinding? right) -> bool
 static Ihc.Vis.Validation.ValidationFinding.operator ==(Ihc.Vis.Validation.ValidationFinding? left, Ihc.Vis.Validation.ValidationFinding? right) -> bool
 static Ihc.Vis.Validation.ValidationGate.get_Errors(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> findings) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
+static Ihc.Vis.Validation.ValidationGate.get_Infos(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> findings) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
 static Ihc.Vis.Validation.ValidationGate.get_IsValid(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> findings) -> bool
 static Ihc.Vis.Validation.ValidationGate.get_Warnings(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> findings) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
 static Ihc.Vis.Validation.ValidationProfile.Categorized.get -> Ihc.Vis.Validation.ValidationProfile!
@@ -869,3 +880,68 @@ Ihc.Vis.Validation.RuleRegistrationFault.ShapeContradictsDeclaration = 7 -> Ihc.
 *REMOVED*Ihc.Vis.Validation.ValidationCategory.Structural = 0 -> Ihc.Vis.Validation.ValidationCategory
 *REMOVED*static Ihc.Vis.Session.PreviewOutcome.Refused(string? reason) -> Ihc.Vis.Session.PreviewOutcome!
 Ihc.Vis.Validation.ProblemCatalogEntry.BindDiagnostic(Ihc.Vis.Problems.Problem! problem) -> string?
+Ihc.Vis.ErrorTierFilter
+Ihc.Vis.ErrorTierFilter.Deconstruct(out bool Refusing, out bool Ordinary) -> void
+Ihc.Vis.ErrorTierFilter.Equals(Ihc.Vis.ErrorTierFilter other) -> bool
+Ihc.Vis.ErrorTierFilter.ErrorTierFilter() -> void
+Ihc.Vis.ErrorTierFilter.ErrorTierFilter(bool Refusing, bool Ordinary) -> void
+Ihc.Vis.ErrorTierFilter.Ordinary.get -> bool
+Ihc.Vis.ErrorTierFilter.Ordinary.init -> void
+Ihc.Vis.ErrorTierFilter.Refusing.get -> bool
+Ihc.Vis.ErrorTierFilter.Refusing.init -> void
+Ihc.Vis.FindingExportOptions.ErrorTiers.get -> Ihc.Vis.ErrorTierFilter?
+Ihc.Vis.FindingExportOptions.ErrorTiers.init -> void
+~override Ihc.Vis.ErrorTierFilter.Equals(object obj) -> bool
+override Ihc.Vis.ErrorTierFilter.GetHashCode() -> int
+~override Ihc.Vis.ErrorTierFilter.ToString() -> string
+static Ihc.Vis.ErrorTierFilter.operator !=(Ihc.Vis.ErrorTierFilter left, Ihc.Vis.ErrorTierFilter right) -> bool
+static Ihc.Vis.ErrorTierFilter.operator ==(Ihc.Vis.ErrorTierFilter left, Ihc.Vis.ErrorTierFilter right) -> bool
+Ihc.Vis.Validation.ProjectValidationFinding.Diagnostic.get -> string?
+Ihc.Vis.Validation.ProjectValidationFinding.Diagnostic.init -> void
+~override Ihc.Vis.Validation.ControllerFirmwareVersion.Equals(object obj) -> bool
+Ihc.Vis.Validation.ControllerFirmwareVersion
+Ihc.Vis.Validation.ControllerFirmwareVersion.Build.get -> int
+Ihc.Vis.Validation.ControllerFirmwareVersion.Build.init -> void
+Ihc.Vis.Validation.ControllerFirmwareVersion.CompareTo(Ihc.Vis.Validation.ControllerFirmwareVersion other) -> int
+Ihc.Vis.Validation.ControllerFirmwareVersion.ControllerFirmwareVersion() -> void
+Ihc.Vis.Validation.ControllerFirmwareVersion.ControllerFirmwareVersion(int major, int minor, int patch) -> void
+Ihc.Vis.Validation.ControllerFirmwareVersion.ControllerFirmwareVersion(int Major, int Minor, int Patch, int Build) -> void
+Ihc.Vis.Validation.ControllerFirmwareVersion.Deconstruct(out int Major, out int Minor, out int Patch, out int Build) -> void
+Ihc.Vis.Validation.ControllerFirmwareVersion.Equals(Ihc.Vis.Validation.ControllerFirmwareVersion other) -> bool
+Ihc.Vis.Validation.ControllerFirmwareVersion.Major.get -> int
+Ihc.Vis.Validation.ControllerFirmwareVersion.Major.init -> void
+Ihc.Vis.Validation.ControllerFirmwareVersion.Minor.get -> int
+Ihc.Vis.Validation.ControllerFirmwareVersion.Minor.init -> void
+Ihc.Vis.Validation.ControllerFirmwareVersion.Patch.get -> int
+Ihc.Vis.Validation.ControllerFirmwareVersion.Patch.init -> void
+Ihc.Vis.Validation.DeclaredFirmwareBound
+Ihc.Vis.Validation.DeclaredFirmwareBound.<Clone>$() -> Ihc.Vis.Validation.DeclaredFirmwareBound!
+Ihc.Vis.Validation.DeclaredFirmwareBound.Confidence.get -> Ihc.Vis.Validation.ThresholdConfidence
+Ihc.Vis.Validation.DeclaredFirmwareBound.Confidence.init -> void
+Ihc.Vis.Validation.DeclaredFirmwareBound.DeclaredFirmwareBound(string! Name, Ihc.Vis.Validation.ControllerFirmwareVersion? FixedIn, Ihc.Vis.Validation.ThresholdConfidence Confidence, string! Evidence) -> void
+Ihc.Vis.Validation.DeclaredFirmwareBound.Deconstruct(out string! Name, out Ihc.Vis.Validation.ControllerFirmwareVersion? FixedIn, out Ihc.Vis.Validation.ThresholdConfidence Confidence, out string! Evidence) -> void
+Ihc.Vis.Validation.DeclaredFirmwareBound.Equals(Ihc.Vis.Validation.DeclaredFirmwareBound? other) -> bool
+Ihc.Vis.Validation.DeclaredFirmwareBound.Evidence.get -> string!
+Ihc.Vis.Validation.DeclaredFirmwareBound.Evidence.init -> void
+Ihc.Vis.Validation.DeclaredFirmwareBound.FixedIn.get -> Ihc.Vis.Validation.ControllerFirmwareVersion?
+Ihc.Vis.Validation.DeclaredFirmwareBound.FixedIn.init -> void
+Ihc.Vis.Validation.DeclaredFirmwareBound.Name.get -> string!
+Ihc.Vis.Validation.DeclaredFirmwareBound.Name.init -> void
+Ihc.Vis.Validation.ProblemCatalogEntry.FirmwareBound.get -> Ihc.Vis.Validation.DeclaredFirmwareBound?
+Ihc.Vis.Validation.ProblemCatalogEntry.FirmwareBound.init -> void
+Ihc.Vis.Validation.ValidationProfile.Firmware.get -> Ihc.Vis.Validation.ControllerFirmwareVersion?
+Ihc.Vis.Validation.ValidationProfile.Firmware.init -> void
+override Ihc.Vis.Validation.ControllerFirmwareVersion.GetHashCode() -> int
+override Ihc.Vis.Validation.ControllerFirmwareVersion.ToString() -> string!
+override Ihc.Vis.Validation.DeclaredFirmwareBound.Equals(object? obj) -> bool
+override Ihc.Vis.Validation.DeclaredFirmwareBound.GetHashCode() -> int
+override Ihc.Vis.Validation.DeclaredFirmwareBound.ToString() -> string!
+static Ihc.Vis.Validation.ControllerFirmwareVersion.operator !=(Ihc.Vis.Validation.ControllerFirmwareVersion left, Ihc.Vis.Validation.ControllerFirmwareVersion right) -> bool
+static Ihc.Vis.Validation.ControllerFirmwareVersion.operator <(Ihc.Vis.Validation.ControllerFirmwareVersion left, Ihc.Vis.Validation.ControllerFirmwareVersion right) -> bool
+static Ihc.Vis.Validation.ControllerFirmwareVersion.operator <=(Ihc.Vis.Validation.ControllerFirmwareVersion left, Ihc.Vis.Validation.ControllerFirmwareVersion right) -> bool
+static Ihc.Vis.Validation.ControllerFirmwareVersion.operator ==(Ihc.Vis.Validation.ControllerFirmwareVersion left, Ihc.Vis.Validation.ControllerFirmwareVersion right) -> bool
+static Ihc.Vis.Validation.ControllerFirmwareVersion.operator >(Ihc.Vis.Validation.ControllerFirmwareVersion left, Ihc.Vis.Validation.ControllerFirmwareVersion right) -> bool
+static Ihc.Vis.Validation.ControllerFirmwareVersion.operator >=(Ihc.Vis.Validation.ControllerFirmwareVersion left, Ihc.Vis.Validation.ControllerFirmwareVersion right) -> bool
+static Ihc.Vis.Validation.ControllerFirmwareVersion.TryParse(string? text, out Ihc.Vis.Validation.ControllerFirmwareVersion version) -> bool
+static Ihc.Vis.Validation.DeclaredFirmwareBound.operator !=(Ihc.Vis.Validation.DeclaredFirmwareBound? left, Ihc.Vis.Validation.DeclaredFirmwareBound? right) -> bool
+static Ihc.Vis.Validation.DeclaredFirmwareBound.operator ==(Ihc.Vis.Validation.DeclaredFirmwareBound? left, Ihc.Vis.Validation.DeclaredFirmwareBound? right) -> bool

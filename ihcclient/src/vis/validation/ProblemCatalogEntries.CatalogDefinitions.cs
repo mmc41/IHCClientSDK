@@ -7,9 +7,14 @@ namespace Ihc.Vis.Validation
     /// The CATALOG-DEFINITION section: conditions about a <c>.def</c> / <c>.ifb</c> definition file rather than
     /// about a project.
     /// <para>
-    /// These ten codes were already shipping, emitted by the definition builders and the grammar advisor, with no
-    /// catalogue row behind any of them — so "no code exists without an entry" was false before this catalogue
+    /// Ten of these codes were already shipping, emitted by the definition builders and the grammar advisor, with
+    /// no catalogue row behind any of them — so "no code exists without an entry" was false before this catalogue
     /// existed. They are governed here rather than excluded: same schema, same uniqueness, arity and status rules.
+    /// </para>
+    /// <para>
+    /// The eleventh, <c>block-identity-missing</c>, is the only one MINTED here rather than adopted: it is the
+    /// function-block half of a split, and it exists because one code cannot carry two conditions whose Danish
+    /// sentences differ. See its declaration and <see cref="IdentityMissing"/>'s.
     /// </para>
     /// <para>
     /// They are END-USER text, so their labels are Danish. An installer meets them through catalog import when a
@@ -24,6 +29,10 @@ namespace Ihc.Vis.Validation
         /// The product declares no product identifier, no display name, or a root tag of no known family.
         /// PREDICATE: implemented today by the product definition builder, over the builder's own accumulated
         /// state at Build time.
+        /// SPLIT: this code once served the function-block builder too, for a block missing its master name.
+        /// One template cannot be true of both — "Mangler produktidentitet" is false of a block — so that
+        /// condition became <see cref="BlockIdentityMissing"/> and this row is now the PRODUCT one only. The id
+        /// is not re-pointed: it kept the condition it always described, and the narrower one was minted.
         /// </summary>
         private static ProblemCatalogEntry IdentityMissing =>
             new ProblemCatalogEntry(
@@ -39,6 +48,37 @@ namespace Ihc.Vis.Validation
                 "Mangler produktidentitet")
             {
                 Diagnostic = "The product needs a product_identifier, a display name and a known family root tag.",
+                Evidence = EvidenceMark.Authored,
+            };
+
+        /// <summary>
+        /// The function block declares no master name, so nothing can address it.
+        /// PREDICATE: implemented today by the function-block definition builder, over its own accumulated state
+        /// at Build time — a block that is not an empty template and whose <c>master_name</c> is blank. The type
+        /// and the version are deliberately NOT part of it: many stock blocks carry no version, and a keyless
+        /// user block carries no type and is addressed by name alone.
+        /// SPLIT: minted from <see cref="IdentityMissing"/>, which described the product condition and was
+        /// raised here too for want of a second code. The raiser could not bind that entry's template without
+        /// telling a user a block was missing a PRODUCT identity, so it carried English while every sibling
+        /// carried Danish; this row is what ends that exception.
+        /// </summary>
+        private static ProblemCatalogEntry BlockIdentityMissing =>
+            new ProblemCatalogEntry(
+                new ProblemCode("block-identity-missing"),
+                ProblemCatalogSection.CatalogDefinitionFindings,
+                ValidationCategory.FileIntegrity,
+                CatalogDisposition.Error,
+                RuleKind.UserContentRule,
+                RuleFaces.WholeProject,
+                default,
+                FindingShape.OneFinding,
+                default,
+                "Mangler blokidentitet")
+            {
+                Diagnostic =
+                    "The block needs a master_name (or AsEmptyTemplate for a Tom blok). "
+                    + "master_type/master_version are optional — many stock blocks carry no version, and a "
+                    + "keyless user block carries no type (it is then addressable only by name).",
                 Evidence = EvidenceMark.Authored,
             };
 
@@ -239,6 +279,7 @@ namespace Ihc.Vis.Validation
         private static ProblemCatalogEntry[] CatalogDefinitionFindings =>
         [
             IdentityMissing,
+            BlockIdentityMissing,
             ScenesWithoutOutput,
             ResourceEnumUnwired,
             ProgramEmpty,

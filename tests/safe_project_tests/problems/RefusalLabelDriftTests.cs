@@ -180,6 +180,102 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
+        /// The second drift gate over the same identities: what a row DECLARES it refuses must be what the
+        /// registries actually raise under it — a bijection, checked both ways.
+        /// <para>
+        /// This is what stops <c>RefusedOperations</c> becoming a hand-maintained copy of §4's prose column, which
+        /// is the exact failure mode the field exists to end. A registry gaining an identity for a cause whose
+        /// entry does not name that operation fails here, and so does an entry claiming a refusal nothing raises
+        /// — the second being precisely what §4 published for <c>root-version</c> for as long as the column was
+        /// written by hand.
+        /// </para>
+        /// <para>
+        /// The two directions are NOT symmetric, and the asymmetry is the point. Every raised refusal must be
+        /// declared — no exceptions, or the declaration stops being a complete record. A declared refusal that
+        /// nothing raises is allowed only on the named list below, which carries its reason, because a Refusal
+        /// row can legitimately be declared before it is wired — or, for a ruled-out row, instead of ever being
+        /// wired: the disposition already asserts that the operation cannot proceed, and this only names which.
+        /// </para>
+        /// <para>
+        /// The acknowledgment is per <b>(code, operation)</b> rather than per code, because a row can refuse
+        /// several heads and be wired for only some of them. Comparing codes alone would let a second, unraised
+        /// head slip in under a line written about the first.
+        /// </para>
+        /// <para>
+        /// <c>root-version</c> is on neither side and needs no line: it refuses nothing and declares nothing.
+        /// </para>
+        /// </summary>
+        [Test]
+        public void EveryRowDeclaresExactlyTheOperationsItsRegistriesRefuse()
+        {
+            ImmutableArray<(string Cause, string Operation)> raised =
+            [
+                .. Identities()
+                    .Select(pair => (pair.Identity.Cause.Value, pair.Identity.Operation.Value))
+                    .Distinct()
+                    .OrderBy(pair => pair.Item1, StringComparer.Ordinal)
+                    .ThenBy(pair => pair.Item2, StringComparer.Ordinal),
+            ];
+
+            ImmutableArray<(string Cause, string Operation)> declared =
+            [
+                .. ProblemCatalog.Current.Entries
+                    .SelectMany(e => e.RefusedOperations.Select(op => (e.Code.Value, op.Value)))
+                    .OrderBy(pair => pair.Item1, StringComparer.Ordinal)
+                    .ThenBy(pair => pair.Item2, StringComparer.Ordinal),
+            ];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(raised, Is.Not.Empty, "the registries are the evidence; an empty read proves nothing");
+
+                Assert.That(raised.Except(declared), Is.Empty,
+                    "a registry raises a refusal its cause's entry does not declare. The declaration has to be "
+                    + "the complete record of what a row refuses, so this direction admits no exception");
+
+                Assert.That(declared.Except(raised),
+                    Is.EquivalentTo(DeclaredAheadOfTheirRaiser.Select(row => (row.Code, row.Operation))),
+                    "an entry claims a refusal no site raises. That is legal only for a Refusal row not yet "
+                    + "wired, and only with its reason written down beside it");
+
+                foreach ((string code, string operation, string why) in DeclaredAheadOfTheirRaiser)
+                {
+                    Assert.That(why, Has.Length.GreaterThan(80),
+                        $"{code}'s line has to carry its reasoning, or the list becomes a mute allow-list");
+                    Assert.That(ProblemCatalog.Current.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry),
+                        Is.True, code);
+                    Assert.That(entry.Disposition, Is.EqualTo(CatalogDisposition.Refusal),
+                        $"{code} declares a refusal nothing raises, which is only defensible while the row IS a "
+                        + "refusal by disposition; a reporting row must not claim one");
+                    Assert.That(entry.RefusedOperations.Select(op => op.Value), Does.Contain(operation),
+                        $"{code}'s line names {operation}, which its entry no longer declares");
+                }
+            });
+        }
+
+        /// <summary>
+        /// The (row, head) pairs whose refusal is declared but not raised anywhere — each with the reason it is
+        /// legal.
+        /// </summary>
+        private static readonly (string Code, string Operation, string Why)[] DeclaredAheadOfTheirRaiser =
+        [
+            ("import-catalog-wrong-kind", "import.catalog",
+                "A Refusal row with no raise site yet: reading a definition file as the wrong catalog kind still "
+                + "succeeds today, a gap recorded by CatalogCompletenessTests.KnownUnimplemented and executed by "
+                + "ImportBridgeRefusalTests.ReadingAFileAsTheWrongCatalogKindStillSucceedsToday. The disposition "
+                + "already asserts the import cannot proceed; naming import.catalog only spells which operation "
+                + "that is, and asserts no raiser. Its Danish template stays empty for the opposite reason — "
+                + "words are read by a user, and this condition never reaches one."),
+            ("load-truncated", "io.load",
+                "A RuledOut Refusal row, so it is declared INSTEAD of ever being raised rather than ahead of it: "
+                + "an XML parser refuses a truncated document as load-not-xml before truncation can be named, "
+                + "which is the finding §6 records. The head is a property of the condition — a truncated file "
+                + "stops an open and nothing else — and every Refusal row names the operation it stops, so "
+                + "leaving it empty would read as 'not a refusal'. Executed by "
+                + "ProblemCatalogTests.TheInvestigatedRowsAreKeptAsRuledOutEntries."),
+        ];
+
+        /// <summary>
         /// The drift gate itself: cause label against cause template, operation label against operation template,
         /// for every identity in the SDK.
         /// </summary>

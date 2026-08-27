@@ -146,16 +146,30 @@
                                      a:AutomationProperties.Name="Validerer"
                                      ToolTip.Tip="Projektet valideres…"/>
 
-                        <!-- The three tier filters. ToggleButtons rather than checkboxes because each one carries its
+                        <!-- The four tier filters. ToggleButtons rather than checkboxes because each one carries its
                              tier's icon and live count, and because a ToggleButton exposes UI Automation's Toggle
-                             pattern — so a driver flips a tier the same way a user does. They stay three elements
-                             rather than an ItemsControl over the tier list for that same reason: the container an
-                             ItemsControl generates would sit between the driver and the Toggle pattern.
+                             pattern — so a driver flips a tier the same way a user does. They stay one element per
+                             tier rather than an ItemsControl over the tier list for that same reason: the
+                             container an ItemsControl generates would sit between the driver and the Toggle
+                             pattern.
                              Every varying value is BOUND from the view-model's tier table — the word, the glyph, the
                              ids and the count are the same ones the tier's ROWS show, so a renamed asset or a
                              re-worded tier cannot move the rows and leave these buttons behind.
                              The COUNT beside each one is of the whole result, not of the visible rows: switching a
                              tier off must never look like its findings were fixed. -->
+                        <ToggleButton a:AutomationProperties.AutomationId="{Binding Fatals.AutomationId}"
+                                      a:AutomationProperties.Name="{Binding Fatals.Label}"
+                                      a:AutomationProperties.HelpText="{Binding Fatals.HelpText}"
+                                      IsChecked="{Binding Fatals.IsShown, Mode=TwoWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <svg:Svg Width="12" Height="12" Path="{Binding Fatals.Icon}"
+                                         CurrentColor="{DynamicResource IconColor}"/>
+                                <TextBlock Text="{Binding Fatals.Label}"/>
+                                <TextBlock Text="{Binding Fatals.Count}" FontWeight="SemiBold"
+                                           a:AutomationProperties.AutomationId="{Binding Fatals.CountAutomationId}"/>
+                            </StackPanel>
+                        </ToggleButton>
+
                         <ToggleButton a:AutomationProperties.AutomationId="{Binding Errors.AutomationId}"
                                       a:AutomationProperties.Name="{Binding Errors.Label}"
                                       a:AutomationProperties.HelpText="{Binding Errors.HelpText}"
@@ -280,9 +294,9 @@
                         <TableViewColumn.CellTemplate>
                             <DataTemplate x:DataType="vm:ProblemRowViewModel">
                                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                    <svg:Svg Width="12" Height="12" Path="{Binding SeverityIcon}"
+                                    <svg:Svg Width="12" Height="12" Path="{Binding TierIcon}"
                                              CurrentColor="{DynamicResource IconColor}"/>
-                                    <TextBlock Text="{Binding SeverityLabel}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding TierLabel}" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </DataTemplate>
                         </TableViewColumn.CellTemplate>

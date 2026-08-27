@@ -76,8 +76,11 @@ namespace Ihc.Vis.Validation
             [
                 .. result.Findings
                     .Where(f => f.Severity == ValidationSeverity.Error)
+                    // Both sentences travel: the Danish one a user reads, and the English detail beside it. The
+                    // finding already carries the pair, so dropping the diagnostic here would lose the only
+                    // text that says WHICH attribute or WHICH tag — a Danish label is deliberately short.
                     .Select(f => new Problem(
-                        new ProblemCode(f.RuleId), f.Message, EquatableArray<ProblemArgument>.Empty)),
+                        new ProblemCode(f.RuleId), f.Message, EquatableArray<ProblemArgument>.Empty, f.Diagnostic)),
             ];
 
             return new ProblemAggregate(head, items);

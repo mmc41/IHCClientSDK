@@ -319,94 +319,43 @@ namespace Ihc.Vis.Tests
 
         // ---- (3) the six advisory categories: non-blocking warnings, Build() and Write still succeed ----
 
-        private static (ProjectValidationResult Validation, ProductDefinition Definition) BuildAndValidate(
-            Func<ProductDefinitionBuilder, ProductDefinitionBuilder> configure)
-        {
-            ProductDefinitionBuilder builder = configure(ProductDefinitionBuilder.Dataline("_0x9fe2", "Advisory probe"));
-            ProjectValidationResult validation = builder.Validate();
-            ProductDefinition definition = builder.Build();
-            using var ms = new MemoryStream();
-            CatalogFileWriter.Write(definition, ms);
-            Assert.That(ms.Length, Is.GreaterThan(0), "advisories never block Build or Write");
-            return (validation, definition);
-        }
+        /// <summary>
+        /// One advisory: its body raises that code as a WARNING, and Build and Write still succeed.
+        /// <para>
+        /// The six bodies live on <see cref="DefinitionFindingProbe.GrammarAdvisories"/> rather than here,
+        /// because the drift and severity gates provoke exactly the same six. They are sensitive to the
+        /// grammar presets to the byte, so a second copy could stop objecting on one side — passing while
+        /// testing nothing — while the other side stayed honest.
+        /// </para>
+        /// </summary>
+        [TestCaseSource(nameof(GrammarAdvisoryCodes))]
+        public void Advisory_Warns(string code) => AssertAdvisoryWarns(code);
 
-        private static void AssertWarns(ProjectValidationResult validation, string category)
+        /// <summary>
+        /// The advisory codes, READ from the probe rather than re-listed. A seventh advisory added there is
+        /// covered here the moment it exists; a hand-kept list of stubs would have left it silently untested
+        /// until someone remembered to write a seventh method.
+        /// </summary>
+        private static IEnumerable<string> GrammarAdvisoryCodes =>
+            DefinitionFindingProbe.GrammarAdvisories.Select(a => a.Code);
+
+        private static void AssertAdvisoryWarns(string code)
         {
+            ProductDefinitionBuilder builder =
+                DefinitionFindingProbe.GrammarAdvisories.Single(a => a.Code == code).Body();
+            ProjectValidationResult validation = builder.Validate();
+
+            using var ms = new MemoryStream();
+            CatalogFileWriter.Write(builder.Build(), ms);
+
             Assert.Multiple(() =>
             {
+                Assert.That(ms.Length, Is.GreaterThan(0), "advisories never block Build or Write");
                 Assert.That(validation.IsValid, Is.True, "advisories are warnings, not errors");
-                Assert.That(validation.Findings.Where(f => f.RuleId == category), Is.Not.Empty,
-                    $"expected a '{category}' warning; got: " +
+                Assert.That(validation.Findings.Where(f => f.RuleId == code), Is.Not.Empty,
+                    $"expected a '{code}' warning; got: " +
                     string.Join("; ", validation.Findings.Select(f => f.RuleId)));
             });
-        }
-
-        [Test]
-        public void Advisory_GrammarUndeclaredType_Warns()
-        {
-            (ProjectValidationResult validation, _) = BuildAndValidate(b => b.RawChild(
-                new ProjectElement("resource_mystery", new ElementId(0x90, 0x06),
-                    ImmutableArray.Create(("id", "_0x9006"), ("name", "?")), ImmutableArray<ProjectElement>.Empty)));
-
-            AssertWarns(validation, "grammar-undeclared-type");
-        }
-
-        [Test]
-        public void Advisory_GrammarUndeclaredAttribute_Warns()
-        {
-            (ProjectValidationResult validation, _) = BuildAndValidate(b =>
-                b.AddInput("Tryk", i => i.Attribute("mystery_attr", "x")));
-
-            AssertWarns(validation, "grammar-undeclared-attribute");
-        }
-
-        [Test]
-        public void Advisory_GrammarMissingRequired_Warns()
-        {
-            // The airlink relay declares address_channel #REQUIRED; splice one without it.
-            ProductDefinitionBuilder builder = ProductDefinitionBuilder
-                .Airlink("_0x9fe3", "Advisory probe")
-                .Attribute("device_type", "_0x0804")
-                .RawChild(new ProjectElement("airlink_relay", new ElementId(0x90, 0x07),
-                    ImmutableArray.Create(("id", "_0x9007"), ("name", "Relay")), ImmutableArray<ProjectElement>.Empty));
-
-            AssertWarns(builder.Validate(), "grammar-missing-required");
-        }
-
-        [Test]
-        public void Advisory_GrammarEnumValue_Warns()
-        {
-            // The authentic S0 kWh vendor bug: accessibility="readwrite" is outside (read | write | read-write).
-            ProductDefinitionBuilder builder = ProductDefinitionBuilder
-                .S0Device("_0x9fe4", "Advisory probe")
-                .AddResource("kWh", "Energi", r => r.Attribute("accessibility", "readwrite"));
-
-            AssertWarns(builder.Validate(), "grammar-enum-value");
-        }
-
-        [Test]
-        public void Advisory_GrammarDuplicateId_Warns()
-        {
-            (ProjectValidationResult validation, _) = BuildAndValidate(b => b
-                .RawChild(new ProjectElement("dataline_input", new ElementId(0x9, 0x11),
-                    ImmutableArray.Create(("id", "_0x911"), ("name", "A")), ImmutableArray<ProjectElement>.Empty))
-                .RawChild(new ProjectElement("dataline_input", new ElementId(0x9, 0x11),
-                    ImmutableArray.Create(("id", "_0x911"), ("name", "B")), ImmutableArray<ProjectElement>.Empty)));
-
-            AssertWarns(validation, "grammar-duplicate-id");
-        }
-
-        [Test]
-        public void Advisory_GrammarDanglingIdRef_Warns()
-        {
-            (ProjectValidationResult validation, _) = BuildAndValidate(b => b
-                .AddOutput("Udgang")
-                .RawChild(new ProjectElement("scenes", new ElementId(0x9, 0x27),
-                    ImmutableArray.Create(("id", "_0x927"), ("name", "S"), ("scene_resource", "_0xdead")),
-                    ImmutableArray<ProjectElement>.Empty)));
-
-            AssertWarns(validation, "grammar-dangling-idref");
         }
 
         [Test]

@@ -39,6 +39,7 @@ namespace Ihc.Vis.Catalog
             foreach (string duplicate in duplicateIds)
             {
                 findings.Add(Warn("grammar-duplicate-id", duplicate,
+                    "Dobbelt id",
                     $"Two or more elements share the id '{duplicate}' (XML VC: ID) — the insert transform " +
                     "re-mints them to distinct ids, but IDREFs to the token become ambiguous."));
             }
@@ -54,6 +55,7 @@ namespace Ihc.Vis.Catalog
             if (declaration is null)
             {
                 findings.Add(Warn("grammar-undeclared-type", element.Tag,
+                    "Ukendt elementtype",
                     $"The body uses element type '{element.Tag}' that the effective grammar does not declare " +
                     "(an authentic subset-DTD shape; the written file stays loadable, but the type carries no " +
                     "catalog defaults)."));
@@ -72,6 +74,7 @@ namespace Ihc.Vis.Catalog
                     if (schema.IsIdRef(name) && value.Length > 0 && !ids.Contains(value))
                     {
                         findings.Add(Warn("grammar-dangling-idref", $"{element.Tag}@{name}",
+                            "Reference uden mål",
                             $"IDREF attribute '{name}' on <{element.Tag}> references '{value}', which is not the " +
                             "id of any element in this definition."));
                     }
@@ -93,11 +96,13 @@ namespace Ihc.Vis.Catalog
                 if (attr is null)
                 {
                     findings.Add(Warn("grammar-undeclared-attribute", $"{element.Tag}@{name}",
+                        "Ukendt attribut",
                         $"Attribute '{name}' on <{element.Tag}> is not declared by the effective grammar."));
                 }
                 else if (attr.Type == GrammarAttrType.Enumerated && !attr.EnumTokens.Contains(value))
                 {
                     findings.Add(Warn("grammar-enum-value", $"{element.Tag}@{name}",
+                        "Værdi uden for listen",
                         $"Value '{value}' of '{name}' on <{element.Tag}> is outside its declared enumeration " +
                         $"({string.Join(" | ", attr.EnumTokens)})."));
                 }
@@ -107,6 +112,7 @@ namespace Ihc.Vis.Catalog
                 if (attr.Default == GrammarDefault.Required && element.GetAttribute(attr.Name) is null)
                 {
                     findings.Add(Warn("grammar-missing-required", $"{element.Tag}@{attr.Name}",
+                        "Manglende påkrævet attribut",
                         $"#REQUIRED attribute '{attr.Name}' is missing on <{element.Tag}>."));
                 }
             }
@@ -123,7 +129,13 @@ namespace Ihc.Vis.Catalog
             }
         }
 
-        private static ProjectValidationFinding Warn(string category, string? subject, string message) =>
-            new(ValidationSeverity.Warning, category, subject, message);
+        /// <summary>
+        /// One advisory, carrying BOTH sentences: the Danish label a user reads and the English detail a
+        /// developer reads. The Danish is a literal copy of the code's catalogue template, kept here because
+        /// this layer may not read the catalogue — a drift test holds the copy equal to the entry.
+        /// </summary>
+        private static ProjectValidationFinding Warn(
+            string code, string? subject, string label, string diagnostic) =>
+            new(ValidationSeverity.Warning, code, subject, label) { Diagnostic = diagnostic };
     }
 }

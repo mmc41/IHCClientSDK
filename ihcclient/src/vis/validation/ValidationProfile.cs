@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Linq;
 
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
@@ -56,6 +57,12 @@ namespace Ihc.Vis.Validation
     /// the machine is not a property of the project file, and reporting one would make the same project valid on
     /// one workstation and invalid on another.
     /// </description></item>
+    /// <item><description>
+    /// APPLICABILITY — a firmware-errata rule runs with NO context and is withheld only when <see cref="Firmware"/>
+    /// names a target that is already past the release which fixed its defect. The reverse direction from
+    /// evaluability, for the reason spelled out on <see cref="Firmware"/>: its condition is in the file, so the
+    /// safe answer is the one a caller who knows nothing gets.
+    /// </description></item>
     /// </list>
     /// <para>
     /// A profile is NOT a blocking policy. That distinction is load-bearing — a profile changes what is LOOKED
@@ -65,11 +72,15 @@ namespace Ihc.Vis.Validation
     /// legal value, and its only other lever is the per-rule override below.
     /// </para>
     /// <para>
-    /// The context axis is a nullable field plus a per-entry bool, not a context vocabulary: exactly one such
-    /// context exists and three rows use it, so an enum with one member, an availability set and an interface to
-    /// read it would be six mechanisms for one question. Every property that matters survives — the requirement is
-    /// declared, it is evaluability rather than strictness, there is no implicit fallback, and no rule body has to
-    /// handle absence.
+    /// A context is a nullable field beside its per-entry declaration, never a context vocabulary: an enum of
+    /// kinds, an availability set and an interface to read it would be several mechanisms for one question, and the
+    /// properties that matter survive without them — the requirement is declared, it is evaluability or
+    /// applicability rather than strictness, there is no implicit fallback, and no rule body has to handle absence.
+    /// </para>
+    /// <para>
+    /// The three are NOT interchangeable, and the entry says which it means by which field it sets. Controller
+    /// limits and a library are ENABLING and declared as bools; a firmware bound is NARROWING and declared as the
+    /// bound itself, because there is no third bool to set — the row needs no permission to run.
     /// </para>
     /// </summary>
     /// <param name="Name">The profile's name, for diagnostics.</param>
@@ -101,12 +112,32 @@ namespace Ihc.Vis.Validation
         /// </summary>
         public ILibraryBlockSource? Library { get; init; }
 
-        /// <summary>Whether this profile selects that rule — audience and evaluability together.</summary>
+        /// <summary>
+        /// The TARGET CONTROLLER'S firmware, when the caller knows it — the third declared context, and the one
+        /// that behaves oppositely to the two above.
+        /// <para>
+        /// <b>Narrowing, not enabling.</b> The two contexts above are enabling: absent, and the rules needing them
+        /// do not run. This one is absent by default and the rules that read it RUN ANYWAY, because their condition
+        /// — the project uses a feature an affected firmware mishandles — is decided from the file. Supplying a
+        /// target can only withhold a finding whose fix that target is past. It can never add one, which is what
+        /// keeps the default answer the safe one and bounds what a wrong target can cost.
+        /// </para>
+        /// <para>
+        /// The consequence is deliberate and worth naming: with a target declared, the same project reports
+        /// differently on two workstations — the thing the evaluability axis above refuses to allow. It is
+        /// tolerable here only because the direction is fixed. Undeclared is the strict reading, so a caller who
+        /// knows nothing is never told less than a caller who knows something.
+        /// </para>
+        /// </summary>
+        public ControllerFirmwareVersion? Firmware { get; init; }
+
+        /// <summary>Whether this profile selects that rule — audience, evaluability and applicability together.</summary>
         /// <param name="entry">The catalogue entry to test.</param>
         public bool Includes(ProblemCatalogEntry entry)
         {
             ArgumentNullException.ThrowIfNull(entry);
             return CanEvaluate(entry)
+                && AppliesTo(entry)
                 && (Audience == ProfileAudience.Categorized
                     || entry.Category != ValidationCategory.Documentation);
         }
@@ -134,8 +165,48 @@ namespace Ihc.Vis.Validation
                 && (!entry.RequiresLibrary || Library is not null);
         }
 
-        /// <summary>The severity this rule takes here: its disposition, unless an override names it.</summary>
+        /// <summary>
+        /// The APPLICABILITY half: whether this row's condition still costs anything on the declared target.
+        /// <para>
+        /// Three of the four answers are yes, and that asymmetry is the design. A row declaring no firmware bound
+        /// is unaffected; a row whose defect no release is known to fix is unaffected however new the target; a
+        /// caller with no target in mind gets the strict reading. Only a KNOWN target at or past a KNOWN fix
+        /// withholds — the one case where reporting would be telling a user about a defect their controller does
+        /// not have.
+        /// </para>
+        /// <para>
+        /// Deliberately separate from <see cref="CanEvaluate"/> rather than folded into it, and the separation is
+        /// load-bearing rather than tidiness: the findings export publishes <see cref="CanEvaluate"/>'s negatives
+        /// as rules it could not run for want of context. A row narrowed away here was evaluated and found not to
+        /// apply, which is the opposite statement.
+        /// </para>
+        /// <para>
+        /// Private, unlike <see cref="CanEvaluate"/>: that half has an in-assembly reader in the export, this one
+        /// has none, and <see cref="Includes"/> — which null-checks for it — is the door.
+        /// </para>
+        /// </summary>
+        /// <param name="entry">The catalogue entry to test.</param>
+        private bool AppliesTo(ProblemCatalogEntry entry) =>
+            entry.FirmwareBound?.FixedIn is not { } fixedIn
+                || Firmware is not { } target
+                || target < fixedIn;
+
+        /// <summary>
+        /// The severity this rule takes here: its disposition, unless an override names it.
+        /// <para>
+        /// The lever raises strictness and may lower it, but it stops at the rows that REFUSE an operation. Their
+        /// consequence is not a judgement a profile gets to soften — the save does not happen, the file does not
+        /// open — so a demotion below <see cref="ValidationSeverity.Error"/> would produce a finding whose Danish
+        /// sentence says the operation was refused while its severity files it as advice. It THROWS rather than
+        /// flooring silently, because a profile that cannot mean what it says is a caller's mistake, and quietly
+        /// ignoring one half of an override is how a strictness setting comes to be believed and not applied.
+        /// </para>
+        /// </summary>
         /// <param name="entry">The catalogue entry whose severity is wanted.</param>
+        /// <exception cref="InvalidOperationException">
+        /// An override demotes a row declaring <see cref="ProblemCatalogEntry.RefusedOperations"/> below
+        /// <see cref="ValidationSeverity.Error"/>.
+        /// </exception>
         public ValidationSeverity SeverityFor(ProblemCatalogEntry entry)
         {
             ArgumentNullException.ThrowIfNull(entry);
@@ -143,6 +214,15 @@ namespace Ihc.Vis.Validation
             {
                 if (@override.Code == entry.Code)
                 {
+                    if (@override.Severity != ValidationSeverity.Error && !entry.RefusedOperations.IsEmpty)
+                    {
+                        throw new InvalidOperationException(
+                            $"Profile '{Name}' overrides '{entry.Code.Value}' to {@override.Severity}, but that row "
+                            + $"refuses {string.Join(", ", entry.RefusedOperations.Select(op => op.Value))}. A row "
+                            + "that stops an operation reports as Error under every profile; the per-rule override "
+                            + "may make a rule stricter, never advisory.");
+                    }
+
                     return @override.Severity;
                 }
             }

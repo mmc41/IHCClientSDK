@@ -97,6 +97,30 @@ namespace Ihc.Vis.Validation
         /// <see cref="ProblemCatalogSection.OperationOutcomes"/>.
         /// </summary>
         CategoryMisplaced,
+
+        /// <summary>
+        /// An entry declares a refused operation that is not one of the six
+        /// <see cref="Ihc.Vis.Problems.OperationCodes"/> heads — a cause code, a host code or a typo. Such a
+        /// declaration names an operation no filter and no send gate can act on.
+        /// </summary>
+        RefusedOperationNotAnOperationHead,
+
+        /// <summary>
+        /// A <see cref="CatalogDisposition.Warning"/> or <see cref="CatalogDisposition.Info"/> entry declares a
+        /// refused operation. Refusing is the hardest consequence a row can carry — the operation does not
+        /// happen — so it cannot sit under a disposition whose whole meaning is that the project remains usable.
+        /// The panel's Fatal tier reads exactly this pairing, and a demotion below Error would make a row that
+        /// blocks a save read as advice.
+        /// </summary>
+        RefusedOperationOnAdvisoryDisposition,
+
+        /// <summary>
+        /// A <see cref="CatalogDisposition.Refusal"/> CONTENT row names no operation head. The disposition
+        /// already asserts that an operation cannot proceed; without a declared head nothing can say which one,
+        /// so no filter, no send gate and no panel tier can act on it. Operation-outcome rows are exempt because
+        /// a head IS the operation rather than a cause of one.
+        /// </summary>
+        RefusalWithoutRefusedOperation,
     }
 
     /// <summary>One violated invariant.</summary>
@@ -143,6 +167,25 @@ namespace Ihc.Vis.Validation
                 if (wantsCategory != (entry.Category is not null))
                 {
                     defects.Add(new CatalogDefect(entry.Code, CatalogViolation.CategoryMisplaced));
+                }
+
+                bool refuses = entry.RefusedOperations.Length > 0;
+                if (refuses && entry.RefusedOperations.Any(op => !OperationCodes.All.Contains(op)))
+                {
+                    defects.Add(new CatalogDefect(entry.Code, CatalogViolation.RefusedOperationNotAnOperationHead));
+                }
+
+                if (refuses && entry.Disposition is CatalogDisposition.Warning or CatalogDisposition.Info)
+                {
+                    defects.Add(
+                        new CatalogDefect(entry.Code, CatalogViolation.RefusedOperationOnAdvisoryDisposition));
+                }
+
+                if (!refuses
+                    && entry.Disposition == CatalogDisposition.Refusal
+                    && entry.Section != ProblemCatalogSection.OperationOutcomes)
+                {
+                    defects.Add(new CatalogDefect(entry.Code, CatalogViolation.RefusalWithoutRefusedOperation));
                 }
             }
 

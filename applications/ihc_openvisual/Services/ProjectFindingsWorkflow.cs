@@ -14,9 +14,14 @@ namespace ihc_openvisual.Services;
 /// What the Problemer panel asks to have exported: the findings it is showing, the label for the order they are
 /// in, and which tiers were included.
 ///
-/// <para>All three are things only the panel knows, and none of them is recoverable from the findings
-/// afterwards. In particular <see cref="Severities"/> is NOT derivable from <see cref="Findings"/>: a list with
-/// no Info rows and a list that excluded the Info tier are the same list, and only this says which happened.</para>
+/// <para>All of them are things only the panel knows, and none is recoverable from the findings afterwards.
+/// In particular <see cref="Severities"/> is NOT derivable from <see cref="Findings"/>: a list with no Info
+/// rows and a list that excluded the Info tier are the same list, and only this says which happened.</para>
+///
+/// <para><see cref="ErrorTiers"/> is the same argument one level down. The panel splits Error findings into
+/// two tiers — <c>Fatale fejl</c> for a finding whose rule also refuses an operation, <c>Fejl</c> for the rest
+/// — and both are <see cref="ValidationSeverity.Error"/>, so <see cref="Severities"/> cannot say which of the
+/// two a filtered list came from.</para>
 ///
 /// <para>Declared beside its CONSUMER rather than its producer, as <c>ValidationRequest</c> is declared beside
 /// <c>ValidationWorker</c>. A request type owned by the view-model would make this layer's signatures depend on
@@ -24,11 +29,13 @@ namespace ihc_openvisual.Services;
 /// </summary>
 /// <param name="Findings">The visible rows' findings, filtered and ordered exactly as shown.</param>
 /// <param name="Order">A label for that order, in the form <c>host:&lt;column&gt;</c> or <c>host:&lt;column&gt; desc</c>.</param>
-/// <param name="Severities">The tiers that were included, in enum order.</param>
+/// <param name="Severities">The severities that were included, in enum order.</param>
+/// <param name="ErrorTiers">How the panel's two Error filters stood — Fatale fejl and Fejl.</param>
 public sealed record FindingsExportRequest(
     EquatableArray<ValidationFinding> Findings,
     string Order,
-    EquatableArray<ValidationSeverity> Severities);
+    EquatableArray<ValidationSeverity> Severities,
+    ErrorTierFilter ErrorTiers);
 
 /// <summary>
 /// US-085: routes the Problemer panel's export request to a file the user chooses.
@@ -86,6 +93,7 @@ internal sealed class ProjectFindingsWorkflow(
                     SourceName = getDocumentName(),
                     Order = request.Order,
                     Severities = request.Severities,
+                    ErrorTiers = request.ErrorTiers,
                 });
         }
         catch (Exception ex)

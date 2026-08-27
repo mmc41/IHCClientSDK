@@ -196,16 +196,19 @@ author finds them instead of drawing a fifth.
 | `severity-error.svg` | **Fejl** — blocks a save/upload | ring (theme ink) + diagonal cross in signal red | Problemer panel: severity column, Fejl filter toggle |
 | `severity-warning.svg` | **Advarsel** — advisory | triangle (theme ink) + bang bar/dot in the heading blue | Problemer panel: severity column, Advarsel filter toggle |
 | `severity-info.svg` | **Information** — advisory, lower | ring + tittle/stem, theme ink throughout | Problemer panel: severity column, Information filter toggle |
-| `severity-fatal.svg` | A **refusal** — an operation that could not proceed | octagon + diagonal cross, both in signal red | Dialog refusal presentation only |
+| `severity-fatal.svg` | **Fatale fejl** — an Error finding whose rule also REFUSES an operation | octagon + diagonal cross, both in signal red | Problemer panel: severity column, Fatale fejl filter toggle; and dialog refusal presentation |
 
 Two things about this set are load-bearing:
 
-- **`severity-fatal.svg` is not a fourth tier.** A refusal is not a finding — it is a coded
-  `Problem` off a different method — so it has no row in the panel and no place in its severity
-  column or filter toggles. The panel wires exactly the first three, and a test asserts that no
-  wired path contains `fatal`.
+- **`severity-fatal.svg` is the fourth tier, and a refusal is still not a finding.** The two uses
+  do not conflict. The panel lists *Fatale fejl* for a finding that reports AND refuses — an
+  undeclared attribute stops the save and is reported at validate — so it has a row, a severity
+  cell and a filter toggle. A refusal that produces no finding at all, such as a file that will
+  not open, still has no row: there is no project to be a row in, and it reaches a user through a
+  dialog. One glyph, one meaning — *this operation cannot proceed* — on both paths.
+  `ThePanelWiresExactlyOneAssetPerTier` asserts one asset per tier and that no two tiers share one.
 - **The glyph never carries the meaning alone.** Every severity cell and every filter toggle pairs
-  the icon with its Danish word (Fejl / Advarsel / Information), because shape and colour are not a
+  the icon with its Danish word (Fatal fejl / Fejl / Advarsel / Information), because shape and colour are not a
   readable severity for everyone, and the tier is the first thing a row has to say.
 
 These four are the icon set's **only** glyphs that pin a colour of their own (§5.1 of

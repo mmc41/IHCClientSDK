@@ -119,8 +119,13 @@ namespace Ihc.Vis.Tests
                 Assert.That(FindingExportProbe.FindingLines(clean), Is.Empty);
                 Assert.That(FindingExportProbe.FindingLines(hidden), Is.Empty);
                 Assert.That(cleanText, Is.Not.EqualTo(hiddenText), "the two files must be distinguishable at all");
+                // TWO attributes now, and they move together by construction: with no explicit error-tier
+                // split the writer derives @error_tiers from @severities, so a file that excluded Error says
+                // so in both places rather than in one and by implication in the other.
                 Assert.That(
-                    cleanText.Replace(" severities=\"Error Warning Info\"", " severities=\"\""),
+                    cleanText
+                        .Replace(" severities=\"Error Warning Info\"", " severities=\"\"")
+                        .Replace(" error_tiers=\"refusing ordinary\"", " error_tiers=\"\""),
                     Is.EqualTo(hiddenText),
                     "and they must differ in NOTHING else");
             });

@@ -110,15 +110,55 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        /// <summary>
+        /// The gate's own read of the third tier. <see cref="ProjectValidationResult"/> answers with MESSAGES, so
+        /// a host that wants the finding — its code, its category, where it sits — reads
+        /// <see cref="ValidationGate"/> over the structured findings instead. It already answers
+        /// <c>Errors</c> and <c>Warnings</c> there; without <c>Infos</c> the third tier is the one tier
+        /// reachable only by re-deriving the filter at every call site.
+        /// </summary>
+        [Test]
+        public void TheGateAnswersTheInfoTierBesideTheOtherTwo()
+        {
+            ValidationFinding error = Structured(ValidationSeverity.Error, "en-fejl");
+            ValidationFinding warning = Structured(ValidationSeverity.Warning, "en-advarsel");
+            ValidationFinding first = Structured(ValidationSeverity.Info, "foerste-oplysning");
+            ValidationFinding second = Structured(ValidationSeverity.Info, "anden-oplysning");
+            EquatableArray<ValidationFinding> findings = ImmutableArray.Create(first, error, second, warning);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(findings.Infos, Is.EqualTo(new[] { first, second }),
+                    "the Warnings shape, one tier down: filtered, structured, in the run's order");
+                Assert.That(findings.Warnings, Is.EqualTo(new[] { warning }),
+                    "and an Info must not leak into the warning list a caller already reads");
+                Assert.That(findings.Errors, Is.EqualTo(new[] { error }));
+                Assert.That(findings.IsValid, Is.False, "the Error still decides blocking; Info never does");
+            });
+        }
+
+        [Test]
+        public void TheGateReportsNoInfosWhenNoneWereFound()
+        {
+            EquatableArray<ValidationFinding> findings =
+                ImmutableArray.Create(Structured(ValidationSeverity.Warning, "en-advarsel"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(findings.Infos, Is.Empty);
+                Assert.That(findings.IsValid, Is.True, "an advisory tier blocks nothing");
+            });
+        }
+
+        private static ValidationFinding Structured(ValidationSeverity severity, string code) =>
+            new(new Problem(new ProblemCode(code), "Tekst.", EquatableArray<ProblemArgument>.Empty),
+                severity, ValidationCategory.Documentation, new FindingLocation("_0x1", null, null),
+                EquatableArray<FindingLocation>.Empty);
+
         [Test]
         public void TheStructuredFindingCarriesInfoJustAsItCarriesTheOtherTwo()
         {
-            ValidationFinding finding = new(
-                new Problem(new ProblemCode("synthetic-info"), "En oplysning.", EquatableArray<ProblemArgument>.Empty),
-                ValidationSeverity.Info,
-                ValidationCategory.Documentation,
-                new FindingLocation("_0x1", null, null),
-                EquatableArray<FindingLocation>.Empty);
+            ValidationFinding finding = Structured(ValidationSeverity.Info, "synthetic-info");
 
             Assert.That(finding.Severity, Is.EqualTo(ValidationSeverity.Info));
         }

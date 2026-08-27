@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
-<ihc_project_findings version="1" source="fixture/Project6-Errors" generated="2026-07-30T12:00:00+00:00" saved_stamp="_0x9131223" order="production" severities="Error Warning Info" rules_not_run="capacity-input-addresses capacity-input-modules capacity-output-addresses capacity-output-modules capacity-resources-high capacity-wireless-exceeded">
+<ihc_project_findings version="1" source="fixture/Project6-Errors" generated="2026-07-30T12:00:00+00:00" saved_stamp="_0x9131223" order="production" severities="Error Warning Info" error_tiers="refusing ordinary" rules_not_run="capacity-input-addresses capacity-input-modules capacity-output-addresses capacity-output-modules capacity-resources-high capacity-wireless-exceeded">
    <finding severity="Warning" code="doc-project-info-blank" category="Documentation" locator="utcs_project" message="Mangler projektoplysninger"/>
    <finding severity="Warning" code="enum-def-empty" category="Logic" locator="_0x1e847" message="Enumerator typen 'Tom enum' har ingen værdier." arg_enum="Tom enum"/>
    <finding severity="Warning" code="enum-def-unused" category="Logic" locator="_0x1e847" message="Enumerator typen 'Tom enum' bruges ikke af nogen variabel." arg_enum="Tom enum"/>

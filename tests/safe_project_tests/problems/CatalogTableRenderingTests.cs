@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -65,6 +66,390 @@ namespace Ihc.Vis.Tests
                 "the checked-in category counts are stale — run the [Explicit] Regenerate_TheCategoryTable test "
                 + "and review the diff");
         }
+
+        /// <summary>
+        /// §4's <b>Blocks</b> column, on the same footing as the two tables above: rendered from each row's
+        /// <see cref="ProblemCatalogEntry.RefusedOperations"/> and compared against the checked-in cells.
+        ///
+        /// <para><b>Why this column and not the whole section.</b> §4's other columns are prose — the finding,
+        /// why it matters, the reclassification notes — and stay hand-written for the reason the index's
+        /// doc-comment gives. Blocks is not prose: it is a fact about the declarations, and it is the one cell in
+        /// the section that has drifted from them more than once.</para>
+        ///
+        /// <para><b>The renderer publishes labels, not heads — one label per head, and no head without one.</b>
+        /// The map was briefly narrower than the declaration, and that was a mistake worth recording: with
+        /// <c>edit.open</c> rendering as nothing, <c>id-duplicate-token</c> published <c>—</c> here while the
+        /// panel listed it as fatal and the export wrote <c>blocks="edit.open"</c> — one declaration, three
+        /// published answers, which is the ambiguity generating the column was meant to END. A view may be
+        /// briefer than what it renders; it may not be unable to express one of six enumerated values.</para>
+        ///
+        /// <para>The two controller directions carry their own words for the same reason. Publishing
+        /// <c>bridge.upload</c> as "Export" put one word on two unrelated operations three rows apart in one
+        /// table, beside <c>io.save</c>'s "Save · Export" — a reader could not tell a file write from a
+        /// controller transfer.</para>
+        /// </summary>
+        [Test]
+        public void TheBlocksColumnMatchesWhatTheRowsDeclare()
+        {
+            ImmutableArray<(string Id, string Blocks)> published =
+                [.. SectionFourRows.Select(row => (row.Id, row.Blocks))];
+            ImmutableArray<(string Id, string Blocks)> expected =
+                [.. published.Select(row => (row.Id, BlocksCell(row.Id)))];
+
+            Assert.Multiple(() =>
+            {
+                // The expected side is DERIVED from the published side, so an empty parse would satisfy the
+                // comparison rather than fail it. A change to the table's markup that stopped the reader
+                // matching would then read as "no drift" — the one way this gate can go quietly meaningless.
+                Assert.That(published, Is.Not.Empty, "§4's rows could not be read at all");
+
+                Assert.That(published, Is.EqualTo(expected).AsCollection,
+                    "problem-catalogue.md §4's Blocks column no longer matches the declarations — run the "
+                    + "[Explicit] Regenerate_SectionFoursGeneratedCells test and explain every cell the diff moves");
+            });
+        }
+
+        /// <summary>
+        /// §4's <b>Severity</b> column, generated on the same footing as Blocks beside it — and for the same
+        /// reason. It is a fact about the declarations, not prose, and it is the cell that has drifted from them
+        /// most: <c>root-version</c> published "Fatal error | Open" for a row that refuses nothing, and
+        /// <c>attr-required</c> published "Error | —" for a row that has always refused the save.
+        ///
+        /// <para><b>The rule this encodes is §2's, not a new one.</b> §4's <i>Fatal error</i> wording is about
+        /// the FILE LIFECYCLE and the two controller transfers: the operation cannot be carried through, so
+        /// nothing is opened, written or sent. A row refusing only <c>edit.open</c> is deliberately NOT worded
+        /// that way here — the file opens, saves and uploads perfectly well, and only the editor declines it, so
+        /// the section calls it an Error and names the refusal in Blocks. That is why
+        /// <c>id-duplicate-token</c> reads "Error | Edit-open" and is nonetheless a Fatal ROW in the panel:
+        /// the two views ask different questions, and each answers its own.</para>
+        ///
+        /// <para><b>The panel is not this.</b> Its tier is <c>Severity == Error &amp;&amp; refuses something</c>,
+        /// which includes the edit-open row. Generating this column does not unify the two — it makes the
+        /// difference DERIVED and reviewable instead of retyped.</para>
+        /// </summary>
+        [Test]
+        public void TheSeverityColumnMatchesWhatTheRowsDeclare()
+        {
+            ImmutableArray<(string Id, string Severity)> published =
+                [.. SectionFourRows.Select(row => (row.Id, row.Severity))];
+            ImmutableArray<(string Id, string Severity)> expected =
+                [.. published.Select(row => (row.Id, SeverityCell(row.Id)))];
+
+            Assert.Multiple(() =>
+            {
+                // Same non-vacuity guard as the Blocks gate, for the same reason: both sides are derived from
+                // one parse, so a reader that stopped matching would read as agreement.
+                Assert.That(published, Is.Not.Empty, "§4's rows could not be read at all");
+
+                Assert.That(published, Is.EqualTo(expected).AsCollection,
+                    "problem-catalogue.md §4's Severity column no longer matches the declarations — run the "
+                    + "[Explicit] Regenerate_SectionFoursGeneratedCells test and explain every cell the diff moves");
+            });
+        }
+
+        /// <summary>
+        /// A row that refuses a PUBLISHED operation is published. The comparison above holds every §4 row's cell
+        /// to its declaration, but says nothing about a row that has left §4 altogether — both of its sides come
+        /// from the same parsed table, so a deleted row takes its own assertion with it.
+        /// <para>
+        /// Derived from the declarations rather than pinned as a count, so it needs no hand-maintained number and
+        /// covers exactly what this column is for: a fatal row cannot vanish from the published table unnoticed.
+        /// Every head now has a label, so the exemption this once carried — a row refusing only
+        /// <c>edit.open</c>, with nothing to publish — no longer applies to anything.
+        /// </para>
+        /// <para>
+        /// A <see cref="ProblemCodeStatus.RuledOut"/> row is excluded, and that is a statement about §4 rather
+        /// than a loophole: the section documents the conditions a user can MEET, and a ruled-out row describes
+        /// one nothing reports. <c>load-truncated</c> is the case — it names <c>io.load</c> because that is the
+        /// operation its condition would stop, while §6 records why the condition is never separately decided.
+        /// Publishing it would put a row in the fatal table that no file can ever produce.
+        /// </para>
+        /// </summary>
+        [Test]
+        public void EveryRowThatRefusesAPublishedOperationAppearsInSectionFour()
+        {
+            IEnumerable<string> shouldBePublished = ProblemCatalog.Current.Entries
+                .Where(e => e.Status != ProblemCodeStatus.RuledOut)
+                .Where(e => e.RefusedOperations.Any(op => PublishedAs(op) is not null))
+                .Select(e => e.Code.Value);
+
+            Assert.That(SectionFourRows.Select(row => row.Id), Is.SupersetOf(shouldBePublished),
+                "a row declaring a refusal §4 has a word for is missing from that section");
+        }
+
+        /// <summary>
+        /// The published vocabulary is closed, and EVERY head has a word in it. The subset half stops a
+        /// generated column inventing documentation; the total half stops it going quietly lossy, which is how
+        /// one declaration came to have three published answers.
+        /// </summary>
+        [Test]
+        public void EveryOperationHeadHasExactlyOnePublishedLabel()
+        {
+            string?[] labels = [.. OperationCodes.All.Select(PublishedAs)];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(labels, Has.None.Null,
+                    "a head with no label cannot be published, so §4 would silently under-report the row");
+                Assert.That(labels, Is.Unique,
+                    "two heads sharing a word make the column ambiguous — a reader cannot tell which operation");
+                // Split first: a row refusing two operations renders one cell holding both words, so the cell
+                // is a list of labels rather than a label.
+                Assert.That(
+                    SectionFourRows
+                        .SelectMany(row => row.Blocks.Split(", ", StringSplitOptions.None))
+                        .Distinct(),
+                    Is.SubsetOf([.. labels, NoRefusal]),
+                    "§4 publishes a word the head map does not produce");
+            });
+        }
+
+        /// <summary>
+        /// §7's first MUST, read back off the table: "A <b>Fatal error</b> aborts the operation, naming which one
+        /// was refused". A row published as Fatal with an empty Blocks cell breaks that requirement on the page.
+        /// <para>
+        /// The pairing is only checkable now that the cell is rendered rather than typed, and generating it
+        /// produced exactly one: <c>root-version</c> was published as Fatal while declaring no refusal, so its
+        /// Severity cell was the wrong half. The declaration says <c>Error</c>, and it now reads Error.
+        /// </para>
+        /// </summary>
+        [Test]
+        public void EveryRowPublishedAsFatalNamesTheOperationItRefuses()
+        {
+            Assert.Multiple(() =>
+            {
+                foreach ((string id, string severity, string blocks) in SectionFourRows)
+                {
+                    if (!string.Equals(severity, Fatal, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    Assert.That(blocks, Is.Not.EqualTo(NoRefusal),
+                        $"{id} is published as a Fatal error but names no refused operation, which §7 "
+                        + "requires. Either the row declares a refusal it does not, or its Severity cell does");
+                }
+            });
+        }
+
+        /// <summary>
+        /// Rewrites BOTH of §4's generated cells in place — Severity and Blocks, in one pass, because they are
+        /// two halves of one statement and rewriting either alone can leave the pair contradicting §7.
+        /// <see cref="ExplicitAttribute"/> for the same reason as its two siblings: a test that rewrites what it
+        /// compares against passes unconditionally.
+        /// </summary>
+        [Test]
+        [Explicit("Rewrites problem-catalogue.md §4's Severity and Blocks columns; run deliberately and review the diff.")]
+        public void Regenerate_SectionFoursGeneratedCells()
+        {
+            string path = CataloguePath;
+            string[] lines = File.ReadAllLines(path);
+            int changed = 0;
+
+            foreach (int index in SectionFourRowIndexes(lines))
+            {
+                string[] cells = SplitRow(lines[index]);
+                string id = IdOf(cells);
+                (int Column, string Rendered)[] generated = [(2, SeverityCell(id)), (3, BlocksCell(id))];
+                bool moved = false;
+
+                foreach ((int column, string rendered) in generated)
+                {
+                    if (string.Equals(cells[column], rendered, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    TestContext.Out.WriteLine($"  {id} [{column}]: '{cells[column]}' -> '{rendered}'");
+                    cells[column] = rendered;
+                    moved = true;
+                }
+
+                if (moved)
+                {
+                    lines[index] = "| " + string.Join(" | ", cells) + " |";
+                    changed++;
+                }
+            }
+
+            File.WriteAllText(path, string.Join("\n", lines) + "\n", new UTF8Encoding(false));
+            TestContext.Out.WriteLine($"rewrote {changed} §4 row(s) in {path}");
+        }
+
+        /// <summary>U+2014 EM DASH — the cell §4 uses for a row that refuses nothing.</summary>
+        private const string NoRefusal = "—";
+
+        /// <summary>§4's word for a row whose condition stops the operation outright.</summary>
+        private const string Fatal = "Fatal error";
+
+        /// <summary>
+        /// One row's Severity cell, as §4 words it — derived from the row's disposition and, for the Error rows,
+        /// from WHICH operations it refuses.
+        /// <para>
+        /// The <c>edit.open</c> exclusion is the whole subtlety and it is §2's rule, not this renderer's: §4
+        /// reserves <i>Fatal error</i> for a condition that stops the file lifecycle or a controller transfer.
+        /// A row that only stops the EDITOR leaves the file openable, savable and sendable, so the section words
+        /// it Error and lets Blocks name the refusal.
+        /// </para>
+        /// </summary>
+        private static string SeverityCell(string id)
+        {
+            if (!ProblemCatalog.Current.TryGet(new ProblemCode(id), out ProblemCatalogEntry entry))
+            {
+                Assert.Fail($"§4 publishes '{id}', which no catalogue entry declares");
+            }
+
+            bool stopsMoreThanTheEditor =
+                entry.RefusedOperations.Any(op => op.Value != OperationCodes.EditOpen.Value);
+
+            return entry.Disposition switch
+            {
+                CatalogDisposition.Refusal => Fatal,
+                CatalogDisposition.Error when stopsMoreThanTheEditor => Fatal,
+                CatalogDisposition.Error => "Error",
+                CatalogDisposition.Warning => "Warning",
+                CatalogDisposition.Info => "Information",
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(id), entry.Disposition, "Unknown disposition"),
+            };
+        }
+
+        /// <summary>
+        /// One row's Blocks cell, as §4 words it. The order is the section's own: the file lifecycle read
+        /// left to right, so a row refusing two operations reads the same way every time.
+        /// </summary>
+        private static string BlocksCell(string id)
+        {
+            if (!ProblemCatalog.Current.TryGet(new ProblemCode(id), out ProblemCatalogEntry entry))
+            {
+                Assert.Fail($"§4 publishes '{id}', which no catalogue entry declares");
+            }
+
+            // Head order, not alphabetical: the file lifecycle first, then the edit boundary, then the two
+            // transfers — so a row refusing two operations reads the same way every time.
+            string[] labels =
+            [
+                .. OperationCodes.All
+                    .Where(head => entry.RefusedOperations.Any(op => op.Value == head.Value))
+                    .Select(head => PublishedAs(head)!),
+            ];
+
+            return labels.Length == 0 ? NoRefusal : string.Join(", ", labels);
+        }
+
+        /// <summary>
+        /// How §4 words each operation head — one word per head, all six, none shared.
+        /// <para>
+        /// <c>Download</c> and <c>Upload</c> rather than the file words <c>Import</c> and <c>Export</c>: the
+        /// controller directions are not file operations, they are the two ends of a transfer, and §4's own
+        /// finding text for them already says "download" and "uploaded". <c>Edit-open</c> is the phrase the
+        /// entries' own doc-comments use ("also refused at edit-open").
+        /// </para>
+        /// <para>
+        /// A head with no word returns null and fails <see cref="EveryOperationHeadHasExactlyOnePublishedLabel"/>
+        /// rather than silently publishing an em dash, so adding a seventh head is a decision about how the
+        /// section words it, not something a renderer settles by omission.
+        /// </para>
+        /// </summary>
+        private static string? PublishedAs(ProblemCode operation) => operation.Value switch
+        {
+            "io.load" => "Open",
+            "io.save" => "Save · Export",
+            "edit.open" => "Edit-open",
+            "import.catalog" => "Import",
+            "bridge.download" => "Download",
+            "bridge.upload" => "Upload",
+            _ => null,
+        };
+
+        /// <summary>
+        /// §4's rows, parsed once: the code, the Severity cell and the Blocks cell. The page is a checked-in
+        /// file that no test writes while one is reading, so the four gates over it share one parse rather
+        /// than re-reading and re-splitting it apiece.
+        /// </summary>
+        private static ImmutableArray<(string Id, string Severity, string Blocks)> SectionFourRows =>
+            LazySectionFourRows.Value;
+
+        private static readonly Lazy<ImmutableArray<(string Id, string Severity, string Blocks)>>
+            LazySectionFourRows = new(() =>
+            {
+                string[] lines = File.ReadAllLines(CataloguePath);
+                return
+                [
+                    .. SectionFourRowIndexes(lines)
+                        .Select(index => SplitRow(lines[index]))
+                        .Select(cells => (IdOf(cells), cells[2], cells[3])),
+                ];
+            });
+
+        private static IEnumerable<int> SectionFourRowIndexes(string[] lines)
+        {
+            int start = Array.FindIndex(lines, l => l.StartsWith("## 4. ", StringComparison.Ordinal));
+            Assert.That(start, Is.GreaterThanOrEqualTo(0), "the catalogue has no §4 heading");
+
+            int end = Array.FindIndex(lines, start + 1, l => l.StartsWith("## 5. ", StringComparison.Ordinal));
+            Assert.That(end, Is.GreaterThan(start), "§4 has no following section, so its table has no end");
+
+            return Enumerable.Range(start, end - start)
+                .Where(i => lines[i].StartsWith("| `", StringComparison.Ordinal));
+        }
+
+        private static string[] SplitRow(string line) =>
+            [.. line.Trim().Trim('|').Split('|').Select(c => c.Trim())];
+
+        /// <summary>The row's code. Some Id cells carry a trailing reclassification marker after the token.</summary>
+        private static string IdOf(string[] cells) => cells[0][1..cells[0].IndexOf('`', 1)];
+
+        /// <summary>
+        /// The counts table carries a column per FINDING disposition, so a row is counted wherever it lands. It
+        /// had four columns while <see cref="CatalogDisposition"/> had three finding-producing members and one
+        /// refusal; the fourth member arrived with nowhere to be counted.
+        /// </summary>
+        [Test]
+        public void TheCategoryTableCountsEveryFindingDisposition()
+        {
+            string[] lines = RenderCategoryCounts(ProblemCatalog.Current).Split('\n');
+            string header = lines.First(l => l.StartsWith("| Code |", StringComparison.Ordinal));
+
+            Assert.That(header, Is.EqualTo("| Code | Fatal error | Error | Warning | Information | Total |"),
+                "the columns run down the tier order, with the refusal column first under the name §2 gives it");
+        }
+
+        /// <summary>
+        /// The Information column reads 0 in every category today, and a column hard-coded to 0 would read the
+        /// same — so it is proven WIRED by seeding a row that declares
+        /// <see cref="CatalogDisposition.Info"/> and watching the column move. No shipped row declares one, and
+        /// this seeded catalogue is local to the test, so nothing it counts reaches the checked-in table.
+        /// </summary>
+        [Test]
+        public void TheInformationColumnCountsARowThatDeclaresIt()
+        {
+            string shipped = RenderCategoryCounts(ProblemCatalog.Current);
+            ProblemCatalog seeded = ProblemCatalog.From(
+            [
+                .. ProblemCatalog.Current.Entries,
+                new ProblemCatalogEntry(new ProblemCode("seeded-information-row"),
+                    ProblemCatalogSection.ProjectFindings, ValidationCategory.Scenes, CatalogDisposition.Info,
+                    RuleKind.UserContentRule, RuleFaces.WholeProject, default, FindingShape.OneFinding, default,
+                    "Syntetisk oplysning."),
+            ]);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(CategoryRow(shipped, "SCN"), Is.EqualTo("| **SCN** | 0 | 2 | 7 | 0 | 9 |"),
+                    "no shipped row declares Info, so every Information cell reads 0 today");
+                string counted = RenderCategoryCounts(seeded);
+                Assert.That(CategoryRow(counted, "SCN"), Is.EqualTo("| **SCN** | 0 | 2 | 7 | 1 | 10 |"),
+                    "the seeded row must be counted in its own category's Information cell and in its total");
+                Assert.That(
+                    counted.Split('\n')
+                        .First(l => l.StartsWith("| **Total**", StringComparison.Ordinal)),
+                    Does.Contain("| **1** |"), "and in the Information grand total");
+            });
+        }
+
+        private static string CategoryRow(string table, string shortCode) =>
+            table.Split('\n').First(l => l.StartsWith($"| **{shortCode}** |", StringComparison.Ordinal));
 
         /// <summary>
         /// The standing constraint on generation: it must not become the ONLY way to build a problem, or the open
@@ -133,9 +518,15 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
-        /// The counts table. The <b>Fatal error</b> column is <see cref="CatalogDisposition.Refusal"/> under the
-        /// name §2 already gives it — the code has no <c>Fatal</c> disposition and inventing one so a table could
-        /// keep its heading would be the document dictating the model.
+        /// The counts table — one column per <see cref="CatalogDisposition"/>, so every row is counted somewhere.
+        /// The <b>Fatal error</b> column is <see cref="CatalogDisposition.Refusal"/> under the name §2 already
+        /// gives it — the code has no <c>Fatal</c> disposition and inventing one so a table could keep its heading
+        /// would be the document dictating the model.
+        /// <para>
+        /// The grand total is summed from the four columns rather than from the row count, so it and the per-row
+        /// totals cannot disagree. They could before the fourth column existed: a row's own Total came from
+        /// <c>rows.Count</c> and counted every disposition, while the grand total added three of them.
+        /// </para>
         /// </summary>
         private static string RenderCategoryCounts(ProblemCatalog catalog)
         {
@@ -143,24 +534,30 @@ namespace Ihc.Vis.Tests
             page.Append("\nThe **Fatal error** column is the `Refusal` disposition under the name §2 gives it; the code has\n");
             page.Append("no `Fatal` value. Only CATEGORISED entries are counted, so this total is smaller than the\n");
             page.Append("catalogue's own: the operation-outcome heads carry no category, by design.\n\n");
-            page.Append("| Code | Fatal error | Error | Warning | Total |\n");
-            page.Append("| --- | --- | --- | --- | --- |\n");
+            page.Append("**Information** reads 0 throughout: the disposition is declarable, "
+                + "and no row declares it yet.\n\n");
+            page.Append("| Code | Fatal error | Error | Warning | Information | Total |\n");
+            page.Append("| --- | --- | --- | --- | --- | --- |\n");
 
-            int fatal = 0, error = 0, warning = 0;
+            int fatal = 0, error = 0, warning = 0, information = 0;
             foreach (ValidationCategory category in Enum.GetValues<ValidationCategory>())
             {
                 IReadOnlyList<ProblemCatalogEntry> rows = [.. catalog.Entries.Where(e => e.Category == category)];
                 int refusals = rows.Count(e => e.Disposition == CatalogDisposition.Refusal);
                 int errors = rows.Count(e => e.Disposition == CatalogDisposition.Error);
                 int warnings = rows.Count(e => e.Disposition == CatalogDisposition.Warning);
+                int infos = rows.Count(e => e.Disposition == CatalogDisposition.Info);
                 fatal += refusals;
                 error += errors;
                 warning += warnings;
+                information += infos;
 
-                page.Append($"| **{category.ShortCode}** | {refusals} | {errors} | {warnings} | {rows.Count} |\n");
+                page.Append($"| **{category.ShortCode}** | {refusals} | {errors} | {warnings} | {infos} ");
+                page.Append($"| {refusals + errors + warnings + infos} |\n");
             }
 
-            page.Append($"| **Total** | **{fatal}** | **{error}** | **{warning}** | **{fatal + error + warning}** |\n");
+            page.Append($"| **Total** | **{fatal}** | **{error}** | **{warning}** | **{information}** ");
+            page.Append($"| **{fatal + error + warning + information}** |\n");
             return page.ToString().Trim('\n');
         }
 

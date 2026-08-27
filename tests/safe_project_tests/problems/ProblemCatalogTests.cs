@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace Ihc.Vis.Tests
@@ -51,8 +52,9 @@ namespace Ihc.Vis.Tests
                 Assert.That(project.Count(e => e.Status == ProblemCodeStatus.RuledOut), Is.EqualTo(4));
                 Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Retired), Is.EqualTo(3));
 
-                // The ten codes that already shipped with no catalogue row behind them.
-                Assert.That(definitions, Has.Count.EqualTo(10));
+                // The ten codes that already shipped with no catalogue row behind them, plus the one MINTED
+                // here: `block-identity-missing`, the function-block half of `identity-missing`'s split.
+                Assert.That(definitions, Has.Count.EqualTo(11));
 
                 // The operation-outcome section grows with the work that gives each operation a coded outcome;
                 // the catch-all is here from the start because nothing else mints it.
@@ -81,6 +83,20 @@ namespace Ihc.Vis.Tests
                     RuleKind.UserContentRule, RuleFaces.WholeProject, default,
                     FindingShape.OnePerOccurrence, default, "Label");
 
+            // The refusal PAIR, seeded from both halves: an advisory row that nonetheless refuses, and a Refusal
+            // row that names no head. Between them they say what the two checks are for — refusing is the
+            // hardest thing a row can do, so it may not hide under a Warning, and it may not be unattributed.
+            ProblemCatalogEntry advisoryThatRefuses =
+                Row("advisory-that-refuses", ProblemCatalogSection.ProjectFindings, ValidationCategory.Logic) with
+                {
+                    RefusedOperations = ImmutableArray.Create(OperationCodes.Save),
+                };
+            ProblemCatalogEntry refusalNamingNothing =
+                Row("refusal-naming-nothing", ProblemCatalogSection.ProjectFindings, ValidationCategory.Logic) with
+                {
+                    Disposition = CatalogDisposition.Refusal,
+                };
+
             ProblemCatalog broken = ProblemCatalog.From(EquatableArray.Create<ProblemCatalogEntry>(
             [
                 Row("twice", ProblemCatalogSection.ProjectFindings, ValidationCategory.Logic),
@@ -88,9 +104,34 @@ namespace Ihc.Vis.Tests
                 Row("io.load", ProblemCatalogSection.OperationOutcomes, ValidationCategory.FileIntegrity),
                 Row("no-category", ProblemCatalogSection.ProjectFindings, null),
                 Row("unimplemented", ProblemCatalogSection.ProjectFindings, ValidationCategory.Logic),
+                advisoryThatRefuses,
+                refusalNamingNothing,
+            ]));
+
+            // The same two shapes made legal, plus the operation head that declares nothing BY RULE. A check
+            // that reported every refusal, or every empty declaration, would fail here instead of passing.
+            ProblemCatalog compliant = ProblemCatalog.From(EquatableArray.Create<ProblemCatalogEntry>(
+            [
+                advisoryThatRefuses with
+                {
+                    Code = new ProblemCode("error-that-refuses"), Disposition = CatalogDisposition.Error,
+                },
+                refusalNamingNothing with
+                {
+                    Code = new ProblemCode("refusal-naming-its-head"),
+                    RefusedOperations = ImmutableArray.Create(OperationCodes.Load),
+                },
+                refusalNamingNothing with
+                {
+                    Code = new ProblemCode("io.seeded-head"),
+                    Section = ProblemCatalogSection.OperationOutcomes,
+                    Category = null,
+                },
             ]));
 
             CatalogViolation[] fromDeclarations = [.. CatalogInvariants.Check(broken, []).Select(d => d.Violation)];
+            (string Code, CatalogViolation Violation)[] attributed =
+                [.. CatalogInvariants.Check(broken, []).Select(d => (d.Code.Value, d.Violation))];
             CatalogDefect[] withRules = [.. CatalogInvariants.Check(broken,
                 [new ProblemCode("unimplemented"), new ProblemCode("nowhere-declared")])];
 
@@ -98,6 +139,17 @@ namespace Ihc.Vis.Tests
             {
                 Assert.That(fromDeclarations, Does.Contain(CatalogViolation.DuplicateCode));
                 Assert.That(fromDeclarations, Does.Contain(CatalogViolation.CategoryMisplaced));
+
+                Assert.That(attributed,
+                    Does.Contain(("advisory-that-refuses", CatalogViolation.RefusedOperationOnAdvisoryDisposition)),
+                    "a Warning row declaring a refusal must be reported, and reported against ITS code");
+                Assert.That(attributed,
+                    Does.Contain(("refusal-naming-nothing", CatalogViolation.RefusalWithoutRefusedOperation)),
+                    "a Refusal content row naming no head must be reported");
+
+                Assert.That(CatalogInvariants.Check(compliant, []), Is.Empty,
+                    "an Error row may refuse, a Refusal row that names its head is what every shipped refusal "
+                    + "looks like, and an operation head refuses nothing because it IS the operation");
 
                 Assert.That(withRules.Select(d => d.Violation), Does.Contain(CatalogViolation.EntryWithoutRule));
                 Assert.That(withRules.Where(d => d.Violation == CatalogViolation.RuleWithoutEntry)
@@ -143,23 +195,141 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        /// <summary>
+        /// Severity follows from disposition, asserted over the DISPOSITION AXIS rather than over the shipped
+        /// rows. A row walk is only as complete as the catalogue happens to be, and no shipped row declares
+        /// <see cref="CatalogDisposition.Info"/> — so iterating the rows asserts nothing about the fourth member
+        /// and keeps passing if it maps to Warning, to null, or to nothing at all. It also has to restate the
+        /// mapping to compare against, which is a second copy of the very derivation under test.
+        /// <para>
+        /// So every member is seeded here instead, which makes the mapping total by construction: a fifth
+        /// disposition added without a severity fails this immediately.
+        /// </para>
+        /// </summary>
         [Test]
-        public void SeverityFollowsFromDispositionSoTheTwoCannotDisagree()
+        public void EveryDispositionDerivesItsSeverityIncludingTheOnesNoRowDeclaresYet()
         {
+            (CatalogDisposition Disposition, ValidationSeverity? Severity)[] axis =
+            [
+                (CatalogDisposition.Error, ValidationSeverity.Error),
+                (CatalogDisposition.Warning, ValidationSeverity.Warning),
+                (CatalogDisposition.Info, ValidationSeverity.Info),
+                (CatalogDisposition.Refusal, null),
+            ];
+
             Assert.Multiple(() =>
             {
-                foreach (ProblemCatalogEntry entry in Catalog.Entries)
+                Assert.That(axis.Select(a => a.Disposition),
+                    Is.EquivalentTo(Enum.GetValues<CatalogDisposition>()),
+                    "a disposition was added without saying which severity it reports as");
+
+                foreach ((CatalogDisposition disposition, ValidationSeverity? severity) in axis)
                 {
-                    ValidationSeverity? expected = entry.Disposition switch
-                    {
-                        CatalogDisposition.Error => ValidationSeverity.Error,
-                        CatalogDisposition.Warning => ValidationSeverity.Warning,
-                        _ => null,
-                    };
-                    Assert.That(entry.Severity, Is.EqualTo(expected), entry.Code.Value);
+                    Assert.That(Seeded(disposition).Severity, Is.EqualTo(severity), disposition.ToString());
                 }
             });
         }
+
+        /// <summary>
+        /// The refusal a row causes is DECLARED, so nothing has to read a prose column to learn it. The three
+        /// rows below are the ones §4's <b>Blocks</b> column got wrong while it was hand-written, and each is
+        /// now published from the declaration this test pins.
+        /// <para>
+        /// <c>attr-undeclared</c> refuses the save AND the edit-open. Its declaration said so in a doc-comment
+        /// for want of a field, at a time when the column published four file-lifecycle labels and
+        /// <c>edit.open</c> was not one of them; §4 renders both today.
+        /// </para>
+        /// <para>
+        /// <c>root-version</c> refuses NOTHING. No member of <c>LoadRefusalCodes</c> carries it, and the row is
+        /// reported by <c>StructureRules</c> as an ordinary Error finding instead — so the "Fatal error | Open"
+        /// the column once published was drift on both halves, and generating them corrected it to "Error | —".
+        /// </para>
+        /// </summary>
+        [Test]
+        public void ARowDeclaresTheOperationsItRefusesRatherThanLeavingThemToProse()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Refused("attr-undeclared"),
+                    Is.EquivalentTo(new[] { OperationCodes.Save, OperationCodes.EditOpen }),
+                    "the save and the edit-open, which §4 now publishes as 'Save · Export, Edit-open'");
+                Assert.That(Refused("root-version"), Is.Empty,
+                    "nothing refuses an open under this cause, and §4 reads 'Error | —' accordingly");
+                Assert.That(Refused("id-duplicate-token"), Is.EqualTo(new[] { OperationCodes.EditOpen }),
+                    "the edit-open alone — which §4 words 'Error | Edit-open', because the file itself still "
+                    + "opens and saves, while the PANEL lists the row as fatal. Two views, two questions");
+            });
+        }
+
+        /// <summary>
+        /// An operation head declares no refused operation: it IS the operation, not a cause of one. Declaring
+        /// <c>io.save</c> on <c>io.save</c> would make the head its own cause and put the operation itself in a
+        /// panel tier meant for content findings.
+        /// </summary>
+        [Test]
+        public void AnOperationHeadRefusesNothingBecauseItIsTheOperationAndNotACause()
+        {
+            Assert.Multiple(() =>
+            {
+                foreach (ProblemCatalogEntry entry in
+                    Catalog.Entries.Where(e => e.Section == ProblemCatalogSection.OperationOutcomes))
+                {
+                    Assert.That(entry.RefusedOperations, Is.Empty, entry.Code.Value);
+                }
+            });
+        }
+
+        /// <summary>
+        /// The vocabulary is closed: a declared refusal names one of the six operation heads. Anything else — a
+        /// cause code, a typo, a host code — would name an operation no filter and no send gate can act on.
+        /// Armed from both sides, since an invariant that cannot fail governs nothing.
+        /// </summary>
+        [Test]
+        public void ADeclaredRefusalMustNameAnOperationHead()
+        {
+            ProblemCatalogEntry offender = Seeded(CatalogDisposition.Error) with
+            {
+                Code = new ProblemCode("row-refusing-a-non-head"),
+                RefusedOperations = ImmutableArray.Create(new ProblemCode("name-empty")),
+            };
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(CatalogInvariants.Check(Catalog, []), Is.Empty,
+                    "the shipped catalogue declares only heads");
+
+                Assert.That(
+                    CatalogInvariants.Check(ProblemCatalog.From([.. Catalog.Entries, offender]), [])
+                        .Select(d => (d.Code.Value, d.Violation)),
+                    Does.Contain((offender.Code.Value, CatalogViolation.RefusedOperationNotAnOperationHead)),
+                    "a refused operation that is not an operation head must be reported");
+
+                Assert.That(
+                    CatalogInvariants.Check(
+                        ProblemCatalog.From([.. Catalog.Entries, offender with
+                        {
+                            RefusedOperations = ImmutableArray.Create(OperationCodes.BridgeUpload),
+                        }]), []),
+                    Is.Empty,
+                    "and the same row naming a real head must not be");
+            });
+        }
+
+        private static EquatableArray<ProblemCode> Refused(string code)
+        {
+            Assert.That(Catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry), Is.True, code);
+            return entry.RefusedOperations;
+        }
+
+        /// <summary>
+        /// An entry that exists only to exercise the disposition axis. It is never registered in a catalogue, so
+        /// it moves no count, no oracle and no generated table.
+        /// </summary>
+        private static ProblemCatalogEntry Seeded(CatalogDisposition disposition) =>
+            new(new ProblemCode("seeded-" + disposition.ToString().ToLowerInvariant()),
+                ProblemCatalogSection.ProjectFindings, ValidationCategory.Logic, disposition,
+                RuleKind.UserContentRule, RuleFaces.WholeProject, default, FindingShape.OneFinding, default,
+                "Syntetisk række.");
 
         /// <summary>
         /// Some project rows §4 publishes as Fatal also produce a finding today — the four schema guards that

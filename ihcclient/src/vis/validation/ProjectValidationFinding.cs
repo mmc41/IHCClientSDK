@@ -85,6 +85,23 @@ namespace Ihc.Vis.Validation
         /// <summary>The check family this finding belongs to; <see cref="ValidationCategory.FileIntegrity"/> by default.</summary>
         public ValidationCategory Category { get; init; } = ValidationCategory.FileIntegrity;
 
+        /// <summary>
+        /// The ENGLISH engine sentence, beside the Danish <see cref="Message"/> a user reads — the same pairing
+        /// <see cref="Ihc.Vis.Problems.Problem.Diagnostic"/> carries on a coded problem. Not the pairing on
+        /// <see cref="ProblemCatalogEntry"/>, which holds an unbound TEMPLATE; both texts here are already
+        /// bound to this finding.
+        /// <para>
+        /// It exists because these findings' <see cref="Message"/> used to be the English text, so making it
+        /// Danish would have DESTROYED the developer-facing sentence rather than relocated it. The English
+        /// generally says more — which attribute, which tag, which enumeration — since a Danish template is a
+        /// short label; losing that detail from a log to gain it on screen would be a poor trade.
+        /// </para>
+        /// <para>
+        /// Null where the two would say the same thing in one language.
+        /// </para>
+        /// </summary>
+        public string? Diagnostic { get; init; }
+
         public override string ToString() =>
             $"[{Severity}] {RuleId}{(Locator is null ? string.Empty : " @" + Locator)}: {Message}";
     }

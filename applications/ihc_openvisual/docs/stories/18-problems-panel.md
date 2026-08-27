@@ -16,7 +16,8 @@ status: draft
 that faults are found while the project is being built rather than when it is being handed over.
 
 **Scope:** a bottom panel listing the current findings with severity, code, message, element and category;
-continuous background revalidation as the project changes; per-severity filtering with live counts; per-column
+continuous background revalidation as the project changes; per-tier filtering with live counts across four tiers
+(*Fatale fejl*, *Fejl*, *Advarsler*, *Information*); per-column
 sorting; one-click navigation to the offending element; saving the panel's own list as a file; and withholding
 controller transfer while the project carries errors. Out of scope: suppressing or acknowledging a finding
 (deliberately foreclosed — an id is a filtering key, never a way to silence a finding), authoring new rules, and
@@ -78,15 +79,19 @@ one I am working through.
 
 **Acceptance criteria**
 
-- MUST: **Given** the three severity filters, **when** the panel opens, **then** all three are on, and each
-  shows how many findings of its severity the project has.
-- MUST: **Given** a severity filter, **when** it is switched off, **then** that severity's rows are hidden while
+- MUST: **Given** the four tier filters — *Fatale fejl*, *Fejl*, *Advarsler*, *Information* — **when** the panel
+  opens, **then** all four are on, and each shows how many findings of its tier the project has.
+- MUST: **Given** a finding whose rule refuses an operation, **when** it is listed, **then** it appears under
+  *Fatale fejl* and not under *Fejl*, though both tiers hold Error findings and both withhold controller
+  transfer — the split says which faults stop the project being written at all.
+- MUST: **Given** a tier filter, **when** it is switched off, **then** that tier's rows are hidden while
   its count is unchanged — hiding findings never suggests they were fixed.
 - MUST: **Given** any column, **when** its header is chosen, **then** the list sorts by that column; **and when**
   it is chosen again, **then** the direction reverses, with the current direction shown on that header alone.
 - MUST: **Given** Danish element names, **when** they are sorted, **then** Æ, Ø and Å order after Z.
-- SHOULD: **Given** no sort has been chosen, **when** the list is shown, **then** the worst findings are first
-  and findings of equal severity keep the order the project reads in.
+- SHOULD: **Given** no sort has been chosen, **when** the list is shown, **then** the worst findings are first —
+  *Fatale fejl*, then *Fejl*, then *Advarsler*, then *Information* — and findings of equal tier keep the order
+  the project reads in.
 
 ## US-083 — Go from a finding to the element it is about
 
@@ -145,10 +150,11 @@ project, compare it with a later one, or send it to whoever is helping me.
 - MUST: **Given** the project has been edited past the findings on screen, **when** the export is offered,
   **then** it is withheld — the file would describe a superseded project while naming the current one, and
   would say so nowhere.
-- MUST: **Given** findings have been hidden by a severity filter, **when** the list is exported, **then** the
-  file holds exactly the findings on screen, **and** it records which severities were included, so a short file
-  cannot be mistaken for a short list of problems.
-- MUST: **Given** every severity filter is switched off, **when** the list is exported, **then** the file holds
+- MUST: **Given** findings have been hidden by a tier filter, **when** the list is exported, **then** the
+  file holds exactly the findings on screen, **and** it records which tiers were included, so a short file
+  cannot be mistaken for a short list of problems. *Fatale fejl* and *Fejl* both being Error findings, recording
+  the severities alone cannot tell a fatal-only export from an all-errors one, so the file must say.
+- MUST: **Given** every tier filter is switched off, **when** the list is exported, **then** the file holds
   no findings and records that none were included — this file and the clean project's file must not read alike.
 - MUST: **Given** a column has been sorted, **when** the list is exported, **then** the file's findings are in
   the order the panel shows them.

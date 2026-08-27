@@ -101,7 +101,13 @@
             }
         }
 
-        return !Log.HasLoggedErrors;
+        // Phrased as an early return rather than `return !Log.HasLoggedErrors;`: RoslynCodeTaskFactory
+        // appends its own `return true;` after a Fragment, so an unconditional return here makes that
+        // appended line unreachable and the task compiles with CS0162 every time this target runs.
+        if (Log.HasLoggedErrors)
+        {
+            return false;
+        }
         ]]>
       </Code>
     </Task>

@@ -174,7 +174,13 @@ namespace Ihc.Vis.Validation
                 profile.SeverityFor(entry),
                 entry.Category ?? ValidationCategory.FileIntegrity,
                 Locate(paths, emission.Primary, grouped ? DescribeSite(emission.Primary) : null),
-                emission.Related.Select(r => Locate(paths, r, DescribeSite(r))!).ToImmutableArray());
+                emission.Related.Select(r => Locate(paths, r, DescribeSite(r))!).ToImmutableArray())
+            {
+                // Projected from the entry, not re-derived: a host may not read the catalogue, so this is the
+                // only door the fact has. Deliberately NOT on the failure branch above — a rule that threw
+                // reports an engine fault, and an engine fault refuses none of the row's operations.
+                RefusedOperations = entry.RefusedOperations,
+            };
         }
 
         /// <summary>

@@ -7,9 +7,10 @@ namespace Ihc.Vis.Tests
     /// <summary>
     /// Profiles and blocking, kept apart — the distinction the whole two-axis design rests on.
     ///
-    /// <para><b>A profile changes what is LOOKED FOR.</b> Two axes and no more: AUDIENCE (structural versus
-    /// categorized, the distinction the two shipped entry points already draw) and EVALUABILITY (a rule needing
-    /// facts about a target controller is not in a project-only profile at all).</para>
+    /// <para><b>A profile changes what is LOOKED FOR.</b> AUDIENCE (structural versus categorized, the distinction
+    /// the two shipped entry points already draw) and EVALUABILITY (a rule needing facts about a target controller
+    /// is not in a project-only profile at all) are the two this fixture owns. A third, APPLICABILITY, runs the
+    /// other way and is covered by <see cref="FirmwareNarrowingTests"/>.</para>
     ///
     /// <para><b>Blocking changes what is TOLERATED</b>, and it is one read over the findings of ONE pass: errors
     /// block, warnings do not. Conflating the two would let a stricter gate silently run rules the user never saw
@@ -19,10 +20,11 @@ namespace Ihc.Vis.Tests
     /// stricter selects a profile that PROMOTES the rule it cares about, so the finding the user sees and the
     /// finding that blocks are the same finding — which a separate threshold would have broken apart.</para>
     ///
-    /// <para><b>Required context, after the evidence check.</b> Exactly ONE survives: a target controller's
-    /// capability limits, needed by three capacity rows. There is no implicit fallback — a capacity rule with no
-    /// limits supplied is not evaluated, rather than evaluated against a guess, because the same project must not
-    /// be valid on one workstation and invalid on another.</para>
+    /// <para><b>Required context, after the evidence check.</b> Two contexts are REQUIRED ones — a target
+    /// controller's capability limits, and the library a placed block claims. There is no implicit fallback: a rule
+    /// with neither supplied is not evaluated, rather than evaluated against a guess, because the same project must
+    /// not be valid on one workstation and invalid on another. A third context, a target's firmware, is not of this
+    /// kind at all — it is never required, and supplying it can only withhold a finding.</para>
     /// </summary>
     [TestFixture]
     public sealed class ProfileAndThresholdTests

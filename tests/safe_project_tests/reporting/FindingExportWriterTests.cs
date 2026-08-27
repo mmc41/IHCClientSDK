@@ -113,7 +113,7 @@ namespace Ihc.Vis.Tests
                 "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\r\n"
                 + "<ihc_project_findings version=\"1\" source=\"Project1-SimpelWired.vis\""
                 + " generated=\"2026-07-30T12:00:00+00:00\" saved_stamp=\"_0x2\" order=\"production\""
-                + " severities=\"Error Warning Info\""
+                + " severities=\"Error Warning Info\" error_tiers=\"refusing ordinary\""
                 // Seven, not the six capacity rows alone: ValidationProfile.Categorized supplies neither a
                 // controller nor a library, so the one library-gated rule could not run either. An export
                 // through the app service, whose profile does carry the library port, lists only the six.
@@ -138,15 +138,18 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
+                ImmutableArray<string> emitted = FindingExportProbe.AttributeNames(root);
+
                 Assert.That(
-                    FindingExportProbe.AttributeNames(root),
+                    emitted,
                     Is.EqualTo(new[]
                     {
-                        "version", "source", "generated", "saved_stamp", "order", "severities", "rules_not_run",
+                        "version", "source", "generated", "saved_stamp", "order", "severities", "error_tiers",
+                        "rules_not_run",
                     }));
                 Assert.That(
-                    FindingExportProbe.AttributeNames(root), Is.EqualTo(FindingExportWriter.RootAttributes),
-                    "the writer's own declaration and what it emits must not drift");
+                    emitted, Is.EqualTo(FindingExportWriter.RootAttributes),
+                    "the writer's own declaration and what it emits must not drift, in membership or in order");
             });
         }
 
@@ -394,7 +397,9 @@ namespace Ihc.Vis.Tests
             {
                 Assert.That(FindingExportProbe.Text(bytes), Does.Contain(" source=\"\""));
                 Assert.That(FindingExportProbe.Text(bytes), Does.Contain(" saved_stamp=\"\""));
-                Assert.That(FindingExportProbe.AttributeNames(FindingExportProbe.Text(bytes).Split("\r\n")[1]), Is.EqualTo(FindingExportWriter.RootAttributes));
+                Assert.That(
+                    FindingExportProbe.AttributeNames(FindingExportProbe.Text(bytes).Split("\r\n")[1]),
+                    Is.EqualTo(FindingExportWriter.RootAttributes));
             });
         }
 
@@ -421,6 +426,184 @@ namespace Ihc.Vis.Tests
 
             Assert.That(FindingExportProbe.Text(bytes), Does.Contain(" generated=\"2026-12-24T18:05:09+02:00\""));
         }
+
+        // ----- which of the two Error tiers were included -----
+
+        /// <summary>
+        /// The root states which of a producer's two ERROR filters were on, ALWAYS — because <c>@severities</c>
+        /// cannot: both halves are <c>Error</c>, so a list filtered to the refusing findings and a list holding
+        /// every error record the same severity set.
+        /// <para>
+        /// All five inputs are asserted together, because the rule is about the relationship between them.
+        /// Asserting one at a time would let a writer that emitted a constant pass most of them.
+        /// </para>
+        /// <para>
+        /// It is a LIST and it is required, not an optional flag. The first shape tried was a boolean present
+        /// only when the two halves differed, so its absence meant "both included" — which inverts under every
+        /// ordinary reading of an optional boolean, and would have handed a reader the opposite of the truth for
+        /// the commonest file in the corpus.
+        /// </para>
+        /// </summary>
+        [Test]
+        public void TheRootAlwaysStatesWhichErrorHalvesWereIncluded()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Root(new ErrorTierFilter(Refusing: true, Ordinary: false)),
+                    Does.Contain(" error_tiers=\"refusing\""), "the refusing half alone");
+                Assert.That(Root(new ErrorTierFilter(Refusing: false, Ordinary: true)),
+                    Does.Contain(" error_tiers=\"ordinary\""), "everything but the refusing half");
+                Assert.That(Root(new ErrorTierFilter(true, true)),
+                    Does.Contain(" error_tiers=\"refusing ordinary\""), "both, stated rather than implied");
+                // On a base whose @severities omits Error, because that is the only base on which "neither
+                // half" is a coherent statement — the writer refuses the contradicting pair outright.
+                Assert.That(RootUnder(NoErrors with { ErrorTiers = new ErrorTierFilter(false, false) }),
+                    Does.Contain(" error_tiers=\"\""), "neither — an empty list, never a missing attribute");
+
+                Assert.That(Root(null), Does.Contain(" error_tiers=\"refusing ordinary\""),
+                    "a producer with no split follows @severities, which lists Error here");
+            });
+        }
+
+        /// <summary>
+        /// <c>@severities</c> and <c>@error_tiers</c> are one statement about one filter, written twice. A caller
+        /// that supplies both may not make them disagree, so the writer refuses the pair rather than reconciling
+        /// it: either half could be the one the caller meant, and a file that silently picks reads as a complete
+        /// export while being a narrow one, or the reverse.
+        ///
+        /// <para><b>Armed in both directions</b>, because a guard that catches one is half a guard — and both
+        /// halves are reachable: a host that offers an all-errors-off filter can produce the first, and one that
+        /// leaves its severity list alone while turning both error rows off produces the second.</para>
+        ///
+        /// <para>The legal neighbours are asserted beside them so the test also says what the guard does NOT
+        /// refuse. All tiers off is one of them: an export of nothing is an honest file.</para>
+        /// </summary>
+        [Test]
+        public void AnErrorTierFilterThatContradictsTheSeveritiesIsRefused()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(() => Write(NoErrors with { ErrorTiers = new ErrorTierFilter(Refusing: true, Ordinary: false) }),
+                    Throws.ArgumentException.With.Message.Contains("Error"),
+                    "an error tier is included while @severities excludes Error");
+                Assert.That(() => Write(FindingExportOptions.Default with { ErrorTiers = new ErrorTierFilter(false, false) }),
+                    Throws.ArgumentException,
+                    "and the other way up: both halves out while @severities still lists Error");
+
+                Assert.That(() => Write(NoErrors with { ErrorTiers = new ErrorTierFilter(false, false) }),
+                    Throws.Nothing, "neither half, and no Error in the severities — agreeing, so legal");
+                Assert.That(() => Write(FindingExportOptions.Default with { ErrorTiers = new ErrorTierFilter(true, false) }),
+                    Throws.Nothing, "one half, with Error listed — the ordinary split-producer case");
+                Assert.That(() => Write(NoErrors), Throws.Nothing,
+                    "and the DERIVED path is never checked against itself: it is computed from @severities");
+            });
+        }
+
+        /// <summary>
+        /// A severity filter with no Error in it, for the cases where neither error tier is included. Info is
+        /// kept beside Warning so the base is an ordinary narrowed filter rather than a single-tier edge case.
+        /// </summary>
+        private static FindingExportOptions NoErrors => FindingExportOptions.Default with
+        {
+            Severities = EquatableArray.CreateRange<ValidationSeverity>(
+                [ValidationSeverity.Warning, ValidationSeverity.Info]),
+        };
+
+        /// <summary>
+        /// A producer with no split and no errors included says so, rather than inheriting a default. This is the
+        /// one case where the derived value is NOT "refusing ordinary", so it is what proves the derivation reads
+        /// the severity set instead of assuming it.
+        /// </summary>
+        [Test]
+        public void AProducerWithNoSplitAndNoErrorsStatesTheEmptyList()
+        {
+            string root = RootUnder(FindingExportOptions.Default with
+            {
+                Severities = EquatableArray.CreateRange<ValidationSeverity>([ValidationSeverity.Warning]),
+            });
+
+            Assert.That(root, Does.Contain(" error_tiers=\"\""));
+        }
+
+        /// <summary>Its position: immediately after the severities it qualifies, before the not-run caveat.</summary>
+        [Test]
+        public void TheErrorTiersSitBesideTheSeveritiesItQualifies()
+        {
+            ImmutableArray<string> names = FindingExportProbe.AttributeNames(
+                Root(new ErrorTierFilter(Refusing: true, Ordinary: false)));
+
+            Assert.That(names.SkipWhile(n => n != "severities"),
+                Is.EqualTo(new[] { "severities", "error_tiers", "rules_not_run" }).AsCollection);
+        }
+
+        private static string Root(ErrorTierFilter? tiers) =>
+            RootUnder(FindingExportOptions.Default with { ErrorTiers = tiers });
+
+        /// <summary>The root element the writer emits under these options, with no findings.</summary>
+        private static string RootUnder(FindingExportOptions options) =>
+            FindingExportProbe.Text(Write(options)).Split("\r\n")[1];
+
+        // ----- what a row refuses -----
+
+        /// <summary>
+        /// The refusal fact reaches the file. A reader of an export can then tell a blocking finding the user
+        /// repairs in place from one that stops the project being written at all — a distinction
+        /// <c>@severity</c> cannot make, since both are <c>Error</c>.
+        /// <para>
+        /// Emitted in DECLARATION order, not sorted: the declaration lists the operations a row refuses in the
+        /// order a reader meets them, and re-sorting here would make the file disagree with the catalogue for
+        /// no gain.
+        /// </para>
+        /// </summary>
+        [Test]
+        public void AFindingWhoseRowRefusesAnOperationCarriesThoseHeads()
+        {
+            string line = LineFor(Refusing(OperationCodes.Save, OperationCodes.EditOpen));
+
+            Assert.That(line, Does.Contain(" blocks=\"io.save edit.open\""));
+        }
+
+        /// <summary>
+        /// A row that refuses nothing omits the attribute entirely rather than writing <c>blocks=""</c>. The two
+        /// would be one statement in two spellings, and the empty form would put the attribute on nearly every
+        /// line of a corpus for no information.
+        /// </summary>
+        [Test]
+        public void AFindingWhoseRowRefusesNothingCarriesNoBlocksAttributeAtAll()
+        {
+            string line = LineFor(Refusing());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(line, Does.Not.Contain("blocks"));
+                Assert.That(line, Does.Contain(" severity=\"Error\""), "and it is still an ordinary Error");
+            });
+        }
+
+        /// <summary>
+        /// Its position: with the classification attributes it belongs to, before the site and the prose. It is
+        /// what the row COSTS, which is the same kind of fact as its severity and its category, and unlike the
+        /// trailing three it is narrow enough not to disturb the columns a reader scans.
+        /// </summary>
+        [Test]
+        public void BlocksSitsWithTheClassificationAttributesAndBeforeTheLocator()
+        {
+            ImmutableArray<string> names =
+                FindingExportProbe.AttributeNames(LineFor(Refusing(OperationCodes.Save)));
+
+            Assert.That(names.TakeWhile(n => n != "locator"),
+                Is.EqualTo(new[] { "severity", "code", "category", "blocks" }).AsCollection);
+        }
+
+        private static ValidationFinding Refusing(params ProblemCode[] operations) =>
+            Finding("attr-undeclared", "Ukendt attribut.", ValidationSeverity.Error,
+                ValidationCategory.FileIntegrity, "_0x5153") with
+            {
+                RefusedOperations = ImmutableArray.Create(operations),
+            };
+
+        private static string LineFor(ValidationFinding finding) =>
+            FindingExportProbe.FindingLines(Write(finding)).Single();
 
         // ----- helpers -----
 

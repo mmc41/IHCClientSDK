@@ -233,6 +233,121 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
+        /// The third severity, reached through the REAL pipeline rather than assigned to a hand-built finding.
+        ///
+        /// <para><b>Why the override is the way in.</b> No shipped row declares
+        /// <see cref="CatalogDisposition.Info"/> yet, so the disposition→severity mapping is exercised on a
+        /// seeded entry and the panel's Info tier on constructed rows. What neither of those covers is the path
+        /// between them: a rule emitting, the profile deciding, the finding carrying the value, and the gate
+        /// sorting it. The per-rule override reaches all four with a row that exists today, which is the
+        /// difference between "Info is a value the type can hold" and "Info is a severity a run can produce".</para>
+        ///
+        /// <para><b>The gate is asserted beside the severity</b>, because filing is the half a wrong mapping
+        /// breaks silently: a finding that read Info while <c>Infos</c> stayed empty and <c>Warnings</c> held it
+        /// would still satisfy an assertion about the finding alone.</para>
+        /// </summary>
+        [Test]
+        public void AnOverrideToInfoTravelsThroughTheRunAndIsFiledAsAnInfo()
+        {
+            ProjectElement terminal = Tree.Node("dataline_input", "_0x2a", []);
+            Project project = ProjectWith(terminal);
+            ProblemCatalogEntry entry = Entry("addr-unassigned");
+
+            WholeProjectValidator validator = new(Compose([(entry, i => i.Report(terminal, default))]).Rules);
+            EquatableArray<ValidationFinding> findings = validator.Validate(
+                project,
+                ValidationProfile.ProjectOnly with
+                {
+                    Overrides = EquatableArray.Create<SeverityOverride>(
+                        [new SeverityOverride(entry.Code, ValidationSeverity.Info)]),
+                });
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(findings.Single().Severity, Is.EqualTo(ValidationSeverity.Info),
+                    "the profile's value reached the finding, rather than the entry's disposition");
+
+                Assert.That(findings.Infos.Select(f => f.Code.Value),
+                    Is.EqualTo(new[] { "addr-unassigned" }).AsCollection, "and the gate files it as one");
+                Assert.That(findings.Warnings, Is.Empty, "not left in the tier its disposition would have given");
+                Assert.That(findings.Errors, Is.Empty);
+                Assert.That(findings.IsValid, Is.True, "an Info never blocks, exactly as a Warning never does");
+            });
+        }
+
+        /// <summary>
+        /// The lever's one limit: a row that REFUSES an operation may be overridden to Error and no lower. Its
+        /// Danish sentence already says the save did not happen, so filing it as a Warning would hand the user a
+        /// finding whose text and whose severity contradict each other — and the panel's Fatal tier reads exactly
+        /// the (Error, refuses-something) pairing that a demotion breaks.
+        ///
+        /// <para><b>It throws rather than flooring.</b> Silently clamping would leave a caller believing a
+        /// setting that was never applied, which is the failure a strictness lever can least afford.</para>
+        ///
+        /// <para><b>The guard is LAZY, and that is a design choice worth stating.</b>
+        /// <see cref="ValidationProfile.SeverityFor"/> is consulted while a finding is being built, so a profile
+        /// carrying an illegal override is inert until the demoted rule actually emits. Checking eagerly would
+        /// mean a profile could not be constructed without a catalogue to check itself against — a profile is a
+        /// value, not a validated configuration — and would reject overrides for rules the run never reaches.
+        /// The cost is that an illegal override is found on the first project that triggers it; the assertion
+        /// below pins that behaviour so it is a decision rather than a surprise.</para>
+        /// </summary>
+        [Test]
+        public void ARowThatRefusesAnOperationCannotBeOverriddenBelowError()
+        {
+            ProjectElement terminal = Tree.Node("dataline_input", "_0x2a", []);
+            Project project = ProjectWith(terminal);
+            ProblemCatalogEntry refusing =
+                Entry("attr-undeclared", ValidationCategory.FileIntegrity, CatalogDisposition.Error) with
+                {
+                    RefusedOperations = ImmutableArray.Create(OperationCodes.Save, OperationCodes.EditOpen),
+                };
+            ProblemCatalogEntry advisory = Entry("addr-unassigned");
+
+            static ValidationProfile Overriding(ProblemCatalogEntry entry, ValidationSeverity to) =>
+                ValidationProfile.ProjectOnly with
+                {
+                    Overrides = EquatableArray.Create<SeverityOverride>([new SeverityOverride(entry.Code, to)]),
+                };
+
+            WholeProjectValidator firing = new(Compose(
+            [
+                (refusing, i => i.Report(terminal, default)),
+                (advisory, i => i.Report(terminal, default)),
+            ]).Rules);
+            WholeProjectValidator silent = new(Compose([(refusing, _ => { })]).Rules);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(() => Overriding(refusing, ValidationSeverity.Warning).SeverityFor(refusing),
+                    Throws.TypeOf<InvalidOperationException>()
+                        .With.Message.Contains("attr-undeclared")
+                        .And.Message.Contains("io.save")
+                        .And.Message.Contains("edit.open"),
+                    "the message names the row and every head it refuses, so it says what is wrong without a "
+                    + "reader having to open the catalogue");
+
+                Assert.That(() => firing.Validate(project, Overriding(refusing, ValidationSeverity.Info)),
+                    Throws.TypeOf<InvalidOperationException>(),
+                    "and it escapes Validate — the executor's rule-throws policy covers a RULE body, not the "
+                    + "profile the run was handed");
+
+                Assert.That(silent.Validate(project, Overriding(refusing, ValidationSeverity.Warning)), Is.Empty,
+                    "lazy by construction: an illegal override on a rule that never emits is never consulted");
+
+                Assert.That(Overriding(refusing, ValidationSeverity.Error).SeverityFor(refusing),
+                    Is.EqualTo(ValidationSeverity.Error),
+                    "naming a refusing row at Error is legal — the guard bars the demotion, not the mention");
+
+                Assert.That(firing.Validate(project, Overriding(advisory, ValidationSeverity.Info))
+                        .Single(f => f.Code.Value == "addr-unassigned").Severity,
+                    Is.EqualTo(ValidationSeverity.Info),
+                    "a row that refuses nothing may still be demoted: the guard is about the consequence the row "
+                    + "carries, not about the lever");
+            });
+        }
+
+        /// <summary>
         /// A collision reports once with its related sites, rather than once per site — the shape decision made
         /// operational.
         /// </summary>
