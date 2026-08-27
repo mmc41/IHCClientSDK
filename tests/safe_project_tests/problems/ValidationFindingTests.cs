@@ -197,11 +197,11 @@ namespace Ihc.Vis.Tests
         /// <summary>
         /// Every site the corpus produces, through the SAME face the characterization oracle records: the app
         /// service's categorized run. Not <c>ProjectRules.Validator.Validate(project, ValidationProfile.Categorized)</c>,
-        /// which is nine findings short — the service's own profile carries the library port two rows need (D27),
+        /// which comes up short — the service's own profile carries the library port some rows need (D27),
         /// and a denominator that quietly differed from the oracle's would make every count below unfalsifiable.
         ///
-        /// <para>Run ONCE for the fixture. Rebuilding the corpus rereads and reparses six authentic <c>.vis</c>
-        /// files and revalidates all eighteen cases; the result is immutable and every caller only reads it,
+        /// <para>Run ONCE for the fixture. Rebuilding the corpus rereads and reparses the authentic <c>.vis</c>
+        /// files and revalidates every case; the result is immutable and every caller only reads it,
         /// so a second run could differ from the first only by being slower.</para>
         /// </summary>
         private static ImmutableArray<(string Case, ValidationFinding Finding)> CorpusFindings() =>
@@ -229,13 +229,13 @@ namespace Ihc.Vis.Tests
         ///
         /// <para><b>Why the count is asserted from both ends.</b> A path on every site would be correct and
         /// useless; a path on none would pass any test that only checked the ones that have one. So this pins the
-        /// exact population: 6 primary sites out of 618, and every one of them for a reason the tree can state.</para>
+        /// exact population: 6 primary sites out of 833, and every one of them for a reason the tree can state.</para>
         ///
         /// <para><b>Why it is not derived from <see cref="FindingLocation.Element"/>.</b> That property is null in
-        /// 38 of the 618 sites, and only 2 of those 38 are ambiguous — the malformed tokens. The other 36 simply
+        /// 62 of the 833 sites, and only 2 of those 62 are ambiguous — the malformed tokens. The other 60 simply
         /// have no <c>id</c> attribute (the document root, an unrecognized element) and are identified perfectly
         /// well by their tag. In the other direction, all 4 shared-token sites have a NON-null id and are
-        /// ambiguous anyway. A writer branching on <c>Element is null</c> would therefore be wrong 36 times one
+        /// ambiguous anyway. A writer branching on <c>Element is null</c> would therefore be wrong 60 times one
         /// way and 4 the other, which is exactly why the path is carried rather than inferred.</para>
         /// </summary>
         [Test]
@@ -254,7 +254,7 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(corpus, Has.Length.EqualTo(618), "the corpus population the counts below are out of");
+                Assert.That(corpus, Has.Length.EqualTo(833), "the corpus population the counts below are out of");
                 Assert.That(withPath, Has.Length.EqualTo(6), "under 1% of sites need one");
 
                 // The 4 ambiguous-because-SHARED sites: the token parses and two elements answer to it.
@@ -268,9 +268,9 @@ namespace Ihc.Vis.Tests
                     Is.EqualTo(new[] { "_0xzz", "_0xzz" }));
 
                 // Both directions of the Element-is-null trap, as counts.
-                Assert.That(elementNull, Has.Length.EqualTo(38), "36 with no id attribute, plus the 2 malformed");
+                Assert.That(elementNull, Has.Length.EqualTo(62), "60 with no id attribute, plus the 2 malformed");
                 Assert.That(
-                    elementNull.Count(p => p.Location.Xpath is null), Is.EqualTo(36),
+                    elementNull.Count(p => p.Location.Xpath is null), Is.EqualTo(60),
                     "a tag locator selects its element, so a null Element is not ambiguity");
                 Assert.That(
                     withPath.Count(p => p.Location.Element is not null), Is.EqualTo(4),

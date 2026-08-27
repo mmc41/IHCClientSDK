@@ -238,7 +238,129 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // ── rs485-dimmer-fault-unwired ──────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The product can report its own faults and this project throws that capability away: a load fault will
+        /// never surface to the user.
+        ///
+        /// <para><b>The condition is "none of them", across every channel.</b> The four fault resources sit under
+        /// each <c>rs485_led_dimmer_channel</c>, not under the product, so a two-channel dimmer exposes EIGHT and
+        /// one linked flag anywhere is enough to make the row silent — partial wiring is a design choice, not
+        /// this condition.</para>
+        /// </summary>
+        [Test]
+        public void ADimmerWithNoLinkedFaultResourceIsReported()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Dimmer(channels: 2, linkedFaults: 0), "rs485-dimmer-fault-unwired"),
+                    Is.EqualTo(1), "eight fault resources, none of them linked");
+                Assert.That(Count(Dimmer(channels: 2, linkedFaults: 1), "rs485-dimmer-fault-unwired"),
+                    Is.Zero, "ONE linked flag is enough — partial wiring is a design choice");
+                Assert.That(Count(Dimmer(channels: 1, linkedFaults: 0), "rs485-dimmer-fault-unwired"),
+                    Is.EqualTo(1), "a one-channel dimmer exposes four, and the condition is the same");
+                Assert.That(Count(Dimmer(channels: 2, linkedFaults: 8), "rs485-dimmer-fault-unwired"),
+                    Is.Zero, "and a fully wired dimmer is what the row wants to see");
+            });
+        }
+
+        /// <summary>
+        /// KEYED ON THE ELEMENT TAGS, NOT ON THE DANISH NAMES. The format gives four dedicated tags, which are
+        /// language-independent and not user-editable; the Danish <c>Fejl - Overstrøm</c> strings are ordinary
+        /// <c>name</c> values an author can change.
+        ///
+        /// <para>A resource RENAMED away from the vendor's Danish still counts, and an ordinary resource NAMED
+        /// like a fault flag does not. Both directions matter: an earlier draft keyed on the name.</para>
+        /// </summary>
+        [Test]
+        public void TheFaultResourcesAreRecognisedByTagRatherThanByName()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Dimmer(channels: 1, linkedFaults: 1, faultName: "Renamed"),
+                    "rs485-dimmer-fault-unwired"), Is.Zero,
+                    "a renamed fault resource is still a fault resource, and this one is linked");
+                Assert.That(Count(DimmerWithImpostor(), "rs485-dimmer-fault-unwired"), Is.EqualTo(1),
+                    "and an ordinary linked resource NAMED like a fault flag does not satisfy the row");
+            });
+        }
+
+        /// <summary>
+        /// Nothing but an RS-485 LED dimmer is asked this question — the fault resources belong to that product,
+        /// and no other family exposes them.
+        /// </summary>
+        [Test]
+        public void OnlyTheLedDimmerIsAskedAboutFaultResources()
+        {
+            Assert.That(Count(Tree.WithRoot(Locality(Product(Input(0x52, "Tryk", wired: false)))),
+                "rs485-dimmer-fault-unwired"), Is.Zero);
+        }
+
         // ── tree builders ───────────────────────────────────────────────────────────────────────────
+
+        /// <summary>The four per-channel fault resources the format gives dedicated tags.</summary>
+        private static readonly string[] FaultTags =
+        [
+            "rs485_led_dimmer_error_state_overcurrent",
+            "rs485_led_dimmer_error_state_overvoltage",
+            "rs485_led_dimmer_error_state_overheating",
+            "rs485_led_dimmer_error_state_loadfailure",
+        ];
+
+        /// <summary>
+        /// An RS-485 LED dimmer with the given number of channels, each exposing the four fault resources — the
+        /// first <paramref name="linkedFaults"/> of them linked, counted across channels.
+        /// </summary>
+        /// <param name="channels">How many channels the dimmer carries.</param>
+        /// <param name="linkedFaults">How many of its fault resources own a link half.</param>
+        /// <param name="faultName">The Danish name to write on them, which the rule must not read.</param>
+        private static Project Dimmer(int channels, int linkedFaults, string faultName = "Fejl - Overstrøm")
+        {
+            int linked = 0;
+            ImmutableArray<ProjectElement>.Builder channelNodes = ImmutableArray.CreateBuilder<ProjectElement>();
+            for (int c = 0; c < channels; c++)
+            {
+                ImmutableArray<ProjectElement>.Builder faults = ImmutableArray.CreateBuilder<ProjectElement>();
+                for (int f = 0; f < FaultTags.Length; f++)
+                {
+                    int at = 0x300 + (c * 0x10) + f;
+                    bool wire = linked++ < linkedFaults;
+                    faults.Add(Tree.Node(FaultTags[f], Token(FaultTags[f], at), [("name", faultName)],
+                        wire
+                            ? [Tree.Node("link_from_resource", Token("link_from_resource", at + 0x100),
+                                [("name", "Følg Link"), ("link", Token("resource_input", 0x72))])]
+                            : []));
+                }
+
+                channelNodes.Add(Tree.Node("rs485_led_dimmer_channel",
+                    Token("rs485_led_dimmer_channel", 0x200 + c),
+                    [("name", $"Kanal {c}"), ("channel_id", $"_0x{c + 1}")], [.. faults]));
+            }
+
+            return Tree.WithRoot(Locality(
+                Tree.Node("product_rs485_led_dimmer", Token("product_rs485_led_dimmer", 0x51),
+                    [("product_identifier", "_0x9e10"), ("name", "Dæmper")], [.. channelNodes])));
+        }
+
+        /// <summary>
+        /// A dimmer whose fault resources are all unlinked, beside an ORDINARY resource named like a fault flag
+        /// and linked — the shape that would fool a name-keyed predicate.
+        /// </summary>
+        private static Project DimmerWithImpostor() =>
+            Tree.WithRoot(Locality(
+                Tree.Node("product_rs485_led_dimmer", Token("product_rs485_led_dimmer", 0x51),
+                    [("product_identifier", "_0x9e10"), ("name", "Dæmper")],
+                    Tree.Node("rs485_led_dimmer_channel", Token("rs485_led_dimmer_channel", 0x200),
+                        [("name", "Kanal 0"), ("channel_id", "_0x1")],
+                        [
+                            .. FaultTags.Select((tag, f) => Tree.Node(tag, Token(tag, 0x300 + f),
+                                [("name", "Fejl - Overstrøm")])),
+                            Tree.Node("resource_flag", Token("resource_flag", 0x320),
+                                [("name", "Fejl - Overstrøm")],
+                                Tree.Node("link_from_resource", Token("link_from_resource", 0x420),
+                                    [("name", "Følg Link"), ("link", Token("resource_input", 0x72))])),
+                        ]))));
 
         private static string Token(string tag, int counter) =>
             new ElementId(counter, TypeCode.ForTag(tag) ?? 0).ToToken();

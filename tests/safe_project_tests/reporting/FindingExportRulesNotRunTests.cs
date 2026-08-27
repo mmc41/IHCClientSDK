@@ -9,8 +9,9 @@ namespace Ihc.Vis.Tests
     /// legitimately-absent rules must NOT be listed there.
     ///
     /// <para><b>Why the attribute exists.</b> Without it, "no capacity findings" reads as <i>the project fits
-    /// the controller</i>. It does not: nobody looked. Every export a user produces omits all six capacity
-    /// rules, because the service supplies a library port but never controller limits, so this attribute is
+    /// the controller</i>. It does not: nobody looked. Every export a user produces omits every capacity rule
+    /// whose limit comes from the controller, because the service supplies a library port but never controller
+    /// limits, so this attribute is
     /// the only thing standing between a partial list and a reader who takes it as exhaustive.</para>
     ///
     /// <para><b>Why the EVALUABILITY axis only.</b> <see cref="ValidationProfile.Includes"/> returns false for
@@ -29,10 +30,21 @@ namespace Ihc.Vis.Tests
             "capacity-output-addresses",
             "capacity-output-modules",
             "capacity-resources-high",
+            "capacity-scenarios-per-receiver",
             "capacity-wireless-exceeded",
+            "capacity-wireless-links-per-unit",
         ];
 
-        private const string LibraryCode = "logic-block-locked-content";
+        /// <summary>
+        /// The rows that declare a LIBRARY, in ordinal order — the order the attribute is written in.
+        /// <para>
+        /// THREE NOW, ASKING THREE DIFFERENT QUESTIONS OF THE SAME PORT: whether the library holds a block's
+        /// TYPE at all, at which VERSIONS it holds it, and how its BODY compares with the entry the block
+        /// claims. None is answerable without a library, which is what the declaration means.
+        /// </para>
+        /// </summary>
+        private static readonly string[] LibraryCodes =
+            ["fb-master-missing-from-library", "fb-master-version-differs", "logic-block-locked-content"];
 
         /// <summary>A library that holds nothing. The rule's evaluability turns on the PORT, not on its answers.</summary>
         private sealed class EmptyLibrary : ILibraryBlockSource
@@ -40,6 +52,12 @@ namespace Ihc.Vis.Tests
             public bool TryGetBody(string masterType, string masterVersion, out ProjectElement body)
             {
                 body = null!;
+                return false;
+            }
+
+            public bool TryGetVersions(string masterType, out EquatableArray<string> versions)
+            {
+                versions = EquatableArray<string>.Empty;
                 return false;
             }
         }
@@ -74,23 +92,25 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        /// <summary>The mirror case: controller limits supplied, no library. Only the library-gated rule.</summary>
+        /// <summary>The mirror case: controller limits supplied, no library. Only the library-gated rules.</summary>
         [Test]
-        public void WithControllerLimitsButNoLibraryOnlyTheLibraryGatedCodeIsNamed()
+        public void WithControllerLimitsButNoLibraryOnlyTheLibraryGatedCodesAreNamed()
         {
             string[] notRun = NotRun(
                 ValidationProfile.Categorized with { Controller = ControllerCapabilityLimits.VendorDocumented });
 
-            Assert.That(notRun, Is.EqualTo(new[] { LibraryCode }));
+            Assert.That(notRun, Is.EqualTo(LibraryCodes));
         }
 
-        /// <summary>Neither port: all seven context-declaring rows, the capacity six plus the library one.</summary>
+        /// <summary>Neither port: every context-declaring row, the capacity ones plus the library ones.</summary>
         [Test]
-        public void WithNeitherPortAllSevenContextDeclaringCodesAreNamed()
+        public void WithNeitherPortAllContextDeclaringCodesAreNamed()
         {
             string[] notRun = NotRun(ValidationProfile.Categorized);
 
-            Assert.That(notRun, Is.EqualTo(CapacityCodes.Append(LibraryCode)));
+            Assert.That(
+                notRun, Is.EqualTo(CapacityCodes.Concat(LibraryCodes).OrderBy(c => c, StringComparer.Ordinal)),
+                "both sets, merged into one ordinal sequence — the attribute is sorted, not concatenated");
         }
 
         /// <summary>
@@ -161,13 +181,13 @@ namespace Ihc.Vis.Tests
         // ----- the structural half -----
 
         /// <summary>
-        /// The same fact stated about the catalogue rather than about a file: exactly six rows declare
-        /// controller limits and exactly one declares a library, and the six are precisely the capacity codes.
-        /// This is what makes the attribute's contents a consequence of the catalogue rather than a list
-        /// someone maintains beside it.
+        /// The same fact stated about the catalogue rather than about a file: exactly these rows declare
+        /// controller limits and exactly these declare a library, and the controller ones are precisely the
+        /// capacity codes. This is what makes the attribute's contents a consequence of the catalogue rather
+        /// than a list someone maintains beside it.
         /// </summary>
         [Test]
-        public void ExactlySevenCatalogueRowsDeclareAContextAndTheSixAreTheCapacityCodes()
+        public void ExactlyTheseCatalogueRowsDeclareAContextAndTheControllerOnesAreTheCapacityCodes()
         {
             Assert.Multiple(() =>
             {
@@ -178,8 +198,11 @@ namespace Ihc.Vis.Tests
                         .OrderBy(c => c, StringComparer.Ordinal),
                     Is.EqualTo(CapacityCodes));
                 Assert.That(
-                    ProblemCatalog.Current.Entries.Where(e => e.RequiresLibrary).Select(e => e.Code.Value),
-                    Is.EqualTo(new[] { LibraryCode }));
+                    ProblemCatalog.Current.Entries
+                        .Where(e => e.RequiresLibrary)
+                        .Select(e => e.Code.Value)
+                        .OrderBy(c => c, StringComparer.Ordinal),
+                    Is.EqualTo(LibraryCodes));
             });
         }
 

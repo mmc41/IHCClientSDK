@@ -15,15 +15,15 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The eight DOCUMENTATION-COMPLETENESS rules: five about a data-line product (identification code, power
+    /// The DOCUMENTATION-COMPLETENESS rules: five about a data-line product (identification code, power
     /// group, cable type, cable number, position) and three about each of its terminals (not linked, cable colour,
     /// unreadable address).
     /// <para>
-    /// THESE EIGHT ARE THE ONLY RULES THAT ALREADY REACH A USER, through the full report's documentation appendix,
+    /// THESE ARE THE ONLY RULES THAT ALREADY REACH A USER, through the full report's documentation appendix,
     /// and they are the only ones whose message needs no translation: their labels have always been the short
     /// Danish phrases the appendix prints. Every other migrated rule moves an English sentence into its
     /// diagnostic; these have no English sentence to move, and changing a single character of one would move
-    /// twenty-four byte-pinned report oracles.
+    /// every byte-pinned report oracle that renders the appendix.
     /// </para>
     /// <para>
     /// SCOPE IS BY DESCENT, matching the report BODY's scope rather than a narrower one. The checks once counted
@@ -68,7 +68,7 @@ namespace Ihc.Vis.Validation
                 ["doc-position"] = "position",
             }.ToImmutableDictionary(StringComparer.Ordinal);
 
-        /// <summary>The eight rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {

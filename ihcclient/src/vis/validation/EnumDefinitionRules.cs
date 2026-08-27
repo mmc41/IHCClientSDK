@@ -14,7 +14,7 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The five ENUM-DEFINITION rows: whether a declared type is usable, and whether its values can be told apart.
+    /// The ENUM-DEFINITION rows: whether a declared type is usable, and whether its values can be told apart.
     ///
     /// <para><b>Two of the five report a file no dialog can produce (⊘), and they are implemented anyway.</b> The
     /// enum editor answers <i>"Vælg et andet navn"</i> to a duplicate name, and it has neither a reorder nor an
@@ -43,7 +43,7 @@ namespace Ihc.Vis.Validation
         /// 598 <c>resource_enum</c> occurrences across the corpus and no other attribute anywhere.</summary>
         private const string TypeReferenceAttribute = "typedef";
 
-        /// <summary>The five rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {

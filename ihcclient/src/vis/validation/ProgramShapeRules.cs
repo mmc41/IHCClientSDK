@@ -13,8 +13,9 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The five PROGRAM-SHAPE rows: a program that never starts, one that starts and does nothing, a branch that
-    /// always goes the same way, a switch with nothing to switch on, and two branches testing one value.
+    /// The PROGRAM-SHAPE rows: a program that never starts, one that starts and does nothing, a branch that
+    /// always goes the same way, a switch with nothing to switch on, two branches testing one value, and a
+    /// statement naming no operand at all.
     ///
     /// <para><b>THE GRAMMAR FACT THIS SET TURNS ON:</b> only <c>program_simple</c> has events. Measured over the
     /// corpus, all 746 <c>program_sub</c> elements carry <c>conditions</c> and <c>actions</c> and NO
@@ -38,7 +39,21 @@ namespace Ihc.Vis.Validation
 
         private const string CaseBranchTag = "case_action";
 
-        /// <summary>The five rules, ready to register against the catalogue.</summary>
+        /// <summary>
+        /// The three statement tags, and the ONLY way this module recognises a statement.
+        /// <para>
+        /// NOT BY ID TYPE CODE AND NOT BY ICON. <c>event_power</c> shares <c>event</c>'s type code <c>c8</c> and
+        /// its constant <c>icon="_0xc"</c>, so either shortcut would report every Powerup event in every authentic
+        /// file — 7 across the validation corpus alone. The tag is the discriminator the format itself uses.
+        /// </para>
+        /// </summary>
+        private static readonly ImmutableHashSet<string> StatementTags =
+            ["event", "condition", "action"];
+
+        /// <summary>The attribute a statement carries to say what it acts on.</summary>
+        private const string LinkAttribute = "link1";
+
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {
@@ -48,7 +63,8 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "logic-program-no-actions", NoActions),
                 Rule(catalog, "logic-subprogram-no-conditions", NoConditions),
                 Rule(catalog, "logic-case-no-branches", NoBranches),
-                Rule(catalog, "logic-case-duplicate-value", DuplicateCaseValue));
+                Rule(catalog, "logic-case-duplicate-value", DuplicateCaseValue),
+                Rule(catalog, "logic-statement-unlinked", StatementUnlinked));
         }
 
         /// <summary>
@@ -150,6 +166,37 @@ namespace Ihc.Vis.Validation
                     else
                     {
                         seen[value] = branch;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// A statement that references nothing: it does nothing that can be modelled, and IHC Visual terminates
+        /// outright when such a program runs. The set's second ERROR, and the only row here whose state no editor
+        /// can author.
+        /// <para>
+        /// WALKED PER BLOCK rather than per program, because the finding's second argument IS the block: taking
+        /// the statements out of the block that contains them gives the argument for free and needs no ancestor
+        /// lookup. It also scopes the walk to the subject exactly — statements live in programs, and programs live
+        /// in blocks.
+        /// </para>
+        /// <para>
+        /// THE ABSENT ATTRIBUTE, not a blank one and not a dangling one. A <c>link1</c> naming a missing id is
+        /// <c>idref-dangling</c>'s finding, and the null token was never measured here — see the entry.
+        /// </para>
+        /// </summary>
+        private static void StatementUnlinked(IProjectInspection inspection)
+        {
+            foreach (ProjectElement block in Blocks(inspection.Analyses))
+            {
+                string name = Name(block);
+                foreach (ProjectElement statement in block.Descendants())
+                {
+                    if (StatementTags.Contains(statement.Tag)
+                        && statement.GetAttribute(LinkAttribute) is null)
+                    {
+                        inspection.Report(statement, Arguments(("tag", statement.Tag), ("block", name)));
                     }
                 }
             }

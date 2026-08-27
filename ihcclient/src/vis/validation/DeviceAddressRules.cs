@@ -15,7 +15,7 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The five remaining ADDRESSING rows: whether a wireless device is identified, whether two of them claim one
+    /// The remaining ADDRESSING rows: whether a wireless device is identified, whether two of them claim one
     /// address, whether a modem can reach anybody, whether an S0 meter can scale its readings, and whether a
     /// telephone number the modem holds is one it can actually dial.
     ///
@@ -53,7 +53,7 @@ namespace Ihc.Vis.Validation
 
         private const string TicksAttribute = "ticks";
 
-        /// <summary>The five rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {

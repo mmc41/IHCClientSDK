@@ -15,7 +15,7 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The five remaining PROJECT-STRUCTURE rows: an empty room, a room with logic but no hardware, a product
+    /// The remaining PROJECT-STRUCTURE rows: an empty room, a room with logic but no hardware, a product
     /// nothing can be wired to, a block nothing reaches, and an element left with no icon where others have one.
     ///
     /// <para><b><c>struct-modified-stale</c> is the sixth and is deliberately absent.</b> The <c>modified</c> block
@@ -38,7 +38,7 @@ namespace Ihc.Vis.Validation
         /// <summary>The attribute holding an element's icon, and the token that means "none".</summary>
         private const string IconAttribute = "icon";
 
-        /// <summary>The five rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {

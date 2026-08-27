@@ -50,6 +50,7 @@ namespace Ihc.Vis.Validation
                 .. ProgramDataflowRules.All(catalog),
                 .. CapacityRules.All(catalog),
                 .. ProjectStructureRules.All(catalog),
+                .. ProductAdvisoryRules.All(catalog),
                 .. NamingRules.All(catalog),
                 .. DocumentationCompletenessRules.All(catalog),
                 .. DocumentationRules.All(catalog),

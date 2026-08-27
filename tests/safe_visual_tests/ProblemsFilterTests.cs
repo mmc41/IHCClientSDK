@@ -28,11 +28,12 @@ namespace safe_visual_tests;
 /// findings appear to have been fixed, which is the one thing a filter must never imply. Counts come from the
 /// bound result; the list comes from the bound result minus the hidden tiers.</para>
 ///
-/// <para><b>Two tiers are exercised synthetically, for opposite reasons.</b> No production rule emits
-/// <see cref="ValidationSeverity.Info"/> today, so that tier ships empty. And a <c>Fatal fejl</c> row needs a
-/// finding whose RULE refuses an operation, which the shipped corpus produces only for a handful of schema
-/// guards. Findings constructed here are therefore the only way to prove either tier renders, counts, filters
-/// and sorts like the other two — which is exactly why these tests build their own.</para>
+/// <para><b>Every tier is exercised synthetically, and deliberately so.</b> A panel test needs one finding of
+/// each tier in ONE result, in a known order, with a known count — and no committed project offers that
+/// combination on demand: a <c>Fatal fejl</c> row needs a finding whose RULE refuses an operation, which the
+/// corpus produces only for a handful of schema guards. Findings constructed here are therefore the only way to
+/// prove each tier renders, counts, filters and sorts like the others, and they cannot drift when the catalogue
+/// gains or loses a row.</para>
 /// </summary>
 public class ProblemsFilterTests
 {

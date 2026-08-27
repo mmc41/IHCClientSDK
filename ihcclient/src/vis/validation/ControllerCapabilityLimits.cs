@@ -30,19 +30,38 @@ namespace Ihc.Vis.Validation
     /// <see cref="AuthoredResourceCeiling"/>, which carries the TODO and the reasoning. A caller with a real
     /// controller in mind should pass its own value rather than inherit the authored one.
     /// </param>
+    /// <param name="LinksPerWirelessUnit">
+    /// Follow-links one wireless unit may carry. Vendor help states 32. Like <see cref="WirelessDevices"/> this
+    /// is a RECOMMENDATION rather than a hard refusal — and the field evidence is contradictory, with reports of
+    /// degradation well below the published figure — which is why the row reading it is a Warning.
+    /// </param>
+    /// <param name="LinksPerCombiUnit">
+    /// Follow-links a COMBI unit may carry. Vendor help states 64. Declared as its own number rather than as a
+    /// multiple of <see cref="LinksPerWirelessUnit"/>: that the two happen to differ by a factor of two is an
+    /// observation about today's figures, not a rule the vendor states, and deriving one from the other would
+    /// turn a published fact into an inference.
+    /// </param>
+    /// <param name="ScenariosPerReceiver">
+    /// Scenarios one wireless RECEIVER may take part in. Vendor help states 32. A recommendation like the two
+    /// above, and the row reading it is a Warning for the same reason.
+    /// </param>
     public sealed record ControllerCapabilityLimits(
         int InputModules,
         int OutputModules,
         int AddressesPerDirection,
         int WirelessDevices,
-        int Resources)
+        int Resources,
+        int LinksPerWirelessUnit,
+        int LinksPerCombiUnit,
+        int ScenariosPerReceiver)
     {
         /// <summary>
         /// The vendor-documented defaults. Supplied EXPLICITLY by a caller that has a target controller in mind;
         /// there is deliberately no implicit fallback, because silently validating against a default is
         /// indistinguishable from validating against a guess.
         /// </summary>
-        public static ControllerCapabilityLimits VendorDocumented { get; } = new(8, 16, 128, 64, AuthoredResourceCeiling);
+        public static ControllerCapabilityLimits VendorDocumented { get; } =
+            new(8, 16, 128, 64, AuthoredResourceCeiling, 32, 64, 32);
 
         /// <summary>
         /// The resource ceiling <c>capacity-resources-high</c> measures a project against.
@@ -57,10 +76,9 @@ namespace Ihc.Vis.Validation
         /// </summary>
         public const int AuthoredResourceCeiling = 2000;
 
-        // EXPECTED TO GROW, and cheaply: further controller limits are known to exist (links per wireless unit,
-        // scenarios per receiver), each arriving as one member plus one rule. What must NOT migrate here is a
-        // PROJECT-ONLY count — a cap on how many of something a project may contain is a declared threshold on
-        // the rule that enforces it, because it needs no controller and would otherwise make a project-only rule
-        // require context it does not need.
+        // EXPECTED TO GROW, and cheaply: a further controller limit arrives as one member plus one rule, the way
+        // the link and scenario ceilings did. What must NOT migrate here is a PROJECT-ONLY count — a cap on how
+        // many of something a project may contain is a declared threshold on the rule that enforces it, because
+        // it needs no controller and would otherwise make a project-only rule require context it does not need.
     }
 }

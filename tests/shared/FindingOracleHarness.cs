@@ -71,7 +71,7 @@ namespace Ihc.Tests.Shared
 
         /// <summary>
         /// The file a corpus case is recorded in. Fully mechanical — the case's <c>/</c> becomes <c>-</c> — so
-        /// the 18 filenames are derived rather than retyped, and a case with no file shows up as a missing file
+        /// the filenames are derived rather than retyped, and a case with no file shows up as a missing file
         /// rather than as a missing row.
         /// </summary>
         /// <param name="caseName">The corpus case name, e.g. <c>fixture/Project6-Errors</c>.</param>

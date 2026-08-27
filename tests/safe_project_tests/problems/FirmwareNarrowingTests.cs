@@ -235,16 +235,34 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
-        /// Infrastructure only, stated as a check rather than a comment: the mechanism is inert until a row
-        /// declares a bound, so this diff moves no catalogue population pin and no findings oracle. Delete this
-        /// test in the diff that adds the first errata row.
+        /// The mechanism is IN USE, which is what retired its inertness tripwire.
+        ///
+        /// <para><c>TheMechanismIsInertUntilARowDeclaresABound</c> stood here and asserted that no catalogue
+        /// entry carried a <see cref="DeclaredFirmwareBound"/>. Its own doc-comment said to delete it in the diff
+        /// that added the first errata row, and <c>logic-block-recursive</c> is that row — it is satisfied by
+        /// being retired, not by being weakened.</para>
+        ///
+        /// <para>This replaces it with the claim that is true from here on and stays true: every declared bound
+        /// is REACHABLE — it belongs to an entry the catalogue holds under the code it names. A bound declared on
+        /// nothing, or on a retired row, would narrow findings that never appear.</para>
         /// </summary>
         [Test]
-        public void TheMechanismIsInertUntilARowDeclaresABound()
+        public void EveryDeclaredFirmwareBoundBelongsToALiveRow()
         {
-            Assert.That(
-                ProblemCatalog.Current.Entries.Where(e => e.FirmwareBound is not null).Select(e => e.Code.Value),
-                Is.Empty);
+            ProblemCatalogEntry[] bounded =
+                [.. ProblemCatalog.Current.Entries.Where(e => e.FirmwareBound is not null)];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(bounded, Is.Not.Empty,
+                    "the mechanism is in use — if this is empty the errata rows have gone, not the test");
+                foreach (ProblemCatalogEntry entry in bounded)
+                {
+                    Assert.That(entry.Status, Is.EqualTo(ProblemCodeStatus.Active), entry.Code.Value);
+                    Assert.That(entry.FirmwareBound!.Evidence, Is.Not.Empty, entry.Code.Value);
+                    Assert.That(entry.FirmwareBound.Name, Is.Not.Empty, entry.Code.Value);
+                }
+            });
         }
     }
 }

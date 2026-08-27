@@ -40,8 +40,9 @@ public class FindingsExportFidelityTests
         [.. rig.Panel.Rows.Select(r => (r.Code, r.Severity.ToString()))];
 
     /// <summary>
-    /// The fixture, opened and validated through the real shell: 150 findings across more than one tier, which
-    /// is what makes hiding one and re-sorting a column change the answer.
+    /// The fixture, opened and validated through the real shell: 151 findings across two populated tiers — 150
+    /// Warnings and one Information row — which is what makes hiding one and re-sorting a column change the
+    /// answer.
     /// </summary>
     private static async Task<ProblemsShellRig> ShowingTheErrorsFixtureAsync()
     {
@@ -60,12 +61,13 @@ public class FindingsExportFidelityTests
     /// index against the validation result, which is neither filtered nor sorted and would make this pass for
     /// the wrong reason.</para>
     ///
-    /// <para><b>Two filter gestures, because no fixture mixes tiers.</b> Nothing in the catalogue can emit
-    /// <c>Info</c> yet, and this fixture's 150 findings are all <c>Warning</c> — so hiding one tier either
-    /// removes nothing or removes everything, and neither alone proves the file follows the filter. Hiding the
-    /// EMPTY tier keeps 150 rows and proves the ORDER is carried across a re-sort; hiding the POPULATED one
-    /// drops the file to zero lines in step with the panel. Together they pin both halves, and the day a
-    /// fixture produces two populated tiers this collapses back into one gesture.</para>
+    /// <para><b>ONE filter gesture, now that the fixture mixes tiers.</b> This test used to need two, because
+    /// nothing in the catalogue emitted <c>Info</c> and all 150 findings were <c>Warning</c>: hiding a tier either
+    /// removed nothing or removed everything, and neither alone proved the file follows the filter. The fixture's
+    /// S0 meter now carries an Information row beside the 150 Warnings, which is the case that comment said this
+    /// would collapse into. Hiding the Warning tier leaves a NON-EMPTY remainder, so one gesture pins both halves
+    /// at once and pins them harder: a writer ignoring the filter writes 151 lines and fails, and a writer that
+    /// simply wrote nothing — which the old "down to zero" half could not tell apart from correct — fails too.</para>
     /// </summary>
     [Test]
     public async Task TheWrittenFileHoldsExactlyTheVisibleRowsInTheVisibleOrder()
@@ -76,7 +78,6 @@ public class FindingsExportFidelityTests
         ProblemsColumnViewModel code = rig.Panel.Columns.Single(c => c.Column == ProblemsColumn.Code);
 
         int everything = rig.Panel.Rows.Count;
-        rig.Panel.Tiers.Single(t => t.Severity == ValidationSeverity.Info).IsShown = false;
         code.SortCommand.Execute(null);
         code.SortCommand.Execute(null);                       // and again, so the sort is DESCENDING
         bool descending = !rig.Panel.SortAscending;
@@ -95,17 +96,19 @@ public class FindingsExportFidelityTests
             Assert.That(everything, Is.GreaterThan(1), "non-vacuity: the fixture really does produce findings");
             Assert.That(descending, Is.True, "precondition: the second click reversed the sort");
             Assert.That(visibleAfterSort, Has.Length.EqualTo(everything),
-                "precondition: hiding the empty tier removed nothing, so this half is about ORDER");
-            Assert.That(visibleAfterFilter, Is.Empty,
-                "precondition: hiding the populated tier removed everything, so that half is about the FILTER");
+                "precondition: nothing is hidden yet, so this half is about ORDER alone");
+            Assert.That(visibleAfterFilter, Is.Not.Empty.And.Length.LessThan(everything),
+                "precondition: hiding the Warning tier removed most rows but not all, so that half is about the "
+                + "FILTER and cannot be satisfied by a writer that emits nothing");
 
             Assert.That(
                 afterSort.Select(l => (Attribute(l, "code"), Attribute(l, "severity"))),
                 Is.EqualTo(visibleAfterSort),
                 "one for one, in the order the panel was showing");
             Assert.That(
-                afterFilter, Is.Empty,
-                "and the file follows the filter down to nothing, rather than writing the whole run");
+                afterFilter.Select(l => (Attribute(l, "code"), Attribute(l, "severity"))),
+                Is.EqualTo(visibleAfterFilter),
+                "and the file follows the filter to exactly the rows left showing, rather than writing the whole run");
         });
     }
 

@@ -575,8 +575,8 @@ not a test oracle**: nothing reads it, `tests/TestData.props` does not copy it (
 committed evidence of how the vendor renders a project whose gaps are all deliberate — useful when a
 `reports/` question is really a question about what IHC Visual would have printed.
 
-Project6 is also the one authentic fixture in the validation corpus that is *authored to fail*: it contributes
-150 of the 618 findings recorded under `validation/`, in its own file
+Project6 is also the one authentic fixture in the validation corpus that is *authored to fail*: it is the
+largest single contributor to the findings recorded under `validation/`, in its own file
 `fixture-Project6-Errors.xml` — named `fixture/…` rather than `authentic/…` precisely because its defects are
 intended.
 
@@ -836,18 +836,18 @@ correct. Regenerate by running the generator and overwriting the file, then re-r
 
 ## Validation oracles (`validation/`)
 
-One kind of artifact pins what the validation engine **says**: the eighteen XML files sitting directly in
+One kind of artifact pins what the validation engine **says**: the XML files sitting directly in
 `validation/`, one per corpus case. They are *derived, not captured* — rewritten wholesale by an `[Explicit]` regeneration test
-and adopted by diffing that output against the committed file. Why there are eighteen — and why the five that
-mirror real `.vis` projects witness no code the other thirteen do not, yet are the least prunable thing here
-— is argued under [Why eighteen](#why-eighteen--what-each-case-is-for).
+and adopted by diffing that output against the committed file. Why there are so many of them — and why the
+handful that mirror real `.vis` projects are worth far more for what they DO NOT report than for what they
+cover — is argued under [Why two sets](#why-two-sets--what-each-case-is-for).
 
 They ARE byte-fidelity oracles, exactly like the `.vis` and report oracles: the gate is byte equality per
 case, so a single retyped character fails it while looking correct.
 
 | File | Rows | Shape | Gate | Adopted by |
 |------|------|-------|------|------------|
-| `validation/*.xml` | 618 findings over 18 corpus cases, one file each | flat, attribute-only XML: a root carrying the run's own caveats, then one `<finding …/>` per line | `ValidationCharacterizationTests.Corpus_ReproducesItsOracleByteForByte` (per case), plus `FindingOracleConformanceTests` and `FindingOracleCoverageTests` | `Regenerate_TheFindingsOracles`, then diff and copy across |
+| `validation/*.xml` | every finding the corpus produces, one file per case | flat, attribute-only XML: a root carrying the run's own caveats, then one `<finding …/>` per line | `ValidationCharacterizationTests.Corpus_ReproducesItsOracleByteForByte` (per case), plus `FindingOracleConformanceTests` and `FindingOracleCoverageTests` | `Regenerate_TheFindingsOracles`, then diff and copy across |
 
 A second artifact used to sit here: **the disagreement set** (one compact XML file under `validation/`,
 deleted along with its gate — the name is left unspelled on purpose, so a repo-wide search for it comes back
@@ -884,17 +884,18 @@ moved into `SessionRefusalPolicyTests`, which needs no data file.
 
 ### `validation/*.xml` — the finding recording
 
-Every finding the SDK produces over the whole validation corpus, **in production order**, one per line, split
-across eighteen files — one per corpus case, named mechanically from the case (`fixture/Project6-Errors`
-becomes `fixture-Project6-Errors.xml`). 618 findings: 28 `Error` and 590 `Warning`, spread over eight
-categories (`Documentation` 214, `Logic` 145, `ProjectStructure` 76, `Wiring` 64, `FileIntegrity` 34,
-`Scenes` 33, `Addressing` 26, `DeviceSettings` 26) and 93 distinct codes.
+Every finding the SDK produces over the whole validation corpus, **in production order**, one per line, one
+file per corpus case, named mechanically from the case (`fixture/Project6-Errors` becomes
+`fixture-Project6-Errors.xml`). All three severities appear, `Warning` by far the most; the findings spread
+across every category the catalogue declares. How many findings and how many distinct codes that is today is
+not written here — `ValidationCharacterizationTests.BaselineRuleIdCount` is the one place the code count is
+declared, and it is a gate rather than a note.
 
 A finding that names no element carries **no `locator` attribute at all** — absence is a missing attribute,
 not a sentinel string, and readers test for null rather than knowing which value means "nowhere".
 
 ⚠ **These files are ISO-8859-1, CRLF and BOM-less**, pinned by `.gitattributes` exactly as the `.vis` oracles
-are, and 518 of their bytes are above `0x7F`. They therefore **mojibake in a UTF-8 diff viewer, GitHub
+are, and the Danish sentences put plenty of bytes above `0x7F`. They therefore **mojibake in a UTF-8 diff viewer, GitHub
 included**. That is the same trade every `.vis`, `.def` and `.ifb` oracle here already makes; review them by
 regenerating and diffing locally in a Latin-1-aware tool, not in a web diff.
 
@@ -916,7 +917,7 @@ is read by eye in every regeneration diff, and — because such a hint resolves 
 directory — it would tie the corpus to a second copy of the schema sitting beside it. The binding is made
 from **outside the files** instead, by
 [`tests/ValidateFindingsOracles.targets`](../ValidateFindingsOracles.targets): `dotnet build` fails if any of
-the eighteen stops matching the grammar. It is imported by `safe_project_tests` alone — importing it into all
+them stops matching the grammar. It is imported by `safe_project_tests` alone — importing it into all
 five suites would validate one corpus five times per solution build — and its task is compiled inline by
 `RoslynCodeTaskFactory`, so it needs no package reference and runs on the Linux and macOS CI legs too.
 
@@ -933,13 +934,14 @@ attribute ORDER (`FindingExportWriterTests`), and the rule that `@related_xpath`
 `@related` and pairs with it by position (`FindingOracleCoverageTests`).
 
 The corpus is defined in `ValidationCharacterizationTests.Corpus` and is **not** simply "the `.vis` files in
-this folder" — it is six documents loaded from `projects/` plus twelve built in code:
+this folder" — it is a handful of documents loaded from `projects/` plus a larger set built in code. Read that
+array for the current membership rather than a list here, which would be a second copy of it:
 
-| Case prefix | Cases | Source |
-|-------------|-------|--------|
-| `authentic/` | `Project0-Tomt` (10), `Project1-SimpelWired` (30), `project2-CustomBlock` (56), `project3-KompleksWired` (168), `project5-Dokumentation` (69) | loaded from `projects/` |
-| `fixture/` | `Project6-Errors` (150) | loaded from `projects/` — the authored-to-fail fixture |
-| `synthetic/` | `ids`, `schema`, `fb-locality`, `fb-shape`, `bijection`, `dataline-address`, `enum`, `root-version`, `luid-ceiling`, `luid-low`, `containment`, `modem-phone` (135 findings between them) | **built in code** by the fixture's own factory methods — no file on disk |
+| Case prefix | What it is | Source |
+|-------------|------------|--------|
+| `authentic/` | vendor-authored projects, taken as they ship | loaded from `projects/` |
+| `fixture/` | `Project6-Errors`, the authored-to-fail fixture | loaded from `projects/` |
+| `synthetic/` | one tree per condition no authentic file can carry | **built in code** by the fixture's own factory methods — no file on disk |
 
 That last row is the trap: a synthetic *case* is not a synthetic *file*. Changing a `projects/Synthetic/`
 `.vis` does not move this recording, and adding a corpus case means adding a factory method, not a fixture
@@ -949,40 +951,31 @@ file.
 measurably not a gap: every element tag it carries already appears in `project2-CustomBlock` and
 `project5-Dokumentation`, so it would add findings without adding shapes.
 
-#### Why eighteen — what each case is FOR
+#### Why two sets — what each case is FOR
 
-These are not one corpus doing one job. They are two sets answering two different failure modes, and counting
-the codes each case is the **only** witness for says which is which:
+These are not one corpus doing one job. They are two sets answering two different failure modes, and asking
+which codes a case is the **only** witness for says which is which. To see that split as it stands today,
+group the committed `validation/*.xml` by `@code` and look for codes appearing in exactly one file — the
+answer is derived from the oracles, so it is never out of date the way a table here would be.
 
-| Case | Sole witness for |
-|------|------------------|
-| `fixture/Project6-Errors` | 17 codes |
-| `synthetic/schema` | 5 |
-| `synthetic/ids`, `synthetic/fb-shape` | 4 each |
-| `synthetic/dataline-address` | 3 |
-| `synthetic/bijection`, `synthetic/enum`, `synthetic/fb-locality`, `synthetic/root-version` | 2 each |
-| `synthetic/luid-ceiling`, `synthetic/luid-low`, `synthetic/modem-phone` | 1 each |
-| `synthetic/containment` | 0 |
-| **all five `authentic/` cases** | **0** |
+**The synthetics and the error fixture are the REACH**, and they carry nearly every code between them. Most
+conditions a synthetic tree provokes are file-level damage IHC Visual will not author — a duplicate id token,
+an undeclared element, a broken bijection, a 24-bit counter overflow — so no authentic document can carry one;
+the rest are product placements the corpus happens not to hold.
 
-**The synthetics and the error fixture are the REACH.** Every condition a synthetic tree provokes is
-file-level damage IHC Visual will not author — a duplicate id token, an undeclared element, a broken
-bijection, a 24-bit counter overflow — so no authentic document can carry one. `fixture/Project6-Errors` plus
-eleven of the twelve synthetics witness all 93 codes between them, in 275 of the 618 findings.
-
-**The five authentic cases are the SILENCE**, and they are the only over-reporting guard in the repository. A
-rule that grows a false positive shows up as a new line on a document IHC Visual authored and accepts — which
-neither a synthetic tree nor the authored-to-fail fixture can show, because a spurious finding on a fixture
-built to fail reads as the point. Their diffs have already earned it: the first formulation of
+**The authentic cases are the SILENCE**, and they are the only over-reporting guard in the repository — the
+few codes they alone witness are incidental, and would not be worth a case on their own. A rule that grows a
+false positive shows up as a new line on a document IHC Visual authored and accepts — which neither a
+synthetic tree nor the authored-to-fail fixture can show, because a spurious finding on a fixture built to
+fail reads as the point. Their diffs have already earned it: the first formulation of
 `logic-contending-writers` reported 24 findings on `project3` where the shipped one reports 4, and
-`struct-locality-empty` shows what a Warning of that kind really costs on real files — 39 of its 46 findings
-land on the five authentic cases, ten of them on a brand-new empty project that ships ten named localities.
-Neither measurement was visible anywhere else.
+`struct-locality-empty` shows what a Warning of that kind really costs on real files — most of its findings
+land on authentic cases, a good share of them on a brand-new empty project that ships ten named localities and
+nothing else. Neither measurement was visible anywhere else.
 
-⚠ **So a "smaller subset that keeps the real projects" inverts the arithmetic.** Dropping the five authentic
-cases costs **0 of the 93** codes; dropping the thirteen non-authentic ones costs **51 of the 93**. The
-authentic cases are redundant for coverage and irreplaceable for silence, and that is exactly why both halves
-are here.
+⚠ **So a "smaller subset that keeps the real projects" inverts the arithmetic.** Dropping the authentic cases
+costs almost no coverage; dropping the synthetic and fixture ones costs most of it. The authentic cases are
+nearly redundant for coverage and irreplaceable for silence, and that is exactly why both halves are here.
 
 #### Deleting a case is not free
 
@@ -991,22 +984,26 @@ rather than a file deletion:
 
 - **`ValidationCharacterizationTests.Corpus`** — `FindingOracleConformanceTests` matches the file set against
   the corpus array in BOTH directions, so an orphan file and a case with no file each fail, and differently.
-- **Three hard-coded populations** — `BaselineRuleIdCount` (93), `FindingOracleCoverageTests`' corpus size
-  (618), and its 6-pathed / 36-tag-locator split.
-- **Sole-witness attributes.** `xpath` and `related_xpath` appear ONLY in `synthetic/ids`; eight `arg_*` slots
-  only in `fixture/Project6-Errors`; `arg_inivalue`, `arg_name` and `arg_typedef` only in `synthetic/enum`;
-  `arg_version` only in `synthetic/root-version`; `arg_allowed` only in `synthetic/schema`. Losing one of
-  those cases fails `EveryFixedAttributeTheWriterDeclaresIsWitnessedByTheCorpus` — or, for the path family,
+- **Three hard-coded populations** — `BaselineRuleIdCount`, `FindingOracleCoverageTests`' corpus size, and its
+  pathed / tag-locator split. Each is declared in exactly one place, and that declaration is the gate; a case
+  removed without moving all three fails there.
+- **Sole-witness attributes.** `xpath` and `related_xpath` appear ONLY in `synthetic/ids`; several `arg_*`
+  slots appear in one case each — `fixture/Project6-Errors`, `synthetic/enum`, `synthetic/root-version`,
+  `synthetic/root-version-minor`, `synthetic/schema` and `synthetic/scene-dimming` each own some. Losing one
+  of those cases fails `EveryFixedAttributeTheWriterDeclaresIsWitnessedByTheCorpus` — or, for the path family,
   quietly empties every path invariant instead.
 - **`MigrationParity.AssertReproducesRecording`** refuses outright when the remaining corpus witnesses none of
   a rule family's ids: a parity gate over nothing proves nothing.
 
-⚠ **Cost is not a reason to prune.** The whole family is about 120 KB, and the three fixtures that own its
-gates run 33 tests in under a second. The one case that survives no argument is `synthetic/containment` —
-zero sole-witness codes, zero sole-witness attributes, and a code set contained in `synthetic/schema`'s. Its
-single distinct datum is that `containment` fires on a *valid* element in an invalid position
-(`product_dataline` under `groups`), where its other three witnesses fire that rule on four other
-tag-and-parent pairs.
+⚠ **Cost is not a reason to prune.** The whole family is a couple of hundred kilobytes, and the three fixtures
+that own its gates run in under a second. A case can survive no coverage argument at all — no sole-witness
+code, no sole-witness attribute, a code set another case already contains — and still be worth keeping,
+because what it carries is a distinct SHAPE rather than a distinct code. `synthetic/containment` is contained
+by `synthetic/schema` and fires `containment` on a *valid* element in an invalid position (`product_dataline`
+under `groups`), where its other witnesses fire that rule on other tag-and-parent pairs;
+`synthetic/statement-link` is contained by `synthetic/fb-locality` and is the only case that puts
+`logic-statement-unlinked` and its `event_power` exclusion in ONE program, so the oracle records the
+discrimination itself rather than its absence.
 
 ⚠ **Never hand-edit one to make a change pass.** There is no declaration file and no remap columns: the gate
 is byte equality, so an intended change is adopted by regenerating, diffing, and explaining every changed line

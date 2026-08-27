@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -416,10 +417,16 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
-        /// The Information column reads 0 in every category today, and a column hard-coded to 0 would read the
-        /// same — so it is proven WIRED by seeding a row that declares
-        /// <see cref="CatalogDisposition.Info"/> and watching the column move. No shipped row declares one, and
-        /// this seeded catalogue is local to the test, so nothing it counts reaches the checked-in table.
+        /// The Information column is proven WIRED rather than hard-coded, by seeding a row that declares
+        /// <see cref="CatalogDisposition.Info"/> in a category where no shipped row does and watching that
+        /// category's cell move. The seeded catalogue is local to the test, so nothing it counts reaches the
+        /// checked-in table.
+        /// <para>EVERY assertion here is a DELTA, and none may be a literal cell. A literal would pin this
+        /// wiring test to the catalogue's own population — it broke twice that way already, once when the first
+        /// Information row landed and once when a Scenes Warning did — and it would duplicate, worse, what
+        /// <see cref="TheRenderedCategoryTableMatchesTheCheckedInCopy"/> compares properly. What this test is
+        /// about is that seeding ONE Info row moves the Information cell, that category's total and the
+        /// Information grand total by exactly one each; the absolute numbers are not its business.</para>
         /// </summary>
         [Test]
         public void TheInformationColumnCountsARowThatDeclaresIt()
@@ -433,23 +440,45 @@ namespace Ihc.Vis.Tests
                     RuleKind.UserContentRule, RuleFaces.WholeProject, default, FindingShape.OneFinding, default,
                     "Syntetisk oplysning."),
             ]);
+            string counted = RenderCategoryCounts(seeded);
+            string before = CategoryRow(shipped, "SCN");
+            string after = CategoryRow(counted, "SCN");
 
             Assert.Multiple(() =>
             {
-                Assert.That(CategoryRow(shipped, "SCN"), Is.EqualTo("| **SCN** | 0 | 2 | 7 | 0 | 9 |"),
-                    "no shipped row declares Info, so every Information cell reads 0 today");
-                string counted = RenderCategoryCounts(seeded);
-                Assert.That(CategoryRow(counted, "SCN"), Is.EqualTo("| **SCN** | 0 | 2 | 7 | 1 | 10 |"),
-                    "the seeded row must be counted in its own category's Information cell and in its total");
-                Assert.That(
-                    counted.Split('\n')
-                        .First(l => l.StartsWith("| **Total**", StringComparison.Ordinal)),
-                    Does.Contain("| **1** |"), "and in the Information grand total");
+                Assert.That(Cell(after, InformationColumn),
+                    Is.EqualTo(Cell(before, InformationColumn) + 1),
+                    "the seeded row is counted in its own category's Information cell");
+                Assert.That(Cell(after, TotalColumn), Is.EqualTo(Cell(before, TotalColumn) + 1),
+                    "and in that category's total");
+                Assert.That(Cell(TotalRow(counted), InformationColumn),
+                    Is.EqualTo(Cell(TotalRow(shipped), InformationColumn) + 1),
+                    "and in the Information grand total");
+                Assert.That(Cell(before, FatalColumn), Is.EqualTo(Cell(after, FatalColumn)),
+                    "and moves NOTHING else: an Info row is not a refusal");
             });
         }
 
+        /// <summary>Which count each cell of a rendered counts row holds; cell 0 is the row's own label.</summary>
+        private const int FatalColumn = 1;
+
+        private const int InformationColumn = 4;
+
+        private const int TotalColumn = 5;
+
         private static string CategoryRow(string table, string shortCode) =>
             table.Split('\n').First(l => l.StartsWith($"| **{shortCode}** |", StringComparison.Ordinal));
+
+        private static string TotalRow(string table) =>
+            table.Split('\n').First(l => l.StartsWith("| **Total**", StringComparison.Ordinal));
+
+        /// <summary>One count out of a rendered counts row, bold markers and padding stripped.</summary>
+        /// <param name="row">The rendered row, pipes and all.</param>
+        /// <param name="column">Which cell, by the column constants above.</param>
+        private static int Cell(string row, int column) =>
+            int.Parse(
+                row.Split('|', StringSplitOptions.RemoveEmptyEntries)[column].Trim().Trim('*'),
+                CultureInfo.InvariantCulture);
 
         /// <summary>
         /// The standing constraint on generation: it must not become the ONLY way to build a problem, or the open
@@ -534,8 +563,8 @@ namespace Ihc.Vis.Tests
             page.Append("\nThe **Fatal error** column is the `Refusal` disposition under the name §2 gives it; the code has\n");
             page.Append("no `Fatal` value. Only CATEGORISED entries are counted, so this total is smaller than the\n");
             page.Append("catalogue's own: the operation-outcome heads carry no category, by design.\n\n");
-            page.Append("**Information** reads 0 throughout: the disposition is declarable, "
-                + "and no row declares it yet.\n\n");
+            page.Append("**Information** is the advisory tier below Warning: those rows report a fact worth "
+                + "knowing about\na correct project, so they ask for no repair and no judgement.\n\n");
             page.Append("| Code | Fatal error | Error | Warning | Information | Total |\n");
             page.Append("| --- | --- | --- | --- | --- | --- |\n");
 

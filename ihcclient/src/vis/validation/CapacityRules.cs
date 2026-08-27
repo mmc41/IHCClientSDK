@@ -9,15 +9,17 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
 
 using static Ihc.Vis.Validation.RuleAuthoring;
 
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The seven CAPACITY rows: what the target controller can hold, and the one limit that is the file's own.
+    /// The CAPACITY rows: what the target controller can hold, and the limits that are the file's own.
     ///
-    /// <para><b>Six of the seven are not evaluated without a declared capability profile</b>, and that is the
+    /// <para><b>A row whose limit comes from the CONTROLLER is not evaluated without a declared capability
+    /// profile</b>, and that is the
     /// whole point of D21's controller case: their limit is not in the <c>.vis</c> file, so validating against a
     /// default would mean the same project is valid on one workstation and invalid on another. Each declares
     /// <see cref="ProblemCatalogEntry.RequiresControllerLimits"/>, so the profile skips it rather than the rule
@@ -37,7 +39,7 @@ namespace Ihc.Vis.Validation
     /// </summary>
     public static class CapacityRules
     {
-        /// <summary>The seven rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {
@@ -48,7 +50,12 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "capacity-input-addresses", AddressesExceeded(isOutput: false)),
                 Rule(catalog, "capacity-output-addresses", AddressesExceeded(isOutput: true)),
                 Rule(catalog, "capacity-wireless-exceeded", WirelessExceeded),
+                Rule(catalog, "capacity-wireless-links-per-unit", WirelessLinksPerUnit),
+                Rule(catalog, "capacity-scenarios-per-receiver", ScenariosPerReceiver),
                 Rule(catalog, "capacity-modem-multiple", ModemMultiple),
+                Rule(catalog, "capacity-s0-multiple", S0Multiple(catalog)),
+                Rule(catalog, "capacity-rs485-exceeded", Rs485Exceeded(catalog)),
+                Rule(catalog, "capacity-voicemodem-dimmer-conflict", VoicemodemDimmerConflict),
                 Rule(catalog, "capacity-resources-high", ResourcesHigh(catalog)));
         }
 
@@ -135,6 +142,85 @@ namespace Ihc.Vis.Validation
         }
 
         /// <summary>
+        /// One wireless unit carrying more follow-links than the controller supports on a single unit.
+        /// <para>ABSENT WITHOUT A CONTROLLER, like every row in this module: with no declared limits there is no
+        /// ceiling to be over, and reporting against a default would be indistinguishable from guessing.</para>
+        /// <para>A COMBI UNIT IS MEASURED AGAINST ITS OWN DECLARED CEILING, read from a second member rather
+        /// than derived from the first — that the two figures differ by a factor of two today is an observation,
+        /// not a rule the vendor states.</para>
+        /// <para>PER UNIT: two overloaded units are two units to re-plan.</para>
+        /// </summary>
+        private static void WirelessLinksPerUnit(IProjectInspection inspection)
+        {
+            if (inspection.Controller is not { } limits)
+            {
+                return;
+            }
+
+            foreach (ProjectElement unit in WirelessProducts(inspection.Analyses))
+            {
+                int limit = CombiUnits.Contains(unit.GetAttribute(ProductIdentifierAttribute) ?? string.Empty)
+                    ? limits.LinksPerCombiUnit
+                    : limits.LinksPerWirelessUnit;
+                int links = unit.DescendantsAndSelf()
+                    .Count(e => ReciprocalTags.FollowLinkHalfTags.Contains(e.Tag));
+                if (links > limit)
+                {
+                    inspection.Report(unit, Arguments(
+                        ("product", Name(unit)), ("used", links), ("limit", limit)));
+                }
+            }
+        }
+
+        /// <summary>
+        /// One wireless receiver taking part in more scenarios than the controller carries.
+        /// <para>A RECEIVER IS A WIRELESS PRODUCT THAT OWNS A SCENE CONTAINER, which the file decides — a
+        /// wireless unit with no container cannot be commanded into a scene at all, so it is not a receiver and
+        /// has no ceiling to be over. The corpus carries one such product.</para>
+        /// <para>COUNTED IN MEMBER ROWS ACROSS ALL ITS CONTAINERS: a two-channel receiver has two containers and
+        /// can still be in one scenario, so containers are not the quantity the controller bounds.</para>
+        /// </summary>
+        private static void ScenariosPerReceiver(IProjectInspection inspection)
+        {
+            if (inspection.Controller is not { } limits)
+            {
+                return;
+            }
+
+            foreach (ProjectElement receiver in WirelessProducts(inspection.Analyses))
+            {
+                // One pass over the unit's subtree: the containers are counted, not collected, because the only
+                // things asked of them are whether any exists and how many member rows they hold between them.
+                bool isReceiver = false;
+                int scenarios = 0;
+                foreach (ProjectElement container in receiver.DescendantsAndSelf())
+                {
+                    if (container.Tag != ReciprocalTags.SceneContainerTag)
+                    {
+                        continue;
+                    }
+
+                    isReceiver = true;
+                    scenarios += container.Children.Count(row => ReciprocalTags.SceneMemberTags.Contains(row.Tag));
+                }
+
+                if (isReceiver && scenarios > limits.ScenariosPerReceiver)
+                {
+                    inspection.Report(receiver, Arguments(
+                        ("product", Name(receiver)), ("used", scenarios),
+                        ("limit", limits.ScenariosPerReceiver)));
+                }
+            }
+        }
+
+        /// <summary>
+        /// The wireless COMBI units, which carry their own higher link ceiling. All four are
+        /// <c>product_airlink</c> products whose catalogue names carry <i>Kombi</i>.
+        /// </summary>
+        private static readonly ImmutableHashSet<string> CombiUnits =
+            ["_0x4404", "_0x4406", "_0x4407", "_0x4408"];
+
+        /// <summary>
         /// A second modem: the controller binds one, so the extra entries can never be commissioned.
         /// <para>NO PROFILE NEEDED — the limit is one, and it is the controller's rather than a configurable
         /// capability. RECLASSIFIED (⊘): measured live, IHC Visual refuses the second insert (<i>"Modem er allerede
@@ -150,6 +236,88 @@ namespace Ihc.Vis.Validation
             if (modems.Length > 1)
             {
                 inspection.Report(null, Arguments(("used", modems.Length)));
+            }
+        }
+
+        /// <summary>
+        /// A second S0 product: only one can serve a controller, so the extras can never be commissioned.
+        /// <para>NO PROFILE NEEDED, for the same reason the modem row needs none — the limit is the controller's
+        /// rather than a configurable capability. Unlike that row, the number is READ from the entry: it has a
+        /// vendor sentence behind it, so it is data rather than a literal here.</para>
+        /// <para>The family test is the shared classifier's, which already answers <c>s0_device</c> — an S0
+        /// product's device root carries no <c>product_</c> prefix, so a tag-prefix test would miss it.</para>
+        /// </summary>
+        /// <param name="catalog">The catalogue the entry, and its declared maximum, are declared in.</param>
+        private static ProjectInspection S0Multiple(ProblemCatalog catalog)
+        {
+            int maximum = (int)Threshold(catalog, "capacity-s0-multiple", "MaximumS0Products");
+            return inspection =>
+            {
+                // Over PRODUCTS, for the reason RuleAuthoring.Rs485Products states: Classify's open-world
+                // fallback is not product-guarded. S0Device is an exact match today and so is safe either way,
+                // but the subject is "every S0 PRODUCT" and the walk says so.
+                int meters = AllProducts(inspection.Analyses)
+                    .Count(e => ProductClassifier.Classify(e.Tag) == ProductFamily.S0Device);
+                if (meters > maximum)
+                {
+                    inspection.Report(null, Arguments(("used", meters)));
+                }
+            };
+        }
+
+        /// <summary>
+        /// More RS-485 components than the bus takes: past the limit the project cannot be fully commissioned.
+        /// <para>NO PROFILE NEEDED: the limit belongs to the BUS, not to the controller, so it is the same
+        /// number on every workstation — which is exactly the test D21's controller case applies.</para>
+        /// <para>ALL THREE RS-485 FAMILIES COUNT, the SMS modem included, because the vendor's guard sentence
+        /// says <i>inkl. SMS modem</i> in so many words.</para>
+        /// </summary>
+        /// <param name="catalog">The catalogue the entry, and its declared maximum, are declared in.</param>
+        private static ProjectInspection Rs485Exceeded(ProblemCatalog catalog)
+        {
+            int maximum = (int)Threshold(catalog, "capacity-rs485-exceeded", "MaximumRs485Components");
+            return inspection =>
+            {
+                int components = Rs485Products(inspection.Analyses).Count();
+                if (components > maximum)
+                {
+                    inspection.Report(null, Arguments(("used", components), ("limit", maximum)));
+                }
+            };
+        }
+
+        /// <summary>
+        /// A Voice Modem and an RS485 LED Dimmer in one project: the two cannot share a controller, so one of
+        /// them can never operate.
+        /// <para>NO NUMBERS AT ALL — an incompatibility rather than a capacity. It reports nothing about how
+        /// many of either there are, because one of each is already the whole condition.</para>
+        /// <para>THE SMS MODEM IS NOT THE VOICE MODEM. <see cref="ProductClassifier"/> separates
+        /// <see cref="ProductFamily.Rs485SmsModem"/> from <see cref="ProductFamily.Rs485Modem"/> by exact tag
+        /// before its <c>*modem*</c> fallback runs, which is what keeps this row silent on the three committed
+        /// projects that carry an SMS modem beside a dimmer.</para>
+        /// </summary>
+        private static void VoicemodemDimmerConflict(IProjectInspection inspection)
+        {
+            bool voiceModem = false;
+            bool ledDimmer = false;
+            foreach (ProjectElement product in AllProducts(inspection.Analyses))
+            {
+                switch (ProductClassifier.Classify(product.Tag))
+                {
+                    case ProductFamily.Rs485Modem:
+                        voiceModem = true;
+                        break;
+                    case ProductFamily.Rs485LedDimmer:
+                        ledDimmer = true;
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            if (voiceModem && ledDimmer)
+            {
+                inspection.Report(null, default);
             }
         }
 

@@ -13,7 +13,7 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The five VARIABLE-USAGE rows, as predicates over <see cref="IProgramUsageAnalysis"/> — none of them walks
+    /// The VARIABLE-USAGE rows, as predicates over <see cref="IProgramUsageAnalysis"/> — none of them walks
     /// the raw tree, which is the point of having the shared model at all.
     ///
     /// <para><b>THE BOUNDARY THAT MAKES THESE ROWS USABLE: a block's PINS are its interface, its
@@ -37,7 +37,7 @@ namespace Ihc.Vis.Validation
         /// <summary>The container holding the variables a program is expected to assign.</summary>
         private const string InternalContainer = "internalsettings";
 
-        /// <summary>The five rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {
@@ -47,7 +47,28 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "logic-variable-write-only", WriteOnly),
                 Rule(catalog, "logic-variable-read-only", ReadOnly),
                 Rule(catalog, "enum-value-unused", EnumValueUnused),
-                Rule(catalog, "logic-case-value-foreign", CaseValueForeign));
+                Rule(catalog, "logic-case-value-foreign", CaseValueForeign),
+                Rule(catalog, "logic-holiday-schedule-firmware", HolidayScheduleFirmware));
+        }
+
+        /// <summary>
+        /// The v3 holiday schedule, which the vendor states did not work at all below controller firmware
+        /// 3.3.21.
+        /// <para>THIS MODULE OWNS IT because the subject is a variable — <c>resource_holiday</c> is a declared
+        /// resource element, and the <c>logic-variable-*</c> family lives here. The row is a firmware erratum
+        /// rather than a usage judgement, but D18 organises by SUBJECT, not by why a row exists.</para>
+        /// <para>PRESENCE IS THE WHOLE PREDICATE, and the narrowing is not this rule's business: the profile
+        /// withholds the finding when a declared target is at or past the fix, which keeps the predicate a
+        /// statement about the FILE and the version comparison in one place.</para>
+        /// <para>ONE FINDING: the reader's decision is a firmware upgrade for the installation, and four
+        /// holiday resources do not make four of those.</para>
+        /// </summary>
+        private static void HolidayScheduleFirmware(IProjectInspection inspection)
+        {
+            if (inspection.Analyses.WithTag("resource_holiday").Any())
+            {
+                inspection.Report(null, default);
+            }
         }
 
         /// <summary>

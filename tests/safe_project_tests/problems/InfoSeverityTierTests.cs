@@ -19,8 +19,11 @@ namespace Ihc.Vis.Tests
     /// the blocking end, which is why <see cref="ProjectValidationResult.IsValid"/> keeps its meaning exactly:
     /// only Error blocks.</para>
     ///
-    /// <para>The tier ships EMPTY — no rule emits Info yet, so every committed oracle stays byte-identical and
-    /// the coverage below is built from findings constructed here.</para>
+    /// <para>The coverage below is built from findings CONSTRUCTED HERE, and stays that way now that rows
+    /// declare the tier: what these tests are about is the accessor contract — which list a severity lands in,
+    /// and what it does to <c>IsValid</c> — not which rules happen to emit one. Synthetic findings exercise
+    /// every tier including combinations no corpus file produces, and they cannot drift when the catalogue
+    /// does.</para>
     /// </summary>
     [TestFixture]
     public sealed class InfoSeverityTierTests

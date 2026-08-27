@@ -14,7 +14,7 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The five SCHEMA-CONFORMANCE rules, on the engine: a missing <c>#REQUIRED</c> attribute, an enumerated
+    /// The SCHEMA-CONFORMANCE rules, on the engine: a missing <c>#REQUIRED</c> attribute, an enumerated
     /// value outside its declared set, an attribute no schema declares, text the ISO-8859-1 writer cannot encode,
     /// and an element type no schema declares.
     /// <para>
@@ -38,7 +38,7 @@ namespace Ihc.Vis.Validation
     /// </summary>
     public static class SchemaConformanceRules
     {
-        /// <summary>The five rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {

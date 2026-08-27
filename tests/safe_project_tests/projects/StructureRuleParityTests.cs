@@ -5,8 +5,15 @@ using System.Linq;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// PARITY for the nine STRUCTURE rules — the root's shape and version, containment, the four function-block
-    /// checks, embedded constants and the program skeleton — against the recording made before they moved.
+    /// PARITY for the STRUCTURE rules — the root's shape and version, containment, the four function-block
+    /// checks, embedded constants and the program skeleton — against the recording.
+    ///
+    /// <para><b>Nine of the ten were MIGRATED and are compared against a recording made before they moved;</b>
+    /// <c>root-version-minor</c> was added later and its recording was made in the diff that added it. The
+    /// distinction matters to what a failure MEANS — a migrated row failing here is a regression, a new one
+    /// failing is a rule that does not do what its own oracle says — but not to how the comparison runs. The list
+    /// below must name every id <c>StructureRules</c> emits, because the engine side is the whole module's
+    /// output: an id missing from it shows up as an unexplained extra finding rather than as a missing rule.</para>
     ///
     /// <para><b>Three of the nine are WARNINGS and must stay warnings.</b> An unusual root child order, an
     /// unmodeled containment and a deviant program skeleton all LOAD AND WORK, and vendor tooling tolerates every
@@ -24,7 +31,7 @@ namespace Ihc.Vis.Tests
     {
         private static readonly ImmutableArray<string> MigratedIds =
         [
-            "root-children", "root-version", "containment", "fb-shape", "fb-programs",
+            "root-children", "root-version", "root-version-minor", "containment", "fb-shape", "fb-programs",
             "fb-pin-container", "fb-local-ref", "inline-constant", "program-shape",
         ];
 

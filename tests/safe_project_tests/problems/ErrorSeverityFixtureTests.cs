@@ -83,7 +83,11 @@ namespace Ihc.Vis.Tests
                 // Three today — one per duplicate group — but the pin is deliberately "not empty": the count is
                 // a rule's business, and this gate exists so a consumer can observe AN Error tier.
                 Assert.That(result.Errors, Is.Not.Empty);
-                Assert.That(result.Infos, Is.Empty, "the Info tier ships empty: no rule emits it yet");
+                // Still empty, and no longer for the reason it once was. Information rows ship now; this fixture
+                // simply triggers none. Its two backup="yes" elements are `dataline_output` TERMINALS, and
+                // `backup-retained-count` counts `resource_*` elements — so the nearest Info row deliberately
+                // passes it by. Nothing else it carries is an advisory subject either.
+                Assert.That(result.Infos, Is.Empty, "this fixture triggers no Information row");
             });
         }
     }

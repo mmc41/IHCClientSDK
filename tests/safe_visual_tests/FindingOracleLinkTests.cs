@@ -36,7 +36,7 @@ public class FindingOracleLinkTests
     }
 
     /// <summary>
-    /// THE guard: the recorded rows for the E2E fixture are actually found, and there are 150 of them.
+    /// THE guard: the recorded rows for the E2E fixture are actually found, and there are 160 of them.
     ///
     /// <para><b>Why a count and not merely "not empty".</b> The number is what the E2E assertions compare
     /// against — how many rows the panel must show, and which codes — so a reader that found SOME rows but not
@@ -45,17 +45,37 @@ public class FindingOracleLinkTests
     /// <para><b>Why the case key is the interesting part.</b> The consumers pass <c>Project6-Errors</c> while
     /// the oracle records <c>fixture/Project6-Errors</c>. The folder-prefix stripping that bridges the two is
     /// invisible to every other test, so this is where it is pinned.</para>
+    ///
+    /// <para><b>The tier split is pinned too, and it is no longer one tier.</b> The fixture carries 150 Warnings
+    /// and 10 Information rows — the S0 meter's, the wireless family's, the retention budget, three the LED
+    /// dimmer brings (what it does after a power failure, the bus it sits on, and its unlinked fault resources)
+    /// and four user-built blocks whose `.ifb` files are worth archiving. The E2E panel counts are read PER TIER, so a test that compared the
+    /// panel's <i>Advarsel</i> count against this whole population would be off by exactly those rows; asserting
+    /// the split here is what keeps that mistake visible in the suite that runs on every build rather than only
+    /// in the <c>[Explicit]</c> one that does not.</para>
+    ///
+    /// <para><b>The Warning count is the stable half.</b> 150 is what this fixture has carried throughout; the
+    /// Information count grows with each advisory row the catalogue adds that the fixture happens to witness. A
+    /// failure showing the WARNING number moved is therefore a different and more serious thing than one showing
+    /// only the Info number did.</para>
     /// </summary>
     [Test]
-    public void TheRecordedRowsForTheE2EFixtureAreFoundAndCountOneHundredAndFifty()
+    public void TheRecordedRowsForTheE2EFixtureAreFoundAndSplitAcrossTwoTiers()
     {
         Assert.Multiple(() =>
         {
-            Assert.That(E2E.OracleRows(OracleCase), Has.Count.EqualTo(150));
-            Assert.That(E2E.OracleCodes(OracleCase), Has.Count.EqualTo(150), "and the code projection agrees");
+            Assert.That(E2E.OracleRows(OracleCase), Has.Count.EqualTo(162));
+            Assert.That(E2E.OracleCodes(OracleCase), Has.Count.EqualTo(162), "and the code projection agrees");
             Assert.That(
-                E2E.OracleRows(OracleCase).Select(r => r.Severity).Distinct(), Is.EqualTo(new[] { "Warning" }),
-                "the fixture's findings are all advisory, which the panel's tier counts depend on");
+                E2E.OracleRows(OracleCase).Count(r => r.Severity == "Warning"), Is.EqualTo(152),
+                "the advisory rows the panel's Advarsel count must equal");
+            Assert.That(
+                E2E.OracleRows(OracleCase).Count(r => r.Severity == "Info"), Is.EqualTo(10),
+                "and the Information rows, counted under their own tier and not with the warnings");
+            Assert.That(
+                E2E.OracleRows(OracleCase).Select(r => r.Severity).Distinct(),
+                Is.EquivalentTo(new[] { "Warning", "Info" }),
+                "no Error row: nothing this fixture carries blocks a save, which the panel's tier counts assume");
         });
     }
 

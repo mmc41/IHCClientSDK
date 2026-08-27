@@ -114,11 +114,16 @@ namespace Ihc.Vis.Tests
                 + "<ihc_project_findings version=\"1\" source=\"Project1-SimpelWired.vis\""
                 + " generated=\"2026-07-30T12:00:00+00:00\" saved_stamp=\"_0x2\" order=\"production\""
                 + " severities=\"Error Warning Info\" error_tiers=\"refusing ordinary\""
-                // Seven, not the six capacity rows alone: ValidationProfile.Categorized supplies neither a
-                // controller nor a library, so the one library-gated rule could not run either. An export
-                // through the app service, whose profile does carry the library port, lists only the six.
+                // More than the eight capacity rows: ValidationProfile.Categorized supplies neither a
+                // controller nor a library, so BOTH library-gated rules could not run either. The list is ONE
+                // ordinal sequence rather than capacity-then-library — which here happens to look the same,
+                // since `capacity` < `fb` < `logic`. An export through the app service, whose profile does carry
+                // the library port, lists only the eight.
                 + " rules_not_run=\"capacity-input-addresses capacity-input-modules capacity-output-addresses"
-                + " capacity-output-modules capacity-resources-high capacity-wireless-exceeded"
+                + " capacity-output-modules capacity-resources-high capacity-scenarios-per-receiver"
+                + " capacity-wireless-exceeded"
+                + " capacity-wireless-links-per-unit"
+                + " fb-master-missing-from-library fb-master-version-differs"
                 + " logic-block-locked-content\">\r\n"
                 + "   <finding severity=\"Warning\" code=\"struct-locality-empty\" category=\"ProjectStructure\""
                 + " locator=\"_0x2132\" message=\"Lokaliteten 'Stue' er tom.\"/>\r\n"

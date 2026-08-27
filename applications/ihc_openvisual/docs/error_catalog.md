@@ -254,6 +254,13 @@ A number that **both** a gesture and a rule must enforce does not belong on an e
 each reads it — otherwise the catalogue becomes the authority for a fact a dialog must enforce before any
 validation runs.
 
+A number **two rows** compare against stays on both entries: each declares its own threshold, under its own
+name, with its own citation, and each rule reads its OWN entry — never a neighbour's. What the two must not do
+is write the figure twice. Bind one constant declared beside the entries in `ProblemCatalogEntries`, say so in
+both evidence texts, and pin the pair equal in a test: two rows are two statements about one fact, so raising
+one alone is not a smaller change but a silent re-classification of the other. `MaximumRs485Components` /
+`Rs485MaxComponents` and the two `SupportedVersionMajor` declarations are the shipped examples.
+
 ### 7.1 Firmware bounds
 
 A row whose condition is a controller-firmware or shipped-block errata declares the release that fixed the
@@ -499,7 +506,7 @@ This section states how each one derives.
 | Fatal error | *Fatale fejl* | `Severity == Error` **and** `RefusedOperations` is not empty | Ships (§11.1) |
 | Error | *Fejl* | `Disposition.Error` → `ValidationSeverity.Error` | Ships |
 | Warning | *Advarsler* | `Disposition.Warning` → `ValidationSeverity.Warning` | Ships |
-| Information | *Information* | `Disposition.Info` → `ValidationSeverity.Info` | Ships, and **no row declares it yet** (§11.2) |
+| Information | *Information* | `Disposition.Info` → `ValidationSeverity.Info` | Ships (§11.2) |
 
 The Danish column names the GROUP, which is what a specification describes. The application labels one
 finding at a time — the filter chip and every row's Alvor cell read `ProblemsPanelViewModel.TierLabel`, which
@@ -587,16 +594,33 @@ therefore not tier order, which the member's own doc-comment says. `ProblemCatal
 `ValidationSeverity.Info`, `ValidationGate.Infos` answers it beside `Errors` and `Warnings`, and §1's
 per-category table carries an **Information** column. The Problemer panel was already plumbed for the tier.
 
-**No shipped row declares it**, so every Information cell in that table reads 0 and no oracle byte moved.
-Reclassifying existing rows to Information is a separate edit with its own oracle diff — which is exactly why
-the enum addition could be made without one.
+**Shipped rows declare it**, and problem-catalogue.md collects them in its own §5b rather than in §5.
+The two sections are separated by what the reader is asked to do: §5's rows are advisory because the author
+has to judge them, which is what its *Why it may be fine* column states, and an Information row asks for no
+judgement at all — so §5b carries no such column. Reclassifying an EXISTING row into Information is still a
+separate edit with its own oracle diff; that is what made the enum addition itself oracle-neutral.
 
-To author the first one: declare `CatalogDisposition.Info` on the entry like any other disposition. Two gates
-already cover it, and both are seeded rather than corpus-driven precisely because no row declares it yet —
-`ProblemCatalogTests.EveryDispositionDerivesItsSeverityIncludingTheOnesNoRowDeclaresYet` and
-`CatalogCompletenessTests.TheExpectedSeverityMappingCoversEveryFindingDisposition`. Note the second one: its
-`Expected` helper once mapped every non-Error disposition to `Warning`, which would have failed the first Info
-finding the corpus witnessed on the TEST's stale mapping rather than on anything the row did.
+To author one: declare `CatalogDisposition.Info` on the entry like any other disposition, and add the row to
+§5b rather than to §4 or §5. Two gates cover the derivation, from opposite ends:
+
+- `ProblemCatalogTests.EveryDispositionDerivesItsSeverityWhetherOrNotARowDeclaresIt` seeds the whole
+  disposition axis, so the mapping is total by construction and a fifth disposition added without a severity
+  fails on the day it is added rather than on the day a row first declares it.
+- `CatalogCompletenessTests.EveryRecordedFindingCarriesItsEntrysSeverityAndCategory` checks the other
+  direction over the recording, comparing each finding against `entry.Severity` — **the catalogue's own
+  derivation, never a copy of it** in the test. An earlier version did keep a local mapping, and a helper that
+  sent every non-Error disposition to `Warning` would have failed the first Info finding the corpus witnessed
+  on the TEST's stale copy rather than on anything the row did. That helper is gone; reading `entry.Severity`
+  is what replaced it.
+
+*(Corrected 2026-08-27: this section previously named a
+`CatalogCompletenessTests.TheExpectedSeverityMappingCoversEveryFindingDisposition`, which does not exist —
+the fix it describes was made by deleting the local mapping, not by adding a test.)*
+
+The first row to declare it was `product-s0-instrument-only` (ADR), which reports that a placed S0 meter is a
+read-out instrument rather than an automation source. It is witnessed by the three authentic corpus files that
+carry an `s0_device`, so it moved three finding lines in `tests/testdata/validation/` — and no root line,
+because the export root's `severities` list is computed from the export options and already named `Info`.
 
 ### 11.3 How the export answers the fourth tier
 

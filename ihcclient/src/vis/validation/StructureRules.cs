@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 
 using Ihc.Vis.FunctionBlocks;
@@ -15,11 +16,12 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The nine STRUCTURE rules: the root's fixed children and its version, the modeled containment rules, the
+    /// The STRUCTURE rules: the root's fixed children and its version, the modeled containment rules, the
     /// four function-block shape checks, embedded constants, and the vendor program skeleton.
     /// <para>
-    /// Three of the nine are WARNINGS and stay warnings, which is the distinction the severity model rests on:
-    /// an unusual root child order, an unmodeled containment and a deviant program skeleton all LOAD AND WORK. The
+    /// Some of these are WARNINGS and stay warnings, which is the distinction the severity model rests on: an
+    /// unusual root child order, a minor version ahead of the supported one, an unmodeled containment and a
+    /// deviant program skeleton all LOAD AND WORK. The
     /// vendor tooling tolerates them, so calling them errors would be this tool asserting a rule the format does
     /// not have.
     /// </para>
@@ -59,14 +61,15 @@ namespace Ihc.Vis.Validation
             ("program_case", "link"),
         ];
 
-        /// <summary>The nine rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {
             ArgumentNullException.ThrowIfNull(catalog);
             return ImmutableArray.Create(
                 Rule(catalog, "root-children", RootChildren),
-                Rule(catalog, "root-version", RootVersion),
+                Rule(catalog, "root-version", RootVersion(catalog)),
+                Rule(catalog, "root-version-minor", RootVersionMinor(catalog)),
                 Rule(catalog, "containment", Containment),
                 Rule(catalog, "fb-shape", BlockShape),
                 Rule(catalog, "fb-programs", BlockPrograms),
@@ -90,17 +93,62 @@ namespace Ihc.Vis.Validation
             }
         }
 
-        /// <summary>A major version above the highest this tool models: opening it would misread content and
-        /// saving would destroy it.</summary>
-        private static void RootVersion(IProjectInspection inspection)
+        /// <summary>
+        /// A major version above the highest this tool models: opening it would misread content and saving would
+        /// destroy it.
+        /// <para>THE SUPPORTED MAJOR IS READ FROM THE ENTRY, as <see cref="RootVersionMinor"/> reads it: the
+        /// number this predicate compares against is declared data, and both rows bind one declared constant so
+        /// the boundary they partition stays a single fact.</para>
+        /// <para>An unparseable major is passed over rather than guessed at, exactly as
+        /// <see cref="RootVersionMinor"/> passes over an unparseable minor.</para>
+        /// </summary>
+        /// <param name="catalog">The catalogue the entry, and its declared supported major, are declared in.</param>
+        private static ProjectInspection RootVersion(ProblemCatalog catalog)
         {
-            ProjectElement root = inspection.Project.Root;
-            if (root.GetAttribute("version_major") is { } major
-                && int.TryParse(major, out int value)
-                && value > 4)
+            int supportedMajor = (int)Threshold(catalog, "root-version", "SupportedVersionMajor");
+            return inspection =>
             {
-                inspection.Report(root, Arguments(("version", major)));
-            }
+                ProjectElement root = inspection.Project.Root;
+                if (root.GetAttribute("version_major") is { } major
+                    && int.TryParse(major, out int value)
+                    && value > supportedMajor)
+                {
+                    inspection.Report(root, Arguments(("version", major)));
+                }
+            };
+        }
+
+        /// <summary>
+        /// A minor version ahead of the supported one: the file may carry content this model does not know, and
+        /// a save can drop it silently.
+        /// <para>THE MAJOR GATE IS THE POINT. A major ABOVE the supported one is <see cref="RootVersion"/>'s row,
+        /// and a major BELOW it is accepted input — so this row speaks only for a file of the supported major.
+        /// Both numbers are read from the entry; neither is written here.</para>
+        /// <para>An unparseable minor is passed over rather than guessed at, exactly as
+        /// <see cref="RootVersion"/> passes over an unparseable major.</para>
+        /// </summary>
+        /// <param name="catalog">The catalogue the entry, and both declared bounds, are declared in.</param>
+        private static ProjectInspection RootVersionMinor(ProblemCatalog catalog)
+        {
+            int supportedMajor = (int)Threshold(catalog, "root-version-minor", "SupportedVersionMajor");
+            int supportedMinor = (int)Threshold(catalog, "root-version-minor", "SupportedVersionMinor");
+            return inspection =>
+            {
+                ProjectElement root = inspection.Project.Root;
+                if (root.GetAttribute("version_major") is not { } major
+                    || !int.TryParse(major, NumberStyles.Integer, CultureInfo.InvariantCulture, out int majorValue)
+                    || majorValue != supportedMajor)
+                {
+                    return;
+                }
+
+                if (root.GetAttribute("version_minor") is { } minor
+                    && int.TryParse(minor, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minorValue)
+                    && minorValue > supportedMinor)
+                {
+                    inspection.Report(root, Arguments(("minor", minor), ("supported", supportedMinor)));
+                }
+            };
         }
 
         /// <summary>An element outside the modeled containment rules. Advisory, because the placement model is

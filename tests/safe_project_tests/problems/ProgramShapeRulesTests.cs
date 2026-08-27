@@ -194,6 +194,104 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // ── logic-statement-unlinked ────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The finding: a statement carrying no <c>link1</c> references nothing. Asserted on an
+        /// <c>&lt;action&gt;</c>, which is the tag whose consequence was actually measured.
+        /// </summary>
+        [Test]
+        public void AStatementCarryingNoLinkIsAnError()
+        {
+            Project unlinked = ProgramOf([Statement("event", 0x92, linked: true)], [Statement("action", 0x96, linked: false)]);
+            Project linked = ProgramOf([Statement("event", 0x92, linked: true)], [Statement("action", 0x96, linked: true)]);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(unlinked, "logic-statement-unlinked"), Is.EqualTo(1));
+                Assert.That(Single(unlinked, "logic-statement-unlinked").Severity,
+                    Is.EqualTo(ValidationSeverity.Error), "the catalogue rates this one an Error");
+                Assert.That(Single(unlinked, "logic-statement-unlinked").Message,
+                    Is.EqualTo("Programlinjen <action> i blokken 'Trappelys' peger ikke på nogen ressource."));
+                Assert.That(Count(linked, "logic-statement-unlinked"), Is.Zero);
+            });
+        }
+
+        /// <summary>
+        /// THE EXCLUSION, and the whole risk of this row. <c>event_power</c> carries no <c>link1</c>,
+        /// <c>link2</c> or <c>method</c> BY DESIGN — its element name is the discriminator, because its behaviour
+        /// is hard-wired rather than selected by a method number.
+        ///
+        /// <para><b>It is not distinguishable from <c>event</c> by anything but the tag.</b> It shares
+        /// <c>event</c>'s id type code <c>c8</c> and its constant <c>icon="_0xc"</c>, so a rule recognising
+        /// statements by the id suffix — the shortcut the format otherwise invites, since the P data type IS read
+        /// off that suffix — or by the icon fires on every Powerup event in the corpus. This tree carries the two
+        /// side by side so that mistake produces a second finding here rather than an oracle diff later.</para>
+        /// </summary>
+        [Test]
+        public void APowerUpEventIsNeverReportedForCarryingNoLink()
+        {
+            Project mixed = ProgramOf(
+                [Statement("event", 0x92, linked: true), PowerUp(0x94)],
+                [Statement("action", 0x96, linked: false)]);
+            Project powerUpAlone = ProgramOf([PowerUp(0x94)], [Statement("action", 0x96, linked: true)]);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(mixed, "logic-statement-unlinked"), Is.EqualTo(1),
+                    "the linkless action alone — the event_power beside it carries no link1 by design");
+                Assert.That(Single(mixed, "logic-statement-unlinked").Message, Does.Contain("<action>"),
+                    "and the one finding names the action, not the Powerup event");
+                Assert.That(Count(powerUpAlone, "logic-statement-unlinked"), Is.Zero,
+                    "a program whose only linkless element is an event_power reports nothing at all");
+            });
+        }
+
+        /// <summary>
+        /// All three statement tags are matched, and matched BY TAG. <c>condition</c> lives in a sub-program, so
+        /// the walk cannot be scoped to <c>program_simple</c> the way the events rows above are.
+        /// </summary>
+        [Test]
+        public void EachOfTheThreeStatementTagsIsReported()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(
+                    Single(ProgramOf([Statement("event", 0x92, linked: false)], [Statement("action", 0x96, linked: true)]),
+                        "logic-statement-unlinked").Message, Does.Contain("<event>"));
+                Assert.That(
+                    Single(ProgramOf([Statement("event", 0x92, linked: true)], [Statement("action", 0x96, linked: false)]),
+                        "logic-statement-unlinked").Message, Does.Contain("<action>"));
+                Assert.That(
+                    Single(SubProgramOf([Statement("condition", 0xa2, linked: false)]),
+                        "logic-statement-unlinked").Message, Does.Contain("<condition>"));
+            });
+        }
+
+        /// <summary>
+        /// The measurement the row rests on: the vendor editor always writes <c>link1</c>, so no authentic file
+        /// carries this state — while every one of them carries <c>event_power</c> elements that a
+        /// type-code-matching rule would report. The second assertion is the one that would catch that mistake:
+        /// without it, a rule reporting nothing at all would pass the first.
+        /// </summary>
+        [Test]
+        public void NoAuthenticProjectCarriesAnUnlinkedStatementThoughAllCarryPowerUpEvents()
+        {
+            string[] files = ["project2-CustomBlock.vis", "project3-KompleksWired.vis", "project5-Dokumentation.vis"];
+
+            Assert.Multiple(() =>
+            {
+                foreach (string file in files)
+                {
+                    Project project = Authentic(file);
+                    Assert.That(Count(project, "logic-statement-unlinked"), Is.Zero, file);
+                    Assert.That(
+                        project.Root.Descendants().Count(e => e.Tag == "event_power"), Is.GreaterThan(0),
+                        $"{file} carries Powerup events, so the zero above is a real exclusion and not an empty walk");
+                }
+            });
+        }
+
         // ── tree builders ───────────────────────────────────────────────────────────────────────────
 
         private static Project Authentic(string file)
@@ -264,5 +362,45 @@ namespace Ihc.Vis.Tests
         /// <summary>A block holding one simple program with the given event and command counts.</summary>
         private static Project Simple(int events, int actions) =>
             Block([Program("Program", events, actions)]);
+
+        /// <summary>
+        /// One statement, linked or not. The other builders here always write a <c>link1</c>, which is exactly
+        /// what the unlinked-statement row is about — so it needs a builder that can leave it out.
+        /// </summary>
+        /// <param name="tag">The statement tag: <c>event</c>, <c>condition</c> or <c>action</c>.</param>
+        /// <param name="at">The id counter.</param>
+        /// <param name="linked">Whether the statement carries a <c>link1</c> at all.</param>
+        private static ProjectElement Statement(string tag, int at, bool linked) =>
+            Tree.Node(tag, Token(tag, at),
+                linked
+                    ? [("name", "%P = ON"), ("link1", Token("resource_output", 0x81)), ("method", "_0xa")]
+                    : [("name", "%P = ON"), ("method", "_0xa")]);
+
+        /// <summary>
+        /// A Powerup event, exactly as the vendor writes one: no <c>link1</c>, no <c>link2</c>, no
+        /// <c>method</c> — and an id whose type code is <c>event</c>'s.
+        /// </summary>
+        /// <param name="at">The id counter.</param>
+        private static ProjectElement PowerUp(int at) =>
+            Tree.Node("event_power", Token("event_power", at), [("name", "Powerup")]);
+
+        /// <summary>A block whose simple program carries exactly these events and these commands.</summary>
+        private static Project ProgramOf(ProjectElement[] events, ProjectElement[] actions) =>
+            Block(
+            [
+                Tree.Node("program_simple", Token("program_simple", 0x90), [("name", "Program")],
+                    Tree.Node("events", Token("events", 0x91), [("name", "Hændelser")], events),
+                    Tree.Node("actions", Token("actions", 0x95), [("name", "Kommandoer"), ("type", "_0x2")], actions)),
+            ]);
+
+        /// <summary>A block whose SUB-program carries exactly these conditions, and one linked command.</summary>
+        private static Project SubProgramOf(ProjectElement[] conditions) =>
+            Block(
+            [
+                Tree.Node("program_sub", Token("program_sub", 0xa0), [("name", "Betingelse")],
+                    Tree.Node("conditions", Token("conditions", 0xa1), [("name", "Betingelser")], conditions),
+                    Tree.Node("actions", Token("actions", 0xa5), [("name", "Kommandoer"), ("type", "_0x2")],
+                        Statement("action", 0xa6, linked: true))),
+            ]);
     }
 }

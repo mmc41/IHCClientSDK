@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
@@ -239,10 +240,278 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // ── scene-dimming-out-of-range ──────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Both ends of the range, and both boundaries. A light level past 100 % means nothing to any dimmer, and
+        /// the vendor dialog silently zeroes it the first time the member is committed — so the value the author
+        /// wrote quietly becomes 0.
+        ///
+        /// <para><b>The bounds are read from the entry, not retyped</b>, exactly as the ramp boundary test above
+        /// reads its own. Changing either declaration moves the rule and this test together.</para>
+        /// </summary>
+        [Test]
+        public void ADimmingValueOutsideTheDeclaredRangeIsReportedAtBothEnds()
+        {
+            int minimum = (int)DeclaredDimming("DimmingMinimum");
+            int maximum = (int)DeclaredDimming("DimmingMaximum");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Dimming($"{maximum + 1}"), "scene-dimming-out-of-range"), Is.EqualTo(1),
+                    "one past the maximum");
+                Assert.That(Count(Dimming($"{minimum - 1}"), "scene-dimming-out-of-range"), Is.EqualTo(1),
+                    "one below the minimum");
+                Assert.That(Count(Dimming($"{maximum}"), "scene-dimming-out-of-range"), Is.Zero,
+                    "AT the maximum: 100 % is a legal light level");
+                Assert.That(Count(Dimming($"{minimum}"), "scene-dimming-out-of-range"), Is.Zero,
+                    "AT the minimum: 0 % is the off state, and legal");
+                Assert.That(Count(Dimming("60"), "scene-dimming-out-of-range"), Is.Zero, "well inside");
+            });
+        }
+
+        [Test]
+        public void TheDimmingRangeFindingNamesTheRowTheValueAndTheLegalRange()
+        {
+            Assert.That(Message(Dimming("150"), "scene-dimming-out-of-range"),
+                Is.EqualTo("Scenemedlemmet 'Scenarie link' har lysniveauet 150 %; det gyldige område er 0-100 %."));
+        }
+
+        /// <summary>
+        /// A Warning rather than an Error, and the reason is the axis §2 draws. The file layer carries the value
+        /// and renders it; the demonstrated harm is the vendor dialog's silent zeroing on commit, and controller
+        /// behaviour is untested. An Error's consequence has to hold whatever the author intended — this one
+        /// depends on which tool touches the row next.
+        /// </summary>
+        [Test]
+        public void TheDimmingRangeFindingIsAdvisoryBecauseTheHarmDependsOnTheNextTool()
+        {
+            Assert.That(Validate(Dimming("150")).Findings
+                .Single(f => f.RuleId == "scene-dimming-out-of-range").Severity,
+                Is.EqualTo(ValidationSeverity.Warning));
+        }
+
+        /// <summary>
+        /// THE EXCLUSIONS. A relay row carries no <c>dimming_value</c> at all, and a dimmer row that carries none
+        /// is unset rather than out of range — a different state, owned by other rows. Neither is reported, and
+        /// neither can be: a rule that read a missing attribute as 0 would report every relay in the corpus.
+        /// </summary>
+        [Test]
+        public void ARowCarryingNoDimmingValueIsNotReported()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Scene(members: 1), "scene-dimming-out-of-range"), Is.Zero,
+                    "a relay member row has no light level to be out of range");
+                Assert.That(Count(Dimming(null), "scene-dimming-out-of-range"), Is.Zero,
+                    "and an unparseable or absent value is not a range violation");
+            });
+        }
+
+        /// <summary>The declared dimming bound of that name, with the confidence grade the entry must carry.</summary>
+        /// <param name="name">The threshold's declared name.</param>
+        private static double DeclaredDimming(string name)
+        {
+            Assert.That(ProblemCatalog.Current.TryGet(new ProblemCode("scene-dimming-out-of-range"),
+                out ProblemCatalogEntry entry), Is.True);
+            DeclaredThreshold threshold = entry.Thresholds.Single(t => t.Name == name);
+
+            if (name == "DimmingMinimum")
+            {
+                Assert.That(threshold.Confidence, Is.EqualTo(ThresholdConfidence.Authored),
+                    "no source probed the lower bound — the spinner was driven upward only");
+                Assert.That(threshold.Evidence, Does.Contain("TODO"),
+                    "an authored threshold carries its unconfirmed status where it is declared");
+            }
+            else
+            {
+                Assert.That(threshold.Confidence, Is.EqualTo(ThresholdConfidence.VendorDocumented),
+                    "the vendor's own Lysniveau spinner stops at 100 and does not wrap");
+            }
+
+            return threshold.Value;
+        }
+
+        /// <summary>One scene whose single dimmer member carries the given light level, and no ramp.</summary>
+        /// <param name="value">The <c>dimming_value</c> to store, or null for a row that carries none.</param>
+        private static Project Dimming(string? value) =>
+            Scene(members: 1, dimmingValue: value ?? "");
+
         // ── tree builders ───────────────────────────────────────────────────────────────────────────
 
         private static string Token(string tag, int counter) =>
             new ElementId(counter, TypeCode.ForTag(tag) ?? 0).ToToken();
+
+        /// <summary>
+        /// A16: the affected RS-485 LED dimmer driven through SCENARIO RECALL.
+        ///
+        /// <para><b>Why this row earns its place, and why the fix cannot be narrowed on.</b> The defect is fixed
+        /// by <i>dimmer</i> firmware 01.01.40, which itself needs controller CTR.R.03.03.44 — and an upload from
+        /// Visual never applies dimmer firmware. So the user cannot fix it from the application at all, which is
+        /// what makes it worth reporting. Crucially the entry declares NO <c>FixedIn</c>: the narrowing context
+        /// compares a CONTROLLER version, and a controller at CTR.R.03.03.44 still has an unpatched dimmer, so
+        /// narrowing on that release would withhold a finding that still holds. Both versions live in the Danish
+        /// sentence instead, per D21.</para>
+        ///
+        /// <para><b>The corpus supplies both halves of the partition</b>, which is unusual and worth naming:
+        /// <c>project3-KompleksWired</c>'s dimmer has NO scene member rows under either channel and is not
+        /// reported, while <c>project5-Dokumentation</c> and <c>Project6-Errors</c> each have one and are. The
+        /// negative control is an authentic vendor file rather than a built tree.</para>
+        /// </summary>
+        [Test]
+        public void AnAffectedDimmerDrivenFromASceneIsReportedAndAnUnusedOneIsNot()
+        {
+            Project driven = ScenarioDrivenDimmer(memberRows: 1);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(driven, "rs485-dimmer-scenario-recall"), Is.EqualTo(1));
+                Assert.That(Count(ScenarioDrivenDimmer(memberRows: 0), "rs485-dimmer-scenario-recall"), Is.Zero,
+                    "a dimmer no scene drives is not driven through scenario recall");
+                Assert.That(Count(ScenarioDrivenDimmer(memberRows: 2), "rs485-dimmer-scenario-recall"),
+                    Is.EqualTo(1),
+                    "OnePerOccurrence is per DIMMER: two scene rows on one device are one device to re-flash");
+                Assert.That(
+                    Count(ScenarioDrivenDimmer(memberRows: 1, identifier: "_0x4408"), "rs485-dimmer-scenario-recall"),
+                    Is.Zero, "and a different product is not the subject");
+                Assert.That(Validate(driven).Findings
+                    .Single(f => f.RuleId == "rs485-dimmer-scenario-recall").Severity,
+                    Is.EqualTo(ValidationSeverity.Warning));
+
+                // D21: the sentence carries both versions, because no declared bound can express them.
+                Assert.That(Message(driven, "rs485-dimmer-scenario-recall"),
+                    Does.Contain("01.01.40").And.Contain("CTR.R.03.03.44"));
+                Assert.That(
+                    ProblemCatalog.Current.TryGet(new ProblemCode("rs485-dimmer-scenario-recall"), out var entry),
+                    Is.True);
+                Assert.That(entry!.FirmwareBound?.FixedIn, Is.Null,
+                    "a controller at CTR.R.03.03.44 still has an unpatched dimmer, so no target may withhold it");
+            });
+        }
+
+        /// <summary>
+        /// A17: one scene commanding SEVERAL affected RS-485 LED dimmers off at once. Only one may respond, and
+        /// the quick successive channel commands cross-talk.
+        ///
+        /// <para><b>"Off" is decided from the value, not from a word</b>, and that is the exclusion worth
+        /// stating. A <c>scene_dimmer</c> row carries a <c>dimming_value</c>, never an on/off token, so off means
+        /// the value is zero — the same reading <c>scene-all-off</c> uses. Zero is also the legal floor
+        /// <c>scene-dimming-out-of-range</c> accepts, so a row at zero is a perfectly valid row: this predicate
+        /// is about how MANY valid rows fire together, not about any one of them being wrong.</para>
+        ///
+        /// <para><b>Several means two DIMMERS, not two rows.</b> A dimmer has two channels and each can hold its
+        /// own member row, so counting rows would report a single device commanded off on both channels — which
+        /// is one device responding, exactly the case that works.</para>
+        /// </summary>
+        [Test]
+        public void ASceneCommandingTwoAffectedDimmersOffIsReportedAndOneIsNot()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(SceneOverDimmers(dimmers: 2, off: true), "rs485-dimmer-scene-multi-off"),
+                    Is.EqualTo(1));
+                Assert.That(Count(SceneOverDimmers(dimmers: 1, off: true), "rs485-dimmer-scene-multi-off"),
+                    Is.Zero, "one dimmer responds, which is the case that works");
+                Assert.That(Count(SceneOverDimmers(dimmers: 2, off: false), "rs485-dimmer-scene-multi-off"),
+                    Is.Zero, "two dimmers commanded to a LEVEL are not commanded off");
+                Assert.That(
+                    Count(SceneOverDimmers(dimmers: 1, off: true, bothChannels: true),
+                        "rs485-dimmer-scene-multi-off"),
+                    Is.Zero,
+                    "two rows on ONE dimmer are one device: the count is over dimmers, not over member rows");
+                Assert.That(Count(SceneOverDimmers(dimmers: 3, off: true), "rs485-dimmer-scene-multi-off"),
+                    Is.EqualTo(1), "OnePerOccurrence is per SCENE, however many dimmers it commands");
+                Assert.That(Message(SceneOverDimmers(dimmers: 2, off: true), "rs485-dimmer-scene-multi-off"),
+                    Does.Contain("2"), "the count is what tells the reader the scale of the problem");
+                Assert.That(Validate(SceneOverDimmers(dimmers: 2, off: true)).Findings
+                    .Single(f => f.RuleId == "rs485-dimmer-scene-multi-off").Severity,
+                    Is.EqualTo(ValidationSeverity.Warning));
+            });
+        }
+
+        /// <summary>
+        /// One scene whose halves drive <paramref name="dimmers"/> affected LED dimmers, each to zero when
+        /// <paramref name="off"/> and to a level otherwise.
+        /// </summary>
+        /// <param name="dimmers">How many distinct dimmers the scene commands.</param>
+        /// <param name="off">Whether the member rows carry a zero dimming value.</param>
+        /// <param name="bothChannels">Whether ONE dimmer contributes two member rows instead of one.</param>
+        private static Project SceneOverDimmers(int dimmers, bool off, bool bothChannels = false)
+        {
+            ImmutableArray<ProjectElement>.Builder products = ImmutableArray.CreateBuilder<ProjectElement>();
+            ImmutableArray<ProjectElement>.Builder halves = ImmutableArray.CreateBuilder<ProjectElement>();
+            string value = off ? "0" : "60";
+
+            for (int d = 0; d < dimmers; d++)
+            {
+                int at = 0x100 + (d * 0x40);
+                int rows = bothChannels && d == 0 ? 2 : 1;
+                ImmutableArray<ProjectElement>.Builder channels = ImmutableArray.CreateBuilder<ProjectElement>();
+
+                for (int c = 0; c < 2; c++)
+                {
+                    int cat = at + (c * 0x10);
+                    bool carries = c < rows;
+                    channels.Add(Tree.Node("rs485_led_dimmer_channel", Token("rs485_led_dimmer_channel", cat),
+                        [("name", "Kanal")],
+                        Tree.Node("rs485_led_dimmer_output", Token("rs485_led_dimmer_output", cat + 1),
+                            [("name", "Udgang")]),
+                        Tree.Node("scenes", Token("scenes", cat + 2),
+                            [("name", "Scenarier/regulering"),
+                             ("scene_resource", Token("rs485_led_dimmer_output", cat + 1))],
+                            carries
+                                ? [Tree.Node("scene_dimmer", Token("scene_dimmer", cat + 3),
+                                    [("name", "Scenarie link"), ("link", Token("scene_link", cat + 4)),
+                                     ("dimming_value", value)])]
+                                : [])));
+
+                    if (carries)
+                    {
+                        halves.Add(Tree.Node("scene_link", Token("scene_link", cat + 4),
+                            [("name", "Scenarie link"), ("link", Token("scene_dimmer", cat + 3))]));
+                    }
+                }
+
+                products.Add(Tree.Node("product_rs485_led_dimmer", Token("product_rs485_led_dimmer", at + 0x30),
+                    [("product_identifier", "_0x4409"), ("name", "LED dæmper " + d)], [.. channels]));
+            }
+
+            ProjectElement block = Tree.Node("functionblock", Token("functionblock", 0x70), [("name", "Blok")],
+                Tree.Node("inputs", Token("inputs", 0x71), [("name", "Input")],
+                    Tree.Node("resource_scene", Token("resource_scene", 0x74), [("name", "Scenarie Sluk")],
+                        [.. halves])));
+
+            return Tree.WithRoot(
+                Tree.Node("groups", Token("groups", 0x20), [("name", "L")],
+                    Tree.Node("group", Token("group", 0x21), [("name", "Stue")], [block, .. products])));
+        }
+
+        /// <summary>
+        /// An RS-485 LED dimmer with two channels, the first of which carries a <c>scenes</c> container holding
+        /// <paramref name="memberRows"/> member rows — the shape the authentic files carry.
+        /// </summary>
+        private static Project ScenarioDrivenDimmer(int memberRows, string identifier = "_0x4409")
+        {
+            ProjectElement Channel(int at, bool driven) =>
+                Tree.Node("rs485_led_dimmer_channel", Token("rs485_led_dimmer_channel", at), [("name", "Kanal")],
+                    Tree.Node("rs485_led_dimmer_output", Token("rs485_led_dimmer_output", at + 1),
+                        [("name", "Udgang")]),
+                    Tree.Node("scenes", Token("scenes", at + 2),
+                        [("name", "Scenarier/regulering"),
+                         ("scene_resource", Token("rs485_led_dimmer_output", at + 1))],
+                        [.. Enumerable.Range(0, driven ? memberRows : 0).Select(i =>
+                            Tree.Node("scene_dimmer", Token("scene_dimmer", at + 3 + i),
+                                [("name", "Scenarie link"), ("link", Token("scene_link", 0x200 + i)),
+                                 ("dimming_value", "50")]))]));
+
+            return Tree.WithRoot(
+                Tree.Node("groups", Token("groups", 0x20), [("name", "L")],
+                    Tree.Node("group", Token("group", 0x21), [("name", "Stue")],
+                        Tree.Node("product_rs485_led_dimmer", Token("product_rs485_led_dimmer", 0x50),
+                            [("product_identifier", identifier), ("name", "LED dæmper")],
+                            Channel(0x60, driven: true),
+                            Channel(0x80, driven: false)))));
+        }
 
         /// <summary>
         /// A project with one block carrying one scene pin, and one product per member row. Every switch is one
@@ -260,7 +529,8 @@ namespace Ihc.Vis.Tests
             bool outputAlsoLinked = false,
             string relayValue = "on",
             string? secondRelayValue = null,
-            long? dimmerRampMs = null)
+            long? dimmerRampMs = null,
+            string? dimmingValue = null)
         {
             ImmutableArray<ProjectElement>.Builder products = ImmutableArray.CreateBuilder<ProjectElement>();
             ImmutableArray<ProjectElement>.Builder halves = ImmutableArray.CreateBuilder<ProjectElement>();
@@ -269,12 +539,36 @@ namespace Ihc.Vis.Tests
             {
                 int at = 0x100 + (i * 0x10);
                 int outputAt = sameOutput ? 0x100 : at;   // one shared output, or one per member
-                string memberTag = dimmerRampMs is null ? "scene_relay" : "scene_dimmer";
-                (string, string)[] valueAttributes = dimmerRampMs is { } ramp
-                    ? [("name", "Scenarie link"), ("link", Token("scene_link", at + 1)),
-                       ("dimming_value", "50"), ("ramptime_ms", ramp.ToString(System.Globalization.CultureInfo.InvariantCulture))]
-                    : [("name", "Scenarie link"), ("link", Token("scene_link", at + 1)),
-                       ("relay_value", i == 1 && secondRelayValue is not null ? secondRelayValue : relayValue)];
+                bool dimmer = dimmerRampMs is not null || dimmingValue is not null;
+                string memberTag = dimmer ? "scene_dimmer" : "scene_relay";
+                (string, string)[] valueAttributes;
+                if (dimmer)
+                {
+                    // A dimmer row with no ramp is legal and is the shape the range row needs: ramptime_ms is
+                    // written only when a ramp was asked for, so scene-long-delay stays out of the way.
+                    List<(string, string)> attributes =
+                    [
+                        ("name", "Scenarie link"),
+                        ("link", Token("scene_link", at + 1)),
+                        ("dimming_value", dimmingValue ?? "50"),
+                    ];
+                    if (dimmerRampMs is { } ramp)
+                    {
+                        attributes.Add(
+                            ("ramptime_ms", ramp.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+                    }
+
+                    valueAttributes = [.. attributes];
+                }
+                else
+                {
+                    valueAttributes =
+                    [
+                        ("name", "Scenarie link"),
+                        ("link", Token("scene_link", at + 1)),
+                        ("relay_value", i == 1 && secondRelayValue is not null ? secondRelayValue : relayValue),
+                    ];
+                }
 
                 ProjectElement row = Tree.Node(memberTag, Token(memberTag, at + 2), valueAttributes);
                 ProjectElement output = Tree.Node("dataline_output", Token("dataline_output", outputAt),

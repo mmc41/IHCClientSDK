@@ -55,7 +55,7 @@ namespace Ihc.Vis.Tests
 
         /// <summary>Non-vacuity for everything below.</summary>
         [Test]
-        public void TheWholeCorpusIsLoaded() => Assert.That(Lines, Has.Length.EqualTo(618));
+        public void TheWholeCorpusIsLoaded() => Assert.That(Lines, Has.Length.EqualTo(833));
 
         // ----- related sites -----
 
@@ -118,11 +118,12 @@ namespace Ihc.Vis.Tests
         // ----- exact node paths -----
 
         /// <summary>
-        /// Exactly the six measured lines carry a path, and the 36 whose locator is a bare TAG carry none.
+        /// Only the measured AMBIGUOUS lines carry a path; a line whose locator is a bare TAG carries none.
         ///
         /// <para>The second half is the one that matters: a tag locator names no id, so the naive rule "emit a
-        /// path when the parsed id is null" would put a path on all 36 of them. They do not need one — a tag
-        /// that names one element already selects it.</para>
+        /// path when the parsed id is null" would put a path on every one of them. They do not need one — a tag
+        /// that names one element already selects it. The two populations are counted in the assertion, which is
+        /// where a number belongs: a comment restating it drifts silently, the assertion cannot.</para>
         /// </summary>
         [Test]
         public void ExactlyTheAmbiguousLinesCarryAPath()
@@ -134,7 +135,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(pathed, Has.Length.EqualTo(6), "under 1% of the corpus");
-                Assert.That(tagLocators, Has.Length.EqualTo(36), "non-vacuity: there really are 36 of them");
+                Assert.That(tagLocators, Has.Length.EqualTo(60), "non-vacuity: there really are 60 of them");
                 Assert.That(
                     tagLocators.Where(l => l.Value("xpath") is not null), Is.Empty,
                     "a tag that names one element already selects it");

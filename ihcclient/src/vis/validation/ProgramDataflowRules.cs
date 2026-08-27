@@ -13,9 +13,9 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The six remaining LOGIC rows, all of them predicates over <see cref="IProgramUsageAnalysis"/>: an output
+    /// The remaining LOGIC rows, all of them predicates over <see cref="IProgramUsageAnalysis"/>: an output
     /// nothing drives, a flag that latches, a counter that never returns, a timer nothing starts, a program that
-    /// retriggers itself, and two programs fighting over one value.
+    /// retriggers itself, two programs fighting over one value, and a block whose call path reaches itself.
     ///
     /// <para><b>A SUB-PROGRAM IS NOT A PROGRAM for the two "which program" rows.</b> Its trigger is its parent's —
     /// the format gives it no <c>events</c> container at all — and two branches of one program are mutually
@@ -52,7 +52,7 @@ namespace Ihc.Vis.Validation
         /// </summary>
         private static readonly ImmutableHashSet<string> TimerStartTokens = ["_0xbe", "_0xc8", "_0xd2"];
 
-        /// <summary>The six rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {
@@ -63,7 +63,178 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "logic-counter-never-reset", CounterNeverReset),
                 Rule(catalog, "logic-timer-unused", TimerNeverStarted),
                 Rule(catalog, "logic-self-trigger", SelfTrigger),
-                Rule(catalog, "logic-contending-writers", ContendingWriters));
+                Rule(catalog, "logic-contending-writers", ContendingWriters),
+                Rule(catalog, "logic-block-recursive", BlockRecursive));
+        }
+
+        /// <summary>
+        /// A block whose program path reaches ITSELF: the recursion runs in the simulator and does nothing on
+        /// the controller.
+        /// <para>
+        /// THE GRAPH IS BUILT FROM THE RUN'S EXISTING ANALYSES and nothing else — <c>Usage</c> supplies every
+        /// trigger and every write, <c>Topology</c> says which block a program sits in. No second traversal.
+        /// </para>
+        /// <para>
+        /// EACH BLOCK IS CONTRACTED TO ONE NODE BEFORE THE SEARCH, and that is what makes the row's subject
+        /// exact. A31 is about a recursive CALL: the path has to leave the block and come back. Two of a block's
+        /// own programs signalling each other over its internal settings never leave it — the vendor's shipped
+        /// library blocks are built that way — and contracting them to one node means they generate no edge at
+        /// all rather than a self-loop. A program outside every block is its own node.
+        /// </para>
+        /// <para>
+        /// The same contraction excludes what <c>logic-self-trigger</c> already reports: a single program
+        /// triggered by a variable it assigns is one node writing to itself. No case analysis is needed for
+        /// either exclusion — both are the one rule that an edge must join two DIFFERENT nodes.
+        /// </para>
+        /// <para>
+        /// Every block on a cycle is reported, not just one: each is separately the place a reader could break
+        /// the loop, and naming only the "closing" block would depend on traversal order.
+        /// </para>
+        /// </summary>
+        private static void BlockRecursive(IProjectInspection inspection)
+        {
+            ITopologyAnalysis topology = inspection.Analyses.Topology;
+            IProgramUsageAnalysis usage = inspection.Analyses.Usage;
+
+            var triggers = new Dictionary<ProjectElement, HashSet<ProjectElement>>(ReferenceEqualityComparer.Instance);
+            var writes = new Dictionary<ProjectElement, HashSet<ProjectElement>>(ReferenceEqualityComparer.Instance);
+            Collect(topology, usage, triggers, writes);
+
+            ProjectElement Node(ProjectElement program) =>
+                topology.NearestAncestorOrSelf(program, "functionblock") ?? program;
+
+            // INVERTED FIRST, because the edge test is a set intersection: pairing every writer with every
+            // triggered program asks it once per PAIR, where keying the triggered nodes by the variable that
+            // triggers them asks it once per WRITE. The contraction is also resolved once per program here
+            // rather than once per pair.
+            var triggeredBy = new Dictionary<ProjectElement, HashSet<ProjectElement>>(ReferenceEqualityComparer.Instance);
+            foreach ((ProjectElement triggered, HashSet<ProjectElement> by) in triggers)
+            {
+                ProjectElement to = Node(triggered);
+                foreach (ProjectElement variable in by)
+                {
+                    if (!triggeredBy.TryGetValue(variable, out HashSet<ProjectElement>? reached))
+                    {
+                        triggeredBy[variable] = reached = new HashSet<ProjectElement>(ReferenceEqualityComparer.Instance);
+                    }
+
+                    reached.Add(to);
+                }
+            }
+
+            var edges = new Dictionary<ProjectElement, HashSet<ProjectElement>>(ReferenceEqualityComparer.Instance);
+            foreach ((ProjectElement writer, HashSet<ProjectElement> written) in writes)
+            {
+                ProjectElement from = Node(writer);
+                foreach (ProjectElement variable in written)
+                {
+                    if (!triggeredBy.TryGetValue(variable, out HashSet<ProjectElement>? targets))
+                    {
+                        continue;
+                    }
+
+                    foreach (ProjectElement to in targets)
+                    {
+                        if (ReferenceEquals(from, to))
+                        {
+                            continue;
+                        }
+
+                        if (!edges.TryGetValue(from, out HashSet<ProjectElement>? reached))
+                        {
+                            edges[from] = reached = new HashSet<ProjectElement>(ReferenceEqualityComparer.Instance);
+                        }
+
+                        reached.Add(to);
+                    }
+                }
+            }
+
+            foreach (ProjectElement node in NodesOnACycle(edges))
+            {
+                if (node.Tag == "functionblock")
+                {
+                    inspection.Report(node, Arguments(("name", Name(node))));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Every node that lies on a cycle of the call graph, by depth-first search with an explicit stack.
+        /// <para>A node is on a cycle when the search reaches it again while it is still on the current path;
+        /// every node currently on that path is then on the cycle too.</para>
+        /// <para>
+        /// THE STACK IS EXPLICIT BECAUSE THE DEPTH IS THE PROJECT'S, not this engine's. The search descends once
+        /// per node on the path, so a long enough chain of blocks calling blocks would recurse as deep as the
+        /// file is long — and a blown call stack is the one failure a caller cannot catch, in a component whose
+        /// whole contract is to report on a file rather than fall over on one. Each frame carries the node and
+        /// its own position in its child list, which is exactly what the recursion kept for it.
+        /// </para>
+        /// </summary>
+        /// <param name="edges">The contracted call graph — a node is a function block, or a program outside one.</param>
+        private static HashSet<ProjectElement> NodesOnACycle(
+            Dictionary<ProjectElement, HashSet<ProjectElement>> edges)
+        {
+            var onCycle = new HashSet<ProjectElement>(ReferenceEqualityComparer.Instance);
+            var settled = new HashSet<ProjectElement>(ReferenceEqualityComparer.Instance);
+
+            // The path, and each node's DEPTH on it. The depth is what the cycle mark needs — everything from the
+            // revisited node's depth to the top of the path is on the cycle — so one map replaces a membership
+            // set plus a linear search for the position that set could not report.
+            var path = new List<ProjectElement>();
+            var depth = new Dictionary<ProjectElement, int>(ReferenceEqualityComparer.Instance);
+            var stack = new Stack<(ProjectElement Node, IEnumerator<ProjectElement> Children)>();
+
+            void Descend(ProjectElement node)
+            {
+                depth[node] = path.Count;
+                path.Add(node);
+                stack.Push((node, edges.TryGetValue(node, out HashSet<ProjectElement>? next)
+                    ? ((IEnumerable<ProjectElement>)next).GetEnumerator()
+                    : Enumerable.Empty<ProjectElement>().GetEnumerator()));
+            }
+
+            foreach (ProjectElement root in edges.Keys)
+            {
+                if (settled.Contains(root))
+                {
+                    continue;
+                }
+
+                Descend(root);
+                while (stack.Count > 0)
+                {
+                    (ProjectElement node, IEnumerator<ProjectElement> children) = stack.Peek();
+                    if (children.MoveNext())
+                    {
+                        ProjectElement child = children.Current;
+                        if (depth.TryGetValue(child, out int from))
+                        {
+                            // Everything from the child's position to here is a cycle.
+                            for (int i = from; i < path.Count; i++)
+                            {
+                                onCycle.Add(path[i]);
+                            }
+                        }
+                        else if (!settled.Contains(child))
+                        {
+                            Descend(child);
+                        }
+
+                        continue;
+                    }
+
+                    // The node's children are exhausted, which is where the recursion returned: it leaves the
+                    // path and can never be on a cycle discovered later.
+                    children.Dispose();
+                    stack.Pop();
+                    depth.Remove(node);
+                    path.RemoveAt(path.Count - 1);
+                    settled.Add(node);
+                }
+            }
+
+            return onCycle;
         }
 
         /// <summary>

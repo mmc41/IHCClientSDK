@@ -156,6 +156,75 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // ── logic-holiday-schedule-firmware ─────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// A29: the v3 holiday (<i>helligdag</i>) schedule did not work AT ALL below controller firmware 3.3.21.
+        ///
+        /// <para><b>This row is the phase's first end-to-end proof of the narrowing half</b> against a real
+        /// declaration rather than the infrastructure's stand-in entry. The three cases below are the whole
+        /// contract: present reports, absent is silent, and a target at or past the fix withholds.</para>
+        ///
+        /// <para><b>The bound is a VENDOR CLAIM, and the grade says so.</b> LK states the release fixed it; this
+        /// repository has not verified that. <c>ThresholdConfidence.VendorRecommendation</c> is exactly what
+        /// <c>DeclaredFirmwareBound</c>'s own doc-comment reserves for that, and it is why the row still reports
+        /// with no target: an unverified claim narrows a stated target, it does not decide the default.</para>
+        ///
+        /// <para><b>ONE finding per project, not one per schedule.</b> The reader's decision is a firmware
+        /// upgrade for the installation, which four holiday resources do not make four of.</para>
+        /// </summary>
+        [Test]
+        public void TheHolidayScheduleIsReportedOnceAndWithheldAtTheFixedFirmware()
+        {
+            Project withHoliday = HolidaySchedule(count: 1);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(withHoliday, "logic-holiday-schedule-firmware"), Is.EqualTo(1));
+                Assert.That(Count(HolidaySchedule(count: 4), "logic-holiday-schedule-firmware"), Is.EqualTo(1),
+                    "OneFinding: the decision is one firmware upgrade, not one per schedule");
+                Assert.That(Count(HolidaySchedule(count: 0), "logic-holiday-schedule-firmware"), Is.Zero,
+                    "a project that does not use the schedule is not affected by it");
+                Assert.That(Validate(withHoliday).Findings
+                    .Single(f => f.RuleId == "logic-holiday-schedule-firmware").Severity,
+                    Is.EqualTo(ValidationSeverity.Warning));
+            });
+        }
+
+        [Test]
+        public void TheHolidayRowNarrowsOnTheDeclaredFirmwareTarget()
+        {
+            // Through the REGISTERED rule set, not a stand-in: this is the row's end-to-end narrowing proof.
+            ImmutableArray<string> Run(ValidationProfile profile) =>
+                [.. new WholeProjectValidator(ProjectRules.Registered)
+                    .Validate(HolidaySchedule(count: 1), profile)
+                    .Select(f => f.Code.Value).Where(id => id == "logic-holiday-schedule-firmware")];
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(Run(ValidationProfile.ProjectOnly), Is.Not.Empty,
+                    "no target declared, so the row reports — narrowing context ENABLES nothing, it withholds");
+                Assert.That(
+                    Run(ValidationProfile.ProjectOnly with { Firmware = new ControllerFirmwareVersion(3, 3, 20) }),
+                    Is.Not.Empty, "one release below the fix");
+                Assert.That(
+                    Run(ValidationProfile.ProjectOnly with { Firmware = new ControllerFirmwareVersion(3, 3, 21) }),
+                    Is.Empty, "the bound is inclusive: 3.3.21 itself carries the fix");
+                Assert.That(
+                    Run(ValidationProfile.ProjectOnly with { Firmware = new ControllerFirmwareVersion(3, 4, 0) }),
+                    Is.Empty, "and anything past it");
+            });
+        }
+
+        /// <summary>A project carrying <paramref name="count"/> holiday schedules.</summary>
+        private static Project HolidaySchedule(int count) =>
+            Tree.WithRoot(
+                Tree.Node("groups", Token("groups", 0x20), [("name", "L")],
+                    Tree.Node("group", Token("group", 0x21), [("name", "Stue")],
+                        [.. Enumerable.Range(0, count).Select(i =>
+                            Tree.Node("resource_holiday", Token("resource_holiday", 0x80 + i),
+                                [("name", $"Helligdag {i + 1}")]))])));
+
         // ── enum-value-unused ───────────────────────────────────────────────────────────────────────
 
         [Test]

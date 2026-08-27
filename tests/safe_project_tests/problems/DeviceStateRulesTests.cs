@@ -158,6 +158,180 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // ── dev-inivalue-out-of-range ───────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Both ends of the percentage range, and both boundaries. An initial value no physical unit can reach —
+        /// 150 % relative humidity — is carried, rendered and shipped to the controller without a word from any
+        /// layer of the vendor tool.
+        /// </summary>
+        [Test]
+        public void APercentInitialValueOutsideItsRangeIsReportedAtBothEnds()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Percent("resource_humidity_level", "150"), "dev-inivalue-out-of-range"),
+                    Is.EqualTo(1), "above the maximum");
+                Assert.That(Count(Percent("resource_humidity_level", "-1"), "dev-inivalue-out-of-range"),
+                    Is.EqualTo(1), "below the minimum");
+                Assert.That(Count(Percent("resource_humidity_level", "100"), "dev-inivalue-out-of-range"),
+                    Is.Zero, "AT the maximum");
+                Assert.That(Count(Percent("resource_humidity_level", "0"), "dev-inivalue-out-of-range"),
+                    Is.Zero, "AT the minimum");
+                Assert.That(Count(Percent("resource_light_level", "150"), "dev-inivalue-out-of-range"),
+                    Is.EqualTo(1), "the second percent-typed kind reports too");
+            });
+        }
+
+        /// <summary>
+        /// The value prints EXACTLY as the file carries it, decimals and all. That is why the slot is
+        /// <c>AttributeValue</c> and not <c>Integer</c>: the measured case is
+        /// <c>resource_humidity_level inivalue="150.00"</c>, which loads, renders verbatim and survives a plain
+        /// resave — and an <c>Integer</c> slot would silently reformat it to <c>150</c>, quietly disagreeing with
+        /// the bytes the reader is being asked to repair.
+        /// </summary>
+        [Test]
+        public void TheReportedValueIsWhatTheFileCarriesIncludingItsDecimals()
+        {
+            Assert.That(Message(Percent("resource_humidity_level", "150.00"), "dev-inivalue-out-of-range"),
+                Is.EqualTo("Startværdien 150.00 på 'Fugtighed' er uden for det gyldige område 0-100."));
+        }
+
+        /// <summary>
+        /// THE SCOPE, which is the whole risk here. The row is deliberately PERCENT-ONLY: the two kinds whose
+        /// 0–100 range the format specification records. Its sibling <c>resource_light</c> is a lux value on a
+        /// 0–60,000 range and is emphatically not a percent kind, so reporting it against 0–100 would be wrong on
+        /// every well-formed project that carries one; a counter's negative value was measured carried and no
+        /// source calls it illegal; and a timer stores no <c>inivalue</c> at all — its value lives in
+        /// <c>hour</c>/<c>minute</c>/<c>second</c>.
+        /// </summary>
+        [Test]
+        public void OnlyThePercentTypedKindsAreInScope()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Percent("resource_light", "5000"), "dev-inivalue-out-of-range"), Is.Zero,
+                    "a lux value of 5000 is ordinary — that kind's range is 0-60,000");
+                Assert.That(Count(Percent("resource_counter", "-5"), "dev-inivalue-out-of-range"), Is.Zero,
+                    "no source states that a negative count is illegal");
+                Assert.That(Count(Percent("resource_integer", "40000"), "dev-inivalue-out-of-range"), Is.Zero,
+                    "the integer range is available but this row is scoped to percent (D06)");
+            });
+        }
+
+        /// <summary>
+        /// A value arithmetic cannot read is not a range violation: there is nothing to compare. A resource with
+        /// no <c>inivalue</c> at all is likewise untouched — that is the default state every file is full of.
+        /// </summary>
+        [Test]
+        public void AnUnreadableOrAbsentInitialValueIsNotReported()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Percent("resource_humidity_level", "høj"), "dev-inivalue-out-of-range"),
+                    Is.Zero, "the grammar admits it; arithmetic cannot read it, so this row has nothing to say");
+                Assert.That(Count(Percent("resource_humidity_level", null), "dev-inivalue-out-of-range"),
+                    Is.Zero, "and a resource left at its default carries no inivalue at all");
+            });
+        }
+
+        /// <summary>
+        /// Both bounds are declared, and both grade <c>VendorRecommendation</c> rather than
+        /// <c>VendorDocumented</c>: vendor help states the range, and the same source measured that NOTHING in
+        /// the load, display, commit or save path enforces it. That is guidance, not a limit — which is also why
+        /// the row is a Warning.
+        /// </summary>
+        [Test]
+        public void ThePercentBoundsAreDeclaredAsUnenforcedVendorGuidance()
+        {
+            Assert.That(ProblemCatalog.Current.TryGet(new ProblemCode("dev-inivalue-out-of-range"),
+                out ProblemCatalogEntry entry), Is.True);
+
+            Assert.Multiple(() =>
+            {
+                foreach (string name in new[] { "PercentMinimum", "PercentMaximum" })
+                {
+                    DeclaredThreshold declared = entry.Thresholds.Single(t => t.Name == name);
+                    Assert.That(declared.Confidence, Is.EqualTo(ThresholdConfidence.VendorRecommendation), name);
+                    Assert.That(declared.Evidence, Does.Contain("not enforced"), name);
+                }
+
+                Assert.That(entry.Slots.Select(s => s.Name),
+                    Is.EqualTo(new[] { "value", "variable", "minimum", "maximum" }).AsCollection,
+                    "declared order is the template's first-appearance order: it opens on {value}");
+            });
+        }
+
+        // ── backup-retained-count ───────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The retention budget is a controller-side ration, and this number is what will be measured against it
+        /// at upload. ONE finding for the project: the count is the fact, and anchoring per resource would nag
+        /// about each of them separately.
+        /// </summary>
+        [Test]
+        public void TheRetainedResourceCountIsReportedOnceForTheProject()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(BlockWithVariables(markedCount: 3, unmarkedCount: 0), "backup-retained-count"),
+                    Is.EqualTo(1), "one finding, however many resources are marked");
+                Assert.That(Message(BlockWithVariables(markedCount: 3, unmarkedCount: 0), "backup-retained-count"),
+                    Does.Contain("3"), "and the count is the fact it carries");
+                Assert.That(Message(BlockWithVariables(markedCount: 1, unmarkedCount: 2), "backup-retained-count"),
+                    Does.Contain("1"), "unmarked resources are not part of the budget");
+                Assert.That(Count(BlockWithVariables(markedCount: 0, unmarkedCount: 3), "backup-retained-count"),
+                    Is.Zero, "a project asking for nothing to be retained has no budget to report");
+            });
+        }
+
+        /// <summary>
+        /// NO VERDICT AND NO THRESHOLD, deliberately. The controller's retention ceiling is not established
+        /// anywhere in this row's source, so `RequiresControllerLimits` is NOT set and the row reports the count
+        /// alone — it states a fact the reader can weigh, rather than a limit the SDK cannot cite.
+        ///
+        /// <para>That is also why it is Information: exceeding the ration is a different condition, and this row
+        /// is not claiming the project does.</para>
+        /// </summary>
+        [Test]
+        public void TheRetainedCountCarriesNoCeilingAndNoVerdict()
+        {
+            Assert.That(ProblemCatalog.Current.TryGet(new ProblemCode("backup-retained-count"),
+                out ProblemCatalogEntry entry), Is.True);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(entry.Thresholds, Is.Empty, "no number to compare against");
+                Assert.That(entry.RequiresControllerLimits, Is.False,
+                    "and no controller context asked for, because none would be used");
+                Assert.That(Validate(BlockWithVariables(markedCount: 2, unmarkedCount: 0)).Findings
+                    .Single(f => f.RuleId == "backup-retained-count").Severity,
+                    Is.EqualTo(ValidationSeverity.Info));
+            });
+        }
+
+        /// <summary>
+        /// THE COUNT IS OVER <c>resource_*</c> ELEMENTS, AND A TERMINAL IS NOT ONE. An output terminal ships
+        /// <c>backup="yes"</c> too, but <c>dataline_output</c> is not a resource element and is not counted.
+        ///
+        /// <para>Whether a terminal's retained value consumes the same controller-side ration is NOT established
+        /// by this row's source, which says <c>resource_*</c> in as many words. Counting terminals would be
+        /// asserting an equivalence nobody measured; the row counts what the source scopes it to, and this test
+        /// records the boundary so a later widening is a decision rather than a drift.</para>
+        /// </summary>
+        [Test]
+        public void OnlyResourceElementsCountTowardsTheRetainedBudget()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Message(TerminalsAndBlock(), "backup-retained-count"), Does.Contain("1"),
+                    "the marked block flag alone — the marked output TERMINAL is not a resource element");
+                Assert.That(Count(TerminalsAndBlock(), "dev-backup-missing"), Is.EqualTo(1),
+                    "and the scoped row still reports the unmarked block variable, reading the same attribute "
+                    + "for a different purpose");
+            });
+        }
+
         // ── tree builders ───────────────────────────────────────────────────────────────────────────
 
         private static string Token(string tag, int counter) =>
@@ -174,6 +348,20 @@ namespace Ihc.Vis.Tests
                 Tree.Node("settings", Token("settings", at + 3), [("name", "Indstillinger")]),
                 Tree.Node("internalsettings", Token("internalsettings", at + 4), [("name", "Interne")], internals),
                 Tree.Node("programs", Token("programs", at + 5), [("name", "Programmer")], programs));
+
+        /// <summary>
+        /// A block holding one resource of the given kind carrying the given initial value — or none at all when
+        /// <paramref name="value"/> is null, which is the state every default-valued resource is in.
+        /// </summary>
+        /// <param name="tag">The resource element's tag.</param>
+        /// <param name="value">The <c>inivalue</c> to store, or null to store none.</param>
+        private static Project Percent(string tag, string? value) =>
+            InLocality(BlockShell(0x70, "Blok",
+                [Tree.Node(tag, Token(tag, 0x80),
+                    value is null
+                        ? [("name", "Fugtighed")]
+                        : [("name", "Fugtighed"), ("inivalue", value)])],
+                []));
 
         /// <summary>A block whose single program assigns one flag carrying the given access.</summary>
         private static Project Block(string access) =>

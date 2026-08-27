@@ -57,7 +57,7 @@ namespace Ihc.Vis.Tests
     /// value onto the catalogue's own; and the ORDER became the executor's — document position, then ordinal
     /// rule id — instead of the old pipeline's pass order. It moved a second time when the recording became
     /// these XML files, and that move was proved rather than reviewed: a temporary test zipped the two
-    /// artifacts and required all 618 findings to agree, per case, in order.</para>
+    /// artifacts and required every finding to agree, per case, in order.</para>
     /// </summary>
     public class ValidationCharacterizationTests
     {
@@ -132,9 +132,106 @@ namespace Ihc.Vis.Tests
         /// and that is the measurement rather than a thin corpus — the committed files carry three telephone
         /// numbers in total and all three are well-formed, so no authentic fixture can witness the row without
         /// being edited into a defect fixture. Two findings: one number too short, one with no country code.</para>
+        /// <para>94 with the first INFORMATION row, <c>product-s0-instrument-only</c>: the first id here whose
+        /// findings are neither errors nor advisory judgements but a datasheet fact about a correctly placed
+        /// device. It is witnessed by the three authentic files that carry an <c>s0_device</c> —
+        /// <c>project3-KompleksWired</c>, <c>project5-Dokumentation</c> and <c>Project6-Errors</c>, one meter
+        /// each — so unlike the declarative row above it needed no synthetic case.</para>
+        /// <para>95 with <c>logic-statement-unlinked</c>, whose two witnesses are both synthetic and are worth
+        /// telling apart. <c>synthetic/statement-link</c> was built for it, and carries the exclusion beside the
+        /// finding. <c>synthetic/fb-locality</c> witnesses it by ACCIDENT: a <c>condition</c> authored there to
+        /// carry a stray <c>link2</c> has no <c>link1</c> either, so it satisfies this predicate too — which is
+        /// correct, and is a second, independent confirmation that the rule reads the right attribute. No
+        /// AUTHENTIC file witnesses it, and none should: the vendor editor always writes <c>link1</c>.</para>
+        /// <para>96 with <c>capacity-s0-multiple</c>, witnessed by <c>synthetic/s0-multiple</c> alone: the three
+        /// authentic files carrying an S0 device carry exactly one each, and the vendor refuses the second
+        /// insert, so no authentic file can witness it.</para>
+        /// <para>97 with <c>capacity-rs485-exceeded</c>, witnessed by <c>synthetic/rs485-bus</c> alone — 32
+        /// dimmers and an SMS modem, which is 33 because the vendor's own guard sentence counts the modem.</para>
+        /// <para>98 with <c>capacity-voicemodem-dimmer-conflict</c>, witnessed by
+        /// <c>synthetic/voicemodem-dimmer</c>. That case necessarily also witnesses
+        /// <c>element-undeclared</c> — <c>product_rs485_modem</c> is an open-world tag this SDK's registry does
+        /// not carry — which is honest rather than incidental: a real project holding a voice modem draws the
+        /// same finding.</para>
+        /// <para>99 with <c>scene-dimming-out-of-range</c>, witnessed by <c>synthetic/scene-dimming</c>: the two
+        /// <c>dimming_value</c>s the committed corpus carries are 60 and 100, both in range, and the vendor
+        /// spinner cannot author one that is not.</para>
+        /// <para>100 with <c>dev-inivalue-out-of-range</c>, witnessed by <c>synthetic/inivalue-range</c>: every
+        /// initial value the committed corpus carries is in range (20, 75, 80 and 45.00), and nothing in the
+        /// vendor tool refuses one that is not.</para>
+        /// <para>101 with <c>root-version-minor</c>, witnessed by <c>synthetic/root-version-minor</c>. It needed
+        /// a case of its own: <c>synthetic/root-version</c> is a 5.0 file, which this predicate excludes by
+        /// design because a major ahead is the sibling row's finding. The two cases together record the whole
+        /// version contract.</para>
+        /// <para>102 with <c>product-wireless-phaseout</c>, and it is the first row of this batch whose witnesses
+        /// are all AUTHENTIC: the three committed projects carrying wireless products report it, one finding
+        /// each, with no synthetic case needed at all.</para>
+        /// <para>103 with <c>product-discontinued</c>, witnessed by <c>synthetic/discontinued</c>: none of the
+        /// nine withdrawn identifiers appears in any committed project, which is the ordinary case rather than a
+        /// gap — the corpus was authored from current hardware.</para>
+        /// <para>104 with <c>migration-untested-product</c>, witnessed by two AUTHENTIC files: <c>project3</c>
+        /// carries <c>_0x2125</c> and <c>_0x2139</c>, <c>project5</c> carries <c>_0x2139</c>. The same three
+        /// devices are also <c>product-sensor-pulse-input</c>'s subject once that row lands, which is two
+        /// independent statements about one device rather than one fact twice.</para>
+        /// <para>105 with <c>product-sensor-pulse-input</c>, on the SAME three devices
+        /// <c>migration-untested-product</c> already reports — <c>project3</c>'s two sensors and
+        /// <c>project5</c>'s one. Two rows over one group of devices is the intended shape: what a sensor needs
+        /// in order to work, and what becomes of it in a conversion.</para>
+        /// <para>106 with <c>rs485-dimmer-powerfail-level</c>, which is the LARGEST single mover of this batch:
+        /// 36 findings, because every placed dimmer reports and <c>synthetic/rs485-bus</c> holds 32 of them. The
+        /// three authentic files contribute one each.</para>
+        /// <para>107 with <c>rs485-bus-installation</c>: 6 findings, one per case, in the three authentic files
+        /// and in <c>synthetic/rs485-bus</c>, <c>synthetic/voicemodem-dimmer</c> and
+        /// <c>synthetic/modem-phone</c> — the last of those because an SMS modem sits on the same bus as a
+        /// dimmer does.</para>
+        /// <para>108 with <c>fb-user-authored</c>: 17 findings, the largest single mover of the run. Ten are in
+        /// the authentic files (project2 1, project3 3, project5 2, Project6 4) and seven in synthetic cases
+        /// whose blocks are built bare — a block with no master attributes IS user-authored, so those are
+        /// correct rather than incidental.</para>
+        /// <para>109 with <c>fb-provenance-rewritten</c>: ONE finding, <c>project2-CustomBlock</c>'s
+        /// <c>AutoProof</c> block. That file carries one block of each provenance shape — <c>AutoProof</c> with a
+        /// master name and no trio, <c>Custom blok</c> with neither — which makes it the witness for the PAIR
+        /// rather than for either row alone.</para>
+        /// <para>110 with <c>rs485-dimmer-fault-unwired</c>: 3 findings, one per authentic file carrying a
+        /// dimmer. Notably NOT the 33 bare dimmers in the synthetic RS-485 cases — those products carry no
+        /// channel elements, so they expose no fault resources to leave unwired, and the rule's "has any" guard
+        /// keeps them silent.</para>
+        /// <para>111 with <c>backup-retained-count</c>: 4 findings, one per authentic file that marks any
+        /// <c>resource_*</c> for backup. It does NOT fire on <c>DuplicatedAdressErrors.vis</c>, whose two
+        /// <c>backup="yes"</c> elements are output TERMINALS rather than resources — which is why
+        /// <c>ErrorSeverityFixtureTests</c>'s empty-Infos assertion still holds.</para>
+        /// <para>112 with <c>logic-block-recursive</c>: 2 findings, both in <c>synthetic/block-recursion</c>, one
+        /// per block of the mutually-calling pair. SYNTHETIC by measurement, and the measurement is the point —
+        /// the rule's first cut reported <c>project3-KompleksWired</c>'s <c>1.2.04.e</c> library block, because
+        /// it projected programs onto blocks AFTER the search and so read that block's own two programs
+        /// signalling each other as a self-loop. Contracting each block to one node first made the corpus
+        /// silent, which is the right answer: no authentic file recurses.</para>
+        /// <para>113 with <c>product-3key-upload-abort</c>: 1 finding, in <c>synthetic/discontinued</c>. The
+        /// product is in no authentic file, so the case carries it — and carries the OTHER 3-key product beside
+        /// it, which is not the subject. That pairing is the oracle's job here: the two are told apart by
+        /// measurement rather than by name, so an edit that drifts onto the FUGA identifier turns one finding
+        /// into two under the byte compare.</para>
+        /// <para>114 with <c>logic-holiday-schedule-firmware</c>: 2 findings, one each in
+        /// <c>project2-CustomBlock</c> and <c>project5-Dokumentation</c> — the first row of the firmware-errata
+        /// group with AUTHENTIC witnesses rather than a built fixture. project2 carries FOUR
+        /// <c>resource_holiday</c> elements and still produces one finding, which is <c>OneFinding</c> measured
+        /// rather than asserted. <c>Project6-Errors</c> carries none, so it does not move.</para>
+        /// <para>115 with <c>fb-holiday-input-custom-block</c>: 1 finding, <c>project2-CustomBlock</c>'s
+        /// <c>Custom blok</c> — the file's OTHER block, <c>AutoProof</c>, carries a master name and so is not
+        /// custom. That same file also draws <c>logic-holiday-schedule-firmware</c>, which is the pair working
+        /// as the source describes them: one project, two different statements about holiday behaviour.</para>
+        /// <para>116 with <c>rs485-dimmer-firmware-link-errors</c>: 3 findings, one per corpus file that
+        /// places the RS-485 LED dimmer — <c>project3-KompleksWired</c>, <c>project5-Dokumentation</c> and
+        /// <c>Project6-Errors</c>, one dimmer each. On the fixture it is the THIRD row to fire on that one
+        /// device, beside the bus row and the power-fail row, which is the deliberate overlap its entry
+        /// argues for: three independent subjects, not one condition counted three times.</para>
+        /// <para>117 with <c>rs485-dimmer-scenario-recall</c>: 2 findings, in
+        /// <c>project5-Dokumentation</c> and <c>Project6-Errors</c>. <c>project3-KompleksWired</c> places the
+        /// same dimmer and is SILENT, because its two channels' scene containers hold no member rows — an
+        /// AUTHENTIC negative control, which is rare here and is why the row needed no synthetic case at all.</para>
         /// <para>Each later content row surfaces here first, exactly as these did.</para>
         /// </summary>
-        private const int BaselineRuleIdCount = 93;
+        private const int BaselineRuleIdCount = 117;
 
         private static IhcSettings Settings => TestSetup.Settings;
 
@@ -165,6 +262,15 @@ namespace Ihc.Vis.Tests
             ("synthetic/luid-low", SyntheticLuidLow),
             ("synthetic/containment", SyntheticContainment),
             ("synthetic/modem-phone", SyntheticModemPhone),
+            ("synthetic/statement-link", SyntheticStatementLink),
+            ("synthetic/s0-multiple", SyntheticS0Multiple),
+            ("synthetic/rs485-bus", SyntheticRs485Bus),
+            ("synthetic/voicemodem-dimmer", SyntheticVoicemodemDimmer),
+            ("synthetic/scene-dimming", SyntheticSceneDimming),
+            ("synthetic/inivalue-range", SyntheticInivalueRange),
+            ("synthetic/root-version-minor", SyntheticRootVersionMinor),
+            ("synthetic/discontinued", SyntheticDiscontinued),
+            ("synthetic/block-recursion", SyntheticBlockRecursion),
         ];
 
         // ----- the pinned recording -----
@@ -173,7 +279,7 @@ namespace Ihc.Vis.Tests
         /// THE parity gate: each corpus case's export reproduces its oracle BYTE FOR BYTE.
         ///
         /// <para><b>Per case rather than over one flattened list</b>, so a rule that moves produces a diff in
-        /// the one file it affects instead of a shifted comparison across all eighteen. It is also stricter
+        /// the one file it affects instead of a shifted comparison across every case at once. It is also stricter
         /// than the tab-separated recording it replaces: that recorded six cells per finding, while these files
         /// carry the arguments, the related sites, the exact node paths and the run's own caveats — so a change
         /// in any of them now fails here instead of passing unnoticed.</para>
@@ -199,7 +305,7 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
-        /// The tripwire: how many distinct codes the corpus witnesses. A 94th is new work and surfaces here
+        /// The tripwire: how many distinct codes the corpus witnesses. One more is new work and surfaces here
         /// first, before it reaches an oracle diff nobody was expecting.
         ///
         /// <para><b>What used to be here, and why it is gone.</b> This assertion sat inside a check that the
@@ -208,8 +314,8 @@ namespace Ihc.Vis.Tests
         /// declaration are mutually exclusive: if the bytes must match, a declared rename fails anyway. So the
         /// map went, and the workflow it existed for is now regenerate, diff, explain, adopt. The map was in no
         /// case an independent observation — the same regenerator wrote it and the recording from one array —
-        /// and with the rename columns gone its whole remaining content was the number below, spelled 93
-        /// times.</para>
+        /// and with the rename columns gone its whole remaining content was the number below, spelled once per
+        /// code.</para>
         /// </summary>
         [Test]
         public void TheCorpusWitnessesExactlyTheBaselineCodeCount()
@@ -220,7 +326,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(witnessed, Has.Length.EqualTo(BaselineRuleIdCount),
-                    $"the corpus witnesses {BaselineRuleIdCount} distinct codes across the 18 oracle files");
+                    $"the corpus witnesses {BaselineRuleIdCount} distinct codes across the {Corpus.Length} oracle files");
                 Assert.That(witnessed, Is.Unique, "a code is counted once however many findings carry it");
             });
         }
@@ -278,10 +384,25 @@ namespace Ihc.Vis.Tests
         /// rather than written as a literal, so this source file's own encoding cannot alter the fixture.</summary>
         private static readonly string NonLatin1Name = "Pris " + (char)0x20ac;
 
+        /// <summary>
+        /// A root at the given major and the SUPPORTED minor — the shape every case here wanted before one of
+        /// them needed a minor of its own.
+        /// </summary>
         private static Project Root(string versionMajor, string lastUniqueId, params ProjectElement[] children) =>
+            Root(versionMajor, "0", lastUniqueId, children);
+
+        /// <summary>
+        /// A root at an explicit version PAIR.
+        /// <para>An overload rather than an optional parameter on the three-argument form, and deliberately: a
+        /// defaulted <c>versionMinor</c> would have to sit before the <c>params</c> array, so every existing call
+        /// would bind its first child element to it. Two overloads keep the twelve cases that predate this one
+        /// byte-identical by construction rather than by care.</para>
+        /// </summary>
+        private static Project Root(
+            string versionMajor, string versionMinor, string lastUniqueId, params ProjectElement[] children) =>
             new(Node("utcs_project", null,
-                A(("version_major", versionMajor), ("version_minor", "0"), ("id1", "_0x1"), ("id2", "_0x2"),
-                    ("last_unique_id", lastUniqueId)),
+                A(("version_major", versionMajor), ("version_minor", versionMinor), ("id1", "_0x1"),
+                    ("id2", "_0x2"), ("last_unique_id", lastUniqueId)),
                 children));
 
         private static Project WithRoot(params ProjectElement[] children) => Root("4", "_0xfff", children);
@@ -404,6 +525,95 @@ namespace Ihc.Vis.Tests
         private static Project SyntheticRootVersion() => Root("5", "_0xzz",
             Node("groups", T("groups", 0x20), A(("name", "L"))));
 
+        /// <summary>
+        /// root-version-minor — a file of the SUPPORTED major written by a newer minor revision.
+        /// <para>A case of its own rather than a tweak to <c>synthetic/root-version</c>, because that one is
+        /// <c>Root("5", …)</c> and this predicate excludes it BY DESIGN: a major ahead is the sibling row's
+        /// finding, and reporting both would say one thing twice. The two cases together record the whole version
+        /// contract — 5.0 reports the major and 4.1 reports the minor.</para>
+        /// </summary>
+        private static Project SyntheticRootVersionMinor() => Root("4", "1", "_0xfff",
+            Node("groups", T("groups", 0x20), A(("name", "L"))));
+
+        /// <summary>
+        /// product-discontinued — one withdrawn device from each of the two root elements the set spans.
+        /// <para>SYNTHETIC because none of the nine discontinued identifiers appears in any committed project:
+        /// the corpus was authored from current hardware, which is the ordinary case and not a gap.</para>
+        /// <para><b>Both root elements are present on purpose.</b> The set is keyed on (root element,
+        /// identifier) rather than on the identifier alone, and a case carrying only one of the two would leave
+        /// the oracle silent about whether the other half of that key is read at all. The wireless one ALSO
+        /// draws <c>product-wireless-phaseout</c>, which is correct and is the deliberate overlap between a
+        /// family-wide announcement and a device-specific one.</para>
+        /// </summary>
+        private static Project SyntheticDiscontinued() => WithRoot(
+            Node("groups", T("groups", 0x20), A(("name", "L")),
+                Node("group", T("group", 0x21), A(("name", "Stue")),
+                    // device_type is REQUIRED on a wireless root — without it the case draws an attr-required
+                    // Error that refuses the save, which would make a fixture about procurement read as a
+                    // corrupt file. Read in the .vis unpadded spelling, as the authentic files write it.
+                    Node("product_airlink", T("product_airlink", 0x51),
+                        A(("product_identifier", "_0x4104"), ("device_type", "_0x80a"),
+                            ("name", "Trådløs dæmper"), ("serialnumber", "_0xaa01"))),
+                    Node("product_dataline", T("product_dataline", 0x52),
+                        A(("product_identifier", "_0x210c"), ("name", "IR modtager"))),
+                    // The 3-key push button of product-3key-upload-abort, and beside it the OTHER 3-key
+                    // product, which is not the subject. The pair is what the oracle is for: an edit that
+                    // drifts onto the FUGA identifier turns one finding into two under the byte compare.
+                    Node("product_dataline", T("product_dataline", 0x53),
+                        A(("product_identifier", "_0x106"), ("name", "Mini Modul 3 tryk"))),
+                    Node("product_dataline", T("product_dataline", 0x54),
+                        A(("product_identifier", "_0x2132"), ("name", "FUGA Betjeningstryk 3 tast"))))));
+
+        /// <summary>
+        /// block-recursion: two blocks that call each other, and a third whose two programs signal each other
+        /// over its own internal settings.
+        /// <para>SYNTHETIC because the committed corpus is measured CLEAN of the condition: the only block the
+        /// first cut of the rule reported was <c>project3-KompleksWired</c>'s
+        /// <c>1.2.04.e. Trådløs / Bus lysdæmper</c>, a <c>master_schneider_electric="yes"</c> library block, and
+        /// it was the rule that was wrong, not the file.</para>
+        /// <para>The third block is here for exactly that reason. It carries the same ring the vendor's library
+        /// blocks carry, so the oracle pins the EXCLUSION next to the finding: if the contraction is ever
+        /// loosened back to a per-program graph, this case grows a third finding and the byte compare says so.
+        /// </para>
+        /// </summary>
+        private static Project SyntheticBlockRecursion()
+        {
+            ProjectElement Flag(int at, string name) =>
+                Node("resource_flag", T("resource_flag", at), A(("name", name)));
+
+            ProjectElement Block(int at, string name, ProjectElement[] internals, ProjectElement[] programs) =>
+                Node("functionblock", T("functionblock", at), A(("name", name)),
+                    Node("inputs", T("inputs", at + 1), A(("name", "Indgange"))),
+                    Node("outputs", T("outputs", at + 2), A(("name", "Udgange"))),
+                    Node("settings", T("settings", at + 3), A(("name", "Indstillinger"))),
+                    Node("internalsettings", T("internalsettings", at + 4), A(("name", "Interne")), internals),
+                    Node("programs", T("programs", at + 5), A(("name", "Programmer")), programs));
+
+            ProjectElement Program(int at, string name, int triggeredBy, int assigns) =>
+                Node("program_simple", T("program_simple", at), A(("name", name)),
+                    Node("events", T("events", at + 1), A(("name", "Hændelser")),
+                        Node("event", T("event", at + 2),
+                            A(("name", "%P -> ON"), ("link1", T("resource_flag", triggeredBy)),
+                                ("method", "_0xa")))),
+                    Node("actions", T("actions", at + 3), A(("name", "Kommandoer"), ("type", "_0x2")),
+                        Node("action", T("action", at + 4),
+                            A(("name", "%P = ON"), ("link1", T("resource_flag", assigns)),
+                                ("method", "_0xa")))));
+
+            return WithRoot(
+                Node("groups", T("groups", 0x20), A(("name", "L")),
+                    Node("group", T("group", 0x21), A(("name", "Stue")),
+                        Block(0x70, "Kalder B", [Flag(0x80, "Flag A")],
+                            [Program(0x90, "Kald", triggeredBy: 0x80, assigns: 0x81)]),
+                        Block(0xa0, "Kalder A", [Flag(0x81, "Flag B")],
+                            [Program(0xb0, "Kald", triggeredBy: 0x81, assigns: 0x80)]),
+                        Block(0xc0, "Taler kun med sig selv", [Flag(0xd0, "Flag C"), Flag(0xd1, "Flag D")],
+                            [
+                                Program(0xe0, "Første", triggeredBy: 0xd0, assigns: 0xd1),
+                                Program(0xe8, "Anden", triggeredBy: 0xd1, assigns: 0xd0),
+                            ]))));
+        }
+
         /// <summary>luid-ceiling: a high-water mark past the 24-bit counter ceiling.</summary>
         private static Project SyntheticLuidCeiling() => Root("4", "_0x1000000",
             Node("groups", T("groups", 0x20), A(("name", "L"))));
@@ -443,5 +653,159 @@ namespace Ihc.Vis.Tests
                                 A(("address", "2"), ("phonenumber", "+4"))),
                             Node("sms_modem_phonenumber", T("sms_modem_phonenumber", 0x55),
                                 A(("address", "3"), ("phonenumber", "4512345678"))))))));
+
+        /// <summary>
+        /// logic-statement-unlinked — and, in the same program, the exclusion that makes the row safe.
+        /// <para>SYNTHETIC because the committed corpus is measured CLEAN of this condition: not one of its ~800
+        /// statements is missing <c>link1</c>, since the vendor editor always writes one. The state arrives only
+        /// by hand-editing.</para>
+        /// <para><b>THE <c>event_power</c> SIBLING IS THE POINT OF THIS CASE.</b> It carries no <c>link1</c> by
+        /// design, and it shares <c>event</c>'s id type code and icon — so a rule matching statements by the id
+        /// suffix or by the icon rather than by the tag reports it too. The corpus's authentic files carry 7 such
+        /// elements between them and would catch that as well, but only here do the finding and its exclusion sit
+        /// in one program, where the oracle records the discrimination itself rather than its absence.</para>
+        /// <para>The linked <c>event</c> is kept beside them for the same reason the modem case keeps one
+        /// well-formed number: it proves the walk reaches statements it then declines to report.</para>
+        /// </summary>
+        private static Project SyntheticStatementLink() => WithRoot(
+            Node("groups", T("groups", 0x20), A(("name", "L")),
+                Node("group", T("group", 0x21), A(("name", "Stue")),
+                    FunctionBlock(0x60, "Trappelys",
+                        [Node("resource_input", T("resource_input", 0x70), A(("name", "Indgang")))],
+                        [
+                            Node("event", T("event", 0x71),
+                                A(("name", "E1"), ("link1", T("resource_input", 0x70)))),
+                            Node("event_power", T("event_power", 0x72), A(("name", "Powerup"))),
+                        ],
+                        [Node("action", T("action", 0x73), A(("name", "A1")))]))));
+
+        /// <summary>
+        /// capacity-s0-multiple — two S0 metering products where the controller binds one.
+        /// <para>SYNTHETIC because no committed project carries two: the three that carry an S0 device at all
+        /// carry exactly one each, and the vendor refuses the second insert outright, so the state arrives only
+        /// by import or by hand.</para>
+        /// <para>Both meters carry a pulse count inside the declared range, so this case witnesses the capacity
+        /// row rather than <c>addr-s0-ticks-missing</c> alongside it. The two <c>product-s0-instrument-only</c>
+        /// Information findings it also produces are correct and expected: that row reports every S0 terminal,
+        /// and this one reports the project holding more than one — two independent statements about the same
+        /// two devices.</para>
+        /// </summary>
+        private static Project SyntheticS0Multiple() => WithRoot(
+            Node("groups", T("groups", 0x20), A(("name", "L")),
+                Node("group", T("group", 0x21), A(("name", "Stue")),
+                    Node("s0_device", T("s0_device", 0x51),
+                        A(("product_identifier", "_0x2313"), ("name", "Måler 1"), ("ticks", "100"))),
+                    Node("s0_device", T("s0_device", 0x52),
+                        A(("product_identifier", "_0x2313"), ("name", "Måler 2"), ("ticks", "100"))))));
+
+        /// <summary>
+        /// capacity-rs485-exceeded — a bus one component over the vendor's stated maximum.
+        /// <para>SYNTHETIC because the committed corpus carries at most two RS-485 products per file, and the
+        /// vendor refuses the insert that would exceed the limit — so only import or hand-editing produces it.</para>
+        /// <para><b>32 dimmers PLUS the SMS modem, rather than 33 dimmers.</b> The row's distinctive claim is the
+        /// vendor's own <i>"inkl. SMS modem"</i>: the modem occupies a place on the bus like anything else. A case
+        /// made of dimmers alone would witness the count and say nothing about that clause, while this one fails
+        /// the moment someone excuses the modem — at 32 dimmers the finding disappears.</para>
+        /// </summary>
+        private static Project SyntheticRs485Bus() => WithRoot(
+            Node("groups", T("groups", 0x20), A(("name", "L")),
+                Node("group", T("group", 0x21), A(("name", "Stue")),
+                    [
+                        .. Enumerable.Range(0, 32).Select(i => Node("product_rs485_led_dimmer",
+                            T("product_rs485_led_dimmer", 0x100 + i),
+                            A(("product_identifier", "_0x9e10"), ("name", $"Dæmper {i:00}")))),
+                        Node("product_rs485_sms_modem", T("product_rs485_sms_modem", 0x140),
+                            A(("product_identifier", "_0x6101"), ("name", "SMS modem"))),
+                    ])));
+
+        /// <summary>
+        /// capacity-voicemodem-dimmer-conflict — a Voice Modem beside an RS485 LED dimmer.
+        /// <para>SYNTHETIC because the vendor refuses the insert outright, and because no committed project
+        /// carries a voice modem at all: the built-in catalog ships none.</para>
+        /// <para><b>The co-findings are the price of the witness, and they are honest.</b>
+        /// <c>product_rs485_modem</c> is an OPEN-WORLD tag in this SDK — declared in neither <c>TypeCode.cs</c>
+        /// nor <c>CanonicalDtdBlocks.dtd</c> — so the element draws <c>element-undeclared</c> and its borrowed id
+        /// token draws <c>id-typecode</c>. Neither is invented for the fixture's convenience and neither is
+        /// suppressed: a real project carrying a voice modem would draw exactly the same two, because this SDK
+        /// genuinely does not model that product. Registering the tag to tidy the oracle would be inventing
+        /// catalog knowledge the repository does not have.</para>
+        /// </summary>
+        private static Project SyntheticVoicemodemDimmer() => WithRoot(
+            Node("groups", T("groups", 0x20), A(("name", "L")),
+                Node("group", T("group", 0x21), A(("name", "Stue")),
+                    Node("product_rs485_modem", T("product_rs485_sms_modem", 0x51),
+                        A(("product_identifier", "_0x6001"), ("name", "Talemodem"))),
+                    Node("product_rs485_led_dimmer", T("product_rs485_led_dimmer", 0x52),
+                        A(("product_identifier", "_0x9e10"), ("name", "Dæmper"))))));
+
+        /// <summary>
+        /// scene-dimming-out-of-range — a scene member driving a light level of 150 %.
+        /// <para>SYNTHETIC because the committed corpus carries exactly two <c>dimming_value</c>s, 60 and 100,
+        /// both in range — and the vendor's Lysniveau spinner cannot express an out-of-range one, so only a
+        /// hand-edit or a defective writer produces it.</para>
+        /// <para>The scene is otherwise WELL FORMED: a reciprocal <c>scene_link</c> half, a member row in a
+        /// container that binds a real output, and a program that fires the pin. That is deliberate — a broken
+        /// scene would draw <c>scene-bijection</c> or <c>scene-unreferenced</c> and bury the one finding this
+        /// case exists to record.</para>
+        /// </summary>
+        private static Project SyntheticSceneDimming()
+        {
+            ProjectElement memberRow = Node("scene_dimmer", T("scene_dimmer", 0x102),
+                A(("name", "Stuelampe"), ("link", T("scene_link", 0x101)), ("dimming_value", "150")));
+            ProjectElement product = Node("product_dataline", T("product_dataline", 0x105),
+                A(("product_identifier", "_0x2202"), ("name", "Lampeudtag")),
+                Node("dataline_output", T("dataline_output", 0x100),
+                    A(("name", "Udgang"), ("address_dataline", "_0x5"))),
+                Node("scenes", T("scenes", 0x104),
+                    A(("name", "Scenarier"), ("scene_resource", T("dataline_output", 0x100))),
+                    memberRow));
+
+            ProjectElement scenePin = Node("resource_scene", T("resource_scene", 0x74), A(("name", "Aften")),
+                Node("scene_link", T("scene_link", 0x101),
+                    A(("name", "Scenarie link"), ("link", T("scene_dimmer", 0x102)))));
+
+            ProjectElement block = Node("functionblock", T("functionblock", 0x70), A(("name", "Scenarier")),
+                Node("inputs", T("inputs", 0x71), A(("name", "I")),
+                    Node("resource_input", T("resource_input", 0x72), A(("name", "Kip"), ("note", "N")))),
+                Node("outputs", T("outputs", 0x73), A(("name", "O")), scenePin),
+                Node("settings", T("settings", 0x75), A(("name", "S"))),
+                Node("internalsettings", T("internalsettings", 0x76), A(("name", "IS"))),
+                Node("programs", T("programs", 0x77), A(("name", "P")),
+                    Node("program_simple", T("program_simple", 0x78), A(("name", "Aften")),
+                        Node("events", T("events", 0x79), A(("name", "E")),
+                            Node("event", T("event", 0x7a),
+                                A(("name", "%P -> ON"), ("link1", T("resource_input", 0x72)), ("method", "_0xa")))),
+                        Node("actions", T("actions", 0x7b), A(("name", "A"), ("type", "_0x2")),
+                            Node("action", T("action", 0x7c),
+                                A(("name", "%P = ON"), ("link1", T("resource_scene", 0x74)), ("method", "_0xa")))))));
+
+            return WithRoot(
+                Node("groups", T("groups", 0x20), A(("name", "L")),
+                    Node("group", T("group", 0x21), A(("name", "Stue")), product, block)));
+        }
+
+        /// <summary>
+        /// dev-inivalue-out-of-range — a humidity reading whose initial value is 150,00 %RH.
+        /// <para>SYNTHETIC because every <c>inivalue</c> the committed corpus carries is in range (20, 75, 80 and
+        /// 45.00), and nothing in the vendor tool refuses one that is not — the measured 150.00 loads, renders
+        /// verbatim and survives a resave, so only an author or an importer produces it.</para>
+        /// <para><b>The decimal form is the point.</b> The value is written <c>150.00</c>, not <c>150</c>, so the
+        /// oracle records that the sentence prints the bytes rather than a reformatted number — which is the whole
+        /// reason the slot is <c>AttributeValue</c>. The LUX-valued <c>resource_light</c> sits beside it at 5000,
+        /// well past 100 and correctly silent, so the oracle records the scope as well as the finding.</para>
+        /// </summary>
+        private static Project SyntheticInivalueRange() => WithRoot(
+            Node("groups", T("groups", 0x20), A(("name", "L")),
+                Node("group", T("group", 0x21), A(("name", "Stue")),
+                    Node("functionblock", T("functionblock", 0x70), A(("name", "Klima")),
+                        Node("inputs", T("inputs", 0x71), A(("name", "I"))),
+                        Node("outputs", T("outputs", 0x72), A(("name", "O"))),
+                        Node("settings", T("settings", 0x73), A(("name", "S"))),
+                        Node("internalsettings", T("internalsettings", 0x74), A(("name", "IS")),
+                            Node("resource_humidity_level", T("resource_humidity_level", 0x80),
+                                A(("name", "Fugtighed"), ("inivalue", "150.00"))),
+                            Node("resource_light", T("resource_light", 0x81),
+                                A(("name", "Lysstyrke"), ("inivalue", "5000")))),
+                        Node("programs", T("programs", 0x75), A(("name", "P")))))));
     }
 }

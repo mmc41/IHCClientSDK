@@ -16,7 +16,7 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The eight IDENTITY rules: an id that is not a well-formed token, two elements sharing a token, two sharing
+    /// The IDENTITY rules: an id that is not a well-formed token, two elements sharing a token, two sharing
     /// a counter, a type code disagreeing with the element's tag, a reference to an id nothing carries, and the
     /// three mutually exclusive faults of the project's high-water mark.
     /// <para>
@@ -35,7 +35,7 @@ namespace Ihc.Vis.Validation
     /// </summary>
     public static class IdentityRules
     {
-        /// <summary>The eight rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {

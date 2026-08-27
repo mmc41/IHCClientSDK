@@ -330,26 +330,34 @@
     <xs:attribute name="arg_capacity" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_channel" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_count" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_default" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_dimmers" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_drivers" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_element" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_enum" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_expected" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_field" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_from" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_frozen" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_id" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_identifier" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_index" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_inivalue" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_level" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_limit" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_library" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_line" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_localities" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_locality" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_master" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_masterType" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_maxdevices" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_maximum" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_member" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_members" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_meter" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_minimum" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_minor" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_modem" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_name" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_noun" type="argumentValue" use="optional"/>
@@ -361,12 +369,17 @@
     <xs:attribute name="arg_produced" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_product" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_program" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_pulses" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_scene" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_seconds" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_section" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_settings" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_shieldlength" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_signals" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_slots" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_supported" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_tag" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_termination" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_to" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_type" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_typedef" type="argumentValue" use="optional"/>

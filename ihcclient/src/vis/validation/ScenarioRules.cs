@@ -15,7 +15,7 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The seven SCENARIO rules: whether a scene can fire, what it does when it does, and whether anything can
+    /// The SCENARIO rules: whether a scene can fire, what it does when it does, and whether anything can
     /// fire it.
     ///
     /// <para><b>The shape of a scene, since every predicate here rests on it.</b> A SCENE is a function block's
@@ -37,14 +37,14 @@ namespace Ihc.Vis.Validation
         /// <summary>The scene pin — a function block's scenario output.</summary>
         private const string ScenePinTag = "resource_scene";
 
-        /// <summary>The container on a product that binds member rows to one output.</summary>
-        private const string SceneContainerTag = "scenes";
-
-        /// <summary>The attribute naming the output a <see cref="SceneContainerTag"/> drives.</summary>
+        /// <summary>The attribute naming the output a <see cref="ReciprocalTags.SceneContainerTag"/> drives.</summary>
         private const string BoundOutputAttribute = "scene_resource";
 
         /// <summary>The threshold name the long-delay entry declares, referenced rather than repeated.</summary>
         private const string RampThresholdName = "MaxRampSeconds";
+
+        /// <summary>The light level a dimmer member row drives its output to, in whole percent.</summary>
+        private const string DimmingValueAttribute = "dimming_value";
 
         /// <summary>
         /// The program attributes that can NAME a scene pin and thereby fire it: an event's or condition's or
@@ -54,7 +54,7 @@ namespace Ihc.Vis.Validation
         private static readonly ImmutableArray<string> ProgramOperandAttributes =
             ["link1", "link2", "variable", "value"];
 
-        /// <summary>The seven rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {
@@ -66,7 +66,72 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "scene-unreferenced", Unreferenced),
                 Rule(catalog, "scene-output-also-linked", OutputAlsoLinked),
                 Rule(catalog, "scene-all-off", AllOff),
-                Rule(catalog, "scene-long-delay", LongDelay(catalog)));
+                Rule(catalog, "scene-long-delay", LongDelay(catalog)),
+                Rule(catalog, "scene-dimming-out-of-range", DimmingOutOfRange(catalog)),
+                Rule(catalog, "rs485-dimmer-scenario-recall", DimmerScenarioRecall),
+                Rule(catalog, "rs485-dimmer-scene-multi-off", DimmerSceneMultiOff));
+        }
+
+        /// <summary>
+        /// An affected RS-485 LED dimmer driven through scenario recall — the defect the user cannot fix from
+        /// the application, because it takes DIMMER firmware and an upload never applies that.
+        /// <para>DRIVEN MEANS A MEMBER ROW EXISTS under one of the dimmer's channels. Placing the dimmer is not
+        /// enough: <c>rs485-dimmer-firmware-link-errors</c> already reports mere placement, and this row is about
+        /// what the project asks the device to DO. An authentic corpus file carries a dimmer with empty scene
+        /// containers, so the distinction is measured rather than hypothetical.</para>
+        /// <para>PER DIMMER, not per row: two scene rows on one device are still one device to re-flash.</para>
+        /// </summary>
+        private static void DimmerScenarioRecall(IProjectInspection inspection)
+        {
+            foreach (ProjectElement dimmer in inspection.Analyses.WithTag(Rs485LedDimmerTag))
+            {
+                if (dimmer.GetAttribute(ProductIdentifierAttribute) == Rs485LedDimmerId
+                    && dimmer.Children.Any(channel => channel.Children
+                        .Any(c => c.Tag == ReciprocalTags.SceneContainerTag && c.Children
+                            .Any(row => ReciprocalTags.SceneMemberTags.Contains(row.Tag)))))
+                {
+                    inspection.Report(dimmer, Arguments(("product", Name(dimmer))));
+                }
+            }
+        }
+
+        /// <summary>
+        /// One scene commanding SEVERAL affected LED dimmers off at once: only one of them can respond, because
+        /// the quick successive channel commands cross-talk.
+        /// <para>OFF IS THE VALUE, NOT A WORD — a <c>scene_dimmer</c> row carries a <c>dimming_value</c> and
+        /// never an on/off token, so this reuses <see cref="IsOff"/>, the same reading <c>scene-all-off</c> uses.
+        /// A row at zero is perfectly LEGAL (it is the floor <c>scene-dimming-out-of-range</c> accepts); the
+        /// condition is how many legal rows fire together.</para>
+        /// <para>COUNTED OVER DIMMERS, NOT ROWS. A dimmer has two channels and each can carry its own row, so a
+        /// row count would report one device commanded off on both channels — one device responding, which is
+        /// the case that works.</para>
+        /// </summary>
+        private static void DimmerSceneMultiOff(IProjectInspection inspection)
+        {
+            ITopologyAnalysis topology = inspection.Analyses.Topology;
+            foreach (ProjectElement scene in Scenes(inspection))
+            {
+                // Allocated only once a scene is known to command an affected dimmer off: the overwhelming
+                // majority touch none, and the set is what distinguishes DEVICES from the rows naming them.
+                HashSet<ProjectElement>? dimmers = null;
+                foreach (ProjectElement half in Members(scene))
+                {
+                    if (MemberOf(topology, half) is { } member
+                        && IsOff(member)
+                        && topology.Parent(member) is { Tag: ReciprocalTags.SceneContainerTag } container
+                        && topology.NearestAncestorOrSelf(container, Rs485LedDimmerTag) is { } dimmer
+                        && dimmer.GetAttribute(ProductIdentifierAttribute) == Rs485LedDimmerId)
+                    {
+                        dimmers ??= new HashSet<ProjectElement>(ReferenceEqualityComparer.Instance);
+                        dimmers.Add(dimmer);
+                    }
+                }
+
+                if (dimmers is { Count: > 1 })
+                {
+                    inspection.Report(scene, Arguments(("scene", Name(scene)), ("dimmers", dimmers.Count)));
+                }
+            }
         }
 
         /// <summary>
@@ -256,7 +321,7 @@ namespace Ihc.Vis.Validation
             inspection.Analyses.WithTag(ScenePinTag);
 
         private static IEnumerable<ProjectElement> Containers(IProjectInspection inspection) =>
-            inspection.Analyses.WithTag(SceneContainerTag);
+            inspection.Analyses.WithTag(ReciprocalTags.SceneContainerTag);
 
         /// <summary>The scene's own member halves — the <c>scene_link</c> rows it holds.</summary>
         private static ImmutableArray<ProjectElement> Members(ProjectElement scene) =>
@@ -272,7 +337,7 @@ namespace Ihc.Vis.Validation
         /// <summary>The OUTPUT a scene half ultimately drives: its member row's container's bound resource.</summary>
         private static ProjectElement? OutputOf(ITopologyAnalysis topology, ProjectElement half) =>
             MemberOf(topology, half) is { } member
-            && topology.Parent(member) is { Tag: SceneContainerTag } container
+            && topology.Parent(member) is { Tag: ReciprocalTags.SceneContainerTag } container
                 ? topology.ByToken(container.GetAttribute(BoundOutputAttribute))
                 : null;
 
@@ -284,7 +349,7 @@ namespace Ihc.Vis.Validation
         private static bool IsOff(ProjectElement member) => member.Tag switch
         {
             "scene_relay" => member.GetAttribute("relay_value") is null or "off",
-            "scene_dimmer" => (Milliseconds(member.GetAttribute("dimming_value")) ?? 0) == 0,
+            "scene_dimmer" => (Milliseconds(member.GetAttribute(DimmingValueAttribute)) ?? 0) == 0,
             _ => false,
         };
 
@@ -310,6 +375,38 @@ namespace Ihc.Vis.Validation
             }
 
             return operands;
+        }
+
+        /// <summary>
+        /// A member row whose light level is outside the legal percentage range: no dimmer can act on it, and the
+        /// vendor dialog silently zeroes it on commit.
+        /// <para>SUBJECT: every <c>scene_dimmer</c> member row carrying a <c>dimming_value</c>. BOUNDS: both
+        /// declared on the entry and both INCLUSIVE — 0 and 100 are legal. EXCLUSION: a row carrying no value, or
+        /// one that does not parse. Reading a missing attribute as 0 would report every relay row in the corpus,
+        /// and "unset" is a different state that other rows own.</para>
+        /// </summary>
+        /// <param name="catalog">The catalogue the entry, and both declared bounds, are declared in.</param>
+        private static ProjectInspection DimmingOutOfRange(ProblemCatalog catalog)
+        {
+            double minimum = Threshold(catalog, "scene-dimming-out-of-range", "DimmingMinimum");
+            double maximum = Threshold(catalog, "scene-dimming-out-of-range", "DimmingMaximum");
+            return inspection =>
+            {
+                foreach (ProjectElement member in inspection.Analyses.WithTag("scene_dimmer"))
+                {
+                    if (Milliseconds(member.GetAttribute(DimmingValueAttribute)) is not { } level)
+                    {
+                        continue;
+                    }
+
+                    if (level < minimum || level > maximum)
+                    {
+                        inspection.Report(member, Arguments(
+                            ("member", Name(member)), ("value", level),
+                            ("minimum", (int)minimum), ("maximum", (int)maximum)));
+                    }
+                }
+            };
         }
 
         private static long? Milliseconds(string? raw) =>

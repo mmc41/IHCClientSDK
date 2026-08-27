@@ -28,32 +28,67 @@ namespace Ihc.App
     internal sealed class CatalogLibraryBlockSource(Func<IReadOnlyList<FunctionBlockDefinition>> definitions)
         : ILibraryBlockSource
     {
-        private readonly Lazy<Dictionary<(string Type, string Version), ProjectElement>> index =
-            new(() => Build(definitions()));
+        private readonly Lazy<LibraryIndex> index = new(() => Build(definitions()));
 
         /// <inheritdoc/>
         public bool TryGetBody(string masterType, string masterVersion, out ProjectElement body)
         {
             ArgumentNullException.ThrowIfNull(masterType);
             ArgumentNullException.ThrowIfNull(masterVersion);
-            return index.Value.TryGetValue((masterType, masterVersion), out body!);
+            return index.Value.Bodies.TryGetValue((masterType, masterVersion), out body!);
         }
 
-        /// <summary>
-        /// The definitions keyed by the identity a PLACED block carries. First entry wins for a duplicate key, the
-        /// same convention the id and topology analyses use, so a catalog holding two variants of one identity
-        /// resolves deterministically rather than by dictionary order.
-        /// </summary>
-        private static Dictionary<(string, string), ProjectElement> Build(
-            IReadOnlyList<FunctionBlockDefinition> definitions)
+        /// <inheritdoc/>
+        public bool TryGetVersions(string masterType, out EquatableArray<string> versions)
         {
-            Dictionary<(string, string), ProjectElement> map = [];
-            foreach (FunctionBlockDefinition definition in definitions)
+            ArgumentNullException.ThrowIfNull(masterType);
+            if (index.Value.Versions.TryGetValue(masterType, out EquatableArray<string> held))
             {
-                map.TryAdd((definition.MasterType, definition.MasterVersion), definition.Body);
+                versions = held;
+                return true;
             }
 
-            return map;
+            // The empty list rather than default, so a caller that ignores the return value still reads a list.
+            versions = EquatableArray<string>.Empty;
+            return false;
+        }
+
+        /// <summary>Both readings of the same definition list, built in ONE pass over it.</summary>
+        /// <param name="Bodies">Keyed by the exact identity a placed block carries.</param>
+        /// <param name="Versions">Every version held per type, distinct and ordinal-ascending.</param>
+        private sealed record LibraryIndex(
+            Dictionary<(string Type, string Version), ProjectElement> Bodies,
+            Dictionary<string, EquatableArray<string>> Versions);
+
+        /// <summary>
+        /// The definitions read twice over, once per question, from one enumeration — materializing the catalog is
+        /// the expensive half and a second pass over it would double it for nothing.
+        /// <para>
+        /// BODIES: first entry wins for a duplicate key, the same convention the id and topology analyses use, so
+        /// a catalog holding two variants of one identity resolves deterministically rather than by dictionary
+        /// order. VERSIONS: sorted ordinal-ascending because the port's contract says so — the catalog's own
+        /// declaration order is not a promise, and a rule binds one of these into a Danish sentence.
+        /// </para>
+        /// </summary>
+        private static LibraryIndex Build(IReadOnlyList<FunctionBlockDefinition> definitions)
+        {
+            Dictionary<(string, string), ProjectElement> bodies = [];
+            Dictionary<string, SortedSet<string>> versions = [];
+            foreach (FunctionBlockDefinition definition in definitions)
+            {
+                bodies.TryAdd((definition.MasterType, definition.MasterVersion), definition.Body);
+                if (!versions.TryGetValue(definition.MasterType, out SortedSet<string>? held))
+                {
+                    held = new SortedSet<string>(StringComparer.Ordinal);
+                    versions[definition.MasterType] = held;
+                }
+
+                held.Add(definition.MasterVersion);
+            }
+
+            return new LibraryIndex(
+                bodies,
+                versions.ToDictionary(e => e.Key, e => (EquatableArray<string>)[.. e.Value], StringComparer.Ordinal));
         }
     }
 }

@@ -200,7 +200,147 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // ── root-version-minor ──────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// A file written by a newer MINOR revision of the format can carry content this model does not know:
+        /// opening it is safe, but a save can silently drop that content — which is what the vendor tool's own
+        /// load-time prompt warns about.
+        ///
+        /// <para><b>The three partitions of one predicate</b>, and the middle one is what the row is for: at the
+        /// supported minor nothing is reported, above it the file is reported, and a minor that is not an integer
+        /// is passed over exactly as <c>root-version</c> passes over an unparseable major.</para>
+        /// </summary>
+        [Test]
+        public void AMinorVersionAheadOfTheSupportedOneIsReported()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Versioned("4", "1"), "root-version-minor"), Is.EqualTo(1));
+                Assert.That(Count(Versioned("4", "9"), "root-version-minor"), Is.EqualTo(1));
+                Assert.That(Count(Versioned("4", "0"), "root-version-minor"), Is.Zero,
+                    "AT the supported minor: 4.0 is what every committed file carries");
+                Assert.That(Count(Versioned("4", "x"), "root-version-minor"), Is.Zero,
+                    "a minor that is not an integer is passed over, not guessed at");
+                Assert.That(Message(Versioned("4", "3"), "root-version-minor"),
+                    Is.EqualTo("Projektets formatversion 4.3 er nyere end den understøttede 4.0; "
+                        + "ukendte oplysninger kan gå tabt ved gemning."));
+            });
+        }
+
+        /// <summary>
+        /// THE MAJOR GATE, and the coverage edge it deliberately leaves. The predicate requires
+        /// <c>version_major == 4</c>, so a v5 file is <c>root-version</c>'s row alone and a v3 file whose minor is
+        /// ahead reports nothing at all.
+        ///
+        /// <para>The v3 case is the deliberate one: the measured vendor contract is <i>current-or-older yes,
+        /// newer no</i>, so an older major is accepted input, and reporting a minor on top of an already-superseded
+        /// major would say nothing useful. It is a real coverage edge rather than an accident, which is why it is
+        /// asserted here instead of merely written down.</para>
+        /// </summary>
+        [Test]
+        public void OnlyTheSupportedMajorCarriesAMinorWorthReporting()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Versioned("5", "1"), "root-version-minor"), Is.Zero,
+                    "a major ahead is root-version's row, and reporting both would say one thing twice");
+                Assert.That(Count(Versioned("5", "1"), "root-version"), Is.EqualTo(1),
+                    "which that row does report — the two are complementary, not overlapping");
+                Assert.That(Count(Versioned("3", "7"), "root-version-minor"), Is.Zero,
+                    "an OLDER major is accepted input; a minor on top of a superseded major says nothing");
+                Assert.That(Count(Versioned("3", "7"), "root-version"), Is.Zero,
+                    "and nothing else reports it either — the deliberate coverage edge");
+            });
+        }
+
+        /// <summary>
+        /// Both compared numbers are declared. The minor bound is the row's own subject; the MAJOR is declared too
+        /// because the predicate compares it — a rule body carries no numeric literal, whatever the number is for.
+        /// </summary>
+        [Test]
+        public void BothVersionBoundsAreDeclaredAsDataOnTheEntry()
+        {
+            Assert.That(ProblemCatalog.Current.TryGet(new ProblemCode("root-version-minor"),
+                out ProblemCatalogEntry entry), Is.True);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(entry.Thresholds.Single(t => t.Name == "SupportedVersionMinor").Value, Is.Zero);
+                Assert.That(entry.Thresholds.Single(t => t.Name == "SupportedVersionMajor").Value, Is.EqualTo(4));
+                Assert.That(entry.Thresholds.Select(t => t.Confidence),
+                    Has.All.EqualTo(ThresholdConfidence.VendorDocumented),
+                    "both come from the same scanned-every-file baseline");
+                Assert.That(entry.Evidence, Is.EqualTo(EvidenceMark.Unknown),
+                    "matching root-version: no build newer than the evidenced one exists anywhere in the "
+                    + "document set, so the state has neither been authored nor observed");
+            });
+        }
+
+        // ── root-version ────────────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// THE SIBLING'S BOUND IS DECLARED TOO. <c>root-version</c> compares the major just as
+        /// <c>root-version-minor</c> does, so the number it compares against is data on its entry rather than a
+        /// literal in the rule — the rule body carries no version number at all.
+        ///
+        /// <para><b>And the two rows declare ONE bound, not two.</b> They partition this number between them:
+        /// ABOVE it is this row, AT it is the sibling. Two independently written figures would not partition it
+        /// — raise one alone and a major becomes either reported twice or reported by neither, which is exactly
+        /// the gap <see cref="OnlyTheSupportedMajorCarriesAMinorWorthReporting"/> asserts must not exist.</para>
+        /// </summary>
+        [Test]
+        public void TheSupportedMajorIsOneDeclaredBoundSharedByBothVersionRows()
+        {
+            Assert.That(ProblemCatalog.Current.TryGet(new ProblemCode("root-version"),
+                out ProblemCatalogEntry major), Is.True);
+            Assert.That(ProblemCatalog.Current.TryGet(new ProblemCode("root-version-minor"),
+                out ProblemCatalogEntry minor), Is.True);
+
+            DeclaredThreshold declared = major.Thresholds.Single(t => t.Name == "SupportedVersionMajor");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(declared.Value, Is.EqualTo(4));
+                Assert.That(declared.Confidence, Is.EqualTo(ThresholdConfidence.VendorDocumented));
+                Assert.That(declared.Value,
+                    Is.EqualTo(minor.Thresholds.Single(t => t.Name == "SupportedVersionMajor").Value),
+                    "the major one row reports ABOVE is the major the other speaks AT — one bound, two rows");
+            });
+        }
+
+        /// <summary>
+        /// The predicate is strictly greater, and reading the bound from the entry did not move where it sits:
+        /// the supported major itself is what every committed file carries, one above it is the finding, and a
+        /// major that is not an integer is passed over rather than guessed at.
+        /// </summary>
+        [Test]
+        public void AMajorAboveTheSupportedOneIsReportedAndTheSupportedOneIsNot()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Versioned("4", "0"), "root-version"), Is.Zero,
+                    "AT the supported major: 4 is what every committed file carries");
+                Assert.That(Count(Versioned("5", "0"), "root-version"), Is.EqualTo(1));
+                Assert.That(Count(Versioned("x", "0"), "root-version"), Is.Zero,
+                    "a major that is not an integer is passed over, not guessed at");
+                Assert.That(Message(Versioned("5", "0"), "root-version"),
+                    Is.EqualTo("Nyere projektversion: version_major='5' er nyere end version 4, "
+                        + "som dette værktøj understøtter."),
+                    "the token is printed as written, and the sentence is unchanged by declaring the bound");
+            });
+        }
+
         // ── tree builders ───────────────────────────────────────────────────────────────────────────
+
+        /// <summary>A project whose root carries the given version pair and nothing else worth reporting.</summary>
+        /// <param name="major">The <c>version_major</c> token.</param>
+        /// <param name="minor">The <c>version_minor</c> token.</param>
+        private static Project Versioned(string major, string minor) =>
+            new(Tree.Node("utcs_project", null,
+                [("version_major", major), ("version_minor", minor), ("id1", "_0x1"), ("id2", "_0x2"),
+                 ("last_unique_id", "_0xffff")],
+                Tree.Node("groups", Token("groups", 0x20), [("name", "L")])));
 
         private static Project Authentic(string file)
         {

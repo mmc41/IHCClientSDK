@@ -13,7 +13,7 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The four remaining DOCUMENTATION rows, and what they have in common: each one names something the REPORTS
+    /// The remaining DOCUMENTATION rows, and what they have in common: each one names something the REPORTS
     /// cannot say. A pin with no note leaves the function report unable to describe the function; a blank masthead
     /// prints <c>--</c>; an unflagged installation produces an empty end-user report; two spellings of one light
     /// group split one physical circuit across two headings.
@@ -46,7 +46,7 @@ namespace Ihc.Vis.Validation
         private static readonly ImmutableArray<string> MastheadBlocks =
             ["project_info", "customer_info", "installer_info"];
 
-        /// <summary>The four rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {

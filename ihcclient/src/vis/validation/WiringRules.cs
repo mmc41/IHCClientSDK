@@ -14,10 +14,10 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The eight WIRING rules: what the follow-links of a project say about whether the installation actually
+    /// The WIRING rules: what the follow-links of a project say about whether the installation actually
     /// does anything.
     ///
-    /// <para><b>Every one of them is a WARNING, and that is the whole reason their predicates are narrow.</b> Each
+    /// <para><b>None of them is an ERROR, and that is the whole reason their predicates are narrow.</b> Each
     /// of these conditions has a legitimate reading — a spare terminal, a block still being built, a central block
     /// serving several rooms — so the value of the row lies entirely in NOT firing on the legitimate case. A rule
     /// here that reports something a reader will dismiss trains them to dismiss the next one too.</para>
@@ -52,7 +52,7 @@ namespace Ihc.Vis.Validation
         private static readonly ImmutableHashSet<string> ProductOutputTags =
             [.. SceneRules.OutputTagsWithPinnedMember];
 
-        /// <summary>The eight rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {
@@ -65,7 +65,66 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "link-fb-output-unused", BlockOutputsUnused),
                 Rule(catalog, "link-crosses-locality", CrossesLocality),
                 Rule(catalog, "link-through-empty-block", ThroughEmptyBlock),
-                Rule(catalog, "link-pass-through", PassThrough));
+                Rule(catalog, "link-pass-through", PassThrough),
+                Rule(catalog, "rs485-dimmer-fault-unwired", DimmerFaultUnwired));
+        }
+
+        /// <summary>
+        /// The RS-485 LED dimmer's four per-channel FAULT-STATE resources, by element tag.
+        /// <para>
+        /// TAGS, NOT NAMES. These four are language-independent and not user-editable, while the Danish
+        /// <i>Fejl - …</i> strings beside them are ordinary <c>name</c> values. Keying on the name would both
+        /// miss a renamed flag and report a dimmer whose ordinary resource happened to be named like one.
+        /// </para>
+        /// </summary>
+        private static readonly ImmutableHashSet<string> DimmerFaultTags =
+        [
+            "rs485_led_dimmer_error_state_overcurrent",
+            "rs485_led_dimmer_error_state_overvoltage",
+            "rs485_led_dimmer_error_state_overheating",
+            "rs485_led_dimmer_error_state_loadfailure",
+        ];
+
+        /// <summary>
+        /// A dimmer none of whose fault resources is linked: the product can report its own faults and the
+        /// project discards that capability.
+        /// <para>
+        /// PER CHANNEL, so the walk is over DESCENDANTS rather than children — a two-channel dimmer exposes
+        /// eight flags — and the condition is "none of them", because partial wiring is a design choice.
+        /// </para>
+        /// <para>
+        /// Link participation is read with the same <see cref="OwnsAnyLink"/> the other rows in this module use,
+        /// so a fault resource counts as wired on exactly the terms every other pin does.
+        /// </para>
+        /// </summary>
+        private static void DimmerFaultUnwired(IProjectInspection inspection)
+        {
+            foreach (ProjectElement dimmer in inspection.Analyses.WithTag(Rs485LedDimmerTag))
+            {
+                // Two booleans rather than a collected list: the condition is "some fault pin, and none of them
+                // wired", so a wired one ends the walk and nothing here ever needs the pins themselves.
+                bool anyFault = false;
+                bool anyWired = false;
+                foreach (ProjectElement fault in dimmer.Descendants())
+                {
+                    if (!DimmerFaultTags.Contains(fault.Tag))
+                    {
+                        continue;
+                    }
+
+                    anyFault = true;
+                    if (OwnsAnyLink(fault))
+                    {
+                        anyWired = true;
+                        break;
+                    }
+                }
+
+                if (anyFault && !anyWired)
+                {
+                    inspection.Report(dimmer, Arguments(("name", Name(dimmer))));
+                }
+            }
         }
 
         /// <summary>
@@ -327,7 +386,7 @@ namespace Ihc.Vis.Validation
         private static IReadOnlySet<string> SceneTargetIds(IProjectInspection inspection)
         {
             HashSet<string> targets = new(StringComparer.Ordinal);
-            foreach (ProjectElement scenes in inspection.Analyses.WithTag("scenes"))
+            foreach (ProjectElement scenes in inspection.Analyses.WithTag(ReciprocalTags.SceneContainerTag))
             {
                 if (scenes.GetAttribute("scene_resource") is { } target)
                 {

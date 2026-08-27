@@ -15,9 +15,15 @@ namespace safe_visual_tests;
 /// is what a screen reader, a driver, and any other assistive client see. A panel that binds correctly but
 /// publishes nothing readable passes every headless test in this suite and is unusable.</para>
 ///
-/// <para><b>Fixture:</b> <c>Project6-Errors.vis</c> — 150 findings, every one a Warning. Its expected values are
-/// read from the committed oracle at run time rather than typed here, so this file cannot drift from the corpus
-/// it is asserting about.</para>
+/// <para><b>Fixture:</b> <c>Project6-Errors.vis</c> — 160 findings: 150 Warnings and 10 Information rows. Its
+/// expected values are read from the committed oracle at run time rather than typed here, so this file cannot
+/// drift from the corpus it is asserting about — the counts in this sentence are the only numbers in the file,
+/// and they are prose rather than assertions.</para>
+///
+/// <para><b>Read the oracle PER TIER, never as one population.</b> The panel counts each tier separately, so a
+/// comparison against every recorded row is right only while the fixture carries exactly one tier — which it no
+/// longer does. This file is <c>[Explicit]</c> and therefore invisible to <c>GATE-VIS</c>, so nothing here fails
+/// on a normal build: <c>FindingOracleLinkTests</c> pins the split for that reason.</para>
 /// </summary>
 [Explicit("Launches the real desktop app; run deliberately with --filter \"TestCategory=E2E\".")]
 [Category(E2E.Category)]
@@ -38,7 +44,7 @@ public class ProblemsPanelE2ETests
     [SetUp]
     public void EnsurePanelShown()
     {
-        // Each test starts from a shown panel and all three tiers on. A previous test that hid something would
+        // Each test starts from a shown panel and all four tiers on. A previous test that hid something would
         // otherwise make the next one fail for a reason that has nothing to do with what it asserts.
         if (!E2E.Run("problems", "state").Ok)
         {
@@ -50,7 +56,11 @@ public class ProblemsPanelE2ETests
     public void ThePanelIsVisibleAndReportsTheFixturesFindings()
     {
         E2E.Envelope state = E2E.WaitForBoundProblems();
-        int expectedWarnings = E2E.OracleCodes(OracleCase).Count;
+
+        // PER TIER, because the panel counts per tier. Taking the whole oracle as the warning count was right
+        // only while every recorded row was a Warning, and the fixture's S0 meter ended that.
+        int expectedWarnings = TierRows("Warning").Count;
+        int expectedInfos = TierRows("Info").Count;
 
         Assert.Multiple(() =>
         {
@@ -58,39 +68,49 @@ public class ProblemsPanelE2ETests
             Assert.That(state.Text("state"), Is.EqualTo("findings"));
             Assert.That(expectedWarnings, Is.GreaterThan(0), "sanity: the oracle must actually describe this fixture");
             Assert.That(state.Int("warnings"), Is.EqualTo(expectedWarnings),
-                "the Advarsel count equals the fixture's finding count in its own findings oracle, read at run "
+                "the Advarsel count equals the fixture's WARNING count in its own findings oracle, read at run "
                 + "time rather than typed here twice");
             Assert.That(state.Int("errors"), Is.Zero, "this fixture carries no Error rows");
-            Assert.That(state.Int("infos"), Is.Zero, "and no rule emits Info yet");
+            Assert.That(state.Int("infos"), Is.EqualTo(expectedInfos),
+                "and the Information count equals its Info rows — the S0 meter's datasheet row");
         });
     }
 
     /// <summary>
     /// The rows the panel shows, against the oracle's rows RE-SORTED the way the panel orders them.
     ///
-    /// <para>The transform is stated explicitly rather than left implicit, because on this fixture it is the
-    /// identity: every finding is a Warning, so severity-first-then-scan-order and plain scan order coincide.
-    /// Comparing against raw oracle order would therefore pass whether or not the panel sorts at all — the
-    /// assertion would be right for the wrong reason. Saying which sequence is expected keeps the test honest
-    /// about what it can and cannot prove; the severity sort itself is proved on mixed severities in
-    /// <c>ProblemsListTests</c>.</para>
+    /// <para>The transform is stated explicitly rather than left implicit. On this fixture it is ALMOST the
+    /// identity: 150 of the 151 rows are Warnings and one is an Information row, so severity-first-then-scan-order
+    /// equals scan order for everything except that last row, which sorts to the end. Comparing against raw
+    /// oracle order would pass anyway at the panel's default height — no Info row realizes that far down — so the
+    /// transform is applied rather than assumed, and the assertion stays right for the right reason. The severity
+    /// sort itself is proved on mixed severities in <c>ProblemsListTests</c>.</para>
     /// </summary>
     [Test]
     public void TheFirstRowsMatchTheOracleInThePanelsOwnOrder()
     {
         E2E.WaitForBoundProblems();
 
-        // Severity-first, then engine order. Every row here is a Warning, so this reduces to engine order —
-        // stated as a transform so the coincidence is visible rather than assumed.
-        IReadOnlyList<string> expected = E2E.OracleCodes(OracleCase);
+        // Severity-first, then engine order: Warnings keep their scan order, the Information row follows them.
+        IReadOnlyList<string> expected =
+        [
+            .. TierRows("Warning").Select(r => r.Code),
+            .. TierRows("Info").Select(r => r.Code),
+        ];
         IReadOnlyList<E2E.Row> rows = E2E.Rows();
 
         Assert.That(rows, Is.Not.Empty, "some rows realize at the panel's default height");
         Assert.That(rows.Select(r => r.Code), Is.EqualTo(expected.Take(rows.Count)),
             "the realized rows are the oracle's first rows, in the panel's order");
         Assert.That(rows.Select(r => r.Severity), Has.All.EqualTo("Advarsel"),
-            "and each says its tier in Danish, not by colour alone");
+            "and each says its tier in Danish, not by colour alone — the realized rows are all Warnings because "
+            + "the single Information row sorts below the panel's default height");
     }
+
+    /// <summary>The fixture's recorded rows of one tier, in the oracle's own production order.</summary>
+    /// <param name="severity">The oracle's severity word — <c>Warning</c>, <c>Info</c> or <c>Error</c>.</param>
+    private static IReadOnlyList<E2E.OracleRow> TierRows(string severity) =>
+        [.. E2E.OracleRows(OracleCase).Where(r => r.Severity == severity)];
 
     [Test]
     public void TheFirstRowIsTheWholeProjectFindingShowingItsRawLocator()

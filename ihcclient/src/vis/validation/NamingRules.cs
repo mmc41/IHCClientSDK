@@ -14,7 +14,7 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The five NAMING rows: whether the things in a project can be told apart, in the reports and on site.
+    /// The NAMING rows: whether the things in a project can be told apart, in the reports and on site.
     ///
     /// <para><b>These are DOCUMENTATION-category rows, so they REACH THE USER</b> — the Fuld report's documentation
     /// appendix renders that category — which makes this the first content task whose findings move the committed
@@ -53,7 +53,7 @@ namespace Ihc.Vis.Validation
         private static bool IsNameable(ProjectElement element, ITopologyAnalysis topology) =>
             AuthoredElements.IsAuthored(element, topology);
 
-        /// <summary>The five rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {

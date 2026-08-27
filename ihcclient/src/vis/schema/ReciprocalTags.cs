@@ -23,6 +23,9 @@ namespace Ihc.Vis.Schema
         /// <summary>The scene back-reference tag inside an FB's <c>resource_scene</c> pin (partner of a scene member row).</summary>
         public const string SceneLinkTag = "scene_link";
 
+        /// <summary>The container on a product that binds its <see cref="SceneMemberTags"/> rows to one output.</summary>
+        public const string SceneContainerTag = "scenes";
+
         /// <summary>The two follow-link half tags (a from-half on the source resource, a to-half on the sink).</summary>
         public static readonly IReadOnlySet<string> FollowLinkHalfTags = new HashSet<string>(StringComparer.Ordinal)
         {

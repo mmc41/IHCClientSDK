@@ -14,7 +14,7 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The four RECIPROCITY and ENUM rules: the two bijection checks over follow-links and scene rows, and the
+    /// The RECIPROCITY and ENUM rules: the two bijection checks over follow-links and scene rows, and the
     /// two that keep an enumerated variable consistent with the type it names.
     /// <para>
     /// THE TWO BIJECTIONS ARE ONE CHECK WITH TWO CONFIGURATIONS, and keeping them one is what closed a real gap:
@@ -42,7 +42,7 @@ namespace Ihc.Vis.Validation
         /// member row.</summary>
         private static readonly ImmutableDictionary<string, ImmutableHashSet<string>> Complements = BuildComplements();
 
-        /// <summary>The four rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {

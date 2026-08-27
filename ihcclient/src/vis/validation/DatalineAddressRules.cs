@@ -15,7 +15,7 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The three DATA-LINE ADDRESSING rules, split out of the single id the shipped engine emits for all three.
+    /// The DATA-LINE ADDRESSING rules, split out of the single id the shipped engine emits for all three.
     /// <para>
     /// THE SPLIT IS THE POINT. One id covered three distinct conditions — an address that is not a token at all,
     /// one outside the legal module range, and one two terminals of the same direction both claim — and the
@@ -40,7 +40,7 @@ namespace Ihc.Vis.Validation
         /// <summary>The id these three replace. Retired, reserved, and never re-pointed.</summary>
         public static ProblemCode RetiredPredecessor { get; } = new("dataline-address");
 
-        /// <summary>The three rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {

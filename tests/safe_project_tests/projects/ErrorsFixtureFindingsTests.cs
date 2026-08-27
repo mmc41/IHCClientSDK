@@ -60,6 +60,8 @@ namespace Ihc.Vis.Tests
             ("link-output-multidriven", 1),
             ("link-output-undriven", 3),
             ("link-through-empty-block", 1),
+            // Information, not a defect: a capability discarded rather than a wiring mistake.
+            ("rs485-dimmer-fault-unwired", 1),
         ];
 
         /// <summary>
@@ -76,6 +78,7 @@ namespace Ihc.Vis.Tests
         /// </summary>
         private static readonly (string RuleId, int Count)[] SceneConditions =
         [
+            ("rs485-dimmer-scenario-recall", 1),
             ("scene-all-off", 1),
             ("scene-empty", 3),
             ("scene-long-delay", 1),
@@ -120,6 +123,10 @@ namespace Ihc.Vis.Tests
             ("addr-dimmer-channel-unassigned", 2),
             ("addr-modem-phonenumber-blank", 1),
             ("addr-wireless-not-commissioned", 3),
+            // Information, not a defect: a datasheet fact about a correctly placed meter, not a mistake.
+            ("product-s0-instrument-only", 1),
+            // Information, not a defect: installation rules the file cannot record, stated once for the bus.
+            ("rs485-bus-installation", 1),
         ];
 
         /// <summary>The addressing conditions the fixture carries, each exactly as often as it is present.</summary>
@@ -142,7 +149,12 @@ namespace Ihc.Vis.Tests
                         .AsCollection,
                     "and no addressing row fires on it that this list does not name — in particular no "
                     + "channel-COLLISION, since two unassigned channels do not collide");
-                Assert.That(addressing.All(f => f.Severity == ValidationSeverity.Warning), Is.True);
+                // SPLIT rather than relaxed: the advisory rows stay Warning and the
+                // facts-about-the-installation rows are asserted at their own tier, so neither can drift.
+                Assert.That(addressing.Where(f => f.RuleId is not ("product-s0-instrument-only" or "rs485-bus-installation"))
+                    .All(f => f.Severity == ValidationSeverity.Warning), Is.True);
+                Assert.That(addressing.Where(f => f.RuleId is "product-s0-instrument-only" or "rs485-bus-installation")
+                    .Select(f => f.Severity), Has.All.EqualTo(ValidationSeverity.Info));
             });
         }
 
@@ -156,10 +168,15 @@ namespace Ihc.Vis.Tests
         /// </summary>
         private static readonly (string RuleId, int Count)[] DeviceConditions =
         [
+            // Information, not a defect: how large a retention budget the project asks for — a number to weigh.
+            ("backup-retained-count", 1),
             ("dev-backup-missing", 7),
             ("dev-dimmer-range-inverted", 1),
             ("dev-inivalue-overwritten", 1),
             ("dev-setting-default", 3),
+            ("rs485-dimmer-firmware-link-errors", 1),
+            // Information, not a defect: a published property of the product, not something configured wrongly.
+            ("rs485-dimmer-powerfail-level", 1),
         ];
 
         /// <summary>The device-setting conditions the fixture carries, each exactly as often as it is present.</summary>
@@ -182,7 +199,12 @@ namespace Ihc.Vis.Tests
                         .AsCollection,
                     "and no device row fires on it that this list does not name — in particular nothing about a "
                     + "setting that merely stores no value");
-                Assert.That(device.All(f => f.Severity == ValidationSeverity.Warning), Is.True);
+                // SPLIT rather than relaxed: the advisory rows stay Warning and the
+                // facts-about-the-installation rows are asserted at their own tier, so neither can drift.
+                Assert.That(device.Where(f => f.RuleId is not ("backup-retained-count" or "rs485-dimmer-powerfail-level"))
+                    .All(f => f.Severity == ValidationSeverity.Warning), Is.True);
+                Assert.That(device.Where(f => f.RuleId is "backup-retained-count" or "rs485-dimmer-powerfail-level")
+                    .Select(f => f.Severity), Has.All.EqualTo(ValidationSeverity.Info));
             });
         }
 
@@ -209,45 +231,30 @@ namespace Ihc.Vis.Tests
         /// </summary>
         private static readonly (string RuleId, int Count)[] LogicConditions =
         [
-            // T054's enum-definition rows. FOUR unused, not one: the fixture's record (M-14) measures that IHC
-            // Visual cannot bind a user-created enumerator type to a variable at all — `Indsæt ▸ Variable` offers a
-            // fixed 21 entries and none is an enumerator — so every authored type here is necessarily unreferenced,
-            // `Brugt` included, whose name describes the intent rather than the file.
             ("enum-def-empty", 1),
             ("enum-def-single-value", 1),
             ("enum-def-unused", 4),
-            // T055's function-block shape rows. `logic-block-empty` twice: §3 records that BOTH `Tom blok` and
-            // `Kobling` had their default `Program` deleted. `logic-block-no-pins` once, on `Tom blok` alone —
-            // `Kobling` has pins, which is what makes it a link-through-empty-block witness. The renamed library
-            // block is the master-modified witness, and `Zoo` carries the one duplicated program pair in the corpus.
-            // `logic-block-locked-content` was the one row this fixture witnessed with no rule behind it, until
-            // D27 gave the engine a library to compare against — the `Timer` §3 records as edited from 3 to
-            // 5 minutes under `locked="yes"`, on the same block the master-modified row reports.
+            ("enum-value-unused", 5),
+            // Information, not a defect: whose .ifb is worth archiving — a fact about provenance, not a defect.
+            ("fb-user-authored", 4),
             ("logic-block-empty", 2),
-            ("logic-block-no-pins", 1),
-            ("logic-duplicate-program", 1),
-            ("logic-master-block-modified", 1),
             ("logic-block-locked-content", 1),
-            // T056's program-shape rows. The two "empty program" rows do NOT overlap: `Zoo`'s one program with no
-            // events is the events row's finding, and the one with events and no commands is the other's.
-            ("logic-program-no-events", 1),
-            ("logic-program-no-actions", 1),
-            ("logic-subprogram-no-conditions", 1),
+            ("logic-block-no-pins", 1),
             ("logic-case-no-branches", 2),
-            // T057's variable-usage rows, over the shared program read model. `enum-value-unused` counts the five
-            // values of the four AUTHORED types — M-14 again: the application cannot bind a user-created type to a
-            // variable, so its values can never be referenced.
+            ("logic-contending-writers", 1),
+            ("logic-counter-never-reset", 1),
+            ("logic-duplicate-program", 1),
+            ("logic-flag-never-cleared", 2),
+            ("logic-master-block-modified", 1),
+            ("logic-output-never-assigned", 3),
+            ("logic-program-no-actions", 1),
+            ("logic-program-no-events", 1),
+            ("logic-self-trigger", 1),
+            ("logic-subprogram-no-conditions", 1),
+            ("logic-timer-unused", 1),
+            ("logic-variable-read-only", 1),
             ("logic-variable-unused", 4),
             ("logic-variable-write-only", 3),
-            ("logic-variable-read-only", 1),
-            ("enum-value-unused", 5),
-            // T058's dataflow rows, all six witnessed here.
-            ("logic-output-never-assigned", 3),
-            ("logic-flag-never-cleared", 2),
-            ("logic-counter-never-reset", 1),
-            ("logic-timer-unused", 1),
-            ("logic-self-trigger", 1),
-            ("logic-contending-writers", 1),
         ];
 
         [Test]
@@ -269,8 +276,12 @@ namespace Ihc.Vis.Tests
                         .AsCollection,
                     "and no logic row fires on it that this list does not name — in particular neither ⊘ duplicate "
                     + "row, which no gesture in the enum editor can produce");
-                Assert.That(logic.All(f => f.Severity == ValidationSeverity.Warning), Is.True,
-                    "the one Error of the enum set is the duplicate index, and this fixture cannot carry it");
+                // SPLIT rather than relaxed: the advisory rows stay Warning and the
+                // facts-about-the-installation rows are asserted at their own tier, so neither can drift.
+                Assert.That(logic.Where(f => f.RuleId is not ("fb-user-authored"))
+                    .All(f => f.Severity == ValidationSeverity.Warning), Is.True);
+                Assert.That(logic.Where(f => f.RuleId is "fb-user-authored")
+                    .Select(f => f.Severity), Has.All.EqualTo(ValidationSeverity.Info));
             });
         }
 
@@ -281,12 +292,12 @@ namespace Ihc.Vis.Tests
         /// </summary>
         private static readonly (string RuleId, int Count)[] StructureConditions =
         [
-            // T060's rows. `struct-product-no-terminals` is the SMS Modem, which §2 names as its witness — the
-            // dimmer and the logging sensors are NOT reported, because channels and measured values are wirable.
+            // Information, not a defect: a procurement fact about the family, not a fault in this project.
+            ("product-wireless-phaseout", 1),
             ("struct-locality-empty", 1),
             ("struct-locality-no-devices", 1),
-            ("struct-product-no-terminals", 1),
             ("struct-orphan-block", 2),
+            ("struct-product-no-terminals", 1),
         ];
 
         [Test]
@@ -309,7 +320,12 @@ namespace Ihc.Vis.Tests
                     "and no structure row fires on it that this list does not name — in particular no capacity row: "
                     + "this fixture holds ONE modem, and the three controller rows are not evaluated without a "
                     + "declared capability profile");
-                Assert.That(structure.All(f => f.Severity == ValidationSeverity.Warning), Is.True);
+                // SPLIT rather than relaxed: the advisory rows stay Warning and the
+                // facts-about-the-installation rows are asserted at their own tier, so neither can drift.
+                Assert.That(structure.Where(f => f.RuleId is not ("product-wireless-phaseout"))
+                    .All(f => f.Severity == ValidationSeverity.Warning), Is.True);
+                Assert.That(structure.Where(f => f.RuleId is "product-wireless-phaseout")
+                    .Select(f => f.Severity), Has.All.EqualTo(ValidationSeverity.Info));
             });
         }
 
@@ -332,8 +348,12 @@ namespace Ihc.Vis.Tests
                     Is.EqualTo(WiringConditions.Select(w => w.RuleId).OrderBy(id => id, StringComparer.Ordinal))
                         .AsCollection,
                     "and no wiring row fires on it that this list does not name");
-                Assert.That(wiring.All(f => f.Severity == ValidationSeverity.Warning), Is.True,
-                    "every wiring row is advisory — none of them may block a save");
+                // SPLIT rather than relaxed: the advisory rows stay Warning and the
+                // facts-about-the-installation rows are asserted at their own tier, so neither can drift.
+                Assert.That(wiring.Where(f => f.RuleId is not ("rs485-dimmer-fault-unwired"))
+                    .All(f => f.Severity == ValidationSeverity.Warning), Is.True);
+                Assert.That(wiring.Where(f => f.RuleId is "rs485-dimmer-fault-unwired")
+                    .Select(f => f.Severity), Has.All.EqualTo(ValidationSeverity.Info));
             });
         }
 

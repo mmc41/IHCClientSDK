@@ -1,6 +1,7 @@
 #nullable enable
 Ihc.Vis.Validation.ILibraryBlockSource
 Ihc.Vis.Validation.ILibraryBlockSource.TryGetBody(string! masterType, string! masterVersion, out Ihc.Vis.Model.ProjectElement! body) -> bool
+Ihc.Vis.Validation.ILibraryBlockSource.TryGetVersions(string! masterType, out Ihc.Vis.Model.EquatableArray<string!> versions) -> bool
 Ihc.Vis.Validation.FieldConstraintMetadata.Blank.get -> Ihc.Vis.Validation.BlankPolicy
 Ihc.Vis.Validation.FieldConstraintMetadata.Blank.init -> void
 Ihc.Vis.Validation.IProgramUsageAnalysis.IsSelfModifying(Ihc.Vis.Model.ProjectElement! row) -> bool
@@ -228,15 +229,21 @@ Ihc.Vis.Validation.ControllerCapabilityLimits
 Ihc.Vis.Validation.ControllerCapabilityLimits.<Clone>$() -> Ihc.Vis.Validation.ControllerCapabilityLimits!
 Ihc.Vis.Validation.ControllerCapabilityLimits.AddressesPerDirection.get -> int
 Ihc.Vis.Validation.ControllerCapabilityLimits.AddressesPerDirection.init -> void
-Ihc.Vis.Validation.ControllerCapabilityLimits.ControllerCapabilityLimits(int InputModules, int OutputModules, int AddressesPerDirection, int WirelessDevices, int Resources) -> void
-Ihc.Vis.Validation.ControllerCapabilityLimits.Deconstruct(out int InputModules, out int OutputModules, out int AddressesPerDirection, out int WirelessDevices, out int Resources) -> void
+Ihc.Vis.Validation.ControllerCapabilityLimits.ControllerCapabilityLimits(int InputModules, int OutputModules, int AddressesPerDirection, int WirelessDevices, int Resources, int LinksPerWirelessUnit, int LinksPerCombiUnit, int ScenariosPerReceiver) -> void
+Ihc.Vis.Validation.ControllerCapabilityLimits.Deconstruct(out int InputModules, out int OutputModules, out int AddressesPerDirection, out int WirelessDevices, out int Resources, out int LinksPerWirelessUnit, out int LinksPerCombiUnit, out int ScenariosPerReceiver) -> void
 Ihc.Vis.Validation.ControllerCapabilityLimits.Equals(Ihc.Vis.Validation.ControllerCapabilityLimits? other) -> bool
 Ihc.Vis.Validation.ControllerCapabilityLimits.InputModules.get -> int
 Ihc.Vis.Validation.ControllerCapabilityLimits.InputModules.init -> void
+Ihc.Vis.Validation.ControllerCapabilityLimits.LinksPerCombiUnit.get -> int
+Ihc.Vis.Validation.ControllerCapabilityLimits.LinksPerCombiUnit.init -> void
+Ihc.Vis.Validation.ControllerCapabilityLimits.LinksPerWirelessUnit.get -> int
+Ihc.Vis.Validation.ControllerCapabilityLimits.LinksPerWirelessUnit.init -> void
 Ihc.Vis.Validation.ControllerCapabilityLimits.OutputModules.get -> int
 Ihc.Vis.Validation.ControllerCapabilityLimits.OutputModules.init -> void
 Ihc.Vis.Validation.ControllerCapabilityLimits.Resources.get -> int
 Ihc.Vis.Validation.ControllerCapabilityLimits.Resources.init -> void
+Ihc.Vis.Validation.ControllerCapabilityLimits.ScenariosPerReceiver.get -> int
+Ihc.Vis.Validation.ControllerCapabilityLimits.ScenariosPerReceiver.init -> void
 Ihc.Vis.Validation.ControllerCapabilityLimits.WirelessDevices.get -> int
 Ihc.Vis.Validation.ControllerCapabilityLimits.WirelessDevices.init -> void
 Ihc.Vis.Validation.DatalineAddressRules
@@ -399,6 +406,7 @@ Ihc.Vis.Validation.ProblemCatalogSection.ProjectFindings = 0 -> Ihc.Vis.Validati
 Ihc.Vis.Validation.ProfileAudience
 Ihc.Vis.Validation.ProfileAudience.Categorized = 1 -> Ihc.Vis.Validation.ProfileAudience
 Ihc.Vis.Validation.ProfileAudience.Structural = 0 -> Ihc.Vis.Validation.ProfileAudience
+Ihc.Vis.Validation.ProductAdvisoryRules
 Ihc.Vis.Validation.ProgramDataflowRules
 Ihc.Vis.Validation.ProgramShapeRules
 Ihc.Vis.Validation.ProjectInspection
@@ -771,6 +779,7 @@ static Ihc.Vis.Validation.ProblemCatalog.Current.get -> Ihc.Vis.Validation.Probl
 static Ihc.Vis.Validation.ProblemCatalog.From(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ProblemCatalogEntry!> entries) -> Ihc.Vis.Validation.ProblemCatalog!
 static Ihc.Vis.Validation.ProblemCatalogEntry.operator !=(Ihc.Vis.Validation.ProblemCatalogEntry? left, Ihc.Vis.Validation.ProblemCatalogEntry? right) -> bool
 static Ihc.Vis.Validation.ProblemCatalogEntry.operator ==(Ihc.Vis.Validation.ProblemCatalogEntry? left, Ihc.Vis.Validation.ProblemCatalogEntry? right) -> bool
+static Ihc.Vis.Validation.ProductAdvisoryRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
 static Ihc.Vis.Validation.ProgramDataflowRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
 static Ihc.Vis.Validation.ProgramShapeRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
 static Ihc.Vis.Validation.ProjectRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>

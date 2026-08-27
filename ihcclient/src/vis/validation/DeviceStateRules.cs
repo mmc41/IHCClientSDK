@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 
 using Ihc.Vis.FunctionBlocks;
@@ -14,11 +15,11 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The four remaining DEVICE rows: what a program does to a variable it may not write, what a product leaves
-    /// uncommissioned, what survives a power failure, and what an initial value is worth when a program overwrites
-    /// it at every start.
+    /// The remaining DEVICE rows: what a program does to a variable it may not write, what a product leaves
+    /// uncommissioned, what survives a power failure and how much of it, and what an initial value is worth —
+    /// whether a program overwrites it at every start, and whether it is inside the range its own field declares.
     ///
-    /// <para><b>Two of the four are scoped by MEASUREMENT rather than by their own wording, and the backlog says so
+    /// <para><b>Two of them are scoped by MEASUREMENT rather than by their own wording, and the backlog says so
     /// up front.</b> <c>dev-backup-missing</c> is about BLOCK VARIABLES alone — an output terminal ships
     /// <c>backup="yes"</c> and an input terminal declares no such attribute, so a walk over every backup-capable
     /// element would report most of a project. And <c>dev-setting-default</c> needs to know what a factory default
@@ -51,7 +52,7 @@ namespace Ihc.Vis.Validation
 
         private const string ReadOnlyAccess = "readonly";
 
-        /// <summary>The four rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {
@@ -60,7 +61,87 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "dev-write-to-read-only", WriteToReadOnly),
                 Rule(catalog, "dev-setting-default", SettingAtDefault(catalog)),
                 Rule(catalog, "dev-backup-missing", BackupMissing),
-                Rule(catalog, "dev-inivalue-overwritten", InitialValueOverwritten));
+                Rule(catalog, "dev-inivalue-overwritten", InitialValueOverwritten),
+                Rule(catalog, "dev-inivalue-out-of-range", InitialValueOutOfRange(catalog)),
+                Rule(catalog, "backup-retained-count", RetainedCount));
+        }
+
+        /// <summary>
+        /// How many resource values the project asks the controller to keep across a power failure — a number
+        /// the controller rations at upload.
+        /// <para>
+        /// EVERY <c>resource_*</c> KIND, WHERE <see cref="BackupMissing"/> TAKES ONLY FOUR — the contrast is the
+        /// point: that row asks which BLOCK VARIABLES an author forgot to mark, this one how large a budget the
+        /// project asks for. One attribute, two questions.
+        /// </para>
+        /// <para>
+        /// A TERMINAL IS NOT A RESOURCE ELEMENT and is not counted, even though it too ships
+        /// <c>backup="yes"</c>. Whether its retained value draws on the same ration is unestablished, and the
+        /// count is scoped exactly as the source scopes it rather than on an inference.
+        /// </para>
+        /// <para>NO CEILING IS COMPARED: the row states the count and stops. See the entry for why no threshold
+        /// and no controller context are declared.</para>
+        /// </summary>
+        private static void RetainedCount(IProjectInspection inspection)
+        {
+            int retained = inspection.Analyses.Elements.Count(e =>
+                e.Tag.StartsWith("resource_", StringComparison.Ordinal)
+                && e.GetAttribute(BackupAttribute) == BackupMarked);
+            if (retained > 0)
+            {
+                inspection.Report(null, Arguments(("count", retained)));
+            }
+        }
+
+        /// <summary>
+        /// The resource kinds whose value unit is a PERCENTAGE, and the only kinds
+        /// <see cref="InitialValueOutOfRange"/> is scoped to.
+        /// <para>
+        /// <c>resource_light</c> IS DELIBERATELY ABSENT and the near-miss is the point: it is a LUX value on a
+        /// 0–60,000 range, so checking it against 0–100 would report every well-formed project carrying one. The
+        /// two kinds here are those whose 0–100 range the format specification records.
+        /// </para>
+        /// </summary>
+        private static readonly ImmutableHashSet<string> PercentResourceTags =
+            ["resource_humidity_level", "resource_light_level"];
+
+        /// <summary>The attribute holding a resource's initial value.</summary>
+        private const string InitialValueAttribute = "inivalue";
+
+        /// <summary>
+        /// A percent-unit resource whose initial value no physical unit can reach: nothing in the vendor tool
+        /// checks it, so it reaches the controller unexamined.
+        /// <para>SUBJECT: <see cref="PercentResourceTags"/> alone — see that field for why the lux-valued sibling
+        /// is not among them. BOUNDS: declared on the entry, both INCLUSIVE. EXCLUSION: a value arithmetic cannot
+        /// read, and a resource carrying no <c>inivalue</c> at all.</para>
+        /// <para>THE RAW STRING IS BOUND, not the parsed number: the slot is <c>AttributeValue</c> so the
+        /// sentence prints exactly what the file carries, decimals included. Parsing happens only to decide
+        /// WHETHER to report.</para>
+        /// </summary>
+        /// <param name="catalog">The catalogue the entry, and both declared bounds, are declared in.</param>
+        private static ProjectInspection InitialValueOutOfRange(ProblemCatalog catalog)
+        {
+            double minimum = Threshold(catalog, "dev-inivalue-out-of-range", "PercentMinimum");
+            double maximum = Threshold(catalog, "dev-inivalue-out-of-range", "PercentMaximum");
+            return inspection =>
+            {
+                foreach (ProjectElement resource in inspection.Analyses.Elements)
+                {
+                    if (!PercentResourceTags.Contains(resource.Tag)
+                        || resource.GetAttribute(InitialValueAttribute) is not { Length: > 0 } raw
+                        || !double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out double value))
+                    {
+                        continue;
+                    }
+
+                    if (value < minimum || value > maximum)
+                    {
+                        inspection.Report(resource, Arguments(
+                            ("value", raw), ("variable", Name(resource)),
+                            ("minimum", (int)minimum), ("maximum", (int)maximum)));
+                    }
+                }
+            };
         }
 
         /// <summary>

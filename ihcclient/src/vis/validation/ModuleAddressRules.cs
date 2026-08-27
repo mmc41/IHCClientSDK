@@ -40,7 +40,7 @@ namespace Ihc.Vis.Validation
         /// <summary>The attribute carrying a dimmer channel's addressable identity.</summary>
         private const string ChannelIdAttribute = "channel_id";
 
-        /// <summary>The four rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {

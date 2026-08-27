@@ -39,7 +39,7 @@ namespace Ihc.Vis.Tests
                 Assert.That(Catalog.Total, Is.EqualTo(project.Count + definitions.Count + outcomes.Count),
                     "every entry is in exactly one section");
 
-                // 134 live project rows, plus the 4 that were investigated and ruled out, plus the 3 that were
+                // 161 live project rows, plus the 4 that were investigated and ruled out, plus the 3 that were
                 // SPLIT and retired. All three kinds keep their ids occupied, which is the whole reservation
                 // mechanism: an entry that stays is an id that can never be handed to a different condition.
                 // The fourth ruled-out row is T048's `addr-unassigned`: its condition is what `doc-address`
@@ -47,8 +47,8 @@ namespace Ihc.Vis.Tests
                 // are `dataline-address`, `capacity-modules-exceeded` (split into the three capacity rows under
                 // D2) and `capacity-addresses` (split again, per direction, so a project over on both no longer
                 // reports two findings distinguishable only by their numbers).
-                Assert.That(project, Has.Count.EqualTo(141));
-                Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Active), Is.EqualTo(134));
+                Assert.That(project, Has.Count.EqualTo(180));
+                Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Active), Is.EqualTo(173));
                 Assert.That(project.Count(e => e.Status == ProblemCodeStatus.RuledOut), Is.EqualTo(4));
                 Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Retired), Is.EqualTo(3));
 
@@ -197,17 +197,22 @@ namespace Ihc.Vis.Tests
 
         /// <summary>
         /// Severity follows from disposition, asserted over the DISPOSITION AXIS rather than over the shipped
-        /// rows. A row walk is only as complete as the catalogue happens to be, and no shipped row declares
-        /// <see cref="CatalogDisposition.Info"/> — so iterating the rows asserts nothing about the fourth member
-        /// and keeps passing if it maps to Warning, to null, or to nothing at all. It also has to restate the
-        /// mapping to compare against, which is a second copy of the very derivation under test.
+        /// rows — and that choice does not depend on which dispositions happen to be declared. A row walk is only
+        /// as complete as the catalogue happens to be: a member no row declares is asserted about not at all, so
+        /// the walk keeps passing if that member maps to Warning, to null, or to nothing. It also has to restate
+        /// the mapping to compare against, which is a second copy of the very derivation under test.
         /// <para>
         /// So every member is seeded here instead, which makes the mapping total by construction: a fifth
-        /// disposition added without a severity fails this immediately.
+        /// disposition added without a severity fails this immediately, on the day it is added rather than on the
+        /// day a row first declares it.
+        /// </para>
+        /// <para>
+        /// Written when <see cref="CatalogDisposition.Info"/> was the undeclared member; rows declare it now, and
+        /// the argument is unchanged — which is the point of not resting it on the catalogue's population.
         /// </para>
         /// </summary>
         [Test]
-        public void EveryDispositionDerivesItsSeverityIncludingTheOnesNoRowDeclaresYet()
+        public void EveryDispositionDerivesItsSeverityWhetherOrNotARowDeclaresIt()
         {
             (CatalogDisposition Disposition, ValidationSeverity? Severity)[] axis =
             [
@@ -474,7 +479,9 @@ namespace Ihc.Vis.Tests
                 Assert.That(needLimits, Is.EqualTo(new[]
                 {
                     "capacity-input-addresses", "capacity-input-modules", "capacity-output-addresses",
-                    "capacity-output-modules", "capacity-resources-high", "capacity-wireless-exceeded",
+                    "capacity-output-modules", "capacity-resources-high",
+                    "capacity-scenarios-per-receiver", "capacity-wireless-exceeded",
+                    "capacity-wireless-links-per-unit",
                 }).AsCollection, "a verdict that depends on the machine is not a property of the project file");
 
                 // The modem row needs neither a limit nor a controller.

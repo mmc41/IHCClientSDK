@@ -29,12 +29,15 @@ namespace safe_visual_tests;
 ///
 /// <para><b>The order assertion is the one that needs care.</b> <c>ValidateStructured</c> emits DOCUMENT-SCAN
 /// order and severity is not one of its sort keys, while the panel's default is severity-first and only then scan
-/// order. The two sequences therefore coincide exactly while every finding shares a severity — which is true of
-/// every fixture in the corpus, <c>Project6-Errors.vis</c> included (150 Warnings, 0 Errors). A straight
-/// "bound rows equal the engine's output" assertion over it would pass whether or not the sort exists at all. So
-/// the fixture test asserts the SET and the verbatim messages, and the ORDER is proved separately on a
-/// mixed-severity set — which, since no rule emits Info and no corpus file mixes tiers, means findings
-/// constructed here.</para>
+/// order. So a straight "bound rows equal the engine's output" assertion over a fixture proves nothing about the
+/// sort: it either coincides by luck, or fails for a reason that is not the panel's. The fixture test therefore
+/// compares the SET and the verbatim messages, both sides sorted, and the ORDER is proved separately.</para>
+///
+/// <para><b>The order proof uses findings constructed here, and still must.</b> <c>Project6-Errors.vis</c> now
+/// mixes tiers — 150 Warnings and 10 Information rows — so the two sequences no longer coincide on it, which
+/// makes the set comparison above necessary rather than merely careful. But it carries no Errors, and a proof
+/// that severity sorts FIRST needs all three tiers interleaved in a known order with a known count. No committed
+/// project offers that on demand, and one that did would re-break this test every time the catalogue moved.</para>
 /// </summary>
 public class ProblemsListTests
 {

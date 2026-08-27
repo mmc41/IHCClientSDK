@@ -14,7 +14,7 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The five DIMMER and SHUTTER device-setting rows: whether a dimmer can dim, whether it drives its load the
+    /// The DIMMER and SHUTTER device-setting rows: whether a dimmer can dim, whether it drives its load the
     /// right way, and whether a shutter can position itself.
     ///
     /// <para><b>STORED versus EFFECTIVE is the whole difficulty of this set, and it is decided per row.</b> The
@@ -50,7 +50,7 @@ namespace Ihc.Vis.Validation
         /// </summary>
         private const string LedDimmerProductTag = "product_rs485_led_dimmer";
 
-        /// <summary>The five rules, ready to register against the catalogue.</summary>
+        /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {
