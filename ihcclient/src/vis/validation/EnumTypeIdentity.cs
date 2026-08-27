@@ -8,9 +8,9 @@ using static Ihc.Vis.Validation.RuleAuthoring;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// Which enumerator types the AUTHOR owns — the population every enum row is about. Shared by
-    /// <see cref="EnumDefinitionRules"/> (the type's own shape) and <see cref="VariableUsageRules"/> (its values'
-    /// use), so the two can never disagree about what counts as an authored type.
+    /// Which enumerator types the AUTHOR owns — the population every enum row is about. Beside the rules rather
+    /// than inside them, because "what counts as an authored type" is a fact about the format and its two
+    /// exclusions are measured, not a judgement any one row makes.
     /// </summary>
     internal static class EnumTypeIdentity
     {

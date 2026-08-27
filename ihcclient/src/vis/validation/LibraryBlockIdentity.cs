@@ -7,17 +7,12 @@ using Ihc.Vis.Model;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// What a function block says about the library entry it came from, read off the block itself. Shared by the
-    /// rows that ask two different questions about the same three attributes: whether a block is still at its
-    /// insert name (<c>name-default</c>) and whether it has been changed away from it
-    /// (<c>logic-master-block-modified</c>). One definition, so the two can never disagree.
+    /// What a function block says about the library entry it came from, read off the block itself. It answers one
+    /// question — whether a block is still at its insert name (<c>name-default</c>) — and answers it in one place,
+    /// so the reconstruction cannot drift from the two library-name forms the vendor actually writes.
     /// </summary>
     internal static class LibraryBlockIdentity
     {
-        /// <summary>Whether the block claims to come from a library entry at all.</summary>
-        internal static bool HasMasterIdentity(ProjectElement block) =>
-            block.GetAttribute("master_name") is { Length: > 0 };
-
         /// <summary>
         /// The name a library block carries at insert, in the TWO forms the vendor's library uses:
         /// <c>{master_type}.{master_version}. {master_name}</c> where the entry is versioned, and

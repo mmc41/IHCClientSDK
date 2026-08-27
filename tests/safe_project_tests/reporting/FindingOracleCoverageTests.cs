@@ -55,7 +55,7 @@ namespace Ihc.Vis.Tests
 
         /// <summary>Non-vacuity for everything below.</summary>
         [Test]
-        public void TheWholeCorpusIsLoaded() => Assert.That(Lines, Has.Length.EqualTo(833));
+        public void TheWholeCorpusIsLoaded() => Assert.That(Lines, Has.Length.EqualTo(605));
 
         // ----- related sites -----
 
@@ -134,7 +134,7 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(pathed, Has.Length.EqualTo(6), "under 1% of the corpus");
+                Assert.That(pathed, Has.Length.EqualTo(3), "under 1% of the corpus");
                 Assert.That(tagLocators, Has.Length.EqualTo(60), "non-vacuity: there really are 60 of them");
                 Assert.That(
                     tagLocators.Where(l => l.Value("xpath") is not null), Is.Empty,

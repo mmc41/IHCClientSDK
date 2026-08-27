@@ -14,7 +14,7 @@ namespace Ihc.Vis.Validation
     /// </para>
     /// <para>
     /// Built once and shared: the catalogue, the rule set and the executor hold no per-run state, so one of each
-    /// serves the process. Rebuilding them per call would re-register 35 rules to answer one question.
+    /// serves the process. Rebuilding them per call would re-register every rule to answer one question.
     /// </para>
     /// </summary>
     public static class ProjectRules

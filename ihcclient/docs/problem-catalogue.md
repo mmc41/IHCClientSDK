@@ -92,14 +92,14 @@ a correct project, so they ask for no repair and no judgement.
 | Code | Fatal error | Error | Warning | Information | Total |
 | --- | --- | --- | --- | --- | --- |
 | **INT** | 18 | 16 | 9 | 0 | 43 |
-| **WIR** | 0 | 1 | 8 | 1 | 10 |
-| **LOG** | 0 | 13 | 30 | 6 | 49 |
-| **SCN** | 0 | 2 | 10 | 0 | 12 |
+| **WIR** | 0 | 1 | 6 | 1 | 8 |
+| **LOG** | 0 | 13 | 24 | 6 | 43 |
+| **SCN** | 0 | 2 | 8 | 0 | 10 |
 | **ADR** | 0 | 5 | 11 | 4 | 20 |
 | **DEV** | 0 | 1 | 10 | 4 | 15 |
 | **DOC** | 0 | 0 | 18 | 0 | 18 |
-| **PRJ** | 0 | 10 | 9 | 5 | 24 |
-| **Total** | **18** | **48** | **105** | **20** | **191** |
+| **PRJ** | 0 | 10 | 6 | 5 | 21 |
+| **Total** | **18** | **48** | **92** | **20** | **178** |
 <!-- END GENERATED -->
 
 ## 2. Severity
@@ -252,41 +252,31 @@ half-finished installation, and acts or ignores it.
 
 | Id | Cat | Sev | Finding | Why it may matter | Why it may be fine |
 | --- | --- | --- | --- | --- | --- |
-| `link-input-unconnected` ✔ | WIR | Warning | A product input (wired or wireless) owns no link | The physical button/sensor does nothing — pressing it has no effect anywhere in the project | Spare terminal on an installed product; input reserved for a later stage |
-| `link-output-undriven` ✔ | WIR | Warning | A product output owns no link | The lamp/relay can never be switched by the installation | Output reserved, or driven only from a scene or from a controller-side integration |
+| `link-product-unwired` ✔ | WIR | Warning | A product no input or output pin of which owns a link | The device is installed and the project does nothing with it — nothing can reach it and nothing can switch it | Device installed ahead of the logic, held in reserve, or driven only from a controller-side integration |
 | `link-output-multidriven` ✔ | WIR | Warning | A product output is driven by more than one source | Two blocks assign the same physical output; the last writer wins and behaviour depends on timing | Deliberate multi-path control (a manual path and an automation path) where the author accepts last-writer-wins |
-| `link-fb-input-unfed` ✔ | WIR | Warning | A function-block input pin owns no link | The block's trigger never arrives from the physical installation | The pin is driven from a program inside another block, or the block is still being built |
+| `link-fb-input-unfed` ✔ | WIR | Warning | No input pin of a function block owns a link, and the block has no autonomous start | The block's trigger never arrives from the physical installation | The block is still being built |
 | `link-fb-output-unused` ✔ | WIR | Warning | A function-block output pin owns no link | The block computes a result nothing consumes | Result used only as an internal state, or read from the controller's own API/app |
-| `link-crosses-locality` ✔ | WIR | Warning | A link runs between elements in different localities | Usually intended, but a surprising cross-locality wire is a common copy/paste slip | Central logic blocks legitimately serve several rooms |
 | `link-through-empty-block` ✔ | WIR | Warning | A link ends on a block that carries no programs | The signal enters the block and stops there | The block is a placeholder for logic to be written |
 | `link-pass-through` ✔ | WIR | Warning | A block whose only logic copies one input straight to one output | The block adds nothing; the two devices could be linked through a simpler path | Intentional naming/documentation indirection, or a stub kept for a later extension |
 | `logic-case-duplicate-value` | LOG | **Error** | Two case branches of the same switch test the same value | The second branch is unreachable — whichever of the two the author meant, one of them never runs | — |
 | `logic-block-empty` ✔ | LOG | Warning | A function block declares no programs | The block never does anything | Newly inserted block; a block used only as a named collection of variables |
 | `logic-block-no-pins` ✔ | LOG | Warning | A function block declares no inputs and no outputs | Nothing outside the block can reach it | Block driven entirely by timers/internal state |
-| `logic-program-no-events` ✔ | LOG | Warning | A program declares no events | The program never starts | Program under construction |
+| `logic-program-no-events` ✔ | LOG | Warning | A program carries commands or a branch and declares no events | The commands are written and nothing can ever run them | Program under construction, its trigger not yet chosen |
 | `logic-program-no-actions` ✔ | LOG | Warning | A program declares events but no commands | The program starts and does nothing | Trigger reserved for later |
 | `logic-subprogram-no-conditions` ✔ | LOG | Warning | A sub-program declares no conditions | The conditional branch always takes the same path | The author wants an unconditional else-branch |
-| `logic-variable-unused` ✔ | LOG | Warning | A declared variable is referenced by no program and carries no link | Dead declaration; noise in the block and in the reports | Variable kept for documentation or planned use |
 | `logic-variable-write-only` ✔ | LOG | Warning | A variable is assigned by programs but never read or linked | The value is computed and thrown away | Value read externally (controller API, app, scene) |
 | `logic-variable-read-only` ✔ | LOG | Warning | A variable is read by programs but never assigned and never linked | The logic always sees its initial value | Deliberate constant expressed as an initial value |
 | `logic-output-never-assigned` ✔ | LOG | Warning | An output pin is linked to a product output but no program ever assigns it | The physical output can never change state | Output driven by a scene or by another block through the same link |
 | `logic-flag-never-cleared` ✔ | LOG | Warning | A flag is set by some program but cleared by none | The flag latches on and the logic never returns to its earlier state | One-shot latch is the intent (e.g. "alarm has fired") |
 | `logic-counter-never-reset` ✔ | LOG | Warning | A counter is incremented but never reset or assigned | The count grows without bound and never returns to a known state | Lifetime counter (operating hours, pulse totals) is the intent |
-| `logic-timer-unused` ✔ | LOG | Warning | A timer variable is declared but no program starts it | The timer never runs | Timer reserved for later |
-| `logic-self-trigger` ✔ | LOG | Warning | A program is triggered by a variable it also assigns | Risk of an oscillating or endlessly retriggering loop | Deliberate self-terminating pattern (assign a different value than the trigger) |
-| `logic-contending-writers` ✔ | LOG | Warning | Two programs assign the same variable from unrelated triggers | Which value survives depends on event order | Manual and automatic control of the same lamp, knowingly |
+| `logic-self-trigger` ✔ | LOG | Warning | A program is triggered by a variable it also assigns, and that variable is neither a timer nor a counter | Risk of an oscillating or endlessly retriggering loop | Deliberate self-terminating pattern (assign a different value than the trigger) |
 | `logic-duplicate-program` ✔ | LOG | Warning | Two programs in the same block carry identical events and commands | One of them is redundant | Deliberate duplication kept for readability |
 | `logic-case-no-branches` ✔ | LOG | Warning | A case/switch node carries no case branches | The switch does nothing | Under construction |
 | `logic-case-value-foreign` | LOG | Warning | A case branch tests a value that is not one of the switch variable's enum values | The branch can never be taken | Enum has been re-typed and the branch is kept for a future value |
-| `logic-master-block-modified` ✔ | LOG | Warning | A block carrying vendor/master identity has been edited locally | The block no longer matches the library version it claims to be | Deliberate local adaptation of a library block |
 | `logic-block-locked-content` ✔ | LOG | Warning | A locked block or product carries content edited after locking | The lock no longer reflects the state it was meant to protect | Lock applied after the edit, deliberately |
-| `enum-def-unused` ✔ | LOG | Warning | An enum definition is referenced by no variable | Dead type in the project and in the reports | Type kept for a planned function |
 | `enum-def-empty` ✔ | LOG | Warning | An enum definition declares no values | No variable of that type can hold a meaningful value | Type being built |
 | `enum-def-single-value` ✔ | LOG | Warning | An enum definition declares exactly one value | The variable can never change | Deliberate constant |
-| `enum-value-unused` ✔ | LOG | Warning | An enum value is never tested or assigned anywhere | A declared state the logic never uses | State reserved for later |
-| `scene-empty` ✔ | SCN | Warning | A scene carries no members | Activating the scene changes nothing | Scene being built |
 | `scene-unreferenced` ✔ | SCN | Warning | A scene resource is not reachable from any program or link | The scene can never be activated from the installation | Activated from the controller app or an external integration |
-| `scene-output-also-linked` ✔ | SCN | Warning | An output in a scene is also driven by a follow-link | The scene value and the link fight over the output | Intended: scene sets a preset, the link overrides on demand |
 | `scene-all-off` ✔ | SCN | Warning | Every member of a scene sets its output off / zero | The scene is an "all off" scene, or an unfinished one | "All off" is a normal, deliberate scene |
 | `scene-long-delay` ✔ | SCN | Warning | A member row carries an unusually long delay or ramp time | The installation appears unresponsive when the scene runs | Deliberate slow fade or staged sequence |
 | `addr-dimmer-channel-duplicate` | ADR | **Error** | Two LED-dimmer channels claim the same channel id | The two channels are indistinguishable to the controller | — (nearly always a mistake, still the user's call) |
@@ -344,10 +334,7 @@ half-finished installation, and acts or ignores it.
 | `capacity-scenarios-per-receiver` | ADR | Warning | One wireless receiver takes part in more scenarios than the controller carries — 32 | The other half of the same vendor recommendation as the row above, and it shares its ENABLING posture: with no controller declared there is no ceiling to be over, so the row is absent rather than measuring against a guess. **A receiver is a wireless product that OWNS a scene container**, which the file decides rather than a product list to keep current — a wireless unit with no container cannot be commanded into a scene at all, so it is not a receiver and has no ceiling; the corpus carries one such product. **Counted in scene MEMBER ROWS, not containers:** a two-channel receiver has two containers and can still take part in one scenario, so containers are not the quantity the controller bounds. One finding per receiver | The installation accepts the response time, or the controller in use carries more |
 | `capacity-modem-multiple` ⊘ | PRJ | **Error** | The project contains more than one modem | The controller binds one modem, so the extra entries can never be commissioned. **Neither editor will author this state** (measured live 2026-08-11): IHC Visual refuses the second insert with *"Modem er allerede indsat. Der kan kun indsættes et modem i projektet"* and OpenVisual with *"Et projekt må højst indeholde ét modem…"*, each leaving the tree unchanged — so a file carrying two can only have arrived by import or by hand, which is exactly why the file-level check still earns its place | — (the limit is the controller's; no intent makes a second modem work) |
 | `capacity-resources-high` | PRJ | Warning | The project's resource count reaches or passes the controller's limit | Further growth will fail late, at upload time | Deliberately near-full installation |
-| `struct-locality-empty` ✔ | PRJ | Warning | A locality contains no products and no blocks | Empty room in the tree and in the reports | Room planned but not yet fitted |
-| `struct-locality-no-devices` ✔ | PRJ | Warning | A locality contains only function blocks | The room has logic but no hardware — often a mis-drop | Deliberate "logic room" holding central blocks |
 | `struct-product-no-terminals` ✔ | PRJ | Warning | A product carries no terminals at all | Nothing on the product can be wired | Product family that genuinely has none |
-| `struct-orphan-block` ✔ | PRJ | Warning | A function block is neither linked nor referenced from any other block | The block is isolated from the rest of the installation | Self-contained timer/clock logic |
 
 ✅ = implemented today, with the fixed Danish label shown; these eight are the seed set already
 reported in the Fuld-mode reports' *Fejl i dokumentation* section.
@@ -427,8 +414,6 @@ Conditions that look wrong but are normal in IHC projects, and must **not** be r
 - **A locality holding no blocks**, or a project holding no scenes at all — absence of an optional
   feature is not a finding.
 - **Unused catalogue products** — the catalogue is a library, not an inventory of what must be used.
-- **A block with more variables than its programs read** while it is being authored — reported once,
-  as `logic-variable-unused`, never per program.
 - **An unassigned data-line address** — legal while unconfigured; `addr-unassigned` is a warning, not
   a `dataline-address-*` error.
 - **A `helpfile` attribute naming a file that does not resolve** — the stated consequence is FALSE. `helpfile`
@@ -448,6 +433,75 @@ Conditions that look wrong but are normal in IHC projects, and must **not** be r
   resource string — a refusal that changes with the UI culture, bought for one Danish sentence. The reader
   keeps its own end-of-document guard and that guard refuses under `load-not-xml` with its precise English
   diagnostic intact, so `load-truncated` is ruled out rather than withheld.
+
+### The eleven conditions deleted in 2026-08 — measured noise
+
+These eleven **shipped**, were measured over the corpus and over an independent real-world project,
+and were **deleted by owner ruling** because each condemns the ordinary state of a healthy project.
+None of them is to be re-proposed as a finding, and none of the eleven names is to be re-pointed at a
+different condition — no entry reserves them any more, so this record is the only guard.
+
+The names are listed so a search for one lands here. **A name in this table is spent**: it identified this
+condition, the condition is not a finding, and pointing the name at a different condition would make every
+older report and exported findings file lie about what it said.
+
+| Deleted id | Condition | Why it was noise |
+| --- | --- | --- |
+| `struct-locality-empty` | A locality holding neither products nor blocks | The vendor's fresh template ships ten empty localities; the empty starter project warned about all ten |
+| `struct-locality-no-devices` | A locality holding only function blocks | The standard "logic room" pattern |
+| `struct-orphan-block` | A function block nothing links to and nothing references | Self-contained clock/timer logic is normal |
+| `scene-empty` | A scene with no members | Template-named scenario slots ship inside library blocks |
+| `scene-output-also-linked` | An output a scene drives that a follow-link also drives | Scene preset plus follow-link is how combined control is built |
+| `link-crosses-locality` | A follow-link whose ends sit in different localities | Central blocks serve several rooms; the row's own disagreement column already said "usually intended" |
+| `logic-timer-unused` | A declared timer no program starts | Default-named spare timers inside inserted library blocks |
+| `logic-contending-writers` | Two programs assigning one variable from unrelated triggers | Manual plus automatic control of one output is the idiom |
+| `logic-variable-unused` | A declared state variable nothing touches | Spare variables ship inside library blocks |
+| `enum-value-unused` | A declared enum value nothing references | Fires on vendor-stock enum types the author never wrote |
+| `enum-def-unused` | An authored enum type no variable declares | The same stock-type mechanism, and no dialog can bind such a type at all |
+
+**The measurement.** Every one of the eleven fired on files IHC Visual itself authored and accepts:
+between two and eight of the eight distinct-lineage normal projects witnessed each id, and together
+they were 907 of the 1506 warnings — 60% — in the one independent real-world project measured. A
+reader who dismisses six rows in ten stops reading the tenth, which is the cost these rows were
+charging the rows that are worth reading.
+
+**What was NOT deleted with them**, and why: the vendor-witnessed `doc-*` rows (the Fuld report's
+appendix renders them and vendor parity governs), every Information-tier row (§5b fires on healthy
+projects by design and says so), and the configuration-specific rows — `addr-*`, `rs485-*` and the
+firmware guardrails — whose volume follows the hardware in the project rather than the shape of
+ordinary authoring.
+
+### The 2026-08 Tier-2 pass — three more deleted, four narrowed
+
+The Tier-1 table above removed rows whose whole condition was noise. A second pass over the same
+evidence found rows whose condition was **partly** real: each is narrowed by an exclusion decidable
+from the file, and the two whose SUBJECT was wrong were replaced by one row over the right subject.
+
+The three ids below are **spent** on the same terms as the eleven: no entry reserves them, and
+pointing one at a different condition would make every older report lie about what it said.
+
+| Deleted id | Condition | Why it was noise | Answered now by |
+| --- | --- | --- | --- |
+| `link-input-unconnected` | A product input pin owns no link | Sixteen spare `Tryk (…)` buttons on plates that were wired and working — a plate ships more terminals than an installation uses | `link-product-unwired`, per product |
+| `link-output-undriven` | A product output pin owns no link and no scene names it | Seven pushbutton `LED (…)` indicators on wired plates; those pins are the plate's only outputs, so an outputs-only row reports every such plate | `link-product-unwired`, per product |
+| `logic-master-block-modified` | A library block whose `name` differs from the insert name its master identity implies | It compared NAMES, never content: every hit was a descriptive rename, which is what the vendor's own naming guidance asks for. Paired with `name-default` it also gave each reconstructible library block exactly one advisory whatever the author did | Nothing on names. Content divergence is `logic-block-locked-content`'s (library-compared) and a version difference `fb-master-version-differs`' |
+
+And these four conditions are now deliberate non-findings, each carved out of a row that survives:
+
+- **A shipped empty default program** — a block inserted from the library brings a program with
+  neither trigger nor command. `logic-program-no-events` now asks for a program that carries WORK a
+  trigger could have run, because the finding is about work stranded. A block empty all the way down
+  is still `logic-block-empty`'s.
+- **A timer re-armed, or a counter stepped, by the program it starts** — a delay and a tally, which
+  is what those two kinds are for. Neither oscillates, so `logic-self-trigger`'s stated consequence
+  was false of them; it excludes the two kinds and still reports a flag, an output or an ordinary
+  variable feeding itself back. `logic-block-recursive` excludes every direct self-edge and is
+  deliberately NOT widened to pick these up.
+- **A block that starts itself** — a clock, a *Powerup - Altid tændt*, a block woken by its own
+  internal timer. `link-fb-input-unfed` says the trigger never arrives, which is simply false of one
+  carrying an `event_power` or an `<event>` bound outside its own `inputs` container.
+- **A spare terminal on a partially wired product** — the condition the two deleted rows above
+  reported. It is not withheld pending better evidence; a device with one wire in it is installed.
 
 ## 7. Behavioural requirements
 
@@ -501,7 +555,10 @@ dialog in the application carries an icon picker). Two further rows that had bee
 finding set entirely and are now §6 deliberate non-findings: `name-helpfile-missing`, whose stated
 consequence is false, and `struct-modified-stale`, for which no predicate can be written.
 
-**✔ Authored — confirmed User-sourced (60 rows + the eight ✅).** Marked per row in §5. Sitting 5 added
+**✔ Authored — confirmed User-sourced (47 rows + the eight ✅).** Marked per row in §5. The number
+fell with the 2026-08 deletions: eleven Tier-1 rows and three Tier-2 rows were authored here before
+they were removed, and `link-product-unwired` — the fixture's three untouched products — replaced two
+of the three. Sitting 5 added
 the last two device rows: `dev-inivalue-overwritten` (a `Powerup hændelse` program re-asserting a flag's
 own non-default `Initial værdi` at every start) and `dev-backup-missing` (control 216 *Gem aktuel værdi*
 demonstrably **writes** `backup="yes"`, so the unmarked state of every other variable is a choice, not a
@@ -509,10 +566,10 @@ limitation — the fixture carries both sides of that contrast). Sitting 4
 added the program-logic set (`logic-program-no-events`, `logic-program-no-actions`,
 `logic-subprogram-no-conditions`, `logic-variable-write-only`, `logic-variable-read-only`,
 `logic-output-never-assigned`, `logic-flag-never-cleared`, `logic-counter-never-reset`,
-`logic-self-trigger`, `logic-contending-writers`, `logic-duplicate-program`, `logic-case-no-branches`),
-the scene set (`scene-empty`, `scene-unreferenced`, `scene-all-off`, `scene-output-also-linked`,
-`scene-long-delay`), the enum set (`enum-def-empty`, `enum-def-single-value`, `enum-def-unused`,
-`enum-value-unused`), `logic-block-empty` and `link-through-empty-block` (both need the default
+`logic-self-trigger`, `logic-duplicate-program`, `logic-case-no-branches`),
+the scene set (`scene-unreferenced`, `scene-all-off`, `scene-long-delay`), the enum set
+(`enum-def-empty`, `enum-def-single-value`), `logic-block-empty` and
+`link-through-empty-block` (both need the default
 `Program` **deleted** — every inserted block ships with one), `link-pass-through`,
 `logic-block-locked-content` (a locked library block's Navn is disabled but its Initial værdi is not),
 and `doc-project-info-blank` (which had to be **cleared**: IHC Visual pre-fills `programmer` with the
@@ -559,10 +616,10 @@ and the last two also **scope the check an implementer should write**:
 - **A user-created enum type can never be bound to a block variable.** `Indsæt ▸ Variable` offers a
   fixed 21 entries and none of them is an enumerator; the list is identical under Input, Output,
   Indstillinger and Interne variable, and it does not grow when project enum types are created. Every
-  `resource_enum` in a vendor file therefore comes from a product `.def` or a library `.ifb`. The
-  consequence for `enum-def-unused` and `enum-value-unused`: a user-authored enum type is unused **by
-  construction**, so those rows will fire on every one of them — that is correct behaviour, not
-  over-reporting.
+  `resource_enum` in a vendor file therefore comes from a product `.def` or a library `.ifb`. This is
+  the measurement that eventually removed the two "unused enum" rows in §6's Tier-1 record: a
+  user-authored enum type is unused **by construction**, so those rows fired on every one of them and
+  the reader could do nothing about any of it.
 
 ---
 
@@ -652,7 +709,7 @@ fall behind the declarations. Edit the declarations, not this table.
 The evidence and rationale columns of the sections above are deliberately absent here: they are
 prose, and they live as doc-comments on each declaration.
 
-### Project findings (180)
+### Project findings (167)
 
 | Id | Cat | Costs | Kind | Status | Danish label |
 | --- | --- | --- | --- | --- | --- |
@@ -716,10 +773,8 @@ prose, and they live as doc-comments on each declaration.
 | `enum-def-duplicate-name` | LOG | Warning | UserContentRule | Active | Enumerator typen '{enum}' har to værdier med navnet '{value}'. |
 | `enum-def-empty` | LOG | Warning | UserContentRule | Active | Enumerator typen '{enum}' har ingen værdier. |
 | `enum-def-single-value` | LOG | Warning | UserContentRule | Active | Enumerator typen '{enum}' har kun én værdi, '{value}'. |
-| `enum-def-unused` | LOG | Warning | UserContentRule | Active | Enumerator typen '{enum}' bruges ikke af nogen variabel. |
 | `enum-inivalue` | LOG | Error | UserContentRule | Active | Ugyldig starttilstand '{inivalue}' på enumerator-variablen '{name}': den findes ikke i enumeratortypen '{typedef}'. |
 | `enum-typedef` | LOG | Error | UserContentRule | Active | Enumeratortype mangler: typedef='{typedef}' på enumerator-variablen '{name}' peger på <{tag}>, ikke på en enumeratortype. |
-| `enum-value-unused` | LOG | Warning | UserContentRule | Active | Værdien '{value}' i enumerator typen '{enum}' bruges ikke. |
 | `export-controller-declined` | INT | Refusal | OperationOutcome | Active | Controlleren afviste projektet |
 | `fb-holiday-input-custom-block` | LOG | Warning | UserContentRule | Active | Den egenudviklede funktionsblok '{name}' har en helligdagsindgang, som er rapporteret at få overførslen til controlleren til at mislykkes. |
 | `fb-local-ref` | LOG | Error | UserContentRule | Active | Reference uden for blokken: {attribute}='{value}' på <{tag}> peger uden for funktionsblokken. |
@@ -745,13 +800,11 @@ prose, and they live as doc-comments on each declaration.
 | `import-controller-no-project` | INT | Refusal | OperationOutcome | Active | Intet projekt på controlleren |
 | `inline-constant` | LOG | Error | UserContentRule | Active | Ubrugt indlejret konstant <{tag}> '{id}' i <{parent}>: forælderens {attribute} er '{value}' og peger ikke på den. |
 | `link-bijection` | WIR | Error | UserContentRule | Active | Forbindelsen er ensidig: <{tag}> '{id}' er ikke forbundet begge veje til en partner af den modsatte type. |
-| `link-crosses-locality` | WIR | Warning | UserContentRule | Active | Følg-linket går mellem lokaliteterne '{from}' og '{to}'. |
 | `link-fb-input-unfed` | WIR | Warning | UserContentRule | Active | Funktionsblokken '{block}' har ingen forbundne indgange. |
 | `link-fb-output-unused` | WIR | Warning | UserContentRule | Active | Funktionsblokken '{block}' har ingen forbundne udgange. |
-| `link-input-unconnected` | WIR | Warning | UserContentRule | Active | Indgangen '{pin}' er ikke forbundet. |
 | `link-output-multidriven` | WIR | Warning | UserContentRule | Active | Udgangen '{pin}' styres af {drivers} kilder. |
-| `link-output-undriven` | WIR | Warning | UserContentRule | Active | Udgangen '{pin}' styres ikke af noget. |
 | `link-pass-through` | WIR | Warning | UserContentRule | Active | Funktionsblokken '{block}' kopierer kun én indgang til én udgang. |
+| `link-product-unwired` | WIR | Warning | UserContentRule | Active | Produktet '{product}' har ingen forbundne ind- eller udgange. |
 | `link-through-empty-block` | WIR | Warning | UserContentRule | Active | Funktionsblokken '{block}' har ingen programmer, men modtager signaler. |
 | `load-bom-utf16` | INT | Refusal | OperationOutcome | Active | Filen har et UTF-16-BOM |
 | `load-bom-utf8` | INT | Refusal | OperationOutcome | Active | Filen har et UTF-8-BOM |
@@ -772,21 +825,17 @@ prose, and they live as doc-comments on each declaration.
 | `logic-case-duplicate-value` | LOG | Error | UserContentRule | Active | Case-noden '{program}' tester den samme værdi i to grene. |
 | `logic-case-no-branches` | LOG | Warning | UserContentRule | Active | Case-noden '{program}' har ingen case-værdier. |
 | `logic-case-value-foreign` | LOG | Warning | UserContentRule | Active | Case-grenen '{program}' tester en værdi, der ikke findes i '{enum}'. |
-| `logic-contending-writers` | LOG | Warning | UserContentRule | Active | Variablen '{variable}' tilskrives af {writers} programmer med uafhængige udløsere. |
 | `logic-counter-never-reset` | LOG | Warning | UserContentRule | Active | Tælleren '{variable}' tælles op, men nulstilles aldrig. |
 | `logic-duplicate-program` | LOG | Warning | UserContentRule | Active | Blokken '{block}' har to identiske programmer. |
 | `logic-flag-never-cleared` | LOG | Warning | UserContentRule | Active | Flaget '{variable}' sættes, men nulstilles aldrig. |
 | `logic-holiday-schedule-firmware` | LOG | Warning | UserContentRule | Active | Projektet bruger helligdagsskemaet, som ifølge leverandøren først virker fra controllerfirmware 3.3.21. |
-| `logic-master-block-modified` | LOG | Warning | UserContentRule | Active | Blokken '{block}' er ændret lokalt i forhold til biblioteksblokken '{master}'. |
 | `logic-output-never-assigned` | LOG | Warning | UserContentRule | Active | Udgangen '{variable}' tilskrives ikke af noget program. |
 | `logic-program-no-actions` | LOG | Warning | UserContentRule | Active | Programmet '{program}' har hændelser, men ingen kommandoer. |
-| `logic-program-no-events` | LOG | Warning | UserContentRule | Active | Programmet '{program}' har ingen hændelser. |
+| `logic-program-no-events` | LOG | Warning | UserContentRule | Active | Programmet '{program}' har kommandoer, men ingen hændelser. |
 | `logic-self-trigger` | LOG | Warning | UserContentRule | Active | Programmet '{program}' udløses af '{variable}', som det selv tilskriver. |
 | `logic-statement-unlinked` | LOG | Error | UserContentRule | Active | Programlinjen <{tag}> i blokken '{block}' peger ikke på nogen ressource. |
 | `logic-subprogram-no-conditions` | LOG | Warning | UserContentRule | Active | Underprogrammet '{program}' har ingen betingelser. |
-| `logic-timer-unused` | LOG | Warning | UserContentRule | Active | Timeren '{variable}' startes ikke af noget program. |
 | `logic-variable-read-only` | LOG | Warning | UserContentRule | Active | Variablen '{variable}' i '{block}' læses, men tilskrives aldrig. |
-| `logic-variable-unused` | LOG | Warning | UserContentRule | Active | Variablen '{variable}' i '{block}' bruges ikke af noget program. |
 | `logic-variable-write-only` | LOG | Warning | UserContentRule | Active | Variablen '{variable}' i '{block}' tilskrives, men læses aldrig. |
 | `luid-ceiling` | INT | Error | UserContentRule | Active | Id-tælleren er opbrugt: last_unique_id '{value}' overskrider loftet for 24-bit id-tællere. |
 | `luid-low` | INT | Error | UserContentRule | Active | Id-tælleren er for lav |
@@ -825,16 +874,11 @@ prose, and they live as doc-comments on each declaration.
 | `scene-bijection` | SCN | Error | UserContentRule | Active | Scenerækken er ensidig: <{tag}> '{id}' er ikke forbundet begge veje til en partner af den modsatte type. |
 | `scene-dimming-out-of-range` | SCN | Warning | UserContentRule | Active | Scenemedlemmet '{member}' har lysniveauet {value} %; det gyldige område er {minimum}-{maximum} %. |
 | `scene-duplicate-target` | SCN | Warning | UserContentRule | Active | Scenariet '{scene}' styrer udgangen '{output}' i flere rækker. |
-| `scene-empty` | SCN | Warning | UserContentRule | Active | Scenariet '{scene}' har ingen medlemmer. |
 | `scene-long-delay` | SCN | Warning | UserContentRule | Active | Ramptiden {seconds} sekunder er længere end de tilladte {limit}. |
 | `scene-member-unwired` | SCN | Warning | UserContentRule | Active | Scenarierækken i '{product}' peger ikke på nogen udgang. |
-| `scene-output-also-linked` | SCN | Warning | UserContentRule | Active | Udgangen '{output}' styres både af et scenarie og af et følg-link. |
 | `scene-unreferenced` | SCN | Warning | UserContentRule | Active | Scenariet '{scene}' kaldes ikke fra noget program. |
 | `struct-icon-default` | PRJ | Warning | UserContentRule | Active | Elementet '{element}' har ikke fået et ikon. |
-| `struct-locality-empty` | PRJ | Warning | UserContentRule | Active | Lokaliteten '{locality}' indeholder hverken produkter eller blokke. |
-| `struct-locality-no-devices` | PRJ | Warning | UserContentRule | Active | Lokaliteten '{locality}' indeholder kun funktionsblokke. |
 | `struct-modified-stale` | PRJ | Warning | UserContentRule | RuledOut | *(to author)* |
-| `struct-orphan-block` | PRJ | Warning | UserContentRule | Active | Blokken '{block}' er ikke forbundet til resten af installationen. |
 | `struct-product-no-terminals` | PRJ | Warning | UserContentRule | Active | Produktet '{product}' har ingen klemmer. |
 
 ### Catalog-definition findings (11)
@@ -907,5 +951,5 @@ prose, and they live as doc-comments on each declaration.
 | `io.load` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke åbnes |
 | `io.save` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke gemmes: {count} fejl skal rettes først. |
 
-**Total: 240 entries.** 232 active, 4 retired, 4 ruled out.
+**Total: 227 entries.** 219 active, 4 retired, 4 ruled out.
 <!-- END GENERATED -->

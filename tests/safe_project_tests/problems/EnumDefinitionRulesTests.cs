@@ -9,7 +9,7 @@ using Ihc.Vis.Validation;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// T054 — the five ENUM-DEFINITION rows.
+    /// T054 — the ENUM-DEFINITION rows.
     ///
     /// <para><b>The claim this suite exists for</b> is that an ABSENT <c>index</c> is index ZERO. The canonicalizer
     /// omits a value equal to the DTD default, so every definition's first value in the corpus carries no
@@ -17,10 +17,9 @@ namespace Ihc.Vis.Tests
     /// the collision a hand-edited file produces. <see cref="AnAbsentIndexCollidesWithAnExplicitZero"/> is that
     /// claim.</para>
     ///
-    /// <para><b>The three shape rows are tested against what the author does not own:</b> a <c>typeid</c>-bearing
-    /// system table and the data-tables definition. Both are unreferenced in ordinary projects — 40 of the corpus's
-    /// 109 definitions are system tables — so without the exclusions <c>enum-def-unused</c> would report furniture
-    /// in nearly every file.</para>
+    /// <para><b>The shape rows are tested against what the author does not own:</b> a <c>typeid</c>-bearing
+    /// system table and the data-tables definition. 40 of the corpus's 109 definitions are system tables, so
+    /// without the exclusions these rows would report furniture in nearly every file.</para>
     /// </summary>
     [TestFixture]
     public sealed class EnumDefinitionRulesTests
@@ -106,33 +105,19 @@ namespace Ihc.Vis.Tests
                 "unparseable indices are not compared here: that is attr-enum-range's row");
         }
 
-        // ── enum-def-unused ─────────────────────────────────────────────────────────────────────────
-
-        [Test]
-        public void AnAuthoredTypeNoVariableDeclaresIsReported()
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(WithVariable(referencing: false), "enum-def-unused"), Is.EqualTo(1));
-                Assert.That(Single(WithVariable(referencing: false), "enum-def-unused").Message,
-                    Is.EqualTo("Enumerator typen 'Tilstand' bruges ikke af nogen variabel."));
-                Assert.That(Count(WithVariable(referencing: true), "enum-def-unused"), Is.Zero,
-                    "one resource_enum naming it by typedef is a reference — the only reference form in the format");
-            });
-        }
-
         /// <summary>
-        /// The exclusion that keeps this row off ordinary vendor content: a system table is shipped with the
-        /// format, read-only in the application, and unreferenced in most projects.
+        /// The exclusion that keeps these rows off ordinary vendor content: a system table is shipped with the
+        /// format and read-only in the application, so its shape is not the author's to answer for. The tree puts
+        /// a one-value table beside a one-value authored type, so the count says which of the two is the subject.
         /// </summary>
         [Test]
-        public void ASystemTableIsNeverReportedThoughItIsUsuallyUnreferenced()
+        public void ASystemTablesShapeIsNeverReported()
         {
             Project project = Tree.WithRoot(Definitions(
-                SystemTable("Persienne tilstand", 0x40),
-                Definition("Tilstand", 0x50, ("Oppe", "0"), ("Nede", "1"))));
+                SystemTable("Persienne tilstand", 0x40, ("Oppe", null)),
+                Definition("Tilstand", 0x50, ("Oppe", "0"))));
 
-            Assert.That(Count(project, "enum-def-unused"), Is.EqualTo(1),
+            Assert.That(Count(project, "enum-def-single-value"), Is.EqualTo(1),
                 "the authored type, and nothing for the shipped table beside it");
         }
 
@@ -145,22 +130,6 @@ namespace Ihc.Vis.Tests
                     "empty until the first user-defined text is added, which is an ordinary state");
                 Assert.That(Count(Definition(UserTexts, ("Kælder", "0")), "enum-def-single-value"), Is.Zero,
                     "one text is not a type stuck in one state");
-                Assert.That(Count(Definition(UserTexts, ("Kælder", "0")), "enum-def-unused"), Is.Zero,
-                    "no variable is ever declared of it, so 'unused' says nothing about it");
-            });
-        }
-
-        [Test]
-        public void TheCorpusReportsOnlyAuthoredTypesAsUnused()
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(Authentic("Project0-Tomt.vis"), "enum-def-unused"), Is.Zero,
-                    "an empty project ships two unreferenced system tables and must stay silent");
-                Assert.That(Count(Authentic("Project1-SimpelWired.vis"), "enum-def-unused"), Is.Zero,
-                    "three authored types, every one bound to a library block's variables");
-                Assert.That(Count(Authentic("project3-KompleksWired.vis"), "enum-def-unused"), Is.EqualTo(1),
-                    "the authored TestEnum, which no variable declares");
             });
         }
 
@@ -220,31 +189,11 @@ namespace Ihc.Vis.Tests
             Tree.WithRoot(Definitions(Definition(name, 0x40, values)));
 
         /// <summary>A <c>typeid</c>-bearing system table: shipped with the format, read-only in the application.</summary>
-        private static ProjectElement SystemTable(string name, int at) =>
+        private static ProjectElement SystemTable(string name, int at, params (string Name, string? Index)[] values) =>
             Tree.Node("enum_definition", Token("enum_definition", at),
                 [("typeid", "_0x10"), ("name", name)],
-                Tree.Node("enum_value", Token("enum_value", at + 0x100), [("name", "Ukendt")]),
-                Tree.Node("enum_value", Token("enum_value", at + 0x101), [("name", "Oppe"), ("index", "1")]));
+                [.. values.Select((v, i) => Tree.Node("enum_value", Token("enum_value", at + 0x100 + i),
+                    v.Index is null ? [("name", v.Name)] : [("name", v.Name), ("index", v.Index)]))]);
 
-        /// <summary>One authored definition, and a block variable that either names it by typedef or does not.</summary>
-        private static Project WithVariable(bool referencing)
-        {
-            string definitionId = Token("enum_definition", 0x40);
-            ImmutableArray<(string, string)> variable = referencing
-                ? [("name", "Tilstand"), ("typedef", definitionId)]
-                : [("name", "Tilstand")];
-
-            return Tree.WithRoot(
-                Definitions(Definition("Tilstand", 0x40, ("Oppe", "0"), ("Nede", "1"))),
-                Tree.Node("groups", Token("groups", 0x20), [("name", "L")],
-                    Tree.Node("group", Token("group", 0x21), [("name", "Stue")],
-                        Tree.Node("functionblock", Token("functionblock", 0x70), [("name", "Blok")],
-                            Tree.Node("inputs", Token("inputs", 0x71), [("name", "Input")]),
-                            Tree.Node("outputs", Token("outputs", 0x72), [("name", "Output")]),
-                            Tree.Node("settings", Token("settings", 0x73), [("name", "Indstillinger")]),
-                            Tree.Node("internalsettings", Token("internalsettings", 0x74), [("name", "Interne")],
-                                Tree.Node("resource_enum", Token("resource_enum", 0x80), [.. variable])),
-                            Tree.Node("programs", Token("programs", 0x75), [("name", "Programmer")])))));
-        }
     }
 }

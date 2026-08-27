@@ -31,11 +31,14 @@ namespace Ihc.Vis.Validation
     /// body, which the rule now receives through <see cref="ILibraryBlockSource"/> — declared, and skipped when the
     /// caller has no library, exactly as the capacity rows behave without controller limits.</para>
     ///
-    /// <para><b>What <c>logic-master-block-modified</c> can and cannot see.</b> It reports a block that KEEPS its
-    /// library identity while its name no longer matches the insert name that identity implies — the error
-    /// fixture's <i>Kip tænd sluk (lokalt tilpasset)</i>, renamed and re-noted while still locked, with
-    /// <c>Nummer</c>, <c>Version</c>, <c>Oprettet</c> and <c>Udviklet af</c> all surviving. It cannot see a block
-    /// whose LOGIC diverges from the library while keeping the name, for the same reason as above.</para>
+    /// <para><b>A RENAMED library block is nobody's finding here, and the reason is worth keeping.</b> There was a
+    /// row comparing a block's <c>name</c> against the insert name its master identity implies, and calling the
+    /// difference a local modification. But a name is not a body: <i>Kip tænd sluk (lokalt tilpasset)</i> is what
+    /// the vendor's own naming guidance asks an author to write, and the row said "changed locally" of every such
+    /// block. Paired with <c>name-default</c>, which reports one still AT its insert name, it also guaranteed each
+    /// reconstructible library block exactly one advisory whatever its author did — a row carrying no information.
+    /// Divergence from the library is answered where it can actually be measured: by
+    /// <c>logic-block-locked-content</c>, which compares against the library body.</para>
     /// </summary>
     public static class FunctionBlockShapeRules
     {
@@ -61,7 +64,6 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "logic-block-empty", NoPrograms),
                 Rule(catalog, "logic-block-no-pins", NoPins),
                 Rule(catalog, "logic-duplicate-program", DuplicatePrograms),
-                Rule(catalog, "logic-master-block-modified", MasterBlockModified),
                 Rule(catalog, "logic-block-locked-content", LockedContentEdited),
                 Rule(catalog, "fb-user-authored", UserAuthored),
                 Rule(catalog, "fb-holiday-input-custom-block", HolidayInputOnCustomBlock),
@@ -591,39 +593,6 @@ namespace Ihc.Vis.Validation
         }
 
         /// <summary>
-        /// A block that keeps its library identity while its name no longer matches it: the block no longer matches
-        /// the library version it claims to be.
-        /// <para>
-        /// SUBJECT: a block carrying master identity whose insert name is reconstructible and whose <c>name</c>
-        /// differs from it. A block the user saved to the library keeps <c>master_name</c> but gets no
-        /// <c>master_type</c>, so no insert name can be reconstructed and it is never reported — correct, since it
-        /// IS its own library entry.
-        /// </para>
-        /// <para>
-        /// WHAT IT SHARES A BORDER WITH: <c>name-default</c> reports a library block still AT its insert name, and
-        /// this row reports one moved away from it, so between them every reconstructible library block draws
-        /// exactly one advisory. That is a consequence of the catalogue carrying both rows, and both are dismissible
-        /// per their own disagreement columns; it is recorded in the entry so a reader does not take it for a bug.
-        /// </para>
-        /// </summary>
-        private static void MasterBlockModified(IProjectInspection inspection)
-        {
-            foreach (ProjectElement block in Blocks(inspection.Analyses))
-            {
-                if (!LibraryBlockIdentity.HasMasterIdentity(block)
-                    || LibraryBlockIdentity.InsertName(block) is not { } insertName
-                    || block.GetAttribute("name") is not { Length: > 0 } name
-                    || name == insertName)
-                {
-                    continue;
-                }
-
-                inspection.Report(block, Arguments(
-                    ("block", name), ("master", block.GetAttribute("master_name") ?? string.Empty)));
-            }
-        }
-
-        /// <summary>
         /// A LOCKED block whose stored content no longer matches the library body it claims: the lock no longer
         /// reflects the state it was meant to protect.
         /// <para>
@@ -632,7 +601,7 @@ namespace Ihc.Vis.Validation
         /// walks the four variable sections and compares each variable's STORED value — <c>inivalue</c> for a
         /// declared variable, <c>value</c> for a setting — against the same-named variable in the library body.
         /// A variable the library does not have at all is a structural difference rather than an edited value, and
-        /// is left to <c>logic-master-block-modified</c>.
+        /// is deliberately nobody's finding: no shipped row compares block STRUCTURE against the library.
         /// </para>
         /// <para>
         /// PAIRED BY NAME, not by id: a placed block's ids are re-stamped at insert, so the library body and the

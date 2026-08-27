@@ -8,22 +8,21 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
-using Ihc.Vis.Schema;
 
 using static Ihc.Vis.Validation.RuleAuthoring;
 
 namespace Ihc.Vis.Validation
 {
     /// <summary>
-    /// The remaining PROJECT-STRUCTURE rows: an empty room, a room with logic but no hardware, a product
-    /// nothing can be wired to, a block nothing reaches, and an element left with no icon where others have one.
+    /// The remaining PROJECT-STRUCTURE rows: a product nothing can be wired to, and an element left with no icon
+    /// where others of its kind have one.
     ///
-    /// <para><b><c>struct-modified-stale</c> is the sixth and is deliberately absent.</b> The <c>modified</c> block
+    /// <para><b><c>struct-modified-stale</c> is deliberately absent.</b> The <c>modified</c> block
     /// is re-stamped on every save and no edit route touches it, so the condition cannot hold in a saved file — a
     /// check would fire on nothing. T011 moved it to the catalogue's deliberate non-findings, and a test asserts no
     /// rule is registered for it.</para>
     ///
-    /// <para><b>Two of the five are quiet by construction and say why.</b> <c>struct-product-no-terminals</c> asks
+    /// <para><b>Both are quiet by construction and say why.</b> <c>struct-product-no-terminals</c> asks
     /// for a product with NOTHING wirable — no terminal, no channel, no bus resource — which across the corpus is
     /// the SMS modem and nothing else; a naive "no <c>dataline_*</c> child" reading would also report every RS485
     /// dimmer and every bus sensor, whose channels and measured values are exactly what gets wired. And
@@ -32,9 +31,6 @@ namespace Ihc.Vis.Validation
     /// </summary>
     public static class ProjectStructureRules
     {
-        /// <summary>The tag every locality carries.</summary>
-        private const string LocalityTag = "group";
-
         /// <summary>The attribute holding an element's icon, and the token that means "none".</summary>
         private const string IconAttribute = "icon";
 
@@ -44,44 +40,8 @@ namespace Ihc.Vis.Validation
         {
             ArgumentNullException.ThrowIfNull(catalog);
             return ImmutableArray.Create(
-                Rule(catalog, "struct-locality-empty", LocalityEmpty),
-                Rule(catalog, "struct-locality-no-devices", LocalityWithoutDevices),
                 Rule(catalog, "struct-product-no-terminals", ProductWithoutTerminals),
-                Rule(catalog, "struct-orphan-block", OrphanBlock),
                 Rule(catalog, "struct-icon-default", IconLeftDefault));
-        }
-
-        /// <summary>
-        /// A locality holding neither a product nor a block: an empty room in the tree and in the reports.
-        /// <para>MEASURED, and the number is worth knowing before reading a report: 8 to 10 per project, because a
-        /// new project ships with ten named localities and an installer fills the ones the building has. The row is
-        /// still true — those rooms are empty in the tree and in the reports, and deleting them is what a careful
-        /// author does before handing documentation over — which is exactly what its "room planned but not yet
-        /// fitted" disagreement is for.</para>
-        /// </summary>
-        private static void LocalityEmpty(IProjectInspection inspection)
-        {
-            foreach (ProjectElement locality in Localities(inspection.Analyses))
-            {
-                if (!Devices(locality).Any() && !Blocks(locality).Any())
-                {
-                    inspection.Report(locality, Arguments(("locality", Name(locality))));
-                }
-            }
-        }
-
-        /// <summary>
-        /// A locality holding blocks and no hardware: the room has logic but nothing to act on — often a mis-drop.
-        /// </summary>
-        private static void LocalityWithoutDevices(IProjectInspection inspection)
-        {
-            foreach (ProjectElement locality in Localities(inspection.Analyses))
-            {
-                if (Blocks(locality).Any() && !Devices(locality).Any())
-                {
-                    inspection.Report(locality, Arguments(("locality", Name(locality))));
-                }
-            }
         }
 
         /// <summary>
@@ -103,65 +63,6 @@ namespace Ihc.Vis.Validation
                 {
                     inspection.Report(product, Arguments(("product", Name(product))));
                 }
-            }
-        }
-
-        /// <summary>
-        /// A block nothing links to and nothing references: it is isolated from the rest of the installation.
-        /// <para>
-        /// TWO WAYS TO BE REACHED, and both are checked: a link half anywhere inside the block (the half exists
-        /// only once the wire is made), or an id inside the block named by an attribute OUTSIDE it — a program in
-        /// another block, a scene, a documentation reference.
-        /// </para>
-        /// <para>
-        /// MEASURED: 0 in <c>Project1</c>, 1 in <c>project5</c>, 8 of 9 blocks in <c>project3</c>. That last figure
-        /// is not a false positive: <c>project3</c> carries only three wired pin pairs in total, so its library
-        /// blocks really were placed for the report fixtures and never wired.
-        /// </para>
-        /// </summary>
-        private static void OrphanBlock(IProjectInspection inspection)
-        {
-            ITopologyAnalysis topology = inspection.Analyses.Topology;
-            ImmutableArray<ProjectElement> blocks =
-            [
-                .. inspection.Analyses.WithTag("functionblock"),
-            ];
-
-            // id -> the block that owns it, for every id inside a block
-            Dictionary<string, ProjectElement> owner = new(StringComparer.Ordinal);
-            foreach (ProjectElement block in blocks)
-            {
-                foreach (ProjectElement element in block.DescendantsAndSelf())
-                {
-                    if (element.GetAttribute("id") is { Length: > 0 } id)
-                    {
-                        owner[id] = block;
-                    }
-                }
-            }
-
-            HashSet<ProjectElement> reached = new(ReferenceEqualityComparer.Instance);
-            foreach (ProjectElement element in inspection.Analyses.Elements)
-            {
-                ProjectElement? host = topology.NearestAncestorOrSelf(element, "functionblock");
-                if (ReciprocalTags.CrossBoundaryHalfTags.Contains(element.Tag) && host is not null)
-                {
-                    reached.Add(host);   // the block is wired
-                }
-
-                foreach ((string name, string value) in element.Attrs)
-                {
-                    if (name != "id" && owner.TryGetValue(value, out ProjectElement? target)
-                        && !ReferenceEquals(target, host))
-                    {
-                        reached.Add(target);   // something outside the block names something inside it
-                    }
-                }
-            }
-
-            foreach (ProjectElement block in blocks.Where(b => !reached.Contains(b)))
-            {
-                inspection.Report(block, Arguments(("block", Name(block))));
             }
         }
 
@@ -214,14 +115,5 @@ namespace Ihc.Vis.Validation
             AuthoredElements.IsTerminal(tag)
             || tag.StartsWith("resource_", StringComparison.Ordinal)
             || tag.EndsWith("_channel", StringComparison.Ordinal);
-
-        private static IEnumerable<ProjectElement> Localities(IProjectAnalyses analyses) =>
-            analyses.WithTag(LocalityTag);
-
-        private static IEnumerable<ProjectElement> Devices(ProjectElement locality) =>
-            locality.Children.Where(c => ProductClassifier.IsProduct(c.Tag));
-
-        private static IEnumerable<ProjectElement> Blocks(ProjectElement locality) =>
-            locality.Children.Where(c => c.Tag == "functionblock");
     }
 }

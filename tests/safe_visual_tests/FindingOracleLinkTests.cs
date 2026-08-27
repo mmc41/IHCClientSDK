@@ -46,28 +46,29 @@ public class FindingOracleLinkTests
     /// the oracle records <c>fixture/Project6-Errors</c>. The folder-prefix stripping that bridges the two is
     /// invisible to every other test, so this is where it is pinned.</para>
     ///
-    /// <para><b>The tier split is pinned too, and it is no longer one tier.</b> The fixture carries 150 Warnings
-    /// and 10 Information rows — the S0 meter's, the wireless family's, the retention budget, three the LED
+    /// <para><b>The tier split is pinned too, and it is no longer one tier.</b> Beside the warnings the fixture
+    /// carries Information rows — the S0 meter's, the wireless family's, the retention budget, three the LED
     /// dimmer brings (what it does after a power failure, the bus it sits on, and its unlinked fault resources)
-    /// and four user-built blocks whose `.ifb` files are worth archiving. The E2E panel counts are read PER TIER, so a test that compared the
-    /// panel's <i>Advarsel</i> count against this whole population would be off by exactly those rows; asserting
-    /// the split here is what keeps that mistake visible in the suite that runs on every build rather than only
-    /// in the <c>[Explicit]</c> one that does not.</para>
+    /// and four user-built blocks whose `.ifb` files are worth archiving. The E2E panel counts are read PER
+    /// TIER, so a test that compared the panel's <i>Advarsel</i> count against this whole population would be
+    /// off by exactly those rows; asserting the split here is what keeps that mistake visible in the suite that
+    /// runs on every build rather than only in the <c>[Explicit]</c> one that does not.</para>
     ///
-    /// <para><b>The Warning count is the stable half.</b> 150 is what this fixture has carried throughout; the
-    /// Information count grows with each advisory row the catalogue adds that the fixture happens to witness. A
-    /// failure showing the WARNING number moved is therefore a different and more serious thing than one showing
-    /// only the Info number did.</para>
+    /// <para><b>The Warning count is the load-bearing half.</b> It has moved twice, both times downward and
+    /// both in 2026-08: the Tier-1 campaign deleted eleven rules, and the Tier-2 pass that followed deleted
+    /// three more and narrowed four. The Information count otherwise grows with each advisory row the catalogue
+    /// adds that the fixture happens to witness. A failure showing the WARNING number moved is therefore a
+    /// different and more serious thing than one showing only the Info number did.</para>
     /// </summary>
     [Test]
     public void TheRecordedRowsForTheE2EFixtureAreFoundAndSplitAcrossTwoTiers()
     {
         Assert.Multiple(() =>
         {
-            Assert.That(E2E.OracleRows(OracleCase), Has.Count.EqualTo(162));
-            Assert.That(E2E.OracleCodes(OracleCase), Has.Count.EqualTo(162), "and the code projection agrees");
+            Assert.That(E2E.OracleRows(OracleCase), Has.Count.EqualTo(126));
+            Assert.That(E2E.OracleCodes(OracleCase), Has.Count.EqualTo(126), "and the code projection agrees");
             Assert.That(
-                E2E.OracleRows(OracleCase).Count(r => r.Severity == "Warning"), Is.EqualTo(152),
+                E2E.OracleRows(OracleCase).Count(r => r.Severity == "Warning"), Is.EqualTo(116),
                 "the advisory rows the panel's Advarsel count must equal");
             Assert.That(
                 E2E.OracleRows(OracleCase).Count(r => r.Severity == "Info"), Is.EqualTo(10),

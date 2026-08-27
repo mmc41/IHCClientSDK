@@ -104,14 +104,6 @@ namespace Ihc.Vis.Validation
         /// <param name="variable">The variable to ask about.</param>
         bool IsLinked(ProjectElement variable);
 
-        /// <summary>
-        /// Every value token any element stores as an <c>inivalue</c> — the ONE reference form for an
-        /// <c>enum_value</c>, measured at 598 occurrences across the corpus and no other attribute anywhere. It
-        /// covers both halves of "tested or assigned": a declared variable's initial value and a case branch's
-        /// inline operand are stored the same way.
-        /// </summary>
-        IReadOnlySet<string> ReferencedValueTokens { get; }
-
         /// <summary>The usages of one program, in document order.</summary>
         /// <param name="program">The program to ask about.</param>
         EquatableArray<VariableUsage> Of(ProjectElement program);
@@ -142,16 +134,13 @@ namespace Ihc.Vis.Validation
         private readonly HashSet<string> triggered = new(StringComparer.Ordinal);
         private readonly HashSet<string> read = new(StringComparer.Ordinal);
         private readonly HashSet<string> written = new(StringComparer.Ordinal);
-        private readonly HashSet<string> referencedValues = new(StringComparer.Ordinal);
 
         private ProgramUsageAnalysis(
             ImmutableArray<VariableUsage> usages,
-            ImmutableArray<CaseTest> caseTests,
-            IEnumerable<string> referenced)
+            ImmutableArray<CaseTest> caseTests)
         {
             this.usages = usages;
             this.caseTests = caseTests;
-            referencedValues.UnionWith(referenced);
             foreach (VariableUsage usage in usages)
             {
                 if (usage.Variable.GetAttribute("id") is not { Length: > 0 } id)
@@ -178,8 +167,6 @@ namespace Ihc.Vis.Validation
 
         public EquatableArray<CaseTest> CaseTests => caseTests;
 
-        public IReadOnlySet<string> ReferencedValueTokens => referencedValues;
-
         /// <summary>Walks every program row once and records what it touches.</summary>
         /// <param name="elements">Every element in document order — the walk the run already materialised.</param>
         /// <param name="topology">The topology analysis, for id resolution and the enclosing program.</param>
@@ -190,15 +177,8 @@ namespace Ihc.Vis.Validation
 
             var usages = ImmutableArray.CreateBuilder<VariableUsage>();
             var tests = ImmutableArray.CreateBuilder<CaseTest>();
-            var referenced = new List<string>();
-
             foreach (ProjectElement element in elements)
             {
-                if (element.GetAttribute("inivalue") is { Length: > 0 } initial)
-                {
-                    referenced.Add(initial);
-                }
-
                 // The tag test comes FIRST: only these four tags reach the switch, and Enclosing walks the parent
                 // chain to the root, so asking it about every element in the document was an O(depth) lookup
                 // discarded for the ~95% that are not program rows.
@@ -245,7 +225,7 @@ namespace Ihc.Vis.Validation
                 }
             }
 
-            return new ProgramUsageAnalysis(usages.ToImmutable(), tests.ToImmutable(), referenced);
+            return new ProgramUsageAnalysis(usages.ToImmutable(), tests.ToImmutable());
         }
 
         public bool IsTriggeredOn(ProjectElement variable) => Has(triggered, variable);

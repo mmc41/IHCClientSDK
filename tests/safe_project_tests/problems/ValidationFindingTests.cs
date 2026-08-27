@@ -228,15 +228,16 @@ namespace Ihc.Vis.Tests
         /// <see cref="FindingLocation.Xpath"/> worth its API surface.
         ///
         /// <para><b>Why the count is asserted from both ends.</b> A path on every site would be correct and
-        /// useless; a path on none would pass any test that only checked the ones that have one. So this pins the
-        /// exact population: 6 primary sites out of 833, and every one of them for a reason the tree can state.</para>
+        /// useless; a path on none would pass any test that only checked the ones that have one. So this pins
+        /// both populations in the assertions below, which is where a number belongs — a comment restating one
+        /// drifts silently, an assertion cannot.</para>
         ///
-        /// <para><b>Why it is not derived from <see cref="FindingLocation.Element"/>.</b> That property is null in
-        /// 62 of the 833 sites, and only 2 of those 62 are ambiguous — the malformed tokens. The other 60 simply
-        /// have no <c>id</c> attribute (the document root, an unrecognized element) and are identified perfectly
-        /// well by their tag. In the other direction, all 4 shared-token sites have a NON-null id and are
-        /// ambiguous anyway. A writer branching on <c>Element is null</c> would therefore be wrong 60 times one
-        /// way and 4 the other, which is exactly why the path is carried rather than inferred.</para>
+        /// <para><b>Why it is not derived from <see cref="FindingLocation.Element"/>.</b> That property is null on
+        /// most sites that carry no path at all: they have no <c>id</c> attribute (the document root, an
+        /// unrecognized element) and are identified perfectly well by their tag. In the other direction, every
+        /// shared-token site has a NON-null id and is ambiguous anyway. A writer branching on
+        /// <c>Element is null</c> would therefore be wrong in both directions, which is exactly why the path is
+        /// carried rather than inferred.</para>
         /// </summary>
         [Test]
         public void ExactlyTheSitesWhoseLocatorSelectsNoSingleNodeCarryAPath()
@@ -254,36 +255,35 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(corpus, Has.Length.EqualTo(833), "the corpus population the counts below are out of");
-                Assert.That(withPath, Has.Length.EqualTo(6), "under 1% of sites need one");
+                Assert.That(corpus, Has.Length.EqualTo(605), "the corpus population the counts below are out of");
+                Assert.That(withPath, Has.Length.EqualTo(3), "under 1% of sites need one");
 
-                // The 4 ambiguous-because-SHARED sites: the token parses and two elements answer to it.
+                // The ambiguous-because-SHARED sites: the token parses and two elements answer to it.
                 Assert.That(
                     withPath.Where(p => p.Location.Element is not null).Select(p => p.Location.Locator),
-                    Is.EqualTo(new[] { "_0x2132", "_0x2132", "_0x2132", "_0x2132" }));
+                    Is.EqualTo(new[] { "_0x2132", "_0x2132" }));
 
-                // The 2 ambiguous-because-MALFORMED sites: the token parses to nothing, so nothing answers to it.
+                // The ambiguous-because-MALFORMED site: the token parses to nothing, so nothing answers to it.
                 Assert.That(
                     withPath.Where(p => p.Location.Element is null).Select(p => p.Location.Locator),
-                    Is.EqualTo(new[] { "_0xzz", "_0xzz" }));
+                    Is.EqualTo(new[] { "_0xzz" }));
 
                 // Both directions of the Element-is-null trap, as counts.
-                Assert.That(elementNull, Has.Length.EqualTo(62), "60 with no id attribute, plus the 2 malformed");
+                Assert.That(elementNull, Has.Length.EqualTo(61), "60 with no id attribute, plus the malformed one");
                 Assert.That(
                     elementNull.Count(p => p.Location.Xpath is null), Is.EqualTo(60),
                     "a tag locator selects its element, so a null Element is not ambiguity");
                 Assert.That(
-                    withPath.Count(p => p.Location.Element is not null), Is.EqualTo(4),
+                    withPath.Count(p => p.Location.Element is not null), Is.EqualTo(2),
                     "and a non-null Element is not unambiguity");
 
-                // Six sites over THREE elements — several rules fire on each — and the paths are what separate
-                // them, because four of the six share one locator string and the other two share the other.
+                // Three sites over TWO elements — two rules fire on the shared token — and the paths are what
+                // separate them, because those two share one locator string.
                 Assert.That(
                     withPath.Select(p => p.Location.Xpath).Distinct().OrderBy(x => x, StringComparer.Ordinal),
                     Is.EqualTo(new[]
                     {
                         "/utcs_project/groups/group[1]",
-                        "/utcs_project/groups/group[2]",
                         "/utcs_project/groups/group[4]",
                     }));
                 Assert.That(withPath.Select(p => p.Case).Distinct(), Is.EqualTo(new[] { "synthetic/ids" }));

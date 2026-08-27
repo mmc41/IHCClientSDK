@@ -45,20 +45,21 @@ namespace Ihc.Vis.Tests
 
         /// <summary>
         /// The WIRING conditions this fixture legitimately carries, and the count of each. It is a vendor-authored
-        /// DEFECT fixture, so unconnected inputs, an undriven output, a doubly-driven output, an empty block a wire
-        /// runs into and two cross-locality links are content it was built to hold — reporting them is the eight
-        /// WIR rows working, not a regression.
+        /// DEFECT fixture, so untouched products, a doubly-driven output and an empty block a wire runs into are
+        /// content it was built to hold — reporting them is the WIR rows working, not a regression.
         /// <para>Pinned as exact counts rather than as "some": a count is what would catch a predicate that started
-        /// firing per pin instead of per block, which is the way these two rows are most likely to go wrong.</para>
+        /// firing per pin instead of per product or per block, which is the way these rows are most likely to go
+        /// wrong. The fixture is the reason that matters here — it carries plates whose buttons are wired and
+        /// whose indicator LEDs are not, which a per-pin reading reported and a per-product one does not.</para>
+        /// <para><c>link-fb-input-unfed</c> is deliberately ABSENT: the fixture's one block with no fed input is
+        /// <i>Kip tænd sluk (lokalt tilpasset)</i>, whose programs start on its own internal timers, so the row's
+        /// sentence would be false of it.</para>
         /// </summary>
         private static readonly (string RuleId, int Count)[] WiringConditions =
         [
-            ("link-crosses-locality", 2),
-            ("link-fb-input-unfed", 1),
             ("link-fb-output-unused", 1),
-            ("link-input-unconnected", 8),
             ("link-output-multidriven", 1),
-            ("link-output-undriven", 3),
+            ("link-product-unwired", 3),
             ("link-through-empty-block", 1),
             // Information, not a defect: a capability discarded rather than a wiring mistake.
             ("rs485-dimmer-fault-unwired", 1),
@@ -71,18 +72,15 @@ namespace Ihc.Vis.Tests
         /// below rather than folded into an "is empty" that would hide them.
         /// </summary>
         /// <summary>
-        /// The SCENE conditions this fixture carries, and the count of each. Its author built three scenes to be
-        /// wrong on purpose — <i>Tom scene</i> (empty), <i>Alt slukket</i> (every member off), <i>Modstrid</i>
-        /// (contradicting rows) — plus a thirty-minute ramp and two outputs a scene and a link both drive. Every
-        /// one of these is content the fixture exists to hold.
+        /// The SCENE conditions this fixture carries, and the count of each. Its author built scenes to be wrong
+        /// on purpose — <i>Alt slukket</i> (every member off), <i>Modstrid</i> (contradicting rows) — plus a
+        /// thirty-minute ramp. Every one of these is content the fixture exists to hold.
         /// </summary>
         private static readonly (string RuleId, int Count)[] SceneConditions =
         [
             ("rs485-dimmer-scenario-recall", 1),
             ("scene-all-off", 1),
-            ("scene-empty", 3),
             ("scene-long-delay", 1),
-            ("scene-output-also-linked", 2),
             ("scene-unreferenced", 3),
         ];
 
@@ -233,27 +231,21 @@ namespace Ihc.Vis.Tests
         [
             ("enum-def-empty", 1),
             ("enum-def-single-value", 1),
-            ("enum-def-unused", 4),
-            ("enum-value-unused", 5),
             // Information, not a defect: whose .ifb is worth archiving — a fact about provenance, not a defect.
             ("fb-user-authored", 4),
             ("logic-block-empty", 2),
             ("logic-block-locked-content", 1),
             ("logic-block-no-pins", 1),
             ("logic-case-no-branches", 2),
-            ("logic-contending-writers", 1),
             ("logic-counter-never-reset", 1),
             ("logic-duplicate-program", 1),
             ("logic-flag-never-cleared", 2),
-            ("logic-master-block-modified", 1),
             ("logic-output-never-assigned", 3),
             ("logic-program-no-actions", 1),
             ("logic-program-no-events", 1),
             ("logic-self-trigger", 1),
             ("logic-subprogram-no-conditions", 1),
-            ("logic-timer-unused", 1),
             ("logic-variable-read-only", 1),
-            ("logic-variable-unused", 4),
             ("logic-variable-write-only", 3),
         ];
 
@@ -294,9 +286,6 @@ namespace Ihc.Vis.Tests
         [
             // Information, not a defect: a procurement fact about the family, not a fault in this project.
             ("product-wireless-phaseout", 1),
-            ("struct-locality-empty", 1),
-            ("struct-locality-no-devices", 1),
-            ("struct-orphan-block", 2),
             ("struct-product-no-terminals", 1),
         ];
 

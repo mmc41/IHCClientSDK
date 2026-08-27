@@ -967,11 +967,11 @@ the rest are product placements the corpus happens not to hold.
 few codes they alone witness are incidental, and would not be worth a case on their own. A rule that grows a
 false positive shows up as a new line on a document IHC Visual authored and accepts — which neither a
 synthetic tree nor the authored-to-fail fixture can show, because a spurious finding on a fixture built to
-fail reads as the point. Their diffs have already earned it: the first formulation of
-`logic-contending-writers` reported 24 findings on `project3` where the shipped one reports 4, and
-`struct-locality-empty` shows what a Warning of that kind really costs on real files — most of its findings
-land on authentic cases, a good share of them on a brand-new empty project that ships ten named localities and
-nothing else. Neither measurement was visible anywhere else.
+fail reads as the point. Their diffs have already earned it: one dataflow row's first formulation reported
+24 findings on `project3` where its shipped predicate reports 4, and the 2026-08 Tier-1 deletion — eleven
+rules removed for condemning the ordinary state of healthy projects — was measured here first, on files the
+vendor authored and accepts, before anyone looked at an outside project. Neither measurement was visible
+anywhere else.
 
 ⚠ **So a "smaller subset that keeps the real projects" inverts the arithmetic.** Dropping the authentic cases
 costs almost no coverage; dropping the synthetic and fixture ones costs most of it. The authentic cases are

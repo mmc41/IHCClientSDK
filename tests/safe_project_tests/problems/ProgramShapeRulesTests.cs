@@ -17,9 +17,11 @@ namespace Ihc.Vis.Tests
     /// authentic file. <see cref="ASubProgramIsNeverReportedForHavingNoEvents"/> is that claim, asserted from both
     /// sides in one tree.</para>
     ///
-    /// <para><b>And the two "empty program" rows must not overlap:</b> the empty default program every inserted
-    /// block ships is <c>logic-program-no-events</c>'s finding alone, because <c>logic-program-no-actions</c>
-    /// requires events to be present — the row's own wording.</para>
+    /// <para><b>And neither "empty program" row names the shipped empty default:</b> a block inserted from the
+    /// library brings a program with no trigger and no command, and reporting it says only that the author has not
+    /// finished. <c>logic-program-no-events</c> asks for a program that HAS work, and <c>logic-program-no-actions</c>
+    /// requires events to be present — so the untouched default is deliberately nobody's finding here. A block that
+    /// is empty ALL THE WAY DOWN is still <c>logic-block-empty</c>'s.</para>
     /// </summary>
     [TestFixture]
     public sealed class ProgramShapeRulesTests
@@ -36,15 +38,30 @@ namespace Ihc.Vis.Tests
         // ── logic-program-no-events and logic-program-no-actions ────────────────────────────────────
 
         [Test]
-        public void AProgramWithNoEventsIsReportedAndOneWithEventsIsNot()
+        public void AProgramWithCommandsButNoEventsIsReportedAndOneWithEventsIsNot()
         {
             Assert.Multiple(() =>
             {
                 Assert.That(Count(Simple(events: 0, actions: 1), "logic-program-no-events"), Is.EqualTo(1));
                 Assert.That(Single(Simple(events: 0, actions: 1), "logic-program-no-events").Message,
-                    Is.EqualTo("Programmet 'Program' har ingen hændelser."));
+                    Is.EqualTo("Programmet 'Program' har kommandoer, men ingen hændelser."));
                 Assert.That(Count(Simple(events: 1, actions: 1), "logic-program-no-events"), Is.Zero);
             });
+        }
+
+        /// <summary>
+        /// A sub-program is work too. The commands may all sit inside a conditional branch, and a program built that
+        /// way is as stranded as one whose commands sit at the top level — so the exclusion asks for work of either
+        /// kind, not for a non-empty <c>actions</c> container.
+        /// </summary>
+        [Test]
+        public void AProgramWhoseOnlyWorkIsASubProgramIsReportedToo()
+        {
+            Project branchOnly = Block([Program("Program", events: 0, actions: 0,
+                subPrograms: [SubProgram("Under program", conditions: 1)])]);
+
+            Assert.That(Count(branchOnly, "logic-program-no-events"), Is.EqualTo(1),
+                "the branch holds the commands, and nothing can ever reach it");
         }
 
         [Test]
@@ -60,17 +77,20 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
-        /// The two rows partition the broken cases instead of both firing: the empty default program every inserted
-        /// block ships has neither events nor commands, and only the events row names it.
+        /// THE SHIPPED EMPTY DEFAULT IS NOBODY'S FINDING, and that is a decision rather than a gap. Every block
+        /// inserted from the library brings a program with neither trigger nor command; saying "it never starts" of
+        /// one is saying the author has not finished, which they can see. Both rows therefore stay silent — the
+        /// events row because the program has no work to strand, the commands row because it declares no events.
         /// </summary>
         [Test]
-        public void TheEmptyDefaultProgramIsOneFindingAndNotTwo()
+        public void TheEmptyDefaultProgramIsNeitherRowsFinding()
         {
             Project empty = Simple(events: 0, actions: 0);
 
             Assert.Multiple(() =>
             {
-                Assert.That(Count(empty, "logic-program-no-events"), Is.EqualTo(1));
+                Assert.That(Count(empty, "logic-program-no-events"), Is.Zero,
+                    "the row asks for a program that HAS work and cannot be reached");
                 Assert.That(Count(empty, "logic-program-no-actions"), Is.Zero,
                     "the row says 'declares events but no commands', and this one declares no events");
             });
@@ -98,14 +118,16 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
-        public void TheAuthenticCorpusReportsOnlyLeftoverPrograms()
+        public void TheAuthenticCorpusReportsOnlyProgramsThatCarryWork()
         {
             Assert.Multiple(() =>
             {
                 Assert.That(Count(Authentic("Project1-SimpelWired.vis"), "logic-program-no-events"), Is.Zero,
                     "a project whose blocks are all library blocks with real programs");
-                Assert.That(Count(Authentic("project3-KompleksWired.vis"), "logic-program-no-events"), Is.EqualTo(3),
-                    "one per empty Tom blok, each carrying its untouched default program");
+                Assert.That(Count(Authentic("project3-KompleksWired.vis"), "logic-program-no-events"), Is.Zero,
+                    "its three Tom blok programs carry no commands either — the shipped default, not a stranding");
+                Assert.That(Count(Authentic("Project6-Errors.vis"), "logic-program-no-events"), Is.EqualTo(1),
+                    "the fixture's own designed witness: commands, and no trigger that could ever run them");
                 Assert.That(Count(Authentic("project3-KompleksWired.vis"), "logic-program-no-actions"), Is.Zero,
                     "and no authentic project has a program that starts and does nothing");
             });
@@ -318,15 +340,19 @@ namespace Ihc.Vis.Tests
                             Tree.Node("internalsettings", Token("internalsettings", 0x74), [("name", "Interne")]),
                             Tree.Node("programs", Token("programs", 0x75), [("name", "Programmer")], programs)))));
 
-        /// <summary>A simple program carrying the given number of events and commands.</summary>
-        private static ProjectElement Program(string name, int events, int actions, int at = 0x90) =>
+        /// <summary>A simple program carrying the given number of events and commands, and any branches beside them.</summary>
+        private static ProjectElement Program(
+            string name, int events, int actions, int at = 0x90, ProjectElement[]? subPrograms = null) =>
             Tree.Node("program_simple", Token("program_simple", at), [("name", name)],
-                Tree.Node("events", Token("events", at + 1), [("name", "Hændelser")],
-                    [.. Enumerable.Range(0, events).Select(i => Tree.Node("event", Token("event", at + 2 + i),
-                        [("name", "%P -> ON"), ("link1", Token("resource_input", 0x80)), ("method", "_0xa")]))]),
-                Tree.Node("actions", Token("actions", at + 5), [("name", "Kommandoer"), ("type", "_0x2")],
-                    [.. Enumerable.Range(0, actions).Select(i => Tree.Node("action", Token("action", at + 6 + i),
-                        [("name", "%P = ON"), ("link1", Token("resource_output", 0x81)), ("method", "_0xa")]))]));
+                [
+                    Tree.Node("events", Token("events", at + 1), [("name", "Hændelser")],
+                        [.. Enumerable.Range(0, events).Select(i => Tree.Node("event", Token("event", at + 2 + i),
+                            [("name", "%P -> ON"), ("link1", Token("resource_input", 0x80)), ("method", "_0xa")]))]),
+                    Tree.Node("actions", Token("actions", at + 5), [("name", "Kommandoer"), ("type", "_0x2")],
+                        [.. Enumerable.Range(0, actions).Select(i => Tree.Node("action", Token("action", at + 6 + i),
+                            [("name", "%P = ON"), ("link1", Token("resource_output", 0x81)), ("method", "_0xa")]))]),
+                    .. subPrograms ?? [],
+                ]);
 
         /// <summary>A sub-program — the format gives it conditions and commands, never events.</summary>
         private static ProjectElement SubProgram(string name, int conditions, int at = 0xa0) =>

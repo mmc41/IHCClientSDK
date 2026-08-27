@@ -247,6 +247,10 @@ public class ProblemsStatePresentationTests
         using ShellHarness harness = ShellHarness.Create(clock);
         using MainWindowViewModel vm = harness.CreateViewModel();
         await vm.InitializeAsync();
+
+        // A fixture rather than the starter project: this test is about the ROWS surviving the dim, and a
+        // healthy new project carries no findings to survive it.
+        await harness.Session.OpenAsync(ProblemsTestData.FixturePath("Project6-Errors.vis"));
         clock.Advance(ValidationWorker.DefaultDebounce);
         await vm.Problems.Idle.WaitAsync(TimeSpan.FromSeconds(10));
         Window window = new MainWindow { DataContext = vm };

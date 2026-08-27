@@ -60,11 +60,9 @@ namespace Ihc.Vis.Validation
         {
             ArgumentNullException.ThrowIfNull(catalog);
             return ImmutableArray.Create(
-                Rule(catalog, "scene-empty", Empty),
                 Rule(catalog, "scene-duplicate-target", DuplicateTarget),
                 Rule(catalog, "scene-member-unwired", MemberUnwired),
                 Rule(catalog, "scene-unreferenced", Unreferenced),
-                Rule(catalog, "scene-output-also-linked", OutputAlsoLinked),
                 Rule(catalog, "scene-all-off", AllOff),
                 Rule(catalog, "scene-long-delay", LongDelay(catalog)),
                 Rule(catalog, "scene-dimming-out-of-range", DimmingOutOfRange(catalog)),
@@ -130,22 +128,6 @@ namespace Ihc.Vis.Validation
                 if (dimmers is { Count: > 1 })
                 {
                     inspection.Report(scene, Arguments(("scene", Name(scene)), ("dimmers", dimmers.Count)));
-                }
-            }
-        }
-
-        /// <summary>
-        /// A scene with no members: activating it changes nothing.
-        /// <para>SUBJECT: every <c>resource_scene</c> pin. EXCLUSIONS: none — a scene being built is the
-        /// legitimate reading this Warning exists for.</para>
-        /// </summary>
-        private static void Empty(IProjectInspection inspection)
-        {
-            foreach (ProjectElement scene in Scenes(inspection))
-            {
-                if (Members(scene).Length == 0)
-                {
-                    inspection.Report(scene, Arguments(("scene", Name(scene))));
                 }
             }
         }
@@ -229,31 +211,6 @@ namespace Ihc.Vis.Validation
                 {
                     inspection.Report(scene, Arguments(("scene", Name(scene))));
                 }
-            }
-        }
-
-        /// <summary>
-        /// An output a scene drives that a follow-link also drives: the scene value and the link fight over it.
-        /// <para>SUBJECT: every output a <c>scenes</c> container binds. CONDITION: that output also owns a
-        /// <c>link_to_resource</c> half. LOCATION: the output pin, which is where both drivers meet. The
-        /// legitimate reading — a scene sets a preset and a link overrides on demand — is why this is a
-        /// Warning.</para>
-        /// </summary>
-        private static void OutputAlsoLinked(IProjectInspection inspection)
-        {
-            ITopologyAnalysis topology = inspection.Analyses.Topology;
-            HashSet<string> reported = new(StringComparer.Ordinal);
-            foreach (ProjectElement container in Containers(inspection))
-            {
-                if (topology.ByToken(container.GetAttribute(BoundOutputAttribute)) is not { } output
-                    || !output.Children.Any(c => c.Tag == ReciprocalTags.FollowLinkToTag)
-                    || output.GetAttribute("id") is not { } id
-                    || !reported.Add(id))
-                {
-                    continue;
-                }
-
-                inspection.Report(output, Arguments(("output", Name(output))));
             }
         }
 

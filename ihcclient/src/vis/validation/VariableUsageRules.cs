@@ -20,14 +20,13 @@ namespace Ihc.Vis.Validation
     /// <c>settings</c>/<c>internalsettings</c> are its state.</b> An input pin's producer and an output pin's
     /// consumer live OUTSIDE the block, so "no program reads this input" is the ordinary state of every fed pin —
     /// measured, 28 of project3's 29 read-only candidates and 19 of its 19 write-only ones were pins, and the
-    /// wiring set already owns them (<c>link-fb-input-unfed</c>, <c>link-fb-output-unused</c>). Scoping these three
-    /// rows to the two state containers takes project3 from 64 findings to 9, every one of them a genuinely dead
-    /// declaration.</para>
+    /// wiring set already owns them (<c>link-fb-input-unfed</c>, <c>link-fb-output-unused</c>). Scoping these rows
+    /// to the two state containers is what leaves only genuinely dead declarations behind.</para>
     ///
     /// <para><b>And a SETTING is configured from the dialog, never assigned by a program</b>, so
     /// <c>logic-variable-read-only</c> is scoped to <c>internalsettings</c> alone: reporting a settings variable
     /// for "the logic always sees its initial value" would report the whole point of a setting. It stays in scope
-    /// for the unused and write-only rows, where a dialog-set value nothing reads really is dead.</para>
+    /// for the write-only row, where a dialog-set value nothing reads really is dead.</para>
     /// </summary>
     public static class VariableUsageRules
     {
@@ -43,10 +42,8 @@ namespace Ihc.Vis.Validation
         {
             ArgumentNullException.ThrowIfNull(catalog);
             return ImmutableArray.Create(
-                Rule(catalog, "logic-variable-unused", Unused),
                 Rule(catalog, "logic-variable-write-only", WriteOnly),
                 Rule(catalog, "logic-variable-read-only", ReadOnly),
-                Rule(catalog, "enum-value-unused", EnumValueUnused),
                 Rule(catalog, "logic-case-value-foreign", CaseValueForeign),
                 Rule(catalog, "logic-holiday-schedule-firmware", HolidayScheduleFirmware));
         }
@@ -68,27 +65,6 @@ namespace Ihc.Vis.Validation
             if (inspection.Analyses.WithTag("resource_holiday").Any())
             {
                 inspection.Report(null, default);
-            }
-        }
-
-        /// <summary>
-        /// A declared state variable no program touches and no link reaches: a dead declaration, noise in the block
-        /// and in the reports.
-        /// <para>REPORTED ONCE PER VARIABLE, never once per program — the catalogue's deliberate-non-findings
-        /// section says so in as many words ("a block with more variables than its programs read … reported once,
-        /// as <c>logic-variable-unused</c>").</para>
-        /// </summary>
-        private static void Unused(IProjectInspection inspection)
-        {
-            IProgramUsageAnalysis usage = inspection.Analyses.Usage;
-            foreach ((ProjectElement variable, ProjectElement block, string _) in StateVariables(inspection))
-            {
-                if (!usage.IsRead(variable) && !usage.IsWritten(variable) && !usage.IsTriggeredOn(variable)
-                    && !usage.IsLinked(variable))
-                {
-                    inspection.Report(variable, Arguments(
-                        ("variable", Name(variable)), ("block", Name(block))));
-                }
             }
         }
 
@@ -131,38 +107,6 @@ namespace Ihc.Vis.Validation
                 {
                     inspection.Report(variable, Arguments(
                         ("variable", Name(variable)), ("block", Name(block))));
-                }
-            }
-        }
-
-        /// <summary>
-        /// A declared enum value nothing ever tests or assigns: a state the logic never uses.
-        /// <para>
-        /// THE ONE REFERENCE FORM is <c>inivalue</c>, measured at 598 occurrences and no other attribute anywhere,
-        /// and it covers both halves of "tested or assigned": a variable's initial value and a case branch's inline
-        /// operand are stored the same way.
-        /// </para>
-        /// <para>
-        /// FIRING ON EVERY VALUE OF A USER-AUTHORED TYPE IS CORRECT, and the error fixture's own record measured
-        /// why (M-14): IHC Visual cannot bind a user-created enumerator type to a variable at all, so its values
-        /// can never be referenced. EXCLUDED: the format's own <c>typeid</c> system tables, which are read-only
-        /// furniture — reporting their 11 unreferenced values in every project, the empty one included, would
-        /// drown the row.
-        /// </para>
-        /// </summary>
-        private static void EnumValueUnused(IProjectInspection inspection)
-        {
-            IReadOnlySet<string> referenced = inspection.Analyses.Usage.ReferencedValueTokens;
-            foreach (ProjectElement definition in inspection.Analyses.WithTag("enum_definition")
-                .Where(EnumTypeIdentity.IsAuthored))
-            {
-                foreach (ProjectElement value in definition.Children.Where(c => c.Tag == "enum_value"))
-                {
-                    if (value.GetAttribute("id") is { Length: > 0 } id && !referenced.Contains(id))
-                    {
-                        inspection.Report(value, Arguments(
-                            ("value", Name(value)), ("enum", Name(definition))));
-                    }
                 }
             }
         }

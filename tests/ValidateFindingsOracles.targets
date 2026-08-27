@@ -7,7 +7,7 @@
     The oracle files carry no schema reference of their own — they are byte oracles read by eye in every
     regeneration diff, and an xsi:noNamespaceSchemaLocation would add two attributes to that line and tie the
     corpus to a copy of the schema sitting beside it. The association is made from outside the files instead,
-    and this is where it is enforced: `dotnet build` fails if any of the eighteen stops matching the grammar
+    and this is where it is enforced: `dotnet build` fails if any of them stops matching the grammar
     the SDK ships. That makes it the ONLY gate on the grammar — no test asserts it, so do not remove this
     import expecting the suites to notice.
 

@@ -16,7 +16,7 @@ namespace Ihc.Vis.Validation
     /// <summary>
     /// The ENUM-DEFINITION rows: whether a declared type is usable, and whether its values can be told apart.
     ///
-    /// <para><b>Two of the five report a file no dialog can produce (⊘), and they are implemented anyway.</b> The
+    /// <para><b>Two of them report a file no dialog can produce (⊘), and they are implemented anyway.</b> The
     /// enum editor answers <i>"Vælg et andet navn"</i> to a duplicate name, and it has neither a reorder nor an
     /// index field — values append and their indices follow insertion order. So a duplicate name or index arrives
     /// from a hand-edited or foreign file, which is exactly what the whole-project face is for.</para>
@@ -27,21 +27,17 @@ namespace Ihc.Vis.Validation
     /// would miss the collision between an absent index and an explicit <c>index="0"</c> — which is precisely the
     /// shape a hand-edited file produces.</para>
     ///
-    /// <para><b>The three shape rows skip what the author does not own.</b> 40 of the corpus's 109 definitions are
+    /// <para><b>The shape rows skip what the author does not own.</b> 40 of the corpus's 109 definitions are
     /// <c>typeid</c>-bearing SYSTEM tables shipped with the format (<i>Persienne tilstand</i>, <i>Logning</i>) —
-    /// read-only, and unreferenced in most projects, so <c>enum-def-unused</c> would report furniture in nearly
-    /// every file. The data-tables definition is skipped for the same reason: it is a TABLE of user-defined texts,
-    /// not a type, and no variable is ever declared of it.</para>
+    /// read-only furniture whose shape is the format's business, not something the author can answer for. The
+    /// data-tables definition is skipped for the same reason: it is a TABLE of user-defined texts, not a type, and
+    /// no variable is ever declared of it.</para>
     /// </summary>
     public static class EnumDefinitionRules
     {
         private const string DefinitionTag = "enum_definition";
 
         private const string ValueTag = "enum_value";
-
-        /// <summary>The attribute a variable names its enum definition with — the ONLY reference form, measured:
-        /// 598 <c>resource_enum</c> occurrences across the corpus and no other attribute anywhere.</summary>
-        private const string TypeReferenceAttribute = "typedef";
 
         /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
@@ -51,7 +47,6 @@ namespace Ihc.Vis.Validation
             return ImmutableArray.Create(
                 Rule(catalog, "enum-def-duplicate-name", DuplicateValueName),
                 Rule(catalog, "enum-def-duplicate-index", DuplicateValueIndex),
-                Rule(catalog, "enum-def-unused", Unused),
                 Rule(catalog, "enum-def-empty", Empty),
                 Rule(catalog, "enum-def-single-value", SingleValue));
         }
@@ -123,34 +118,11 @@ namespace Ihc.Vis.Validation
         }
 
         /// <summary>
-        /// An authored definition no variable declares itself of: a dead type in the project and in the reports.
-        /// <para>SUBJECT: authored definitions only — see <see cref="IsAuthored"/> for the two exclusions and what
-        /// they cost if omitted.</para>
-        /// </summary>
-        private static void Unused(IProjectInspection inspection)
-        {
-            HashSet<string> referenced =
-            [
-                .. inspection.Analyses.Elements
-                    .Select(e => e.GetAttribute(TypeReferenceAttribute))
-                    .OfType<string>(),
-            ];
-
-            foreach (ProjectElement definition in Definitions(inspection.Analyses).Where(IsAuthored))
-            {
-                if (definition.GetAttribute("id") is { Length: > 0 } id && !referenced.Contains(id))
-                {
-                    inspection.Report(definition, Arguments(("enum", Name(definition))));
-                }
-            }
-        }
-
-        /// <summary>
         /// An authored definition with no values: no variable of that type can hold a meaningful value.
         /// </summary>
         private static void Empty(IProjectInspection inspection)
         {
-            foreach (ProjectElement definition in Definitions(inspection.Analyses).Where(IsAuthored))
+            foreach (ProjectElement definition in Definitions(inspection.Analyses).Where(EnumTypeIdentity.IsAuthored))
             {
                 if (!Values(definition).Any())
                 {
@@ -164,7 +136,7 @@ namespace Ihc.Vis.Validation
         /// </summary>
         private static void SingleValue(IProjectInspection inspection)
         {
-            foreach (ProjectElement definition in Definitions(inspection.Analyses).Where(IsAuthored))
+            foreach (ProjectElement definition in Definitions(inspection.Analyses).Where(EnumTypeIdentity.IsAuthored))
             {
                 if (Values(definition).ToImmutableArray() is [{ } only])
                 {
@@ -175,13 +147,6 @@ namespace Ihc.Vis.Validation
         }
 
         // ---- the shared reads ------------------------------------------------------------------------------
-
-        /// <summary>
-        /// A definition the AUTHOR owns, which is the subject of the three shape rows — from the shared reader, so
-        /// this set and <c>enum-value-unused</c>'s cannot drift apart. See <see cref="EnumTypeIdentity"/> for the
-        /// two exclusions and what including them costs.
-        /// </summary>
-        private static bool IsAuthored(ProjectElement definition) => EnumTypeIdentity.IsAuthored(definition);
 
         /// <summary>
         /// The index a value really occupies: its <c>index</c> attribute, or ZERO when it carries none. Null when

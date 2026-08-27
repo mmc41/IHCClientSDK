@@ -26,7 +26,7 @@ namespace Ihc.Vis.Tests
     {
         private static ValidationFinding Finding(ValidationSeverity severity) =>
             new(
-                new Problem(new ProblemCode("struct-locality-empty"), "Tom", EquatableArray<ProblemArgument>.Empty),
+                new Problem(new ProblemCode("struct-product-no-terminals"), "Tom", EquatableArray<ProblemArgument>.Empty),
                 severity,
                 ValidationCategory.ProjectStructure,
                 new FindingLocation("_0x2132", null, null),

@@ -2057,9 +2057,9 @@ namespace Ihc.Vis.Validation
         /// <summary>
         /// An authored enumerator type with no values: no variable of that type can hold a meaningful value.
         /// PREDICATE: an authored <c>enum_definition</c> with no <c>enum_value</c> child.
-        /// EXCLUSIONS: the same two as <c>enum-def-unused</c> — a system table is not the author's to fill, and
-        /// the data-tables definition is EMPTY until the first user-defined text is added, which is an ordinary
-        /// state rather than an unfinished type.
+        /// EXCLUSIONS, the same two the authored-definition reader draws — a system table is not the author's to
+        /// fill, and the data-tables definition is EMPTY until the first user-defined text is added, which is an
+        /// ordinary state rather than an unfinished type.
         /// WITNESSED on authentic content, not only in the error fixture: <c>project3</c> carries an authored
         /// <c>TestEnum</c> with no values at all.
         /// LOCATION: the definition. ARGUMENTS: its name.
@@ -2114,49 +2114,6 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
-        /// An authored enumerator type no variable declares itself of: a dead type in the project and in the
-        /// reports.
-        /// PREDICATE: an authored <c>enum_definition</c> whose <c>id</c> appears as no element's <c>typedef</c>.
-        /// THE ONE REFERENCE FORM, measured rather than assumed: <c>resource_enum/@typedef</c>, 598 occurrences
-        /// across the corpus, and NO other attribute in any committed project names a definition's id.
-        /// EXCLUSIONS, both measured and both load-bearing: a <c>typeid</c>-bearing SYSTEM table (40 of the
-        /// corpus's 109 definitions) is shipped with the format and read-only in the application, and most
-        /// projects reference none of them — <i>Logning</i> is unreferenced in 8 committed projects — so including
-        /// them would fire on nearly every authentic file. And the data-tables definition
-        /// (<c>User-defined texts</c>) holds the project's user-defined TEXTS rather than a type's values, so no
-        /// variable is ever declared of it and it is permanently "unused".
-        /// WHAT THIS ROW REALLY REPORTS, and it took the error fixture's own record (M-14) to see it: IHC Visual
-        /// CANNOT BIND a user-created enumerator type to a variable at all — <i>Indsæt ▸ Variable</i> offers a
-        /// fixed 21 entries and none of them is an enumerator. So an authored definition is unreferenced for one of
-        /// two reasons: the user created it in the enum editor, in which case it is necessarily dead and cannot be
-        /// bound from the application; or it arrived with a library function block and lost its last reference when
-        /// that block was deleted, which is the actionable case. The row is correct in both, and honest about only
-        /// one being fixable in the GUI. Suppression is foreclosed (D07), so that distinction is not a feature
-        /// waiting to be built: it is what a reader needs in order to dismiss the row by hand, and what the
-        /// findings-UI backlog would have to weigh if it ever reopens the question.
-        /// LOCATION: the definition. ARGUMENTS: its name.
-        /// </summary>
-        private static ProblemCatalogEntry EnumDefUnused =>
-            new ProblemCatalogEntry(
-                new ProblemCode("enum-def-unused"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.Logic,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("enum", ProblemArgumentType.AuthoredName),
-                ]),
-                "Enumerator typen '{enum}' bruges ikke af nogen variabel.")
-            {
-                Diagnostic = "An authored enum definition is referenced by no typedef.",
-                Evidence = EvidenceMark.Authored,
-            };
-
-        /// <summary>
         /// A <c>resource_enum</c>'s <c>inivalue</c> is not a value of its own typedef.
         /// PREDICATE: authored by the task that implements this row.
         /// </summary>
@@ -2206,43 +2163,6 @@ namespace Ihc.Vis.Validation
             {
                 Diagnostic = "typedef='{typedef}' on resource_enum '{name}' references a <{tag}>, not an enum_definition",
                 Evidence = EvidenceMark.Unknown,
-            };
-
-        /// <summary>
-        /// A declared enum value nothing ever tests or assigns: a state the logic never uses.
-        /// PREDICATE: an <c>enum_value</c> of an AUTHORED definition whose id appears in no <c>inivalue</c>.
-        /// THE ONE REFERENCE FORM is <c>inivalue</c> — measured at 598 occurrences across the corpus, and no other
-        /// attribute in any committed project names an <c>enum_value</c>. It covers both halves of "tested or
-        /// assigned": a variable's initial value and a case branch's inline operand are stored the same way, which
-        /// is why one set answers both.
-        /// FIRING ON EVERY VALUE OF A USER-CREATED TYPE IS CORRECT, and the error fixture's record measured why
-        /// (M-14): IHC Visual cannot bind a user-created enumerator type to a variable at all, so its values can
-        /// never be referenced. The row states a true fact about such a type; what it cannot do is offer the user a
-        /// way to fix it.
-        /// EXCLUDED: the format's own <c>typeid</c> system tables and the data-tables definition — read-only
-        /// furniture whose 11 unreferenced values would otherwise be reported in every project, the empty one
-        /// included.
-        /// LOCATION: the value. ARGUMENTS: its name and its type's.
-        /// </summary>
-        private static ProblemCatalogEntry EnumValueUnused =>
-            new ProblemCatalogEntry(
-                new ProblemCode("enum-value-unused"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.Logic,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("value", ProblemArgumentType.AuthoredName),
-                    new ProblemArgumentSlot("enum", ProblemArgumentType.AuthoredName),
-                ]),
-                "Værdien '{value}' i enumerator typen '{enum}' bruges ikke.")
-            {
-                Diagnostic = "An authored enum value appears in no inivalue.",
-                Evidence = EvidenceMark.Authored,
             };
 
         /// <summary>
@@ -2657,47 +2577,23 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
-        /// A follow-link whose two ends sit in different localities — usually intended, but a common
-        /// copy/paste slip.
-        /// PREDICATE: a wired <c>link_from_resource</c> half whose partner resolves, where the nearest
-        /// enclosing <c>group</c> of the half and of the partner are different elements.
-        /// SUBJECT: the FROM half only, so one wire is reported once rather than once per end.
-        /// EXCLUSIONS: an end outside every locality, and a half whose partner does not resolve — a broken
-        /// reference is <c>idref-dangling</c>'s finding, not this one.
-        /// LOCATION: the from-half. ARGUMENTS: the two locality names.
-        /// </summary>
-        private static ProblemCatalogEntry LinkCrossesLocality =>
-            new ProblemCatalogEntry(
-                new ProblemCode("link-crosses-locality"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.Wiring,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("from", ProblemArgumentType.AuthoredName),
-                    new ProblemArgumentSlot("to", ProblemArgumentType.AuthoredName),
-                ]),
-                "Følg-linket går mellem lokaliteterne '{from}' og '{to}'.")
-            {
-                Diagnostic = "A follow-link's two ends sit in different localities.",
-                Evidence = EvidenceMark.Authored,
-            };
-
-        /// <summary>
         /// A function block whose input pins are ALL unlinked: its trigger never arrives from the
         /// installation.
         /// PREDICATE: a <c>functionblock</c> declaring at least one <c>resource_input</c>, none of which
-        /// carries a follow-link half.
+        /// carries a follow-link half, AND which has no autonomous start.
         /// SUBJECT: every function block. PER BLOCK rather than per pin, and that is the substance of this
         /// predicate: a catalog block ships every input its behaviour offers — thirteen on the vendor's own
         /// <i>Kip tænd sluk</i> — and the author wires the one they want, so a per-pin reading would state
         /// this row's consequence falsely once per alternative the author declined.
+        /// EXCLUSION — AN AUTONOMOUS START: a block carrying an <c>event_power</c>, or an <c>event</c> whose
+        /// <c>link1</c> resolves to an element outside its own <c>inputs</c> container, is not waiting for a wire.
+        /// A clock block, a <i>Powerup - Altid tændt</i>, a home-simulation block: each starts from something that
+        /// is not an input pin, so "the trigger never arrives" was simply false of it. Both halves are decidable
+        /// from the file. A DANGLING <c>link1</c> does not count as an autonomous start — it names no element, so
+        /// nothing can be said about where the trigger comes from, and the reference itself is
+        /// <c>idref-dangling</c>'s finding.
         /// LOCATION: the block, with its unfed inputs as related locations.
-        /// ARGUMENTS: the block's name and how many inputs it declares.
+        /// ARGUMENTS: the block's name.
         /// </summary>
         private static ProblemCatalogEntry LinkFbInputUnfed =>
             new ProblemCatalogEntry(
@@ -2749,34 +2645,6 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
-        /// A product input (wired or wireless) owns no link: the button or sensor does nothing anywhere.
-        /// PREDICATE: a product input pin (<c>dataline_input</c>, <c>airlink_input</c> — the measured
-        /// never-a-sink family minus the block pin) carries no follow-link half of either direction.
-        /// SUBJECT: every such pin in the document. EXCLUSIONS: none — a spare terminal on an installed
-        /// product is the legitimate reading this row is a Warning for, not a case to suppress.
-        /// LOCATION: the pin. ARGUMENTS: its name.
-        /// </summary>
-        private static ProblemCatalogEntry LinkInputUnconnected =>
-            new ProblemCatalogEntry(
-                new ProblemCode("link-input-unconnected"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.Wiring,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("pin", ProblemArgumentType.AuthoredName),
-                ]),
-                "Indgangen '{pin}' er ikke forbundet.")
-            {
-                Diagnostic = "A product input pin owns no follow-link half.",
-                Evidence = EvidenceMark.Authored,
-            };
-
-        /// <summary>
         /// A product output is driven by more than one source: the last writer wins and behaviour depends
         /// on timing.
         /// PREDICATE: a product output pin carries MORE THAN ONE <c>link_to_resource</c> half.
@@ -2804,36 +2672,6 @@ namespace Ihc.Vis.Validation
                 "Udgangen '{pin}' styres af {drivers} kilder.")
             {
                 Diagnostic = "A product output pin carries more than one incoming follow-link half.",
-                Evidence = EvidenceMark.Authored,
-            };
-
-        /// <summary>
-        /// A product output owns no link and no scenario drives it: nothing can ever switch it.
-        /// PREDICATE: a product output pin (<c>dataline_output</c>, <c>airlink_relay</c>,
-        /// <c>airlink_dimming</c> — the outputs the scene mapping declares) carries no follow-link half.
-        /// SUBJECT: every such pin. EXCLUSION: an output named by a <c>scenes</c> container's
-        /// <c>scene_resource</c> IS driven when the scenario fires, so this row's stated consequence would be
-        /// false of it. The other two legitimate readings — an output held in reserve, one driven from a
-        /// controller-side integration — are not decidable from the file and stay as the Warning's noise.
-        /// LOCATION: the pin. ARGUMENTS: its name.
-        /// </summary>
-        private static ProblemCatalogEntry LinkOutputUndriven =>
-            new ProblemCatalogEntry(
-                new ProblemCode("link-output-undriven"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.Wiring,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("pin", ProblemArgumentType.AuthoredName),
-                ]),
-                "Udgangen '{pin}' styres ikke af noget.")
-            {
-                Diagnostic = "A product output pin owns no follow-link half and no scenario names it.",
                 Evidence = EvidenceMark.Authored,
             };
 
@@ -2870,6 +2708,51 @@ namespace Ihc.Vis.Validation
                 "Funktionsblokken '{block}' kopierer kun én indgang til én udgang.")
             {
                 Diagnostic = "A block's only logic copies one input straight to one output, and the bypass would be legal.",
+                Evidence = EvidenceMark.Authored,
+            };
+
+        /// <summary>
+        /// A product no pin of which is wired in either direction: the device is installed and the project does
+        /// nothing with it.
+        /// PREDICATE: a product element declaring at least one product input pin (<c>dataline_input</c>,
+        /// <c>airlink_input</c> — the measured never-a-sink family minus the block pin) or output pin
+        /// (<c>dataline_output</c>, <c>airlink_relay</c>, <c>airlink_dimming</c> — the outputs the scene mapping
+        /// declares), NONE of which carries a follow-link or scene half.
+        /// SUBJECT: every product with such a pin. PER PRODUCT, and that is the substance of the predicate — the
+        /// same argument its two function-block neighbours make. A plate ships more terminals than an
+        /// installation uses, so a per-pin reading would state this row's consequence falsely once per
+        /// alternative the author declined: measured against a real installation, sixteen spare
+        /// <i>Tryk (…)</i> buttons and seven pushbutton <i>LED (…)</i> indicators, on products that were
+        /// wired and working.
+        /// BOTH DIRECTIONS IN ONE ROW, because neither alone works: a pushbutton plate's indicator LEDs are that
+        /// product's only outputs, so an outputs-only row would report every such plate whose buttons are wired.
+        /// EXCLUSION: a <c>scenes</c> container naming one of the product's outputs as its <c>scene_resource</c>
+        /// consumes it, so a scene-driven lamp module — which owns no follow-link at all — is not reported. The
+        /// other legitimate readings, a device held in reserve and one driven from a controller-side
+        /// integration, are not decidable from the file and stay as the Warning's noise.
+        /// NO OVERLAP WITH <c>struct-product-no-terminals</c>: a product with nothing wirable on it declares no
+        /// pin for this row to name, and stays that row's finding alone.
+        /// LOCATION: the product, with its unwired pins as related locations — the reader has to see what the
+        /// device offers to decide whether it should have been wired.
+        /// ARGUMENTS: the product's name.
+        /// </summary>
+        private static ProblemCatalogEntry LinkProductUnwired =>
+            new ProblemCatalogEntry(
+                new ProblemCode("link-product-unwired"),
+                ProblemCatalogSection.ProjectFindings,
+                ValidationCategory.Wiring,
+                CatalogDisposition.Warning,
+                RuleKind.UserContentRule,
+                RuleFaces.WholeProject,
+                default,
+                FindingShape.PrimaryWithRelated,
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("product", ProblemArgumentType.AuthoredName),
+                ]),
+                "Produktet '{product}' har ingen forbundne ind- eller udgange.")
+            {
+                Diagnostic = "No input or output pin of the product owns a follow-link or scene half.",
                 Evidence = EvidenceMark.Authored,
             };
 
@@ -3234,9 +3117,9 @@ namespace Ihc.Vis.Validation
         /// does not evaluate this row rather than guessing.
         /// WHY THE COMPARISON IS SO NARROW: the vendor's lock disables a block's <c>Navn</c> field but NOT its
         /// variables' initial values, so a stored value is exactly the surface a locked block still exposes. A
-        /// variable the library does not have at all is a structural difference and stays
-        /// <c>logic-master-block-modified</c>'s finding; paired BY NAME rather than by id, because a placed block's
-        /// ids are re-stamped at insert and share nothing with the library's.
+        /// variable the library does not have at all is a structural difference and is deliberately nobody's
+        /// finding — no shipped row compares block STRUCTURE against the library. Paired BY NAME rather than by id,
+        /// because a placed block's ids are re-stamped at insert and share nothing with the library's.
         /// WITNESS: the error fixture's <i>Kip tænd sluk (lokalt tilpasset)</i>, whose <c>Timer</c> setting was
         /// edited from 3 to 5 minutes under <c>locked="yes"</c> — the state §3 recorded and no rule could see.
         /// LOCATION: the variable, which is the thing to put back. ARGUMENTS: the block's name and the variable's,
@@ -3398,48 +3281,6 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
-        /// Two programs assigning one variable from unrelated triggers: which value survives depends on event
-        /// order.
-        /// PREDICATE: a variable written by two or more TOP-LEVEL programs, where every program has at least one
-        /// trigger, the commands used are not all the same, and the programs' transitive TRIGGER-ANCESTOR sets are
-        /// pairwise disjoint.
-        /// "UNRELATED" IS A DATAFLOW QUESTION, and this is the row that taught it: a library block's standard shape
-        /// is one program setting an output ON and another setting it OFF, each triggered by its own pulse flag —
-        /// and both pulse flags are written by programs triggered by the SAME button. Comparing trigger VARIABLES
-        /// reports that shape on every library block (24 findings on <c>project3</c>, 9 on <c>Project1</c>, a
-        /// project with two blocks). Comparing the transitive ancestor sets — who writes my trigger, and what
-        /// triggers them — reports 4 and 2, and those are the real ones: a timer driven from two sources, a
-        /// blocking flag, a clock output.
-        /// TWO FURTHER REQUIREMENTS, both from the stated consequence: each program must HAVE a trigger (a program
-        /// that never starts cannot contend, and <c>logic-program-no-events</c> already reports it), and the
-        /// commands must DIFFER (two programs both setting one output to ON do not depend on order).
-        /// ATTRIBUTED TO TOP-LEVEL PROGRAMS: two branches of one program are mutually exclusive, not contending.
-        /// Attributing to the nearest enclosing program instead reported 17 contentions on <c>Project1</c>, because
-        /// every sub-program's trigger set is empty and empty sets are trivially disjoint.
-        /// LOCATION: the variable, with how many programs write it. ARGUMENTS: its name and that count.
-        /// </summary>
-        private static ProblemCatalogEntry LogicContendingWriters =>
-            new ProblemCatalogEntry(
-                new ProblemCode("logic-contending-writers"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.Logic,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("variable", ProblemArgumentType.AuthoredName),
-                    new ProblemArgumentSlot("writers", ProblemArgumentType.Integer),
-                ]),
-                "Variablen '{variable}' tilskrives af {writers} programmer med uafhængige udløsere.")
-            {
-                Diagnostic = "A variable is written by several programs with disjoint trigger ancestries.",
-                Evidence = EvidenceMark.Authored,
-            };
-
-        /// <summary>
         /// A counter that only ever steps and is never assigned: the count grows without bound and never returns
         /// to a known state.
         /// PREDICATE: a <c>resource_counter</c> whose every write is SELF-MODIFYING.
@@ -3582,48 +3423,6 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
-        /// A block that keeps its library identity while its name no longer matches it: the block no longer
-        /// matches the library version it claims to be.
-        /// PREDICATE: a block carrying <c>master_name</c> whose insert name
-        /// (<c>{master_type}.{master_version}. {master_name}</c>) is reconstructible and whose <c>name</c> differs
-        /// from it.
-        /// WITNESS, and it is the fixture's own designed one: <i>Kip tænd sluk (lokalt tilpasset)</i> — inserted
-        /// from the library, then renamed and re-noted while still locked, with <c>Nummer 1.1.01</c>,
-        /// <c>Version e</c>, <c>Oprettet 17/05/2017</c> and <c>Udviklet af Schneider Electric</c> all surviving.
-        /// NOT A BLOCK THE USER SAVED TO THE LIBRARY: those keep <c>master_name</c> but get no <c>master_type</c>,
-        /// so no insert name can be reconstructed and they are never reported — correct, since such a block IS its
-        /// own library entry.
-        /// WHAT IT CANNOT SEE: a block whose LOGIC diverges from the library while its name stays put. Deciding
-        /// that needs the library definition. <c>logic-block-locked-content</c> reaches one now (D27) and compares
-        /// stored VALUES with it; comparing program bodies is still nobody's row.
-        /// A BORDER WORTH KNOWING: <c>name-default</c> reports a library block still AT its insert name and this
-        /// row reports one moved away from it, so between them every reconstructible library block draws exactly
-        /// one advisory. Both are dismissible per their own disagreement columns; this is a consequence of the
-        /// catalogue carrying both rows, not a defect in either.
-        /// LOCATION: the block. ARGUMENTS: its current name and the library entry's name.
-        /// </summary>
-        private static ProblemCatalogEntry LogicMasterBlockModified =>
-            new ProblemCatalogEntry(
-                new ProblemCode("logic-master-block-modified"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.Logic,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("block", ProblemArgumentType.AuthoredName),
-                    new ProblemArgumentSlot("master", ProblemArgumentType.AuthoredName),
-                ]),
-                "Blokken '{block}' er ændret lokalt i forhold til biblioteksblokken '{master}'.")
-            {
-                Diagnostic = "A library block carries master identity but not its insert name.",
-                Evidence = EvidenceMark.Authored,
-            };
-
-        /// <summary>
         /// An output pin wired to something but assigned by no program: the physical output can never change
         /// state.
         /// PREDICATE: a <c>resource_output</c> in a block's <c>outputs</c> container that OWNS a follow-link half
@@ -3687,16 +3486,22 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
-        /// A program with no events: it never starts.
-        /// PREDICATE: a <c>program_simple</c> whose <c>events</c> container is empty or absent.
+        /// A program that carries work and no trigger: the commands are written and nothing can ever run them.
+        /// PREDICATE: a <c>program_simple</c> whose <c>events</c> container is empty or absent AND which carries
+        /// work — a non-empty <c>actions</c> container, or a <c>program_sub</c>/<c>program_case</c> child.
         /// SUBJECT SCOPED BY THE GRAMMAR, and this is the fact the row would be unusable without: only
         /// <c>program_simple</c> has events. All 746 <c>program_sub</c> elements in the corpus carry
         /// <c>conditions</c> and <c>actions</c> and NO <c>events</c> container, and <c>program_case</c> carries its
         /// branches — a sub-program is a conditional BRANCH inside a program, not a program missing its trigger. A
         /// rule walking every <c>program_*</c> element would report 746 of them, in every authentic file.
-        /// MEASURED: 16 across the authentic corpus, every one either a freshly inserted block's default empty
-        /// program or a hand-built program in the token fixtures — which is precisely the row's own
-        /// reasonable-disagreement case ("program under construction").
+        /// EXCLUSION, and it is what the row's value now rests on: a program with NO WORK EITHER. Every block
+        /// inserted from the library brings a program with neither trigger nor command, and measured against a
+        /// real installation every hit of the untightened row was one of those — a statement that the author has
+        /// not finished, which they can already see. The finding is about work STRANDED, so the subject is a
+        /// program that has some. WORK INCLUDES A BRANCH: the commands may all sit inside a sub-program, and such
+        /// a program is stranded just as completely.
+        /// A block empty ALL THE WAY DOWN is still <c>logic-block-empty</c>'s finding.
+        /// MEASURED after the narrowing: 1 across the authentic corpus, the error fixture's own designed witness.
         /// LOCATION: the program. ARGUMENTS: its name.
         /// </summary>
         private static ProblemCatalogEntry LogicProgramNoEvents =>
@@ -3713,22 +3518,32 @@ namespace Ihc.Vis.Validation
                 [
                     new ProblemArgumentSlot("program", ProblemArgumentType.AuthoredName),
                 ]),
-                "Programmet '{program}' har ingen hændelser.")
+                "Programmet '{program}' har kommandoer, men ingen hændelser.")
             {
-                Diagnostic = "A program_simple declares no events.",
+                Diagnostic = "A program_simple carries work and declares no events.",
                 Evidence = EvidenceMark.Authored,
             };
 
         /// <summary>
         /// A program triggered by a variable it also assigns: it can retrigger itself, and an oscillating loop
         /// is the failure mode.
-        /// PREDICATE: a top-level program whose trigger set and write set share a variable.
+        /// PREDICATE: a top-level program whose trigger set and write set share a variable that is neither a
+        /// <c>resource_timer</c> nor a <c>resource_counter</c>.
         /// ATTRIBUTED TO THE TOP-LEVEL PROGRAM: a sub-program assigning its parent's trigger is the same loop,
         /// because the parent is what starts again. A sub-program has no <c>events</c> container of its own — all
         /// 746 in the corpus carry conditions and commands only.
-        /// MEASURED: 1 in the error fixture, 1 in <c>Project1</c> and 4 in <c>project3</c>. The authentic ones are
-        /// the vendor's deliberate blink pattern, which is precisely the row's stated reasonable disagreement
-        /// ("deliberate self-terminating pattern").
+        /// EXCLUDED BY KIND: a timer re-armed by the program it woke is a DELAY, and a counter stepped by the
+        /// program it counts for is a TALLY. Both are how those two kinds are meant to be used, and neither
+        /// oscillates — a timer must elapse again, and a counter's step is not an edge the count re-fires — so
+        /// this row's consequence was false of every one of them. Measured against a real installation, every
+        /// self-trigger of those two kinds was one of the two idioms. The exclusion is by element kind alone: a
+        /// flag, an output or an ordinary variable feeding itself back is still reported.
+        /// AN EXCLUDED SELF-EDGE IS NOBODY'S FINDING, deliberately: <c>logic-block-recursive</c> excludes every
+        /// direct self-edge, and widening it here would report the same deliberate idiom under a code whose
+        /// consequence ("the call silently never runs") is false of it.
+        /// MEASURED after the narrowing: 1 in the error fixture, 1 in <c>Project1</c> and 4 in <c>project3</c>.
+        /// The authentic ones are the vendor's deliberate blink pattern over flags, which is precisely the row's
+        /// stated reasonable disagreement ("deliberate self-terminating pattern").
         /// LOCATION: the program, because that is what the reader has to look at. ARGUMENTS: the program's name and
         /// the variable's.
         /// </summary>
@@ -4213,8 +4028,7 @@ namespace Ihc.Vis.Validation
         /// <c>master_schneider_electric</c>, <c>master_type</c> and <c>master_version</c> are all absent.
         /// SUBJECT: every <c>functionblock</c> element.
         /// EXCLUSION: from-scratch blocks, which are the other row's. A block keeping any part of the trio is
-        /// not stripped and is nobody's finding here — <c>logic-master-block-modified</c>'s own comment excludes
-        /// exactly this population in the other direction, so the three rows do not overlap.
+        /// not stripped and is nobody's finding here, so the two provenance rows do not overlap.
         /// LOCATION: the function block.
         /// ARGUMENTS: <c>name</c> — the block's name.
         /// </summary>
@@ -4448,38 +4262,6 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
-        /// A declared timer no program ever starts: the timer never runs.
-        /// PREDICATE: a <c>resource_timer</c> with no write whose method is one of the three ACTIVATION commands
-        /// (<c>_0xbe</c> activate count-down with initial value, <c>_0xc8</c> activate count-up, <c>_0xd2</c> bare
-        /// activate count-down), cited from <c>ProgramMethodCatalog.TimerCommands</c> rather than guessed.
-        /// STARTING IS NOT ASSIGNING, which is why this row is not "never written": setting a timer to zero
-        /// (<c>_0xa</c>), to its initial value (<c>_0x19</c>) or to another pin's value (<c>_0x1e</c>) does not
-        /// start it, and stopping it (<c>_0xdc</c>) certainly does not. The corpus carries all five kinds.
-        /// MEASURED: 1 in the error fixture, 4 in <c>project2</c> and 5 in <c>project3</c> — declared timers no
-        /// program activates, which is the row's own "timer reserved for later".
-        /// LOCATION: the timer. ARGUMENTS: its name.
-        /// </summary>
-        private static ProblemCatalogEntry LogicTimerUnused =>
-            new ProblemCatalogEntry(
-                new ProblemCode("logic-timer-unused"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.Logic,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("variable", ProblemArgumentType.AuthoredName),
-                ]),
-                "Timeren '{variable}' startes ikke af noget program.")
-            {
-                Diagnostic = "A timer has no activation command.",
-                Evidence = EvidenceMark.Authored,
-            };
-
-        /// <summary>
         /// An internal variable programs read and never assign: the logic always sees its initial value.
         /// PREDICATE: a variable in a block's <c>internalsettings</c> container that is read or triggered on, never
         /// written, and not linked.
@@ -4508,45 +4290,6 @@ namespace Ihc.Vis.Validation
                 "Variablen '{variable}' i '{block}' læses, men tilskrives aldrig.")
             {
                 Diagnostic = "A block internal variable is read and never written.",
-                Evidence = EvidenceMark.Authored,
-            };
-
-        /// <summary>
-        /// A declared state variable no program touches and no link reaches: a dead declaration, and noise in
-        /// the block and in the reports.
-        /// PREDICATE: a <c>resource_*</c> in a block's <c>settings</c> or <c>internalsettings</c> container that is
-        /// neither triggered on, read nor written by any program, and owns no follow-link or scene-link half.
-        /// Evaluated over the shared program read model, not a traversal of its own.
-        /// THE SUBJECT BOUNDARY THIS ROW SHARES WITH ITS TWO SIBLINGS: a block's PINS are its interface and its
-        /// <c>settings</c>/<c>internalsettings</c> are its own state, so these rows are about the state
-        /// containers. An input pin's producer and an output pin's consumer live OUTSIDE the block, and the wiring
-        /// set already owns them (<c>link-fb-input-unfed</c>, <c>link-fb-output-unused</c>). Measured: including
-        /// pins takes project3 from 9 findings to 64, of which 47 are pins behaving exactly as pins do.
-        /// REPORTED ONCE PER VARIABLE, never once per program — the catalogue's own deliberate-non-findings
-        /// section says so in as many words ("a block with more variables than its programs read … reported once,
-        /// as <c>logic-variable-unused</c>").
-        /// MEASURED: 4 in the error fixture, 9 in <c>project3</c>, 23 in <c>project2</c> — that fixture declares
-        /// one variable of every kind on purpose, which is what a type zoo looks like to this row.
-        /// LOCATION: the variable. ARGUMENTS: its name and its block's.
-        /// </summary>
-        private static ProblemCatalogEntry LogicVariableUnused =>
-            new ProblemCatalogEntry(
-                new ProblemCode("logic-variable-unused"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.Logic,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("variable", ProblemArgumentType.AuthoredName),
-                    new ProblemArgumentSlot("block", ProblemArgumentType.AuthoredName),
-                ]),
-                "Variablen '{variable}' i '{block}' bruges ikke af noget program.")
-            {
-                Diagnostic = "A block state variable has no program usage and no link.",
                 Evidence = EvidenceMark.Authored,
             };
 
@@ -6130,32 +5873,6 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
-        /// A scene carries no members: activating it changes nothing.
-        /// PREDICATE: a <c>resource_scene</c> pin holding no <c>scene_link</c> child.
-        /// SUBJECT: every scene pin. EXCLUSIONS: none — a scene being built is the legitimate reading this
-        /// Warning exists for. LOCATION: the scene pin. ARGUMENTS: its name.
-        /// </summary>
-        private static ProblemCatalogEntry SceneEmpty =>
-            new ProblemCatalogEntry(
-                new ProblemCode("scene-empty"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.Scenes,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("scene", ProblemArgumentType.AuthoredName),
-                ]),
-                "Scenariet '{scene}' har ingen medlemmer.")
-            {
-                Diagnostic = "A resource_scene pin holds no scene_link member.",
-                Evidence = EvidenceMark.Authored,
-            };
-
-        /// <summary>
         /// A member row whose ramp time is unusually long: the installation appears unresponsive while the
         /// scene runs.
         /// PREDICATE: a <c>scene_dimmer</c> member row whose <c>ramptime_ms</c> exceeds the declared
@@ -6234,35 +5951,6 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
-        /// An output a scene drives that a follow-link also drives: the two fight over it.
-        /// PREDICATE: an output named by a <c>scenes</c> container's <c>scene_resource</c> that also owns a
-        /// <c>link_to_resource</c> half.
-        /// SUBJECT: every bound scene output, reported once however many containers bind it.
-        /// EXCLUSIONS: none — the legitimate reading (a scene sets a preset, a link overrides on demand) is
-        /// why this is a Warning rather than an Error.
-        /// LOCATION: the output pin, where both drivers meet. ARGUMENTS: its name.
-        /// </summary>
-        private static ProblemCatalogEntry SceneOutputAlsoLinked =>
-            new ProblemCatalogEntry(
-                new ProblemCode("scene-output-also-linked"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.Scenes,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("output", ProblemArgumentType.AuthoredName),
-                ]),
-                "Udgangen '{output}' styres både af et scenarie og af et følg-link.")
-            {
-                Diagnostic = "A scene-bound output also owns an incoming follow-link half.",
-                Evidence = EvidenceMark.Authored,
-            };
-
-        /// <summary>
         /// A scene nothing can fire: no program row names it.
         /// PREDICATE: a <c>resource_scene</c> pin whose id appears in no program operand — no
         /// <c>event</c>/<c>event_power</c>/<c>condition</c>/<c>action</c>/<c>case_action</c>/<c>program_case</c>
@@ -6330,99 +6018,6 @@ namespace Ihc.Vis.Validation
             {
                 Diagnostic = "An authored element carries the null icon where its kind otherwise has one.",
                 Evidence = EvidenceMark.Refused,
-            };
-
-        /// <summary>
-        /// A locality holding neither a product nor a block: an empty room in the tree and in the reports.
-        /// PREDICATE: a <c>group</c> with no product child and no <c>functionblock</c> child.
-        /// MEASURED, and the figure is worth knowing before reading a report: 8 to 10 per project, because a new
-        /// project ships with TEN named localities and an installer fills the ones the building actually has. The
-        /// row is still true — those rooms are empty in the tree and in the reports, and deleting the unused ones is
-        /// what a careful author does before handing documentation over — which is what the row's own "room planned
-        /// but not yet fitted" disagreement is for.
-        /// NOT THE SAME as the catalogue's deliberate non-finding "a locality holding no BLOCKS": a room with
-        /// products and no logic is ordinary, and this row needs BOTH to be absent.
-        /// LOCATION: the locality. ARGUMENTS: its name.
-        /// </summary>
-        private static ProblemCatalogEntry StructLocalityEmpty =>
-            new ProblemCatalogEntry(
-                new ProblemCode("struct-locality-empty"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.ProjectStructure,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("locality", ProblemArgumentType.AuthoredName),
-                ]),
-                "Lokaliteten '{locality}' indeholder hverken produkter eller blokke.")
-            {
-                Diagnostic = "A locality holds neither a product nor a block.",
-                Evidence = EvidenceMark.Authored,
-            };
-
-        /// <summary>
-        /// A locality holding blocks and no hardware: the room has logic but nothing to act on, which is often a
-        /// mis-drop.
-        /// PREDICATE: a <c>group</c> with at least one <c>functionblock</c> child and no product child.
-        /// MEASURED: 1 to 3 per project, and 10 in the token-capture fixture whose blocks all live in their own
-        /// rooms. Its reasonable disagreement — a deliberate "logic room" holding central blocks — is a real
-        /// pattern, which is why this is a Warning and not an Error.
-        /// LOCATION: the locality. ARGUMENTS: its name.
-        /// </summary>
-        private static ProblemCatalogEntry StructLocalityNoDevices =>
-            new ProblemCatalogEntry(
-                new ProblemCode("struct-locality-no-devices"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.ProjectStructure,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("locality", ProblemArgumentType.AuthoredName),
-                ]),
-                "Lokaliteten '{locality}' indeholder kun funktionsblokke.")
-            {
-                Diagnostic = "A locality holds blocks and no products.",
-                Evidence = EvidenceMark.Authored,
-            };
-
-        /// <summary>
-        /// A block nothing links to and nothing references: it is isolated from the rest of the installation.
-        /// PREDICATE: a <c>functionblock</c> with no link half anywhere inside it AND no id inside it named by any
-        /// attribute outside it.
-        /// TWO WAYS TO BE REACHED, both checked: a wire (a link half exists only once the wire is made) and a
-        /// REFERENCE — a program in another block, a scene, a documentation pointer. Checking only wires would
-        /// report a block driven entirely through references.
-        /// MEASURED: 0 in <c>Project1</c>, 1 in <c>project5</c>, and 8 of 9 blocks in <c>project3</c>. That last
-        /// figure is not a false positive: <c>project3</c> carries only three wired pin pairs in the whole file, so
-        /// its library blocks really were placed for the report fixtures and never wired.
-        /// LOCATION: the block. ARGUMENTS: its name.
-        /// </summary>
-        private static ProblemCatalogEntry StructOrphanBlock =>
-            new ProblemCatalogEntry(
-                new ProblemCode("struct-orphan-block"),
-                ProblemCatalogSection.ProjectFindings,
-                ValidationCategory.ProjectStructure,
-                CatalogDisposition.Warning,
-                RuleKind.UserContentRule,
-                RuleFaces.WholeProject,
-                default,
-                FindingShape.OnePerOccurrence,
-                EquatableArray.Create<ProblemArgumentSlot>(
-                [
-                    new ProblemArgumentSlot("block", ProblemArgumentType.AuthoredName),
-                ]),
-                "Blokken '{block}' er ikke forbundet til resten af installationen.")
-            {
-                Diagnostic = "A function block is neither wired nor referenced from outside.",
-                Evidence = EvidenceMark.Authored,
             };
 
         /// <summary>
@@ -6604,10 +6199,8 @@ namespace Ihc.Vis.Validation
             EnumDefDuplicateName,
             EnumDefEmpty,
             EnumDefSingleValue,
-            EnumDefUnused,
             EnumInivalue,
             EnumTypedef,
-            EnumValueUnused,
             ExportControllerDeclined,
             FbHolidayInputCustomBlock,
             FbLocalRef,
@@ -6633,13 +6226,11 @@ namespace Ihc.Vis.Validation
             ImportControllerNoProject,
             InlineConstant,
             LinkBijection,
-            LinkCrossesLocality,
             LinkFbInputUnfed,
             LinkFbOutputUnused,
-            LinkInputUnconnected,
             LinkOutputMultidriven,
-            LinkOutputUndriven,
             LinkPassThrough,
+            LinkProductUnwired,
             LinkThroughEmptyBlock,
             LoadBomUtf16,
             LoadBomUtf8,
@@ -6660,21 +6251,17 @@ namespace Ihc.Vis.Validation
             LogicCaseDuplicateValue,
             LogicCaseNoBranches,
             LogicCaseValueForeign,
-            LogicContendingWriters,
             LogicCounterNeverReset,
             LogicDuplicateProgram,
             LogicFlagNeverCleared,
             LogicHolidayScheduleFirmware,
-            LogicMasterBlockModified,
             LogicOutputNeverAssigned,
             LogicProgramNoActions,
             LogicProgramNoEvents,
             LogicSelfTrigger,
             LogicStatementUnlinked,
             LogicSubprogramNoConditions,
-            LogicTimerUnused,
             LogicVariableReadOnly,
-            LogicVariableUnused,
             LogicVariableWriteOnly,
             LuidCeiling,
             LuidLow,
@@ -6712,15 +6299,10 @@ namespace Ihc.Vis.Validation
             SceneBijection,
             SceneDimmingOutOfRange,
             SceneDuplicateTarget,
-            SceneEmpty,
             SceneLongDelay,
             SceneMemberUnwired,
-            SceneOutputAlsoLinked,
             SceneUnreferenced,
             StructIconDefault,
-            StructLocalityEmpty,
-            StructLocalityNoDevices,
-            StructOrphanBlock,
             StructProductNoTerminals,
             NameHelpfileMissing,
             StructModifiedStale,

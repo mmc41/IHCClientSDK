@@ -8,7 +8,7 @@ using Ihc.Vis.Schema;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// T047 — the seven SCENARIO rows, per rule, over the partitions each predicate names, plus boundary-value
+    /// T047 — the SCENARIO rows, per rule, over the partitions each predicate names, plus boundary-value
     /// coverage of the ONE declared threshold in this set.
     ///
     /// <para><b>The scene shape these trees build.</b> A scene is a block's <c>resource_scene</c> pin holding
@@ -46,19 +46,6 @@ namespace Ihc.Vis.Tests
                     "an authored threshold carries its unconfirmed status where it is declared");
                 return threshold.Value;
             }
-        }
-
-        // ── scene-empty ─────────────────────────────────────────────────────────────────────────────
-
-        [Test]
-        public void AnEmptyScenePinIsReported_AndAPopulatedOneIsNot()
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(Scene(members: 0), "scene-empty"), Is.EqualTo(1));
-                Assert.That(Message(Scene(members: 0), "scene-empty"), Does.Contain("Scenarie"));
-                Assert.That(Count(Scene(members: 1), "scene-empty"), Is.Zero);
-            });
         }
 
         // ── scene-duplicate-target ──────────────────────────────────────────────────────────────────
@@ -148,19 +135,6 @@ namespace Ihc.Vis.Tests
         {
             Assert.That(Count(Scene(members: 1, firedByCondition: true), "scene-unreferenced"), Is.Zero,
                 "link2 on a condition names the scene as surely as link1 on an action does");
-        }
-
-        // ── scene-output-also-linked ────────────────────────────────────────────────────────────────
-
-        [Test]
-        public void AnOutputBothASceneAndALinkDriveIsReportedOnce()
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(Scene(members: 1, outputAlsoLinked: true), "scene-output-also-linked"),
-                    Is.EqualTo(1));
-                Assert.That(Count(Scene(members: 1), "scene-output-also-linked"), Is.Zero);
-            });
         }
 
         // ── scene-all-off ───────────────────────────────────────────────────────────────────────────
@@ -516,8 +490,7 @@ namespace Ihc.Vis.Tests
         /// <summary>
         /// A project with one block carrying one scene pin, and one product per member row. Every switch is one
         /// partition of one predicate: how many members, whether they share an output, whether the container binds
-        /// one at all, whether a program fires the scene, whether the output is also link-driven, and the values
-        /// the rows carry.
+        /// one at all, whether a program fires the scene, and the values the rows carry.
         /// </summary>
         private static Project Scene(
             int members,
@@ -526,7 +499,6 @@ namespace Ihc.Vis.Tests
             string? boundToken = null,
             bool firedByProgram = false,
             bool firedByCondition = false,
-            bool outputAlsoLinked = false,
             string relayValue = "on",
             string? secondRelayValue = null,
             long? dimmerRampMs = null,
@@ -572,11 +544,7 @@ namespace Ihc.Vis.Tests
 
                 ProjectElement row = Tree.Node(memberTag, Token(memberTag, at + 2), valueAttributes);
                 ProjectElement output = Tree.Node("dataline_output", Token("dataline_output", outputAt),
-                    [("name", "Udgang " + i)],
-                    outputAlsoLinked
-                        ? [Tree.Node("link_to_resource", Token("link_to_resource", at + 3),
-                            [("name", "Følg Link"), ("link", Token("link_from_resource", 0x900))])]
-                        : []);
+                    [("name", "Udgang " + i)]);
 
                 (string, string)[] containerAttributes = boundOutput
                     ? [("name", "Scenarier"), ("scene_resource", boundToken ?? Token("dataline_output", outputAt))]

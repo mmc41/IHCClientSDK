@@ -9,18 +9,16 @@ using Ihc.Vis.Validation;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// T058 — the six remaining LOGIC rows, all predicates over T057's shared read model.
+    /// T058 — the remaining LOGIC rows, all predicates over T057's shared read model.
     ///
-    /// <para><b>The claim this suite exists for</b> is the one that took two wrong readings to find:
-    /// <c>logic-contending-writers</c>' notion of "unrelated triggers" is a DATAFLOW question. A library block's
-    /// standard shape is one program setting an output ON and another setting it OFF, each from its own pulse flag,
-    /// with both pulse flags written by programs triggered by the SAME button. Comparing trigger variables reports
-    /// that on every library block; comparing transitive ancestries does not.
-    /// <see cref="TheStandardOnOffBlockShapeIsNotAContention"/> builds exactly that shape and requires silence, and
-    /// <see cref="TwoUnrelatedSourcesAreAContention"/> requires the fault next to it.</para>
+    /// <para><b>Each row is tested at the boundary its predicate states</b>, over synthetic trees carrying exactly
+    /// one condition and its neighbouring non-condition: a linked output nothing assigns against an unlinked one,
+    /// a flag only ever set against one a toggle touches, a counter only ever stepped against one a plain
+    /// assignment resets.</para>
     ///
     /// <para><b>And a sub-program is not a program here:</b> two branches of one program are mutually exclusive,
-    /// which is why writes are attributed to the top-level program.</para>
+    /// which is why writes are attributed to the top-level program —
+    /// <see cref="ASubProgramAssigningItsParentsTriggerIsTheSameLoop"/>.</para>
     /// </summary>
     [TestFixture]
     public sealed class ProgramDataflowRulesTests
@@ -66,7 +64,7 @@ namespace Ihc.Vis.Tests
                 Assert.That(Count(Flag("_0x23", "Kip %P"), "logic-flag-never-cleared"), Is.Zero,
                     "a toggle clears half the time, so it is not 'cleared by none'");
                 Assert.That(Count(Flag(null, null), "logic-flag-never-cleared"), Is.Zero,
-                    "a flag no program writes is logic-variable-unused's finding, not a latch");
+                    "a flag no program writes at all is not a latch: the row is about a write that only ever sets");
             });
         }
 
@@ -84,35 +82,6 @@ namespace Ihc.Vis.Tests
                     Is.Zero, "a plain assignment is a reset");
                 Assert.That(Count(Counter("_0x57", "%P = %P - 1"), "logic-counter-never-reset"), Is.EqualTo(1),
                     "a decrement-only counter never returns to a known state either");
-            });
-        }
-
-        // ── logic-timer-unused ──────────────────────────────────────────────────────────────────────
-
-        [Test]
-        public void ATimerNoProgramStartsIsReported()
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(Timer(null, null), "logic-timer-unused"), Is.EqualTo(1));
-                Assert.That(Message(Timer(null, null), "logic-timer-unused"),
-                    Is.EqualTo("Timeren 'Timer' startes ikke af noget program."));
-                Assert.That(Count(Timer("_0xbe", "Aktiver nedtælling på %P med initial værdi"),
-                    "logic-timer-unused"), Is.Zero, "the activation command starts it");
-                Assert.That(Count(Timer("_0xc8", "Aktiver optælling på %P"), "logic-timer-unused"), Is.Zero);
-            });
-        }
-
-        [Test]
-        public void AssigningATimerIsNotStartingIt()
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(Timer("_0xa", "%P = 0"), "logic-timer-unused"), Is.EqualTo(1),
-                    "setting a timer to zero does not start it");
-                Assert.That(Count(Timer("_0x19", "%P = Initialværdi"), "logic-timer-unused"), Is.EqualTo(1));
-                Assert.That(Count(Timer("_0xdc", "Stands tælling på %P"), "logic-timer-unused"), Is.EqualTo(1),
-                    "and stopping it certainly does not");
             });
         }
 
@@ -137,62 +106,50 @@ namespace Ihc.Vis.Tests
                 "the parent is what starts again, so the write counts as the parent's");
         }
 
-        // ── logic-contending-writers ────────────────────────────────────────────────────────────────
-
         /// <summary>
-        /// The shape every library block has: two programs driving one output from two pulse flags, both flags
-        /// written by programs triggered by the SAME button. Comparing trigger variables calls this a contention;
-        /// comparing ancestries does not.
+        /// THE TWO KINDS WHOSE SELF-WRITE IS THE IDIOM, not the fault. A program that re-arms the timer that woke
+        /// it is a delay; one that steps the counter that counts its own pulses is a tally. Both are written that
+        /// way on purpose, and neither oscillates — the timer has to elapse again and the counter's step is not an
+        /// edge the count can re-fire. Every witnessed hit of these two kinds in the measured corpus was one of the
+        /// two idioms, so the row's sentence was false of all of them.
+        ///
+        /// <para>The exclusion is by ELEMENT KIND and nothing else: a flag or a variable written by the program it
+        /// triggers is still the loop this row exists for, and stays reported.</para>
         /// </summary>
         [Test]
-        public void TheStandardOnOffBlockShapeIsNotAContention()
+        public void ATimerOrCounterRearmingItselfIsTheIdiomAndNotTheFault()
         {
-            Assert.That(Count(OnOffBlock(sharedButton: true), "logic-contending-writers"), Is.Zero,
-                "the two triggers descend from one button, so the order is the user's, not the event queue's");
-        }
-
-        [Test]
-        public void TwoUnrelatedSourcesAreAContention()
-        {
-            Project contended = OnOffBlock(sharedButton: false);
-
             Assert.Multiple(() =>
             {
-                Assert.That(Count(contended, "logic-contending-writers"), Is.EqualTo(1),
-                    "a manual button and an independent sensor, the row's own example");
-                Assert.That(Message(contended, "logic-contending-writers"),
-                    Is.EqualTo("Variablen 'Udgang' tilskrives af 2 programmer med uafhængige udløsere."));
+                Assert.That(Count(SelfTriggerOn("resource_timer"), "logic-self-trigger"), Is.Zero,
+                    "a delay re-arms the timer that woke it");
+                Assert.That(Count(SelfTriggerOn("resource_counter"), "logic-self-trigger"), Is.Zero,
+                    "a tally steps the counter it counts on");
+                Assert.That(Count(SelfTriggerOn("resource_flag"), "logic-self-trigger"), Is.EqualTo(1),
+                    "and a flag feeding itself back is the loop the row is for");
+            });
+        }
+
+        /// <summary>
+        /// AND AN EXCLUDED SELF-EDGE IS NOBODY'S FINDING, deliberately. <c>logic-block-recursive</c> excludes every
+        /// direct self-edge — one node writing to itself — so narrowing this row does not hand the timer and
+        /// counter idioms to that one instead. Widening the recursion row to catch them would report the same
+        /// deliberate pattern under a code whose consequence ("the call silently never runs") is false of it.
+        /// </summary>
+        [Test]
+        public void AnExcludedSelfTriggerIsNotHandedToTheRecursionRow()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(SelfTriggerOn("resource_timer"), "logic-block-recursive"), Is.Zero);
+                Assert.That(Count(SelfTriggerOn("resource_counter"), "logic-block-recursive"), Is.Zero);
             });
         }
 
         [Test]
-        public void TwoProgramsIssuingTheSameCommandDoNotContend()
+        public void NoAuthenticProjectLatchesAFlag()
         {
-            Assert.That(Count(OnOffBlock(sharedButton: false, sameCommand: true), "logic-contending-writers"),
-                Is.Zero,
-                "both set the output ON, so which one runs first cannot change the outcome");
-        }
-
-        [Test]
-        public void AProgramWithNoTriggerCannotContend()
-        {
-            Assert.That(Count(OnOffBlock(sharedButton: false, secondProgramUntriggered: true),
-                "logic-contending-writers"), Is.Zero,
-                "a program that never starts is logic-program-no-events' finding, not a contender");
-        }
-
-        [Test]
-        public void TheAuthenticCorpusReportsOnlyRealContentions()
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(Authentic("Project1-SimpelWired.vis"), "logic-contending-writers"), Is.EqualTo(2),
-                    "two, not the nine a trigger-variable comparison finds on this two-block project");
-                Assert.That(Count(Authentic("project3-KompleksWired.vis"), "logic-contending-writers"),
-                    Is.EqualTo(4), "four, not twenty-four");
-                Assert.That(Count(Authentic("Project1-SimpelWired.vis"), "logic-flag-never-cleared"), Is.Zero,
-                    "and no authentic project latches a flag");
-            });
+            Assert.That(Count(Authentic("Project1-SimpelWired.vis"), "logic-flag-never-cleared"), Is.Zero);
         }
 
         // ── logic-block-recursive ───────────────────────────────────────────────────────────────────
@@ -223,8 +180,8 @@ namespace Ihc.Vis.Tests
 
         /// <summary>
         /// THE DIRECT SELF-EDGE IS NOT REPORTED TWICE. A single program triggered by a variable it also assigns
-        /// is <c>logic-self-trigger</c>'s finding, and D24 keeps that row untouched — so this one must exclude
-        /// exactly what that one reports, or every self-trigger in the corpus would gain a second finding.
+        /// is <c>logic-self-trigger</c>'s finding, so this one excludes every direct self-edge — otherwise each
+        /// self-trigger in the corpus would gain a second finding.
         ///
         /// <para>The two describe different runtime consequences: the ring <c>logic-self-trigger</c> finds RUNS
         /// and is aborted, while a block reaching itself silently never executes. Reporting one situation under
@@ -233,12 +190,12 @@ namespace Ihc.Vis.Tests
         [Test]
         public void ADirectSelfTriggerIsTheOtherRowsFindingAndNotThisOne()
         {
-            Project selfTrigger = SelfTriggeringProgram();
+            Project selfTrigger = SelfTriggerOn("resource_flag");
 
             Assert.Multiple(() =>
             {
                 Assert.That(Count(selfTrigger, "logic-self-trigger"), Is.EqualTo(1),
-                    "the shipped row still reports it, unchanged");
+                    "a flag feeding itself back is that row's finding");
                 Assert.That(Count(selfTrigger, "logic-block-recursive"), Is.Zero,
                     "and the new row does not report it a second time");
             });
@@ -367,15 +324,19 @@ namespace Ihc.Vis.Tests
             return Tree.WithRoot(Locality([.. Enumerable.Range(0, length).Select(Block)]));
         }
 
-        /// <summary>One block, one program, triggered by the very flag it assigns — the self-trigger shape.</summary>
-        private static Project SelfTriggeringProgram() =>
+        /// <summary>
+        /// One block, one program, triggered by the very variable it assigns — the self-trigger shape, over any
+        /// variable kind, which is what the row now discriminates on.
+        /// </summary>
+        /// <param name="tag">The element tag of the variable the program both triggers on and assigns.</param>
+        private static Project SelfTriggerOn(string tag) =>
             BlockOf(
                 [],
                 [],
-                [Tree.Node("resource_flag", Token("resource_flag", 0x80), [("name", "Flag")])],
+                [Tree.Node(tag, Token(tag, 0x80), [("name", "Ressource")])],
                 [Program(0x90, "Program",
-                    [Event(0x95, "resource_flag", 0x80)],
-                    [Action(0x96, "resource_flag", 0x80, "_0xa", "%P = ON")])]);
+                    [Event(0x95, tag, 0x80)],
+                    [Action(0x96, tag, 0x80, "_0xa", "%P = ON")])]);
 
         private static Project Authentic(string file)
         {
@@ -474,17 +435,6 @@ namespace Ihc.Vis.Tests
                 [Program(0x90, "Program", [Event(0x95, "resource_input", 0x60)], [.. actions])]);
         }
 
-        /// <summary>A timer written by the given command, or by nothing at all.</summary>
-        private static Project Timer(string? method, string? template) =>
-            BlockOf(
-                [Tree.Node("resource_input", Token("resource_input", 0x60), [("name", "Indgang"), ("note", "N")])],
-                [],
-                [Tree.Node("resource_timer", Token("resource_timer", 0x80), [("name", "Timer")])],
-                [
-                    Program(0x90, "Program", [Event(0x95, "resource_input", 0x60)],
-                        method is null ? [] : [Action(0x96, "resource_timer", 0x80, method, template!)]),
-                ]);
-
         /// <summary>A program triggered by the flag it assigns, or by an unrelated input.</summary>
         private static Project SelfTrigger(bool sameVariable) =>
             BlockOf(
@@ -519,45 +469,5 @@ namespace Ihc.Vis.Tests
                         ]),
                 ]);
 
-        /// <summary>
-        /// The ON/OFF shape: two programs driving one output from two pulse flags. With
-        /// <paramref name="sharedButton"/> both pulse flags are written by programs triggered by the same input —
-        /// the library-block shape; without it the second pulse comes from an independent sensor.
-        /// </summary>
-        private static Project OnOffBlock(
-            bool sharedButton, bool sameCommand = false, bool secondProgramUntriggered = false)
-        {
-            ProjectElement button = Tree.Node("resource_input", Token("resource_input", 0x60),
-                [("name", "Tryk"), ("note", "N")]);
-            ProjectElement sensor = Tree.Node("resource_input", Token("resource_input", 0x61),
-                [("name", "Sensor"), ("note", "N")]);
-            ProjectElement onPulse = Tree.Node("resource_flag", Token("resource_flag", 0x80), [("name", "ON puls")]);
-            ProjectElement offPulse = Tree.Node("resource_flag", Token("resource_flag", 0x81), [("name", "OFF puls")]);
-            ProjectElement output = Tree.Node("resource_output", Token("resource_output", 0x82), [("name", "Udgang")]);
-
-            return BlockOf(
-                [button, sensor],
-                [output],
-                [onPulse, offPulse],
-                [
-                    // the two pulse producers: both from the button, or one from the sensor
-                    Program(0x90, "Puls ON", [Event(0x95, "resource_input", 0x60)],
-                        [Action(0x96, "resource_flag", 0x80, "_0xa", "%P = ON")]),
-                    Program(0xb0, "Puls OFF",
-                        [Event(0xb5, "resource_input", sharedButton ? 0x60 : 0x61)],
-                        [Action(0xb6, "resource_flag", 0x81, "_0xa", "%P = ON")]),
-
-                    // the two writers of the output
-                    Program(0xc0, "Tænd", [Event(0xc5, "resource_flag", 0x80)],
-                        [Action(0xc6, "resource_output", 0x82, "_0xa", "%P = ON")]),
-                    Program(0xd0, "Sluk",
-                        secondProgramUntriggered ? [] : [Event(0xd5, "resource_flag", 0x81)],
-                        [
-                            sameCommand
-                                ? Action(0xd6, "resource_output", 0x82, "_0xa", "%P = ON")
-                                : Action(0xd6, "resource_output", 0x82, "_0x14", "%P = OFF"),
-                        ]),
-                ]);
-        }
     }
 }

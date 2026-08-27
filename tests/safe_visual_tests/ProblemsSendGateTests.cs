@@ -34,6 +34,12 @@ public class ProblemsSendGateTests
         TestContext.CurrentContext.TestDirectory, "testdata", "projects", "Synthetic", "DuplicatedAdressErrors.vis");
 
     /// <summary>
+    /// The advisory counterpart: the vendor-authored defect fixture carries Warnings and Information rows and
+    /// not one Error, which is exactly the population the gate must let through.
+    /// </summary>
+    private static string AdvisoryFixture() => ProblemsTestData.FixturePath("Project6-Errors.vis");
+
+    /// <summary>
     /// A shell on a fresh project with a controller connected. A REAL validation runs — no injected findings and
     /// no test-only setter — so what the gate reads is what the panel would actually bind.
     /// </summary>
@@ -106,9 +112,10 @@ public class ProblemsSendGateTests
     public async Task WarningAndInfoFindingsNeverRefuse()
     {
         using ProblemsShellRig rig = await ConnectedShell();
+        await rig.Harness.Session.OpenAsync(AdvisoryFixture());
         await rig.SettleAsync();
         Assert.That(rig.Shell.Problems.Warnings.Count, Is.GreaterThan(0),
-            "precondition: a fresh project binds Warnings and no Errors");
+            "precondition: the fixture binds Warnings and no Errors");
         Assert.That(rig.Shell.Problems.Errors.Count, Is.Zero);
 
         Assert.That(SendAvailability(rig.Shell).Enabled, Is.True,

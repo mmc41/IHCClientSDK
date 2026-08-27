@@ -70,12 +70,12 @@ namespace Ihc.Vis.Tests
         [Test]
         public void ASingleDeclaredSlotBecomesASingleArgumentAttribute()
         {
-            string line = Line("struct-locality-empty", new ProblemArgument("locality", "Stue"));
+            string line = Line("struct-product-no-terminals", new ProblemArgument("product", "Stue"));
 
             Assert.Multiple(() =>
             {
-                Assert.That(ArgNames(line), Is.EqualTo(new[] { "arg_locality" }));
-                Assert.That(line, Does.Contain(" arg_locality=\"Stue\""));
+                Assert.That(ArgNames(line), Is.EqualTo(new[] { "arg_product" }));
+                Assert.That(line, Does.Contain(" arg_product=\"Stue\""));
             });
         }
 
@@ -106,10 +106,10 @@ namespace Ihc.Vis.Tests
         [Test]
         public void ArgumentsFollowTheFixedAttributes()
         {
-            string line = Line("struct-locality-empty", new ProblemArgument("locality", "Stue"));
+            string line = Line("struct-product-no-terminals", new ProblemArgument("product", "Stue"));
 
             Assert.That(
-                line.IndexOf(" arg_locality=", StringComparison.Ordinal),
+                line.IndexOf(" arg_product=", StringComparison.Ordinal),
                 Is.GreaterThan(line.IndexOf(" message=", StringComparison.Ordinal)));
         }
 
@@ -215,10 +215,10 @@ namespace Ihc.Vis.Tests
         [Test]
         public void AnArgumentValueIsEscapedLikeEveryOtherAttribute()
         {
-            string line = Line("struct-locality-empty",
-                new ProblemArgument("locality", "A&B <\"x\"> 'y' " + (char)0x20AC));
+            string line = Line("struct-product-no-terminals",
+                new ProblemArgument("product", "A&B <\"x\"> 'y' " + (char)0x20AC));
 
-            Assert.That(line, Does.Contain(" arg_locality=\"A&amp;B &lt;&quot;x&quot;&gt; 'y' &#8364;\""));
+            Assert.That(line, Does.Contain(" arg_product=\"A&amp;B &lt;&quot;x&quot;&gt; 'y' &#8364;\""));
         }
 
         /// <summary>
@@ -231,10 +231,10 @@ namespace Ihc.Vis.Tests
         public void EveryEmittedArgumentValueAlsoAppearsInsideTheMessage()
         {
             ProblemCatalogEntry entry = ProblemCatalog.Current.Entries
-                .First(e => e.Code.Value == "struct-locality-empty");
+                .First(e => e.Code.Value == "struct-product-no-terminals");
             Problem bound = new(
                 entry.Code, string.Empty,
-                EquatableArray.Create<ProblemArgument>([new ProblemArgument("locality", "Stue")]));
+                EquatableArray.Create<ProblemArgument>([new ProblemArgument("product", "Stue")]));
             bound = bound with { Message = entry.BindTemplate(bound) };
 
             byte[] bytes = FindingExportWriter.Write(
@@ -249,7 +249,7 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(line, Does.Contain(" arg_locality=\"Stue\""));
+                Assert.That(line, Does.Contain(" arg_product=\"Stue\""));
                 Assert.That(line.Split(" message=\"")[1].Split("\" ")[0], Does.Contain("Stue"));
             });
         }

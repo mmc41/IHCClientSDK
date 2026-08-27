@@ -32,7 +32,7 @@ public class ProblemsNavigationE2ETests
     private const string ConfigurationCode = "doc-not-linked";
 
     /// <summary>A finding on a variable inside a function block's program — reachable only in programming view.</summary>
-    private const string ProgrammingCode = "logic-variable-unused";
+    private const string ProgrammingCode = "logic-variable-write-only";
 
     [OneTimeSetUp]
     public void LaunchApp() => E2E.Launch(E2E.Fixture(FixtureFile));

@@ -24,10 +24,13 @@ namespace Ihc.Vis.Validation
     /// an events rule that walked every <c>program_*</c> element would report 746 of them, in every authentic file.
     /// </para>
     ///
-    /// <para><b>And <c>logic-program-no-actions</c> requires events to be PRESENT</b>, which is the row's own
-    /// wording ("declares events but no commands") and also what keeps it from re-reporting the empty default
-    /// program that <c>logic-program-no-events</c> already names. Measured: one program in the whole corpus has
-    /// events and no commands, in the error fixture.</para>
+    /// <para><b>Neither events row names the shipped empty default</b>, and between them they say why: a program
+    /// with no trigger is reported only when it carries WORK a trigger could have run, and
+    /// <c>logic-program-no-actions</c> requires events to be PRESENT, which is the row's own wording ("declares
+    /// events but no commands"). A block freshly inserted from the library brings a program with neither, in every
+    /// authentic file — reporting it says only that the author has not finished. A block empty ALL THE WAY DOWN is
+    /// still <c>logic-block-empty</c>'s. Measured: one program in the whole corpus has events and no commands, in
+    /// the error fixture.</para>
     /// </summary>
     public static class ProgramShapeRules
     {
@@ -68,18 +71,21 @@ namespace Ihc.Vis.Validation
         }
 
         /// <summary>
-        /// A program with no events: it never starts.
+        /// A program that carries work and no trigger: the commands are written and nothing can ever run them.
         /// <para>SUBJECT: <c>program_simple</c> alone, because it is the only program kind the format gives an
         /// <c>events</c> container to.</para>
-        /// <para>MEASURED: 16 across the authentic corpus, every one of them either a freshly inserted block's
-        /// default empty program or a hand-built program in the token fixtures. The row's own
-        /// reasonable-disagreement column names exactly that case ("program under construction").</para>
+        /// <para>EXCLUSION, and it is what the row's value now rests on: a program with NO WORK EITHER. Every block
+        /// inserted from the library brings a program with neither trigger nor command, and every witnessed hit of
+        /// the untightened row was one of those — a statement that the author has not finished, which they can see.
+        /// The finding is about work STRANDED, so the subject is a program that has some.</para>
+        /// <para>WORK IS COMMANDS OR A BRANCH: the commands may all sit inside a sub-program, and such a program is
+        /// stranded just as completely as one whose commands sit at the top level.</para>
         /// </summary>
         private static void NoEvents(IProjectInspection inspection)
         {
             foreach (ProjectElement program in Programs(inspection.Analyses, SimpleProgramTag))
             {
-                if (!Container(program, "events").Any())
+                if (!Container(program, "events").Any() && CarriesWork(program))
                 {
                     inspection.Report(program, Arguments(("program", Name(program))));
                 }
@@ -88,9 +94,9 @@ namespace Ihc.Vis.Validation
 
         /// <summary>
         /// A program with events and no commands: it starts and does nothing.
-        /// <para>EVENTS MUST BE PRESENT — the row says so, and it is what keeps this row from re-reporting the
-        /// empty default program that <c>logic-program-no-events</c> already names. The two rows therefore never
-        /// both fire on one program.</para>
+        /// <para>EVENTS MUST BE PRESENT — the row says so, and it is also what keeps this row off the shipped empty
+        /// default program, which declares none. The two rows therefore never both fire on one program, and neither
+        /// fires on that default.</para>
         /// </summary>
         private static void NoActions(IProjectInspection inspection)
         {
@@ -209,6 +215,11 @@ namespace Ihc.Vis.Validation
 
         private static IEnumerable<ProjectElement> Container(ProjectElement program, string container) =>
             program.FindChild(container) is { } section ? section.Children : [];
+
+        /// <summary>Whether the program holds anything a trigger could have run: a command, or a branch holding one.</summary>
+        private static bool CarriesWork(ProjectElement program) =>
+            Container(program, "actions").Any()
+            || program.Children.Any(c => c.Tag is SubProgramTag or CaseProgramTag);
 
         private static IEnumerable<ProjectElement> Branches(ProjectElement caseProgram) =>
             caseProgram.Descendants().Where(e => e.Tag == CaseBranchTag);

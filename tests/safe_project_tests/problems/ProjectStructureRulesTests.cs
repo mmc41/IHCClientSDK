@@ -9,7 +9,7 @@ using Ihc.Vis.Validation;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// T060 — the five remaining PROJECT-STRUCTURE rows, and the sixth's deliberate absence.
+    /// T060 — the remaining PROJECT-STRUCTURE rows, and the deliberate absence beside them.
     ///
     /// <para><b>The measurement that shaped this set</b> is <c>struct-product-no-terminals</c>: reading it as "no
     /// <c>dataline_*</c> child" reports every RS485 dimmer and every logging bus sensor in the corpus, because their
@@ -31,44 +31,6 @@ namespace Ihc.Vis.Tests
 
         private static string Message(Project project, string ruleId) =>
             Validate(project).Findings.First(f => f.RuleId == ruleId).Message;
-
-        // ── struct-locality-empty and struct-locality-no-devices ────────────────────────────────────
-
-        [Test]
-        public void AnEmptyLocalityIsReportedAndAFittedOneIsNot()
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(Locality(products: 0, blocks: 0), "struct-locality-empty"), Is.EqualTo(1));
-                Assert.That(Message(Locality(products: 0, blocks: 0), "struct-locality-empty"),
-                    Is.EqualTo("Lokaliteten 'Stue' indeholder hverken produkter eller blokke."));
-                Assert.That(Count(Locality(products: 1, blocks: 0), "struct-locality-empty"), Is.Zero);
-                Assert.That(Count(Locality(products: 0, blocks: 1), "struct-locality-empty"), Is.Zero,
-                    "a room with logic is not empty, even without hardware");
-            });
-        }
-
-        [Test]
-        public void ALocalityWithOnlyBlocksIsTheOtherRow()
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(Locality(products: 0, blocks: 1), "struct-locality-no-devices"), Is.EqualTo(1));
-                Assert.That(Message(Locality(products: 0, blocks: 1), "struct-locality-no-devices"),
-                    Is.EqualTo("Lokaliteten 'Stue' indeholder kun funktionsblokke."));
-                Assert.That(Count(Locality(products: 1, blocks: 1), "struct-locality-no-devices"), Is.Zero);
-                Assert.That(Count(Locality(products: 0, blocks: 0), "struct-locality-no-devices"), Is.Zero,
-                    "an empty room is the other row's finding; the two never both fire");
-            });
-        }
-
-        [Test]
-        public void TheEmptyProjectSkeletonIsTenEmptyRooms()
-        {
-            Assert.That(Count(Authentic("Project0-Tomt.vis"), "struct-locality-empty"), Is.EqualTo(10),
-                "a new project ships ten named localities; the row is true about every one of them, which is what "
-                + "its 'room planned but not yet fitted' disagreement is for");
-        }
 
         // ── struct-product-no-terminals ─────────────────────────────────────────────────────────────
 
@@ -101,46 +63,6 @@ namespace Ihc.Vis.Tests
                     "project3 holds a dimmer and two logging sensors, and reports none of them");
                 Assert.That(Count(Authentic("project5-Dokumentation.vis"), "struct-product-no-terminals"),
                     Is.EqualTo(1), "only the SMS modem");
-            });
-        }
-
-        // ── struct-orphan-block ─────────────────────────────────────────────────────────────────────
-
-        [Test]
-        public void AnUnreachedBlockIsReported()
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(Block(reach: Reach.Nothing), "struct-orphan-block"), Is.EqualTo(1));
-                Assert.That(Message(Block(reach: Reach.Nothing), "struct-orphan-block"),
-                    Is.EqualTo("Blokken 'Blok' er ikke forbundet til resten af installationen."));
-                Assert.That(Count(Block(reach: Reach.Wire), "struct-orphan-block"), Is.Zero, "a wire reaches it");
-                // The referring block is itself unreached, so the project reports IT and not the block under
-                // test: naming the finding is what proves which of the two the rule means.
-                Assert.That(Validate(Block(reach: Reach.Reference)).Findings
-                    .Where(f => f.RuleId == "struct-orphan-block").Select(f => f.Message),
-                    Is.EqualTo(new[] { "Blokken 'Blok B' er ikke forbundet til resten af installationen." })
-                        .AsCollection,
-                    "a reference from outside reaches the block under test; the referrer itself is the orphan");
-            });
-        }
-
-        [Test]
-        public void ABlockReferencingItselfIsStillAnOrphan()
-        {
-            Assert.That(Count(Block(reach: Reach.SelfReference), "struct-orphan-block"), Is.EqualTo(1),
-                "its own program naming its own variable is not the rest of the installation reaching in");
-        }
-
-        [Test]
-        public void TheAuthenticCorpusReportsOnlyIsolatedBlocks()
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(Authentic("Project1-SimpelWired.vis"), "struct-orphan-block"), Is.Zero,
-                    "both its blocks are wired");
-                Assert.That(Count(Authentic("project3-KompleksWired.vis"), "struct-orphan-block"), Is.EqualTo(8),
-                    "eight of its nine blocks really are unwired — the file carries three wired pin pairs in total");
             });
         }
 
@@ -354,19 +276,6 @@ namespace Ihc.Vis.Tests
         private static Project InGroups(params ProjectElement[] localities) =>
             Tree.WithRoot(Tree.Node("groups", Token("groups", 0x20), [("name", "L")], localities));
 
-        /// <summary>One locality holding the given number of products and blocks.</summary>
-        private static Project Locality(int products, int blocks) =>
-            InGroups(
-                Tree.Node("group", Token("group", 0x21), [("name", "Stue"), ("icon", "_0x15")],
-                    [
-                        .. Enumerable.Range(0, products).Select(i => Tree.Node("product_dataline",
-                            Token("product_dataline", 0x40 + i),
-                            [("product_identifier", "_0x2202"), ("name", $"Produkt {i}"), ("icon", "_0x83")],
-                            Tree.Node("dataline_input", Token("dataline_input", 0x50 + i),
-                                [("name", "Klemme"), ("icon", "_0x83")]))),
-                        .. Enumerable.Range(0, blocks).Select(i => BlockShell(0x70 + (i * 0x10), $"Blok {i}", [])),
-                    ]));
-
         /// <summary>A product whose only child is of the given tag.</summary>
         private static Project Product(string childTag) =>
             InGroups(
@@ -374,72 +283,6 @@ namespace Ihc.Vis.Tests
                     Tree.Node("product_dataline", Token("product_dataline", 0x40),
                         [("product_identifier", "_0x2202"), ("name", "Produkt"), ("icon", "_0x83")],
                         Tree.Node(childTag, Token(childTag, 0x50), [("name", "Del"), ("icon", "_0x83")]))));
-
-        private static ProjectElement BlockShell(int at, string name, ProjectElement[] internals) =>
-            Tree.Node("functionblock", Token("functionblock", at), [("name", name), ("icon", "_0xf")],
-                Tree.Node("inputs", Token("inputs", at + 1), [("name", "Input")]),
-                Tree.Node("outputs", Token("outputs", at + 2), [("name", "Output")]),
-                Tree.Node("settings", Token("settings", at + 3), [("name", "Indstillinger")]),
-                Tree.Node("internalsettings", Token("internalsettings", at + 4), [("name", "Interne")], internals),
-                Tree.Node("programs", Token("programs", at + 5), [("name", "Programmer")]));
-
-        /// <summary>How the outside world reaches the block under test.</summary>
-        private enum Reach
-        {
-            Nothing,
-            Wire,
-            Reference,
-            SelfReference,
-        }
-
-        /// <summary>One block, reached (or not) in the given way.</summary>
-        private static Project Block(Reach reach)
-        {
-            ProjectElement pin = reach == Reach.Wire
-                ? Tree.Node("resource_input", Token("resource_input", 0x80),
-                    [("name", "Indgang"), ("note", "N"), ("icon", "_0x36")],
-                    Tree.Node("link_to_resource", Token("link_to_resource", 0x88),
-                        [("name", "Link"), ("link", Token("link_from_resource", 0x89))]))
-                : Tree.Node("resource_input", Token("resource_input", 0x80),
-                    [("name", "Indgang"), ("note", "N"), ("icon", "_0x36")]);
-
-            ProjectElement block = Tree.Node("functionblock", Token("functionblock", 0x70),
-                [("name", "Blok"), ("icon", "_0xf")],
-                Tree.Node("inputs", Token("inputs", 0x71), [("name", "Input")], pin),
-                Tree.Node("outputs", Token("outputs", 0x72), [("name", "Output")]),
-                Tree.Node("settings", Token("settings", 0x73), [("name", "Indstillinger")]),
-                Tree.Node("internalsettings", Token("internalsettings", 0x74), [("name", "Interne")]),
-                Tree.Node("programs", Token("programs", 0x75), [("name", "Programmer")],
-                    reach == Reach.SelfReference
-                        ? [Tree.Node("program_simple", Token("program_simple", 0x90), [("name", "Program")],
-                            Tree.Node("events", Token("events", 0x91), [("name", "Hændelser")],
-                                Tree.Node("event", Token("event", 0x92),
-                                    [("name", "%P -> ON"), ("link1", Token("resource_input", 0x80)),
-                                     ("method", "_0xa")])),
-                            Tree.Node("actions", Token("actions", 0x93),
-                                [("name", "Kommandoer"), ("type", "_0x2")]))]
-                        : []));
-
-            // a second block whose program names the first block's pin: a reference from outside
-            ProjectElement referrer = Tree.Node("functionblock", Token("functionblock", 0xa0),
-                [("name", "Blok B"), ("icon", "_0xf")],
-                Tree.Node("inputs", Token("inputs", 0xa1), [("name", "Input")]),
-                Tree.Node("outputs", Token("outputs", 0xa2), [("name", "Output")]),
-                Tree.Node("settings", Token("settings", 0xa3), [("name", "Indstillinger")]),
-                Tree.Node("internalsettings", Token("internalsettings", 0xa4), [("name", "Interne")]),
-                Tree.Node("programs", Token("programs", 0xa5), [("name", "Programmer")],
-                    Tree.Node("program_simple", Token("program_simple", 0xb0), [("name", "Program")],
-                        Tree.Node("events", Token("events", 0xb1), [("name", "Hændelser")],
-                            Tree.Node("event", Token("event", 0xb2),
-                                [("name", "%P -> ON"), ("link1", Token("resource_input", 0x80)),
-                                 ("method", "_0xa")])),
-                        Tree.Node("actions", Token("actions", 0xb3),
-                            [("name", "Kommandoer"), ("type", "_0x2")]))));
-
-            return InGroups(
-                Tree.Node("group", Token("group", 0x21), [("name", "Stue"), ("icon", "_0x15")],
-                    reach == Reach.Reference ? [block, referrer] : [block]));
-        }
 
         /// <summary>Two localities; the second either carries an icon, or the first's is the only one.</summary>
         private static Project Icons(bool secondHasIcon, bool explicitNullToken = false)

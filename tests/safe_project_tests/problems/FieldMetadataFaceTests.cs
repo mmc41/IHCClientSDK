@@ -144,7 +144,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void ATraversalRuleContributesNothingToADialog()
         {
-            RuleSet rules = SetOf((Entry("link-output-undriven", Pin, RuleFaces.WholeProject), null));
+            RuleSet rules = SetOf((Entry("link-output-multidriven", Pin, RuleFaces.WholeProject), null));
 
             Assert.Multiple(() =>
             {

@@ -118,23 +118,23 @@ public class ProblemsNavigationTests
     // ── Ambiguous ids ───────────────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// <c>Project0-Tomt</c> with the locality <c>Bad</c> re-stamped with <c>Stue</c>'s id, so two
-    /// <c>&lt;group&gt;</c>s carry <c>_0x2132</c> and every one of the ten localities is still empty — ten
-    /// <c>struct-locality-empty</c> findings, two of them anchored at the same token.
+    /// <c>Project6-Errors</c> with the scene <c>Alt slukket</c> re-stamped with <c>Tom scene</c>'s id, so two
+    /// <c>resource_scene</c> pins carry <c>_0x1f44a</c> and all three of the fixture's scenes are still called
+    /// from no program — three <c>scene-unreferenced</c> findings, two of them anchored at the same token.
     /// </summary>
     /// <remarks>
     /// Patched as BYTES over a copy in the harness' temp directory. The two tokens are the same length, so
     /// nothing after the replacement shifts and the fixture's Latin-1 bytes and CRLFs reach the loader exactly as
     /// committed — a re-encode through a string would rewrite the whole file to make one attribute collide.
     /// </remarks>
-    private static string ProjectWithTwoLocalitiesSharingAnId(ShellHarness harness)
+    private static string ProjectWithTwoScenesSharingAnId(ShellHarness harness)
     {
-        byte[] bytes = File.ReadAllBytes(ProblemsTestData.FixturePath("Project0-Tomt.vis"));
-        int at = bytes.AsSpan().IndexOf("_0x2632"u8);
+        byte[] bytes = File.ReadAllBytes(ProblemsTestData.FixturePath("Project6-Errors.vis"));
+        int at = bytes.AsSpan().IndexOf("_0x1f54a"u8);
         Assert.That(at, Is.GreaterThanOrEqualTo(0), "the fixture still carries the id token this test re-stamps");
-        "_0x2132"u8.CopyTo(bytes.AsSpan(at));
+        "_0x1f44a"u8.CopyTo(bytes.AsSpan(at));
 
-        string path = harness.TempPath("two-localities-one-id.vis");
+        string path = harness.TempPath("two-scenes-one-id.vis");
         File.WriteAllBytes(path, bytes);
         return path;
     }
@@ -152,15 +152,15 @@ public class ProblemsNavigationTests
     /// </remarks>
     private static async Task<ProblemRowViewModel[]> ProjectedRowsAsync(ShellHarness harness)
     {
-        Project snapshot = await harness.ProjectService.Load(ProjectWithTwoLocalitiesSharingAnId(harness));
+        Project snapshot = await harness.ProjectService.Load(ProjectWithTwoScenesSharingAnId(harness));
         Dictionary<ElementId, ProjectElement?> byId = ProblemsPanelViewModel.IndexById(snapshot);
         return [.. harness.ProjectService.ValidateStructured(snapshot)
             .Select(f => ProblemsPanelViewModel.ToRow(f, snapshot, byId))];
     }
 
-    /// <summary>The empty-locality row for one locality, found by the name its own message carries.</summary>
-    private static ProblemRowViewModel EmptyLocalityRow(ProblemRowViewModel[] rows, string name) =>
-        rows.Single(r => r.Code == "struct-locality-empty" && r.Message.Contains($"'{name}'"));
+    /// <summary>The unreferenced-scene row for one scene, found by the name its own message carries.</summary>
+    private static ProblemRowViewModel UnreferencedSceneRow(ProblemRowViewModel[] rows, string name) =>
+        rows.Single(r => r.Code == "scene-unreferenced" && r.Message.Contains($"'{name}'"));
 
     /// <summary>
     /// Two elements carrying one id — the state the engine has an <c>id-duplicate-token</c> rule for. The panel
@@ -177,22 +177,22 @@ public class ProblemsNavigationTests
         Assert.That(rows.Select(r => r.Code), Does.Contain("id-duplicate-token"),
             "precondition: the re-stamped file really does collide, or nothing below proves anything");
 
-        ProblemRowViewModel bad = EmptyLocalityRow(rows, "Bad");
-        ProblemRowViewModel stue = EmptyLocalityRow(rows, "Stue");
+        ProblemRowViewModel restamped = UnreferencedSceneRow(rows, "Alt slukket");
+        ProblemRowViewModel original = UnreferencedSceneRow(rows, "Tom scene");
 
         Assert.Multiple(() =>
         {
-            Assert.That(bad.ElementName, Is.EqualTo("_0x2132"),
-                "the row about 'Bad' must not present itself as being about 'Stue'. The two share a token, so "
-                + "the honest cell is the token the engine recorded — a name resolved through the index would be "
-                + "whichever holder the tree walk reached first");
-            Assert.That(stue.ElementName, Is.EqualTo("_0x2132"),
+            Assert.That(restamped.ElementName, Is.EqualTo("_0x1f44a"),
+                "the row about 'Alt slukket' must not present itself as being about 'Tom scene'. The two share a "
+                + "token, so the honest cell is the token the engine recorded — a name resolved through the index "
+                + "would be whichever holder the tree walk reached first");
+            Assert.That(original.ElementName, Is.EqualTo("_0x1f44a"),
                 "and the first holder gets the same treatment: the ambiguity belongs to the TOKEN, so demoting "
                 + "only the later holder would still show one of the two a name it cannot earn");
-            Assert.That(bad.IsNavigable, Is.False,
+            Assert.That(restamped.IsNavigable, Is.False,
                 "a shared token names no single site, so there is nowhere to go — and a click that silently "
                 + "landed on one of the two is the defect this test exists for");
-            Assert.That(stue.IsNavigable, Is.False);
+            Assert.That(original.IsNavigable, Is.False);
             Assert.That(rows.Single(r => r.Code == "id-duplicate-token").IsNavigable, Is.False,
                 "including the collision's own row: the engine anchors it at the first holder, which is the one "
                 + "element it can name, but the id it reports still resolves to two");
@@ -205,14 +205,14 @@ public class ProblemsNavigationTests
         using ShellHarness harness = ShellHarness.Create();
         ProblemRowViewModel[] rows = await ProjectedRowsAsync(harness);
 
-        ProblemRowViewModel garage = EmptyLocalityRow(rows, "Garage");
+        ProblemRowViewModel untouched = UnreferencedSceneRow(rows, "Modstrid");
 
         Assert.Multiple(() =>
         {
-            Assert.That(garage.ElementName, Is.EqualTo("Garage"),
-                "one collision in the file demotes that token and nothing else — the other nine localities keep "
-                + "their names");
-            Assert.That(garage.IsNavigable, Is.True);
+            Assert.That(untouched.ElementName, Is.EqualTo("Modstrid"),
+                "one collision in the file demotes that token and nothing else — every other element keeps its "
+                + "name");
+            Assert.That(untouched.IsNavigable, Is.True);
         });
     }
 
@@ -239,7 +239,7 @@ public class ProblemsNavigationTests
         using ProblemsShellRig rig = new();
         await rig.Shell.InitializeAsync();
 
-        bool opened = await rig.Harness.Session.OpenAsync(ProjectWithTwoLocalitiesSharingAnId(rig.Harness));
+        bool opened = await rig.Harness.Session.OpenAsync(ProjectWithTwoScenesSharingAnId(rig.Harness));
         await rig.SettleAsync();
 
         Assert.Multiple(() =>

@@ -113,7 +113,10 @@ namespace Ihc.Vis.Validation
                 bool untouched = element.Tag switch
                 {
                     "group" => name == NewLocalityName,
-                    "functionblock" => name == EmptyBlockTemplateName || name == InsertName(element),
+                    // Through the shared reader, which knows both the versioned and the versionless library form,
+                    // so this row cannot mistake one for a renamed block.
+                    "functionblock" => name == EmptyBlockTemplateName
+                        || name == LibraryBlockIdentity.InsertName(element),
                     _ => false,
                 };
 
@@ -190,13 +193,5 @@ namespace Ihc.Vis.Validation
                 }
             };
 
-        // ---- the shared reads ------------------------------------------------------------------------------
-
-        /// <summary>
-        /// The name a library block carries at insert, from the shared reader. <c>logic-master-block-modified</c>
-        /// asks the opposite question of the same three attributes, so the reconstruction lives in one place and
-        /// the two rows cannot disagree about what an insert name is.
-        /// </summary>
-        private static string? InsertName(ProjectElement block) => LibraryBlockIdentity.InsertName(block);
     }
 }

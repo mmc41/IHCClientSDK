@@ -7,7 +7,7 @@ using Ihc.Vis.Schema;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// T046 — the eight WIRING rows, per rule, over the partitions each one's predicate names.
+    /// T046 — the WIRING rows, per rule, over the partitions each one's predicate names.
     ///
     /// <para><b>Built as synthetic trees, and that is the only way to reach these conditions deliberately.</b> An
     /// authentic file carries whatever wiring its author happened to make; a tree built here carries exactly one
@@ -16,8 +16,14 @@ namespace Ihc.Vis.Tests
     /// rules produce over five vendor-authored files, so a predicate that grew a false positive shows up there.</para>
     ///
     /// <para><b>Each rule is tested at the boundary its predicate states</b>: nought/one/two drivers for the
-    /// multi-driven row, one linked pin versus none for the two block rows, same/different locality, and — for the
-    /// pass-through row — a legal bypass versus an illegal one, which is the exclusion that makes the row true.</para>
+    /// multi-driven row, one linked pin versus none for the two block rows, and — for the pass-through row — a
+    /// legal bypass versus an illegal one, which is the exclusion that makes the row true.</para>
+    ///
+    /// <para><b>The per-pin rows are gone, and the boundary tests here are what replaced them.</b> A spare terminal
+    /// on an installed product is what a plate of buttons and indicators looks like when the author wires the two
+    /// they need, so a per-pin reading stated its own consequence falsely once per terminal they declined. The
+    /// subject is the PRODUCT — no pin of it wired in either direction — and the tests below pin both halves of
+    /// that: the untouched product fires, and one wire anywhere on it is enough to silence the row.</para>
     /// </summary>
     [TestFixture]
     public sealed class WiringRulesTests
@@ -31,50 +37,81 @@ namespace Ihc.Vis.Tests
         private static string[] Messages(Project project, string ruleId) =>
             [.. Validate(project).Findings.Where(f => f.RuleId == ruleId).Select(f => f.Message)];
 
-        // ── link-input-unconnected ──────────────────────────────────────────────────────────────────
+        /// <summary>The structured finding, which is where a row's related sites are visible at all.</summary>
+        private static ValidationFinding Structured(Project project, string code) =>
+            new ProjectAppService(TestSetup.Settings).ValidateStructured(project)
+                .Single(f => f.Code.Value == code);
+
+        // ── link-product-unwired ────────────────────────────────────────────────────────────────────
 
         [Test]
-        public void AProductInputWithNoLinkIsReported_AndOneWithALinkIsNot()
+        public void AProductWithNoWiredPinAtAllIsReportedOnce_WithItsPinsAsRelatedSites()
         {
-            Project unwired = Tree.WithRoot(Locality(Product(Input(0x52, "Tryk", wired: false))));
-            Project wired = Tree.WithRoot(Locality(Product(Input(0x52, "Tryk", wired: true))));
+            Project unwired = Tree.WithRoot(Locality(Product(
+                Input(0x52, "Tryk 1", wired: false),
+                Input(0x54, "Tryk 2", wired: false),
+                Output(0x53, "LED", drivers: 0))));
 
             Assert.Multiple(() =>
             {
-                Assert.That(Count(unwired, "link-input-unconnected"), Is.EqualTo(1));
-                Assert.That(Messages(unwired, "link-input-unconnected").Single(), Does.Contain("Tryk"),
-                    "the pin's own name is bound into the sentence");
-                Assert.That(Count(wired, "link-input-unconnected"), Is.Zero, "a wired input is not reported");
+                Assert.That(Count(unwired, "link-product-unwired"), Is.EqualTo(1),
+                    "ONE finding for the product, not one per terminal");
+                Assert.That(Messages(unwired, "link-product-unwired").Single(),
+                    Is.EqualTo("Produktet 'Produkt' har ingen forbundne ind- eller udgange."),
+                    "the product's own name is bound into the sentence");
+                Assert.That(Structured(unwired, "link-product-unwired").Related, Has.Length.EqualTo(3),
+                    "every unwired pin is a related site — the reader has to see what the product offers");
+            });
+        }
+
+        /// <summary>
+        /// ONE WIRE ANYWHERE IS ENOUGH, in either direction, and this is the whole reason the row is per product.
+        /// A plate whose two buttons are wired and whose indicator LEDs are not is an installed, working product;
+        /// the per-pin rows this replaced reported the LEDs, once each, on every such plate in a real installation.
+        /// </summary>
+        [Test]
+        public void OneWiredPinInEitherDirectionSilencesTheRow()
+        {
+            Project inputWired = Tree.WithRoot(Locality(Product(
+                Input(0x52, "Tryk", wired: true), Output(0x53, "LED", drivers: 0))));
+            Project outputWired = Tree.WithRoot(Locality(Product(
+                Input(0x52, "Tryk", wired: false), Output(0x53, "LED", drivers: 1))));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(inputWired, "link-product-unwired"), Is.Zero,
+                    "the buttons are wired; the indicator the author left spare is not this row's business");
+                Assert.That(Count(outputWired, "link-product-unwired"), Is.Zero,
+                    "and a product driven but never read is installed just as much");
             });
         }
 
         [Test]
-        public void AWirelessProductInputIsInTheSubjectSetToo()
+        public void AProductOfOnlyInputsOrOnlyOutputsIsJudgedTheSameWay()
         {
-            Project project = Tree.WithRoot(Locality(
+            Project inputsOnly = Tree.WithRoot(Locality(Product(Input(0x52, "Tryk", wired: false))));
+            Project outputsOnly = Tree.WithRoot(Locality(Product(Output(0x53, "Udgang", drivers: 0))));
+            Project wirelessOnly = Tree.WithRoot(Locality(
                 Tree.Node("product_airlink", Token("product_airlink", 0x60),
                     [("product_identifier", "_0x2202"), ("name", "Trådløs")],
                     Pin("airlink_input", 0x61, "Trådløst tryk", null))));
 
-            Assert.That(Count(project, "link-input-unconnected"), Is.EqualTo(1),
-                "the row says wired OR wireless, and the measured never-a-sink family is both");
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(inputsOnly, "link-product-unwired"), Is.EqualTo(1));
+                Assert.That(Count(outputsOnly, "link-product-unwired"), Is.EqualTo(1));
+                Assert.That(Count(wirelessOnly, "link-product-unwired"), Is.EqualTo(1),
+                    "the subject is wired OR wireless, as the measured pin families are");
+            });
         }
 
-        // ── link-output-undriven, and the scenario exclusion ────────────────────────────────────────
-
+        /// <summary>
+        /// THE SCENARIO EXCLUSION SURVIVES THE RESHAPE, and it has to: a lamp module a scenario recalls carries no
+        /// follow-link at all, so without this the row would report every scene-driven product in the corpus.
+        /// </summary>
         [Test]
-        public void AProductOutputWithNoLinkIsReported()
+        public void AProductWhoseOnlyConsumerIsAScenarioIsNotReported()
         {
-            Project project = Tree.WithRoot(Locality(Product(Output(0x53, "Udgang", drivers: 0))));
-
-            Assert.That(Count(project, "link-output-undriven"), Is.EqualTo(1));
-        }
-
-        [Test]
-        public void AnOutputAScenarioDrivesIsNotReported()
-        {
-            // The scenes container names the output resource: a scenario switches it, so "can never be switched"
-            // would be a false statement about this pin.
             Project project = Tree.WithRoot(Locality(
                 Tree.Node("product_dataline", Token("product_dataline", 0x51),
                     [("product_identifier", "_0x2202"), ("name", "Produkt")],
@@ -84,8 +121,27 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(Count(project, "link-output-undriven"), Is.Zero, "the declared exclusion");
+                Assert.That(Count(project, "link-product-unwired"), Is.Zero, "the declared exclusion");
                 Assert.That(Count(project, "link-output-multidriven"), Is.Zero);
+            });
+        }
+
+        /// <summary>
+        /// A product with nothing wirable on it is <c>struct-product-no-terminals</c>' finding, not this one — the
+        /// two subjects do not overlap, and a modem must not draw both.
+        /// </summary>
+        [Test]
+        public void AProductWithNoPinsAtAllIsTheStructureRowsFinding()
+        {
+            Project modem = Tree.WithRoot(Locality(
+                Tree.Node("product_dataline", Token("product_dataline", 0x51),
+                    [("product_identifier", "_0x2202"), ("name", "Modem")])));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(modem, "link-product-unwired"), Is.Zero,
+                    "no pin means no unwired pin — there is nothing this row could name");
+                Assert.That(Count(modem, "struct-product-no-terminals"), Is.EqualTo(1));
             });
         }
 
@@ -128,6 +184,29 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        /// <summary>
+        /// A BLOCK THAT STARTS ITSELF IS NOT WAITING FOR A WIRE. The row's sentence is "the trigger never arrives",
+        /// and it is simply false of a clock block, of one triggered at power-up, and of one woken by a resource
+        /// another block owns. Each of those is decidable from the file: an <c>event_power</c>, or an
+        /// <c>&lt;event&gt;</c> whose <c>link1</c> resolves outside this block's own <c>inputs</c> container.
+        /// </summary>
+        [Test]
+        public void ABlockWithAnAutonomousStartIsNotWaitingForAnInput()
+        {
+            Project powerUp = Tree.WithRoot(Locality(
+                Block(0x70, "Powerup - Altid tændt", wiredInput: false, wiredOutput: true, start: Start.PowerUp)));
+            Project foreignTrigger = Tree.WithRoot(Locality(
+                Block(0x70, "Ur", wiredInput: false, wiredOutput: true, start: Start.InternalTimer)));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(powerUp, "link-fb-input-unfed"), Is.Zero,
+                    "the controller starts it; no wire ever had to");
+                Assert.That(Count(foreignTrigger, "link-fb-input-unfed"), Is.Zero,
+                    "its trigger arrives from a resource outside its own inputs container");
+            });
+        }
+
         [Test]
         public void ABlockWithNoConsumedOutputIsReportedOnce_AndAScenePinCounts()
         {
@@ -155,23 +234,6 @@ namespace Ihc.Vis.Tests
                 Assert.That(Count(project, "link-fb-input-unfed"), Is.Zero,
                     "a block that declares no input cannot be missing a link on one");
                 Assert.That(Count(project, "link-fb-output-unused"), Is.Zero);
-            });
-        }
-
-        // ── link-crosses-locality ───────────────────────────────────────────────────────────────────
-
-        [Test]
-        public void ALinkInsideOneLocalityIsFine_OneAcrossTwoIsReportedOnce()
-        {
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(CrossLocalityTree(sameLocality: true), "link-crosses-locality"), Is.Zero);
-
-                Project across = CrossLocalityTree(sameLocality: false);
-                Assert.That(Count(across, "link-crosses-locality"), Is.EqualTo(1),
-                    "ONE finding for one wire — reporting both halves would say it twice");
-                Assert.That(Messages(across, "link-crosses-locality").Single(),
-                    Does.Contain("Stue").And.Contain("Logik"), "both locality names are bound");
             });
         }
 
@@ -389,9 +451,27 @@ namespace Ihc.Vis.Tests
                     Tree.Node("link_to_resource", Token("link_to_resource", at + 0x200 + i),
                         [("name", "Følg Link"), ("link", Token("resource_output", 0x73))]))]);
 
+        /// <summary>
+        /// What makes a block's program run. The three are mutually exclusive, which is why they are one parameter
+        /// and not a boolean each — <c>link-fb-input-unfed</c> discriminates on exactly this.
+        /// </summary>
+        private enum Start
+        {
+            /// <summary>An event on one of the block's own input pins: it waits for a wire.</summary>
+            InputPin,
+
+            /// <summary>An <c>event_power</c>: it runs at power-up and waits for nothing.</summary>
+            PowerUp,
+
+            /// <summary>An event on a timer the block owns: it starts itself.</summary>
+            InternalTimer,
+        }
+
         /// <summary>A block with three inputs, one output and a scene pin — the shape a catalog block has.</summary>
+        /// <param name="start">What makes its program run; an input pin unless stated.</param>
         private static ProjectElement Block(
-            int at, string name, bool wiredInput, bool wiredOutput, bool sceneWired = false) =>
+            int at, string name, bool wiredInput, bool wiredOutput, bool sceneWired = false,
+            Start start = Start.InputPin) =>
             Tree.Node("functionblock", Token("functionblock", at), [("name", name)],
                 Tree.Node("inputs", Token("inputs", at + 1), [("name", "Input")],
                     Pin("resource_input", at + 0x10, "Kip", wiredInput ? Half("link_to_resource", at + 0x10) : null),
@@ -401,9 +481,11 @@ namespace Ihc.Vis.Tests
                     Pin("resource_output", at + 0x20, "Udgang", wiredOutput ? Half("link_from_resource", at + 0x20) : null),
                     Pin("resource_scene", at + 0x21, "Scenarie", sceneWired ? Half("scene_link", at + 0x21) : null)),
                 Tree.Node("settings", Token("settings", at + 3), [("name", "S")]),
-                Tree.Node("internalsettings", Token("internalsettings", at + 4), [("name", "IS")]),
+                Tree.Node("internalsettings", Token("internalsettings", at + 4), [("name", "IS")],
+                    start == Start.InternalTimer ? [Pin("resource_timer", at + 0x30, "Ur", null)] : []),
                 Tree.Node("programs", Token("programs", at + 5), [("name", "P")],
-                    Program(at + 6, at + 0x10, at + 0x20)));
+                    Program(
+                        at + 6, start == Start.InternalTimer ? at + 0x30 : at + 0x10, at + 0x20, start: start)));
 
         private static ProjectElement[] Half(string tag, int at) =>
             [Tree.Node(tag, Token(tag, at + 0x300), [("name", "Følg Link"), ("link", Token("resource_input", 0x300))])];
@@ -427,11 +509,18 @@ namespace Ihc.Vis.Tests
                 Tree.Node("internalsettings", Token("internalsettings", at + 4), [("name", "IS")]),
                 Tree.Node("programs", Token("programs", at + 5), [("name", "P")]));
 
-        private static ProjectElement Program(int at, int inputAt, int outputAt, bool extraAction = false) =>
+        /// <param name="triggerAt">The element the program's event names — an input pin, or the block's own timer.</param>
+        private static ProjectElement Program(
+            int at, int triggerAt, int outputAt, bool extraAction = false, Start start = Start.InputPin) =>
             Tree.Node("program_simple", Token("program_simple", at), [("name", "Kip")],
                 Tree.Node("events", Token("events", at + 1), [("name", "Hændelser")],
-                    Tree.Node("event", Token("event", at + 2),
-                        [("name", "%P -> ON"), ("link1", Token("resource_input", inputAt)), ("method", "_0xa")])),
+                    start == Start.PowerUp
+                        ? Tree.Node("event_power", Token("event_power", at + 2), [("name", "Powerup")])
+                        : Tree.Node("event", Token("event", at + 2),
+                            [("name", "%P -> ON"),
+                                ("link1", Token(
+                                    start == Start.InternalTimer ? "resource_timer" : "resource_input", triggerAt)),
+                                ("method", "_0xa")])),
                 Tree.Node("actions", Token("actions", at + 3), [("name", "Kommandoer"), ("type", "_0x2")],
                     [.. Actions(at, outputAt, extraAction)]));
 
@@ -447,33 +536,6 @@ namespace Ihc.Vis.Tests
             }
 
             return [.. actions];
-        }
-
-        /// <summary>Two localities, with one follow-link that either stays inside one or crosses.</summary>
-        private static Project CrossLocalityTree(bool sameLocality)
-        {
-            ProjectElement fromHalf = Tree.Node("link_from_resource", Token("link_from_resource", 0x400),
-                [("name", "Følg Link"), ("link", Token("link_to_resource", 0x401))]);
-            ProjectElement toHalf = Tree.Node("link_to_resource", Token("link_to_resource", 0x401),
-                [("name", "Følg Link"), ("link", Token("link_from_resource", 0x400))]);
-
-            ProjectElement product = Tree.Node("product_dataline", Token("product_dataline", 0x51),
-                [("product_identifier", "_0x2202"), ("name", "Produkt")],
-                Tree.Node("dataline_input", Token("dataline_input", 0x52), [("name", "Tryk")], fromHalf));
-            ProjectElement block = Tree.Node("functionblock", Token("functionblock", 0x70), [("name", "Blok")],
-                Tree.Node("inputs", Token("inputs", 0x71), [("name", "Input")],
-                    Tree.Node("resource_input", Token("resource_input", 0x72), [("name", "Kip")], toHalf)),
-                Tree.Node("outputs", Token("outputs", 0x73), [("name", "Output")]),
-                Tree.Node("settings", Token("settings", 0x74), [("name", "S")]),
-                Tree.Node("internalsettings", Token("internalsettings", 0x75), [("name", "IS")]),
-                Tree.Node("programs", Token("programs", 0x76), [("name", "P")]));
-
-            return sameLocality
-                ? Tree.WithRoot(Tree.Node("groups", Token("groups", 0x20), [("name", "L")],
-                    Tree.Node("group", Token("group", 0x21), [("name", "Stue")], product, block)))
-                : Tree.WithRoot(Tree.Node("groups", Token("groups", 0x20), [("name", "L")],
-                    Tree.Node("group", Token("group", 0x21), [("name", "Stue")], product),
-                    Tree.Node("group", Token("group", 0x22), [("name", "Logik")], block)));
         }
 
         /// <summary>

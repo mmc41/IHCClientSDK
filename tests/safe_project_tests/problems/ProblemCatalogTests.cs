@@ -39,16 +39,16 @@ namespace Ihc.Vis.Tests
                 Assert.That(Catalog.Total, Is.EqualTo(project.Count + definitions.Count + outcomes.Count),
                     "every entry is in exactly one section");
 
-                // 161 live project rows, plus the 4 that were investigated and ruled out, plus the 3 that were
-                // SPLIT and retired. All three kinds keep their ids occupied, which is the whole reservation
+                // The live project rows, plus the ones that were investigated and ruled out, plus the ones that
+                // were SPLIT and retired. All three kinds keep their ids occupied, which is the whole reservation
                 // mechanism: an entry that stays is an id that can never be handed to a different condition.
                 // The fourth ruled-out row is T048's `addr-unassigned`: its condition is what `doc-address`
                 // already reports, on the same elements, which the catalogue row itself admits. The retired rows
                 // are `dataline-address`, `capacity-modules-exceeded` (split into the three capacity rows under
                 // D2) and `capacity-addresses` (split again, per direction, so a project over on both no longer
                 // reports two findings distinguishable only by their numbers).
-                Assert.That(project, Has.Count.EqualTo(180));
-                Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Active), Is.EqualTo(173));
+                Assert.That(project, Has.Count.EqualTo(167));
+                Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Active), Is.EqualTo(160));
                 Assert.That(project.Count(e => e.Status == ProblemCodeStatus.RuledOut), Is.EqualTo(4));
                 Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Retired), Is.EqualTo(3));
 

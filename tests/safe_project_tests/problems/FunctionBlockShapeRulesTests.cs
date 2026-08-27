@@ -1092,33 +1092,43 @@ namespace Ihc.Vis.Tests
                 "the row is about two programs in the SAME block; two blocks may do the same thing");
         }
 
-        // ── logic-master-block-modified ─────────────────────────────────────────────────────────────
+        // ── the library-block naming border ─────────────────────────────────────────────────────────
 
+        /// <summary>
+        /// A LIBRARY BLOCK RENAMED BY ITS AUTHOR DRAWS NOTHING, and that is the deletion this test records.
+        /// <c>logic-master-block-modified</c> compared a block's <c>name</c> with the insert name rebuilt from its
+        /// master identity, so every descriptive rename — <i>Kip tænd sluk (lokalt tilpasset)</i>, the very thing
+        /// the vendor's own naming guidance asks for — was reported as a local modification the block had not
+        /// necessarily undergone. Paired with <c>name-default</c> it also guaranteed each reconstructible library
+        /// block exactly one advisory whatever its author did, which is a row that carries no information.
+        ///
+        /// <para>What survives is the half that is TRUE of a name: <c>name-default</c> still reports a block left
+        /// AT its insert name. Content that genuinely diverges from the library is
+        /// <c>logic-block-locked-content</c>'s finding — it compares against the library body — and a version that
+        /// does is <c>fb-master-version-differs</c>'s.</para>
+        /// </summary>
         [Test]
-        public void ALibraryBlockRenamedAwayFromItsInsertNameIsReported()
+        public void ARenamedLibraryBlockIsNoLongerReported()
         {
+            Project renamed = LibraryBlock("Kip tænd sluk (lokalt tilpasset)");
+            Project untouched = LibraryBlock("1.1.01.e. Kip tænd sluk");
+
             Assert.Multiple(() =>
             {
-                Assert.That(Count(LibraryBlock("Kip tænd sluk (lokalt tilpasset)"), "logic-master-block-modified"),
-                    Is.EqualTo(1), "the error fixture's own witness, in miniature");
-                Assert.That(Message(LibraryBlock("Kip tænd sluk (lokalt tilpasset)"), "logic-master-block-modified"),
-                    Is.EqualTo("Blokken 'Kip tænd sluk (lokalt tilpasset)' er ændret lokalt i forhold til "
-                        + "biblioteksblokken 'Kip tænd sluk'."));
-                Assert.That(Count(LibraryBlock("1.1.01.e. Kip tænd sluk"), "logic-master-block-modified"), Is.Zero,
-                    "a block still at its insert name is name-default's finding, not this one");
+                Assert.That(Validate(renamed).Findings.Select(f => f.RuleId), Has.None.EqualTo("name-default"),
+                    "the block moved away from its insert name, which is what that row is about");
+                Assert.That(Count(untouched, "name-default"), Is.EqualTo(1),
+                    "and the block left at its insert name is still named by the row that survives");
             });
         }
 
+        /// <summary>
+        /// The versionless library form the shared reader also understands — a block whose master identity carries
+        /// <c>master_type</c> and <c>master_name</c> but no version.
+        /// </summary>
         [Test]
-        public void AVersionlessLibraryBlockRenamedAwayFromItsInsertNameIsReported()
+        public void TheVersionlessLibraryFormIsRecognisedByTheSurvivingRow()
         {
-            Project renamed = Tree.WithRoot(Locality(
-                Tree.Node("functionblock", Token("functionblock", 0x70),
-                    [
-                        ("name", "Driftstimer, garage"), ("master_type", "4.1.04"),
-                        ("master_name", "Driftstimetæller"), ("locked", "yes"),
-                    ],
-                    [.. Sections(0x70, 1, 1, [Program(0x90, "Program", 0x80)])])));
             Project untouched = Tree.WithRoot(Locality(
                 Tree.Node("functionblock", Token("functionblock", 0x70),
                     [
@@ -1127,46 +1137,8 @@ namespace Ihc.Vis.Tests
                     ],
                     [.. Sections(0x70, 1, 1, [Program(0x90, "Program", 0x80)])])));
 
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(renamed, "logic-master-block-modified"), Is.EqualTo(1),
-                    "the versionless library form, which T055b taught the shared reader");
-                Assert.That(Count(untouched, "logic-master-block-modified"), Is.Zero);
-                Assert.That(Count(untouched, "name-default"), Is.EqualTo(1),
-                    "and the partition holds for the versionless form as well");
-            });
-        }
-
-        [Test]
-        public void ABlockTheUserSavedToTheLibraryIsNeverReported()
-        {
-            Project saved = Tree.WithRoot(Locality(
-                Tree.Node("functionblock", Token("functionblock", 0x70),
-                    [("name", "GemOracle"), ("master_name", "GemOracle"), ("locked", "yes")],
-                    [.. Sections(0x70, 1, 1, [])])));
-
-            Assert.That(Count(saved, "logic-master-block-modified"), Is.Zero,
-                "it keeps master_name but gets no master_type, so no insert name exists to differ from — and such "
-                + "a block IS its own library entry");
-        }
-
-        /// <summary>
-        /// The border between this row and <c>name-default</c>, asserted rather than left to a reader's memory:
-        /// between them, every reconstructible library block draws exactly one advisory.
-        /// </summary>
-        [Test]
-        public void TheTwoLibraryBlockRowsPartitionTheSamePopulation()
-        {
-            Project untouched = LibraryBlock("1.1.01.e. Kip tænd sluk");
-            Project renamed = LibraryBlock("Kip tænd sluk (lokalt tilpasset)");
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(Count(untouched, "name-default"), Is.EqualTo(1));
-                Assert.That(Count(untouched, "logic-master-block-modified"), Is.Zero);
-                Assert.That(Count(renamed, "name-default"), Is.Zero);
-                Assert.That(Count(renamed, "logic-master-block-modified"), Is.EqualTo(1));
-            });
+            Assert.That(Count(untouched, "name-default"), Is.EqualTo(1),
+                "the versionless insert name reconstructs, so a block still at it is reported");
         }
 
         // ── logic-block-locked-content (D27) ────────────────────────────────────────────────────────
@@ -1215,8 +1187,7 @@ namespace Ihc.Vis.Tests
         {
             Assert.That(Count(LockedLibraryBlock("5", locked: false), "logic-block-locked-content", Library("3")),
                 Is.Zero,
-                "an unlocked block may be edited freely; a block edited away from its library is "
-                + "logic-master-block-modified's finding when its NAME moved");
+                "an unlocked block may be edited freely — the lock is what this row is about");
         }
 
         [Test]
@@ -1237,8 +1208,8 @@ namespace Ihc.Vis.Tests
         {
             Assert.That(Count(LockedLibraryBlock("5"), "logic-block-locked-content", Library("3", named: "Andet")),
                 Is.Zero,
-                "pairing is by NAME; a variable the library has no counterpart for is a structural difference and "
-                + "stays logic-master-block-modified's finding");
+                "pairing is by NAME; a variable the library has no counterpart for is a structural difference "
+                + "rather than an edited value, and is nobody's finding");
         }
 
         // ── tree builders ───────────────────────────────────────────────────────────────────────────

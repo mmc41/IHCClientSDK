@@ -498,7 +498,7 @@ namespace Ihc.Vis.Tests
         /// <para>
         /// THE VALIDATION LAYER IS EXCLUDED WHOLESALE, and finding out why was the arming pass: a rule file names
         /// its own codes as string literals when it registers them
-        /// (<c>Rule(catalog, "struct-locality-empty", …)</c>), so a scan that reads those files accepts a rule
+        /// (<c>Rule(catalog, "struct-product-no-terminals", …)</c>), so a scan that reads those files accepts a rule
         /// family that is NOT registered — unregistering one and watching this test stay green is exactly what
         /// happened. Registration is checked directly against the rule set instead; a literal inside the layer is
         /// bookkeeping, never evidence.

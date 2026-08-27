@@ -18,8 +18,8 @@ namespace Ihc.Vis.Validation
     /// does anything.
     ///
     /// <para><b>None of them is an ERROR, and that is the whole reason their predicates are narrow.</b> Each
-    /// of these conditions has a legitimate reading — a spare terminal, a block still being built, a central block
-    /// serving several rooms — so the value of the row lies entirely in NOT firing on the legitimate case. A rule
+    /// of these conditions has a legitimate reading — a spare terminal, a block still being built — so the value
+    /// of the row lies entirely in NOT firing on the legitimate case. A rule
     /// here that reports something a reader will dismiss trains them to dismiss the next one too.</para>
     ///
     /// <para><b>Direction is not guessed.</b> A source pin owns a <c>link_from_resource</c> half and a sink owns a
@@ -27,10 +27,16 @@ namespace Ihc.Vis.Validation
     /// answer (a 15-cell vendor matrix plus 397 links across 21 vendor-authored projects). These rules read that
     /// model rather than restating it, so a pin family nobody measured stays out of their way.</para>
     ///
-    /// <para><b>Two rows report per BLOCK, not per pin, and the predicates say why.</b> A catalog function block
-    /// ships with every input its behaviour offers — thirteen on the vendor's own <i>Kip tænd sluk</i> — and the
-    /// author wires the one they want. "The block's trigger never arrives" is true when NO input is fed; said once
-    /// per unwired pin it would be a false statement twelve times per block.</para>
+    /// <para><b>No row here reports per PIN, and the predicates say why.</b> A catalog function block ships with
+    /// every input its behaviour offers — thirteen on the vendor's own <i>Kip tænd sluk</i> — and the author wires
+    /// the one they want; a product plate ships more terminals than an installation uses. "Nothing reaches this" is
+    /// worth saying about a whole block or a whole device, and said once per unwired pin it is a true statement
+    /// about a spare terminal repeated once per alternative the author declined. So the subjects are the block
+    /// (<c>link-fb-input-unfed</c>, <c>link-fb-output-unused</c>) and the product (<c>link-product-unwired</c>),
+    /// each reported once with its unwired pins as related sites.</para>
+    ///
+    /// <para><b>The multi-driven row is the exception, and legitimately.</b> Two sources on ONE pin is a fault of
+    /// that pin, not of the device carrying it, and the repair is to remove one of them.</para>
     /// </summary>
     public static class WiringRules
     {
@@ -52,18 +58,23 @@ namespace Ihc.Vis.Validation
         private static readonly ImmutableHashSet<string> ProductOutputTags =
             [.. SceneRules.OutputTagsWithPinnedMember];
 
+        /// <summary>
+        /// Both pin directions in one set, because <c>link-product-unwired</c> judges a device by its whole wirable
+        /// surface and asks the question once per descendant rather than once per direction.
+        /// </summary>
+        private static readonly ImmutableHashSet<string> ProductPinTags =
+            ProductInputTags.Union(ProductOutputTags);
+
         /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
         public static EquatableArray<RuleDefinition> All(ProblemCatalog catalog)
         {
             ArgumentNullException.ThrowIfNull(catalog);
             return ImmutableArray.Create(
-                Rule(catalog, "link-input-unconnected", InputUnconnected),
-                Rule(catalog, "link-output-undriven", OutputUndriven),
+                Rule(catalog, "link-product-unwired", ProductUnwired),
                 Rule(catalog, "link-output-multidriven", OutputMultidriven),
                 Rule(catalog, "link-fb-input-unfed", BlockInputsUnfed),
                 Rule(catalog, "link-fb-output-unused", BlockOutputsUnused),
-                Rule(catalog, "link-crosses-locality", CrossesLocality),
                 Rule(catalog, "link-through-empty-block", ThroughEmptyBlock),
                 Rule(catalog, "link-pass-through", PassThrough),
                 Rule(catalog, "rs485-dimmer-fault-unwired", DimmerFaultUnwired));
@@ -128,39 +139,55 @@ namespace Ihc.Vis.Validation
         }
 
         /// <summary>
-        /// A product input that owns no link half: the button or sensor is wired to nothing, so pressing it has no
-        /// effect anywhere in the project.
-        /// <para>SUBJECT: every product input pin. EXCLUSIONS: none — a spare terminal on an installed product is
-        /// exactly the legitimate reading this row is a Warning for.</para>
+        /// A product NO pin of which is wired in either direction: the device is installed and the project does
+        /// nothing with it.
+        /// <para>SUBJECT: every product declaring at least one input or output pin. PER PRODUCT, and that is the
+        /// predicate's substance — the same argument the two block rows make. A plate ships with more terminals
+        /// than an author uses; said once per unwired pin, "nothing reaches this" would be a true statement about
+        /// a spare terminal and a useless one, once per alternative the author declined. It is the whole DEVICE
+        /// being unreachable that is worth a reader's attention.</para>
+        /// <para>BOTH DIRECTIONS IN ONE ROW, because neither alone works: a pushbutton plate's indicator LEDs are
+        /// that product's only outputs, so an outputs-only reading would report every such plate whose buttons are
+        /// wired and whose LEDs are spare.</para>
+        /// <para>EXCLUSION: a scenario naming one of the product's outputs consumes it, so the product is driven
+        /// even though it owns no follow-link — a lamp module recalled by a scene carries no link at all. That is
+        /// decidable from the file; a product held in reserve, or driven from a controller-side integration, is
+        /// not, and stays as the Warning's noise.</para>
+        /// <para>SHAPE: the product is the primary location and its pins the related ones — the reader has to see
+        /// what the device offers to decide whether it should have been wired.</para>
         /// </summary>
-        private static void InputUnconnected(IProjectInspection inspection)
-        {
-            foreach (ProjectElement pin in Pins(inspection, ProductInputTags))
-            {
-                if (!OwnsAnyLink(pin))
-                {
-                    inspection.Report(pin, Arguments(("pin", Name(pin))));
-                }
-            }
-        }
-
-        /// <summary>
-        /// A product output that owns no link half AND is not a scenario target: nothing in the installation can
-        /// ever switch it.
-        /// <para>SUBJECT: every product output pin. EXCLUSION: an output a <c>scenes</c> container names is driven
-        /// when a scenario fires, so the row's own stated consequence — "can never be switched" — would be false of
-        /// it. That exclusion is decidable from the file; the other two legitimate readings (an output held in
-        /// reserve, one driven from a controller-side integration) are not, and stay as the Warning's noise.</para>
-        /// </summary>
-        private static void OutputUndriven(IProjectInspection inspection)
+        private static void ProductUnwired(IProjectInspection inspection)
         {
             IReadOnlySet<string> sceneTargets = SceneTargetIds(inspection);
-            foreach (ProjectElement pin in Pins(inspection, ProductOutputTags))
+            foreach (ProjectElement product in AllProducts(inspection.Analyses))
             {
-                if (!OwnsAnyLink(pin) && !(pin.GetAttribute("id") is { } id && sceneTargets.Contains(id)))
+                // One pass that stops at the first wired pin: the reported case is the rare one, so the pin list
+                // is only built for a product that is still a candidate when the walk ends.
+                List<ProjectElement>? unwired = null;
+                bool wired = false;
+                foreach (ProjectElement pin in product.Descendants())
                 {
-                    inspection.Report(pin, Arguments(("pin", Name(pin))));
+                    if (!ProductPinTags.Contains(pin.Tag))
+                    {
+                        continue;
+                    }
+
+                    if (OwnsAnyLink(pin) || IsSceneTarget(pin, sceneTargets))
+                    {
+                        wired = true;
+                        break;
+                    }
+
+                    (unwired ??= []).Add(pin);
                 }
+
+                // No pin at all is struct-product-no-terminals' subject, not this one — the two do not overlap.
+                if (wired || unwired is null)
+                {
+                    continue;
+                }
+
+                inspection.ReportGroup(product, [.. unwired], Arguments(("product", Name(product))));
             }
         }
 
@@ -192,47 +219,24 @@ namespace Ihc.Vis.Validation
         /// that is the predicate's substance: a catalog block ships every input its behaviour offers and the author
         /// wires one, so a per-pin reading would state this row's consequence falsely once per alternative the
         /// author declined. SHAPE: the block is the primary location, its unfed inputs the related ones.</para>
+        /// <para>EXCLUSION — <see cref="StartsWithoutAnInputPin"/>: a block that starts itself is not waiting for a
+        /// wire, so "the trigger never arrives" is false of it. A clock block, one that runs at power-up, a
+        /// home-simulation block: each starts from something other than an input pin, and the file says which.</para>
         /// </summary>
         private static void BlockInputsUnfed(IProjectInspection inspection) =>
-            ReportUnwiredSide(inspection, "inputs", pin => pin.Tag == "resource_input");
+            ReportUnwiredSide(inspection, "inputs", pin => pin.Tag == "resource_input",
+                block => !StartsWithoutAnInputPin(inspection.Analyses.Topology, block));
 
         /// <summary>
         /// A function block NONE of whose outputs is consumed: it computes a result nothing reads.
         /// <para>SUBJECT: every function block that declares at least one output pin. A scenario counts as a
         /// consumer — a <c>resource_scene</c> pin carrying a <c>scene_link</c> is read when the scenario fires — so
         /// a block that only drives scenes is not reported. PER BLOCK for the same reason as its input twin, and
-        /// with the same shape.</para>
+        /// with the same shape. EXCLUSIONS: none beyond that — a block that starts itself still computes a result,
+        /// so its twin's exclusion has nothing to say here.</para>
         /// </summary>
         private static void BlockOutputsUnused(IProjectInspection inspection) =>
             ReportUnwiredSide(inspection, "outputs", pin => pin.Tag is "resource_output" or "resource_scene");
-
-        /// <summary>
-        /// A follow-link whose two ends sit in different localities. Usually intended — a central logic block
-        /// legitimately serves several rooms — but a surprising cross-locality wire is a common copy/paste slip.
-        /// <para>SUBJECT: every wired FROM-half, once per link rather than once per end (reporting both halves
-        /// would tell the reader about one wire twice). EXCLUSION: an end outside every locality, or a half whose
-        /// partner cannot be resolved — a broken reference is <c>idref-dangling</c>'s finding, not this one.</para>
-        /// </summary>
-        private static void CrossesLocality(IProjectInspection inspection)
-        {
-            ITopologyAnalysis topology = inspection.Analyses.Topology;
-            foreach (ProjectElement half in inspection.Analyses.WithTag(ReciprocalTags.FollowLinkFromTag))
-            {
-                if (topology.ByToken(half.GetAttribute("link")) is not { } partner)
-                {
-                    continue;
-                }
-
-                ProjectElement? here = topology.NearestAncestorOrSelf(half, "group");
-                ProjectElement? there = topology.NearestAncestorOrSelf(partner, "group");
-                if (here is null || there is null || ReferenceEquals(here, there))
-                {
-                    continue;
-                }
-
-                inspection.Report(half, Arguments(("from", Name(here)), ("to", Name(there))));
-            }
-        }
 
         /// <summary>
         /// A function block that receives a link but carries no programs: the signal enters the block and stops
@@ -309,8 +313,19 @@ namespace Ihc.Vis.Validation
         // ---- the shared reads ------------------------------------------------------------------------------
 
         /// <summary>One block-level finding per unwired side, shared by the two block rows so both judge alike.</summary>
+        /// <param name="inspection">The run being reported into.</param>
+        /// <param name="container">The pin container to judge — <c>inputs</c> or <c>outputs</c>.</param>
+        /// <param name="isPin">Which of that container's members count as pins.</param>
+        /// <param name="subject">
+        /// Which blocks the row is about at all; null for every block. It is a SUBJECT filter rather than a second
+        /// pin test, because the input row's exclusion is a fact about the block and not about any of its pins.
+        /// It is asked LAST although it is a subject test, because it is the only expensive one here — it reads
+        /// the block's programs, while the two above it read one container's children — and a block that owns a
+        /// wired pin is dropped either way.
+        /// </param>
         private static void ReportUnwiredSide(
-            IProjectInspection inspection, string container, Func<ProjectElement, bool> isPin)
+            IProjectInspection inspection, string container, Func<ProjectElement, bool> isPin,
+            Func<ProjectElement, bool>? subject = null)
         {
             foreach (ProjectElement block in Blocks(inspection.Analyses))
             {
@@ -321,6 +336,11 @@ namespace Ihc.Vis.Validation
 
                 ImmutableArray<ProjectElement> pins = [.. section.Children.Where(isPin)];
                 if (pins.Length == 0 || pins.Any(OwnsAnyLink))
+                {
+                    continue;
+                }
+
+                if (subject is not null && !subject(block))
                 {
                     continue;
                 }
@@ -377,10 +397,33 @@ namespace Ihc.Vis.Validation
                 ? topology.Parent(partner)
                 : null;
 
+        /// <summary>
+        /// Whether the block has a trigger that does not come from one of its own input pins: an
+        /// <c>event_power</c>, or an <c>event</c> whose <c>link1</c> resolves to something outside its
+        /// <c>inputs</c> container — its own clock or state variable, or a resource another block owns.
+        /// <para>
+        /// A DANGLING <c>link1</c> DOES NOT COUNT. It names no element, so nothing can be said about where the
+        /// trigger comes from, and the reference itself is <c>idref-dangling</c>'s finding.
+        /// </para>
+        /// </summary>
+        private static bool StartsWithoutAnInputPin(ITopologyAnalysis topology, ProjectElement block)
+        {
+            ProjectElement? inputs = block.FindChild("inputs");
+            return block.FindDescendantOrSelf(statement =>
+                statement.Tag == "event_power"
+                || (statement.Tag == "event"
+                    && topology.ByToken(statement.GetAttribute("link1")) is { } trigger
+                    && (inputs is null || !ReferenceEquals(topology.Parent(trigger), inputs)))) is not null;
+        }
+
         /// <summary>Whether the pin owns a follow-link half of either direction.</summary>
         private static bool OwnsAnyLink(ProjectElement pin) =>
             pin.Children.Any(c => ReciprocalTags.FollowLinkHalfTags.Contains(c.Tag)
                 || c.Tag == ReciprocalTags.SceneLinkTag);
+
+        /// <summary>Whether a scenario names this pin as the output it drives.</summary>
+        private static bool IsSceneTarget(ProjectElement pin, IReadOnlySet<string> sceneTargets) =>
+            pin.GetAttribute("id") is { } id && sceneTargets.Contains(id);
 
         /// <summary>The output resources every <c>scenes</c> container names — a scenario's own targets.</summary>
         private static IReadOnlySet<string> SceneTargetIds(IProjectInspection inspection)

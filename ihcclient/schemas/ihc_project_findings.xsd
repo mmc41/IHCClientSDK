@@ -337,7 +337,6 @@
     <xs:attribute name="arg_enum" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_expected" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_field" type="argumentValue" use="optional"/>
-    <xs:attribute name="arg_from" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_frozen" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_id" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_identifier" type="argumentValue" use="optional"/>
@@ -348,7 +347,6 @@
     <xs:attribute name="arg_library" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_line" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_localities" type="argumentValue" use="optional"/>
-    <xs:attribute name="arg_locality" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_master" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_masterType" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_maxdevices" type="argumentValue" use="optional"/>
@@ -380,7 +378,6 @@
     <xs:attribute name="arg_supported" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_tag" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_termination" type="argumentValue" use="optional"/>
-    <xs:attribute name="arg_to" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_type" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_typedef" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_untouched" type="argumentValue" use="optional"/>
@@ -389,7 +386,6 @@
     <xs:attribute name="arg_value" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_variable" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_version" type="argumentValue" use="optional"/>
-    <xs:attribute name="arg_writers" type="argumentValue" use="optional"/>
 
     <!-- The three widest and rarest attributes sit last, so the columns a reader scans stay in the
          same place on every line. -->

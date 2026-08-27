@@ -111,15 +111,12 @@ namespace Ihc.Vis.Tests
         /// <c>project2</c>, which declares one variable of every kind on purpose: 23 of them are dead by design.
         /// The fifth row, <c>logic-case-value-foreign</c>, is implemented and unwitnessed — no committed project
         /// tests a value outside its switch's type.</para>
-        /// <para>87 with ALL SIX of T058's dataflow rows, every one witnessed. The row that decided the shape of
-        /// this set is <c>logic-contending-writers</c>: comparing trigger VARIABLES reports 24 findings on
-        /// <c>project3</c> and 9 on <c>Project1</c> — the ON/OFF shape of every library block — while comparing the
-        /// transitive trigger ANCESTRIES reports 4 and 2, which are the real ones.</para>
-        /// <para>91 with FOUR of T060's five project-structure rows. The 75-line jump is dominated by
-        /// <c>struct-locality-empty</c> (41), because a new project ships TEN named localities and an installer
-        /// fills the rooms the building has — the row is true about the rest, and its own disagreement column says
-        /// so. The fifth row, <c>struct-icon-default</c>, is implemented and unwitnessed: no dialog offers an icon
-        /// picker, so no committed project carries an element whose kind otherwise has icons.</para>
+        /// <para>87 with ALL SIX of T058's dataflow rows, every one witnessed — the first set whose predicates
+        /// read the transitive trigger ANCESTRIES rather than the trigger variables themselves, which is what
+        /// keeps the ON/OFF shape of every library block off them.</para>
+        /// <para>91 with FOUR of T060's five project-structure rows. The fifth row, <c>struct-icon-default</c>, is
+        /// implemented and unwitnessed: no dialog offers an icon picker, so no committed project carries an
+        /// element whose kind otherwise has icons.</para>
         /// <para>92 with T055a's <c>logic-block-locked-content</c>, the row T055 could not write and D27 unblocked:
         /// it compares a locked block's stored values against the LIBRARY body the caller supplies, so it is
         /// witnessed here only because <c>ProjectAppService</c> has a catalog to supply. Nine findings — the error
@@ -230,8 +227,16 @@ namespace Ihc.Vis.Tests
         /// same dimmer and is SILENT, because its two channels' scene containers hold no member rows — an
         /// AUTHENTIC negative control, which is rare here and is why the row needed no synthetic case at all.</para>
         /// <para>Each later content row surfaces here first, exactly as these did.</para>
+        /// <para><b>The count then went DOWN for the first time</b>, to 106: the 2026-08 Tier-1 campaign deleted
+        /// eleven rules that condemned the normal state of healthy projects, and every one of the eleven was
+        /// witnessed here — which is exactly why they were deleted. The paragraphs above are the record of how
+        /// the corpus grew and are left as written; this is where it shrank.</para>
+        /// <para>Then to 104, in the Tier-2 pass that followed: three more witnessed rows went —
+        /// <c>link-input-unconnected</c> and <c>link-output-undriven</c> reshaped into the single per-product
+        /// <c>link-product-unwired</c>, which is witnessed here in their place, and
+        /// <c>logic-master-block-modified</c> deleted outright. Net minus two.</para>
         /// </summary>
-        private const int BaselineRuleIdCount = 117;
+        private const int BaselineRuleIdCount = 104;
 
         private static IhcSettings Settings => TestSetup.Settings;
 

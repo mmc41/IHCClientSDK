@@ -19,6 +19,13 @@ document is the record of that authoring, and [`problem-catalogue.md`](../../../
 §8 names it as the evidence of record for every row §5 below falsifies. The `M-n` labels used
 throughout are the authoring run's own measurement numbers, kept as citations.
 
+**† — a plant that is no longer reported.** The 2026-08 Tier-1 campaign deleted eleven rules that
+condemned the ordinary state of healthy projects, and the Tier-2 pass that followed deleted three more
+(`link-input-unconnected`, `link-output-undriven`, `logic-master-block-modified`) and narrowed four; see
+the catalogue's §6 record for both rulings and the measurement. The `.vis` is **byte-pinned and unchanged**, so every plant those rules were authored for
+is still in the file — it simply produces no finding now. Every mention of one below carries a `†`, and
+the per-set count tables in §7 count only what the engine reports today.
+
 | Property | Value |
 |---|---|
 | Size | 77 347 bytes · 1 206 lines · 410 ids · 81 distinct element types · `last_unique_id="_0x216"` |
@@ -34,8 +41,8 @@ throughout are the authoring run's own measurement numbers, kept as citations.
 | `Stue` | P1 Lampeudtag, P2 LK FUGA Tryk 4 tast 2 dioder, P3 Stikkontakt, FB `Kobling`, FB `Gennemgang` | — |
 | `Køkken` | P4 Stikkontakt, P6a/P6b LK FUGA Tryk 2 tast, P5 (unnamed), P5b Brugerdefineret udgangsprodukt | — |
 | `Teknik` | P7 LED Dimmer 2 kanaler, P9 S0 Device, P10 Jalousi, P11a/P11b Modtager relæ, P8 SMS Modem | — |
-| `Logik` | FB `Tom blok`, FB `Zoo`, FB `Kip tænd sluk (lokalt tilpasset)` — **no products** | `struct-locality-no-devices` |
-| `Lokalitet` | nothing — inserted and never touched | `struct-locality-empty`, `name-default` |
+| `Logik` | FB `Tom blok`, FB `Zoo`, FB `Kip tænd sluk (lokalt tilpasset)` — **no products** | `struct-locality-no-devices`† |
+| `Lokalitet` | nothing — inserted and never touched | `struct-locality-empty`†, `name-default` |
 
 `Stue`/`Køkken`/`Teknik` hold no function blocks, which is the §6 *"a locality holding no blocks"*
 non-finding.
@@ -53,16 +60,16 @@ check that fires on P1 is over-reporting, and `ErrorsFixtureFindingsTests` fails
 
 | # | Product | Rows witnessed |
 |---|---|---|
-| P2 | `LK FUGA Tryk 4 tast 2 dioder` | all five product-level documentation blanks: `doc-documentation-tag`, `doc-power-group`, `doc-cabletype`, `doc-cablenumber`, `doc-position`. `Tryk (øverst venstre)`: unaddressed **but coloured**, so it witnesses `doc-address`/`addr-unassigned` alone. `Tryk (øverst højre)`: addressed `2.01`, **no** wire colour → `doc-cable-colour`. `Tryk (nederst venstre)`: addressed + coloured, **unlinked** → `doc-not-linked`, `link-input-unconnected`. `Tryk (nederst højre)`: fans out to two FB inputs → §6 fan-out non-finding |
-| P3 | `Stikkontakt` (Stue) | `Datalinie 1.02`; Id-kode `ID-7`, Kabelnummer `K-7`; its output is driven by **two** FB outputs → `link-output-multidriven`, and is also a member of the `Modstrid` scene → `scene-output-also-linked` |
-| P4 | `Stikkontakt` (Køkken) | `Datalinie 1.03`; same `ID-7` → `name-id-code-duplicate`; same `K-7` → `name-cable-number-duplicate`; Lysgruppe `stue` vs P1's `Stue` → `name-power-group-variant`; output unlinked → `link-output-undriven`. Module 1 now spans Stue+Køkken → `addr-module-mixed-locality` |
-| P5 | *(name cleared)* | `name-empty` — a **user-defined** product's Navn field is editable and IHC Visual accepts empty. Kabeltype filled, Kabelnummer blank → §6 one-sided-documentation non-finding |
+| P2 | `LK FUGA Tryk 4 tast 2 dioder` | all five product-level documentation blanks: `doc-documentation-tag`, `doc-power-group`, `doc-cabletype`, `doc-cablenumber`, `doc-position`. `Tryk (øverst venstre)`: unaddressed **but coloured**, so it witnesses `doc-address`/`addr-unassigned` alone. `Tryk (øverst højre)`: addressed `2.01`, **no** wire colour → `doc-cable-colour`. `Tryk (nederst venstre)`: addressed + coloured, **unlinked** → `doc-not-linked`, `link-input-unconnected`†. `Tryk (nederst højre)`: fans out to two FB inputs → §6 fan-out non-finding. This plate is also the reason the per-pin rows went: three spare buttons and both `LED (…)` outputs drew five findings on a product that is wired and working, and `link-product-unwired` does not report it |
+| P3 | `Stikkontakt` (Stue) | `Datalinie 1.02`; Id-kode `ID-7`, Kabelnummer `K-7`; its output is driven by **two** FB outputs → `link-output-multidriven`, and is also a member of the `Modstrid` scene → `scene-output-also-linked`† |
+| P4 | `Stikkontakt` (Køkken) | `Datalinie 1.03`; same `ID-7` → `name-id-code-duplicate`; same `K-7` → `name-cable-number-duplicate`; Lysgruppe `stue` vs P1's `Stue` → `name-power-group-variant`; its output owns no follow-link but IS a scene target, so it witnesses the scenario exclusion rather than a finding — `link-output-undriven`† excluded it on that ground and `link-product-unwired` still does. Module 1 now spans Stue+Køkken → `addr-module-mixed-locality` |
+| P5 | *(name cleared)* | `name-empty` — a **user-defined** product's Navn field is editable and IHC Visual accepts empty. Kabeltype filled, Kabelnummer blank → §6 one-sided-documentation non-finding. Its one output is wired to nothing and no scenario names it → `link-product-unwired` |
 | P5b | `Brugerdefineret udgangsprodukt` | left wholly untouched → `name-default` (product arm). Its output is the target of `Zoo`'s never-assigned pin (§3) |
-| P6a/P6b | `LK FUGA Tryk 2 tast` ×2 | identical catalogue names as siblings → `name-duplicate-siblings`. P6a addressed on module 3 → `addr-module-partial` |
+| P6a/P6b | `LK FUGA Tryk 2 tast` ×2 | identical catalogue names as siblings → `name-duplicate-siblings`. P6a addressed on module 3 → `addr-module-partial`. P6a has one button wired and P6b neither, so only P6b draws `link-product-unwired` — the pair is the fixture's own boundary case for that row |
 | P7 | `IHC LED Dimmer 2 kanaler` | **ch.1**: Minimum 80 % ≥ Maksimum 40 % → `dev-dimmer-range-inverted`; Manuel rampetid left at factory 5 s in an otherwise configured channel → `dev-setting-default`. **ch.2**: Maksimum 0 % → `dev-dimmer-max-zero`; Belastnings karakteristik `Auto detection` → `dev-dimmer-load-mode-auto`. Both channels keep the `channel_id` sentinel → `addr-dimmer-channel-unassigned`. ch.1 also carries the long-ramp scene member (§4) |
 | P8 | `SMS Modem` | all 30 phone slots blank → `addr-modem-phonenumber-blank`; pincode left at factory `1234`. Carries **no terminals** → `struct-product-no-terminals` |
 | P9 | `S0 Device` | fully configured; `ticks` **restored to 100** — see §5, the blank-ticks row is falsified |
-| P10 | `Jalousi 2 tast (lokal lås)` | travel time up = 0, down = 120 → `dev-shutter-traveltime-zero` on one side only; serial left at the `_0x0` sentinel → `addr-wireless-not-commissioned` |
+| P10 | `Jalousi 2 tast (lokal lås)` | travel time up = 0, down = 120 → `dev-shutter-traveltime-zero` on one side only; serial left at the `_0x0` sentinel → `addr-wireless-not-commissioned`; neither of its two buttons is wired → `link-product-unwired` |
 | P11a/P11b | `Modtager relæ` ×2 | wireless outputs, documented, uncommissioned; P11a is a member of `Alt slukket` (§4) |
 
 `enduser_report` was **cleared on every product that exposes the checkbox** (`Inkluder produktet i
@@ -72,11 +79,11 @@ slutbruger rapport`, control 303). One product still carries it and cannot be cl
 
 | Block | Rows witnessed |
 |---|---|
-| `Tom blok` (Logik) | no pins, no links, referenced by nothing, and its default `Program` **deleted** → `logic-block-empty`, `logic-block-no-pins`, `struct-orphan-block`, `name-default` (block arm) |
-| `Kobling` (Stue) | In0 fed twice from P2 (fan-out); **In1 fed by nothing** → `link-fb-input-unfed`; its default `Program` deleted, so a link genuinely ends on a program-less block → `link-through-empty-block`; pins keep default names and carry no note → `name-note-missing`, `name-duplicate-siblings` (two pins both `Indgang`) |
-| `Gennemgang` (Stue) | fed from `Køkken` → `link-crosses-locality`; two programs (ON→ON, OFF→OFF) copying its one input straight to its one output → `link-pass-through` |
+| `Tom blok` (Logik) | no pins, no links, referenced by nothing, and its default `Program` **deleted** → `logic-block-empty`, `logic-block-no-pins`, `struct-orphan-block`†, `name-default` (block arm) |
+| `Kobling` (Stue) | In0 fed twice from P2 (fan-out); **In1 fed by nothing**, which is NOT `link-fb-input-unfed` — that row is per block and In0 feeds it; its default `Program` deleted, so a link genuinely ends on a program-less block → `link-through-empty-block`; pins keep default names and carry no note → `name-note-missing`, `name-duplicate-siblings` (two pins both `Indgang`) |
+| `Gennemgang` (Stue) | fed from `Køkken` → `link-crosses-locality`†; two programs (ON→ON, OFF→OFF) copying its one input straight to its one output → `link-pass-through` |
 | `Zoo` (Logik) | the variable / program / scene zoo — see §4 |
-| `Kip tænd sluk (lokalt tilpasset)` (Logik) | inserted from the library, then **renamed, re-noted and re-timed while still locked** — `Nummer 1.1.01`, `Version e`, `Oprettet 17/05/2017`, `Udviklet af Schneider Electric` all survive → `logic-master-block-modified`; its `Timer` setting edited from 3 min to 5 min under `locked="yes"` → `logic-block-locked-content` |
+| `Kip tænd sluk (lokalt tilpasset)` (Logik) | inserted from the library, then **renamed, re-noted and re-timed while still locked** — `Nummer 1.1.01`, `Version e`, `Oprettet 17/05/2017`, `Udviklet af Schneider Electric` all survive → `logic-master-block-modified`†; its `Timer` setting edited from 3 min to 5 min under `locked="yes"` → `logic-block-locked-content`, which is the row that survived because it compares against the library BODY rather than against a reconstructed name. The block's programs also start on its own internal timers, so `link-fb-input-unfed` no longer names it either |
 
 Seven follow-link pairs: P2→`Kobling`.In0, P2→`Gennemgang`.In (the fan-out), P6a→`Zoo`.In0
 (cross-locality), `Kobling`.Out0→P1, `Gennemgang`.Out→P3, `Kobling`.Out1→P3 (the multi-driver), and
@@ -85,10 +92,10 @@ Seven follow-link pairs: P2→`Kobling`.In0, P2→`Gennemgang`.In (the fan-out),
 ## 4. `Zoo` — variables, programs, scenes, enums
 
 **Variables** (`Interne variable` unless noted). `Flag` set ON by a program and cleared by none →
-`logic-flag-never-cleared`. `Tal` read by nothing and unlinked → `logic-variable-unused`. `Timer`
-started by nothing → `logic-timer-unused`. `Tæller` incremented, never reset → `logic-counter-never-reset`.
+`logic-flag-never-cleared`. `Tal` read by nothing and unlinked → `logic-variable-unused`†. `Timer`
+started by nothing → `logic-timer-unused`†. `Tæller` incremented, never reset → `logic-counter-never-reset`.
 `Selvudløser` triggers the program that assigns it → `logic-self-trigger`. `Kun skrevet` assigned by
-two programs, never read → `logic-variable-write-only` + `logic-contending-writers`. `Kun læst` read as
+two programs, never read → `logic-variable-write-only` + `logic-contending-writers`†. `Kun læst` read as
 an event, never assigned → `logic-variable-read-only`. `Ugedag` left unreferenced. `Startværdi` carries
 `Initial værdi = ON` and is re-assigned ON by the Powerup program → `dev-inivalue-overwritten`.
 `Gemt tilstand` is the **only** variable marked `Gem aktuel værdi` (`backup="yes"`), which is what makes
@@ -98,7 +105,7 @@ every other state variable's unmarked state a choice rather than an oversight �
 and no program assigns it → `logic-output-never-assigned`.
 
 ⚠ The two sitting-5 variables are deliberately minimal and each adds one extra instance of a row that
-is already witnessed elsewhere: `Gemt tilstand` is unreferenced (`logic-variable-unused`, as `Tal` and
+is already witnessed elsewhere: `Gemt tilstand` is unreferenced (`logic-variable-unused`†, as `Tal` and
 `Ugedag` are) and `Startværdi` is assigned but never read (`logic-variable-write-only`, as `Kun skrevet`
 is). Neither disturbs an existing witness.
 
@@ -111,7 +118,7 @@ is). Neither disturbs an existing witness.
 | 2 | `Flag = ON`, `Tæller = Tæller + 1` | the flag/counter rows above |
 | 3 | `Selvudløser -> ON` ⇒ `Selvudløser = OFF` | `logic-self-trigger` |
 | 4 | `Kun læst -> 0` ⇒ `Kun skrevet = 0` | `logic-variable-read-only`, `logic-variable-write-only` |
-| 5 | `Indgang -> OFF` ⇒ `Kun skrevet = 0` | `logic-contending-writers` (with 4) |
+| 5 | `Indgang -> OFF` ⇒ `Kun skrevet = 0` | `logic-contending-writers`† (with 4) |
 | 6, 7 | byte-identical event and command rows | `logic-duplicate-program` |
 | 8 | `program_sub` with `<conditions/>` empty | `logic-subprogram-no-conditions` |
 | 9, 10 | `program_case` on `Tæller` carrying only the Else group | `logic-case-no-branches` |
@@ -122,9 +129,9 @@ the products):
 
 | Scene | Rows |
 |---|---|
-| `Tom scene` | no members, reachable from nothing → `scene-empty`, `scene-unreferenced` |
+| `Tom scene` | no members, reachable from nothing → `scene-empty`†, `scene-unreferenced` |
 | `Alt slukket` | three members (P4, P11a, P3), every one committed OFF → `scene-all-off` |
-| `Modstrid` | P3's output, which already carries two follow-links → `scene-output-also-linked`; a dimmer member on P7 ch.1 with `ramptime_ms="1801000"` (30 min 1 s) → `scene-long-delay` |
+| `Modstrid` | P3's output, which already carries two follow-links → `scene-output-also-linked`†; a dimmer member on P7 ch.1 with `ramptime_ms="1801000"` (30 min 1 s) → `scene-long-delay` |
 
 **Enum definitions** (project-level, four authored on top of the two catalogue types):
 
@@ -132,8 +139,8 @@ the products):
 |---|---|
 | `Tom enum` | created, no values → `enum-def-empty` |
 | `Enkelt` | exactly one value `Kun` → `enum-def-single-value` |
-| `Ubrugt` | two values, referenced by no variable → `enum-def-unused` |
-| `Brugt` | two values, neither tested nor assigned anywhere → `enum-value-unused` |
+| `Ubrugt` | two values, referenced by no variable → `enum-def-unused`† |
+| `Brugt` | two values, neither tested nor assigned anywhere → `enum-value-unused`† |
 
 ⚠ `Brugt` is unbound rather than bound-with-one-value-unused, because **IHC Visual cannot bind a
 user-created enum type to a block variable at all** — `Indsæt ▸ Variable` has a fixed 21 entries and
@@ -250,21 +257,20 @@ fixture, whose content was authored deliberately and is recorded above — not t
 
 ### 7.0 Logic rows — the enum set (T054)
 
-The `Zoo` locality's four authored enumerator types produce **6 findings**, all `Warning`, all in the Logic
+The `Zoo` locality's four authored enumerator types produce **2 findings**, all `Warning`, all in the Logic
 category, counted by `Fixture_CarriesExactlyTheseLogicConditions`.
 
 | Rule | Count | Where |
 |---|---|---|
 | `enum-def-empty` | 1 | `Tom enum` |
 | `enum-def-single-value` | 1 | `Enkelt`, whose only value is `Kun` |
-| `enum-def-unused` | 4 | **all four authored types**, `Brugt` included |
 
-⚠ **Why `enum-def-unused` fires four times and not once.** §4 records (M-14) that IHC Visual cannot bind a
-user-created enumerator type to a variable at all — `Indsæt ▸ Variable` offers a fixed 21 entries and none of
-them is an enumerator. So every user-created type in every project is necessarily unreferenced; `Brugt` is
-named for the intent it was authored to carry (`enum-value-unused`), not for a binding the application can
-make. The row is still correct: the type really is dead in the project and in the reports. The two shipped
-`typeid` tables are excluded — they are read-only furniture, unreferenced in most authentic files.
+⚠ **The `Ubrugt`/`Brugt` plants are no longer reported†, and the reason is M-14.** §4 records that IHC
+Visual cannot bind a user-created enumerator type to a variable at all — `Indsæt ▸ Variable` offers a fixed
+21 entries and none of them is an enumerator. So every user-created type in every project is necessarily
+unreferenced, and the two "unused enum" rows fired on all four authored types in this fixture and on the
+stock types elsewhere. That measurement is what removed them; the shape rows above, which report a type
+the author really can fix, stayed.
 
 ### 7.0c Logic rows — the program-shape set (T056)
 
@@ -287,51 +293,43 @@ against hand-built trees in `ProgramShapeRulesTests`.
 
 ### 7.0a Logic rows — the variable-usage set (T057)
 
-Thirteen findings, all `Warning`, all over the shared program read model.
+Four findings, all `Warning`, all over the shared program read model.
 
 | Rule | Count | Where |
 |---|---|---|
-| `logic-variable-unused` | 4 | `Zoo`'s declared state variables no program touches and no link reaches |
 | `logic-variable-write-only` | 3 | assigned by a program, never read, never linked |
 | `logic-variable-read-only` | 1 | read by a program, never assigned — an internal variable, not a setting |
-| `enum-value-unused` | 5 | every value of the four AUTHORED enumerator types |
 
-⚠ **`enum-value-unused` counts five because of M-14, not because the fixture is odd.** The application
-cannot bind a user-created enumerator type to a variable at all, so no value of one can ever be referenced;
-the row states a true fact the GUI offers no way to fix. The two shipped `typeid` tables are excluded — they
-are read-only furniture whose 11 values are unreferenced in every project, the empty one included.
-
-⚠ **A PIN is never counted by these three rows.** An input's producer and an output's consumer live outside
+⚠ **A PIN is never counted by these rows.** An input's producer and an output's consumer live outside
 the block, and the wiring rows own them (`link-fb-input-unfed`, `link-fb-output-unused`). Measured on
-`project3`: including pins takes the set from 9 findings to 64. A `settings` variable is likewise never
-reported as read-only, because a dialog-set value is *supposed* to keep the value it was given.
+`project3`: including pins puts its 28 read-only inputs and 19 write-only outputs on this set. A `settings`
+variable is likewise never reported as read-only, because a dialog-set value is *supposed* to keep the
+value it was given.
 
 ⚠ **`logic-case-value-foreign` cannot be witnessed here or anywhere in the corpus.** The chain is
 branch → inline operand → `inivalue`, and every committed branch tests a value its switch's type declares.
 
 ### 7.0a-2 Logic rows — the dataflow set (T058)
 
-Nine findings, all `Warning`, all predicates over the shared program read model. **All six rows are
-witnessed here**, which is why this fixture is the one that proves the set.
+Seven findings, all `Warning`, all predicates over the shared program read model. **Every row of the
+set is witnessed here**, which is why this fixture is the one that proves it.
 
 | Rule | Count | Where |
 |---|---|---|
 | `logic-output-never-assigned` | 3 | linked outputs no program assigns |
 | `logic-flag-never-cleared` | 2 | flags written only by `%P = ON` |
 | `logic-counter-never-reset` | 1 | a counter written only by `%P = %P + 1` |
-| `logic-timer-unused` | 1 | a declared timer no activation command starts |
 | `logic-self-trigger` | 1 | `Selvudløser`, a program triggered by the flag it assigns |
-| `logic-contending-writers` | 1 | a variable written by two programs whose triggers share no ancestry |
 
-⚠ **`logic-contending-writers` counts ONE here, and that is the whole design of the row.** Comparing trigger
-variables directly makes the standard ON/OFF block shape look like a contention — one program sets the output
-ON, another sets it OFF, each from its own pulse flag — and reports 8 on this fixture, 24 on `project3` and 9
-on `Project1`. Both pulse flags are written by programs triggered by the same button, so their trigger
-ANCESTRIES meet, and the shape is related rather than contending. Do not "fix" the fixture to make more of
-them fire.
+⚠ **This fixture is where that row's kind exclusion is seen from the reporting side.** The row no longer
+names a timer or a counter a program re-arms — a delay and a tally, which is what those kinds are for and
+which every authentic witness in the corpus turned out to be. `Selvudløser` is a `resource_flag`, so the
+plant survives the narrowing and is now the corpus's only self-trigger finding.
 
-⚠ **Starting a timer is not assigning one.** The fixture's timer is written by an assignment and still
-reported, because only the three activation commands (`_0xbe`/`_0xc8`/`_0xd2`) start a timer.
+⚠ **The contending-writers and unstarted-timer plants are no longer reported†.** Programs 4 and 5 still
+write `Kun skrevet` from unrelated triggers, and `Timer` is still assigned rather than started — the file
+is byte-pinned and both plants remain. Neither is a finding now: manual plus automatic control of one
+output, and a spare timer inside an inserted library block, are what healthy projects look like.
 
 ### 7.0b Logic rows — the function-block shape set (T055, completed by T055a)
 
@@ -340,8 +338,13 @@ reported, because only the three activation commands (`_0xbe`/`_0xc8`/`_0xd2`) s
 | `logic-block-empty` | 2 | `Tom blok` and `Kobling`, both of which had their default `Program` deleted (§3) |
 | `logic-block-no-pins` | 1 | `Tom blok` alone — `Kobling` has pins, which is what makes it the `link-through-empty-block` witness |
 | `logic-duplicate-program` | 1 | the `Zoo` block's two identical programs — the only duplicated pair in the whole corpus |
-| `logic-master-block-modified` | 1 | `Kip tænd sluk (lokalt tilpasset)`, renamed away from its insert name while keeping `Nummer`/`Version`/`Oprettet`/`Udviklet af` |
-| `logic-block-locked-content` | 1 | the same block's `Timer`, moved from 3 to 5 minutes under `locked="yes"` — the note below is why it took a second task |
+| `logic-block-locked-content` | 1 | `Kip tænd sluk (lokalt tilpasset)`'s `Timer`, moved from 3 to 5 minutes under `locked="yes"` — the note below is why it took a second task |
+
+⚠ **The renamed-block plant is no longer reported†.** `Kip tænd sluk (lokalt tilpasset)` is still renamed
+and still carries its master identity; `logic-master-block-modified` compared those two by NAME and called
+the difference a local modification, which is what the vendor's own naming guidance asks an author to
+write. The block's real local edit — the `Timer` — is the row above, and it compares against the library
+BODY.
 
 ⚠ **`logic-block-locked-content` now HAS a rule, and this fixture is its witness** — the `Timer` setting
 edited from 3 to 5 minutes under `locked="yes"`, which §3 recorded long before anything could see it. Two
@@ -366,14 +369,11 @@ colliding with an explicit `index="0"`, because the canonicalizer elides the def
 
 ### 7.3 Project-structure rows (T060)
 
-Five findings, all `Warning`, counted by `Fixture_CarriesExactlyTheseStructureConditions`.
+One finding, `Warning`, counted by `Fixture_CarriesExactlyTheseStructureConditions`.
 
 | Rule | Count | Where |
 |---|---|---|
-| `struct-locality-empty` | 1 | the locality still named `Lokalitet`, which holds nothing |
-| `struct-locality-no-devices` | 1 | the `Logik` room, which holds blocks and no hardware |
 | `struct-product-no-terminals` | 1 | **P8 `SMS Modem`**, exactly as §2 records it |
-| `struct-orphan-block` | 2 | `Tom blok` and the second unwired block |
 
 ⚠ **The dimmer and the logging sensors are NOT reported as terminal-less**, and that is deliberate: an RS485
 dimmer's `rs485_led_dimmer_channel` children and a bus sensor's `resource_*` measurements are what an author

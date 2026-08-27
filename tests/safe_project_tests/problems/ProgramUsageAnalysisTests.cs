@@ -129,16 +129,6 @@ namespace Ihc.Vis.Tests
         }
 
         [Test]
-        public void EveryInivalueCountsAsAReferenceToItsValue()
-        {
-            Project project = CaseProject();
-
-            Assert.That(Usage(project).ReferencedValueTokens, Does.Contain(Token("enum_value", 0x41)),
-                "the ONE reference form: a variable's initial value and a case operand's tested value are stored "
-                + "the same way");
-        }
-
-        [Test]
         public void ALinkedVariableIsReportedAsLinked()
         {
             Project project = OneRow("action", "%P = %S", link2: true, linkTarget: true);

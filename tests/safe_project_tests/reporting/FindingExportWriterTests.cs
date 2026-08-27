@@ -59,7 +59,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void TheDocumentHasNoBomAnIso88591DeclarationAndCrlfLineEnds()
         {
-            byte[] bytes = Write(Finding("struct-locality-empty", "Lokaliteten er tom."));
+            byte[] bytes = Write(Finding("struct-product-no-terminals", "Produktet har ingen klemmer."));
 
             Assert.Multiple(() =>
             {
@@ -104,7 +104,7 @@ namespace Ihc.Vis.Tests
         {
             byte[] bytes = FindingExportWriter.Write(
                 FindingExportProbe.Stamped(),
-                [Finding("struct-locality-empty", "Lokaliteten 'Stue' er tom.")],
+                [Finding("struct-product-no-terminals", "Produktet 'Stue' har ingen klemmer.")],
                 ValidationProfile.Categorized,
                 FindingExportOptions.Default with { SourceName = "Project1-SimpelWired.vis" },
                 FindingExportProbe.Instant);
@@ -125,8 +125,8 @@ namespace Ihc.Vis.Tests
                 + " capacity-wireless-links-per-unit"
                 + " fb-master-missing-from-library fb-master-version-differs"
                 + " logic-block-locked-content\">\r\n"
-                + "   <finding severity=\"Warning\" code=\"struct-locality-empty\" category=\"ProjectStructure\""
-                + " locator=\"_0x2132\" message=\"Lokaliteten 'Stue' er tom.\"/>\r\n"
+                + "   <finding severity=\"Warning\" code=\"struct-product-no-terminals\" category=\"ProjectStructure\""
+                + " locator=\"_0x2132\" message=\"Produktet 'Stue' har ingen klemmer.\"/>\r\n"
                 + "</ihc_project_findings>\r\n"));
         }
 
@@ -172,7 +172,7 @@ namespace Ihc.Vis.Tests
         public void AFindingEmitsItsFixedAttributesInThePinnedOrder()
         {
             ImmutableArray<string> emitted = FindingExportProbe.AttributeNames(
-                FindingExportProbe.FindingLines(Write(Finding("struct-locality-empty", "Tom")))[0]);
+                FindingExportProbe.FindingLines(Write(Finding("struct-product-no-terminals", "Tom")))[0]);
 
             Assert.Multiple(() =>
             {
