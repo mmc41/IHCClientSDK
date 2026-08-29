@@ -97,6 +97,19 @@
                 </DataTemplate>
             </controls:DialogFieldTemplate.ComboSuggest>
 
+            <!-- CLOSED, unlike ComboSuggest above: the items are the attribute's own declared tokens, and a
+                 value outside them cannot be stored — so this one is not editable. -->
+            <controls:DialogFieldTemplate.ComboFixed>
+                <DataTemplate x:DataType="vm:ProductDialogFieldViewModel">
+                    <ComboBox ItemsSource="{Binding Suggestions}"
+                              SelectedItem="{Binding Value, Mode=TwoWay}"
+                              IsEnabled="{Binding !IsReadOnly}"
+                              HorizontalAlignment="Stretch"
+                              a:AutomationProperties.AutomationId="{Binding AutomationId}"
+                              a:AutomationProperties.Name="{Binding Caption}"/>
+                </DataTemplate>
+            </controls:DialogFieldTemplate.ComboFixed>
+
             <controls:DialogFieldTemplate.Number>
                 <DataTemplate x:DataType="vm:ProductDialogFieldViewModel">
                     <TextBox Text="{Binding Value, Mode=TwoWay}"
@@ -193,7 +206,7 @@
                             <!-- A captioned group draws a box; an uncaptioned one is a bare run of fields. Both
                                  flow their fields into the descriptor's Columns as a UNIFORM grid. -->
                             <controls:AccessibleGroupBox Classes="group"
-                                                         IsVisible="{Binding HasCaption}"
+                                                         IsVisible="{Binding ShowsPlainBox}"
                                                          Header="{Binding Caption}">
                                 <ItemsControl ItemsSource="{Binding Rows}"
                                               ItemTemplate="{StaticResource RowTemplate}"/>
@@ -202,6 +215,20 @@
                             <ItemsControl IsVisible="{Binding !HasCaption}"
                                           ItemsSource="{Binding Rows}"
                                           ItemTemplate="{StaticResource RowTemplate}"/>
+
+                            <!-- A COLLAPSIBLE group is the same fields behind a disclosure — the vendor's
+                                 Avanceret/Normal affordance, which expands its advanced settings in place inside
+                                 this dialog rather than opening a window of its own. Closed on open: these are
+                                 settings most visits never touch. -->
+                            <Expander IsVisible="{Binding IsCollapsible}"
+                                      Header="{Binding Caption}"
+                                      IsExpanded="False"
+                                      HorizontalAlignment="Stretch"
+                                      a:AutomationProperties.AutomationId="{Binding DisclosureAutomationId}"
+                                      a:AutomationProperties.Name="{Binding Caption}">
+                                <ItemsControl ItemsSource="{Binding Rows}"
+                                              ItemTemplate="{StaticResource RowTemplate}"/>
+                            </Expander>
 
                             <!-- ── The two hand-written composites (D12) ──────────────────────────────────────
                                  Everything above this line is generated from metadata. These two are not, and
@@ -268,43 +295,47 @@
                             <!-- T070: the sensors' Indstillinger grid, a third terminal-style list. Presence is
                                  the descriptor's business, so this section renders only where the widget was
                                  declared; the vendor shows it only for products that HAVE settings, unlike the
-                                 two terminal grids it always shows. Read-only for now: the vendor's own
-                                 "klik for at konfigurere" opens an editor, which is a separate flow. -->
+                                 two terminal grids it always shows.
+                                 Selectable since T039, with the same two-way SelectedItem the terminal grids
+                                 carry, because the vendor's own "klik for at konfigurere" makes the ROW the
+                                 gesture: picking one is the first half of editing it. -->
                             <ItemsControl ItemsSource="{Binding SettingsSection}">
                               <ItemsControl.ItemTemplate>
-                               <DataTemplate x:DataType="vm:ProductDialogGroupViewModel">
+                               <DataTemplate x:DataType="vm:ProductDialogSettingsGridViewModel">
                                 <StackPanel Spacing="4">
-                                    <TextBlock Classes="caption" FontWeight="SemiBold"
-                                               Text="Indstillinger &lt;klik for at konfigurere&gt;"/>
+                                    <TextBlock Classes="caption" FontWeight="SemiBold" Text="{Binding Caption}"/>
                                     <Grid ColumnDefinitions="{controls:SettingColumns}">
                                         <TextBlock Grid.Column="0" Classes="thead" Text="Navn"/>
                                         <TextBlock Grid.Column="1" Classes="thead" Text="Note"/>
                                         <TextBlock Grid.Column="2" Classes="thead" Text="Værdi"/>
                                     </Grid>
+                                    <!-- Two routes to the same editor, as the vendor has: double-click the row,
+                                         or right-click it and choose Egenskaber. -->
                                     <ListBox Name="SettingsList" Classes="terminals" MaxHeight="120"
-                                             ItemsSource="{Binding Settings}"
+                                             ItemsSource="{Binding Rows}"
+                                             SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
+                                             DoubleTapped="OnSettingActivated"
+                                             ContextRequested="OnSettingContextRequested"
                                              ItemTemplate="{StaticResource SettingRow}"
-                                             a:AutomationProperties.AutomationId="dlg.indstillinger.liste"
-                                             a:AutomationProperties.Name="Indstillinger"/>
+                                             a:AutomationProperties.AutomationId="{Binding AutomationId}"
+                                             a:AutomationProperties.Name="{Binding Name}">
+                                        <ListBox.ContextFlyout>
+                                            <MenuFlyout>
+                                                <!-- The Accessible subclass, not the stock MenuItem: Avalonia's
+                                                     own peer exposes no Invoke, so a driver and a screen reader
+                                                     would both meet a menu item nothing can activate. -->
+                                                <controls:AccessibleMenuItem
+                                                          Name="SettingPropertiesItem" Header="Egenskaber"
+                                                          Click="OnSettingActivated"
+                                                          a:AutomationProperties.AutomationId="dlg.indstillinger.egenskaber"/>
+                                            </MenuFlyout>
+                                        </ListBox.ContextFlyout>
+                                    </ListBox>
                                 </StackPanel>
                                </DataTemplate>
                               </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <!-- US-015: the wireless dimmer's advanced settings. Applies its documentation first,
-                                 then signals the caller to open the sub-dialog. -->
-                            <ItemsControl ItemsSource="{Binding AdvancedSection}">
-                              <ItemsControl.ItemTemplate>
-                               <DataTemplate x:DataType="vm:ProductDialogGroupViewModel">
-                                <!-- Caption is the vendor's, measured on product 080: "Avanceret", no
-                                     ellipsis (T114). What the button DOES still differs — the vendor
-                                     expands in place, this opens a window — and stays in product.md. -->
-                                <Button Content="Avanceret" MinWidth="96" HorizontalAlignment="Left"
-                                        Click="OnAdvanced"
-                                        a:AutomationProperties.AutomationId="dlg.avanceret.abn"/>
-                               </DataTemplate>
-                              </ItemsControl.ItemTemplate>
-                            </ItemsControl>
                         </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>

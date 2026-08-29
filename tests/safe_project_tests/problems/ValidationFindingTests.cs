@@ -143,12 +143,25 @@ namespace Ihc.Vis.Tests
                 // RefusedOperations is a CLASSIFICATION the row declares, not a producer marker: it says what the
                 // condition costs, which is the same answer whichever face found it. That is precisely the
                 // property the absences below protect, so carrying it does not relax them.
+                //
+                // TargetAttribute passes the same test for the same reason: it is what the rule is ABOUT, which
+                // the entry declares once and which does not vary with the face that found the violation. It
+                // names an attribute of the user's project, never a control, a dialog or a gesture — so it says
+                // nothing about who produced the finding or how a host should present it.
+                //
+                // Fix is the same fact stated per OCCURRENCE, and it is admitted on the same terms. Where a row
+                // cannot say what its occurrences are about — the attribute differs per emission, or the element
+                // to repair is a child of the one the reader is shown — the rule says it instead. It still names
+                // an element and an attribute of the user's project and nothing about a control or a face, so
+                // the absences below are untouched. It varies per occurrence rather than per row, which is
+                // exactly why it exists and not a widening of what a finding may carry.
                 Assert.That(members, Is.EquivalentTo(new[]
                 {
                     nameof(ValidationFinding.Problem), nameof(ValidationFinding.Severity),
                     nameof(ValidationFinding.Category), nameof(ValidationFinding.Primary),
                     nameof(ValidationFinding.Related), nameof(ValidationFinding.Code),
-                    nameof(ValidationFinding.RefusedOperations),
+                    nameof(ValidationFinding.RefusedOperations), nameof(ValidationFinding.TargetAttribute),
+                    nameof(ValidationFinding.Fix),
                 }));
 
                 foreach (string marker in new[] { "Producer", "ExecutorKind", "Origin", "Source" })

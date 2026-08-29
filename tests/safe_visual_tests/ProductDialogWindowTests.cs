@@ -329,27 +329,31 @@ public class ProductDialogWindowTests : AvaloniaTestBase
     }
 
     /// <summary>
-    /// T114: the advanced-settings button is captioned exactly as the vendor captions it — <i>Avanceret</i>,
-    /// with no ellipsis.
-    /// <para>Product 080's composite is the measurement. It also corrected the difference register, which
-    /// claimed no vendor capture carried that caption at all; the vendor draws the button on the dimmer's own
-    /// bottom row. What the button DOES still differs (in-place expansion vs a separate window) and stays
-    /// registered in product.md — the caption does not.</para>
+    /// The advanced settings are a DISCLOSURE captioned as the vendor captions the group, not a button opening a
+    /// window.
+    /// <para>The vendor expands them in place inside the product dialog and collapses them again; this used to
+    /// draw an <i>Avanceret</i> button that opened a separate modal. The caption was already parity (product
+    /// 080's composite); what differed was what pressing it did, and that difference is what the disclosure
+    /// closes.</para>
     /// </summary>
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]
-    public async Task TheAdvancedButtonCarriesTheVendorsCaption()
+    public async Task TheAdvancedSettingsExpandInPlaceRatherThanOpeningAWindow()
     {
         ProductDialogViewModel vm = await DialogFor("_0x4303");   // Mobil stikkontakt dimmer
         ProductDialogWindow window = Shown(vm);
 
-        Button? advanced = window.GetVisualDescendants().OfType<Button>()
-            .FirstOrDefault(b => (b.Content as string)?.StartsWith("Avanceret") == true);
+        Expander? disclosure = window.GetVisualDescendants().OfType<Expander>()
+            .FirstOrDefault(e => AutomationProperties.GetAutomationId(e) == "dlg.avanceret.udvid");
 
         Assert.Multiple(() =>
         {
-            Assert.That(advanced, Is.Not.Null, "the wireless dimmer offers the advanced-settings button");
-            Assert.That(advanced!.Content, Is.EqualTo("Avanceret"), "the vendor's caption carries no ellipsis");
+            Assert.That(disclosure, Is.Not.Null, "the wireless dimmer offers its advanced settings in place");
+            Assert.That(disclosure!.Header, Is.EqualTo("Avancerede Dimmer egenskaber"));
+            Assert.That(window.GetVisualDescendants().OfType<Button>()
+                    .Where(b => (b.Content as string)?.StartsWith("Avanceret") == true),
+                Is.Empty,
+                "and no button remains that would open a window instead");
         });
     }
 

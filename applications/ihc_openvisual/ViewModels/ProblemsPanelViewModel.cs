@@ -83,6 +83,16 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     private readonly ValidationMonitor _validation;
     private readonly Action<Action> _post;
     private readonly Func<ElementId, bool>? _reveal;
+    private readonly Action<string>? _setStatus;
+
+    /// <summary>
+    /// The ONE route-capability resolver. The row's promise and the activation's destination both come from it,
+    /// so a tooltip saying "the field" and a click landing on a dialog cannot become two different answers.
+    /// </summary>
+    private readonly ProblemNavigationPlanner _planner;
+
+    /// <summary>Where an ACTIVATED row's route is carried out. Optional, so the panel tests without a shell.</summary>
+    private readonly Func<NavigationPlan, Task>? _activate;
     private readonly Func<FindingsExportRequest, Task>? _export;
     private readonly ITimer _staleTimer;
     private readonly EventHandler _onValidationChanged;
@@ -110,11 +120,22 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// reason <paramref name="reveal"/> is one: the panel decides WHAT is exported and must not learn about
     /// dialogs, files or the app service to do it. Optional so the panel can be tested without a shell.
     /// </param>
+    /// <param name="setStatus">
+    /// Where the panel says that a click landed nowhere. A delegate for the same reason the two above are:
+    /// the panel owns the sentence, the shell owns where a sentence is shown.
+    /// </param>
+    /// <param name="activate">
+    /// What an ACTIVATED row does — the deep route, as distinct from the reveal a single click already performs.
+    /// A delegate for the same reason the others are: the panel decides WHICH route a row has and must not learn
+    /// about dialogs to carry one out.
+    /// </param>
     public ProblemsPanelViewModel(
         ProjectWorkflow session,
         ValidationMonitor validation,
         Func<ElementId, bool>? reveal = null,
-        Func<FindingsExportRequest, Task>? export = null)
+        Func<FindingsExportRequest, Task>? export = null,
+        Action<string>? setStatus = null,
+        Func<NavigationPlan, Task>? activate = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(validation);
@@ -123,7 +144,12 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         _validation = validation;
         _post = session.Post;
         _reveal = reveal;
+        _setStatus = setStatus;
         _export = export;
+        // Over the SESSION's compose door: the descriptor is the SDK's to build, and asking it is what makes a
+        // Field claim answerable rather than guessed.
+        _planner = ProblemNavigationPlanner.Over(session.GetProductDialog);
+        _activate = activate;
         _staleTimer = session.Time.CreateTimer(_ => OnStaleThresholdElapsed(), null,
             Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 
@@ -306,8 +332,47 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
 
     partial void OnSelectedRowChanged(ProblemRowViewModel? value)
     {
-        if (value?.Element is { } element)
-            _reveal?.Invoke(element);
+        if (_reveal is null || value?.Element is not { } element)
+            return;
+        if (_reveal(element))
+            return;
+
+        // The tree draws no row for this element — a setting inside a *_settings container, a calibration row.
+        // The nearest ancestor that HAS one is where the fix lives anyway, so land there rather than nowhere.
+        // The same predicate decided the row's NavigationKind, so what the tooltip promised is what happens.
+        if (_session.Current is { } project
+            && ProjectTreeProjector.NearestRowBearingAncestor(project, element) is { } ancestor
+            && _reveal(ancestor))
+        {
+            return;
+        }
+        _setStatus?.Invoke(DeadEndStatus);
+    }
+
+    /// <summary>What the panel says when a row's element is nowhere on screen and nothing above it is either.</summary>
+    public const string DeadEndStatus = "Elementet vises ikke i træet.";
+
+    /// <summary>
+    /// ACTIVATION — the second tier of the gesture. A single click reveals; a double-click or Enter takes the
+    /// installer all the way to where the fix is made.
+    /// </summary>
+    /// <remarks>
+    /// <para>The plan is re-derived HERE rather than carried on the row, and over the CURRENT project rather
+    /// than the snapshot the run validated: the user is about to edit the document as it now stands, so that is
+    /// the document the route has to be correct for. The row's promise came from the same planner, which is why
+    /// the two agree without either being copied from the other.</para>
+    /// <para>Both gestures come through this one entry point, so they cannot drift into doing different things —
+    /// which is the whole content of the Enter/double-click parity requirement.</para>
+    /// </remarks>
+    /// <param name="row">The row being activated, or null when there is none.</param>
+    public Task ActivateRowAsync(ProblemRowViewModel? row)
+    {
+        if (_activate is null || row is null || _session.Current is not { } project)
+        {
+            return Task.CompletedTask;
+        }
+        return _activate(_planner.Plan(
+            project, row.Element, row.Finding.TargetAttribute, row.Finding.Code, row.Finding.Fix));
     }
 
     /// <summary>The list area's own text, for the two states that have one. Empty where the rows speak.</summary>
@@ -377,8 +442,9 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
                 : [];
 
         _asScanned.Clear();
+        Dictionary<string, int> occurrences = [];
         foreach (ValidationFinding finding in outcome.Findings)
-            _asScanned.Add(ToRow(finding, snapshot, byId));
+            _asScanned.Add(ToRow(finding, snapshot, byId, _planner, occurrences));
         ResortRows();
         RecountRows();
     }
@@ -507,8 +573,13 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     };
 
     /// <summary>One finding, projected against the snapshot the run validated and its <see cref="IndexById"/>.</summary>
+    /// <param name="occurrences">
+    /// How many rows each (code, site) pair has already produced, carried ACROSS the projection so a repeat can be
+    /// told from the first. Optional: a caller projecting a single finding has nothing to disambiguate it against.
+    /// </param>
     internal static ProblemRowViewModel ToRow(
-        ValidationFinding finding, Project? snapshot, Dictionary<ElementId, ProjectElement?> byId)
+        ValidationFinding finding, Project? snapshot, Dictionary<ElementId, ProjectElement?> byId,
+        ProblemNavigationPlanner planner, Dictionary<string, int>? occurrences = null)
     {
         ElementId? element = finding.Primary?.Element;
 
@@ -538,8 +609,35 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
 
         // The finding travels WHOLE. The row reads its columns off it rather than copying them, and an export
         // of the panel's list is built from it — so what the user sees and what the file holds are one value.
-        return new ProblemRowViewModel(finding, element, name);
+        // The kind comes from the PLANNER, not from a second derivation beside it. That is what makes the
+        // row's promise and its activation route the same value rather than two opinions that agree today.
+        NavigationKind kind = snapshot is { } project
+            ? planner.Plan(project, element, finding.TargetAttribute, finding.Code, finding.Fix).Kind
+            : NavigationKind.None;
+
+        return new ProblemRowViewModel(finding, element, name, kind, OccurrenceIdOf(finding, occurrences));
     }
+
+    /// <summary>
+    /// The row's per-occurrence identity: the code plus the site the engine recorded, and an ordinal only where
+    /// even that pair repeats — which it can, since one rule may report the same element about two different
+    /// attributes.
+    /// </summary>
+    /// <remarks>
+    /// The finding's own <c>Primary.Locator</c>, never a re-derived one. It is what the engine wrote down about
+    /// where it looked, so it survives an element that has since been renamed or deleted — and a whole-project
+    /// row, which records a locator but no element, is named by it too.
+    /// </remarks>
+    private static string OccurrenceIdOf(ValidationFinding finding, Dictionary<string, int>? occurrences)
+    {
+        string identity = $"{finding.Code.Value}@{finding.Primary?.Locator ?? string.Empty}";
+        if (occurrences is null)
+            return identity;
+        int seen = occurrences.TryGetValue(identity, out int count) ? count + 1 : 1;
+        occurrences[identity] = seen;
+        return seen == 1 ? identity : $"{identity}#{seen}";
+    }
+
 
     /// <summary>
     /// Counts come from the BOUND RESULT, never from <see cref="Rows"/>. A count beside a filter toggle answers

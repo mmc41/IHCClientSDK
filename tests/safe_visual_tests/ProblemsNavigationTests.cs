@@ -38,7 +38,9 @@ public class ProblemsNavigationTests
     private static ProblemRowViewModel RowFor(ProblemsShellRig rig, ElementId? element, string locator = "utcs_project")
     {
         ProblemRowViewModel row = new(
-            About(element, locator), element, element is null ? locator : "navn");
+            About(element, locator), element, element is null ? locator : "navn",
+            element is null ? NavigationKind.None : NavigationKind.Tree,
+            $"doc-name-empty@{locator}");
         rig.Panel.Rows.Add(row);
         return row;
     }
@@ -106,8 +108,8 @@ public class ProblemsNavigationTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(navigable.IsNavigable, Is.True);
-            Assert.That(not.IsNavigable, Is.False);
+            Assert.That(navigable.NavigationKind, Is.EqualTo(NavigationKind.Tree));
+            Assert.That(not.NavigationKind, Is.EqualTo(NavigationKind.None));
             Assert.That(not.ElementEmphasis, Is.LessThan(navigable.ElementEmphasis),
                 "the element cell is visibly de-emphasised, so the row does not invite a click that does nothing");
             Assert.That(not.NavigationHint, Is.Not.EqualTo(navigable.NavigationHint));
@@ -155,7 +157,7 @@ public class ProblemsNavigationTests
         Project snapshot = await harness.ProjectService.Load(ProjectWithTwoScenesSharingAnId(harness));
         Dictionary<ElementId, ProjectElement?> byId = ProblemsPanelViewModel.IndexById(snapshot);
         return [.. harness.ProjectService.ValidateStructured(snapshot)
-            .Select(f => ProblemsPanelViewModel.ToRow(f, snapshot, byId))];
+            .Select(f => ProblemsPanelViewModel.ToRow(f, snapshot, byId, ProblemsTestData.Planner(harness.ProjectService)))];
     }
 
     /// <summary>The unreferenced-scene row for one scene, found by the name its own message carries.</summary>
@@ -189,11 +191,12 @@ public class ProblemsNavigationTests
             Assert.That(original.ElementName, Is.EqualTo("_0x1f44a"),
                 "and the first holder gets the same treatment: the ambiguity belongs to the TOKEN, so demoting "
                 + "only the later holder would still show one of the two a name it cannot earn");
-            Assert.That(restamped.IsNavigable, Is.False,
+            Assert.That(restamped.NavigationKind, Is.EqualTo(NavigationKind.None),
                 "a shared token names no single site, so there is nowhere to go — and a click that silently "
                 + "landed on one of the two is the defect this test exists for");
-            Assert.That(original.IsNavigable, Is.False);
-            Assert.That(rows.Single(r => r.Code == "id-duplicate-token").IsNavigable, Is.False,
+            Assert.That(original.NavigationKind, Is.EqualTo(NavigationKind.None));
+            Assert.That(rows.Single(r => r.Code == "id-duplicate-token").NavigationKind,
+                Is.EqualTo(NavigationKind.None),
                 "including the collision's own row: the engine anchors it at the first holder, which is the one "
                 + "element it can name, but the id it reports still resolves to two");
         });
@@ -212,7 +215,7 @@ public class ProblemsNavigationTests
             Assert.That(untouched.ElementName, Is.EqualTo("Modstrid"),
                 "one collision in the file demotes that token and nothing else — every other element keeps its "
                 + "name");
-            Assert.That(untouched.IsNavigable, Is.True);
+            Assert.That(untouched.NavigationKind, Is.EqualTo(NavigationKind.Tree));
         });
     }
 

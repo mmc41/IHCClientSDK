@@ -401,18 +401,14 @@ namespace Ihc.Vis.Tests
             ProjectAppService app = App;
             Project project = await Load("project3-KompleksWired.vis");
             ElementId id = project.Groups.First().Id!.Value;
-            ElementId productId = project.Root.DescendantsAndSelf()
-                .First(e => Ihc.Vis.Products.ProductClassifier.IsProduct(e.Tag)).Id!.Value;
-            var dimmer = new AdvancedDimmerResult(1, 2, 3, 4, 5, "m");
-
             Assert.Multiple(() =>
             {
                 Assert.That(app.Commands.UpdateProjectInfo(project, ProjectInfoData.Empty), Is.EqualTo(new UpdateProjectInfo(ProjectInfoData.Empty)));
                 Assert.That(app.Commands.UpdateUserText(project, id, "t"), Is.EqualTo(new UpdateUserText(id, "t")));
                 Assert.That(app.Commands.DeleteUserText(project, id), Is.EqualTo(new DeleteUserText(id)));
-                Assert.That(app.Commands.UpdateDimmerSettings(project, productId, dimmer), Is.EqualTo(new UpdateDimmerSettings(productId, dimmer)));
-                // UpdateModem's factory is gone (T031) — a modem writes back through ApplyProductDialog, covered
-                // by ApplyProductDialog_IsAPassThroughFactory above.
+                // UpdateModem's factory is gone (T031) and UpdateDimmerSettings's with it (T057) — a modem and
+                // a dimmer both write back through ApplyProductDialog now, covered by
+                // ApplyProductDialog_IsAPassThroughFactory above.
             });
         }
 

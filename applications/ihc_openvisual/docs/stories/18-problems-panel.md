@@ -100,14 +100,20 @@ instead of hunting for it.
 
 **Acceptance criteria**
 
-- MUST: **Given** a finding about an element, **when** its row is clicked, **then** that element is selected in
-  the tree pane that owns it, with its ancestors opened so it is actually on screen.
+- MUST: **Given** a finding about an element, **when** its row is clicked, **then** that element — or, where the
+  tree draws no row for it, the nearest element above it that has one — is selected in the tree pane that owns
+  it, with its ancestors opened so it is actually on screen; and the row named its destination before the click.
+
+  *A value inside a product is the common case of "no row of its own": a setting, a calibration row, a modem's
+  telephone slot. The click lands on the product, and US-086's route carries on into the dialog where such a
+  value is actually edited. The bare ancestor fallback is what remains for an element outside any product.*
 - MUST: **Given** a finding about something inside a function block's program, **when** its row is clicked,
   **then** the application switches into programming mode on that block first.
 - MUST: **Given** a finding about a locality or product while a block's program is open, **when** its row is
   clicked, **then** the application leaves programming mode first.
-- MUST: **Given** a finding that leads nowhere, **when** its row is clicked, **then** nothing moves, and the row
-  said so before the click.
+- MUST: **Given** a finding that leads nowhere — it names no single element, or the element it names has neither
+  a row nor an ancestor with one — **when** its row is clicked, **then** nothing moves and the row said so before
+  the click; and where an element was named but cannot be shown, the status line says so too.
 
 ## US-084 — Be stopped from sending a project that carries errors
 
@@ -168,3 +174,62 @@ project, compare it with a later one, or send it to whoever is helping me.
 **Readiness:** Ready — every criterion above is observable in `safe_visual_tests`: the four states gate the
 command's availability, and the written file's contents are compared against the panel's visible rows. The
 save dialog itself is a native window and is exercised through the dialog port rather than driven.
+
+## US-086 — Go from a finding to the control the fix is made in
+
+**As an** IHC installer, **I want** a finding to take me all the way to the field I have to change, **so that**
+I stop hunting for it through dialogs I already know I need.
+
+Selecting a finding reveals its element, as US-083 says. Activating one goes further: it opens the dialog the
+value lives in and puts the caret in the field itself. The two are separate gestures because they answer
+different questions — *where is this?* and *let me fix it.*
+
+**Acceptance criteria**
+
+- MUST: **Given** a finding, **when** its row is activated by double-click, **then** the route runs; **and given**
+  the same row, **when** it is activated by Enter, **then** the identical route runs. A keyboard user reaches the
+  fix by the route a mouse user takes.
+- MUST: **Given** a row is activated with Enter, **when** the keystroke is handled, **then** it does not also
+  press whatever default button the surrounding window has.
+- MUST: **Given** a finding about a value on a product, **when** its row is activated, **then** the product's
+  dialog opens with that field focused and on screen.
+- MUST: **Given** a finding about a value on one of a product's terminals, **when** its row is activated, **then**
+  the product's dialog opens with that terminal's row selected, the terminal's own editor opens **on top of** it,
+  and the caret lands in the field the finding is about. The parent dialog stays open underneath throughout.
+- MUST: **Given** a finding whose attribute the owning dialog does not offer as an editable field, **when** its
+  row is activated, **then** the dialog opens and nothing is focused — and the row said "dialog", not "field",
+  before the click.
+- MUST: **Given** a finding about a value on one of a product's configurable constants, **when** its row is
+  activated, **then** the product's dialog opens with that *Indstillinger* row selected and the constant's
+  editor opens on top of it (US-087). A constant has no tree row of its own, so the grid is the only way to it.
+- MUST: **Given** a finding that names no FIELD, on an element the tree draws a row for, **when** its row is
+  activated, **then** the tree lands on that row and no dialog opens. This is the general rule and not only the
+  link family: an empty locality, a block with no program, a variable written but never read are all repaired by
+  a gesture on the row, and a modal the installer must dismiss first is a detour, not a shortcut.
+- MUST: **Given** a finding about the PROJECT rather than about anything in it, **when** its row is activated,
+  **then** the one window that repairs it opens — chosen by the finding's code, since there is no element to
+  derive it from — and no tree moves.
+- MUST: **Given** a finding that names neither a reachable element nor such a window, **when** its row is
+  activated, **then** nothing opens and the panel says so.
+- MUST: **Given** any activated route, **when** the installer cancels out of the dialogs it opened, **then** the
+  project is unchanged. This feature navigates; it never repairs anything on the installer's behalf.
+
+**The row says which depth it has, before the click.** Its tooltip names the destination: the tree, the owning
+dialog, or the exact field. The promise and the route are computed once, from one resolver, so a row cannot
+offer a field and then open a dialog with nothing focused.
+
+**A deliberate asymmetry with the tree, stated so it is not filed as a bug.** Double-clicking a terminal *in the
+tree* opens the product's dialog and stops there — the installer chose that terminal and can see the grid.
+Activating a *finding* about the same terminal opens the product dialog, the terminal's editor and the field,
+because the finding names the value, and stopping at the dialog would leave the installer to find it again. The
+two gestures start in different places and are allowed to end in different places.
+
+**One visit, one undo entry.** Everything an activated route opens is a single act: values entered in a stacked
+editor join the visit, nothing reaches the project until the outermost dialog is accepted, and *Fortryd*
+afterwards takes back the whole visit rather than half of it. The same editor opened directly from the tree has
+no visit to belong to and commits on its own, which is the one place the two routes differ.
+
+**Readiness:** Ready — the route classes and their degradations are covered in `safe_visual_tests`, and the two
+deepest are additionally driven end to end through UI Automation on Windows: a terminal's cable-colour finding
+activated by both gestures, and a product field finding. What no automated test covers is whether the caret is
+where the installer was *looking* — a judgement about attention rather than about behaviour.

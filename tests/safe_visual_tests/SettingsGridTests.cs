@@ -48,12 +48,8 @@ public class SettingsGridTests : AvaloniaTestBase
         // per-type formatter. Projecting the raw attributes instead would assert a row the dialog never renders.
         Project current = session.Current!;
         ProjectElement element = current.FindById(placed)!;
-        ProductSetting[] settings = [.. new ProductView(current, element).SettingElements
-            .Select(current.View)
-            .Select(view => new ProductSetting(
-                view.Name ?? string.Empty,
-                view.Note ?? string.Empty,
-                VariableValueFormat.For(view.Element.Tag, view.Effective) ?? string.Empty))];
+        ProductSetting[] settings = [.. PropertiesDialogCoordinator.BuildSettings(
+            current, new ProductView(current, element))];
         return (app.GetProductDialog(current, placed), settings);
     }
 
@@ -115,6 +111,71 @@ public class SettingsGridTests : AvaloniaTestBase
             Assert.That(captions, Does.Contain("Indstillinger <klik for at konfigurere>"),
                 "captioned as the vendor captions it");
             Assert.That(captions, Does.Contain("Værdi"), "and the value column is headed");
+        });
+    }
+
+    /// <summary>
+    /// T039: a row is SELECTABLE, and the selection names the setting element — the substrate the editor is
+    /// opened on. Nothing is selected until the installer picks something.
+    ///
+    /// <para>Driven through the ListBox rather than by assigning the view-model property, because what is under
+    /// test is the binding: a grid whose <c>SelectedItem</c> went nowhere would still pass a test that set the
+    /// property itself.</para>
+    /// </summary>
+    [AvaloniaTest]
+    [CaptureScreenshotOnFailure]
+    public void ASettingsRow_IsSelectableAndNamesItsElement()
+    {
+        (ProductDialogDescriptor dialog, ProductSetting[] settings) = Compose(TemperatureSensor);
+        var window = new ProductDialogWindow();
+        CurrentTestWindow = window;
+        var viewModel = new ProductDialogViewModel(dialog, terminals: null, settings: settings);
+        window.Populate(viewModel);
+        window.Show();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        ProductDialogSettingsGridViewModel grid = viewModel.Groups
+            .SelectMany(g => g.SettingsSection).Single();
+        ListBox list = window.GetVisualDescendants().OfType<ListBox>().First(l => l.Name == "SettingsList");
+        ProductSetting expected = settings[1];
+
+        Assert.That(grid.SelectedRow, Is.Null, "nothing is selected until the installer picks a row");
+
+        list.SelectedIndex = 1;
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(grid.SelectedRow, Is.Not.Null, "the click reached the view-model");
+            Assert.That(grid.SelectedRow!.Id, Is.EqualTo(expected.Id),
+                "and it is the ELEMENT of the row picked — the floor sensor's calibration, not the room's");
+            Assert.That(expected.Id, Is.Not.EqualTo(settings[0].Id),
+                "precondition: the two rows really are different elements");
+        });
+    }
+
+    /// <summary>
+    /// A refresh keeps the selection on the same SETTING. The visit re-projects its grids after every
+    /// sub-dialog, and a selection that slid to whatever now sits at that index would point the next edit at a
+    /// different setting than the one the installer chose.
+    /// </summary>
+    [Test]
+    public void ARefresh_KeepsTheSelectionOnTheSameSetting()
+    {
+        (ProductDialogDescriptor dialog, ProductSetting[] settings) = Compose(TemperatureSensor);
+        var viewModel = new ProductDialogViewModel(dialog, terminals: null, settings: settings);
+        ProductDialogSettingsGridViewModel grid = viewModel.Groups
+            .SelectMany(g => g.SettingsSection).Single();
+        grid.SelectedRow = grid.Rows[1];
+
+        // Re-projected with the rows in the opposite order and one value changed, as a re-read after an edit
+        // could well produce.
+        viewModel.Refresh([], [settings[1] with { Value = "1,5" }, settings[0]]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(grid.SelectedRow?.Id, Is.EqualTo(settings[1].Id), "the same setting, wherever it moved");
+            Assert.That(grid.SelectedRow?.Value, Is.EqualTo("1,5"), "read from the FRESH row, not the stale one");
         });
     }
 }

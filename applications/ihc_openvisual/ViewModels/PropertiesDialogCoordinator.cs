@@ -9,6 +9,7 @@ using Ihc.Vis.Addressing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
 using Ihc.Vis.Session;
 using Ihc.Vis.Validation;
 
@@ -32,36 +33,47 @@ internal sealed class PropertiesDialogCoordinator(
     /// <summary>Opens the properties dialog appropriate to the element's type (the node dispatch, US-044). A modem, a
     /// product, a data-line pin, a scenes container, a scene value, an enum variable, and a locality/function block
     /// each route to their own flow.</summary>
-    public async Task OpenAsync(ElementId id)
+    public Task OpenAsync(ElementId id) => OpenAsync(id, null);
+
+    /// <summary>
+    /// THE node dispatch — one ladder, whether the installer arrived by gesture or by a route's dialog leg.
+    /// <para>The two used to be written out separately, which made every new element kind two edits in the right
+    /// relative order and let the row's promise and the click's destination disagree over an element only one of
+    /// them classified. A hop adds a focus and a product arrival to the same ladder; it does not re-walk it.</para>
+    /// </summary>
+    /// <param name="hop">The route leg being carried out, or null for the plain gesture.</param>
+    private async Task OpenAsync(ElementId id, DialogHop? hop)
     {
         if (session.Current is not { } project || project.FindById(id) is not { } element)
             return;
+        // Where a route wants the caret, and null for the plain gesture — every flow below already defaults to
+        // opening without landing on a particular control.
+        string? focus = hop?.Attribute;
         // EVERY product family — wired, wireless, modem, LED dimmer, S0 — opens the same dialog on its own
         // composed descriptor (T030). There is no per-family branch left to get wrong.
         if (ProductClassifier.IsProduct(element.Tag))
-            await OpenComposedDialogAsync(id);
+            await OpenComposedDialogAsync(id, hop);
         else if (element.Kind == ElementKind.DatalinePin)
-            await OpenPinAsync(id, element);
+            await OpenPinAsync(id, element, focus);
         else if (element.IsScenesContainer)
-            await OpenSceneContainerAsync(id, element);   // the product's Scenarier dialog (US-024)
+            // The product's Scenarier dialog (US-024). No focus: its one editable field is the note, and the
+            // dialog already opens on it.
+            await OpenSceneContainerAsync(id, element);
         else if (element.IsSceneMember && !element.IsSceneShutter)
-            await OpenSceneValueAsync(id, element);   // edit a scenario link's value (US-058)
-        else if (element.Kind == ElementKind.EnumResource)
-            // F-50: an enum VARIABLE opens the variable dialog, as every other variable does — the original's
-            // "Rediger <navn> egenskaber" with Navn, both documentation fields, an Initial værdi combo of its
-            // TYPE's states and the power-loss flag. The type EDITOR is a separate dialog behind a button there;
-            // opening it from the row (which is what this used to do) both hid the variable's own fields and put
-            // a project-global edit behind the ordinary gesture on one variable.
-            await OpenVariableAsync(id, element);
-        else if (element.Kind == ElementKind.Resource)
-            // An ordinary FB resource variable edits Name/Note plus its typed initial value (US-026/US-027, T015/T016).
-            await OpenVariableAsync(id, element);
+            await OpenSceneValueAsync(id, element, focus);   // edit a scenario link's value (US-058)
+        else if (element.Kind is ElementKind.Resource or ElementKind.EnumResource)
+            // An ordinary FB resource variable edits Name/Note plus its typed initial value (US-026/US-027,
+            // T015/T016), and F-50: an enum VARIABLE opens that same dialog rather than the type editor, with an
+            // Initial værdi combo of its TYPE's states. Opening the type editor from the row (which is what this
+            // used to do) both hid the variable's own fields and put a project-global edit behind the ordinary
+            // gesture on one variable.
+            await OpenVariableAsync(id, element, focus);
         else if (element.Tag == "conditions")
             // A Betingelser group edits Name/Note AND the operator its conditions combine with (F-48).
-            await OpenConditionsAsync(id, element);
+            await OpenConditionsAsync(id, element, focus);
         else if (element.IsLocalityGroup || element.Kind is ElementKind.FunctionBlock)
             // A function block renames through the same Name/Note dialog as a locality (US-007/US-019).
-            await OpenNameNoteAsync(id, session.Current!.View(element).Name ?? string.Empty);
+            await OpenNameNoteAsync(id, project.View(element).Name ?? string.Empty, focus);
     }
 
     /// <summary>
@@ -71,7 +83,8 @@ internal sealed class PropertiesDialogCoordinator(
     /// <para>OpenVisual reached the operator from the flyout already; it had no dialog at all here, so
     /// <i>Egenskaber…</i> on this row did nothing and the group's Name and Note were unreachable.</para>
     /// </summary>
-    private async Task OpenConditionsAsync(ElementId id, ProjectElement element)
+    private async Task OpenConditionsAsync(
+        ElementId id, ProjectElement element, string? focusAttribute = null)
     {
         if (session.Current is not { } project)
             return;
@@ -83,7 +96,8 @@ internal sealed class PropertiesDialogCoordinator(
         bool or = view.Effective("type") == "or";
 
         PropertiesResult? result = await dialogs.EditPropertiesAsync(
-            $"Rediger {name} egenskaber", name, view.Note ?? string.Empty, conditionsOr: or);
+            $"Rediger {name} egenskaber", name, view.Note ?? string.Empty, conditionsOr: or,
+            focus: ElementFieldFor(focusAttribute));
         if (result is null)
             return;   // cancelled
 
@@ -125,7 +139,7 @@ internal sealed class PropertiesDialogCoordinator(
 
     /// <summary>Edits a locality's or function block's Name and Note through the shared dialog and generic rename
     /// command (US-007/US-019) — refused inside a locked block by T003.</summary>
-    public async Task OpenNameNoteAsync(ElementId id, string currentName)
+    public async Task OpenNameNoteAsync(ElementId id, string currentName, string? focusAttribute = null)
     {
         if (session.Current is not { } project)
             return;
@@ -145,7 +159,7 @@ internal sealed class PropertiesDialogCoordinator(
         string title = isBlock ? FunctionBlockDialogTitle : $"Rediger {currentName} egenskaber";
         PropertiesResult? result = await dialogs.EditPropertiesAsync(
             title, currentName, currentNote, OriginOf(project, element),
-            userGroupCaption: userGroup);
+            userGroupCaption: userGroup, focus: ElementFieldFor(focusAttribute));
         if (result is null)
             return;   // cancelled — the locality keeps its original name and note
         await applyAndReport(session.Commands.RenameLocality(project, id, result.Name, result.Note),
@@ -174,7 +188,8 @@ internal sealed class PropertiesDialogCoordinator(
     /// through the variable dialog, applying all three as one undoable step (refused inside a locked block by T003).
     /// The value control shown depends on the variable's type; a type with no editable initial value edits Name/Note
     /// only.</summary>
-    public async Task OpenVariableAsync(ElementId id, ProjectElement variable)
+    public async Task OpenVariableAsync(
+        ElementId id, ProjectElement variable, string? focusAttribute = null)
     {
         if (session.Current is not { } project)
             return;
@@ -202,7 +217,10 @@ internal sealed class PropertiesDialogCoordinator(
             DecimalPlaces: DecimalPlacesFor(variable.Tag),
             // F-50: an enum offers its own TYPE's states; every other type leaves this null and the dialog uses
             // what the format declares.
-            ChoiceOptions: enumInfo?.States));
+            ChoiceOptions: enumInfo?.States,
+            // Where a ROUTE asked the caret to land. Null for the ordinary Egenskaber, which keeps opening on
+            // the name.
+            Focus: VariableFieldFor(focusAttribute)));
         if (result is null)
             return;   // cancelled
         // An enum's initial state is NOT written by the generic value writer: its inivalue is an IDREF to one of
@@ -347,7 +365,8 @@ internal sealed class PropertiesDialogCoordinator(
             $"'{name}' blev opdateret.");
     }
 
-    public async Task OpenSceneValueAsync(ElementId memberId, ProjectElement member)
+    public async Task OpenSceneValueAsync(
+        ElementId memberId, ProjectElement member, string? focusAttribute = null)
     {
         if (!SceneValue.TryParse(member, out SceneValue sv))
             return;
@@ -358,7 +377,8 @@ internal sealed class PropertiesDialogCoordinator(
         // block's scene pin to a Lampeudtag and to a Lampeudtag dimmer). One fixed caption, as this had, cannot
         // tell the installer which of the two dialogs is open.
         var input = new SceneValueInput(SceneValueTitles.For(isDimmer), isDimmer, sv.On, sv.LevelPercent,
-            ms / 60000, ms / 1000 % 60, SceneValue.LevelConstraint, SceneValue.RampPartConstraint);
+            ms / 60000, ms / 1000 % 60, SceneValue.LevelConstraint, SceneValue.RampPartConstraint,
+            Focus: SceneFieldFor(focusAttribute));
 
         SceneValueResult? result = await dialogs.EditSceneValueAsync(input);
         if (result is null)
@@ -387,6 +407,69 @@ internal sealed class PropertiesDialogCoordinator(
             : null;
 
     /// <summary>
+    /// Carries out a route's DIALOG leg — the plan the panel already worked out, never re-derived here.
+    /// <para>Re-deriving it would give the row's promise and the click's destination two authors, which is the
+    /// one thing the planner exists to prevent. This turns an answer into an arrival and decides nothing.</para>
+    /// </summary>
+    /// <param name="hop">Whose dialog opens, which element carries the value, and which field to land on.</param>
+    public Task ExecuteAsync(DialogHop hop) => OpenAsync(hop.Owner, hop);
+
+    /// <summary>
+    /// Where the product dialog should open for this hop — §5.4's four combinations, read off the pair the plan
+    /// already carries rather than re-decided.
+    /// </summary>
+    /// <remarks>
+    /// The field id is looked up in the COMPOSED descriptor. A hop naming an attribute the dialog does not offer
+    /// therefore focuses nothing, which is the same honest answer the planner gives when it degrades such a
+    /// route to dialog-level — the two cannot disagree, because both ask the descriptor.
+    /// </remarks>
+    private ProductDialogShowOptions ArrivalFor(
+        Project project, ProductDialogDescriptor descriptor, DialogHop hop)
+    {
+        // A FIELD OF THIS DIALOG, wherever its value lives. Asked first, and asked about the pair rather than
+        // about whether the site is the owner: a dimmer's settings are composed as ordinary fields bound to
+        // descendant elements, so a hop naming one has Site != Owner and is still a plain focus. Deciding by
+        // Site == Owner sent every one of them down the terminal branch below, which selected a row that does
+        // not exist and focused nothing.
+        if (hop.Attribute is { } attribute
+            && descriptor.AllFields
+                .FirstOrDefault(f => f.Target == hop.Site && f.Attribute == attribute) is { } offered)
+        {
+            return new ProductDialogShowOptions(FocusAutomationId: offered.AutomationId);
+        }
+
+        if (hop.Site == hop.Owner)
+        {
+            // The owner's own dialog, and it offers no field for this attribute — so the honest arrival is the
+            // plain open, which is the same answer the planner gave when it degraded the route.
+            return ProductDialogShowOptions.None;
+        }
+
+        // A sub-item: select its row, and — when the hop names a field — step into it as the installer would,
+        // landing on that field. With no attribute the row is selected and nothing is stepped into, which is how
+        // a finding whose fix is not a field still lands on the right sub-item.
+        //
+        // WHICH grid depends on what the sub-item IS. A setting and a terminal are both rows of the same dialog
+        // and both reached by stepping into them, but they are different lists with different selections, so a
+        // single "sub-item" answer would have pointed a constant's route at the terminal grid.
+        if (project.FindById(hop.Site) is { } site
+            && ProductRows.IsSetting(site.GetAttribute(ProductRows.SettingAttribute)))
+        {
+            return new ProductDialogShowOptions(
+                SelectSettingId: hop.Site.ToToken(),
+                InitialAction: hop.Attribute is null
+                    ? null
+                    : new ProductDialogWidgetAction(DialogWidgetKind.SettingsGrid, hop.Site));
+        }
+
+        return new ProductDialogShowOptions(
+            SelectTerminalPin: hop.Site.ToToken(),
+            InitialAction: hop.Attribute is null
+                ? null
+                : new ProductDialogWidgetAction(DialogWidgetKind.TerminalGrids, hop.Site));
+    }
+
+    /// <summary>
     /// Opens the ONE generic product dialog on a composed descriptor and applies whatever the installer changed.
     /// <para>Nothing family-specific happens here. The composer decided the title, the groups, every field's
     /// caption, current value, validation rule and write target; this reads none of them and touches no attribute
@@ -394,76 +477,320 @@ internal sealed class PropertiesDialogCoordinator(
     /// own (T029). Returns <c>false</c> only on cancel: an untouched OK is an ordinary commit with nothing in it,
     /// and the insert path rolls back on <c>false</c>.</para>
     /// </summary>
-    private async Task<bool> OpenComposedDialogAsync(ElementId productId)
+    /// <param name="hop">The route leg that opened it, or null for the plain gesture: it decides where the
+    /// dialog arrives and which field a step into a sub-item lands on.</param>
+    private async Task<bool> OpenComposedDialogAsync(ElementId productId, DialogHop? hop = null)
     {
-        bool committed = false;
-        while (true)
-        {
-            if (session.Current is not { } project)
-                return committed;
-            ProductDialogDescriptor descriptor = session.GetProductDialog(productId);
-            if (descriptor.Groups.IsEmpty)
-                return committed;   // nothing composed for this element — no dialog to open
+        if (session.Current is not { } project)
+            return false;
+        ProductDialogDescriptor descriptor = session.GetProductDialog(productId);
+        if (descriptor.Groups.IsEmpty)
+            return false;   // nothing composed for this element — no dialog to open
 
-            // The terminal rows are element DATA, not dialog metadata: the descriptor says whether the grids
-            // apply, and this supplies what goes in them. Read once here rather than inside the dialog, which
-            // has no project to read.
-            ProductView? productView =
-                project.FindById(productId) is { } el ? new ProductView(project, el) : null;
-            IReadOnlyList<ProductTerminal> terminals =
-                productView is { } pv ? BuildTerminals(pv) : [];
-            // Same rule as the terminals: the descriptor says whether the Indstillinger grid appears, and
-            // these are the rows that go in it (T070).
-            //
-            // The VALUE is rendered by the app's existing per-type formatter, not printed raw. The vendor
-            // shows a calibration offset as "0,0 °C" -- Danish decimal comma, one place, unit -- and
-            // VariableValueFormat already produces exactly that for resource_temperature (F-41/F-44). The
-            // raw inivalue is "0.00", so printing it directly showed the stored form rather than the
-            // displayed one, which is a display-interpretation concern and belongs on this side of the
-            // boundary (ADR-002).
-            IReadOnlyList<ProductSetting> settings = productView is { } sv
-                ? [.. sv.SettingElements.Select(project.View).Select(view => new ProductSetting(
-                        view.Name ?? string.Empty,
-                        view.Note ?? string.Empty,
-                        VariableValueFormat.For(view.Element.Tag, view.Effective) ?? string.Empty))]
-                : [];
+        // Composed ONCE and read twice: the arrival is a question about this descriptor's fields, so asking the
+        // composer again for a second copy of it would be the same answer at the price of a second compose.
+        ProductDialogShowOptions? arrival = hop is { } at ? ArrivalFor(project, descriptor, at) : null;
 
-            ProductDialogEdits? result = await dialogs.EditProductDialogAsync(descriptor, terminals, settings);
-            if (result is null)
-                return committed;   // cancelled — the product keeps its documentation
+        // The terminal rows are element DATA, not dialog metadata: the descriptor says whether the grids
+        // apply, and this supplies what goes in them. Read once here rather than inside the dialog, which
+        // has no project to read.
+        ProductView? productView =
+            project.FindById(productId) is { } el ? new ProductView(project, el) : null;
+        IReadOnlyList<ProductTerminal> terminals =
+            productView is { } pv ? BuildTerminals(pv) : [];
+        // Same rule as the terminals: the descriptor says whether the Indstillinger grid appears, and
+        // these are the rows that go in it (T070).
+        //
+        // The VALUE is rendered by the app's existing per-type formatter, not printed raw. The vendor
+        // shows a calibration offset as "0,0 °C" -- Danish decimal comma, one place, unit -- and
+        // VariableValueFormat already produces exactly that for resource_temperature (F-41/F-44). The
+        // raw inivalue is "0.00", so printing it directly showed the stored form rather than the
+        // displayed one, which is a display-interpretation concern and belongs on this side of the
+        // boundary (ADR-002).
+        IReadOnlyList<ProductSetting> settings = productView is { } sv ? BuildSettings(project, sv) : [];
 
-            // The status line names the product as the installer will see it in the tree a moment later — so the
-            // name AFTER the edit when they renamed it, not the descriptor's title (which is the product TYPE).
-            string nameNow = project.FindById(productId) is { } element
-                ? project.View(element).Name ?? string.Empty
-                : string.Empty;
-            string name = result.Edits
-                .Where(edit => edit.Target == productId && edit.Attribute == "name")
-                .Select(edit => edit.Value)
-                .LastOrDefault() ?? nameNow;
+        // THE VISIT'S PENDING STATE. A sub-dialog's OK lands here, not in the document: the whole visit is
+        // one transaction, so nothing is written until the product dialog's own OK — and Annuller discards
+        // the terminal addressing along with everything else, because the installer cancelled the act they
+        // were performing, not half of it.
+        Dictionary<ElementId, PinPropertiesResult> pendingTerminals = [];
 
-            await applyAndReport(session.Commands.ApplyProductDialog(project, productId, result.Edits),
-                $"{name} blev opdateret.");
-            committed = true;
+        // The constants edited in Rediger konstant, under the same rule (T040). Held as the installer's TEXT:
+        // the command that writes them owns the format.
+        Dictionary<ElementId, string> pendingSettings = [];
 
-            // Stepping into a composite: the documentation above is already applied, so the sub-dialog opens over
-            // a committed state and the product dialog re-opens after it — the vendor's in-place flow (US-012).
-            switch (result.WidgetAction)
+        // The visit's sub-dialogs open OVER this window, which stays on screen — so the step handler is
+        // where a composite is entered, not a result the dialog closes itself to report.
+        // The route's nested focus applies to the step the ROUTE opened, not to whatever the installer does
+        // next: consumed on first use, so a second Konfigurer in the same visit opens plainly.
+        string? routeFocus = hop?.Attribute;
+        ProductDialogEdits? result = await dialogs.EditProductDialogAsync(
+            descriptor, terminals, settings, arrival,
+            onStep: action =>
             {
-                case { Kind: DialogWidgetKind.TerminalGrids, Target: { } pinId }
-                    when session.Current?.FindById(pinId) is { Kind: ElementKind.DatalinePin } pin:
-                    await OpenPinAsync(pinId, pin);
-                    continue;
-                case { Kind: DialogWidgetKind.AdvancedDimmerButton }:
-                    await OpenAdvancedDimmerAsync(productId);   // Properties ▸ Advanced (US-015)
-                    return committed;
-                default:
-                    return committed;
+                string? focus = routeFocus;
+                routeFocus = null;
+                return StepIntoAsync(productId, action, pendingTerminals, pendingSettings, focus);
+            });
+        if (result is null)
+            return false;   // cancelled — the product keeps its documentation AND its addressing
+
+        // The status line names the product as the installer will see it in the tree a moment later — so the
+        // name AFTER the edit when they renamed it, not the descriptor's title (which is the product TYPE).
+        string nameNow = project.FindById(productId) is { } element
+            ? project.View(element).Name ?? string.Empty
+            : string.Empty;
+        string name = result.Edits
+            .Where(edit => edit.Target == productId && edit.Attribute == "name")
+            .Select(edit => edit.Value)
+            .LastOrDefault() ?? nameNow;
+
+        // ONE command for the whole visit: the product's fields, every terminal addressed inside it, and every
+        // constant edited in it. One undo entry, so Fortryd afterwards takes back the act the installer
+        // actually performed.
+        await applyAndReport(
+            session.Commands.ApplyProductDialogVisit(
+                project, productId, result.Edits,
+                [.. pendingTerminals.Select(e => new ProductDialogTerminalEdit(e.Key, e.Value))],
+                [.. SettingEdits(project, pendingSettings)]),
+            $"{name} blev opdateret.");
+
+        return true;
+    }
+
+    /// <summary>
+    /// A composite the installer stepped into WHILE the product dialog is open. It runs over that dialog and
+    /// returns to it — the window is never closed, so nothing it holds is lost on the way in or out.
+    /// </summary>
+    private async Task<ProductDialogRefresh?> StepIntoAsync(
+        ElementId productId, ProductDialogWidgetAction action,
+        Dictionary<ElementId, PinPropertiesResult> pendingTerminals,
+        Dictionary<ElementId, string> pendingSettings, string? focusAttribute = null)
+    {
+        switch (action)
+        {
+            case { Kind: DialogWidgetKind.TerminalGrids, Target: { } pinId }
+                when session.Current?.FindById(pinId) is { Kind: ElementKind.DatalinePin } pin:
+                // Into the VISIT, not into the document. The last answer for a terminal wins, which is what
+                // re-opening the same row and changing your mind means.
+                await OpenPinAsync(pinId, pin, focusAttribute,
+                    collect: values => pendingTerminals[pinId] = values);
+                return Project(productId, pendingTerminals, pendingSettings);
+            case { Kind: DialogWidgetKind.SettingsGrid, Target: { } settingId }
+                when Displayed(settingId, pendingSettings) is { } shown:
+                // Rediger konstant, into the same pending state and by the same rule (T040). What comes back is
+                // the installer's TEXT, kept as text: the command that writes it owns the format, and a
+                // conversion here would be a second reading of it.
+                if (await dialogs.EditConstantAsync(
+                        new ConstantEditorInput(settingId, shown.Name, shown.Value)) is { } accepted)
+                {
+                    pendingSettings[settingId] = accepted;
+                }
+                return Project(productId, pendingTerminals, pendingSettings);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The settings row as it stands in the visit — the pending value where the installer has already edited it,
+    /// the document's otherwise. Null when the element is not a setting of this product any more.
+    /// </summary>
+    private ProductSetting? Displayed(ElementId settingId, IReadOnlyDictionary<ElementId, string> pending)
+    {
+        if (session.Current is not { } project || project.FindById(settingId) is not { } element)
+            return null;
+        ElementView view = project.View(element);
+        return Overlay(
+            new ProductSetting(
+                view.Name ?? string.Empty,
+                view.Note ?? string.Empty,
+                VariableValueFormat.For(element.Tag, view.Effective) ?? string.Empty,
+                settingId),
+            pending);
+    }
+
+    /// <summary>
+    /// The constants the visit edited, as typed values the command can write.
+    /// <para>The installer's text is turned back into a value HERE, on the presentation side: the grid rendered
+    /// the value through this application's per-type format table, so reading it back is the same table's job
+    /// (ADR-002). The SDK is handed a <see cref="ResourceInitialValue"/> of the setting's own kind, never a
+    /// string it would have to interpret.</para>
+    /// <para>Text that names no number is DROPPED rather than written as zero — the row keeps the value it had,
+    /// which is what the installer sees when they come back out of the editor.</para>
+    /// </summary>
+    private IEnumerable<ProductDialogSettingEdit> SettingEdits(
+        Project project, IReadOnlyDictionary<ElementId, string> pending)
+    {
+        foreach ((ElementId id, string text) in pending)
+        {
+            if (project.FindById(id) is { } element
+                && Retyped(ReadInitialValue(element), text) is { } value)
+            {
+                yield return new ProductDialogSettingEdit(id, value);
             }
         }
     }
 
-    private async Task OpenPinAsync(ElementId pinId, ProjectElement pin)
+    /// <summary>
+    /// The installer's text as a value of the SAME kind the setting already holds — its kind is the element's,
+    /// never guessed from how the text looks.
+    /// </summary>
+    /// <remarks>
+    /// The leading number is taken and the rest ignored, because the box is pre-filled with the row's rendered
+    /// value and that carries a unit ("0,0 °C") the installer may well leave in place. Danish first, since the
+    /// text came from a Danish-formatted row; invariant after, so a typed period is not a syntax error.
+    /// </remarks>
+    private static ResourceInitialValue? Retyped(ResourceInitialValue current, string text) =>
+        LeadingNumber(text) is not { } number
+            ? null
+            : current.Kind switch
+            {
+                ResourceValueKind.Decimal => ResourceInitialValue.OfDecimal(number),
+                ResourceValueKind.Number => ResourceInitialValue.OfNumber((long)Math.Round(number)),
+                _ => null,   // a setting of a kind no editor offers is not written by one
+            };
+
+    private static double? LeadingNumber(string text)
+    {
+        string trimmed = new([.. text.Trim().TakeWhile(c =>
+            char.IsAsciiDigit(c) || c is '-' or '+' or ',' or '.')]);
+        return double.TryParse(trimmed, NumberStyles.Float, DanishCulture, out double danish) ? danish
+            : double.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out double invariant)
+                ? invariant
+                : null;
+    }
+
+    private static readonly CultureInfo DanishCulture = CultureInfo.GetCultureInfo("da-DK");
+
+    /// <summary>The visit's pending value laid over a row, or the row unchanged where there is none.</summary>
+    private static ProductSetting? Overlay(
+        ProductSetting? row, IReadOnlyDictionary<ElementId, string> pending) =>
+        row is not null && pending.TryGetValue(row.Id, out string? edited)
+            ? row with { Value = edited }
+            : row;
+
+    /// <summary>
+    /// What the product dialog should now show: the document, with the visit's pending terminal values laid over
+    /// it.
+    /// <para>Neither source alone is right mid-visit. The document has not seen the terminals the installer
+    /// addressed inside the visit, and the pending map holds only those — so the answer is the overlay.</para>
+    /// </summary>
+    private ProductDialogRefresh? Project(
+        ElementId productId, IReadOnlyDictionary<ElementId, PinPropertiesResult> pendingTerminals,
+        IReadOnlyDictionary<ElementId, string> pendingSettings)
+    {
+        if (session.Current is not { } project || project.FindById(productId) is not { } element)
+            return null;
+        var view = new ProductView(project, element);
+        return new ProductDialogRefresh(
+            BuildTerminals(view, pendingTerminals), BuildSettings(project, view, pendingSettings));
+    }
+
+    /// <summary>
+    /// Whether the <i>Rediger konstant</i> editor edits this attribute (T047).
+    /// </summary>
+    /// <remarks>
+    /// A bool rather than a key, because that editor has exactly ONE field: there is nothing for a caller to
+    /// choose between, and a key vocabulary of one member would be ceremony around a yes/no. The value lives in
+    /// <c>inivalue</c> — the attribute the vendor's own editor writes — and any other attribute of a setting
+    /// element is not something this editor offers.
+    /// </remarks>
+    internal static bool ConstantFieldFor(string? attribute) => attribute == "inivalue";
+
+    /// <summary>
+    /// The SDK's attribute name as a scene dialog's field key (T045) — one map over both scene windows, because
+    /// a route names a field and which window opens follows from the element the finding is about.
+    /// </summary>
+    /// <remarks>
+    /// A shutter member's <c>shutter_position</c> is deliberately absent: no dialog edits one, so a route that
+    /// named it would promise a field that does not exist anywhere.
+    /// </remarks>
+    internal static SceneDialogField? SceneFieldFor(string? attribute) => attribute switch
+    {
+        "note" => SceneDialogField.Note,
+        "relay_value" => SceneDialogField.State,
+        "dimming_value" => SceneDialogField.Level,
+        "ramptime_ms" => SceneDialogField.RampTime,
+        _ => null,
+    };
+
+    /// <summary>
+    /// The SDK's attribute name as the element dialog's own field key — the third of the three vocabularies
+    /// this coordinator translates, beside <see cref="PinFieldFor"/> and <see cref="VariableFieldFor"/>.
+    /// </summary>
+    /// <remarks>
+    /// The <c>master_*</c> provenance attributes are ABSENT by design, so they answer null and their findings
+    /// degrade to dialog-level. The dialog does show them — greyed, below the editable pair — and focusing a
+    /// disabled box would land the caret where nothing can be typed while the row had promised a field.
+    /// </remarks>
+    internal static ElementDialogField? ElementFieldFor(string? attribute) => attribute switch
+    {
+        "name" => ElementDialogField.Name,
+        "note" => ElementDialogField.Note,
+        // A Betingelser group's operator. Named `type` in the file, which is why the map exists at all.
+        "type" => ElementDialogField.Logic,
+        _ => null,
+    };
+
+    /// <summary>
+    /// The SDK's attribute name as the variable editor's own field key — the peer of
+    /// <see cref="PinFieldFor"/>, and here for the same reason: this is the one place the two vocabularies meet.
+    /// </summary>
+    /// <remarks>
+    /// The value-carrying attribute spellings all answer <see cref="VariableDialogField.InitialValue"/>, because
+    /// they are one field of the dialog: a time variable stores its value in <c>hour</c>/<c>minute</c>/
+    /// <c>second</c>/<c>millisecond</c> and a date in <c>day</c>/<c>month</c>, and a finding about any of them is
+    /// a finding about the value the installer edits in one group. An attribute this dialog does not render
+    /// answers null rather than guessing at a nearby field.
+    /// </remarks>
+    internal static VariableDialogField? VariableFieldFor(string? attribute) => attribute switch
+    {
+        "name" => VariableDialogField.Name,
+        "note" => VariableDialogField.Note,
+        "note-2" => VariableDialogField.HelpNote,
+        "inivalue" => VariableDialogField.InitialValue,
+        "hour" or "minute" or "second" or "millisecond" => VariableDialogField.InitialValue,
+        "day" or "month" => VariableDialogField.InitialValue,
+        "backup" => VariableDialogField.Backup,
+        _ => null,
+    };
+
+    /// <summary>
+    /// The SDK's attribute name, as the terminal editor's own field key — the ONE place the two vocabularies
+    /// meet.
+    /// </summary>
+    /// <remarks>
+    /// It lives on the coordinator because the coordinator is already where typed SDK reads are bound into
+    /// dialog inputs. The window below it knows only keys, and the SDK above it knows only attributes, so
+    /// neither acquires a name belonging to the other — and an attribute this dialog does not render answers
+    /// null rather than guessing at a nearby field.
+    /// </remarks>
+    internal static PinDialogField? PinFieldFor(string? attribute) => attribute switch
+    {
+        "address_dataline" => PinDialogField.Address,
+        "cable_colour" => PinDialogField.CableColour,
+        "note" => PinDialogField.Note,
+        "inivalue" => PinDialogField.InitialValue,
+        "backup" => PinDialogField.Backup,
+        _ => null,
+    };
+
+    /// <summary>
+    /// The terminal editor.
+    /// </summary>
+    /// <param name="pinId">The terminal being edited.</param>
+    /// <param name="pin">Its element, for the pre-fill reads.</param>
+    /// <param name="focusAttribute">The SDK attribute a route wants the caret on, or null.</param>
+    /// <param name="collect">
+    /// Where a commit goes. Null — the TREE's own gesture on a pin — writes straight to the document, because a
+    /// dialog opened standalone IS its own transaction. Non-null — opened from inside a product-dialog visit —
+    /// collects into that visit instead, so the visit stays one commit and one undo entry.
+    /// <para>Same window, two commit semantics. It is stated here because the difference is invisible from
+    /// inside the dialog, and a reader meeting only one of the two routes would take it for the rule.</para>
+    /// </param>
+    private async Task OpenPinAsync(
+        ElementId pinId, ProjectElement pin, string? focusAttribute = null,
+        Action<PinPropertiesResult>? collect = null)
     {
         var view = new PinView(session.Current!, pin);
         bool isOutput = view.IsOutput;
@@ -476,12 +803,22 @@ internal sealed class PropertiesDialogCoordinator(
             view.InitialValueOn,
             InUseTerminals(isOutput, pinId),
             view.Name ?? string.Empty,
-            view.Backup);
+            view.Backup,
+            PinFieldFor(focusAttribute));
 
         // Apply commits and leaves the dialog open, so several terminals can be addressed in one visit
         // (the vendor's Anvend); OK commits the same way and closes.
         async Task Commit(PinPropertiesResult r)
         {
+            if (collect is not null)
+            {
+                // Into the visit. Nothing is validated here: the one command the visit commits validates every
+                // terminal it carries, so an address refused there refuses the whole visit rather than being
+                // caught twice with two different answers.
+                collect(r);
+                setStatus($"{view.Name} blev adresseret til datalinie {r.DataLine}, klemme {r.Terminal}.");
+                return;
+            }
             // A bespoke failure message (invalid address) rather than the generic mapping, so read the outcome
             // directly.
             EditOutcome outcome = await session.ApplyAsync(session.Commands.UpdatePin(session.Current!, pinId, r));
@@ -519,11 +856,27 @@ internal sealed class PropertiesDialogCoordinator(
     // The product's input/output terminals for the addressing grids (US-012): each terminal's name, its
     // vendor-formatted "Datalinie N.PP" address (blank when unassigned), cable colour and note. The typed PinView
     // owns the reads + address decode — the coordinator only formats the row.
-    private static IReadOnlyList<ProductTerminal> BuildTerminals(ProductView product)
+    private static IReadOnlyList<ProductTerminal> BuildTerminals(
+        ProductView product, IReadOnlyDictionary<ElementId, PinPropertiesResult>? pending = null)
     {
         var terminals = new List<ProductTerminal>();
         foreach (PinView t in product.Terminals)
         {
+            // A terminal the installer addressed INSIDE this visit renders from what they entered, not from the
+            // document — which has not been told yet, and must not be until the visit commits.
+            if (t.Id is { } id && pending is not null && pending.TryGetValue(id, out PinPropertiesResult? edited) && edited is not null)
+            {
+                DatalineAddress.TryEncode(edited.DataLine, edited.Terminal, t.IsOutput, out string token);
+                string pendingLabel = DatalineAddress.ToVendorLabel(token, t.IsOutput);
+                terminals.Add(new ProductTerminal(
+                    t.Name ?? string.Empty,
+                    pendingLabel == "?" ? string.Empty : $"Datalinie {pendingLabel}",
+                    edited.CableColour,
+                    edited.Note,
+                    t.IsOutput,
+                    id.ToToken()));
+                continue;
+            }
             string label = DatalineAddress.ToVendorLabel(t.AddressToken, t.IsOutput);
             terminals.Add(new ProductTerminal(
                 t.Name ?? string.Empty,
@@ -536,45 +889,26 @@ internal sealed class PropertiesDialogCoordinator(
         return terminals;
     }
 
-    // A setting declared in MILLISECONDS shown in seconds: the value is divided by 1000 at the read above, so its
-    // bounds are divided by the same 1000 here. Converting the metadata rather than re-typing the seconds keeps the
-    // catalog the only source — if a preset ever declares 3000–12000 ms, the field offers 3–12 s with no edit here.
-    private static FieldConstraintMetadata PerSecond(FieldConstraintMetadata declared) =>
-        declared with
-        {
-            Minimum = declared.Minimum / 1000,
-            Maximum = declared.Maximum / 1000,
-        };
+    /// <summary>The <i>Indstillinger</i> rows, rendered by the app's per-type value formatter.</summary>
+    // A setting with no id is SKIPPED rather than shown unidentified: the row is what an editor is opened on, and
+    // one that cannot say which element it stands for is a row whose click could only fail.
+    //
+    // The visit's pending values are laid over the document for the same reason the terminals' are: a constant
+    // edited inside the visit has not reached the document yet, and a grid that re-read the document would show
+    // the installer the value they had just replaced.
+    /// <remarks>
+    /// <c>internal</c> so the dialog's own tests project their rows through THIS, rather than each hand-copying
+    /// the projection. A copy is what a grid test then asserts against instead of the app's own rows — and the
+    /// copies had already lost the id filter, so they projected settings the dialog never shows.
+    /// </remarks>
+    internal static IReadOnlyList<ProductSetting> BuildSettings(
+        Project project, ProductView product, IReadOnlyDictionary<ElementId, string>? pending = null) =>
+        [.. product.SettingElements.Where(e => e.Id is not null).Select(project.View).Select(view => Overlay(
+            new ProductSetting(
+                view.Name ?? string.Empty,
+                view.Note ?? string.Empty,
+                VariableValueFormat.For(view.Element.Tag, view.Effective) ?? string.Empty,
+                view.Element.Id!.Value),
+            pending ?? System.Collections.Immutable.ImmutableDictionary<ElementId, string>.Empty)!)];
 
-    private async Task OpenAdvancedDimmerAsync(ElementId productId)
-    {
-        if (session.Current is not { } project || project.FindById(productId) is not { } product)
-            return;
-        // The fallbacks (700/700/2/0/100) are the vendor's FACTORY new-device defaults, NOT the DTD defaults: the
-        // schema default for a dimmer_setting `value` is "0", so an unset device reads 0 and PositiveSetting returns
-        // null, letting the `?? factory` here apply the constant (fablerefac W1-3 finding — kept app-side).
-        var view = new DimmerView(project, product);
-        var input = new AdvancedDimmerInput(
-            view.PositiveSetting("dimmer_setting_fade_rate_up") ?? 700,
-            view.PositiveSetting("dimmer_setting_fade_rate_down") ?? 700,
-            // Stored in ms (default 5000); the dialog edits it in seconds, so ÷1000. The command multiplies back
-            // by 1000 on commit, so the stored value round-trips exactly — and its BOUNDS are divided by the same
-            // 1000 below, so what the field offers is what the catalog declares.
-            (view.PositiveSetting("dimmer_setting_dimming_rate") ?? 5000) / 1000,
-            view.PositiveSetting("dimmer_setting_minimum_value") ?? 0,
-            view.PositiveSetting("dimmer_setting_maximum_value") ?? 100,
-            view.LoadMode,
-            // The catalog's own bounds per setting, through the SDK's metadata face (T045). No number here.
-            view.SettingConstraint("dimmer_setting_fade_rate_up"),
-            view.SettingConstraint("dimmer_setting_fade_rate_down"),
-            PerSecond(view.SettingConstraint("dimmer_setting_dimming_rate")),
-            view.SettingConstraint("dimmer_setting_minimum_value"),
-            view.SettingConstraint("dimmer_setting_maximum_value"));
-
-        AdvancedDimmerResult? result = await dialogs.EditAdvancedDimmerAsync(input);
-        if (result is null)
-            return;
-        await applyAndReport(session.Commands.UpdateDimmerSettings(project, productId, result),
-            "Lysdæmperindstillingerne blev opdateret.");
-    }
 }

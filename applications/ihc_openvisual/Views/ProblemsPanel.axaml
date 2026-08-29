@@ -238,7 +238,8 @@
                        ItemsSource="{Binding Rows}"
                        SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
                        CanUserResizeColumns="True"
-                       BorderThickness="0">
+                       BorderThickness="0"
+                       DoubleTapped="OnRowsDoubleTapped">
                 <TableView.Styles>
                     <!-- The header template is applied through the header's own ContentTemplate, not through
                          TableViewColumn.HeaderTemplate: measured on Avalonia 12.1.1, the column-level property
@@ -265,6 +266,10 @@
                         <Setter Property="Padding" Value="6,3"/>
                         <Setter Property="MinHeight" Value="0"/>
                         <Setter Property="a:AutomationProperties.AutomationId" Value="{Binding Code}"/>
+                        <!-- The code is not an address: several codes fire many times over one project, so the
+                             per-occurrence identity travels BESIDE it rather than displacing it — every existing
+                             driver selector and E2E addresses a row by its code. -->
+                        <Setter Property="a:AutomationProperties.ItemStatus" Value="{Binding OccurrenceId}"/>
                         <Setter Property="a:AutomationProperties.Name" Value="{Binding AccessibleText}"/>
                         <!-- Says, before the click, where the row leads — or that it leads nowhere. -->
                         <Setter Property="ToolTip.Tip" Value="{Binding NavigationHint}"/>

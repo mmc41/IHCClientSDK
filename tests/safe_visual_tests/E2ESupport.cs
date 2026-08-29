@@ -42,6 +42,31 @@ public static class E2E
     public static string Fixture(params string[] relativeParts) => Path.Combine(
         new[] { ProblemsTestData.RepositoryRoot(), "tests", "testdata", "projects" }.Concat(relativeParts).ToArray());
 
+    /// <summary>
+    /// A THROWAWAY copy of a fixture, for a scenario that opens dialogs which could commit.
+    /// </summary>
+    /// <remarks>
+    /// The committed fixtures are byte-exact oracles. A scenario that only reads can safely drive the original,
+    /// but one that opens an editor cannot: a stray commit followed by a save would rewrite an oracle, and the
+    /// diff would land in someone else's change. <see cref="AssertUnchanged"/> closes the loop by proving the
+    /// copy came back as it went in — so a scenario that DOES modify fails loudly instead of passing quietly.
+    /// </remarks>
+    public static string ScratchCopy(string fixtureFile)
+    {
+        string scratch = Path.Combine(
+            Path.GetTempPath(), "ihc_e2e_scratch", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(scratch);
+        string copy = Path.Combine(scratch, fixtureFile);
+        File.Copy(Fixture(fixtureFile), copy);
+        return copy;
+    }
+
+    /// <summary>Fails when the scratch copy no longer matches the fixture it was taken from.</summary>
+    public static void AssertUnchanged(string scratchCopy, string fixtureFile) =>
+        Assert.That(File.ReadAllBytes(scratchCopy), Is.EqualTo(File.ReadAllBytes(Fixture(fixtureFile))).AsCollection,
+            "the scenario modified the project — this feature navigates, it does not autofix, so every "
+            + "scenario must cancel out of whatever it opened");
+
     /// <summary>One driver envelope, parsed. Every field the tests read comes from here.</summary>
     public sealed record Envelope(bool Ok, string Code, string Message, JsonElement Data, string Raw)
     {
@@ -174,6 +199,30 @@ public static class E2E
         Assert.Fail($"the app never opened '{fileName}' — the title bar still reads '{lastTitle}'.");
     }
 
+    /// <summary>
+    /// The open modal STACK, topmost first, as the driver reports it — read from the envelope's own
+    /// <c>context</c>, which sits beside <c>data</c> rather than inside it.
+    /// </summary>
+    public static IReadOnlyList<string> OpenModalIds()
+    {
+        using JsonDocument document = JsonDocument.Parse(RunOk("session", "status").Raw);
+        return [.. document.RootElement.GetProperty("context").GetProperty("openModals").EnumerateArray()
+            .Select(m => m.GetProperty("id").GetString() ?? string.Empty)];
+    }
+
+    /// <summary>
+    /// Dismisses whatever modals are open, innermost first — the cleanup every route scenario ends with.
+    /// <para>Bounded rather than looped until empty: a modal the driver cannot dismiss would otherwise spin here
+    /// for ever, and a scenario that leaves one behind should fail on its own assertion, not hang.</para>
+    /// </summary>
+    public static void CloseAllModals(int guard = 4)
+    {
+        for (int i = 0; i < guard && OpenModalIds().Count > 0; i++)
+        {
+            RunOk("dialog", "cancel");
+        }
+    }
+
     private static string TitleOf(Envelope envelope)
     {
         using JsonDocument document = JsonDocument.Parse(envelope.Raw);
@@ -201,15 +250,24 @@ public static class E2E
     public static IReadOnlyList<Row> Rows()
     {
         Envelope rows = RunOk("problems", "rows");
-        return [.. rows.Field("rows").EnumerateArray().Select(r => new Row(
-            r.GetProperty("index").GetInt32(),
-            r.GetProperty("code").GetString() ?? string.Empty,
-            r.GetProperty("severity").GetString() ?? string.Empty,
-            r.GetProperty("message").GetString() ?? string.Empty,
-            r.GetProperty("element").GetString() ?? string.Empty))];
+        return [.. rows.Field("rows").EnumerateArray().Select(ToRow)];
     }
 
-    public sealed record Row(int Index, string Code, string Severity, string Message, string Element);
+    /// <summary>One row of a <c>problems rows</c> or <c>problems click</c> envelope.</summary>
+    public static Row ToRow(JsonElement r) => new(
+        r.GetProperty("index").GetInt32(),
+        r.GetProperty("code").GetString() ?? string.Empty,
+        r.GetProperty("occurrence").GetString() ?? string.Empty,
+        r.GetProperty("severity").GetString() ?? string.Empty,
+        r.GetProperty("message").GetString() ?? string.Empty,
+        r.GetProperty("element").GetString() ?? string.Empty);
+
+    /// <param name="Occurrence">
+    /// The row's per-occurrence identity. <see cref="Code"/> names a GROUP — several codes fire many times over
+    /// this fixture — so this is what addresses one row.
+    /// </param>
+    public sealed record Row(
+        int Index, string Code, string Occurrence, string Severity, string Message, string Element);
 
     /// <summary>
     /// What each tree pane currently has selected, as <c>(tree, name)</c> pairs — read from the driver's own

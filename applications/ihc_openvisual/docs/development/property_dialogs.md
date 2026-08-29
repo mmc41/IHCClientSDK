@@ -119,6 +119,20 @@ the element:
 Every product family — wired, wireless, modem, LED dimmer, S0 — takes the first row. There is no per-family branch
 left to get wrong.
 
+There is a **second entry point** into the same flows. `ExecuteAsync(DialogHop)` opens a dialog for a route that has
+already been decided — a *Problemer* row activated in the panel — rather than for a node the installer clicked:
+
+| Entry point | Given | Decides |
+| --- | --- | --- |
+| `OpenAsync(ElementId)` | a tree node | which dialog, from the element, by the ladder above |
+| `ExecuteAsync(DialogHop)` | a finished route | nothing — it carries out the plan it is handed |
+
+The asymmetry is the point. A plan already names the owner, the site and the field, and re-deriving any of them here
+would give the row's promise and the click's destination two authors. `ExecuteAsync` translates the hop into a
+`ProductDialogShowOptions` and opens the owner's dialog; every non-product owner falls back to the ladder, because
+landing *in* a dialog rather than merely opening it needs that family's focus keys, and those arrive family by
+family.
+
 Each flow reads the element through a typed SDK read view (`ProductView`, `PinView`, `FunctionBlockView`,
 `ElementView`) rather than raw schema attributes, builds the dialog's input record, awaits the dialog, and turns the
 result into a `ProjectCommand`. Dialog-shape decisions that are per node type — a function block's fixed
@@ -212,6 +226,13 @@ frontend-owned — a future frontend re-implements display conventions by design
 | `DialogControlKind` | **Presentation, mild.** An abstract widget vocabulary — toolkit-agnostic, but a UI concept |
 | `Columns`, `ColumnMajor`, `ColumnSpan` | **Presentation.** Pure layout |
 | `DialogWidgetKind` | **Presentation, most specific.** Names composites drawn in one frontend's window |
+| `Collapsible` | **Presentation.** Whether a group is drawn behind a disclosure; the fields compose and commit either way |
+| `DisplayDivisor` | **Domain.** It is the relationship between the stored unit and the captioned one, and the write-back is its exact inverse — a frontend that re-decided it would store a different number |
+
+Two GUI-side types deliberately stay out of the SDK altogether. `PinDialogField` is a **dialog-local** vocabulary,
+so no control identity ever enters an SDK contract; and `NavigationKind`/`DialogHop` are the host's route model,
+built from facts the SDK already exposes. The SDK's `dlg.*` ids are the tolerated maximum in the other direction:
+they are consumed, not extended.
 
 What the SDK does **not** know: no toolkit type, no size, font, colour, theme, gesture, focus order or window class.
 The app also keeps display interpretation on its own side even where the descriptor could have carried it — the
@@ -240,6 +261,72 @@ other way: a frontend needing a control the vocabulary does not have must **grow
 codebase's own rule every admission to that closed vocabulary requires a measurement against the vendor oracle. That
 gate is a parity gate, which a non-parity frontend has no way to satisfy. Anyone adding a second frontend should
 decide that question before binding to the descriptor rather than after.
+
+## 5b. Focus — landing in a control, not merely in a window
+
+Three seams, in order of how specific they are.
+
+| Seam | Signature | Whose vocabulary |
+| --- | --- | --- |
+| `ResultDialog<T>.FocusOnOpen(Control)` | any control; a `TextBox` is additionally selected | the base dialog's |
+| `PinPropertiesInput.Focus` | `PinDialogField?` — `Address`, `CableColour`, `Note`, `InitialValue`, `Backup` | the dialog's own |
+| `ProductDialogShowOptions.FocusAutomationId` | a `dlg.*` id from the composed descriptor | the descriptor's |
+
+A hand-written dialog gets a **dialog-local enum**, and the window maps a key to its own control by compiled
+`x:Name` reference — so a rename is a compile error rather than a focus that silently lands nowhere. The
+coordinator is the single place the two vocabularies meet (`PinFieldFor`): the SDK above it knows attribute names,
+the window below it knows controls, and neither acquires the other's. An attribute the dialog does not render
+answers `null` rather than a guess at a nearby field.
+
+The composed dialog needs no enum, because its fields already carry stable ids. `FocusField` focuses the named id
+and scrolls it into view; an id the dialog does not contain focuses **nothing**, which is the same honest answer the
+route planner gives when it degrades such a route to dialog-level.
+
+Two absences are deliberate. A control that is **hidden** is not focused — an input pin has no initial-value
+control, and a route asking for one must land nowhere rather than on something invisible. A control that is
+**read-only** cannot take focus at all, which is why the planner never promises a field for a read-only attribute.
+
+## 5c. Stepping into a composite — the dialog stays open
+
+`ProductDialogStep` is the seam: the product dialog calls it and **stays open**, so a sub-dialog appears over a
+parent that is still there.
+
+```
+ProductDialogWindow.Step(action)
+  → TryCommit()                      refuses an invalid value, exactly as OK does
+  → await step(action)               the coordinator opens the sub-dialog OVER this window
+  → viewModel.Refresh(...)           re-projected from the caller's answer, never from what is on screen
+```
+
+It replaced a protocol that CLOSED the window and let the caller re-open it. That was visible — the installer saw
+the dialog vanish and come back — and lossy: closing destroyed the window, so anything it held that had not reached
+the document was gone. The old path survives only for a composite this seam has not taken over, and a window with no
+handler still uses it.
+
+**The refresh re-projects from the authoritative state**, which is the visit's pending values laid over the
+document. Neither source alone is right mid-visit: the document has not been told about a terminal addressed inside
+the visit, and the dialog's own rendered rows are a *rendering* — deriving values back out of them is the point at
+which a formatting change silently becomes a data change.
+
+**The visit is the transaction.** A sub-dialog's OK joins a pending overlay; nothing reaches the document until the
+product dialog's own OK, which commits the whole visit through one command and so one undo entry; Annuller discards
+all of it. The same sub-dialog opened directly from the tree has no visit to belong to and commits straight
+through — same window, two commit semantics, stated here because the difference is invisible from inside it.
+
+## 5d. Owner — a nested dialog parents on the dialog that raised it
+
+`AvaloniaDialogService.Innermost(shell)` walks Avalonia's own window-ownership chain to the innermost visible
+window, and every modal is shown over that rather than over the shell.
+
+It is **read**, not maintained as a parallel stack of our own. A hand-kept stack has to be popped on every exit
+route a dialog has — OK, Cancel, Esc, the title-bar X, a throw on the way out — and one missed pop leaves every
+later modal parented on a window that has closed. The chain cannot drift, because it is the fact the window manager
+is already keeping.
+
+A sub-dialog parented on the shell would not be modal to the dialog that raised it: the installer could reach
+behind it and edit the very values it was opened to change, or close its parent out from under it. The code-built
+message boxes go through the same resolution, though they build their window inline rather than through the shared
+owner guard.
 
 ## 6. Result to command
 

@@ -5,6 +5,23 @@ using Ihc.Vis.Problems;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
+    /// WHERE one particular finding is repaired, when that is not what the entry declares.
+    ///
+    /// <para>The entry's <c>Target</c> is a statement about the ROW — every occurrence of it is about this
+    /// attribute of this kind of element. Some rules cannot say that: which attribute is at fault differs per
+    /// occurrence (the <c>attr-*</c> family reads whichever attribute the schema rejected), or the element to
+    /// repair is a CHILD of the one the finding is anchored to (a device setting whose rule reports the product
+    /// that owns it, so the reader sees the device rather than a row the tree does not draw).</para>
+    ///
+    /// <para>So this is the same carried-fact pattern one level down: the rule states it per emission, the
+    /// finding carries it, and a host prefers it over the declared target. Absent — the ordinary case — nothing
+    /// changes and the entry's declaration still speaks for every occurrence.</para>
+    /// </summary>
+    /// <param name="Element">The element to repair. May differ from the one the finding is anchored to.</param>
+    /// <param name="Attribute">The attribute to repair, or null to name the element only.</param>
+    public readonly record struct FixLocation(ElementId Element, string? Attribute);
+
+    /// <summary>
     /// WHERE a finding is. Two anchors, because <see cref="ElementId"/> cannot be the universal one: a MALFORMED
     /// id cannot be parsed and the finding is about the malformation; a DUPLICATE id resolves to two elements, so
     /// it does not identify a site; a WHOLE-TREE finding has several sites or none.
@@ -117,5 +134,35 @@ namespace Ihc.Vis.Validation
         /// </para>
         /// </summary>
         public EquatableArray<ProblemCode> RefusedOperations { get; init; }
+
+        /// <summary>
+        /// The attribute this finding's rule is ABOUT, projected from its catalogue entry's target — null for the
+        /// majority, whose rules are about an element rather than one of its fields.
+        /// <para>
+        /// Carried for the same reason <see cref="RefusedOperations"/> is: a host may not read the catalogue, so
+        /// the finding is the only door the fact has. A consumer deciding whether it can take the user to a FIELD
+        /// rather than merely to the element asks the finding, and gets an answer that came from the declaration.
+        /// </para>
+        /// <para>
+        /// It belongs to the FINDING, not to a site: a grouped finding names one attribute across all its
+        /// locations, because the entry declares one. And it is a DECLARATION, not a promise — whether that
+        /// attribute is rendered as an editable field is a question about the host's dialogs, which the SDK does
+        /// not answer.
+        /// </para>
+        /// </summary>
+        public string? TargetAttribute { get; init; }
+
+        /// <summary>
+        /// Where THIS occurrence is repaired, when the rule could say something the entry cannot.
+        ///
+        /// <para>The entry's target speaks for the row: every occurrence is about this attribute of this kind of
+        /// element. Two families cannot be described that way — one reads whichever attribute the schema
+        /// rejected, so the attribute differs per occurrence; the other reports the product that owns a setting,
+        /// so the element to repair is a child of the one the reader is shown. Both state it per emission
+        /// instead, and a consumer prefers this over <see cref="TargetAttribute"/> when it is present.</para>
+        ///
+        /// <para>Null is the ordinary case and means exactly what it did before: the declaration speaks.</para>
+        /// </summary>
+        public FixLocation? Fix { get; init; }
     }
 }

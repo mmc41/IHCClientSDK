@@ -219,7 +219,7 @@ public class ProblemsListTests
                     EquatableArray<ProblemArgument>.Empty),
                 ValidationSeverity.Warning, ValidationCategory.Documentation,
                 new FindingLocation("utcs_project", null, null), EquatableArray<FindingLocation>.Empty),
-            null, "utcs_project");
+            null, "utcs_project", NavigationKind.None, "doc-name-empty@utcs_project");
         rig.Panel.Rows.Add(mine);
         Dispatcher.UIThread.RunJobs();
 

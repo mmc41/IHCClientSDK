@@ -1546,8 +1546,7 @@ Ihc.Vis.Products.DialogValueRule.Refusal.init -> void
 Ihc.Vis.Products.DialogValueRule.WhitespaceAllowed.get -> bool
 Ihc.Vis.Products.DialogValueRule.WhitespaceAllowed.init -> void
 Ihc.Vis.Products.DialogWidgetKind
-Ihc.Vis.Products.DialogWidgetKind.AdvancedDimmerButton = 1 -> Ihc.Vis.Products.DialogWidgetKind
-Ihc.Vis.Products.DialogWidgetKind.SettingsGrid = 2 -> Ihc.Vis.Products.DialogWidgetKind
+Ihc.Vis.Products.DialogWidgetKind.SettingsGrid = 1 -> Ihc.Vis.Products.DialogWidgetKind
 Ihc.Vis.Products.DialogWidgetKind.TerminalGrids = 0 -> Ihc.Vis.Products.DialogWidgetKind
 Ihc.Vis.Products.DialogWidgetModel
 Ihc.Vis.Products.DialogWidgetModel.Deconstruct(out string! Id, out Ihc.Vis.Products.DialogWidgetKind Kind) -> void
@@ -1791,7 +1790,6 @@ Ihc.Vis.ProjectCommands.SetResourceInitialValue(Ihc.Vis.Projects.Project! projec
 Ihc.Vis.ProjectCommands.SetVariableProperties(Ihc.Vis.Projects.Project! project, Ihc.Vis.Model.ElementId id, string! name, string! note, Ihc.Vis.Session.ResourceInitialValue! value, string! helpNote = "") -> Ihc.Vis.Session.SetVariableProperties!
 Ihc.Vis.ProjectCommands.ToggleLogMark(Ihc.Vis.Projects.Project! project, Ihc.Vis.Model.ElementId logRowId) -> Ihc.Vis.Session.ToggleLogMark!
 Ihc.Vis.ProjectCommands.UnlockFunctionBlock(Ihc.Vis.Projects.Project! project, Ihc.Vis.Model.ElementId id, string! programmer) -> Ihc.Vis.Session.UnlockFunctionBlock!
-Ihc.Vis.ProjectCommands.UpdateDimmerSettings(Ihc.Vis.Projects.Project! project, Ihc.Vis.Model.ElementId productId, Ihc.Vis.Session.AdvancedDimmerResult! result) -> Ihc.Vis.Session.UpdateDimmerSettings!
 Ihc.Vis.ProjectCommands.UpdateEnumStates(Ihc.Vis.Projects.Project! project, Ihc.Vis.Model.ElementId enumVariableId, System.Collections.Generic.IReadOnlyList<string!>! states) -> Ihc.Vis.Session.UpdateEnumStates?
 Ihc.Vis.ProjectCommands.UpdatePin(Ihc.Vis.Projects.Project! project, Ihc.Vis.Model.ElementId pinId, Ihc.Vis.Session.PinPropertiesResult! result) -> Ihc.Vis.Session.UpdatePin!
 Ihc.Vis.ProjectCommands.UpdateProjectInfo(Ihc.Vis.Projects.Project! project, Ihc.Vis.ProjectInfoData! data) -> Ihc.Vis.Session.UpdateProjectInfo!
@@ -2190,23 +2188,6 @@ Ihc.Vis.Session.AddVariable.ResourceTag.get -> string!
 Ihc.Vis.Session.AddVariable.ResourceTag.init -> void
 Ihc.Vis.Session.AddVariable.SectionTag.get -> string!
 Ihc.Vis.Session.AddVariable.SectionTag.init -> void
-Ihc.Vis.Session.AdvancedDimmerResult
-Ihc.Vis.Session.AdvancedDimmerResult.<Clone>$() -> Ihc.Vis.Session.AdvancedDimmerResult!
-Ihc.Vis.Session.AdvancedDimmerResult.AdvancedDimmerResult(int SoftOnMs, int SoftOffMs, int ManualRampS, int MinimumPercent, int MaximumPercent, string! LoadMode) -> void
-Ihc.Vis.Session.AdvancedDimmerResult.Deconstruct(out int SoftOnMs, out int SoftOffMs, out int ManualRampS, out int MinimumPercent, out int MaximumPercent, out string! LoadMode) -> void
-Ihc.Vis.Session.AdvancedDimmerResult.Equals(Ihc.Vis.Session.AdvancedDimmerResult? other) -> bool
-Ihc.Vis.Session.AdvancedDimmerResult.LoadMode.get -> string!
-Ihc.Vis.Session.AdvancedDimmerResult.LoadMode.init -> void
-Ihc.Vis.Session.AdvancedDimmerResult.ManualRampS.get -> int
-Ihc.Vis.Session.AdvancedDimmerResult.ManualRampS.init -> void
-Ihc.Vis.Session.AdvancedDimmerResult.MaximumPercent.get -> int
-Ihc.Vis.Session.AdvancedDimmerResult.MaximumPercent.init -> void
-Ihc.Vis.Session.AdvancedDimmerResult.MinimumPercent.get -> int
-Ihc.Vis.Session.AdvancedDimmerResult.MinimumPercent.init -> void
-Ihc.Vis.Session.AdvancedDimmerResult.SoftOffMs.get -> int
-Ihc.Vis.Session.AdvancedDimmerResult.SoftOffMs.init -> void
-Ihc.Vis.Session.AdvancedDimmerResult.SoftOnMs.get -> int
-Ihc.Vis.Session.AdvancedDimmerResult.SoftOnMs.init -> void
 Ihc.Vis.Session.ApplyProductDialog
 Ihc.Vis.Session.ApplyProductDialog.ApplyProductDialog(Ihc.Vis.Model.ElementId ProductId, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Session.ProductDialogEdit> Edits, Ihc.Vis.Session.ProductDialogWidgetAction? WidgetAction = null) -> void
 Ihc.Vis.Session.ApplyProductDialog.Deconstruct(out Ihc.Vis.Model.ElementId ProductId, out Ihc.Vis.Model.EquatableArray<Ihc.Vis.Session.ProductDialogEdit> Edits, out Ihc.Vis.Session.ProductDialogWidgetAction? WidgetAction) -> void
@@ -2620,14 +2601,6 @@ Ihc.Vis.Session.UnlockFunctionBlock.Programmer.init -> void
 Ihc.Vis.Session.UnlockFunctionBlock.Unlocked.get -> System.DateOnly
 Ihc.Vis.Session.UnlockFunctionBlock.Unlocked.init -> void
 Ihc.Vis.Session.UnlockFunctionBlock.UnlockFunctionBlock(Ihc.Vis.Model.ElementId Id, string! Programmer, System.DateOnly Unlocked) -> void
-Ihc.Vis.Session.UpdateDimmerSettings
-Ihc.Vis.Session.UpdateDimmerSettings.Deconstruct(out Ihc.Vis.Model.ElementId ProductId, out Ihc.Vis.Session.AdvancedDimmerResult! Result) -> void
-Ihc.Vis.Session.UpdateDimmerSettings.Equals(Ihc.Vis.Session.UpdateDimmerSettings? other) -> bool
-Ihc.Vis.Session.UpdateDimmerSettings.ProductId.get -> Ihc.Vis.Model.ElementId
-Ihc.Vis.Session.UpdateDimmerSettings.ProductId.init -> void
-Ihc.Vis.Session.UpdateDimmerSettings.Result.get -> Ihc.Vis.Session.AdvancedDimmerResult!
-Ihc.Vis.Session.UpdateDimmerSettings.Result.init -> void
-Ihc.Vis.Session.UpdateDimmerSettings.UpdateDimmerSettings(Ihc.Vis.Model.ElementId ProductId, Ihc.Vis.Session.AdvancedDimmerResult! Result) -> void
 Ihc.Vis.Session.UpdateEnumStates
 Ihc.Vis.Session.UpdateEnumStates.Added.get -> Ihc.Vis.Model.EquatableArray<string!>
 Ihc.Vis.Session.UpdateEnumStates.Added.init -> void
@@ -3140,9 +3113,6 @@ override Ihc.Vis.Session.AddVariable.<Clone>$() -> Ihc.Vis.Session.AddVariable!
 override Ihc.Vis.Session.AddVariable.Equals(object? obj) -> bool
 override Ihc.Vis.Session.AddVariable.GetHashCode() -> int
 override Ihc.Vis.Session.AddVariable.ToString() -> string!
-override Ihc.Vis.Session.AdvancedDimmerResult.Equals(object? obj) -> bool
-override Ihc.Vis.Session.AdvancedDimmerResult.GetHashCode() -> int
-override Ihc.Vis.Session.AdvancedDimmerResult.ToString() -> string!
 override Ihc.Vis.Session.ApplyProductDialog.<Clone>$() -> Ihc.Vis.Session.ApplyProductDialog!
 override Ihc.Vis.Session.ApplyProductDialog.Equals(object? obj) -> bool
 override Ihc.Vis.Session.ApplyProductDialog.GetHashCode() -> int
@@ -3273,10 +3243,6 @@ override Ihc.Vis.Session.UnlockFunctionBlock.<Clone>$() -> Ihc.Vis.Session.Unloc
 override Ihc.Vis.Session.UnlockFunctionBlock.Equals(object? obj) -> bool
 override Ihc.Vis.Session.UnlockFunctionBlock.GetHashCode() -> int
 override Ihc.Vis.Session.UnlockFunctionBlock.ToString() -> string!
-override Ihc.Vis.Session.UpdateDimmerSettings.<Clone>$() -> Ihc.Vis.Session.UpdateDimmerSettings!
-override Ihc.Vis.Session.UpdateDimmerSettings.Equals(object? obj) -> bool
-override Ihc.Vis.Session.UpdateDimmerSettings.GetHashCode() -> int
-override Ihc.Vis.Session.UpdateDimmerSettings.ToString() -> string!
 override Ihc.Vis.Session.UpdateEnumStates.<Clone>$() -> Ihc.Vis.Session.UpdateEnumStates!
 override Ihc.Vis.Session.UpdateEnumStates.Equals(object? obj) -> bool
 override Ihc.Vis.Session.UpdateEnumStates.GetHashCode() -> int
@@ -3371,7 +3337,6 @@ override sealed Ihc.Vis.Session.SetResourceInitialValue.Equals(Ihc.Vis.Session.P
 override sealed Ihc.Vis.Session.SetVariableProperties.Equals(Ihc.Vis.Session.ProjectCommand? other) -> bool
 override sealed Ihc.Vis.Session.ToggleLogMark.Equals(Ihc.Vis.Session.ProjectCommand? other) -> bool
 override sealed Ihc.Vis.Session.UnlockFunctionBlock.Equals(Ihc.Vis.Session.ProjectCommand? other) -> bool
-override sealed Ihc.Vis.Session.UpdateDimmerSettings.Equals(Ihc.Vis.Session.ProjectCommand? other) -> bool
 override sealed Ihc.Vis.Session.UpdateEnumStates.Equals(Ihc.Vis.Session.ProjectCommand? other) -> bool
 override sealed Ihc.Vis.Session.UpdatePin.Equals(Ihc.Vis.Session.ProjectCommand? other) -> bool
 override sealed Ihc.Vis.Session.UpdateProjectInfo.Equals(Ihc.Vis.Session.ProjectCommand? other) -> bool
@@ -3763,8 +3728,6 @@ static Ihc.Vis.Session.AddUserText.operator !=(Ihc.Vis.Session.AddUserText? left
 static Ihc.Vis.Session.AddUserText.operator ==(Ihc.Vis.Session.AddUserText? left, Ihc.Vis.Session.AddUserText? right) -> bool
 static Ihc.Vis.Session.AddVariable.operator !=(Ihc.Vis.Session.AddVariable? left, Ihc.Vis.Session.AddVariable? right) -> bool
 static Ihc.Vis.Session.AddVariable.operator ==(Ihc.Vis.Session.AddVariable? left, Ihc.Vis.Session.AddVariable? right) -> bool
-static Ihc.Vis.Session.AdvancedDimmerResult.operator !=(Ihc.Vis.Session.AdvancedDimmerResult? left, Ihc.Vis.Session.AdvancedDimmerResult? right) -> bool
-static Ihc.Vis.Session.AdvancedDimmerResult.operator ==(Ihc.Vis.Session.AdvancedDimmerResult? left, Ihc.Vis.Session.AdvancedDimmerResult? right) -> bool
 static Ihc.Vis.Session.ApplyProductDialog.operator !=(Ihc.Vis.Session.ApplyProductDialog? left, Ihc.Vis.Session.ApplyProductDialog? right) -> bool
 static Ihc.Vis.Session.ApplyProductDialog.operator ==(Ihc.Vis.Session.ApplyProductDialog? left, Ihc.Vis.Session.ApplyProductDialog? right) -> bool
 static Ihc.Vis.Session.CompositeCommand.operator !=(Ihc.Vis.Session.CompositeCommand? left, Ihc.Vis.Session.CompositeCommand? right) -> bool
@@ -3854,8 +3817,6 @@ static Ihc.Vis.Session.ToggleLogMark.operator !=(Ihc.Vis.Session.ToggleLogMark? 
 static Ihc.Vis.Session.ToggleLogMark.operator ==(Ihc.Vis.Session.ToggleLogMark? left, Ihc.Vis.Session.ToggleLogMark? right) -> bool
 static Ihc.Vis.Session.UnlockFunctionBlock.operator !=(Ihc.Vis.Session.UnlockFunctionBlock? left, Ihc.Vis.Session.UnlockFunctionBlock? right) -> bool
 static Ihc.Vis.Session.UnlockFunctionBlock.operator ==(Ihc.Vis.Session.UnlockFunctionBlock? left, Ihc.Vis.Session.UnlockFunctionBlock? right) -> bool
-static Ihc.Vis.Session.UpdateDimmerSettings.operator !=(Ihc.Vis.Session.UpdateDimmerSettings? left, Ihc.Vis.Session.UpdateDimmerSettings? right) -> bool
-static Ihc.Vis.Session.UpdateDimmerSettings.operator ==(Ihc.Vis.Session.UpdateDimmerSettings? left, Ihc.Vis.Session.UpdateDimmerSettings? right) -> bool
 static Ihc.Vis.Session.UpdateEnumStates.operator !=(Ihc.Vis.Session.UpdateEnumStates? left, Ihc.Vis.Session.UpdateEnumStates? right) -> bool
 static Ihc.Vis.Session.UpdateEnumStates.operator ==(Ihc.Vis.Session.UpdateEnumStates? left, Ihc.Vis.Session.UpdateEnumStates? right) -> bool
 static Ihc.Vis.Session.UpdatePin.operator !=(Ihc.Vis.Session.UpdatePin? left, Ihc.Vis.Session.UpdatePin? right) -> bool

@@ -358,6 +358,15 @@ public sealed class ProjectWorkflow : IDisposable
     public ProductDialogDescriptor GetProductDialog(ElementId productId) =>
         Current is { } project ? _service.GetProductDialog(project, productId) : new ProductDialogDescriptor("", []);
 
+    /// <summary>
+    /// The same, composed against a GIVEN project rather than the open one.
+    /// <para>Not a convenience over the overload above: a route planner reasons about the snapshot a validation
+    /// run saw, which is not necessarily the document as it now stands, so "the open project" is the wrong
+    /// question for it to be asking.</para>
+    /// </summary>
+    public ProductDialogDescriptor GetProductDialog(Project project, ElementId productId) =>
+        _service.GetProductDialog(project, productId);
+
     /// <summary>The default name a freshly inserted empty function block carries until renamed (US-019). Written into
     /// the file as the block's <c>name</c> — project data like <see cref="NewLocalityName"/>, so it is the format's own
     /// placeholder rather than an English one.</summary>

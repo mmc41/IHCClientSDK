@@ -1,5 +1,7 @@
 #nullable enable
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -7,6 +9,7 @@ using System.Linq;
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
+using Ihc.Vis.Schema;
 
 namespace Ihc.Vis.Validation
 {
@@ -121,16 +124,39 @@ namespace Ihc.Vis.Validation
         private static void RunConstraints(IProjectAnalyses analyses, RuleDefinition rule, Collector collector)
         {
             RuleTarget target = rule.Entry.Target;
-            if (rule.Constraints is not { } sequence || target.Tag is not { } tag)
+            if (rule.Constraints is not { } sequence)
             {
-                // A declarative rule with no element target has nothing to walk. Registration accepts such an
-                // entry because the whole-project target is legal; there is simply nothing for this face to do.
                 return;
             }
 
-            // The shared per-run walk, not one of its own per declarative rule: this face is the one that would
-            // scale with the rule population, since a constraint rule is registered per (tag, attribute) pair.
-            foreach (ProjectElement element in analyses.WithTag(tag))
+            IEnumerable<ProjectElement> scope;
+            if (target.Tag is { } tag)
+            {
+                // The shared per-run walk, not one of its own per declarative rule: this face is the one that
+                // would scale with the rule population, since a constraint rule is registered per
+                // (tag, attribute) pair.
+                scope = analyses.WithTag(tag);
+            }
+            else if (target.Attribute is { } wildcard)
+            {
+                // A WILDCARD target — "this attribute, on whatever element the rule reports". Every element type
+                // the registry says declares that attribute is in scope; this used to return early, so such a
+                // rule registered, served the dialog face, and silently produced nothing here.
+                //
+                // Filtered out of Elements rather than concatenated from WithTag buckets, and that is not a
+                // style choice: WithTag is order-safe for ONE tag only, so concatenating buckets would emit
+                // every element of the first tag before any of the second, and the executor's sequence tiebreak
+                // carries a rule's emission order into its findings.
+                FrozenSet<string> declaring = TagsDeclaring(wildcard);
+                scope = analyses.Elements.Where(element => declaring.Contains(element.Tag));
+            }
+            else
+            {
+                // The whole-project target: no attribute to constrain, so there is nothing for this face to do.
+                return;
+            }
+
+            foreach (ProjectElement element in scope)
             {
                 string? value = target.Attribute is { } attribute ? element.GetAttribute(attribute) : null;
                 foreach (IValueConstraint constraint in sequence.Ordered)
@@ -144,6 +170,20 @@ namespace Ihc.Vis.Validation
                 }
             }
         }
+
+        /// <summary>
+        /// Every element type the registry declares this attribute on — the wildcard's scope.
+        /// <para>Memoized per attribute: the answer is a property of the static registry, so it cannot change
+        /// between runs, and recomputing it would re-walk every declared element type on every validation.</para>
+        /// </summary>
+        private static FrozenSet<string> TagsDeclaring(string attribute) =>
+            declaringTags.GetOrAdd(attribute, static name =>
+                ProjectSchemaRegistry.AllSchemas
+                    .Where(schema => schema.FindAttr(name) is not null)
+                    .Select(schema => schema.Tag)
+                    .ToFrozenSet(StringComparer.Ordinal));
+
+        private static readonly ConcurrentDictionary<string, FrozenSet<string>> declaringTags = new(StringComparer.Ordinal);
 
         private static ValidationFinding Build(ElementNodePath paths, Emission emission, ValidationProfile profile)
         {
@@ -180,6 +220,13 @@ namespace Ihc.Vis.Validation
                 // only door the fact has. Deliberately NOT on the failure branch above — a rule that threw
                 // reports an engine fault, and an engine fault refuses none of the row's operations.
                 RefusedOperations = entry.RefusedOperations,
+                // Same door, same reason, and absent on the same branch: a rule that threw is about no field of
+                // the user's project, so claiming one there would point a consumer at a fix location for a
+                // defect in the engine.
+                TargetAttribute = entry.Target.Attribute,
+                // The OCCURRENCE's own answer where the rule gave one, which a consumer prefers over the
+                // declared target above. Null is the ordinary case and changes nothing.
+                Fix = emission.Fix,
             };
         }
 
@@ -261,7 +308,11 @@ namespace Ihc.Vis.Validation
             EquatableArray<ProjectElement> Related,
             EquatableArray<ProblemArgument> Arguments,
             int Sequence,
-            Exception? Failure);
+            Exception? Failure)
+        {
+            /// <summary>This occurrence's own fix location, or null to let the entry's target speak.</summary>
+            public FixLocation? Fix { get; init; }
+        }
 
         private sealed class Collector : IProjectInspection
         {
@@ -292,7 +343,11 @@ namespace Ihc.Vis.Validation
 
             public IProjectAnalyses Analyses { get; }
 
-            public void Report(ProjectElement? element, EquatableArray<ProblemArgument> arguments)
+            public void Report(ProjectElement? element, EquatableArray<ProblemArgument> arguments) =>
+                Report(element, arguments, null);
+
+            public void Report(
+                ProjectElement? element, EquatableArray<ProblemArgument> arguments, FixLocation? fix)
             {
                 // The half of the shape contract a delegate hides from registration. A row that DECLARES a group
                 // and then emits singletons publishes a promise the engine does not keep — N findings for one
@@ -304,7 +359,10 @@ namespace Ihc.Vis.Validation
                         entry.Code, RuleRegistrationFault.ShapeContradictsDeclaration);
                 }
 
-                sink.Add(new Emission(entry, element, EquatableArray<ProjectElement>.Empty, arguments, sink.Count, null));
+                sink.Add(new Emission(entry, element, EquatableArray<ProjectElement>.Empty, arguments, sink.Count, null)
+                {
+                    Fix = fix,
+                });
             }
 
             public void ReportGroup(

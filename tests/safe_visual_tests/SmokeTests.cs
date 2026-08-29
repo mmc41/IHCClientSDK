@@ -785,30 +785,6 @@ public class SmokeTests : AvaloniaTestBase
                 "and they are realized, not merely composed");
         });
     }
-
-    // US-015: the advanced wireless-dimmer dialog exposes the timing/level/load-characteristic fields.
-    [AvaloniaTest]
-    [CaptureScreenshotOnFailure]
-    public void AdvancedDimmerWindow_ShowsDimmerFields()
-    {
-        var window = new AdvancedDimmerWindow();
-        var softOn = window.FindControl<NumericUpDown>("SoftOnBox");
-        var minimum = window.FindControl<NumericUpDown>("MinimumBox");
-        var loadMode = window.FindControl<ComboBox>("LoadModeCombo");
-        if (softOn is not null) softOn.Value = 700;
-        CurrentTestWindow = window;
-        window.Show();
-        window.CaptureRenderedFrame();
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(window.Title, Is.EqualTo("Avancerede lysdæmper egenskaber"));
-            Assert.That(softOn?.Value, Is.EqualTo(700));
-            Assert.That(minimum, Is.Not.Null);
-            Assert.That(loadMode, Is.Not.Null, "the load-characteristic selector is present");
-        });
-    }
-
     [AvaloniaTest]
     [CaptureScreenshotOnFailure]
     public void AboutWindow_ShowsApplicationAndSdkVersions()

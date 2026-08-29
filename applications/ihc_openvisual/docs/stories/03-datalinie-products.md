@@ -1,6 +1,6 @@
 ---
-version: 0.4.0
-last-updated: 2026-08-02
+version: 0.5.0
+last-updated: 2026-08-29
 status: draft
 ---
 
@@ -310,12 +310,40 @@ product's shape. US-014 owns the wireless side; the grid and address spec below 
 - MUST: The editor presents the terminal's **properties group** (read-only name, note, wire colour,
   initial value, power-fail behaviour) **above** its **address group** (data line / terminal), and its
   buttons run **OK, Cancel, Apply** in that order.
-- MUST: **Apply** commits the current values and leaves the editor open — so several changes can be
-  made and checked in one visit — and Apply and OK commit identically (a value Apply accepts, OK
-  accepts, and vice versa).
-- SHOULD: OK and Apply stay **disabled until something changes** — so an editor opened to read an
-  address cannot accidentally rewrite it.
+- MUST: **Apply** accepts the current values and leaves the editor open — so several changes can be made
+  and checked in one visit — and Apply and OK accept identically (a value Apply accepts, OK accepts, and
+  vice versa). Where they commit TO depends on how the editor was reached; see *One visit, one commit*.
+- MUST: OK and Apply stay **disabled until something changes** *and* the address is complete — so an editor
+  opened to read an address cannot accidentally rewrite it, and a half-chosen address cannot be committed.
+  Cancel stays live throughout, so an editor opened by mistake is never a trap.
 - MAY: The same editor is reachable from the tree by selecting the pin and opening its properties.
+
+**The editor STACKS on the product dialog — it does not replace it:**
+- MUST: **Given** the product's properties dialog is open, **when** a terminal's address editor is opened
+  from it, **then** the product dialog stays open and visible underneath, and the editor appears on top of
+  it. The installer never sees the dialog they came from disappear and come back.
+- MUST: **Given** the editor is open over the product dialog, **when** it is closed, **then** the installer
+  is returned to that same dialog with everything they had entered still in it — the value they were typing,
+  the row they had selected, where they had scrolled.
+- MUST: **Given** a value the product dialog refuses, **when** a terminal editor is opened from it, **then**
+  the refusal is stated and the editor does not open. Stepping into a sub-dialog is a way out of the product
+  dialog, and an invalid value must not leave through it.
+
+**One visit, one commit:**
+- MUST: **Given** the terminal editor was opened from the product dialog, **when** it is accepted by OK or
+  Apply, **then** the addressing joins the visit and **nothing is written to the project yet**.
+- MUST: **Given** a visit in which terminals were addressed, **when** the product dialog is accepted, **then**
+  the product's own fields and every terminal addressed inside the visit are written as **one** change, and
+  **Fortryd** afterwards takes back all of it — the documentation and the addressing together. The installer
+  performed one act; undoing it returns them to where that act began.
+- MUST: **Given** a visit in which terminals were addressed, **when** the product dialog is cancelled, **then**
+  the addressing is discarded along with everything else. A cancel that kept half the change is worse than no
+  cancel at all, because nothing on screen says which half survived.
+- MUST: **Given** the SAME editor opened directly from the tree on a pin, **when** it is accepted, **then** it
+  commits straight to the project as its own change. There is no visit for it to belong to, so a dialog opened
+  on its own is its own transaction. *Same window, two commit semantics — stated here because the difference
+  is invisible from inside the editor, and a reader meeting only one of the two routes would take it for the
+  rule.*
 
 **Output:**
 - Each addressed terminal carries a module-and-port address that round-trips to the `.vis` file and renders
@@ -340,11 +368,11 @@ product's shape. US-014 owns the wireless side; the grid and address spec below 
 
 **Readiness:** Ready.
 
-**Implementation status:** 🟡 Largely implemented — the terminal grids and the address editor are in
-place, including the read-only name row, note, wire colour, initial value, the power-fail
-save-current-value option, the in-use port markers, the Properties-above-Address layout and the
-OK/Cancel/Apply row with Apply's commit-and-stay-open behaviour. The OK/Apply
-disabled-until-something-changes SHOULD is not yet implemented.
+**Implementation status:** 🟢 Implemented — the terminal grids and the address editor are in place,
+including the read-only name row, note, wire colour, initial value, the power-fail save-current-value
+option, the in-use port markers, the Properties-above-Address layout, the OK/Cancel/Apply row with Apply's
+accept-and-stay-open behaviour, and the commit gate on OK and Apply. The editor now stacks on a still-open
+product dialog, and a visit that addresses terminals commits as one undoable change.
 
 ---
 
@@ -450,3 +478,74 @@ That is not an omission in the dialog layer: `product_rs485_modem` is recognised
 no `TypeCode` and no catalog product, so there is nothing to place and nothing to compose a dialog for. The
 `ProductFamily.Rs485Modem` exemption in `CatalogInsertionTests` asserts it stays empty, so adding a preset
 forces this line to be revisited rather than silently widened.
+
+---
+
+## US-087 — Edit a product's configurable constants
+
+**As an** IHC installer, **I want** to change the constants a sensor exposes — a room sensor's
+calibration offset, say — **so that** what the controller reads matches what the room actually is.
+
+**Scope:** the *Indstillinger* grid in the product properties dialog, and the editor a row opens.
+**Scope excludes:** which products have such a grid and which rows go in it — that comes from the
+catalog, and a product with no configurable resources shows no grid at all (US-011). Wireless products
+are not excluded: a family whose catalog entry declares settings gets the same grid and the same editor.
+
+### Acceptance criteria (Business Rules)
+
+**The grid — in the product properties dialog:**
+- MUST: Where the product has configurable settings, the dialog shows an *Indstillinger* grid with one row
+  per setting, each showing its **name**, its **note** and its current **value**.
+- MUST: The value is shown the way the rest of the application shows a value of that type — a temperature
+  offset reads `0,0 °C`, not the stored `0.00`.
+- MUST: A **single** click selects a row, exactly as it does in the terminal grids.
+- MUST: **Nothing is selected when the dialog opens.** The terminal grids pre-select because their
+  *Konfigurer* button needs a target before the installer has pointed at anything; this grid has no button,
+  so a highlighted row would claim a choice nobody made.
+- SHOULD: The grid carries the same configurable hint the terminal grids carry —
+  `<klik for at konfigurere>`.
+
+**The editor — reached two ways, as the terminal editor is:**
+- MUST: A setting's editor opens by **double-clicking its row** *and* from an **Egenskaber** item on the
+  row's context menu — two routes onto the same editor (US-044 route equivalence).
+- MUST: Right-clicking a row **selects it first**, so *Egenskaber* edits the row the installer pointed at
+  and never the one that happened to be selected before.
+- MUST: The editor holds **one field**, carrying the setting's current value, and it is **editable** — it
+  is the thing being edited.
+- MUST: The editor offers **OK and no Cancel**. Dismissing its window without accepting leaves the value
+  as it was, which is the way out it does offer.
+- MUST: A **negative** value is accepted. A calibration offset that corrects downwards is an ordinary
+  value, not an error.
+- MUST: The editor **stacks** on the product dialog, which stays open and visible underneath, and closing
+  it returns the installer to that dialog with everything they had entered still in it — the same rule the
+  terminal editor follows.
+
+**What is written:**
+- MUST: **Given** the editor was accepted, **when** the product dialog is accepted, **then** the value is
+  written to the setting and the whole visit is **one** change — **Fortryd** afterwards takes back the
+  constant along with the product's own fields and any terminal addressed in the same visit.
+- MUST: **Given** a visit in which a constant was edited, **when** the product dialog is cancelled, **then**
+  the edit is discarded along with everything else.
+- MUST: **Given** a setting standing at its type's **default**, **when** the project is saved, **then** the
+  file carries **no value for it** — so returning a constant to its default leaves the project file exactly
+  as it was before the constant was ever touched.
+
+### AC illustrations
+
+- Double-clicking *Kalibrering af rumføler* on a temperature sensor, typing `-1,5` and accepting both
+  dialogs stores an offset of −1.50 on that setting and nothing on the other one.
+- Doing the same again with `0,0` returns the file to the bytes it had before either edit: the value is
+  the type's default, so it is not written at all.
+- Right-clicking the *second* row while the *first* is selected and choosing *Egenskaber* edits the
+  second — the one under the pointer.
+
+### Constraints
+
+- Verification method — **Test**: both routes, the absent cancel, the single undo step and the
+  byte-identical round trip are covered by the headless UI and `.vis` engine suites.
+
+**Readiness:** Ready.
+
+**Implementation status:** 🟢 Implemented. The grid is selectable and its rows carry their setting's
+element; *Rediger konstant* opens from both routes with the value pre-filled; and the accepted value rides
+the product dialog's own commit, so the visit stays one undoable act.

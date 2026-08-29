@@ -134,6 +134,7 @@ namespace Ihc.Vis.Products
                         group.Id, group.Caption, group.Columns, [.. fields], [.. widgets])
                     {
                         ColumnMajor = group.ColumnMajor,
+                        Collapsible = group.Collapsible,
                     });
                 }
             }
@@ -162,25 +163,61 @@ namespace Ihc.Vis.Products
             FrozenDictionary<string, EquatableArray<string>> suggestions)
         {
             (int? min, int? max) = NumericRange(project, resolved.Element, field.Control);
+            // The BOUNDS are scaled with the value. A field captioned in seconds over a millisecond attribute
+            // must offer seconds bounds too, or it shows 5 in a box that refuses anything under 2000.
+            if (field.DisplayDivisor > 1)
+            {
+                min = min / field.DisplayDivisor;
+                max = max / field.DisplayDivisor;
+            }
             return new DialogDescriptorField(
                 AutomationId(group.Id, field.Id),
                 field.Caption,
                 field.Control,
                 resolved.Element.Id!.Value,
                 resolved.Attribute,
-                ReadValue(project, resolved.Element, resolved.Attribute, field.HidesUnresolvedResourceKey),
+                Displayed(field, ReadValue(project, resolved.Element, resolved.Attribute, field.HidesUnresolvedResourceKey)),
                 field.ReadOnly || (lockedElement && field.ReadOnlyWhenLocked),
                 field.Rule,
                 min,
                 max,
-                // default IS empty for the wrapper, so a non-suggesting field needs no fallback of its own.
-                field.Control == DialogControlKind.ComboSuggest
-                    ? suggestions.GetValueOrDefault(resolved.Attribute)
-                    : default)
+                // default IS empty for the wrapper, so a field offering neither list needs no fallback of its own.
+                // The two lists are different KINDS of answer sharing one carrier: a suggestion list is open and
+                // gathered from the project, a fixed list is closed and IS the attribute's declaration.
+                field.Control switch
+                {
+                    DialogControlKind.ComboSuggest => suggestions.GetValueOrDefault(resolved.Attribute),
+                    DialogControlKind.ComboFixed => DeclaredTokens(project, resolved.Element, resolved.Attribute),
+                    _ => default,
+                })
             {
                 ColumnSpan = field.ColumnSpan,
+                DisplayDivisor = field.DisplayDivisor,
             };
         }
+
+        /// <summary>
+        /// The value a field SHOWS for a stored one — divided by the field's declared display divisor.
+        /// <para>The exact inverse lives in the write-back (<c>ApplyProductDialog.Stored</c>) and reads the same
+        /// declaration, so what the installer was shown is what comes back. A blank stays blank: it means "at the
+        /// declared default", and scaling it would turn an absence into a zero.</para>
+        /// </summary>
+        private static string? Displayed(DialogFieldModel field, string? stored) =>
+            field.DisplayDivisor > 1
+            && !string.IsNullOrEmpty(stored)
+            && int.TryParse(stored, NumberStyles.Integer, CultureInfo.InvariantCulture, out int value)
+                ? (value / field.DisplayDivisor).ToString(CultureInfo.InvariantCulture)
+                : stored;
+
+        /// <summary>
+        /// The tokens an enumerated attribute declares, in declaration order — the CLOSED list a
+        /// <see cref="DialogControlKind.ComboFixed"/> field offers.
+        /// <para>Read from the schema, never written down beside the field: the DTD is what decides which values
+        /// the file can hold, and a second copy here would be a list that can disagree with the format.</para>
+        /// </summary>
+        private static EquatableArray<string> DeclaredTokens(
+            Project project, ProjectElement element, string attribute) =>
+            project.SchemaView.TryGet(element.Tag)?.FindAttr(attribute)?.EnumValues ?? default;
 
         /// <summary>
         /// The typing suggestions a <see cref="DialogControlKind.ComboSuggest"/> field offers: every value already

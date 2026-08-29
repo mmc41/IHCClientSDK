@@ -39,7 +39,6 @@ public partial class VariablePropertiesWindow : ResultDialog<VariablePropertiesR
     {
         var window = new VariablePropertiesWindow { Title = input.Title };
         window.Populate(input);
-        window.FocusOnOpen(window.NameBox);
         return window.ShowDialogForResult(owner);
     }
 
@@ -69,7 +68,48 @@ public partial class VariablePropertiesWindow : ResultDialog<VariablePropertiesR
         // Only an enum's states are project data the installer may edit; a weekday's seven are the format's.
         EditEnumTypeButton.IsVisible = input.ChoiceOptions is { Count: > 0 };
         ApplyKind(input.Current);
+        // The route's field when it asked for one, the NAME otherwise — which is where this dialog has always
+        // opened, and still is for every ordinary Egenskaber. Registered here rather than in ShowAsync, as the
+        // terminal editor does it, so a test that populates the window without a modal loop drives the same
+        // wiring the application does.
+        FocusOnOpen(FocusTarget(input.Focus) ?? NameBox);
     }
+
+    /// <summary>
+    /// The window's own map from a route's field key to the control that holds that value.
+    /// <para>By compiled <c>x:Name</c> reference, never by an automation-id string: a rename is then a compile
+    /// error rather than a focus that silently lands nowhere. The map lives HERE because the controls are this
+    /// window's business — the coordinator knows only the key.</para>
+    /// <para><see cref="VariableDialogField.InitialValue"/> resolves through the variable's KIND, because the
+    /// six value panels are mutually exclusive and only one is showing. A key naming a control instead would
+    /// have made the caller guess which — and land the caret in a hidden panel for every type it guessed wrong.</para>
+    /// <para>The kind is what decides visibility, so keying on it IS the visibility test — the panels are
+    /// switched by the same value. A variable with no editable value answers null and the dialog falls back to
+    /// the name.</para>
+    /// </summary>
+    internal Control? FocusTarget(VariableDialogField? field) =>
+        field is { } wanted && ControlFor(wanted) is { IsEnabled: true } target ? target : null;
+
+    private Control? ControlFor(VariableDialogField field) => field switch
+    {
+        VariableDialogField.Name => NameBox,
+        VariableDialogField.Note => NoteBox,
+        VariableDialogField.HelpNote => HelpNoteBox,
+        VariableDialogField.Backup => SaveOnPowerLossBox,
+        VariableDialogField.InitialValue => _kind switch
+        {
+            ResourceValueKind.Bool => BoolBox,
+            ResourceValueKind.Number => NumberBox,
+            ResourceValueKind.Decimal => DecimalBox,
+            ResourceValueKind.Choice => ChoiceBox,
+            ResourceValueKind.Date => DayBox,
+            ResourceValueKind.Time => HourBox,
+            // ResourceValueKind.None: the variable has no editable value, so there is nothing to focus and the
+            // route honestly falls back to the name.
+            _ => null,
+        },
+        _ => null,
+    };
 
     private void ApplyKind(ResourceInitialValue value)
     {

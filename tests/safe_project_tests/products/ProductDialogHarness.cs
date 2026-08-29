@@ -165,6 +165,14 @@ namespace Ihc.Vis.Tests
             {
                 return (seed & 1) == 0 ? "yes" : "no";
             }
+            if (field.Control == DialogControlKind.ComboFixed)
+            {
+                // A CLOSED list, so the sample is drawn FROM it. Free text here would submit values the
+                // attribute cannot hold — which is not what this property is about, and which the dialog would
+                // never let an installer produce.
+                string[] tokens = [.. field.Suggestions];
+                return tokens.Length > 0 ? tokens[(int)((uint)seed % (uint)tokens.Length)] : string.Empty;
+            }
             if (field.Control == DialogControlKind.Number)
             {
                 // long arithmetic: a field declaring a range near int.MaxValue would overflow the span in int and

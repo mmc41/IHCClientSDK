@@ -517,6 +517,8 @@ Ihc.Vis.Validation.ValidationFinding.Problem.get -> Ihc.Vis.Problems.Problem!
 Ihc.Vis.Validation.ValidationFinding.Problem.init -> void
 Ihc.Vis.Validation.ValidationFinding.RefusedOperations.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemCode>
 Ihc.Vis.Validation.ValidationFinding.RefusedOperations.init -> void
+Ihc.Vis.Validation.ValidationFinding.TargetAttribute.get -> string?
+Ihc.Vis.Validation.ValidationFinding.TargetAttribute.init -> void
 Ihc.Vis.Validation.ValidationFinding.Related.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.FindingLocation!>
 Ihc.Vis.Validation.ValidationFinding.Related.init -> void
 Ihc.Vis.Validation.ValidationFinding.Severity.get -> Ihc.Vis.Validation.ValidationSeverity
@@ -953,3 +955,62 @@ static Ihc.Vis.Validation.ControllerFirmwareVersion.operator >=(Ihc.Vis.Validati
 static Ihc.Vis.Validation.ControllerFirmwareVersion.TryParse(string? text, out Ihc.Vis.Validation.ControllerFirmwareVersion version) -> bool
 static Ihc.Vis.Validation.DeclaredFirmwareBound.operator !=(Ihc.Vis.Validation.DeclaredFirmwareBound? left, Ihc.Vis.Validation.DeclaredFirmwareBound? right) -> bool
 static Ihc.Vis.Validation.DeclaredFirmwareBound.operator ==(Ihc.Vis.Validation.DeclaredFirmwareBound? left, Ihc.Vis.Validation.DeclaredFirmwareBound? right) -> bool
+Ihc.Vis.Session.ProductDialogTerminalEdit
+Ihc.Vis.Session.ProductDialogTerminalEdit.PinId.get -> Ihc.Vis.Model.ElementId
+Ihc.Vis.Session.ProductDialogTerminalEdit.PinId.init -> void
+Ihc.Vis.Session.ProductDialogTerminalEdit.ProductDialogTerminalEdit() -> void
+Ihc.Vis.Session.ProductDialogTerminalEdit.ProductDialogTerminalEdit(Ihc.Vis.Model.ElementId PinId, Ihc.Vis.Session.PinPropertiesResult! Values) -> void
+Ihc.Vis.Session.ProductDialogTerminalEdit.Values.get -> Ihc.Vis.Session.PinPropertiesResult!
+Ihc.Vis.Session.ProductDialogTerminalEdit.Values.init -> void
+~override Ihc.Vis.Session.ProductDialogTerminalEdit.ToString() -> string
+static Ihc.Vis.Session.ProductDialogTerminalEdit.operator !=(Ihc.Vis.Session.ProductDialogTerminalEdit left, Ihc.Vis.Session.ProductDialogTerminalEdit right) -> bool
+static Ihc.Vis.Session.ProductDialogTerminalEdit.operator ==(Ihc.Vis.Session.ProductDialogTerminalEdit left, Ihc.Vis.Session.ProductDialogTerminalEdit right) -> bool
+override Ihc.Vis.Session.ProductDialogTerminalEdit.GetHashCode() -> int
+Ihc.Vis.Session.ApplyProductDialog.TerminalEdits.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Session.ProductDialogTerminalEdit>
+Ihc.Vis.Session.ApplyProductDialog.TerminalEdits.init -> void
+~override Ihc.Vis.Session.ProductDialogTerminalEdit.Equals(object obj) -> bool
+Ihc.Vis.Session.ProductDialogTerminalEdit.Equals(Ihc.Vis.Session.ProductDialogTerminalEdit other) -> bool
+Ihc.Vis.Session.ProductDialogTerminalEdit.Deconstruct(out Ihc.Vis.Model.ElementId PinId, out Ihc.Vis.Session.PinPropertiesResult! Values) -> void
+Ihc.Vis.ProjectCommands.ApplyProductDialogVisit(Ihc.Vis.Projects.Project! project, Ihc.Vis.Model.ElementId productId, System.Collections.Immutable.ImmutableArray<Ihc.Vis.Session.ProductDialogEdit> edits, System.Collections.Immutable.ImmutableArray<Ihc.Vis.Session.ProductDialogTerminalEdit> terminalEdits, System.Collections.Immutable.ImmutableArray<Ihc.Vis.Session.ProductDialogSettingEdit> settingEdits = default(System.Collections.Immutable.ImmutableArray<Ihc.Vis.Session.ProductDialogSettingEdit>)) -> Ihc.Vis.Session.ApplyProductDialog!
+Ihc.Vis.Products.DialogControlKind.ComboFixed = 5 -> Ihc.Vis.Products.DialogControlKind
+Ihc.Vis.Products.DialogDescriptorField.DisplayDivisor.get -> int
+Ihc.Vis.Products.DialogDescriptorField.DisplayDivisor.init -> void
+Ihc.Vis.Products.DialogDescriptorGroup.Collapsible.get -> bool
+Ihc.Vis.Products.DialogDescriptorGroup.Collapsible.init -> void
+Ihc.Vis.Products.DialogFieldModel.DisplayDivisor.get -> int
+Ihc.Vis.Products.DialogFieldModel.DisplayDivisor.init -> void
+Ihc.Vis.Products.DialogGroupModel.Collapsible.get -> bool
+Ihc.Vis.Products.DialogGroupModel.Collapsible.init -> void
+Ihc.Vis.Session.ProductDialogSettingEdit
+Ihc.Vis.Session.ProductDialogSettingEdit.SettingId.get -> Ihc.Vis.Model.ElementId
+Ihc.Vis.Session.ProductDialogSettingEdit.SettingId.init -> void
+Ihc.Vis.Session.ProductDialogSettingEdit.Value.get -> Ihc.Vis.Session.ResourceInitialValue!
+Ihc.Vis.Session.ProductDialogSettingEdit.Value.init -> void
+Ihc.Vis.Session.ProductDialogSettingEdit.ProductDialogSettingEdit() -> void
+Ihc.Vis.Session.ProductDialogSettingEdit.ProductDialogSettingEdit(Ihc.Vis.Model.ElementId SettingId, Ihc.Vis.Session.ResourceInitialValue! Value) -> void
+Ihc.Vis.Session.ProductDialogSettingEdit.Deconstruct(out Ihc.Vis.Model.ElementId SettingId, out Ihc.Vis.Session.ResourceInitialValue! Value) -> void
+Ihc.Vis.Session.ProductDialogSettingEdit.Equals(Ihc.Vis.Session.ProductDialogSettingEdit other) -> bool
+~override Ihc.Vis.Session.ProductDialogSettingEdit.Equals(object obj) -> bool
+~override Ihc.Vis.Session.ProductDialogSettingEdit.ToString() -> string
+override Ihc.Vis.Session.ProductDialogSettingEdit.GetHashCode() -> int
+static Ihc.Vis.Session.ProductDialogSettingEdit.operator !=(Ihc.Vis.Session.ProductDialogSettingEdit left, Ihc.Vis.Session.ProductDialogSettingEdit right) -> bool
+static Ihc.Vis.Session.ProductDialogSettingEdit.operator ==(Ihc.Vis.Session.ProductDialogSettingEdit left, Ihc.Vis.Session.ProductDialogSettingEdit right) -> bool
+Ihc.Vis.Session.ApplyProductDialog.SettingEdits.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Session.ProductDialogSettingEdit>
+Ihc.Vis.Session.ApplyProductDialog.SettingEdits.init -> void
+Ihc.Vis.Validation.FixLocation
+Ihc.Vis.Validation.FixLocation.FixLocation() -> void
+Ihc.Vis.Validation.FixLocation.FixLocation(Ihc.Vis.Model.ElementId Element, string? Attribute) -> void
+Ihc.Vis.Validation.FixLocation.Element.get -> Ihc.Vis.Model.ElementId
+Ihc.Vis.Validation.FixLocation.Element.init -> void
+Ihc.Vis.Validation.FixLocation.Attribute.get -> string?
+Ihc.Vis.Validation.FixLocation.Attribute.init -> void
+Ihc.Vis.Validation.FixLocation.Deconstruct(out Ihc.Vis.Model.ElementId Element, out string? Attribute) -> void
+Ihc.Vis.Validation.FixLocation.Equals(Ihc.Vis.Validation.FixLocation other) -> bool
+~override Ihc.Vis.Validation.FixLocation.Equals(object obj) -> bool
+~override Ihc.Vis.Validation.FixLocation.ToString() -> string
+override Ihc.Vis.Validation.FixLocation.GetHashCode() -> int
+static Ihc.Vis.Validation.FixLocation.operator !=(Ihc.Vis.Validation.FixLocation left, Ihc.Vis.Validation.FixLocation right) -> bool
+static Ihc.Vis.Validation.FixLocation.operator ==(Ihc.Vis.Validation.FixLocation left, Ihc.Vis.Validation.FixLocation right) -> bool
+Ihc.Vis.Validation.IProjectInspection.Report(Ihc.Vis.Model.ProjectElement? element, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgument> arguments, Ihc.Vis.Validation.FixLocation? fix) -> void
+Ihc.Vis.Validation.ValidationFinding.Fix.get -> Ihc.Vis.Validation.FixLocation?
+Ihc.Vis.Validation.ValidationFinding.Fix.init -> void

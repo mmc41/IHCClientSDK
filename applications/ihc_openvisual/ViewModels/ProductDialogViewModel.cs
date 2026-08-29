@@ -142,11 +142,11 @@ public sealed partial class ProductDialogTerminalGridViewModel : ObservableObjec
 
     public static ProductDialogTerminalGridViewModel ForInputs(IEnumerable<ProductTerminal> rows) =>
         new("Indgange", "dlg.terminaler.indgange",
-            "Konfigurer indgang", "dlg.terminaler.konfigurerIndgang", rows);
+            "Konfigurer indgang", "dlg.terminaler.konfigurerIndgang", rows) { IsOutputSide = false };
 
     public static ProductDialogTerminalGridViewModel ForOutputs(IEnumerable<ProductTerminal> rows) =>
         new("Udgange", "dlg.terminaler.udgange",
-            "Konfigurer udgang", "dlg.terminaler.konfigurerUdgang", rows);
+            "Konfigurer udgang", "dlg.terminaler.konfigurerUdgang", rows) { IsOutputSide = true };
 
     /// <summary>The side's name, and the list's accessible name — <c>Indgange</c> or <c>Udgange</c>.</summary>
     public string Name { get; }
@@ -170,6 +170,78 @@ public sealed partial class ProductDialogTerminalGridViewModel : ObservableObjec
     /// sees; null means they cleared it.</summary>
     [ObservableProperty]
     public partial ProductTerminal? SelectedRow { get; set; }
+
+    /// <summary>
+    /// Replaces this side's rows with the freshly computed ones, keeping the selection on the same TERMINAL.
+    /// </summary>
+    /// <param name="all">Every terminal of the product; this grid takes the ones for its own direction.</param>
+    internal void Replace(IEnumerable<ProductTerminal> all)
+    {
+        string? selected = SelectedRow?.PinId;
+        Rows.Clear();
+        foreach (ProductTerminal row in all.Where(r => r.IsOutput == IsOutputSide))
+        {
+            Rows.Add(row);
+        }
+        SelectedRow = Rows.FirstOrDefault(r => r.PinId == selected) ?? Rows.FirstOrDefault();
+    }
+
+    /// <summary>Which direction this grid shows — decided once, at construction, by which factory built it.</summary>
+    private bool IsOutputSide { get; init; }
+}
+
+/// <summary>
+/// The sensors' <i>Indstillinger</i> grid (T070) — a SIBLING of
+/// <see cref="ProductDialogTerminalGridViewModel"/>, not a third face of the group that hosts it.
+///
+/// <para>A sibling because the two grids answer the same question in the same way: a list of element-backed rows,
+/// one of which is selected, replaced wholesale when the visit re-projects. Hanging the rows and the selection off
+/// the group instead would have put a list's state on a thing that is mostly a run of fields, and left the
+/// selection with nowhere to be restored to across a refresh.</para>
+///
+/// <para>What it does NOT share is a Konfigurer button: the vendor's settings row is opened by clicking the row
+/// itself, so this grid has rows and a selection and nothing else.</para>
+/// </summary>
+public sealed partial class ProductDialogSettingsGridViewModel : ObservableObject
+{
+    internal ProductDialogSettingsGridViewModel(IEnumerable<ProductSetting> rows) =>
+        Rows = new ObservableCollection<ProductSetting>(rows);
+
+    /// <summary>The list's accessible name.</summary>
+    public string Name => "Indstillinger";
+
+    /// <summary>The vendor's caption, which spells out that a row is clicked to configure it.</summary>
+    public string Caption => $"{Name} <klik for at konfigurere>";
+
+    public string AutomationId => "dlg.indstillinger.liste";
+
+    public ObservableCollection<ProductSetting> Rows { get; }
+
+    /// <summary>
+    /// The selected setting. Bound two-way, so it is the same row the installer sees.
+    /// <para>Nothing is selected on open, unlike the terminal grids: those pre-select because their Konfigurer
+    /// button needs a standing target even before the installer has pointed at anything, and this grid has no
+    /// button — the row IS the gesture. A highlighted row on open would claim a choice nobody made.</para>
+    /// </summary>
+    [ObservableProperty]
+    public partial ProductSetting? SelectedRow { get; set; }
+
+    /// <summary>
+    /// Replaces the rows with the freshly computed ones, keeping the selection on the same setting ELEMENT — the
+    /// same rule the terminal grid follows, and for the same reason: a row's position is not its identity.
+    /// </summary>
+    internal void Replace(IEnumerable<ProductSetting> settings)
+    {
+        ElementId? selected = SelectedRow?.Id;
+        Rows.Clear();
+        foreach (ProductSetting row in settings)
+        {
+            Rows.Add(row);
+        }
+        // Null when the selection's element is gone, rather than sliding to a neighbour: a refresh must not
+        // silently re-point a selection at a different setting.
+        SelectedRow = selected is { } id ? Rows.FirstOrDefault(r => r.Id == id) : null;
+    }
 }
 
 /// <summary>One captioned (or uncaptioned) group of the generic dialog.</summary>
@@ -181,6 +253,8 @@ public sealed class ProductDialogGroupViewModel
         IReadOnlyList<ProductSetting> settings)
     {
         Caption = group.Caption;
+        Id = group.Id;
+        IsCollapsible = group.Collapsible;
         Columns = Math.Max(1, group.Columns);
         Fields = new ObservableCollection<ProductDialogFieldViewModel>(
             group.Fields.Select(f => new ProductDialogFieldViewModel(f)));
@@ -196,7 +270,7 @@ public sealed class ProductDialogGroupViewModel
         }
         if (HasSettingsGrid)
         {
-            Settings = new ObservableCollection<ProductSetting>(settings);
+            SettingsGrid = new ProductDialogSettingsGridViewModel(settings);
         }
 
         DisplayFields = group.ColumnMajor ? Transposed(Fields, Columns) : Fields;
@@ -278,11 +352,20 @@ public sealed class ProductDialogGroupViewModel
     // The DESCRIPTOR says whether a slot applies; it carries no rows, because terminal rows are element data and
     // not dialog metadata. The rows arrive alongside it, from the caller that already reads the product.
 
+    /// <summary>Whether the group is drawn behind a disclosure — the descriptor's own hint.</summary>
+    public bool IsCollapsible { get; }
+
+    /// <summary>
+    /// Whether the plain captioned box is what draws this group. A collapsible group carries its caption on the
+    /// disclosure instead, so drawing both would show the caption twice — once on a box and once on the header.
+    /// </summary>
+    public bool ShowsPlainBox => HasCaption && !IsCollapsible;
+
+    /// <summary>The disclosure's automation id, so a driver can expand and collapse the group by name.</summary>
+    public string DisclosureAutomationId => $"dlg.{Id}.udvid";
+
     /// <summary>Whether this group hosts the input/output terminal grids (US-012).</summary>
     public bool HasTerminalGrids => Widgets.Contains(DialogWidgetKind.TerminalGrids);
-
-    /// <summary>Whether this group hosts the wireless dimmer's <i>Avanceret</i> button (US-015).</summary>
-    public bool HasAdvancedButton => Widgets.Contains(DialogWidgetKind.AdvancedDimmerButton);
 
     /// <summary>
     /// The two terminal grids when this group hosts them, and NOTHING otherwise.
@@ -296,22 +379,21 @@ public sealed class ProductDialogGroupViewModel
     /// </summary>
     public IReadOnlyList<ProductDialogTerminalGridViewModel> TerminalGrids { get; } = [];
 
-    /// <summary>The same 0-or-1 trick for the advanced-dimmer button, for the same reason.</summary>
-    public IReadOnlyList<ProductDialogGroupViewModel> AdvancedSection =>
-        HasAdvancedButton ? [this] : [];
-
     /// <summary>Whether this group hosts the sensors' <i>Indstillinger</i> grid (T070).</summary>
     public bool HasSettingsGrid => Widgets.Contains(DialogWidgetKind.SettingsGrid);
 
     /// <summary>The 0-or-1 section for the settings grid, for the same reason as the other two.</summary>
-    public IReadOnlyList<ProductDialogGroupViewModel> SettingsSection =>
-        HasSettingsGrid ? [this] : [];
+    public IReadOnlyList<ProductDialogSettingsGridViewModel> SettingsSection =>
+        SettingsGrid is { } grid ? [grid] : [];
 
-    /// <summary>The configurable settings shown in that grid, in declared order.</summary>
-    public ObservableCollection<ProductSetting> Settings { get; } = [];
+    /// <summary>The settings grid this group hosts, or null where the descriptor declared none.</summary>
+    public ProductDialogSettingsGridViewModel? SettingsGrid { get; }
 
     /// <summary>The group box's title, or null for an uncaptioned run of fields (no box is drawn).</summary>
     public string? Caption { get; }
+
+    /// <summary>The preset's group id — the stem of the automation ids inside it.</summary>
+    public string Id { get; }
 
     /// <summary>True when this group draws a captioned box.</summary>
     public bool HasCaption => Caption is not null;
@@ -384,6 +466,27 @@ public sealed partial class ProductDialogViewModel : ObservableObject
     public string Title { get; }
 
     public ObservableCollection<ProductDialogGroupViewModel> Groups { get; }
+
+    /// <summary>
+    /// Re-projects the grids from freshly computed rows, keeping each grid's selection on the SAME terminal.
+    /// </summary>
+    /// <remarks>
+    /// The rows are replaced, not edited: they are values, and the caller has already worked out what they
+    /// should be. Selection is restored by ELEMENT rather than by index — by pin in the terminal grids, by
+    /// setting id in the Indstillinger grid — because a row's position is not its identity: a re-projection that
+    /// reordered anything would otherwise move the installer's selection to a different row without touching it.
+    /// </remarks>
+    public void Refresh(IReadOnlyList<ProductTerminal> terminals, IReadOnlyList<ProductSetting> settings)
+    {
+        foreach (ProductDialogGroupViewModel group in Groups)
+        {
+            foreach (ProductDialogTerminalGridViewModel grid in group.TerminalGrids)
+            {
+                grid.Replace(terminals);
+            }
+            group.SettingsGrid?.Replace(settings);
+        }
+    }
 
     /// <summary>Every field, flattened — what the tests and the commit walk.</summary>
     public IEnumerable<ProductDialogFieldViewModel> AllFields => Groups.SelectMany(g => g.Fields);

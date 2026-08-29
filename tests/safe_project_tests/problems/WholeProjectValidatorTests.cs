@@ -439,6 +439,123 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        /// <summary>
+        /// A declarative rule declared <c>RuleTarget(null, attribute)</c> — "this attribute, on whatever element
+        /// the rule reports" — emits on EVERY registered element type that declares that attribute, instead of
+        /// falling silent.
+        ///
+        /// <para>The executor used to return early on a null tag, so the wildcard registered, served the dialog
+        /// face, and produced nothing at all on the whole-project face: a rule that is not there is at least
+        /// visible as absent, whereas one that runs and emits nothing looks like a clean project.</para>
+        ///
+        /// <para><b>The witness is synthetic on purpose.</b> No shipped <c>doc-*</c> row can serve as one: every
+        /// one of them is an <c>Inspection</c> body, which this face never sees, and rewriting one as a
+        /// <c>Constrain</c> would move oracles and reopen work that is deliberately out of scope here.</para>
+        /// </summary>
+        [Test]
+        public void ANullTagConstraintEmitsOnEveryElementTypeDeclaringItsAttribute()
+        {
+            // Two DIFFERENT tags that both declare cable_colour, plus one that does not.
+            Project project = ProjectWith(
+                Tree.Node("dataline_input", "_0x2a", [("cable_colour", "")]),
+                Tree.Node("dataline_output", "_0x3a", [("cable_colour", "")]),
+                Tree.Node("sms_modem_phonenumber", "_0x81", [("phonenumber", "12345678")]));
+
+            // Addressing, not Documentation: ValidationProfile.ProjectOnly excludes the Documentation category
+            // by AUDIENCE, so a Documentation entry would report nothing here for a reason that has nothing to
+            // do with the wildcard walk under test.
+            ProblemCatalogEntry entry = new(new ProblemCode("aaa-anywhere"),
+                ProblemCatalogSection.ProjectFindings, ValidationCategory.Addressing,
+                CatalogDisposition.Warning, RuleKind.UserContentRule, RuleFaces.WholeProject,
+                new RuleTarget(null, "cable_colour"), FindingShape.OnePerOccurrence, default, "Label");
+
+            RuleSet rules = RuleSet.Create(
+                ProblemCatalog.From(ImmutableArray.Create(entry)),
+                [new RuleBuilder(entry).Constrain(new AlwaysFails(entry.Code)).Build()]);
+
+            EquatableArray<ValidationFinding> findings =
+                new WholeProjectValidator(rules).Validate(project, ValidationProfile.ProjectOnly);
+
+            Assert.That(findings.Select(f => f.Primary?.Locator),
+                Is.EqualTo(new[] { "_0x2a", "_0x3a" }).AsCollection,
+                "both declaring tags are walked, in document order, and the tag that does not declare the "
+                + "attribute is left alone");
+        }
+
+        /// <summary>
+        /// The whole-project target — both members null — still walks nothing. It is a different shape from the
+        /// wildcard and must not be swept into it: there is no attribute to constrain, so a constraint body over
+        /// it has nothing to check.
+        /// </summary>
+        [Test]
+        public void AConstraintWithNoTargetAtAllStillWalksNothing()
+        {
+            Project project = ProjectWith(Tree.Node("dataline_input", "_0x2a", [("cable_colour", "")]));
+            ProblemCatalogEntry entry = Entry("aaa-whole-project");
+
+            RuleSet rules = RuleSet.Create(
+                ProblemCatalog.From(ImmutableArray.Create(entry)),
+                [new RuleBuilder(entry).Constrain(new AlwaysFails(entry.Code)).Build()]);
+
+            Assert.That(new WholeProjectValidator(rules).Validate(project, ValidationProfile.ProjectOnly),
+                Is.Empty);
+        }
+
+        /// <summary>
+        /// A finding CARRIES its entry's target attribute. A host may not read the catalogue — the layer rules
+        /// bar a frontend from it — so the finding is the only door the fact has, exactly as for
+        /// <see cref="ValidationFinding.RefusedOperations"/>.
+        /// <para>The four shapes that decide it: an entry that declares an attribute, one that declares none, a
+        /// rule that THREW (an engine fault is about no field), and a GROUPED finding, where the one attribute
+        /// belongs to the whole finding and not to a site.</para>
+        /// </summary>
+        [Test]
+        public void AFindingCarriesItsEntrysTargetAttribute()
+        {
+            ProjectElement first = Tree.Node("dataline_input", "_0x10", []);
+            ProjectElement second = Tree.Node("dataline_input", "_0x20", []);
+            Project project = ProjectWith(first, second);
+
+            ProblemCatalogEntry declared = Entry("aaa-declared") with
+            {
+                Target = new RuleTarget("dataline_input", "cable_colour"),
+            };
+            ProblemCatalogEntry undeclared = Entry("bbb-undeclared");
+            ProblemCatalogEntry threw = Entry("ccc-threw") with
+            {
+                Target = new RuleTarget("dataline_input", "cable_colour"),
+            };
+            ProblemCatalogEntry grouped = Entry("ddd-grouped") with
+            {
+                Shape = FindingShape.PrimaryWithRelated,
+                Target = new RuleTarget("dataline_input", "note"),
+            };
+
+            WholeProjectValidator validator = new(Compose(
+            [
+                (declared, i => i.Report(first, default)),
+                (undeclared, i => i.Report(first, default)),
+                (threw, _ => throw new InvalidOperationException("rule bug")),
+                (grouped, i => i.ReportGroup(first, [second], default)),
+            ]).Rules);
+
+            Dictionary<string, ValidationFinding> byCode = validator
+                .Validate(project, ValidationProfile.ProjectOnly)
+                .ToDictionary(f => f.Code.Value);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(byCode["aaa-declared"].TargetAttribute, Is.EqualTo("cable_colour"));
+                Assert.That(byCode["bbb-undeclared"].TargetAttribute, Is.Null,
+                    "an entry that names no attribute must not invent one");
+                Assert.That(byCode["internal.unexpected"].TargetAttribute, Is.Null,
+                    "a rule that threw reports an ENGINE fault, which is about no field of the user's project — "
+                    + "the same reason the failure branch carries no refused operations");
+                Assert.That(byCode["ddd-grouped"].TargetAttribute, Is.EqualTo("note"),
+                    "the attribute belongs to the FINDING, so a grouped one carries it once rather than per site");
+            });
+        }
+
         private static IEnumerable<IEnumerable<T>> Permutations<T>(IReadOnlyList<T> items)
         {
             if (items.Count <= 1)

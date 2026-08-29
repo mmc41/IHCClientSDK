@@ -65,6 +65,58 @@ internal static class ProblemsTestData
     /// <summary>A fixture under <c>tests/testdata/projects</c>, beside the built test assembly.</summary>
     public static string FixturePath(string name) =>
         Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", "projects", name);
+
+    /// <summary>
+    /// A route planner over the SDK's real compose door — the same wiring the panel uses. Row projection needs
+    /// one, and a stubbed descriptor would let a projected row claim a field the dialog does not offer.
+    /// </summary>
+    public static ihc_openvisual.ViewModels.ProblemNavigationPlanner Planner(Ihc.Vis.ProjectAppService service) =>
+        ihc_openvisual.ViewModels.ProblemNavigationPlanner.Over(service.GetProductDialog);
+
+    /// <inheritdoc cref="Planner(Ihc.Vis.ProjectAppService)"/>
+    public static ProblemNavigationPlanner Planner(ShellHarness harness) =>
+        ProblemNavigationPlanner.Over(harness.Session.GetProductDialog);
+
+    /// <summary>
+    /// For a projection with NO snapshot, where the planner is never consulted — there is no project to plan
+    /// over, so the row's kind is decided without it.
+    /// </summary>
+    public static ihc_openvisual.ViewModels.ProblemNavigationPlanner UnusedPlanner { get; } =
+        ihc_openvisual.ViewModels.ProblemNavigationPlanner.Over(
+            (_, _) => new Ihc.Vis.Products.ProductDialogDescriptor("", []));
+
+    /// <summary>
+    /// A row as the panel would have built it — carrying the FINDING, attribute included.
+    /// <para>The attribute has to be on the finding, not merely used to compute the kind: activation re-plans
+    /// from the finding over the current document, which is what makes the route right for the document the
+    /// installer is about to edit rather than for the one the run saw.</para>
+    /// </summary>
+    public static ProblemRowViewModel RowFor(
+        NavigationPlan plan, ElementId? site, string? attribute, string code,
+        ValidationSeverity severity = ValidationSeverity.Warning,
+        ValidationCategory category = ValidationCategory.Documentation,
+        string elementName = "navn") =>
+        new(new ValidationFinding(
+                new Problem(new ProblemCode(code), "Besked", EquatableArray<ProblemArgument>.Empty),
+                severity, category,
+                new FindingLocation(site?.ToToken() ?? "utcs_project", site, null),
+                EquatableArray<FindingLocation>.Empty)
+            { TargetAttribute = attribute },
+            site, elementName, plan.Kind, $"{code}@x");
+
+    /// <summary>A row over a finding the caller already has — the shape a rule's real emission takes.</summary>
+    public static ProblemRowViewModel RowFor(
+        NavigationPlan plan, ValidationFinding finding, ElementId? site, string elementName = "navn") =>
+        new(finding, site, elementName, plan.Kind, $"{finding.Code.Value}@x");
+
+    /// <summary>Activates a finding through the panel, exactly as a double-click or Enter would.</summary>
+    public static Task ActivateAsync(
+        ShellHarness harness, MainWindowViewModel vm, ElementId? site, string? attribute, string code)
+    {
+        NavigationPlan plan =
+            Planner(harness).Plan(harness.Session.Current!, site, attribute, new ProblemCode(code));
+        return vm.Problems.ActivateRowAsync(RowFor(plan, site, attribute, code));
+    }
 }
 
 /// <summary>

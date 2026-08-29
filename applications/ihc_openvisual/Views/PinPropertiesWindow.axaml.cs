@@ -137,7 +137,31 @@ public partial class PinPropertiesWindow : ResultDialog<PinPropertiesResult>
         _loading = false;   // everything above is pre-fill, not an edit
         _dirty = false;
         RefreshCommit();
+
+        // The route's landing point, resolved AFTER the fields are filled and their panels shown or hidden: an
+        // input has no initial-value or power-failure control to focus, and asking for one must land nowhere
+        // rather than on a hidden control.
+        if (input.Focus is { } field && ControlFor(field) is { IsVisible: true } target)
+        {
+            FocusOnOpen(target);
+        }
     }
+
+    /// <summary>
+    /// The window's own map from a route's field key to the control that holds that value.
+    /// <para>By compiled <c>x:Name</c> reference, never by an automation-id string: a rename is then a compile
+    /// error rather than a focus that silently lands nowhere. The map lives HERE because the controls are this
+    /// window's business — the coordinator knows only the key.</para>
+    /// </summary>
+    private Control? ControlFor(PinDialogField field) => field switch
+    {
+        PinDialogField.Address => DataLineList,
+        PinDialogField.CableColour => CableColourBox,
+        PinDialogField.Note => NoteBox,
+        PinDialogField.InitialValue => InitialValueCombo,
+        PinDialogField.Backup => SaveValueCheck,
+        _ => null,
+    };
 
     private const string NotConfigured = "ikke konfigureret";
     private bool _isOutput = true;

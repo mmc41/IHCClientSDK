@@ -811,7 +811,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // clock it needs for the staleness indicator come from the session too, which is where the composition
         // root put them — so there is one answer to "which thread" and one clock, not one per view-model.
         Problems = new ProblemsPanelViewModel(
-            _session, _session.Validation, RevealAndSelect, _session.ExportFindingsAsync);
+            _session, _session.Validation, RevealAndSelect, _session.ExportFindingsAsync,
+            status => StatusText = status, ActivateProblemAsync);
 
         RegisterCoreEditRows();
         RegisterNodeRows();
@@ -1464,6 +1465,36 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // ---- crudarch T012 (proposal §3.3): the divergent family as registry rows. Gates normalise the SDK idioms
     // (gateway queries → verdicts with reasons); the measured US-044/US-068 per-surface divergences (D13,
     // uxparity S-28) are SurfacePolicy DATA — reproduced, never reconciled. ----
+
+
+    /// <summary>
+    /// Carries out an ACTIVATED finding's route: reveal where the plan says, then open the dialog it names.
+    /// </summary>
+    /// <remarks>
+    /// <para>The plan arrives decided. This does not re-derive it — the row promised a destination from the same
+    /// plan, and a second derivation here is how a tooltip and a click come to disagree.</para>
+    /// <para>The reveal is attempted FIRST and its answer honoured: a plan whose target has since gone leaves the
+    /// dialog unopened and says so, rather than opening a dialog for an element that is no longer there.</para>
+    /// </remarks>
+    private async Task ActivateProblemAsync(NavigationPlan plan)
+    {
+        // A HOST window first: a whole-project finding has no element, so there is no tree leg to walk and the
+        // reveal below would have nothing to aim at.
+        if (plan.Host is HostRoute.ProjectInfo)
+        {
+            await ProjectInfo();
+            return;
+        }
+        if (plan.Reveal is { } target && !RevealAndSelect(target))
+        {
+            StatusText = ProblemsPanelViewModel.DeadEndStatus;
+            return;
+        }
+        if (plan.Dialog is { } hop)
+        {
+            await _properties.ExecuteAsync(hop);
+        }
+    }
 
     private void RegisterCoreEditRows()
     {

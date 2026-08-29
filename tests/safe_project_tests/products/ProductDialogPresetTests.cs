@@ -84,25 +84,38 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
-        /// The <i>Avanceret</i> slot is PRESENCE-GATED, so it reaches the dimmers and nothing else. Without the
-        /// gate every airlink product — a push-button, a sensor — would offer dimmer settings it does not have.
-        /// <para>The button is PARITY — the vendor draws one captioned <i>Avanceret</i> on the dimmer's own
-        /// bottom row (product 080, T114, correcting an earlier claim that no capture carried that caption).
-        /// What stays a registered DIFFERENCE is what pressing it does: the vendor expands in place, this
-        /// opens a sub-dialog. Declared so that T030's routing did not silently delete a reachable
-        /// capability; reshaping it to the in-place form is separate work.</para>
+        /// The advanced dimmer settings are a PRESENCE-GATED group of ordinary fields, so they reach the dimmers
+        /// and nothing else. Without the gate every airlink product — a push-button, a sensor — would offer
+        /// dimmer settings it does not have.
+        /// <para>They are a COLLAPSIBLE group rather than a button opening a window, which is the vendor's own
+        /// shape: an <i>Avanceret</i> disclosure expands them in place and a <i>Normal</i> affordance collapses
+        /// them again (product 080, T114; re-measured 2026-08-28). The same six values, reached the way the
+        /// vendor reaches them.</para>
         /// </summary>
         [Test]
         public void Airlink_OffersAdvancedDimmerSettings_OnlyWhereDimmerSettingsExist()
         {
-            DialogWidgetModel widget = ProductDialogPresets.Airlink.Groups
-                .SelectMany(g => g.Parts).OfType<DialogWidgetModel>().Single();
+            DialogGroupModel advanced = ProductDialogPresets.Airlink.Groups.Single(g => g.Id == "avanceret");
 
             Assert.Multiple(() =>
             {
-                Assert.That(widget.Kind, Is.EqualTo(DialogWidgetKind.AdvancedDimmerButton));
-                Assert.That(widget.Presence, Is.EqualTo(new DialogPresence.DescendantTag("dimmer_settings")),
+                Assert.That(advanced.Presence, Is.EqualTo(new DialogPresence.DescendantTag("dimmer_settings")),
                     "gated, so a wireless push-button is not offered dimmer settings");
+                Assert.That(advanced.Collapsible, Is.True, "expanded in place, not opened as a window");
+                Assert.That(advanced.Caption, Is.EqualTo("Avancerede Dimmer egenskaber"));
+                Assert.That(
+                    advanced.Parts.OfType<DialogFieldModel>()
+                        .Select(f => ((DialogBinding.DescendantAttribute)f.Binding).Tag),
+                    Is.EqualTo(new[]
+                    {
+                        "dimmer_setting_fade_rate_up", "dimmer_setting_fade_rate_down",
+                        "dimmer_setting_dimming_rate", "dimmer_setting_minimum_value",
+                        "dimmer_setting_maximum_value", "dimmer_setting_load_mode",
+                    }).AsCollection,
+                    "the six values the advanced settings are, each bound to its own element");
+                Assert.That(ProductDialogPresets.Airlink.Groups.SelectMany(g => g.Parts)
+                    .OfType<DialogWidgetModel>(), Is.Empty,
+                    "and no widget slot survives — the settings are fields now, not a door to a window");
             });
         }
 

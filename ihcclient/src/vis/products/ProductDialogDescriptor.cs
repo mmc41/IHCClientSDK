@@ -44,6 +44,11 @@ namespace Ihc.Vis.Products
         /// <see cref="DialogGroupModel.ColumnMajor"/>, carried through so the renderer can honour it.
         /// A layout hint only: <see cref="Fields"/> stays in DECLARED order either way.</summary>
         public bool ColumnMajor { get; init; }
+
+        /// <summary>Whether the group is drawn collapsed, with an expand/collapse affordance — the preset's
+        /// <see cref="DialogGroupModel.Collapsible"/>, carried through. A display hint only: the fields are
+        /// composed, validated and committed whether the group is open or shut.</summary>
+        public bool Collapsible { get; init; }
     }
 
     /// <summary>
@@ -85,5 +90,13 @@ namespace Ihc.Vis.Products
         /// <summary>How many of the group's columns this field occupies — the preset's
         /// <see cref="DialogFieldModel.ColumnSpan"/>, clamped by the renderer to the group's width.</summary>
         public int ColumnSpan { get; init; } = 1;
+
+        /// <summary>
+        /// What the STORED value was divided by to produce <see cref="Value"/>, and what a committed one is
+        /// multiplied by again — the preset's <see cref="DialogFieldModel.DisplayDivisor"/>, carried so the
+        /// write-back can be the read's exact inverse without a second copy of the number. 1 for every field
+        /// whose caption is in the file's own unit.
+        /// </summary>
+        public int DisplayDivisor { get; init; } = 1;
     }
 }

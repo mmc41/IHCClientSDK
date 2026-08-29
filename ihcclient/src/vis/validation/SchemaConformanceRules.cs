@@ -64,11 +64,30 @@ namespace Ihc.Vis.Validation
                 {
                     if (attr.Kind == AttrKind.Required && element.GetAttribute(attr.Name) is null)
                     {
-                        inspection.Report(element, Arguments(("attribute", attr.Name), ("tag", element.Tag)));
+                        inspection.Report(
+                            element,
+                            Arguments(("attribute", attr.Name), ("tag", element.Tag)),
+                            At(element, attr.Name));
                     }
                 }
             }
         }
+
+        /// <summary>
+        /// WHERE this occurrence is repaired: the reported element, and the attribute this particular emission
+        /// is about.
+        ///
+        /// <para>The rules in this file are the reason the per-occurrence fix location exists. Which attribute is at
+        /// fault is decided by the SCHEMA and the element in front of the rule — the same code reports a missing
+        /// <c>name</c> on one element and a missing <c>address_dataline</c> on the next — so the entry cannot
+        /// declare a target that holds for the row, and before this they were element-level: a reader was taken
+        /// to the element and left to work out which of its attributes the sentence meant.</para>
+        ///
+        /// <para>Null for an element with no id, which is the honest answer: a fix location that cannot be
+        /// addressed is not one.</para>
+        /// </summary>
+        private static FixLocation? At(ProjectElement element, string attribute) =>
+            element.Id is { } id ? new FixLocation(id, attribute) : null;
 
         /// <summary>An enumerated attribute holding a value outside its declared set — no defined meaning for
         /// reader or controller.</summary>
@@ -80,11 +99,14 @@ namespace Ihc.Vis.Validation
                 {
                     if (schema.FindAttr(name) is { } attr && !attr.EnumValues.IsEmpty && !attr.EnumValues.Contains(value))
                     {
-                        inspection.Report(element, Arguments(
-                            ("attribute", name),
-                            ("value", value),
-                            ("tag", element.Tag),
-                            ("allowed", string.Join(" | ", attr.EnumValues))));
+                        inspection.Report(
+                            element,
+                            Arguments(
+                                ("attribute", name),
+                                ("value", value),
+                                ("tag", element.Tag),
+                                ("allowed", string.Join(" | ", attr.EnumValues))),
+                            At(element, name));
                     }
                 }
             }
@@ -100,7 +122,13 @@ namespace Ihc.Vis.Validation
                 {
                     if (schema.FindAttr(name) is null)
                     {
-                        inspection.Report(element, Arguments(("attribute", name), ("tag", element.Tag)));
+                        // The attribute is UNDECLARED, so no dialog renders it and no route will reach a field
+                        // for it. Said anyway: a consumer that can only take the reader to the element is no
+                        // worse off, and one that can show which attribute is meant is better off.
+                        inspection.Report(
+                            element,
+                            Arguments(("attribute", name), ("tag", element.Tag)),
+                            At(element, name));
                     }
                 }
             }
@@ -116,7 +144,10 @@ namespace Ihc.Vis.Validation
                 {
                     if (!Latin1.Contains(value))
                     {
-                        inspection.Report(element, Arguments(("attribute", name), ("tag", element.Tag)));
+                        inspection.Report(
+                            element,
+                            Arguments(("attribute", name), ("tag", element.Tag)),
+                            At(element, name));
                     }
                 }
             }

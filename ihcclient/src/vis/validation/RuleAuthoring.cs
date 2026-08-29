@@ -11,7 +11,7 @@ namespace Ihc.Vis.Validation
     /// <summary>
     /// What every rule module needs to MINT a rule, stated once.
     /// <para>
-    /// <see cref="RuleBuilder"/> takes an ENTRY, and <see cref="IProjectInspection.Report"/> takes a bound
+    /// <see cref="RuleBuilder"/> takes an ENTRY, and <see cref="IProjectInspection.Report(Ihc.Vis.Model.ProjectElement, Ihc.Vis.Model.EquatableArray{Ihc.Vis.Problems.ProblemArgument})"/> takes a bound
     /// argument array, so each module used to re-implement the two steps between a code and a registered rule:
     /// look the entry up and throw <see cref="RuleRegistrationFault.NoCatalogueEntry"/> when it is missing, and
     /// turn a tuple list into <see cref="ProblemArgument"/>s. Twenty-one and eighteen copies of those, plus

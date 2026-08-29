@@ -116,11 +116,25 @@ see [§10](#10-gates-a-new-item-must-pass).
 | 4 | `Disposition` | `CatalogDisposition` | `Error`, `Warning`, `Info`, `Refusal`. Three finding tiers and one refusal; see [§11.2](#112-information--the-fourth-disposition). |
 | 5 | `Kind` | `RuleKind` | `UserContentRule`, `SchemaSerializationGuard`, `EditPrecondition`, `OperationOutcome`. |
 | 6 | `Faces` | `RuleFaces` | `None` for anything realised at a throw site; `WholeProject` and/or `DialogMetadata` for a registered rule. A registered rule declaring `None` is refused. |
-| 7 | `Target` | `RuleTarget` | `(tag, attribute)` — e.g. `new RuleTarget("product", "address")`. `default` means the project as a whole. Rejected when the schema registry knows the tag and not the attribute. |
+| 7 | `Target` | `RuleTarget` | `(tag, attribute)` — e.g. `new RuleTarget("product", "address")`. A **null tag** means one of two things, decided by the attribute: with one it is the **wildcard**, *this attribute on whatever element the rule reports*; without one it is the project as a whole. Rejected when the schema registry knows the tag and not the attribute — and a wildcard is rejected when **no** registered element declares the attribute, so a typo cannot register as a rule that silently never fires. |
 | 8 | `Shape` | `FindingShape` | `OneFinding` (one repair clears everything), `OnePerOccurrence` (the usual choice for a content row — write it out, because the enum's zero value is `OneFinding` and `default` here silently means that), `PrimaryWithRelated` (one repair, but the user must see every site). |
 | 9 | `Slots` | `EquatableArray<ProblemArgumentSlot>` | See [§6](#6-declared-argument-slots). `default` when the sentence needs no data. |
 | 10 | `MessageTemplate` | `string` | See [§5](#5-the-danish-message-template). |
 | 11 | `Status` | `ProblemCodeStatus` | Optional, `Active` by default. See [§12](#12-changing-retiring-and-ruling-out). |
+
+**Why a multi-tag row needs the wildcard, and what a declared `Target` then does.** Some rows are genuinely about
+one attribute on several element types — a terminal's `cable_colour` is reported on both `dataline_input` and
+`dataline_output`, and no single tag names it. Declaring one of the two would look right and quietly exclude half
+the row's sites, so such a row declares `RuleTarget(null, attribute)` instead. Both engine faces honour it:
+`RuleSet.ForTarget` returns a wildcard row for a concrete `(tag, attribute)` query, and the whole-project executor
+walks every registered element type that declares the attribute rather than returning early.
+
+A declared attribute is then **projected onto every finding the row emits**, as `ValidationFinding.TargetAttribute`.
+That is what carries the fact across the layer boundary: a host may not read this catalogue, so a frontend that
+wants to take the user to the FIELD a finding is about reads it from the finding. Declaring a target moves no
+oracle — it changes what a finding carries, not which findings are produced — but it is a claim, and the sweeps
+check it: one asserts that every emitting row reports an element whose tag really declares the attribute, and the
+host-side one asserts that each declaring row reaches an editable field or is listed with a reason why it cannot.
 
 Then the init-only fields:
 

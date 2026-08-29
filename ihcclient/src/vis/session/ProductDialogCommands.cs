@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Ihc.Vis.Addressing;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
@@ -26,6 +27,26 @@ namespace Ihc.Vis.Session
     public readonly record struct ProductDialogWidgetAction(DialogWidgetKind Kind, ElementId? Target);
 
     /// <summary>
+    /// One terminal's addressing and documentation, as edited during a product-dialog visit.
+    /// </summary>
+    /// <param name="PinId">The terminal the values belong to.</param>
+    /// <param name="Values">What the terminal editor would have committed.</param>
+    public readonly record struct ProductDialogTerminalEdit(ElementId PinId, PinPropertiesResult Values);
+
+    /// <summary>
+    /// One configurable SETTING's new value, as edited in <i>Rediger konstant</i> during a product-dialog visit.
+    /// </summary>
+    /// <param name="SettingId">The flagged setting resource the value belongs to.</param>
+    /// <param name="Value">
+    /// Its new initial value, TYPED — the same payload the variable command takes, so every resource kind a
+    /// setting can be is expressible and there is one writer for all of them.
+    /// <para>Omit-if-default needs nothing here: a value equal to the type's declared default is elided by the
+    /// serializer (<c>AttrSchema.OmitsOnWrite</c>), so returning a calibration to zero removes the attribute and
+    /// the file goes back to the bytes it had.</para>
+    /// </param>
+    public readonly record struct ProductDialogSettingEdit(ElementId SettingId, ResourceInitialValue Value);
+
+    /// <summary>
     /// Applies a product properties dialog as ONE undoable commit: a flat list of pre-resolved
     /// <see cref="ProductDialogEdit"/> triples, whatever family the dialog belonged to.
     ///
@@ -38,7 +59,7 @@ namespace Ihc.Vis.Session
     /// field satisfying its rule. The rule is looked up from the family preset rather than taken from the caller —
     /// a caller that could supply its own rule could also omit it.</para>
     ///
-    /// <para><see cref="WidgetAction"/> is CARRIED, never executed. The composite sub-dialogs keep their own
+    /// <para>The widget action is CARRIED, never executed. The composite sub-dialogs keep their own
     /// commands and flows (D05); this slot only tells the caller which one the installer asked for, so the
     /// decision travels with the commit instead of beside it.</para>
     /// </summary>
@@ -47,6 +68,30 @@ namespace Ihc.Vis.Session
         EquatableArray<ProductDialogEdit> Edits,
         ProductDialogWidgetAction? WidgetAction = null) : ProjectCommand
     {
+        /// <summary>
+        /// The terminals this VISIT addressed, committed by the same invocation as the field edits above.
+        /// <para>One command, so one undo entry: the installer performed one act — opened the dialog, stepped
+        /// into a terminal, came back out through OK — and <i>Fortryd</i> takes back all of it. Empty for a
+        /// dialog visit that never stepped into a terminal, which is most of them.</para>
+        /// </summary>
+        /// <remarks>
+        /// An INIT-ONLY property rather than a fourth primary-constructor parameter. The three-parameter
+        /// constructor and the matching <c>Deconstruct</c> are shipped public API; widening the primary
+        /// constructor replaces both signatures, which breaks every existing caller for no gain — an added
+        /// member does the same job additively.
+        /// </remarks>
+        public EquatableArray<ProductDialogTerminalEdit> TerminalEdits { get; init; }
+
+        /// <summary>
+        /// The constants this VISIT edited, committed by the same invocation — the settings half of the same rule
+        /// the terminals follow: one act, one undo entry.
+        /// </summary>
+        /// <remarks>
+        /// An init-only property for the same reason <see cref="TerminalEdits"/> is one: the three-parameter
+        /// constructor and its <c>Deconstruct</c> are shipped public API.
+        /// </remarks>
+        public EquatableArray<ProductDialogSettingEdit> SettingEdits { get; init; }
+
         internal override string Describe(Project project) => "Rediger produkt";
 
         internal override EditVerdict Evaluate(EditContext context)
@@ -56,6 +101,33 @@ namespace Ihc.Vis.Session
             {
                 return exists;
             }
+            if (Edits.IsEmpty && TerminalEdits.IsEmpty && SettingEdits.IsEmpty)
+            {
+                // Nothing to validate at all, and nothing to walk the subtree for.
+                return EditVerdict.Allow;
+            }
+
+            ProjectElement product = context.Index.FindById(ProductId)!;
+
+            // ONE walk of the product's subtree for all three halves of the visit. "Does this id belong to this
+            // product" is the same question whether it is asked of a field, a terminal or a constant, so the
+            // answer is built once here rather than per half.
+            var subtree = new HashSet<ElementId>();
+            ProjectTreeOps.CollectIds(product, subtree);
+
+            // BEFORE the empty-edits shortcut below: a visit that changed no product FIELD may still have
+            // addressed a terminal, and that half has to be validated either way.
+            EditVerdict terminals = EvaluateTerminals(context, subtree);
+            if (!terminals.Ok)
+            {
+                return terminals;
+            }
+            EditVerdict settings = EvaluateSettings(context, subtree);
+            if (!settings.Ok)
+            {
+                return settings;
+            }
+
             if (Edits.IsEmpty)
             {
                 // OK without touching a field is an ordinary act — and the commonest one, since a just-inserted
@@ -63,8 +135,6 @@ namespace Ihc.Vis.Session
                 // project compose) is never built for it.
                 return EditVerdict.Allow;
             }
-
-            ProjectElement product = context.Index.FindById(ProductId)!;
 
             // The dialog this product would show, composed against the pre-edit project: the authority on which
             // (element, attribute) pairs are writable fields and what each one accepts.
@@ -76,9 +146,6 @@ namespace Ihc.Vis.Session
                 .ComposeFor(context.Project, product, product.Tag)
                 .AllFields
                 .ToDictionary(f => (f.Target, f.Attribute));
-
-            var subtree = new HashSet<ElementId>();
-            ProjectTreeOps.CollectIds(product, subtree);
 
             foreach (ProductDialogEdit edit in Edits)
             {
@@ -119,6 +186,86 @@ namespace Ihc.Vis.Session
             }
             return EditVerdict.Allow;
         }
+
+        /// <summary>
+        /// The terminal half of the visit: every edited terminal must still exist, belong to THIS product, and
+        /// carry an address the data line can express.
+        /// </summary>
+        /// <remarks>
+        /// The subtree test is the same one the field edits get, and for the same reason: without it a visit
+        /// could address a terminal belonging to a different product and report success either way. The address
+        /// check is the terminal editor's own rule, restated here because this command commits what that editor
+        /// would have committed — a visit must not become a way to write an address the editor would refuse.
+        /// </remarks>
+        private EditVerdict EvaluateTerminals(EditContext context, HashSet<ElementId> subtree)
+        {
+            if (TerminalEdits.IsEmpty)
+            {
+                return EditVerdict.Allow;
+            }
+
+            foreach (ProductDialogTerminalEdit edit in TerminalEdits)
+            {
+                if (context.Index.FindById(edit.PinId) is not { } pin)
+                {
+                    return EditVerdict.Refuse(EditRefusalCodes.TerminalMissing, "Klemmen findes ikke længere.");
+                }
+                if (!subtree.Contains(edit.PinId))
+                {
+                    return EditVerdict.Refuse(EditRefusalCodes.FieldOutsideProduct,
+                        "Et af felterne peger på et element uden for produktet.");
+                }
+                if (!DatalineAddress.TryEncode(
+                        edit.Values.DataLine, edit.Values.Terminal, pin.Tag == "dataline_output", out _))
+                {
+                    return EditVerdict.Refuse(EditRefusalCodes.TerminalAddressRange,
+                        "Klemmenummeret ligger uden for datalinjens område.");
+                }
+            }
+            return EditVerdict.Allow;
+        }
+
+        /// <summary>
+        /// The settings half of the visit: every edited constant must still exist, belong to THIS product, and be
+        /// a resource the catalog actually marked as a configurable setting.
+        /// </summary>
+        /// <remarks>
+        /// The third test is what the terminals do not need. A terminal is identified by its tag, so a wrong id
+        /// fails the subtree test or is not a pin; a setting is an ordinary resource wearing a
+        /// <c>setting="yes"</c> marker, and every product is full of resources that are NOT settings. Without the
+        /// marker test this command would be a way to write <c>inivalue</c> on any resource inside a product
+        /// through a dialog that never offered it.
+        /// </remarks>
+        private EditVerdict EvaluateSettings(EditContext context, HashSet<ElementId> subtree)
+        {
+            if (SettingEdits.IsEmpty)
+            {
+                return EditVerdict.Allow;
+            }
+
+            foreach (ProductDialogSettingEdit edit in SettingEdits)
+            {
+                if (context.Index.FindById(edit.SettingId) is not { } setting)
+                {
+                    return EditVerdict.Refuse(EditRefusalCodes.FieldTargetMissing,
+                        "Et af felterne peger på et element, der ikke findes længere.");
+                }
+                if (!subtree.Contains(edit.SettingId))
+                {
+                    return EditVerdict.Refuse(EditRefusalCodes.FieldOutsideProduct,
+                        "Et af felterne peger på et element uden for produktet.");
+                }
+                if (!Schema.ProductRows.IsSetting(setting.GetAttribute(Schema.ProductRows.SettingAttribute)))
+                {
+                    return EditVerdict.Refuse(EditRefusalCodes.TargetWrongKind,
+                        EditRefusalProblems.TargetWrongKindRefusal(SettingNoun));
+                }
+            }
+            return EditVerdict.Allow;
+        }
+
+        /// <summary>What the wrong-kind refusal names when a settings edit points at something else.</summary>
+        private const string SettingNoun = "en indstilling";
 
         /// <summary>
         /// Which coded identity a broken field rule refuses under, and the Danish sentence that goes with it.
@@ -173,9 +320,62 @@ namespace Ihc.Vis.Session
 
         internal override void Execute(ProjectEditor editor)
         {
+            // The dialog this product shows is the authority on each field's display scale, exactly as it is the
+            // authority on which fields exist — so the write-back asks it rather than carrying a second copy.
+            Dictionary<(ElementId, string), int> divisors = [];
+            if (!Edits.IsEmpty)
+            {
+                Project current = editor.ToProject();
+                ProjectElement product = current.FindById(ProductId)!;
+                foreach (DialogDescriptorField offered in
+                    ProductDialogComposer.ComposeFor(current, product, product.Tag).AllFields)
+                {
+                    divisors[(offered.Target, offered.Attribute)] = offered.DisplayDivisor;
+                }
+            }
+
             foreach (ProductDialogEdit edit in Edits)
             {
-                editor.Resolve(edit.Target, "Feltet").SetAttribute(edit.Attribute, Stored(editor, edit));
+                editor.Resolve(edit.Target, "Feltet").SetAttribute(
+                    edit.Attribute,
+                    Stored(editor, edit, divisors.GetValueOrDefault((edit.Target, edit.Attribute), 1)));
+            }
+
+            // The terminals the visit addressed, committed by the SAME command — which is what makes the visit
+            // one undo entry. Fortryd after the dialog's OK takes back the addressing too, because the installer
+            // performed one act.
+            foreach (ProductDialogTerminalEdit edit in TerminalEdits)
+            {
+                WriteTerminal(editor, edit);
+            }
+
+            // The constants, by the same rule and through the SAME typed writer the variable command uses — so a
+            // calibration and a variable of the same resource type produce the same bytes, and returning either
+            // to its declared default leaves the attribute out of the file.
+            foreach (ProductDialogSettingEdit edit in SettingEdits)
+            {
+                edit.Value.WriteTo(editor.Resolve(edit.SettingId, "Indstillingen"));
+            }
+        }
+
+        /// <summary>Writes one terminal exactly as the terminal editor's own command would.</summary>
+        private static void WriteTerminal(ProjectEditor editor, ProductDialogTerminalEdit edit)
+        {
+            ElementRef handle = editor.Resolve(edit.PinId, "Klemmen");
+            bool isOutput = handle.Tag == "dataline_output";
+            if (!DatalineAddress.TryEncode(edit.Values.DataLine, edit.Values.Terminal, isOutput, out string token))
+            {
+                throw new EditRefusedException(
+                    EditRefusalCodes.TerminalAddressRange,
+                    "Klemmenummeret ligger uden for datalinjens område.");
+            }
+            handle.SetAttribute("address_dataline", token);
+            handle.SetAttribute("cable_colour", edit.Values.CableColour);
+            handle.SetAttribute("note", edit.Values.Note);
+            if (isOutput)
+            {
+                handle.SetAttribute("inivalue", edit.Values.InitialValueOn ? "on" : "off");
+                handle.SetAttribute("backup", edit.Values.SaveOnPowerFailure ? "yes" : "no");
             }
         }
 
@@ -192,11 +392,18 @@ namespace Ihc.Vis.Session
         /// <para>Both directions read the declared default through the SAME helper, so the pair cannot drift into
         /// two different ideas of which defaults count.</para>
         /// </summary>
-        private static string Stored(ProjectEditor editor, ProductDialogEdit edit)
+        private static string Stored(ProjectEditor editor, ProductDialogEdit edit, int displayDivisor)
         {
             if (edit.Value.Length > 0)
             {
-                return edit.Value;
+                // The read side's exact inverse: a field whose caption is in a different unit from the file
+                // showed the stored value divided, so a committed one is multiplied back. Both ends read the
+                // same declaration; a scale applied at one only is a value that drifts every time the dialog
+                // is opened and closed.
+                return displayDivisor > 1
+                    && int.TryParse(edit.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int shown)
+                        ? (shown * displayDivisor).ToString(CultureInfo.InvariantCulture)
+                        : edit.Value;
             }
             ProjectElement element = editor.Require(edit.Target);
             return ProductDialogComposer.NumericDeclaredDefault(editor.SchemaView, element, edit.Attribute)

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -74,7 +75,7 @@ public class TerminalGridTests : AvaloniaTestBase
     public void TheSettingsHeader_SitsOverTheColumnItHeads()
     {
         ProductDialogWindow window = Open(TemperatureSensor, [],
-            [new ProductSetting("Kalibrering", "Justering af måling", "0,5")]);
+            [new ProductSetting("Kalibrering", "Justering af måling", "0,5", new ElementId(1, 0))]);
 
         ListBox list = ListWithId(window, "dlg.indstillinger.liste");
         double[] header = ColumnEdges(HeaderOf(list, columns: 3), window);
@@ -123,17 +124,18 @@ public class TerminalGridTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public void Konfigurer_AddressesTheSelectedTerminal()
     {
-        ProductDialogWindow window = OpenWired();
+        (ProductDialogWindow window, List<ProductDialogWidgetAction> stepped) = OpenWiredWithSeam();
         ListWithId(window, "dlg.terminaler.indgange").SelectedItem = SecondInput;
 
         Click(window, "dlg.terminaler.konfigurerIndgang");
 
-        ProductDialogWidgetAction? action = window.AcceptedResult?.WidgetAction;
         Assert.Multiple(() =>
         {
-            Assert.That(action?.Kind, Is.EqualTo(DialogWidgetKind.TerminalGrids));
-            Assert.That(action?.Target, Is.EqualTo(Pin(SecondInput)),
+            Assert.That(stepped, Has.Count.EqualTo(1), "one press, one step");
+            Assert.That(stepped[0].Kind, Is.EqualTo(DialogWidgetKind.TerminalGrids));
+            Assert.That(stepped[0].Target, Is.EqualTo(Pin(SecondInput)),
                 "the SELECTED row is addressed, not the pre-selected first one");
+            Assert.That(window.IsVisible, Is.True, "and the dialog stayed open — it no longer closes to report");
         });
     }
 
@@ -144,11 +146,11 @@ public class TerminalGridTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public void KonfigurerUdgang_AddressesTheOutputSide()
     {
-        ProductDialogWindow window = OpenWired();
+        (ProductDialogWindow window, List<ProductDialogWidgetAction> stepped) = OpenWiredWithSeam();
 
         Click(window, "dlg.terminaler.konfigurerUdgang");
 
-        Assert.That(window.AcceptedResult?.WidgetAction?.Target, Is.EqualTo(Pin(OnlyOutput)));
+        Assert.That(stepped.Select(a => a.Target), Is.EqualTo(new[] { Pin(OnlyOutput) }).AsCollection);
     }
 
     /// <summary>Clearing the selection and pressing <i>Konfigurer</i> does nothing at all: the grids are
@@ -187,10 +189,29 @@ public class TerminalGridTests : AvaloniaTestBase
     private static ProductDialogWindow OpenWired() =>
         Open(Lampeudtag, [FirstInput, SecondInput, OnlyOutput], []);
 
+    /// <summary>
+    /// The same wired dialog with a recording step seam — what <i>Konfigurer</i> actually drives.
+    /// <para>These two used to read the button's target off <c>AcceptedResult.WidgetAction</c>: the dialog
+    /// closed on the gesture and handed the action out as its result. That protocol is gone (T058), and the
+    /// claim is unchanged — which terminal the button addresses — so it is observed where it now happens.</para>
+    /// </summary>
+    private static (ProductDialogWindow Window, List<ProductDialogWidgetAction> Stepped) OpenWiredWithSeam()
+    {
+        List<ProductDialogWidgetAction> stepped = [];
+        ProductDialogWindow window = Open(Lampeudtag, [FirstInput, SecondInput, OnlyOutput], [],
+            action =>
+            {
+                stepped.Add(action);
+                return Task.FromResult<ProductDialogRefresh?>(null);
+            });
+        return (window, stepped);
+    }
+
     /// <summary>Drives the ONE generic dialog on a REAL composed descriptor — a stub descriptor hosts no
     /// widgets, so the grids under test would not be built at all.</summary>
     private static ProductDialogWindow Open(
-        string productIdentifier, IReadOnlyList<ProductTerminal> terminals, IReadOnlyList<ProductSetting> settings)
+        string productIdentifier, IReadOnlyList<ProductTerminal> terminals, IReadOnlyList<ProductSetting> settings,
+        ProductDialogStep? onStep = null)
     {
         var app = new ProjectAppService(new IhcSettings());
         Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
@@ -203,7 +224,7 @@ public class TerminalGridTests : AvaloniaTestBase
         var window = new ProductDialogWindow();
         CurrentTestWindow = window;
         window.Populate(new ProductDialogViewModel(
-            app.GetProductDialog(session.Current!, placed), terminals, settings));
+            app.GetProductDialog(session.Current!, placed), terminals, settings), options: null, onStep: onStep);
         window.Show();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         return window;

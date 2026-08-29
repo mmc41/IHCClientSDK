@@ -29,18 +29,46 @@ public partial class SceneValueWindow : ResultDialog<SceneValueResult>
 
     public static Task<SceneValueResult?> ShowAsync(Window owner, SceneValueInput input)
     {
-        var window = new SceneValueWindow { Title = input.Title, _opened = input };
-        NumericFieldBounds.Apply(window.LevelBox, input.Level);
-        NumericFieldBounds.Apply(window.RampMinutesBox, input.RampPart);
-        NumericFieldBounds.Apply(window.RampSecondsBox, input.RampPart);
-        window.DimmerPanel.IsVisible = input.IsDimmer;
-        window.RelayPanel.IsVisible = !input.IsDimmer;
-        window.LevelBox.Value = input.LevelPercent;
-        window.RampMinutesBox.Value = input.RampMinutes;
-        window.RampSecondsBox.Value = input.RampSeconds;
-        window.StateCombo.SelectedIndex = input.On ? 1 : 0;
+        var window = new SceneValueWindow { Title = input.Title };
+        window.Populate(input);
         return window.ShowDialogForResult(owner);
     }
+
+    /// <summary>Fills the dialog. Separate from <see cref="ShowAsync"/> so a headless test drives the same
+    /// wiring the application does rather than a window whose bounds and focus were never applied.</summary>
+    internal void Populate(SceneValueInput input)
+    {
+        _opened = input;
+        NumericFieldBounds.Apply(LevelBox, input.Level);
+        NumericFieldBounds.Apply(RampMinutesBox, input.RampPart);
+        NumericFieldBounds.Apply(RampSecondsBox, input.RampPart);
+        DimmerPanel.IsVisible = input.IsDimmer;
+        RelayPanel.IsVisible = !input.IsDimmer;
+        LevelBox.Value = input.LevelPercent;
+        RampMinutesBox.Value = input.RampMinutes;
+        RampSecondsBox.Value = input.RampSeconds;
+        StateCombo.SelectedIndex = input.On ? 1 : 0;
+        // A route's field when it named one this variant HAS; otherwise the variant's own value field, which is
+        // where the installer would start anyway.
+        FocusOnOpen(FocusTarget(input.Focus) ?? (input.IsDimmer ? LevelBox : StateCombo));
+    }
+
+    /// <summary>
+    /// The window's own map from a route's field key to the control holding that value.
+    /// <para>Gated on the PANEL, not on the box: a member is either a dimmer or a relay, never both, and a
+    /// control inside a collapsed panel still reports itself visible — so asking the box would land the caret on
+    /// a field that is not on screen. A key belonging to the other variant answers null, and the dialog opens on
+    /// the field it does have.</para>
+    /// </summary>
+    internal Control? FocusTarget(SceneDialogField? field) => field switch
+    {
+        SceneDialogField.State => RelayPanel.IsVisible ? StateCombo : null,
+        SceneDialogField.Level => DimmerPanel.IsVisible ? LevelBox : null,
+        SceneDialogField.RampTime => DimmerPanel.IsVisible ? RampMinutesBox : null,
+        // Note belongs to the CONTAINER's dialog, which is a different window; naming it here would be a claim
+        // this one cannot keep.
+        _ => null,
+    };
 
     private void OnOk(object? sender, RoutedEventArgs e) =>
         Accept(new SceneValueResult(

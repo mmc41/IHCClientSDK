@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Ihc.Vis;
@@ -29,16 +30,46 @@ public sealed class AvaloniaDialogService : IDialogService
     /// <summary>The main window, used as the modal owner and storage-provider source. Set after it is created.</summary>
     public Window? Owner { get; set; }
 
+    /// <summary>
+    /// The window a modal opened NOW should parent on: the innermost one still open, not the shell.
+    /// <para>Once a dialog can be opened from inside another, "the owner" stops being the main window. A
+    /// sub-dialog parented on the shell is not modal to the dialog that raised it, so the installer can reach
+    /// behind it and edit the very values it was opened to change.</para>
+    /// </summary>
+    /// <remarks>
+    /// READ from Avalonia's own ownership chain rather than maintained as a parallel stack of our own. A
+    /// hand-kept stack has to be popped on every exit route a dialog has — OK, Cancel, Esc, the title-bar X, an
+    /// exception on the way out — and a single missed pop leaves every later modal parented on a window that has
+    /// closed. The chain below cannot drift, because it is the same fact the window manager is already keeping.
+    /// </remarks>
+    internal static Window Innermost(Window shell)
+    {
+        Window owner = shell;
+        // Bounded: a cycle is impossible in a window-ownership tree, but a bound turns a hypothetical hang into
+        // an ordinary wrong answer.
+        for (int depth = 0; depth < 16; depth++)
+        {
+            if (owner.OwnedWindows.FirstOrDefault(child => child.IsVisible) is not { } nested)
+            {
+                return owner;
+            }
+            owner = nested;
+        }
+        return owner;
+    }
+
     /// <summary>The one "there is no owner window yet" guard every modal shares — a headless or design-time
     /// instance has no <see cref="Owner"/>, and showing a modal without one throws. Having it in a single place
     /// means a newly added dialog inherits the guard instead of having to remember it, and each dialog member
-    /// stays the one call that is actually its own.</summary>
+    /// stays the one call that is actually its own.
+    /// <para>It also decides WHICH window owns the modal: <see cref="Innermost"/>, so a dialog raised from
+    /// inside another stacks on it.</para></summary>
     private Task<T?> WithOwnerAsync<T>(Func<Window, Task<T?>> show) where T : class =>
-        Owner is { } owner ? show(owner) : Task.FromResult<T?>(null);
+        Owner is { } owner ? show(Innermost(owner)) : Task.FromResult<T?>(null);
 
     /// <inheritdoc cref="WithOwnerAsync{T}"/>
     private Task WithOwnerAsync(Func<Window, Task> show) =>
-        Owner is { } owner ? show(owner) : Task.CompletedTask;
+        Owner is { } owner ? show(Innermost(owner)) : Task.CompletedTask;
 
     private static readonly FilePickerFileType VisFileType = new("IHC projekt (*.vis)") { Patterns = new[] { "*.vis" } };
     private static readonly FilePickerFileType CatalogFileType =
@@ -200,9 +231,10 @@ public sealed class AvaloniaDialogService : IDialogService
         ShowButtonsAsync("Effektive indstillinger", settingsText, selectable: true, ("Luk", true));
 
     public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null,
-        string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null) =>
+        string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null,
+        ElementDialogField? focus = null) =>
         WithOwnerAsync(owner => PropertiesWindow.ShowAsync(owner, title, name, note, origin, affirmative,
-            userGroupCaption, conditionsOr));
+            userGroupCaption, conditionsOr, focus));
 
     public Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input) =>
         WithOwnerAsync(owner => VariablePropertiesWindow.ShowAsync(owner, input));
@@ -215,12 +247,14 @@ public sealed class AvaloniaDialogService : IDialogService
 
     public Task<ProductDialogEdits?> EditProductDialogAsync(
         ProductDialogDescriptor descriptor, IReadOnlyList<ProductTerminal>? terminals = null,
-        IReadOnlyList<ProductSetting>? settings = null) =>
+        IReadOnlyList<ProductSetting>? settings = null,
+        ProductDialogShowOptions? options = null,
+        ProductDialogStep? onStep = null) =>
         WithOwnerAsync(owner => ProductDialogWindow.ShowAsync(
-            owner, new ProductDialogViewModel(descriptor, terminals, settings)));
+            owner, new ProductDialogViewModel(descriptor, terminals, settings), options, onStep));
 
-    public Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input) =>
-        WithOwnerAsync(owner => AdvancedDimmerWindow.ShowAsync(owner, input));
+    public Task<string?> EditConstantAsync(ConstantEditorInput input) =>
+        WithOwnerAsync(owner => ConstantEditorWindow.ShowAsync(owner, input));
 
     public Task<SceneValueResult?> EditSceneValueAsync(SceneValueInput input) =>
         WithOwnerAsync(owner => SceneValueWindow.ShowAsync(owner, input));
@@ -368,8 +402,11 @@ public sealed class AvaloniaDialogService : IDialogService
         // If the window is closed via the title bar, resolve to the last (safest) option.
         dialog.Closed += (_, _) => tcs.TrySetResult(defaultValue);
 
-        if (Owner is not null)
-            _ = dialog.ShowDialog(Owner);
+        // The INNERMOST window, like every other modal: a message box raised from inside a dialog belongs to that
+        // dialog. This path does not go through WithOwnerAsync — it builds its window here and resolves through a
+        // TaskCompletionSource rather than through ShowDialog's own task — so it has to ask for the owner itself.
+        if (Owner is { } shell)
+            _ = dialog.ShowDialog(Innermost(shell));
         else
             dialog.Show();
 

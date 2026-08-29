@@ -45,6 +45,9 @@ public sealed class DialogFieldTemplate : IDataTemplate
     /// <summary>A yes/no tick box, labelled by its own caption rather than by the shared caption block.</summary>
     public IDataTemplate? Checkbox { get; set; }
 
+    /// <summary>A CLOSED combo over an enumerated attribute — the list is the declaration's, not a typing aid.</summary>
+    public IDataTemplate? ComboFixed { get; set; }
+
     /// <summary>The template for a kind, or null when none is assigned. Public so a test can assert coverage of the
     /// whole enum — the check that keeps <see cref="Build"/>'s throw unreachable for every REAL kind.</summary>
     public IDataTemplate? ForKind(DialogControlKind kind) => kind switch
@@ -54,6 +57,7 @@ public sealed class DialogFieldTemplate : IDataTemplate
         DialogControlKind.ComboSuggest => ComboSuggest,
         DialogControlKind.Number => Number,
         DialogControlKind.Checkbox => Checkbox,
+        DialogControlKind.ComboFixed => ComboFixed,
         _ => null,
     };
 

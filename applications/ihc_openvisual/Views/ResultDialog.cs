@@ -38,13 +38,24 @@ public abstract class ResultDialog<TResult> : Window where TResult : class
     /// <summary>The shared Cancel handler: leaves the result null and closes.</summary>
     protected void OnCancel(object? sender, RoutedEventArgs e) => Close();
 
-    /// <summary>Selects and focuses <paramref name="textBox"/> once the window has opened — the shared "the pre-filled
-    /// name is selected and ready to overtype" behaviour of the editor dialogs (US-007/011/013). Call from
-    /// <c>ShowAsync</c> before showing.</summary>
-    protected void FocusOnOpen(TextBox textBox) =>
+    /// <summary>
+    /// Focuses <paramref name="control"/> once the window has opened. Call from <c>ShowAsync</c> before showing.
+    /// </summary>
+    /// <remarks>
+    /// <para>A <see cref="TextBox"/> is additionally SELECTED — the shared "the pre-filled name is selected and
+    /// ready to overtype" behaviour of the editor dialogs (US-007/011/013). Every other control kind is only
+    /// focused: select-all is a text gesture, and there is nothing for a checkbox or a list to select.</para>
+    /// <para>Widened from <c>TextBox</c> so a route can land the caret on whichever control actually holds the
+    /// value a finding is about. The text behaviour is keyed on the control's TYPE rather than on a flag the
+    /// caller passes, so no caller can ask for a select-all that means nothing.</para>
+    /// </remarks>
+    protected void FocusOnOpen(Control control) =>
         Opened += (_, _) =>
         {
-            textBox.SelectAll();
-            textBox.Focus();
+            if (control is TextBox textBox)
+            {
+                textBox.SelectAll();
+            }
+            control.Focus();
         };
 }

@@ -47,9 +47,20 @@ public sealed class FakeDialogService : IDialogService
     /// <summary>Answers the dialog. Null (the default) means CANCEL; return an empty edit list for the ordinary
     /// "OK without touching anything", which is a commit and not a cancel.</summary>
     public Func<ProductDialogDescriptor, ProductDialogEdits?>? ProductDialogResponder { get; set; }
-    public AdvancedDimmerResult? AdvancedDimmerResult { get; set; }
-    public AdvancedDimmerInput? LastAdvancedDimmerInput { get; private set; }
-    public int EditAdvancedDimmerCalls { get; private set; }
+
+    /// <summary>
+    /// What the installer STEPS INTO before answering — a terminal row, a settings row — or null to answer
+    /// straight away. Asked repeatedly, so a script can step into several composites in one visit.
+    /// <para>Its own channel since T058. It used to ride on the result record's <c>WidgetAction</c>, which was
+    /// the close-then-reopen protocol: the dialog closed and handed the caller what to open next. The window
+    /// stays open now, so a step is not something the result can express, and a fake that kept modelling it
+    /// that way would be scripting a protocol the product no longer has.</para>
+    /// </summary>
+    public Func<ProductDialogDescriptor, ProductDialogWidgetAction?>? ProductDialogStepper { get; set; }
+    /// <summary>What <i>Rediger konstant</i> answers. Null is the dismissal, as for every other editor here.</summary>
+    public string? ConstantResult { get; set; }
+    public ConstantEditorInput? LastConstantInput { get; private set; }
+    public int EditConstantCalls { get; private set; }
     public SceneValueResult? SceneValueResult { get; set; }
     public SceneValueInput? LastSceneValueInput { get; private set; }
     public int EditSceneValueCalls { get; private set; }
@@ -180,9 +191,11 @@ public sealed class FakeDialogService : IDialogService
     public bool? LastPropertiesConditionsOr { get; private set; }
 
     public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null,
-        string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null)
+        string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null,
+        ElementDialogField? focus = null)
     {
         EditPropertiesCalls++;
+        LastPropertiesFocus = focus;
         LastPropertiesTitle = title;
         LastPropertiesName = name;
         LastPropertiesNote = note;
@@ -192,6 +205,9 @@ public sealed class FakeDialogService : IDialogService
         LastPropertiesConditionsOr = conditionsOr;
         return Task.FromResult(PropertiesResult);
     }
+
+    /// <summary>Which field a route asked the element dialog to open on (T044); null for an ordinary open.</summary>
+    public ElementDialogField? LastPropertiesFocus { get; private set; }
 
     public Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input)
     {
@@ -207,11 +223,18 @@ public sealed class FakeDialogService : IDialogService
         return Task.FromResult(SceneContainerResult);
     }
 
+    /// <summary>
+    /// Answers the terminal editor, and runs WHILE the visit that opened it is still in progress.
+    /// <para>A test that needs to observe the document mid-visit — has anything been written yet? — uses this
+    /// rather than <see cref="PinPropertiesResult"/>, because the plain value cannot say WHEN it was read.</para>
+    /// </summary>
+    public Func<PinPropertiesInput, PinPropertiesResult?>? PinPropertiesResponder { get; set; }
+
     public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input, System.Func<PinPropertiesResult, Task>? onApply = null)
     {
         EditPinPropertiesCalls++;
         LastPinPropertiesInput = input;
-        return Task.FromResult(PinPropertiesResult);
+        return Task.FromResult(PinPropertiesResponder is not null ? PinPropertiesResponder(input) : PinPropertiesResult);
     }
 
     /// <summary>Makes the generic product dialog answer Cancel. Needed explicitly because the DEFAULT is
@@ -225,21 +248,76 @@ public sealed class FakeDialogService : IDialogService
     /// <summary>The settings rows handed to the last dialog — what the Indstillinger grid would have shown.</summary>
     public IReadOnlyList<ProductSetting>? LastProductDialogSettings { get; private set; }
 
-    public Task<ProductDialogEdits?> EditProductDialogAsync(
+    /// <summary>The options the last dialog was opened with — where a route asked it to land.</summary>
+    public ProductDialogShowOptions? LastProductDialogOptions { get; private set; }
+
+    /// <summary>
+    /// The composites the fake stepped into on the caller's behalf, in order.
+    /// <para>The real window calls the step handler and STAYS OPEN. The fake plays that: it invokes the handler
+    /// for whatever widget action the responder asked for, then returns the responder's edits as the dialog's
+    /// own result — so a test sees one dialog visit with a sub-dialog inside it, not two visits.</para>
+    /// </summary>
+    public List<ProductDialogWidgetAction> SteppedInto { get; } = [];
+
+    /// <summary>
+    /// What the dialog was told to SHOW after the last step — the re-projection a test reads to see the visit's
+    /// pending state as the installer would, without touching the document.
+    /// </summary>
+    public ProductDialogRefresh? LastRefresh { get; private set; }
+
+    public async Task<ProductDialogEdits?> EditProductDialogAsync(
         ProductDialogDescriptor descriptor, IReadOnlyList<ProductTerminal>? terminals = null,
-        IReadOnlyList<ProductSetting>? settings = null)
+        IReadOnlyList<ProductSetting>? settings = null,
+        ProductDialogShowOptions? options = null,
+        ProductDialogStep? onStep = null)
     {
         EditProductDialogCalls++;
         LastProductDialog = descriptor;
         LastProductDialogTerminals = terminals;
         LastProductDialogSettings = settings;
+        LastProductDialogOptions = options;
         if (CancelProductDialog)
-            return Task.FromResult<ProductDialogEdits?>(null);
+            return null;
+        // The ROUTE's own step, before the installer does anything. The real window fires the arrival's initial
+        // action as it opens, through the same door a click uses; a fake that skipped it would let a routing test
+        // pass while the route never actually stepped anywhere.
+        if (options?.InitialAction is { } arrival && onStep is not null)
+        {
+            SteppedInto.Add(arrival);
+            LastRefresh = await onStep(arrival);
+        }
+
+        // ONE dialog, asked repeatedly what the installer did next. A step keeps it open — the real window runs
+        // the handler and stays put — so the fake runs the handler and asks again; the answer comes only once
+        // the script steps into nothing more, and null there is Annuller.
+        //
+        // The two are separate channels because they are separate acts: conflating them made "step into a
+        // terminal, then cancel the dialog" inexpressible, since one return value had to be both.
+        if (ProductDialogStepper is not null && onStep is not null)
+        {
+            for (int step = 0; step < 16; step++)
+            {
+                if (ProductDialogStepper(descriptor) is not { } action)
+                {
+                    break;
+                }
+                SteppedInto.Add(action);
+                LastRefresh = await onStep(action);
+                if (step == 15)
+                {
+                    throw new InvalidOperationException(
+                        "The product-dialog stepper kept stepping into composites and never stopped.");
+                }
+            }
+        }
+
         if (ProductDialogResponder is not null)
-            return Task.FromResult(ProductDialogResponder(descriptor));
+        {
+            return ProductDialogResponder(descriptor);
+        }
         // The default is OK with NOTHING changed — the untouched-OK commit. Echoing every field back as an "edit"
         // would make every test that opens this dialog also a test of writing every attribute.
-        return Task.FromResult<ProductDialogEdits?>(new ProductDialogEdits([]));
+        return new ProductDialogEdits([]);
     }
 
     // ── Reading and answering the composed dialog, by CAPTION ────────────────────────────────────────────────
@@ -278,15 +356,43 @@ public sealed class FakeDialogService : IDialogService
                 return new ProductDialogEdit(field.Target, field.Attribute, e.Value);
             })]);
 
-    /// <summary>Answers OK and steps into a hand-written composite, as clicking <i>Avanceret</i> or a terminal row does.</summary>
-    public void RespondWithWidget(DialogWidgetKind kind, ElementId? target = null) =>
-        ProductDialogResponder = _ => new ProductDialogEdits([], new ProductDialogWidgetAction(kind, target));
-
-    public Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input)
+    /// <summary>
+    /// Steps into a hand-written composite, as clicking <i>Avanceret</i> or a terminal row does.
+    /// <para>ONCE PER OPEN, not once per fake. The dialog stays open across a step and is asked again what the
+    /// installer did next, so a stepper that returned the same action every time would step for ever — which is
+    /// what the installer pressing the button once does not do. Keyed on the open count rather than a plain
+    /// flag, so a test that opens the dialog twice — typically to read back what the second open was offered —
+    /// steps in both times, exactly as an installer pressing the button in each would.</para>
+    /// </summary>
+    private void StepOncePerOpen(DialogWidgetKind kind, ElementId? target)
     {
-        EditAdvancedDimmerCalls++;
-        LastAdvancedDimmerInput = input;
-        return Task.FromResult(AdvancedDimmerResult);
+        int steppedInOpen = -1;
+        ProductDialogStepper = _ =>
+        {
+            if (steppedInOpen == EditProductDialogCalls)
+            {
+                return null;
+            }
+            steppedInOpen = EditProductDialogCalls;
+            return new ProductDialogWidgetAction(kind, target);
+        };
+    }
+
+    /// <summary>Steps into one terminal row, once per open, and leaves the answer to the caller's responder.</summary>
+    public void StepIntoTerminalOnce(ElementId pin) =>
+        StepOncePerOpen(DialogWidgetKind.TerminalGrids, pin);
+
+    public void RespondWithWidget(DialogWidgetKind kind, ElementId? target = null)
+    {
+        StepOncePerOpen(kind, target);
+        ProductDialogResponder = _ => new ProductDialogEdits([]);
+    }
+
+    public Task<string?> EditConstantAsync(ConstantEditorInput input)
+    {
+        EditConstantCalls++;
+        LastConstantInput = input;
+        return Task.FromResult(ConstantResult);
     }
 
     public Task<SceneValueResult?> EditSceneValueAsync(SceneValueInput input)

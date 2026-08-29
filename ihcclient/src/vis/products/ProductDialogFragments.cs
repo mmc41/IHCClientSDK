@@ -121,6 +121,53 @@ namespace Ihc.Vis.Products
                 new DialogBinding.DescendantAttribute("shutter_setting_travel_time_down"));
 
         /// <summary>
+        /// The wireless dimmer's six advanced settings, bound to their own <c>dimmer_setting_*</c> descendants.
+        /// <para>Ordinary fields of the product dialog, exactly as the vendor presents them: an <i>Avanceret</i>
+        /// disclosure expands them in place. They were a separate modal window here, which is a shape divergence
+        /// rather than a capability one — the same six values, reached differently.</para>
+        /// <para>The descendants are also what GATES them, as the shutter times are gated: a wireless product
+        /// with no dimmer carries none of these elements, so no field resolves and the composer drops the whole
+        /// group.</para>
+        /// </summary>
+        public static readonly DialogFieldModel LysstyrkeOp =
+            new("fadeop", "Optoningstid [ms]", DialogControlKind.Number,
+                new DialogBinding.DescendantAttribute("dimmer_setting_fade_rate_up"));
+
+        /// <inheritdoc cref="LysstyrkeOp"/>
+        public static readonly DialogFieldModel LysstyrkeNed =
+            new("fadened", "Nedtoningstid [ms]", DialogControlKind.Number,
+                new DialogBinding.DescendantAttribute("dimmer_setting_fade_rate_down"));
+
+        /// <summary>
+        /// The manual ramp. STORED IN MILLISECONDS and captioned in seconds, which is why it declares a divisor —
+        /// see <see cref="DialogFieldModel.DisplayDivisor"/>. Without it the box shows 5000 under a seconds label
+        /// and a typed 7 commits an out-of-range 7 ms.
+        /// </summary>
+        /// <inheritdoc cref="LysstyrkeOp"/>
+        public static readonly DialogFieldModel Manuel =
+            new("manuel", "Manuel op-/nedtoningstid [s]", DialogControlKind.Number,
+                new DialogBinding.DescendantAttribute("dimmer_setting_dimming_rate")) { DisplayDivisor = 1000 };
+
+        /// <inheritdoc cref="LysstyrkeOp"/>
+        public static readonly DialogFieldModel MinimumLysstyrke =
+            new("minimum", "Minimum lysstyrke [%]", DialogControlKind.Number,
+                new DialogBinding.DescendantAttribute("dimmer_setting_minimum_value"));
+
+        /// <inheritdoc cref="LysstyrkeOp"/>
+        public static readonly DialogFieldModel MaksimumLysstyrke =
+            new("maksimum", "Maksimum lysstyrke [%]", DialogControlKind.Number,
+                new DialogBinding.DescendantAttribute("dimmer_setting_maximum_value"));
+
+        /// <summary>
+        /// The load type. A CLOSED combo, not free text: the attribute is enumerated in the DTD
+        /// (<c>auto | rc | rl</c>), so the list is the declaration's own and anything else is unwritable.
+        /// </summary>
+        /// <inheritdoc cref="LysstyrkeOp"/>
+        public static readonly DialogFieldModel Belastningstype =
+            new("belastning", "Belastningstype", DialogControlKind.ComboFixed,
+                new DialogBinding.DescendantAttribute("dimmer_setting_load_mode"));
+
+        /// <summary>
         /// The S0 meter's pulse constant. Captions are the vendor's, including the spacing of "pr 1 kW".
         /// </summary>
         public static readonly DialogFieldModel AntalPulser =

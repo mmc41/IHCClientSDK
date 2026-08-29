@@ -148,6 +148,86 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
+        /// A null tag with an attribute means "this attribute, on whatever element the rule reports" — not
+        /// "the project as a whole", which is both members null. The attribute is still checked, against the
+        /// registry at large rather than against one tag: there is no tag to look it up on, so the question
+        /// becomes whether ANY declared element has it.
+        /// <para>Without the check a wildcard declaration was the one shape registration accepted unread, so a
+        /// typo in it would surface as a route that silently never fires.</para>
+        /// </summary>
+        [Test]
+        public void ANullTagWildcardIsCheckedAgainstEveryDeclaredTag()
+        {
+            ProblemCatalogEntry good = Entry("addr-unassigned", target: new RuleTarget(null, "cable_colour"));
+            ProblemCatalogEntry typo = Entry("addr-unassigned", target: new RuleTarget(null, "cable_color"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(() => RuleSet.Create(CatalogOf(good), [Traversal(good)]), Throws.Nothing,
+                    "an attribute some element really declares is a legitimate wildcard target");
+                Assert.That(FaultOf(CatalogOf(typo), Traversal(typo)),
+                    Is.EqualTo(RuleRegistrationFault.UnknownTarget),
+                    "and the American spelling — the mistake this check exists to catch — is refused");
+            });
+        }
+
+        /// <summary>
+        /// A wildcard declaration is reachable from a CONCRETE query. <c>ForTarget</c> is a prebuilt dictionary
+        /// keyed by the declared target, so a rule declared <c>(null, attribute)</c> sat in its own bucket and
+        /// was invisible to the one face that asks by <c>(tag, attribute)</c> — registered, listed by code, and
+        /// unreachable, which is the silent-no-op failure registration exists to prevent.
+        /// </summary>
+        [Test]
+        public void AConcreteTargetQueryAlsoFindsTheWildcardDeclaredForThatAttribute()
+        {
+            ProblemCatalogEntry wildcard = Entry("aaa-anywhere", target: new RuleTarget(null, "cable_colour"));
+            ProblemCatalogEntry concrete = Entry("zzz-on-inputs",
+                target: new RuleTarget("dataline_input", "cable_colour"));
+            RuleSet rules = RuleSet.Create(CatalogOf(wildcard, concrete),
+                [Traversal(wildcard), Traversal(concrete)]);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(rules.ForTarget(new RuleTarget("dataline_input", "cable_colour"))
+                        .Select(r => r.Entry.Code.Value),
+                    Is.EqualTo(new[] { "aaa-anywhere", "zzz-on-inputs" }).AsCollection,
+                    "both are about this field, and the union stays ordered by code like every other view here");
+
+                Assert.That(rules.ForTarget(new RuleTarget("dataline_output", "cable_colour"))
+                        .Select(r => r.Entry.Code.Value),
+                    Is.EqualTo(new[] { "aaa-anywhere" }).AsCollection,
+                    "a tag with no concrete rule still sees the wildcard — that is what makes it a wildcard");
+
+                Assert.That(rules.ForTarget(new RuleTarget("dataline_input", "note")), Is.Empty,
+                    "and it does not leak onto a different attribute");
+
+                Assert.That(rules.ForTarget(new RuleTarget(null, "cable_colour"))
+                        .Select(r => r.Entry.Code.Value),
+                    Is.EqualTo(new[] { "aaa-anywhere" }).AsCollection,
+                    "asking for the wildcard itself returns it once, not twice");
+            });
+        }
+
+        /// <summary>
+        /// The wildcard does not swallow the whole-project target: both members null still means the project as
+        /// a whole, and still registers without an attribute to check.
+        /// </summary>
+        [Test]
+        public void TheWholeProjectTargetIsStillBothMembersNull()
+        {
+            ProblemCatalogEntry entry = Entry("addr-unassigned", target: default);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(new RuleTarget(null, null).IsWholeProject, Is.True);
+                Assert.That(new RuleTarget(null, "cable_colour").IsWholeProject, Is.False,
+                    "a wildcard names an attribute, so it is not a statement about the project");
+                Assert.That(new RuleTarget("dataline_input", null).IsWholeProject, Is.False);
+                Assert.That(() => RuleSet.Create(CatalogOf(entry), [Traversal(entry)]), Throws.Nothing);
+            });
+        }
+
+        /// <summary>
         /// A retired or ruled-out entry keeps its id reserved; it must not acquire a rule, or the reservation
         /// would quietly become an implementation.
         /// </summary>

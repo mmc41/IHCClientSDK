@@ -92,18 +92,13 @@ namespace Ihc.Vis.Products
         /// uses.</para>
         /// <para><c>serialnumber</c> is deliberately absent: the vendor's wireless dialog does not surface it in
         /// any form (T008, checked three ways). The attribute lives in the file and is not user-editable here.</para>
-        /// <para>The <see cref="DialogWidgetKind.AdvancedDimmerButton"/> slot is declared but PRESENCE-GATED on
-        /// <c>dimmer_settings</c>, so it applies to the wireless dimmers and to none of the other airlink products
-        /// — the field set above really is shared by all 24. The BUTTON itself is parity: the vendor draws one
-        /// captioned <i>Avanceret</i> on the dimmer's bottom row (measured on product 080, T114 — correcting an
-        /// earlier note here that claimed no vendor capture carried that caption). What remains a registered
-        /// DIFFERENCE is what pressing it does: the vendor expands its advanced settings in place inside the
-        /// product dialog (a group box <i>Avancerede Dimmer egenskaber</i>, with a <i>Normal</i> button that
-        /// collapses it again) where OpenVisual opens a sub-dialog. Declared anyway because the alternative is
-        /// worse — routing the family through
-        /// the generic dialog (T030) with the slot absent would silently delete a reachable capability, which is
-        /// not a thing a routing task is allowed to do (T029's lesson). Reshaping it to the vendor's in-place form
-        /// is a separate, deliberate piece of work.</para>
+        /// <para>The <i>Avancerede Dimmer egenskaber</i> group is PRESENCE-GATED on <c>dimmer_settings</c>, so it
+        /// applies to the wireless dimmers and to none of the other airlink products — the identity field set
+        /// above really is shared by all 24. It is a COLLAPSIBLE group of six ordinary fields, which is the
+        /// vendor's own shape: an <i>Avanceret</i> disclosure expands the settings in place inside the product
+        /// dialog and a <i>Normal</i> affordance collapses them again (measured on product 080, and again
+        /// 2026-08-28). It was a separate modal sub-dialog here — the same six values reached differently — and
+        /// that shape divergence is what this group closes.</para>
         /// </summary>
         /// <para>The <i>Persienne egenskaber</i> group reaches the two jalousi products and no others
         /// (measured on product 085, T119), gated on <c>shutter_settings</c> — DECLARED, even though both its
@@ -116,8 +111,12 @@ namespace Ihc.Vis.Products
                 Navn(), Placering, Note, Identifikationskode, Lysgruppe),
             GroupPresentWhen("persienne", "Persienne egenskaber", 2, Carrying("shutter_settings"),
                 VandringstidOp, VandringstidNed),
-            Group("avanceret", null, 1,
-                Widget("avanceret", DialogWidgetKind.AdvancedDimmerButton, Carrying("dimmer_settings"))));
+            new DialogGroupModel("avanceret", "Avancerede Dimmer egenskaber", 2,
+                [LysstyrkeOp, LysstyrkeNed, Manuel, MinimumLysstyrke, MaksimumLysstyrke, Belastningstype])
+            {
+                Presence = Carrying("dimmer_settings"),
+                Collapsible = true,
+            });
 
         /// <summary>
         /// The RS485 SMS modem — the largest dialog in the catalog, at 39 fields.

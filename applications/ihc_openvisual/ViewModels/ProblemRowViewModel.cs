@@ -28,11 +28,15 @@ public sealed partial class ProblemRowViewModel : ObservableObject
     public ProblemRowViewModel(
         ValidationFinding finding,
         ElementId? element,
-        string elementName)
+        string elementName,
+        NavigationKind navigationKind,
+        string occurrenceId)
     {
         Finding = finding;
         Element = element;
         ElementName = elementName;
+        NavigationKind = navigationKind;
+        OccurrenceId = occurrenceId;
     }
 
     /// <summary>
@@ -77,6 +81,19 @@ public sealed partial class ProblemRowViewModel : ObservableObject
     /// <summary>The finding's kebab-case code (<c>Problem.Code.Value</c>) — the Kode column and the id sort key.</summary>
     public string Code => Finding.Code.Value;
 
+    /// <summary>
+    /// What names THIS row rather than its code: the code, the site the engine recorded, and — only where even
+    /// that pair repeats — which of them this is.
+    /// </summary>
+    /// <remarks>
+    /// <para>The code alone does not address a row. The authored error corpus emits several codes many times
+    /// over, and the row's accessible sentence does not break the tie either: most of those sites share a name
+    /// or carry none, and the messages take no argument that would separate them.</para>
+    /// <para>It LEADS with the code so a client matching loosely on a code still reaches that code's rows, and it
+    /// is assigned once at projection, so it does not move when the list is re-sorted.</para>
+    /// </remarks>
+    public string OccurrenceId { get; }
+
     /// <summary>The Danish sentence, verbatim from the problem. Never re-derived, never re-worded.</summary>
     public string Message => Finding.Problem.Message;
 
@@ -106,12 +123,15 @@ public sealed partial class ProblemRowViewModel : ObservableObject
     public string ElementName { get; }
 
     /// <summary>
-    /// Whether clicking the row goes anywhere. Keyed on <see cref="Element"/>, NOT on whether the finding had a
-    /// primary location: <c>doc-project-info-blank</c> reports the project ROOT, which produces a perfectly
-    /// non-null location whose element is null (the root carries no id attribute). Keying on the location would
-    /// call that row navigable and then have nothing to select.
+    /// WHICH destination the row has — decided once when the result binds, and the promise its tooltip makes.
+    /// <para>Never keyed on whether the finding had a primary location: <c>doc-project-info-blank</c> reports the
+    /// project ROOT, which produces a perfectly non-null location whose element is null (the root carries no id
+    /// attribute). Keying on the location would call that row navigable and then have nothing to select.</para>
+    /// <para>Not re-derived afterwards either. It is a fact as of the validation RUN, exactly like the row's
+    /// message and its severity: an element deleted after the run leaves the promise standing, and the honesty
+    /// about that belongs to what the ACTIVATION reports, not to a tooltip that silently rewrote itself.</para>
     /// </summary>
-    public bool IsNavigable => Element is not null;
+    public NavigationKind NavigationKind { get; }
 
     /// <summary>The tier's Danish name — the Alvor column's text and part of the row's accessible name.</summary>
     /// <remarks>
@@ -141,13 +161,25 @@ public sealed partial class ProblemRowViewModel : ObservableObject
     /// types; the cell binds it to Opacity.
     /// </summary>
     /// <remarks>
-    /// Without it a non-navigable row looks exactly like a navigable one and a click on it reads as a bug. The
-    /// row is still LISTED — it is a real finding — it just says, before the click, that it has nowhere to go.
+    /// <para>Without it a non-navigable row looks exactly like a navigable one and a click on it reads as a bug.
+    /// The row is still LISTED — it is a real finding — it just says, before the click, that it has nowhere to
+    /// go.</para>
+    /// <para>Two values, not one per kind. The cell shows the element's NAME, which is a fact whether or not the
+    /// tree draws that element; WHERE the click lands is what <see cref="NavigationHint"/> carries. A third
+    /// opacity for the ancestor case would be a shade the reader has no way to decode.</para>
     /// </remarks>
-    public double ElementEmphasis => IsNavigable ? 1.0 : 0.55;
+    public double ElementEmphasis => NavigationKind is NavigationKind.None ? 0.55 : 1.0;
 
-    /// <summary>The row's tooltip: where a click goes, or why it goes nowhere.</summary>
-    public string NavigationHint => IsNavigable
-        ? "Klik for at vise elementet i træet."
-        : "Denne meddelelse peger ikke på et enkelt element.";
+    /// <summary>The row's tooltip: which element a click goes to, or why it goes nowhere.</summary>
+    public string NavigationHint => NavigationKind switch
+    {
+        NavigationKind.Tree => "Klik for at vise elementet i træet.",
+        NavigationKind.Ancestor => "Klik for at vise det nærmeste overordnede element i træet.",
+        // A WHOLE-PROJECT finding has a window but no element, so the tree half of the sentence below would be
+        // a promise nothing can keep (T046).
+        NavigationKind.Dialog when Element is null => "Dobbeltklik for at åbne dialogen.",
+        NavigationKind.Dialog => "Klik for at vise elementet i træet. Dobbeltklik for at åbne dialogen.",
+        NavigationKind.Field => "Klik for at vise elementet i træet. Dobbeltklik for at åbne dialogen ved feltet.",
+        _ => "Denne meddelelse peger ikke på et enkelt element.",
+    };
 }

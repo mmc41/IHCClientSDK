@@ -209,6 +209,27 @@ namespace Ihc.Vis
             Session.ProductDialogWidgetAction? widgetAction = null) =>
             new Session.ApplyProductDialog(productId, edits, widgetAction);
 
+        /// <summary>
+        /// The same command for a whole product-dialog VISIT: the field edits plus the terminals the installer
+        /// addressed and the constants they edited while inside it, committed together as ONE undoable entry.
+        /// <para>A visit is one act. Committing its halves separately would put two entries in the history, so
+        /// <i>Fortryd</i> after the dialog's OK would take back the documentation and leave the addressing.</para>
+        /// </summary>
+        public Session.ApplyProductDialog ApplyProductDialogVisit(
+            Project project, ElementId productId,
+            System.Collections.Immutable.ImmutableArray<Session.ProductDialogEdit> edits,
+            System.Collections.Immutable.ImmutableArray<Session.ProductDialogTerminalEdit> terminalEdits,
+            System.Collections.Immutable.ImmutableArray<Session.ProductDialogSettingEdit> settingEdits = default) =>
+            new Session.ApplyProductDialog(productId, edits)
+            {
+                TerminalEdits = terminalEdits,
+                // An omitted array arrives DEFAULT, not empty — an uninitialized ImmutableArray, which is not the
+                // same thing and throws on use.
+                SettingEdits = settingEdits.IsDefault
+                    ? System.Collections.Immutable.ImmutableArray<Session.ProductDialogSettingEdit>.Empty
+                    : settingEdits,
+            };
+
         /// <summary>Command to apply edited data-line pin addressing (US-012).</summary>
         public Session.UpdatePin UpdatePin(Project project, ElementId pinId, Session.PinPropertiesResult result) =>
             new Session.UpdatePin(pinId, result);
@@ -660,10 +681,6 @@ namespace Ihc.Vis
             EquatableArray<string> added = EquatableArray.CreateRange(states.Skip(existingValues.Count));
             return new Session.UpdateEnumStates(defName, added) { Relabels = EquatableArray.CreateRange(relabels) };
         }
-
-        /// <summary>Command to apply edited advanced wireless-dimmer settings (US-015).</summary>
-        public Session.UpdateDimmerSettings UpdateDimmerSettings(Project project, ElementId productId, Session.AdvancedDimmerResult result) =>
-            new Session.UpdateDimmerSettings(productId, result);
 
         // UpdateModem is gone (T031): a modem's dialog is composed like every other product's and written back
         // through ApplyProductDialog above.

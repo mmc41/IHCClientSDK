@@ -51,14 +51,11 @@ public class OmittedConstraintTests
     {
         SceneValueInput scene = new("Titel", IsDimmer: true, On: true, LevelPercent: 50,
             RampMinutes: 0, RampSeconds: 0);
-        AdvancedDimmerInput dimmer = new(200, 200, 4, 0, 100, "auto");
 
         Assert.Multiple(() =>
         {
             Assert.That(scene.Level, Is.EqualTo(FieldConstraintMetadata.Unconstrained), "SceneValueInput.Level");
             Assert.That(scene.RampPart, Is.EqualTo(FieldConstraintMetadata.Unconstrained), "SceneValueInput.RampPart");
-            Assert.That(dimmer.SoftOn, Is.EqualTo(FieldConstraintMetadata.Unconstrained), "AdvancedDimmerInput.SoftOn");
-            Assert.That(dimmer.Maximum, Is.EqualTo(FieldConstraintMetadata.Unconstrained), "AdvancedDimmerInput.Maximum");
         });
     }
 

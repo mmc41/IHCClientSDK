@@ -23,12 +23,12 @@ public sealed class NullDialogService : IDialogService
     public Task ShowAboutAsync() => Task.CompletedTask;
     public Task ShowSettingsAsync(string settingsText) => Task.CompletedTask;
     public Task<bool> OpenExternalUrlAsync(string url) => Task.FromResult(true);
-    public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null, string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null) => Task.FromResult<PropertiesResult?>(null);
+    public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null, string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null, ElementDialogField? focus = null) => Task.FromResult<PropertiesResult?>(null);
     public Task<VariablePropertiesResult?> EditVariablePropertiesAsync(VariablePropertiesInput input) => Task.FromResult<VariablePropertiesResult?>(null);
     public Task<SceneContainerResult?> EditSceneContainerAsync(SceneContainerInput input) => Task.FromResult<SceneContainerResult?>(null);
     public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input, Func<PinPropertiesResult, Task>? onApply = null) => Task.FromResult<PinPropertiesResult?>(null);
-    public Task<ProductDialogEdits?> EditProductDialogAsync(ProductDialogDescriptor descriptor, IReadOnlyList<ProductTerminal>? terminals = null, IReadOnlyList<ProductSetting>? settings = null) => Task.FromResult<ProductDialogEdits?>(null);
-    public Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input) => Task.FromResult<AdvancedDimmerResult?>(null);
+    public Task<ProductDialogEdits?> EditProductDialogAsync(ProductDialogDescriptor descriptor, IReadOnlyList<ProductTerminal>? terminals = null, IReadOnlyList<ProductSetting>? settings = null, ProductDialogShowOptions? options = null, ProductDialogStep? onStep = null) => Task.FromResult<ProductDialogEdits?>(null);
+    public Task<string?> EditConstantAsync(ConstantEditorInput input) => Task.FromResult<string?>(null);
     public Task<SceneValueResult?> EditSceneValueAsync(SceneValueInput input) => Task.FromResult<SceneValueResult?>(null);
     public Task<EnumDefinitionResult?> EditEnumDefinitionAsync(EnumDefinitionInput input) => Task.FromResult<EnumDefinitionResult?>(null);
     public Task ManageEnumTypesAsync(EnumTypeManagerInput input) => Task.CompletedTask;

@@ -31,6 +31,20 @@ namespace Ihc.Vis.Validation
         void Report(ProjectElement? element, EquatableArray<ProblemArgument> arguments);
 
         /// <summary>
+        /// Reports one violation and says where THIS occurrence is repaired — see <see cref="FixLocation"/>.
+        /// </summary>
+        /// <param name="element">The element the finding is about, or null when it is about the project.</param>
+        /// <param name="arguments">The declared argument bindings for the rule's Danish template.</param>
+        /// <param name="fix">
+        /// The occurrence's own fix location, or null when this occurrence has none.
+        /// <para>NULLABLE so that a rule which mints one can hand over whatever it got. A fix location is minted
+        /// from an element's id, and an element without an id cannot be addressed — so "no location" is an
+        /// ordinary answer of the minting helpers, not a case for the caller to fork on. Taking it non-nullable
+        /// put the same three-line null-fork in every rule module that emits one.</para>
+        /// </param>
+        void Report(ProjectElement? element, EquatableArray<ProblemArgument> arguments, FixLocation? fix);
+
+        /// <summary>
         /// Reports a violation with a primary element plus related ones — the
         /// <see cref="FindingShape.PrimaryWithRelated"/> case, where one repair clears everything but the user
         /// must see every site to make it.
@@ -214,12 +228,35 @@ namespace Ihc.Vis.Validation
         /// <summary>
         /// The rules about one target — how the dialog face finds the constraints on a field without executing
         /// anything.
+        /// <para>A WILDCARD declaration — <c>RuleTarget(null, attribute)</c>, "this attribute on whatever element
+        /// the rule reports" — is about this field too, so a concrete query returns it alongside the rules
+        /// declared on the tag itself. Without that union a wildcard rule would be registered, listed by code,
+        /// and invisible to the only face that asks by target.</para>
         /// </summary>
         /// <param name="target">The (tag, attribute) pair to list for.</param>
-        public EquatableArray<RuleDefinition> ForTarget(RuleTarget target) =>
-            byTarget.TryGetValue(target, out ImmutableArray<RuleDefinition> found)
-                ? found
-                : ImmutableArray<RuleDefinition>.Empty;
+        public EquatableArray<RuleDefinition> ForTarget(RuleTarget target)
+        {
+            ImmutableArray<RuleDefinition> exact =
+                byTarget.TryGetValue(target, out ImmutableArray<RuleDefinition> found)
+                    ? found
+                    : ImmutableArray<RuleDefinition>.Empty;
+
+            // Asking for the wildcard itself already reads its own bucket; only a CONCRETE query needs widening.
+            if (target.Tag is null
+                || target.Attribute is not { } attribute
+                || !byTarget.TryGetValue(new RuleTarget(null, attribute), out ImmutableArray<RuleDefinition> wildcard)
+                || wildcard.IsEmpty)
+            {
+                return exact;
+            }
+
+            // Ordered by code, like every other view here, so which bucket a rule was declared in cannot change
+            // the order a caller sees.
+            return exact.IsEmpty
+                ? wildcard
+                : exact.AddRange(wildcard)
+                    .Sort(static (a, b) => string.CompareOrdinal(a.Entry.Code.Value, b.Entry.Code.Value));
+        }
 
         private static ImmutableArray<RuleDefinition> Select(EquatableArray<RuleDefinition> rules, RuleFaces face) =>
             rules.Where(r => (r.Entry.Faces & face) != 0).ToImmutableArray();
@@ -330,7 +367,20 @@ namespace Ihc.Vis.Validation
                 return true;
             }
 
-            if (target.Tag is not { } tag || ProjectSchemaView.RegistryOnly.TryGet(tag) is not { } schema)
+            if (target.Tag is null)
+            {
+                // A null tag with an attribute is the WILDCARD: "this attribute, on whatever element the rule
+                // reports". Both members null is the project as a whole, and was answered above — so an
+                // attribute is present here.
+                //
+                // It is still checked, and that is the point of this branch: with no tag to look the attribute
+                // up on, the wildcard used to be the one target shape registration accepted unread, so a typo in
+                // it registered cleanly and surfaced only as a route that never fired. The answerable question
+                // is whether ANY declared element has the attribute.
+                return target.Attribute is { } wildcard && DeclaredByAnyTag(wildcard);
+            }
+
+            if (ProjectSchemaView.RegistryOnly.TryGet(target.Tag) is not { } schema)
             {
                 // The registry does not know the tag. A project's inline DTD may still declare it, so this is not
                 // evidence of a mistake and the target is accepted.
@@ -338,6 +388,19 @@ namespace Ihc.Vis.Validation
             }
 
             return target.Attribute is not { } attribute || schema.FindAttr(attribute) is not null;
+        }
+
+        /// <summary>Whether any element the registry declares carries this attribute — the wildcard's tag test.</summary>
+        private static bool DeclaredByAnyTag(string attribute)
+        {
+            foreach (ElementSchema schema in ProjectSchemaRegistry.AllSchemas)
+            {
+                if (schema.FindAttr(attribute) is not null)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

@@ -66,6 +66,16 @@ namespace Ihc.Vis.Products
         public bool ColumnMajor { get; init; }
 
         /// <summary>
+        /// Whether the group is drawn COLLAPSED, with an affordance to expand it and collapse it again.
+        /// <para>The vendor's advanced dimmer settings are presented this way — an <i>Avanceret</i> disclosure
+        /// that expands in place inside the product dialog, with a <i>Normal</i> button that closes it again.
+        /// They are ordinary fields of this dialog; only their visibility starts closed.</para>
+        /// <para>A DISPLAY hint, like <see cref="ColumnMajor"/>: the fields exist, compose and commit whether the
+        /// group is open or shut.</para>
+        /// </summary>
+        public bool Collapsible { get; init; }
+
+        /// <summary>
         /// When this group appears at all — <see cref="DialogPresence.Always"/> for a group every member of the
         /// family gets.
         /// <para>The same <see cref="DialogPresence"/> vocabulary a widget slot uses, lifted to a group so that a
@@ -107,6 +117,18 @@ namespace Ihc.Vis.Products
         DialogValueRule? Rule = null,
         bool ReadOnly = false) : DialogPartModel(Id)
     {
+        /// <summary>
+        /// What the stored value is DIVIDED BY to display it, and multiplied by again on commit. 1 — no scaling —
+        /// unless the file's unit and the vendor's caption disagree.
+        /// <para>They do for one field: a dimmer's ramp is stored in milliseconds and the vendor's caption reads
+        /// seconds. Showing the stored number under that caption puts 5000 in a box labelled seconds, and
+        /// committing a typed 7 writes an out-of-range 7 ms.</para>
+        /// <para>Declared here, on the field, so the read and the write are exact inverses of ONE number. Both
+        /// sides consult this same declaration; a scale applied at one end only is a value that changes every
+        /// time the dialog is opened and closed.</para>
+        /// </summary>
+        public int DisplayDivisor { get; init; } = 1;
+
         /// <summary>
         /// How many of the group's columns this field occupies. 1 unless measured otherwise.
         /// <para><c>Note</c> is the case: the vendor gives it the WHOLE row in both the wired and the
@@ -254,6 +276,15 @@ namespace Ihc.Vis.Products
         /// exactly as it is the only place that knows a combo means free text.</para>
         /// </summary>
         Checkbox,
+
+        /// <summary>
+        /// A CLOSED combo over an enumerated attribute — the list is the DTD's own token set, not a typing aid.
+        /// <para>The distinction from <see cref="ComboSuggest"/> is the whole point: a suggestion list must stay
+        /// open, because a value used nowhere yet is still legal, whereas an enumerated attribute has exactly the
+        /// values its declaration names and anything else is unwritable. Rendering one as text would let the
+        /// installer type a value the file cannot hold.</para>
+        /// </summary>
+        ComboFixed,
     }
 
     /// <summary>The hand-written composite widgets a slot can name. Three kinds, each with an existing
@@ -262,9 +293,6 @@ namespace Ihc.Vis.Products
     {
         /// <summary>The product dialog's input/output terminal grids.</summary>
         TerminalGrids,
-
-        /// <summary>The wireless dimmer's <i>Avanceret</i> button and its sub-dialog.</summary>
-        AdvancedDimmerButton,
 
         /// <summary>
         /// The sensors' <i>Indstillinger</i> grid: a third terminal-style list beneath Indgange and

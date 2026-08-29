@@ -134,9 +134,6 @@ internal static class SessionEditingTestExtensions
         return s.CommittedOrNoChange(s.Commands.ApplyProductDialog(s.Current!, productId, resolved));
     }
 
-    public static Task<bool> UpdateDimmerSettingsAsync(this ProjectWorkflow s, ElementId productId, AdvancedDimmerResult r) =>
-        s.CommittedOrNoChange(s.Commands.UpdateDimmerSettings(s.Current!, productId, r));
-
     public static Task<bool> UpdatePinAsync(this ProjectWorkflow s, ElementId pinId, PinPropertiesResult r) =>
         s.Committed(s.Commands.UpdatePin(s.Current!, pinId, r));
 

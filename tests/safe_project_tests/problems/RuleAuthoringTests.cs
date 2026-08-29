@@ -58,6 +58,12 @@ namespace Ihc.Vis.Tests
             public void Report(ProjectElement? element, EquatableArray<ProblemArgument> arguments) =>
                 reported.Add((element, 0, arguments.Length));
 
+            // T054's overload. Recorded identically: what this fixture judges is the ARGUMENT BINDING, and a
+            // fix location changes none of it.
+            public void Report(
+                ProjectElement? element, EquatableArray<ProblemArgument> arguments, FixLocation? fix) =>
+                Report(element, arguments);
+
             public void ReportGroup(
                 ProjectElement primary,
                 EquatableArray<ProjectElement> related,

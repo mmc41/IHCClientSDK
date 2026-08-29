@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Ihc.Vis;
 using Ihc.Vis.Addressing;
+using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Validation;
@@ -79,7 +80,57 @@ public sealed record LibraryOrigin(string Name, string Number, string Version, s
 /// F-50).</param>
 public sealed record VariablePropertiesInput(string Title, string Name, string Note, ResourceInitialValue Current,
     string HelpNote = "", bool SaveOnPowerLoss = false, bool ShowMilliseconds = true, int DecimalPlaces = 2,
-    IReadOnlyList<string>? ChoiceOptions = null);
+    IReadOnlyList<string>? ChoiceOptions = null,
+    VariableDialogField? Focus = null);
+
+/// <summary>
+/// Which of the element Properties dialog's fields a route wants the caret on (T044) — the dialog a locality,
+/// a function block and a <c>Betingelser</c> group all share.
+/// <para>Three keys, because the dialog has three editable fields. The library-provenance group below them is
+/// <b>read-only</b> and deliberately has no key: a route that focused a greyed box would put the caret
+/// somewhere nothing can be typed, so a <c>master_*</c> finding degrades to dialog-level instead.</para>
+/// </summary>
+public enum ElementDialogField
+{
+    /// <summary>The element's name.</summary>
+    Name,
+
+    /// <summary>The documentation note.</summary>
+    Note,
+
+    /// <summary>A <c>Betingelser</c> group's AND/OR operator — absent on every other element.</summary>
+    Logic,
+}
+
+/// <summary>
+/// Which of the variable editor's fields a route wants the caret on (T043).
+/// <para>A DIALOG-LOCAL vocabulary, exactly as <see cref="PinDialogField"/> is and for the same reason: the
+/// SDK's attribute names stop at the coordinator, which translates one into one of these, and the window maps
+/// a key to whichever of its controls is showing.</para>
+/// </summary>
+public enum VariableDialogField
+{
+    /// <summary>The variable's name.</summary>
+    Name,
+
+    /// <summary>The function-documentation note.</summary>
+    Note,
+
+    /// <summary>The second documentation field, the installer-facing help text (<c>note-2</c>).</summary>
+    HelpNote,
+
+    /// <summary>
+    /// The typed initial value.
+    /// <para>ONE key for every type. Which control it lands on depends on the variable's kind — a checkbox, a
+    /// number box, an enum combo, the first box of a time or date group — and the window is the only place that
+    /// knows which of its panels is visible, so a caller naming a control instead of the VALUE would be
+    /// guessing at the dialog's layout.</para>
+    /// </summary>
+    InitialValue,
+
+    /// <summary>The save-on-power-loss flag.</summary>
+    Backup,
+}
 
 /// <summary>The edited values returned from the ordinary-variable Properties dialog (US-027, T016): the new name,
 /// both documentation fields, the typed initial value, and whether the value survives a power loss.
@@ -106,7 +157,27 @@ public sealed record VariablePropertiesResult(string Name, string Note, Resource
 /// <para>Element data rather than dialog metadata, exactly like <see cref="ProductTerminal"/> — the
 /// descriptor says WHETHER the grid appears; these are what goes in it.</para>
 /// </summary>
-public sealed record ProductSetting(string Name, string Note, string Value);
+/// <param name="Id">
+/// The setting ELEMENT the row stands for — what makes the row a thing that can be selected, and later
+/// edited, rather than three strings.
+/// <para>Typed, where <see cref="ProductTerminal.PinId"/> is a token: a terminal's id travels back out
+/// through <see cref="ProductDialogShowOptions.SelectTerminalPin"/>, which is a string because a route
+/// composes it, while a setting's id is only ever read in C# — by the grid, and by the command that writes
+/// its value. Parsing a token we ourselves had just printed would buy nothing.</para>
+/// </param>
+public sealed record ProductSetting(string Name, string Note, string Value, ElementId Id);
+
+/// <summary>
+/// What the <i>Rediger konstant</i> editor opens on: the setting being edited, and the value it currently holds.
+///
+/// <para>The value travels as TEXT, VERBATIM as the grid shows it, because that is what the installer sees and
+/// overtypes. Turning it back into a stored number is the writing command's business — a window that parsed it
+/// would be a second reading of a format the SDK already owns.</para>
+/// </summary>
+/// <param name="Setting">The setting element the accepted value is written to.</param>
+/// <param name="Name">The setting's name, for the window's accessible naming — the vendor shows no visible label.</param>
+/// <param name="Value">The current value, pre-filled and selected so typing replaces it.</param>
+public sealed record ConstantEditorInput(ElementId Setting, string Name, string Value);
 
 /// <summary>One input/output terminal row shown in the product-properties dialog's terminal grids (US-012). The
 /// <c>Address</c> is the vendor-formatted <c>Datalinie N.PP</c> (blank when unassigned); <c>PinId</c> is the
@@ -152,20 +223,9 @@ public sealed record SceneContainerInput(string Name, string Note, IReadOnlyList
 /// <summary>The edited scene-container note (US-024) — the only editable field in the dialog.</summary>
 public sealed record SceneContainerResult(string Note);
 
-/// <summary>The current values shown by the advanced wireless-dimmer dialog (US-015). Times in ms/s, levels in %,
-/// <c>LoadMode</c> is the stored token (<c>auto</c>/<c>rc</c>/<c>rl</c>).
-/// <para>The five <see cref="FieldConstraintMetadata"/> members are what each numeric field may offer, read from the
-/// CATALOG through the SDK's dialog-metadata face (T045). They replace the window's own copy of 200–60000, 2–10 and
-/// 0–100: those are catalog data, and a window repeating them could advertise a value the commit path refuses.
-/// <c>ManualRamp</c> is the one that is converted rather than forwarded — the setting is declared in milliseconds
-/// and the dialog edits seconds, so its bounds are divided by the same 1000 the value is.</para></summary>
-public sealed record AdvancedDimmerInput(
-    int SoftOnMs, int SoftOffMs, int ManualRampS, int MinimumPercent, int MaximumPercent, string LoadMode,
-    FieldConstraintMetadata SoftOn = default, FieldConstraintMetadata SoftOff = default,
-    FieldConstraintMetadata ManualRamp = default, FieldConstraintMetadata Minimum = default,
-    FieldConstraintMetadata Maximum = default);
-
-// AdvancedDimmerResult moved to the SDK (Ihc.Vis.Session, W2-10) — an edit payload for the dimmer command.
+// The advanced-dimmer input, its SDK result payload and the window they served are gone (T057). The vendor was
+// measured to expand its Avanceret disclosure IN PLACE rather than opening a window, so the six settings became
+// ordinary fields of the composed product dialog and the modal that held them had nothing left to do.
 
 // ContactInfo and ProjectInfoData moved to the SDK (Ihc.Vis, fablerefac W1-5) — they are project read/edit
 // models, not presentation DTOs. Referenced here via `using Ihc.Vis;`.
@@ -243,7 +303,30 @@ public sealed record NamePromptInput(string Title, string InitialName, Func<stri
 /// bound. The window binds them rather than carrying 0–100 and 0–59 of its own.</para></summary>
 public sealed record SceneValueInput(
     string Title, bool IsDimmer, bool On, int LevelPercent, int RampMinutes, int RampSeconds,
-    FieldConstraintMetadata Level = default, FieldConstraintMetadata RampPart = default);
+    FieldConstraintMetadata Level = default, FieldConstraintMetadata RampPart = default,
+    SceneDialogField? Focus = null);
+
+/// <summary>
+/// Which field of the SCENE dialogs a route wants the caret on (T045).
+/// <para>One vocabulary over BOTH dialogs — the container's and the member's — because a route names a field,
+/// not a window, and which of the two opens follows from the element the finding is about. Each window maps the
+/// keys it has and answers null for the rest, exactly as it answers null for a field its own variant does not
+/// show.</para>
+/// </summary>
+public enum SceneDialogField
+{
+    /// <summary>The scenes container's documentation note — the one thing that dialog lets an installer edit.</summary>
+    Note,
+
+    /// <summary>A relay member's ON/OFF state.</summary>
+    State,
+
+    /// <summary>A dimmer member's light level.</summary>
+    Level,
+
+    /// <summary>A dimmer member's ramp time — the caret lands on the minutes box.</summary>
+    RampTime,
+}
 
 // SceneValueResult moved to the SDK (Ihc.Vis.Session, W2-7) — an edit payload for the scene commands.
 
@@ -254,7 +337,32 @@ public sealed record SceneValueInput(
 public sealed record PinPropertiesInput(
     string Title, bool IsOutput, int DataLine, int Terminal, string CableColour, string Note,
     bool InitialValueOn, IReadOnlyList<DatalineAddress> InUseTerminals, string Name = "",
-    bool SaveOnPowerFailure = false);
+    bool SaveOnPowerFailure = false,
+    PinDialogField? Focus = null);
+
+/// <summary>
+/// Which of the terminal editor's fields a route wants the caret on.
+/// <para>A DIALOG-LOCAL vocabulary, deliberately: the SDK's attribute names stop at the coordinator, which
+/// translates one into one of these, and the window maps a key to its own control. Neither side has to know
+/// the other's names, and no control identity travels through an SDK contract.</para>
+/// </summary>
+public enum PinDialogField
+{
+    /// <summary>The data-line/terminal address pair — the caret lands on the line list.</summary>
+    Address,
+
+    /// <summary>The cable colour.</summary>
+    CableColour,
+
+    /// <summary>The documentation note.</summary>
+    Note,
+
+    /// <summary>An output's power-up initial value.</summary>
+    InitialValue,
+
+    /// <summary>An output's save-on-power-failure flag.</summary>
+    Backup,
+}
 
 
 /// <summary>
@@ -269,11 +377,75 @@ public sealed record PinPropertiesInput(
 /// the same thing, which is exactly what the metadata engine exists to remove.</para>
 /// </summary>
 /// <param name="Edits">The changed fields, already resolved to the elements they write.</param>
-/// <param name="WidgetAction">The hand-written composite the installer stepped into on their way out — a terminal
-/// row to address, or the advanced dimmer settings — or null for a plain OK.</param>
-public sealed record ProductDialogEdits(
-    ImmutableArray<ProductDialogEdit> Edits,
-    ProductDialogWidgetAction? WidgetAction = null);
+public sealed record ProductDialogEdits(ImmutableArray<ProductDialogEdit> Edits);
+
+// The result used to carry a WidgetAction as well: the dialog closed on a composite gesture and handed the
+// caller what to open next. That was the close-then-reopen protocol, and it is gone (T058) — the window stays
+// open and the composite is handled through ProductDialogStep, so there is no moment at which an action has to
+// travel out as a result.
+
+/// <summary>
+/// Stepping INTO a composite while the product dialog stays open.
+///
+/// <para>The dialog used to close itself to let a sub-dialog be opened, and the caller re-opened it afterwards.
+/// That is not what the installer sees in the vendor: the parent stays on screen, and the sub-dialog appears on
+/// top of it. Closing also destroyed the window, so anything the parent held that had not reached the document —
+/// a typed value, a selected row, the scroll position — was gone by the time it came back.</para>
+///
+/// <para>The handler is awaited, and the dialog is still open when it returns, so the installer lands back where
+/// they were.</para>
+/// </summary>
+/// <param name="action">The composite the installer activated.</param>
+/// <returns>
+/// What the dialog should now SHOW, or null to leave it as it is. The dialog re-projects from this rather than
+/// from its own rendered strings — see <see cref="ProductDialogRefresh"/>.
+/// </returns>
+public delegate Task<ProductDialogRefresh?> ProductDialogStep(ProductDialogWidgetAction action);
+
+/// <summary>
+/// What the product dialog shows after a step — recomputed by the caller from the AUTHORITATIVE state.
+///
+/// <para>Authoritative means the visit's pending values over the document, not either alone. The document is
+/// wrong mid-visit, because a terminal addressed inside the visit has not reached it yet; the dialog's own
+/// rendered rows are wrong because they are a rendering, and re-deriving values from them would make the display
+/// its own source of truth — the point at which a formatting change becomes a data change.</para>
+/// </summary>
+/// <param name="Terminals">The addressing rows as they now stand.</param>
+/// <param name="Settings">The settings rows as they now stand.</param>
+public sealed record ProductDialogRefresh(
+    IReadOnlyList<ProductTerminal> Terminals,
+    IReadOnlyList<ProductSetting> Settings);
+
+/// <summary>
+/// Where a route wants the product dialog to OPEN — as distinct from what it contains, which the descriptor
+/// already decided.
+///
+/// <para>Every member is optional, and all of them absent is the ordinary open. They are carried together
+/// because they describe one arrival: land on this field, with this terminal row picked, having already stepped
+/// into this sub-item.</para>
+/// </summary>
+/// <param name="FocusAutomationId">
+/// The <c>dlg.*</c> id of the field to focus and scroll into view. An id the dialog does not contain focuses
+/// nothing — a route that promised a field the descriptor did not compose is a route that was wrong, and
+/// focusing something else would hide that.
+/// </param>
+/// <param name="SelectTerminalPin">The terminal row to pre-select, as its pin's id token.</param>
+/// <param name="SelectSettingId">
+/// The <i>Indstillinger</i> row to pre-select, as its setting element's id token (T047).
+/// <para>Its own slot rather than a shared "sub-item" one: the two grids are different lists with different
+/// selections, and one field would have made a route that meant a terminal indistinguishable from one that
+/// meant a constant.</para>
+/// </param>
+/// <param name="InitialAction">A composite the dialog should step into as it opens, as if the installer had.</param>
+public sealed record ProductDialogShowOptions(
+    string? FocusAutomationId = null,
+    string? SelectTerminalPin = null,
+    ProductDialogWidgetAction? InitialAction = null,
+    string? SelectSettingId = null)
+{
+    /// <summary>The ordinary open: no field, no row, no step.</summary>
+    public static ProductDialogShowOptions None { get; } = new();
+}
 
 /// <summary>
 /// Abstraction over the modal dialogs the shell needs (confirm-save, file pickers, message boxes, the
@@ -352,8 +524,10 @@ public interface IDialogService
     /// <param name="conditionsOr">Supplied only for a <c>Betingelser</c> group: its current logic operator, which
     /// the dialog then offers as the reference application's captioned <i>Logisk betingelse</i> AND/OR field.
     /// Null everywhere else, and the field is absent (alignment F-48).</param>
+    /// <param name="focus">Where a route wants the caret; null is the ordinary open, on the name.</param>
     Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null,
-        string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null);
+        string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null,
+        ElementDialogField? focus = null);
 
     /// <summary>Shows the ordinary-variable Properties dialog (US-027, T016): edits Name, Note, and the typed initial
     /// value (the control shown depends on the value's <see cref="ResourceValueKind"/>). Returns null on Cancel.</summary>
@@ -379,11 +553,13 @@ public interface IDialogService
     /// widget. Element data too, and for the same reason (T070).</param>
     Task<ProductDialogEdits?> EditProductDialogAsync(
         ProductDialogDescriptor descriptor, IReadOnlyList<ProductTerminal>? terminals = null,
-        IReadOnlyList<ProductSetting>? settings = null);
+        IReadOnlyList<ProductSetting>? settings = null,
+        ProductDialogShowOptions? options = null,
+        ProductDialogStep? onStep = null);
 
-    /// <summary>Opens the modal advanced wireless-dimmer dialog (US-015); returns the edited settings, or null when
-    /// the installer cancels.</summary>
-    Task<AdvancedDimmerResult?> EditAdvancedDimmerAsync(AdvancedDimmerInput input);
+    /// <summary>Opens the <i>Rediger konstant</i> editor for one row of the Indstillinger grid (T040); returns the
+    /// value the installer accepted, or null when they dismissed the window without accepting.</summary>
+    Task<string?> EditConstantAsync(ConstantEditorInput input);
 
     /// <summary>Opens the modal scene-value dialog (US-024/US-058); returns the edited value, or null when the
     /// installer cancels.</summary>

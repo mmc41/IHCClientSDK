@@ -41,7 +41,7 @@ Ordered by priority within each group.
 | **V9** | `ProblemConsoleFormat` drops **every finding** of a validation failure | Defect | Todo | [§V9](#v9--the-utility-loses-a-validation-failures-findings) |
 | **V8** | Two shell sites render `Problem.Message` raw, bypassing `ProblemPresenter` | Defect | Todo | [§V8](#v8--two-shell-sites-bypass-the-presenter) |
 | **V1** | ~190 catalogue entries hand-spell the same positional constructor; the host already has the fix | Task | Todo | [§V1](#v1--catalogue-entry-factories) |
-| **V2** | `Target` is `default` on ~140 of 141 finding rows, so the second engine face is **vacuous** | Task | Todo | [§V2](#v2--the-entry-target-is-undeclared) |
+| **V2** | Most finding rows leave `Target` at `default`, so the fact lives in parallel maps instead | Task | **Partly done** | [§V2](#v2--the-entry-target-is-undeclared) |
 | **V5** | The first-holder-wins duplicate scan is written out **eight times** | Task | Todo | [§V5](#v5--the-duplicate-scan-written-eight-times) |
 | **V4** | Work repeated **per rule** inside one run — the analyses stop short of three shared facts | Task | Todo | [§V4](#v4--facts-recomputed-per-rule-within-one-run) |
 | **V7** | The session refusal channel carries `(code, string)`; the shell re-assembles a `Problem` | Task | Todo | [§V7](#v7--the-session-refusal-channel-drops-its-arguments) |
@@ -618,31 +618,58 @@ is mechanical, not subtle.
 
 ### V2 · The entry `Target` is undeclared
 
-`ProblemCatalogEntry.Target` is the declaration that says *what a row is about*. Exactly two entries in
-the SDK declare a real one; every other row passes `default`, i.e. whole-project — including rows that are
-demonstrably about one `(tag, attribute)` pair.
+`ProblemCatalogEntry.Target` is the declaration that says *what a row is about*. Most rows pass `default`,
+i.e. whole-project — including rows that are demonstrably about one `(tag, attribute)` pair.
 
-The consequence is that the fact lives somewhere else instead. `DocumentationRules` keeps it in a private
-`ImmutableDictionary<string, string>` keyed by the literal code string
-(`["doc-cabletype"] = "cabletype"`), and `NamingRules` / `DocumentationCompletenessRules` keep their own
-`private const` copies of `documentation_tag`, `cablenumber`, `power_group`.
+> **Corrected 2026-08-28**, against the tree rather than against this section's own memory. Three of its
+> original claims did not survive the check, and each is fixed in place below.
+>
+> 1. *"Exactly two entries in the SDK declare a real one"* was **stale**. Well before this section was
+>    revisited, entries across the addressing, provenance, product-advisory and firmware families already
+>    declared a non-default target — some naming an attribute, some tag-only, a distinction that matters
+>    because only the attribute-naming ones can project onto a finding. The premise is dropped rather
+>    than restated with a fresh number: a population count in prose goes stale the same way, and this
+>    repository keeps counts in assertions.
+> 2. *"The eight `doc-*` rows whose attribute is already written down in `ProductAttributes`"* was
+>    **wrong**. `ProductAttributes` held five — `doc-documentation-tag`, `doc-power-group`,
+>    `doc-cabletype`, `doc-cablenumber`, `doc-position`. The terminal rules were separate lambdas
+>    carrying their attribute as a literal: `doc-cable-colour` → `cable_colour` and `doc-address` →
+>    `address_dataline`. And **`doc-not-linked` has no attribute at all** — it tests for the absence of
+>    link *children*, so it is element-level by nature and can never be a field target.
+> 3. *"The second engine face cannot answer for any field a dialog actually edits"* implied that
+>    declaring targets would revive that face. **That payoff is withdrawn.** Registration refuses a
+>    traversal body that declares any face but the whole-project one (`TraversalCannotServeFace`), so
+>    declaring a target on a traversal row leaves the field face exactly as unanswerable as before.
+>    Reviving it needs the *bodies* rewritten as declarative rules — the surviving open item below, and
+>    the half of this section that moves oracles.
 
-So `RuleSet.ForTarget`, `FieldMetadataFace.DescribeField`/`ConstraintsOn` and the `UnknownTarget`
-registration guard are **vacuous for every shipped row but one**. The second engine face cannot answer for
-any field a dialog actually edits, and the registration check passes by construction. Any future
-"which rules govern this field" question — a tooltip, a coverage test, a field-level filter — has nothing
-to read.
+The consequence of leaving `Target` undeclared is that the fact lives somewhere else instead.
+`DocumentationRules` kept it in a private `ImmutableDictionary<string, string>` keyed by the literal code
+string (`["doc-cabletype"] = "cabletype"`), and `NamingRules` / `DocumentationCompletenessRules` keep their
+own `private const` copies of `documentation_tag`, `cablenumber`, `power_group`.
 
-- [ ] Declare `Target` on the rows that have one, starting with the eight `doc-*` rows whose attribute is
-      already written down in `ProductAttributes`.
-- [ ] Have the rules read `entry.Target.Attribute` and delete the parallel maps and consts.
+So `RuleSet.ForTarget` and the `UnknownTarget` registration guard have little shipped data to work on, and
+any "which rules govern this field" question — a tooltip, a coverage test, a field-level filter — has
+almost nothing to read.
+
+- [x] Declare `Target` on the rows that have one, starting with the `doc-*` rows: the five from
+      `ProductAttributes` plus the two terminal rows, whose attribute was a literal in the body.
+      The two terminal rows report on `dataline_input` **and** `dataline_output`, so neither can be named
+      by a single tag; they declare the wildcard target — a null tag with an attribute, meaning *"this
+      attribute, on whatever element the rule reports"* — which registration now validates against the
+      schema at large rather than accepting unread.
+- [x] Have those rules read `entry.Target.Attribute` and delete the parallel map and the body literals.
+      `NamingRules` / `DocumentationCompletenessRules` still hold their `private const` copies.
+- [ ] **Still open.** Rewrite the traversal bodies as declarative `Constrain` rules, so the field face can
+      answer for them. This is the half that moves oracles, and it is why V2 stays open.
 - [ ] Re-point `FieldMetadataFaceTests` at a real shipped row rather than a synthetic one, so the face is
-      gated on shipped data.
+      gated on shipped data. Blocked by the item above: until a shipped row has a `Constrain` body, there
+      is no shipped row the field face will serve.
 
 Declaring a target is **independent of the body kind** — ARCHITECTURE's exemption covers migrating bodies
 to `Constrain` (which moves oracles), not declaring the target on a traversal row, which moves nothing.
-Expect the findings oracles under `tests/testdata/validation/` to be unchanged; if any of them
-moves, something else changed with it.
+That prediction held: the `doc-*` declarations above left every findings oracle under
+`tests/testdata/validation/` byte-unchanged.
 
 ### V5 · The duplicate scan written eight times
 
@@ -863,8 +890,9 @@ consumer appears or a reclassification actually surprises someone.
   question it belongs to (adopt a validation library if the catalogue grows a large population of
   per-element value predicates known at COMPILE time, or if rules must become asynchronous). Collapsing
   the shape now would have to be undone by the second constraint on one code. Note the *related* item that
-  IS live: the rows that could be declarative are not, because their entries declare no target — that is
-  [§V2](#v2--the-entry-target-is-undeclared), and it is about the declaration, not the vocabulary.
+  IS live: the rows that could be declarative are still traversals — the `doc-*` rows now declare their
+  target, which was the cheap half, and rewriting the bodies is the half that remains. That is
+  [§V2](#v2--the-entry-target-is-undeclared), and it is about the bodies, not the vocabulary.
 - **A refusing site repeats its Danish sentence beside its code, on purpose** (restated 2026-08-24). Three
   independent reviewers flagged this as duplication in one pass, so it is recorded here rather than
   re-argued each time. `Ihc.Vis.Session` and `Ihc.Vis.Io` must not depend on `Ihc.Vis.Validation`

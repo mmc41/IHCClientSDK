@@ -791,7 +791,7 @@ function Get-Context {
 function New-GoneContext {
     [ordered]@{ appRunning = $false; windowTitle = $null
         toolbarVisible = $null; statusBarVisible = $null; statusText = $null
-        openModal = $null; focusedPane = $null; selection = $null; selections = @() }
+        openModal = $null; openModals = @(); focusedPane = $null; selection = $null; selections = @() }
 }
 
 function Get-ContextCore {
@@ -816,6 +816,10 @@ function Get-ContextCore {
         # stages a move, so the tree is deliberately unchanged and a tree diff proves nothing.
         statusText = $(if ($statusEl) { $statusEl.Current.Name } else { $null })
         openModal = $modal
+        # The whole stack, topmost first. `openModal` is its head, so a caller asking only "which dialog is
+        # up" reads exactly what it always did; this answers "is there one UNDER it", which a stacked
+        # sub-dialog makes a real question.
+        openModals = @(Get-OpenModals $Window)
         # Which pane holds keyboard FOCUS -- the only way to observe F6, whose whole effect is to move
         # it. Deliberately NOT derived from `selection` below: focus and selection are different things
         # and F6 moves only the first (see Get-FocusedPane).
@@ -842,6 +846,21 @@ function Get-OpenModal {
     $w = Get-OpenModalWindow
     if ($w) { return [ordered]@{ title = $w.Current.Name; id = [string]$w.Current.AutomationId } }
     return $null
+}
+
+# The whole modal STACK, topmost first — `openModal` is its head.
+#
+# Reported beside it rather than instead of it, because "which dialog is up" and "how deep is the stack" are
+# different questions and a caller that only asks the first should not have to index an array. A stacked
+# sub-dialog makes the second one answerable: without it, a run cannot tell a dialog that REPLACED its parent
+# from one that opened OVER a parent that is still there.
+function Get-OpenModals {
+    param($Window)
+    $out = @()
+    foreach ($w in @(Get-AppModalWindows)) {
+        try { $out += [ordered]@{ title = $w.Current.Name; id = [string]$w.Current.AutomationId } } catch { }
+    }
+    return $out
 }
 
 # Which pane holds the KEYBOARD FOCUS: 'TV1' | 'TV2' | 'Other' | 'None' | 'Unknown'.
@@ -2708,9 +2727,45 @@ function ConvertTo-RectDump {
                              -Width ([int]$Rect.Width) -Height ([int]$Rect.Height) -Geometry $Geometry)
 }
 
+# The control that currently holds KEYBOARD FOCUS, or $null when it is not this app's.
+#
+# Focus is process-wide, not window-scoped: UIA answers with whatever has it anywhere on the desktop, so a probe
+# that did not check the owning process would happily report the terminal that launched the run as "the focused
+# control in the dialog". The process test is what makes a null answer mean "the app has no focus" rather than
+# "something else does".
+#
+# Nothing else in the driver reports focus at all, which is why a dialog that opens with a field pre-focused --
+# the one observable difference between "the dialog opened" and "the dialog opened AT the field" -- could not be
+# asserted before this.
+function Get-FocusedElement {
+    $p = Get-AppProcess
+    if (-not $p) { return $null }
+    $focused = $null
+    # A focus read races a window that is still opening: it throws rather than returning null when the element
+    # it was about to hand back has gone. That is a transient, not a fact about the app.
+    try { $focused = [System.Windows.Automation.AutomationElement]::FocusedElement } catch { return $null }
+    if (-not $focused) { return $null }
+    try { if ($focused.Current.ProcessId -ne $p.Id) { return $null } } catch { return $null }
+    return $focused
+}
+
+# The focused control as a dump row's worth of identity, or $null. What a caller asserts against.
+function ConvertTo-FocusedDump {
+    param($Focused)
+    if (-not $Focused) { return $null }
+    $c = $null
+    try { $c = $Focused.Current } catch { return $null }
+    return [ordered]@{
+        id    = [string]$c.AutomationId
+        name  = [string]$c.Name
+        class = ($c.ControlType.ProgrammaticName -replace '^ControlType\.', '')
+    }
+}
+
 function Get-DialogControlDump {
     param($Modal)
     $out = @()
+    $focused = Get-FocusedElement
     # One probe for the whole dialog, taken from the modal's own top-left so it names the monitor the
     # dialog is actually on rather than the primary one.
     $modalRect = $Modal.Current.BoundingRectangle
@@ -2736,6 +2791,10 @@ function Get-DialogControlDump {
             class   = $ct
             enabled = $c.IsEnabled
             visible = -not $c.IsOffscreen
+            # Whether THIS control holds keyboard focus. Compared by UIA identity, never by AutomationId: a
+            # dialog may carry several controls with no id at all, and matching on an empty string would call
+            # every one of them focused.
+            focused = ($focused -and [System.Windows.Automation.Automation]::Compare($el, $focused))
             rect    = ConvertTo-RectDump $c.BoundingRectangle $geometry
         }
 
@@ -2789,6 +2848,11 @@ function Invoke-Mechanism-DialogRead {
     $data = [ordered]@{
         dialog       = [ordered]@{ title = $title }
         controlCount = $controls.Count
+        # Which control holds KEYBOARD FOCUS, as {id, name, class}, or null when the app does not have focus at
+        # all. Reported once beside the list as well as per row, so "the dialog opened AT the right field" is one
+        # read rather than a scan. Null is a real answer — another application is in front — and is not the same
+        # as a dialog that opened with nothing focused, which reports a control with an empty id.
+        focused      = ConvertTo-FocusedDump (Get-FocusedElement)
         controls     = @($controls)
     }
     # Ok/Verified: this is a pure reader, so the successful enumeration IS the effect -- there is no
@@ -2807,7 +2871,72 @@ function Invoke-Mechanism-DialogRead {
 # ok:true "No modal open." while that modal blocked every command after it. A resolver that reports
 # "nothing is open" about a window sitting in front of the app is the confident-wrong-answer failure
 # this driver refuses everywhere else.
+# Every open modal of the app, TOPMOST FIRST.
+#
+# Ordered by Z-ORDER, not by UIA enumeration order, and that becomes load-bearing the moment a dialog opens
+# over another one: UIA hands back siblings in an order that is not the stacking order, so the first one it
+# names is very likely the window UNDERNEATH -- the parent the user cannot reach until they have dealt with the
+# one on top. Every verb that acts on "the modal" would then read, fill and cancel the wrong window while
+# reporting success.
+#
+# Walked with GetWindow(GW_HWNDFIRST/GW_HWNDNEXT) over the existing P/Invokes rather than through a new member
+# on the compiled helper: the compiled type is resolved once per process, so a freshly added member is not
+# reliably visible to the running script (the same reason the wheel-scroll helper is composed here).
+function Get-AppModalWindows {
+    $p = Get-AppProcess
+    if (-not $p) { return @() }
+    $mainHandle = [IntPtr]::Zero
+    if ($script:MainWindow) { try { $mainHandle = [IntPtr]$script:MainWindow.Current.NativeWindowHandle } catch { } }
+    if ($mainHandle -eq [IntPtr]::Zero) { return @() }   # nothing is drivable without a main window anyway
+
+    $modals = @()
+    $h = [Aui.Win32]::GetWindow($mainHandle, 0)          # GW_HWNDFIRST -- the topmost top-level sibling
+    # Bounded: a z-order walk over a desktop that is being rearranged under us must not be able to spin.
+    for ($guard = 0; $h -ne [IntPtr]::Zero -and $guard -lt 500; $guard++) {
+        if ($h -ne $mainHandle -and [Aui.Win32]::IsWindowVisible($h)) {
+            $owner = [uint32]0
+            [Aui.Win32]::GetWindowThreadProcessId($h, [ref] $owner) | Out-Null
+            if ($owner -eq [uint32]$p.Id) {
+                $el = $null
+                try { $el = [System.Windows.Automation.AutomationElement]::FromHandle($h) } catch { }
+                # A tooltip and a drop-down shadow are visible top-level windows of this process too; only a
+                # Window is a dialog.
+                if ($el) {
+                    try {
+                        # A Window with NO AREA is not a dialog. The app keeps invisible-but-"visible" layered
+                        # helpers around (measured: one such window reported itself with an empty title, an empty
+                        # AutomationId and a zero rectangle), and counting it would put a phantom at the top of
+                        # the stack -- so `dialog read` would address it instead of the real modal, and a test
+                        # asserting how deep the stack is would be off by one.
+                        $r = $el.Current.BoundingRectangle
+                        $sized = -not ([double]::IsInfinity($r.Width) -or [double]::IsNaN($r.Width)) `
+                            -and $r.Width -gt 0 -and $r.Height -gt 0
+                        # ...and it has to IDENTIFY itself. Every OpenVisual window declares an AutomationId, and
+                        # a native common dialog carries a caption; a helper layer carries neither. Both tests are
+                        # needed: the anonymous layer was observed WITH a non-zero rectangle, and it survives Esc,
+                        # so a caller cancelling "the modal" would sit on it for ever.
+                        $named = [string]$el.Current.AutomationId -ne '' -or [string]$el.Current.Name -ne ''
+                        if ($sized -and $named `
+                            -and $el.Current.ControlType -eq [System.Windows.Automation.ControlType]::Window) {
+                            $modals += $el
+                        }
+                    } catch { }
+                }
+            }
+        }
+        $h = [Aui.Win32]::GetWindow($h, 2)               # GW_HWNDNEXT -- downwards through the z-order
+    }
+    return $modals
+}
+
+# The modal a caller means by "the dialog": the TOPMOST one. With a single modal open -- which is every
+# scenario this driver had before dialogs began stacking -- it is the same window as before.
 function Get-OpenModalWindow {
+    $topmost = @(Get-AppModalWindows)
+    if ($topmost.Count -gt 0) { return $topmost[0] }
+
+    # No main window handle to walk the z-order from: fall back to the UIA scan below, which cannot order
+    # the stack but can still find a lone dialog.
     $p = Get-AppProcess
     if (-not $p) { return $null }
     $root = $script:AE::RootElement
@@ -4012,13 +4141,17 @@ function ConvertTo-ProblemsRow {
         $element = $Matches['el']
     }
     return [ordered]@{
-        index    = $Index
-        code     = [string]$c.AutomationId
-        severity = $severity
-        message  = $message
-        element  = $element
-        name     = $name
-        rect     = ConvertTo-RectDump $c.BoundingRectangle $Geometry
+        index      = $Index
+        code       = [string]$c.AutomationId
+        # The row's per-OCCURRENCE identity, published on ItemStatus beside the code. The code does not address
+        # a row: the authored error corpus emits several of them many times over, so "the doc-cable-colour row"
+        # names eight of them. This one is unique, and problems.click takes it as a --row selector.
+        occurrence = [string]$c.ItemStatus
+        severity   = $severity
+        message    = $message
+        element    = $element
+        name       = $name
+        rect       = ConvertTo-RectDump $c.BoundingRectangle $Geometry
     }
 }
 
@@ -4042,7 +4175,8 @@ function Invoke-WheelScroll {
     Start-Sleep -Milliseconds 30
 }
 
-# Find a row anywhere in the list, scrolling to reach it.
+# Find a row anywhere in the list, scrolling to reach it. The selector is a per-occurrence identity, a code, or
+# a fragment of the row's accessible sentence.
 #
 # The findings list VIRTUALIZES, so a row outside the viewport has no UIA element at all: it cannot be found,
 # read or clicked until it is scrolled into view. At the panel's default height only a handful of rows exist at
@@ -4051,8 +4185,8 @@ function Invoke-WheelScroll {
 #
 # Paged with the list's own ScrollPattern, i.e. the same movement a Page Down produces, and bounded so a list
 # that refuses to move cannot spin.
-function Find-ProblemsRowByCode {
-    param($Panel, [string] $Code, [int] $MaxPages = 60)
+function Find-ProblemsRow {
+    param($Panel, [string] $Selector, [int] $MaxPages = 60)
 
     $list = Find-ByAutomationId $Panel 'ProblemsList'
     if (-not $list) { return $null }
@@ -4093,7 +4227,11 @@ function Find-ProblemsRowByCode {
         foreach ($el in Get-ProblemsRowElements $Panel) {
             $c = $null
             try { $c = $el.Current } catch { continue }
-            if ([string]$c.AutomationId -eq $Code -or [string]$c.Name -like "*$Code*") { return $el }
+            # Three selectors, most specific first: the per-occurrence identity (unique), then the code (which
+            # several rows share by design, so it reaches whichever comes past first), then a loose match on the
+            # accessible sentence.
+            if ([string]$c.ItemStatus -eq $Selector) { return $el }
+            if ([string]$c.AutomationId -eq $Selector -or [string]$c.Name -like "*$Selector*") { return $el }
         }
 
         if ($scroll -and $scroll.Current.VerticallyScrollable) {
@@ -4235,7 +4373,7 @@ function Invoke-Mechanism-ProblemsClick {
 
     $rowOpt = Get-OptValue $Opts @('row') -NamedOnly
     if (-not $rowOpt) {
-        return (New-Result -Ok $false -Code 'InvalidInput' -Message 'Pass --row <index|text>.')
+        return (New-Result -Ok $false -Code 'InvalidInput' -Message 'Pass --row <index|occurrence|code|text>.')
     }
 
     $target = $null
@@ -4247,13 +4385,14 @@ function Invoke-Mechanism-ProblemsClick {
         }
         $target = $elements[$index]
     } else {
-        # By code or text, SCROLLING to reach it: the list virtualizes, so a row further down does not exist as
-        # an element until the viewport reaches it. An index addresses realized rows only, which is why a caller
-        # wanting a specific finding should name its code rather than guess a position.
-        $target = Find-ProblemsRowByCode $panel $rowOpt
+        # By occurrence identity, code or text, SCROLLING to reach it: the list virtualizes, so a row further
+        # down does not exist as an element until the viewport reaches it. An index addresses realized rows
+        # only, which is why a caller wanting a specific finding should name it rather than guess a position --
+        # and where a code fires more than once, only the occurrence identity from problems.rows names ONE row.
+        $target = Find-ProblemsRow $panel $rowOpt
         if (-not $target) {
             return (New-Result -Ok $false -Code 'ControlNotFound' `
-                -Message "No row matches '$rowOpt' by code or by text, after scrolling the whole list.")
+                -Message "No row matches '$rowOpt' by occurrence, code or text, after scrolling the whole list.")
         }
     }
 
@@ -4270,7 +4409,12 @@ function Invoke-Mechanism-ProblemsClick {
     }
     $x = [int]($rect.X + [Math]::Min(60, $rect.Width / 2))
     $y = [int]($rect.Y + $rect.Height / 2)
+    # --double ACTIVATES the row, where a single click only selects it. The two gestures mean different things
+    # in this panel: selection reveals the element, activation takes the installer all the way to the fix. The
+    # second click follows immediately, inside the system double-click time.
+    $double = [bool](Get-OptValue $Opts @('double', 'double-click') -NamedOnly)
     [Aui.Win32]::Click($x, $y)
+    if ($double) { [Aui.Win32]::Click($x, $y) }
     Start-Sleep -Milliseconds 250
 
     $data = [ordered]@{

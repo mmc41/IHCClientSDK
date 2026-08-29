@@ -1,0 +1,25 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:a="using:Avalonia.Automation"
+        x:Class="ihc_openvisual.Views.ConstantEditorWindow"
+        a:AutomationProperties.AutomationId="ConstantEditorWindow"
+        Title="Rediger konstant"
+        Width="320" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        ShowInTaskbar="False">
+    <!-- TWO visible controls, matching the measured vendor window (12 controls, 2 visible): the value box and OK.
+         The field carries no visible label, so it is named here for the column it holds and RE-named from the
+         setting when the editor is configured — the markup name is the floor, so the window is never unnamed
+         even on the bare construction path. -->
+    <StackPanel Margin="16" Spacing="12">
+        <TextBox Name="ValueBox"
+                 a:AutomationProperties.Name="Værdi"
+                 a:AutomationProperties.AutomationId="dlg.konstant.vaerdi"/>
+        <!-- NO Annuller. The vendor's editor has none, and the title bar's close is the way out — which
+             resolves to the same null this window returns when it is dismissed without accepting. -->
+        <Button Name="OkButton" Content="OK" MinWidth="84" HorizontalAlignment="Right"
+                IsDefault="True" Click="OnOk"
+                a:AutomationProperties.AutomationId="dlg.konstant.ok"/>
+    </StackPanel>
+</Window>

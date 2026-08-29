@@ -1182,38 +1182,10 @@ public class MainWindowViewModelTests
             Assert.That(Category(vm, CatalogMenu.WirelessProductsCategory).All(m => !m.Header.Contains('#')), Is.True, "NN# prefixes stripped");
         });
     }
-
-    // US-015: applying advanced dimmer settings writes the dimmer_setting_* values.
+    // US-015: a wireless dimmer's Properties dialog offers its advanced settings as ORDINARY FIELDS, which commit
+    // through the dialog's own command. They were a separate modal window; the values are the same.
     [Test]
-    public async Task UpdateDimmerSettings_WritesValues()
-    {
-        using var harness = ShellHarness.Create();
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-        var dimmer = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("LK IHC Wireless") && p.CategoryPath.Contains("Dimmer"));
-        var pid = (await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, dimmer.ProductIdentifier))!.Value;
-
-        var ok = await harness.Session.UpdateDimmerSettingsAsync(pid, new AdvancedDimmerResult(700, 800, 5, 30, 90, "rl"));
-
-        var el = harness.Session.Current!.FindById(pid)!;
-        string Val(string tag) => el.DescendantsAndSelf().First(e => e.Tag == tag).GetAttribute("value")!;
-        Assert.Multiple(() =>
-        {
-            Assert.That(ok, Is.True);
-            Assert.That(Val("dimmer_setting_fade_rate_up"), Is.EqualTo("700"));
-            Assert.That(Val("dimmer_setting_fade_rate_down"), Is.EqualTo("800"));
-            // 5 s in the dialog is stored as 5000 ms (dimmer_setting_dimming_rate is milliseconds).
-            Assert.That(Val("dimmer_setting_dimming_rate"), Is.EqualTo("5000"));
-            Assert.That(Val("dimmer_setting_minimum_value"), Is.EqualTo("30"));
-            Assert.That(Val("dimmer_setting_maximum_value"), Is.EqualTo("90"));
-            Assert.That(Val("dimmer_setting_load_mode"), Is.EqualTo("rl"), "Inductive maps to the rl load mode");
-        });
-    }
-
-    // US-015: a wireless dimmer's Properties dialog offers Advanced, which opens the advanced dialog and applies.
-    [Test]
-    public async Task WirelessDimmer_PropertiesAdvanced_OpensAdvancedDialog_AndApplies()
+    public async Task WirelessDimmer_PropertiesAdvanced_OffersTheSettingsAsFields_AndApplies()
     {
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
@@ -1223,69 +1195,18 @@ public class MainWindowViewModelTests
         var pid = (await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, dimmer.ProductIdentifier))!.Value;
         var node = vm.InstallationNodes[0].Children[3].Children[0];
 
-        harness.Dialogs.RespondWithWidget(DialogWidgetKind.AdvancedDimmerButton);
-        harness.Dialogs.AdvancedDimmerResult = new AdvancedDimmerResult(700, 700, 3, 20, 90, "rc");
+        harness.Dialogs.RespondWithEdits(
+            ("Maksimum lysstyrke [%]", "90"), ("Belastningstype", "rc"));
         await vm.PropertiesCommand.ExecuteAsync(node);
 
         var el = harness.Session.Current!.FindById(pid)!;
         string Val(string tag) => el.DescendantsAndSelf().First(e => e.Tag == tag).GetAttribute("value")!;
         Assert.Multiple(() =>
         {
-            Assert.That(harness.Dialogs.OfferedWidget(DialogWidgetKind.AdvancedDimmerButton), Is.True, "Advanced is offered for a dimmer");
-            Assert.That(harness.Dialogs.EditAdvancedDimmerCalls, Is.EqualTo(1), "Advanced opened the dimmer dialog");
             Assert.That(Val("dimmer_setting_maximum_value"), Is.EqualTo("90"));
             Assert.That(Val("dimmer_setting_load_mode"), Is.EqualTo("rc"), "Capacitive maps to the rc load mode");
         });
     }
-
-    // US-015 / alignment F (2026-08-11): the "Manuel ramptid" field is in SECONDS in the dialog (box 2–10, label
-    // "(s)"), but dimmer_setting_dimming_rate is stored in MILLISECONDS (range 2000–10000; the original IHC Visual
-    // shows it as seconds, e.g. 5000 ms → "5"). The dialog and the stored value must therefore differ by ×1000:
-    // opening Advanced on a 6000 ms device shows 6 s, and committing 7 s stores 7000 ms. Before the fix the raw ms
-    // value was shown under a seconds label (5000 under "(s)") and a committed "7" wrote an out-of-range 7.
-    [Test]
-    public async Task WirelessDimmer_ManualRamp_ConvertsSecondsToMilliseconds()
-    {
-        using var harness = ShellHarness.Create();
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-        var dimmer = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("LK IHC Wireless") && p.CategoryPath.Contains("Dimmer"));
-        var pid = (await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, dimmer.ProductIdentifier))!.Value;
-        var node = vm.InstallationNodes[0].Children[3].Children[0];
-
-        // Commit 7 seconds through the dialog; the stored dimming_rate must be 7000 ms.
-        harness.Dialogs.RespondWithWidget(DialogWidgetKind.AdvancedDimmerButton);
-        harness.Dialogs.AdvancedDimmerResult = new AdvancedDimmerResult(700, 700, 7, 20, 90, "rc");
-        await vm.PropertiesCommand.ExecuteAsync(node);
-
-        var el = harness.Session.Current!.FindById(pid)!;
-        string Val(string tag) => el.DescendantsAndSelf().First(e => e.Tag == tag).GetAttribute("value")!;
-        Assert.That(Val("dimmer_setting_dimming_rate"), Is.EqualTo("7000"), "7 s committed → 7000 ms stored");
-
-        // Re-open: the 7000 ms just stored must be shown back as 7 seconds, not 7000.
-        harness.Dialogs.AdvancedDimmerResult = null;   // cancel the re-open, we only need the input it was given
-        await vm.PropertiesCommand.ExecuteAsync(node);
-        Assert.That(harness.Dialogs.LastAdvancedDimmerInput!.ManualRampS, Is.EqualTo(7), "7000 ms stored → 7 s shown");
-    }
-
-    // US-015: a non-dimmer wireless product does not offer the Advanced dimmer dialog.
-    [Test]
-    public async Task WirelessNonDimmer_HasNoAdvanced()
-    {
-        using var harness = ShellHarness.Create();
-        var vm = harness.CreateViewModel();
-        await vm.InitializeAsync();
-        var wireless = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("LK IHC Wireless") && !p.CategoryPath.Contains("Dimmer"));
-        await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, wireless.ProductIdentifier);
-
-        harness.Dialogs.CancelProductDialog = true;   // cancel - just capture what the dialog offered
-        await vm.PropertiesCommand.ExecuteAsync(vm.InstallationNodes[0].Children[3].Children[0]);
-
-        Assert.That(harness.Dialogs.OfferedWidget(DialogWidgetKind.AdvancedDimmerButton), Is.False);
-    }
-
     // US-018: inserting a library function block nests it in the Functions pane with its variable sections and pins.
     // Configuration mode shows Input/Output/Settings only — Internal variables is programming-mode-only (A-17/F-069).
     [Test]

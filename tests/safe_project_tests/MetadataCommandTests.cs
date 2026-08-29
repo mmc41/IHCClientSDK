@@ -163,36 +163,5 @@ namespace Ihc.Vis.Tests
                 Assert.That(session.Current!.Equals(viaEngine), Is.True, "matches the engine's own RelabelEnumValue");
             });
         }
-
-        [Test]
-        public async Task UpdateDimmerSettings_WritesTheSixSettingValues()
-        {
-            Project project = await Load("project3-KompleksWired.vis");
-            // The smallest id-bearing subtree that still owns the dimmer settings is the dimmer product itself
-            // (a locality's subtree is larger), so this targets one product's own dimmer_settings.
-            ProjectElement product = project.Root.Descendants()
-                .Where(e => e.Id is not null && e.Descendants().Any(d => d.Tag == "dimmer_setting_load_mode"))
-                .OrderBy(e => e.DescendantsAndSelf().Count())
-                .First();
-            ElementId id = product.Id!.Value;
-            ProjectDocumentSession session = Session(project);
-
-            EditOutcome outcome = session.Apply(
-                new UpdateDimmerSettings(id, new AdvancedDimmerResult(111, 222, 33, 5, 95, "rl")));
-
-            ProjectElement after = session.Current!.FindById(id)!;
-            string Val(string tag) => after.DescendantsAndSelf().First(e => e.Tag == tag).GetAttribute("value") ?? "";
-            Assert.Multiple(() =>
-            {
-                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
-                Assert.That(Val("dimmer_setting_fade_rate_up"), Is.EqualTo("111"));
-                Assert.That(Val("dimmer_setting_fade_rate_down"), Is.EqualTo("222"));
-                // ManualRampS is in SECONDS in the dialog but stored in MILLISECONDS (×1000), as the original does.
-                Assert.That(Val("dimmer_setting_dimming_rate"), Is.EqualTo("33000"));
-                Assert.That(Val("dimmer_setting_minimum_value"), Is.EqualTo("5"));
-                Assert.That(Val("dimmer_setting_maximum_value"), Is.EqualTo("95"));
-                Assert.That(Val("dimmer_setting_load_mode"), Is.EqualTo("rl"));
-            });
-        }
     }
 }

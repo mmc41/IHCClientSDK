@@ -32,30 +32,6 @@ public class DialogBoundsFromMetadataTests : AvaloniaTestBase
     /// <summary>Bounds no catalog would produce, so a control still carrying its own copy cannot pass by luck.</summary>
     private static FieldConstraintMetadata Bounds(double minimum, double maximum) =>
         FieldConstraintMetadata.Unconstrained with { Minimum = minimum, Maximum = maximum };
-
-    [AvaloniaTest]
-    public void TheAdvancedDimmerBoxesTakeTheBoundsTheInputCarries()
-    {
-        AdvancedDimmerInput input = new(
-            700, 700, 5, 0, 100, "auto",
-            SoftOn: Bounds(11, 12), SoftOff: Bounds(13, 14), ManualRamp: Bounds(15, 16),
-            Minimum: Bounds(17, 18), Maximum: Bounds(19, 20));
-
-        var window = new AdvancedDimmerWindow();
-        CurrentTestWindow = window;
-        window.Show();
-        NumericFieldBounds.Apply(window.FindControl<NumericUpDown>("SoftOnBox")!, input.SoftOn);
-        NumericFieldBounds.Apply(window.FindControl<NumericUpDown>("ManualRampBox")!, input.ManualRamp);
-        NumericFieldBounds.Apply(window.FindControl<NumericUpDown>("MaximumBox")!, input.Maximum);
-
-        Assert.Multiple(() =>
-        {
-            AssertBounds(window, "SoftOnBox", 11, 12);
-            AssertBounds(window, "ManualRampBox", 15, 16);
-            AssertBounds(window, "MaximumBox", 19, 20);
-        });
-    }
-
     [AvaloniaTest]
     public void AnUnconstrainedFieldIsNotClampedToZero()
     {

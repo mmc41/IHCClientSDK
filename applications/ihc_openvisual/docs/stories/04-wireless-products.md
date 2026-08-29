@@ -100,8 +100,19 @@ Scenario: Wireless categories come from the catalog
 ### Acceptance criteria (Business Rules)
 
 **Access rule:**
-- MUST: For a wireless dimmer, right-click > *Properties* > *Advanced* opens the advanced properties
-  box.
+- MUST: For a wireless dimmer, the advanced properties are part of the product's own properties dialog,
+  behind an *Avanceret* disclosure that **expands them in place**. No separate window opens.
+- MUST: The disclosure starts **collapsed** — these are settings most visits never touch — and offers a
+  **collapse affordance** that closes it again, so the dialog returns to the shape it opened in.
+- MUST: The six values commit through the product dialog's own OK, as every other field of that dialog
+  does. There is no separate accept step for them.
+- MUST: For a wireless product that is **not** a dimmer, no such disclosure appears.
+
+*Measured on the original 2026-08-11 and again 2026-08-28: it expands a group captioned "Avancerede Dimmer
+egenskaber" inside the product dialog and collapses it again from a `Normal` affordance, leaving the title
+unchanged. OpenVisual previously opened a separate window; that was a shape divergence rather than a missing
+capability — the same six values, reached differently — and it is recorded as closed in
+[`alignment-coverage.md`](../alignment-coverage.md).*
 
 **Input fields (each numeric, with the stated unit, range and default):**
 - MUST: **Soft on-time** — integer milliseconds, **200–60000 ms**, default **700 ms**;
@@ -110,8 +121,9 @@ Scenario: Wireless categories come from the catalog
 - SHOULD: **Manual ramp time** — integer seconds, **2–10 s**; time to ramp from min to max (or back).
 - SHOULD: **Minimum value** (minimum level) — integer percent, **0–100 %** (e.g. 30 %).
 - SHOULD: **Maximum value** (maximum level) — integer percent, **0–100 %**, default **100 %**.
-- SHOULD: **Load characteristic** — enumeration: **Inductive | Capacitive | Auto** (Auto detects the
-  connected load).
+- SHOULD: **Load characteristic** — a **closed** list of exactly the values the file can hold:
+  **Auto detektion | RC | RL**, Auto first, matching the original's own vocabulary. It is not free text,
+  because the attribute is enumerated and anything else is unwritable.
 
 **Output:**
 - Dimmer behaviour parameters stored with the product and used at runtime.
@@ -120,6 +132,9 @@ Scenario: Wireless categories come from the catalog
 
 - Setting *Soft on-time* = `700`, *Minimum value* = `30`, *Load characteristic* = `Auto` gives a
   dimmer that fades on in 0.7 s, never dims below 30 %, and auto-detects the load.
+- The manual ramp is captioned in **seconds** and stored in **milliseconds**: entering `7` stores `7000`,
+  and reopening the dialog shows `7` again. The bounds shown are in seconds too, so what the field offers
+  is what it accepts.
 - Entering `100` ms for *Soft on-time* is below the 200 ms minimum and must be rejected or clamped.
 
 ### Constraints
@@ -129,7 +144,9 @@ Scenario: Wireless categories come from the catalog
 
 **Readiness:** Ready.
 
-**Implementation status:** ✅ Implemented.
+**Implementation status:** ✅ Implemented — the six values are ordinary fields of the composed product
+dialog, inside a collapsible *Avancerede Dimmer egenskaber* group, and they commit through that dialog's own
+command.
 
 ---
 

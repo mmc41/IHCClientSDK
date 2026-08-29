@@ -2,7 +2,7 @@
 scope: Navigation hub for the IHC OpenVisual behavioural specification — epics E1–E18 and their user stories (US-NNN) with Given-When-Then acceptance criteria
 exclusions: No spec content lives here; behaviour is defined only in the story files. Excludes product.md and the reference docs (see ../INDEX.md)
 research_date: 2026-08-11
-latest_update: 2026-08-25 — E18 US-085 (export the findings list) added
+latest_update: 2026-08-29 — E3 US-087 (edit a product's configurable constants) added
 ---
 
 # OpenVisual User Stories (Epics E1–E18) Index
@@ -45,7 +45,7 @@ partly in scope, or out of scope.
 | Document | Description | Key Topics | Lines |
 | --- | --- | --- | --- |
 | [02-localities.md](02-localities.md) | E2 modelling rooms and places as the *Lokaliteter* tree: rename, add, delete localities | US-006–009, locality tree, Properties dialog, delete with contents | 222 |
-| [03-datalinie-products.md](03-datalinie-products.md) | E3 placing wired data-line products, documenting them, addressing terminals to I/O modules | US-010–013, wired products, data lines, terminals, initial value, modem | 424 |
+| [03-datalinie-products.md](03-datalinie-products.md) | E3 placing wired data-line products, documenting them, addressing terminals to I/O modules | US-010–013, US-087, wired products, data lines, terminals, initial value, modem, configurable constants | 551 |
 | [04-wireless-products.md](04-wireless-products.md) | E4 wireless products: insert/properties in scope; controller linking deferred until wireless API exists | US-014–017, wireless dimmer, controller linking, signal test, partial scope | 250 |
 
 ### Function blocks & logic
@@ -97,7 +97,7 @@ owned elsewhere. Ids in the files use U+2011 non-breaking hyphens — copy, don'
 | --- | --- |
 | [01-application-shell.md](01-application-shell.md) | US-001–004, US-051, US-063, US-064, US-065 |
 | [02-localities.md](02-localities.md) | US-006–009 |
-| [03-datalinie-products.md](03-datalinie-products.md) | US-010–013 |
+| [03-datalinie-products.md](03-datalinie-products.md) | US-010–013, US-087 |
 | [04-wireless-products.md](04-wireless-products.md) | US-014–017 |
 | [05-function-blocks.md](05-function-blocks.md) | US-018–021 |
 | [06-product-fb-links.md](06-product-fb-links.md) | US-022–025, US-057, US-058 |

@@ -1209,7 +1209,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Error,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget(null, "address_dataline"),
                 FindingShape.PrimaryWithRelated,
                 EquatableArray.Create<ProblemArgumentSlot>(
                 [
@@ -1239,7 +1239,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Error,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget(null, "address_dataline"),
                 FindingShape.OnePerOccurrence,
                 EquatableArray.Create<ProblemArgumentSlot>(
                 [
@@ -1264,7 +1264,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Error,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget(null, "address_dataline"),
                 FindingShape.OnePerOccurrence,
                 EquatableArray.Create<ProblemArgumentSlot>(
                 [
@@ -1747,7 +1747,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Warning,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget(null, "address_dataline"),
                 FindingShape.OnePerOccurrence,
                 default,
                 "Mangler Adresse")
@@ -1767,7 +1767,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Warning,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget(null, "cable_colour"),
                 FindingShape.OnePerOccurrence,
                 default,
                 "Mangler Ledningsfarve")
@@ -1787,7 +1787,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Warning,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget("product_dataline", "cablenumber"),
                 FindingShape.OnePerOccurrence,
                 default,
                 "Mangler Kabelnummer")
@@ -1807,7 +1807,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Warning,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget("product_dataline", "cabletype"),
                 FindingShape.OnePerOccurrence,
                 default,
                 "Mangler Kabeltype")
@@ -1827,7 +1827,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Warning,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget("product_dataline", "documentation_tag"),
                 FindingShape.OnePerOccurrence,
                 default,
                 "Mangler Id-kode")
@@ -1898,7 +1898,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Warning,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget("product_dataline", "position"),
                 FindingShape.OnePerOccurrence,
                 default,
                 "Mangler Placering")
@@ -1918,7 +1918,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Warning,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget("product_dataline", "power_group"),
                 FindingShape.OnePerOccurrence,
                 default,
                 "Mangler Lysgruppe")
@@ -4416,7 +4416,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Warning,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget(null, "cablenumber"),
                 FindingShape.PrimaryWithRelated,
                 default,
                 "Dobbelt Kabelnummer")
@@ -4451,7 +4451,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Warning,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget(null, "name"),
                 FindingShape.OnePerOccurrence,
                 default,
                 "Uændret standardnavn")
@@ -4480,7 +4480,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Warning,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget(null, "name"),
                 FindingShape.PrimaryWithRelated,
                 default,
                 "Dobbelt navn")
@@ -4514,7 +4514,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Warning,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget(null, "name"),
                 FindingShape.OnePerOccurrence,
                 default,
                 "Mangler Navn")
@@ -4539,7 +4539,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Warning,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget(null, "documentation_tag"),
                 FindingShape.PrimaryWithRelated,
                 default,
                 "Dobbelt Id-kode")
@@ -4569,7 +4569,7 @@ namespace Ihc.Vis.Validation
                 CatalogDisposition.Warning,
                 RuleKind.UserContentRule,
                 RuleFaces.WholeProject,
-                default,
+                new RuleTarget("resource_input", "note"),
                 FindingShape.OnePerOccurrence,
                 default,
                 "Mangler Note")

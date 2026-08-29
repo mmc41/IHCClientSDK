@@ -221,7 +221,7 @@ public class ProblemsPanelViewModelTests
             Assert.That(row.Severity, Is.EqualTo(ValidationSeverity.Warning));
             Assert.That(row.Category, Is.EqualTo(ValidationCategory.Documentation));
             Assert.That(row.Element, Is.EqualTo(locality), "the navigation anchor is Primary.Element");
-            Assert.That(row.IsNavigable, Is.True);
+            Assert.That(row.NavigationKind, Is.EqualTo(NavigationKind.Tree));
             Assert.That(row.ElementName, Is.Not.Empty, "resolved against the snapshot the run used");
         });
     }
@@ -232,6 +232,9 @@ public class ProblemsPanelViewModelTests
     /// reports no location at all, while <c>doc-project-info-blank</c> reports the ROOT — which yields a non-null
     /// location whose Element is null, because the root carries no id attribute. Keying on Primary alone would
     /// call the second one navigable and then have nothing to navigate to.
+    /// <para>Since T046 the two differ in one further way, and it is the point of the pair: neither has an
+    /// ELEMENT, but the project-info row has a host WINDOW keyed on its code, while the capacity row has no
+    /// destination at all.</para>
     /// </summary>
     [Test]
     public async Task AWholeProjectFindingIsListedNonNavigableAndFallsBackToItsRawLocator()
@@ -250,10 +253,15 @@ public class ProblemsPanelViewModelTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(root.IsNavigable, Is.False, "its Primary is NON-null but its Element is null");
+            Assert.That(root.Element, Is.Null, "its Primary is NON-null but its Element is null");
+            Assert.That(root.NavigationKind, Is.EqualTo(NavigationKind.Dialog),
+                "and with no element it still has a destination — the host window its CODE names (T046)");
+            Assert.That(root.NavigationHint, Does.Not.Contain("træet"),
+                "whose hint promises no tree leg, because there is no element to reveal");
             Assert.That(root.ElementName, Is.EqualTo("utcs_project"),
                 "so the element cell falls back to the raw locator rather than showing a blank cell");
-            Assert.That(nowhere.IsNavigable, Is.False, "and a finding with no location at all is listed too");
+            Assert.That(nowhere.NavigationKind, Is.EqualTo(NavigationKind.None),
+                "and a finding with no location at all is listed too");
             Assert.That(nowhere.Element, Is.Null);
         });
     }
@@ -446,7 +454,7 @@ public class ProblemsPanelViewModelTests
             "doc-name-empty", ValidationSeverity.Warning, "Navnet mangler.",
             ValidationCategory.Documentation, new FindingLocation("utcs_project", null, null));
 
-        ProblemRowViewModel row = ProblemsPanelViewModel.ToRow(finding, null, []);
+        ProblemRowViewModel row = ProblemsPanelViewModel.ToRow(finding, null, [], ProblemsTestData.UnusedPlanner);
 
         Assert.Multiple(() =>
         {
@@ -473,7 +481,8 @@ public class ProblemsPanelViewModelTests
             new FindingLocation("_0x2132", shared, null, "/utcs_project/groups/group[1]"));
 
         ProblemRowViewModel row = ProblemsPanelViewModel.ToRow(
-            finding, null, new Dictionary<ElementId, ProjectElement?> { [shared] = null });
+            finding, null, new Dictionary<ElementId, ProjectElement?> { [shared] = null },
+            ProblemsTestData.UnusedPlanner);
 
         Assert.Multiple(() =>
         {

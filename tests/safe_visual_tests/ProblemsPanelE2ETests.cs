@@ -35,6 +35,12 @@ public class ProblemsPanelE2ETests
     /// <summary>The same fixture's CASE name in the characterization oracle — no suffix, no folder prefix.</summary>
     private const string OracleCase = "Project6-Errors";
 
+    /// <summary>
+    /// The Danish word the Alvor column shows for a Warning — how a row's tier is read back through automation,
+    /// since the driver splits it out of the accessible name the app composes.
+    /// </summary>
+    private const string WarningLabel = "Advarsel";
+
     [OneTimeSetUp]
     public void LaunchApp() => E2E.Launch(E2E.Fixture(FixtureFile));
 
@@ -127,21 +133,28 @@ public class ProblemsPanelE2ETests
         });
     }
 
+    /// <summary>
+    /// Hiding a tier hides ITS rows and moves no count. What it does not do is empty the list: this fixture
+    /// carries Information findings beside its Warnings, so the rows that survive the toggle are the other
+    /// tiers' — which is the point of a per-tier filter rather than a global one.
+    /// </summary>
     [Test]
-    public void HidingTheWarningTierEmptiesTheListWithoutChangingItsCount()
+    public void HidingTheWarningTierHidesItsOwnRowsWithoutChangingItsCount()
     {
         E2E.Envelope before = E2E.WaitForBoundProblems();
         int warnings = before.Int("warnings");
-        Assert.That(before.Int("visibleRows"), Is.GreaterThan(0), "precondition: rows are showing");
+        Assert.That(E2E.Rows().Select(r => r.Severity), Has.Some.EqualTo(WarningLabel),
+            "precondition: warning rows are showing, or hiding them proves nothing");
 
         try
         {
-            E2E.Envelope off = E2E.RunOk("problems", "toggle", "--tier", "warning");
+            E2E.RunOk("problems", "toggle", "--tier", "warning");
             E2E.Envelope hidden = E2E.RunOk("problems", "state");
 
             Assert.Multiple(() =>
             {
-                Assert.That(off.Int("visibleRows"), Is.Zero, "every row on this fixture is a Warning");
+                Assert.That(E2E.Rows().Select(r => r.Severity), Has.None.EqualTo(WarningLabel),
+                    "not one row of the hidden tier is left on screen");
                 Assert.That(hidden.Int("warnings"), Is.EqualTo(warnings),
                     "the COUNT is unmoved: hiding a tier is not fixing its findings, and a count that fell would "
                     + "say it was");
@@ -152,8 +165,8 @@ public class ProblemsPanelE2ETests
             E2E.RunOk("problems", "toggle", "--tier", "warning");
         }
 
-        E2E.Envelope restored = E2E.RunOk("problems", "state");
-        Assert.That(restored.Int("visibleRows"), Is.GreaterThan(0), "toggling back restores the rows");
+        Assert.That(E2E.Rows().Select(r => r.Severity), Has.Some.EqualTo(WarningLabel),
+            "toggling back restores them");
     }
 
     [Test]

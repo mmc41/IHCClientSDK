@@ -268,13 +268,84 @@ public sealed class ProjectTreeProjector(Project project)
             { Tooltip = BuildTooltip(component), Kind = TreeNodeKind.Product };
         foreach (ProjectElement resource in component.Children)
         {
-            if (resource.IsScenesContainer)
-                node.Children.Add(BuildScenesNode(resource));   // a product's scenario output (scene link target, US-024)
-            else if (!ProductRows.IsStructuralChild(resource.Tag)
-                     && !ProductRows.IsHiddenFromTree(resource.Tag, project.View(resource).Effective("setting")))
-                node.Children.Add(BuildPinNode(resource, catalogDeclared: true));   // catalog-declared pins (A-24, F-001/F-002)
+            if (!DrawsProductChild(project, resource))
+                continue;
+            node.Children.Add(resource.IsScenesContainer
+                ? BuildScenesNode(resource)                             // a product's scenario output (scene link target, US-024)
+                : BuildPinNode(resource, catalogDeclared: true));       // catalog-declared pins (A-24, F-001/F-002)
         }
         return node;
+    }
+
+    /// <summary>
+    /// Whether this direct child of a product body gets a row. The <c>scenes</c> container is tested FIRST and is
+    /// the exception that makes the order load-bearing: its tag IS structural, yet the vendor draws it (with its
+    /// members under it), so a scenes finding is tree-reachable and needs no dialog-only route.
+    /// </summary>
+    private static bool DrawsProductChild(Project project, ProjectElement resource) =>
+        resource.IsScenesContainer
+        || (!ProductRows.IsStructuralChild(resource.Tag)
+            && !ProductRows.IsHiddenFromTree(resource.Tag, project.View(resource).Effective("setting")));
+
+    /// <summary>
+    /// Whether the tree carries a row for this element — the question the <i>Problemer</i> reveal asks before it
+    /// promises a destination.
+    /// <para>Answered from <see cref="DrawsProductChild"/>, the projector's own ladder, rather than by searching a
+    /// built forest: a pane that is closed, filtered or not yet rendered would otherwise report "no row" for an
+    /// element that has one. Every ancestor is asked too, so a setting nested inside a <c>*_settings</c> container
+    /// inherits its container's absence instead of being judged on its own tag.</para>
+    /// <para>An element outside <paramref name="project"/> — one deleted since the validation run — reports no
+    /// row, which is the honest answer for a stale finding.</para>
+    /// </summary>
+    public static bool HasRow(Project project, ProjectElement element)
+    {
+        for (ProjectElement node = element; !ReferenceEquals(node, project.Root);)
+        {
+            if (node.Id is not { } id || project.FindParent(id) is not { } parent)
+                return false;   // no way up: the element is not in this project's tree
+            if (ProductClassifier.IsProduct(parent.Tag) && !DrawsProductChild(project, node))
+                return false;
+            // A GRANDCHILD of a product is drawn only where the projector actually recurses: scene members under
+            // a scenes container, link halves under a pin. Nothing else below a product row exists in the tree.
+            //
+            // Without this the answer was derived from the product boundary alone, so anything nested under a
+            // drawn pin inherited that pin's row — and a scenes container hanging under a dimmer CHANNEL (which
+            // is where the catalog puts it) was reported as drawn when the tree has no node for it at all. A
+            // reveal aimed there is a dead end, which is the one thing this predicate exists to prevent.
+            if (parent.Id is { } parentId && project.FindParent(parentId) is { } grandparent
+                && ProductClassifier.IsProduct(grandparent.Tag)
+                && !(parent.IsScenesContainer ? node.IsSceneMember : node.IsLinkHalf))
+            {
+                return false;
+            }
+            node = parent;
+        }
+        return true;
+    }
+
+    /// <inheritdoc cref="HasRow(Project, ProjectElement)"/>
+    public static bool HasRow(Project project, ElementId id) =>
+        project.FindById(id) is { } element && HasRow(project, element);
+
+    /// <summary>
+    /// The nearest STRICT ancestor of this element that has a row, or null when none has — the destination a
+    /// reveal degrades to when <see cref="HasRow(Project, ElementId)"/> says the element itself is not drawn.
+    /// <para>Strict, so it never answers with the element it was asked about: a caller that wanted that already
+    /// asked <see cref="HasRow(Project, ElementId)"/> and got its answer.</para>
+    /// </summary>
+    public static ElementId? NearestRowBearingAncestor(Project project, ElementId id)
+    {
+        if (project.FindById(id) is not { } element)
+            return null;
+        for (ProjectElement node = element; !ReferenceEquals(node, project.Root);)
+        {
+            if (node.Id is not { } nodeId || project.FindParent(nodeId) is not { } parent)
+                return null;
+            if (parent.Id is { } parentId && HasRow(project, parent))
+                return parentId;
+            node = parent;
+        }
+        return null;
     }
 
     // A product's scenes container — a scenario-link target — showing its scene member rows (US-024).

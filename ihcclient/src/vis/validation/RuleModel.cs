@@ -65,7 +65,11 @@ namespace Ihc.Vis.Validation
     /// means it, rather than expressing the same thing as a property selector on a generated type this SDK does
     /// not have: its rule set comes from DTD metadata at runtime.
     /// </summary>
-    /// <param name="Tag">The <c>.vis</c> element tag, or null for a rule about the project as a whole.</param>
+    /// <param name="Tag">
+    /// The <c>.vis</c> element tag. Null means one of two things, decided by <paramref name="Attribute"/>:
+    /// with an attribute it is the WILDCARD — "this attribute, on whatever element the rule reports" — and
+    /// without one it is the project as a whole (<see cref="IsWholeProject"/>).
+    /// </param>
     /// <param name="Attribute">The attribute on that tag, or null for a rule about the element itself.</param>
     public readonly record struct RuleTarget(string? Tag, string? Attribute)
     {

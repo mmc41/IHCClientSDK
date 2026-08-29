@@ -6,9 +6,12 @@ using Ihc.Vis.Projects;
 
 namespace Ihc.Vis.Session
 {
-    /// <summary>The edited advanced wireless-dimmer settings (US-015). An edit payload moved down from the GUI dialog.</summary>
-    public sealed record AdvancedDimmerResult(
-        int SoftOnMs, int SoftOffMs, int ManualRampS, int MinimumPercent, int MaximumPercent, string LoadMode);
+    // AdvancedDimmerResult and its UpdateDimmerSettings command are gone (T057), superseded by
+    // ApplyProductDialog — the same supersession UpdateModem went through below, and for the same reason. The
+    // six dimmer_setting_* values were a hand-built payload, a command and a write-back for what the composed
+    // model treats as six ordinary fields of the product dialog, bound to their own descendant elements. The
+    // vendor was measured to expand its Avanceret disclosure IN PLACE rather than opening a window, so the
+    // sub-dialog those types existed to serve is gone too.
 
     // ModemPropertiesResult and its UpdateModem command are gone (T031), superseded by ApplyProductDialog. The
     // record named the SMS modem's fields one by one — four cable colours, a PIN, and a positional list of phone
@@ -361,28 +364,6 @@ namespace Ihc.Vis.Session
         private static ProjectElement? Find(Project project, string defName) =>
             project.Child("enum_definitions")?.Children
                 .FirstOrDefault(c => c.Tag == "enum_definition" && c.GetAttribute("name") == defName);
-    }
-
-    /// <summary>Applies edited advanced wireless-dimmer settings (US-015): the six dimmer_setting values.</summary>
-    public sealed record UpdateDimmerSettings(ElementId ProductId, AdvancedDimmerResult Result) : ProjectCommand
-    {
-        internal override string Describe(Project project) => "Rediger dæmperindstillinger";
-        internal override EditVerdict Evaluate(EditContext context) =>
-            context.RequireExists(ProductId, "Produktet");
-        internal override void Execute(ProjectEditor editor)
-        {
-            ProjectElement product = editor.Require(ProductId);
-            void SetSetting(string tag, string value) =>
-                editor.SetDescendantAttribute(product, e => e.Tag == tag, "value", value);
-            SetSetting("dimmer_setting_fade_rate_up", DecToken.Format(Result.SoftOnMs));
-            SetSetting("dimmer_setting_fade_rate_down", DecToken.Format(Result.SoftOffMs));
-            // The manual ramp is edited in SECONDS (the dialog's 2–10 box) but stored in MILLISECONDS
-            // (dimmer_setting_dimming_rate range 2000–10000), exactly as the original IHC Visual holds it.
-            SetSetting("dimmer_setting_dimming_rate", DecToken.Format(Result.ManualRampS * 1000));
-            SetSetting("dimmer_setting_minimum_value", DecToken.Format(Result.MinimumPercent));
-            SetSetting("dimmer_setting_maximum_value", DecToken.Format(Result.MaximumPercent));
-            SetSetting("dimmer_setting_load_mode", Result.LoadMode);
-        }
     }
 
     // UpdateModem is gone (T031) — see the note beside ModemPropertiesResult at the top of this file.

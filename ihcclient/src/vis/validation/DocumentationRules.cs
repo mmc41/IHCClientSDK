@@ -58,15 +58,17 @@ namespace Ihc.Vis.Validation
                 new ProblemCode("doc-cable-colour"),
                 new ProblemCode("doc-address"));
 
-        private static readonly ImmutableDictionary<string, string> ProductAttributes =
-            new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["doc-documentation-tag"] = "documentation_tag",
-                ["doc-power-group"] = "power_group",
-                ["doc-cabletype"] = "cabletype",
-                ["doc-cablenumber"] = "cablenumber",
-                ["doc-position"] = "position",
-            }.ToImmutableDictionary(StringComparer.Ordinal);
+        /// <summary>
+        /// The attribute a rule is about, read from its catalogue ENTRY.
+        /// <para>These attribute names used to live in a map beside the rules, and in literals inside the two
+        /// terminal bodies — a second statement of a fact the entry already declares, with nothing comparing the
+        /// copies. The entry is now the only place it is written down.</para>
+        /// </summary>
+        /// <exception cref="RuleRegistrationException">The entry declares no attribute for this rule to read.</exception>
+        private static string Attribute(ProblemCatalog catalog, ProblemCode code) =>
+            catalog.TryGet(code, out ProblemCatalogEntry entry) && entry.Target.Attribute is { } attribute
+                ? attribute
+                : throw new RuleRegistrationException(code, RuleRegistrationFault.UnknownTarget);
 
         /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>
@@ -76,7 +78,7 @@ namespace Ihc.Vis.Validation
             ImmutableArray<RuleDefinition>.Builder rules = ImmutableArray.CreateBuilder<RuleDefinition>();
             foreach (ProblemCode code in ProductChecksInReportOrder)
             {
-                string attribute = ProductAttributes[code.Value];
+                string attribute = Attribute(catalog, code);
                 rules.Add(Rule(catalog, code, inspection =>
                 {
                     foreach (ProjectElement product in DatalineProducts(inspection))
@@ -93,12 +95,19 @@ namespace Ihc.Vis.Validation
                 Terminals(inspection, terminal => !terminal.Children.Any(c =>
                     c.Tag is ReciprocalTags.FollowLinkFromTag or ReciprocalTags.FollowLinkToTag))));
 
-            rules.Add(Rule(catalog, new ProblemCode("doc-cable-colour"), inspection =>
-                Terminals(inspection, terminal => IsBlank(terminal, "cable_colour"))));
+            // Both terminal rows report on dataline_input AND dataline_output, so no single tag can name them —
+            // their entries declare the WILDCARD target (a null tag with an attribute), which is what makes the
+            // attribute declarable here at all rather than repeated as a literal.
+            ProblemCode cableColour = new("doc-cable-colour");
+            string cableColourAttribute = Attribute(catalog, cableColour);
+            rules.Add(Rule(catalog, cableColour, inspection =>
+                Terminals(inspection, terminal => IsBlank(terminal, cableColourAttribute))));
 
-            rules.Add(Rule(catalog, new ProblemCode("doc-address"), inspection =>
+            ProblemCode address = new("doc-address");
+            string addressAttribute = Attribute(catalog, address);
+            rules.Add(Rule(catalog, address, inspection =>
                 Terminals(inspection, terminal => !DatalineAddress.TryParse(
-                    terminal.GetAttribute("address_dataline"), terminal.Tag == "dataline_output", out _))));
+                    terminal.GetAttribute(addressAttribute), terminal.Tag == "dataline_output", out _))));
 
             return rules.ToImmutable();
         }
