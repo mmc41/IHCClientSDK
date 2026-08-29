@@ -74,7 +74,7 @@ to print every id with its `status` and one-line description. Highlights:
 | Capture | `capture window`, `capture modal`, `capture control --id <AutomationId>`, `capture client` |
 | Project | `project new`, `project open --path`, `project save`, `project save-as --path [--overwrite]`, `project recent list` |
 | View/mode | `view configuration`, `programming enter`, `view toolbar-toggle`, `view statusbar-toggle`, `view problems-toggle` |
-| Problems panel | `problems state [--wait] [--timeout ms]`, `problems rows`, `problems click --row <n\|occurrence\|code\|text>`, `problems toggle --tier <fatal\|error\|warning\|info>`, `problems sort --column <severity\|code\|message\|element\|category>` |
+| Problems panel | `problems state [--wait] [--timeout ms]`, `problems rows`, `problems click --row <n\|occurrence\|code\|text> [--double]`, `problems toggle --tier <fatal\|error\|warning\|info>`, `problems sort --column <severity\|code\|message\|element\|category>` |
 | Tree nav | `tree select`, `tree dump`, `node select`, `node expand`, `node collapse`, `node double-click`, `node right-click`, `node tooltip` |
 | Gestures | `key send --gesture` (raw keys; refuses `{F5}`, gates `{DELETE}`) |
 | Menus | `menu invoke --id <AutomationId>`, `menu dump-context --path`, `menu dump-bar [--menu X] [--depth N] [--with-id]` |
@@ -136,11 +136,13 @@ you mean a particular one. Each row also carries an `occurrence` field: its per-
 `problems click --row` accepts and which names exactly one row. Read it from `problems rows` and pass it
 back; `--row <code>` is unchanged and still works.
 
-Two behaviours are worth knowing before writing assertions against them. Hiding a tier with
+Three behaviours are worth knowing before writing assertions against them. Hiding a tier with
 `problems toggle` hides its **rows only** — the tier's count and the Send-project gate are unmoved,
-because hiding a finding is not fixing it. And `problems click` uses **real pointer input**, so it needs
+because hiding a finding is not fixing it. `problems click` uses **real pointer input**, so it needs
 the foreground like any other input verb; verify where it landed with `tree selection`, not from its own
-envelope, since the click's whole point is the tree selection it causes.
+envelope. And the panel's gesture is **two-tier**: a plain `problems click` only selects the row and moves
+nothing else, while `--double` is what reveals the element and follows the route on to the fix — so an
+assertion about navigation that forgets `--double` measures the wrong gesture.
 
 **Safety note.** Input-synthesizing commands refuse to run unless the app verifiably holds the
 foreground (`Code=PreconditionMissing`), because a synthesized key goes to whatever window *is* in

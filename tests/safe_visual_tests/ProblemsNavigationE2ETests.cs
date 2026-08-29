@@ -6,13 +6,17 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// Clicking a finding and arriving at the element it is about — driven end to end, with real pointer input.
+/// Activating a finding and arriving at the element it is about — driven end to end, with real pointer input.
 ///
 /// <para><b>This is the one behaviour that cannot be proved headlessly.</b> The headless tests assert that the
-/// owning pane's selected property moves; only a live run proves that a POINTER CLICK on a row produces that,
-/// through the app's real hit-testing, selection and mode machinery. The click is deliberately not a
+/// owning pane's selected property moves; only a live run proves that a POINTER GESTURE on a row produces that,
+/// through the app's real hit-testing, selection and mode machinery. The gesture is deliberately not a
 /// selection call: setting the selection directly would reach the outcome by a route no user can take, and the
 /// route is the thing under test.</para>
+///
+/// <para><b>The gesture is the DOUBLE-click, never the single one.</b> A single click selects the row and must
+/// leave the trees, the mode and every window exactly as they were — the panel is a list to read down, and
+/// arrowing through it may not drag the installer around the project.</para>
 ///
 /// <para><b>Targets are DISCOVERED from the oracle at run time, never hard-coded by index.</b> Row indices move
 /// with every sort and filter, and a test pinned to "row 3" silently starts asserting about a different finding.
@@ -89,7 +93,7 @@ public class ProblemsNavigationE2ETests
     }
 
     /// <summary>
-    /// Clicks the fixture's finding with this code and returns what was clicked.
+    /// Selects the fixture's finding with this code — a single click — and returns what was clicked.
     /// </summary>
     /// <remarks>
     /// BY CODE, never by index — the task's own warning, and the list makes it more than a style point: the
@@ -111,10 +115,24 @@ public class ProblemsNavigationE2ETests
     private static E2E.Row ClickRow(string selector) =>
         E2E.ToRow(E2E.RunOk("problems", "click", "--row", selector).Field("clicked"));
 
-    [Test]
-    public void ClickingAnElementAnchoredRowSelectsThatElementInTheOwningTreePane()
+    /// <summary>
+    /// ACTIVATES the fixture's finding with this code — the double-click — and returns the row it acted on.
+    /// </summary>
+    /// <remarks>
+    /// The row is found by a single click first, which is what yields its occurrence identity; the activation
+    /// then addresses that one occurrence rather than whichever row of the code the scroll meets next.
+    /// </remarks>
+    private static E2E.Row ActivateFinding(string code)
     {
-        E2E.Row target = ClickFinding(ConfigurationCode);
+        E2E.Row row = ClickFinding(code);
+        E2E.RunOk("problems", "click", "--row", row.Occurrence, "--double");
+        return row;
+    }
+
+    [Test]
+    public void ActivatingAnElementAnchoredRowSelectsThatElementInTheOwningTreePane()
+    {
+        E2E.Row target = ActivateFinding(ConfigurationCode);
         Assert.That(target.Element, Is.Not.Empty, "precondition: the row names an element to navigate to");
 
         IReadOnlyList<E2E.Selection> selections = E2E.Selections();
@@ -122,7 +140,7 @@ public class ProblemsNavigationE2ETests
         Assert.Multiple(() =>
         {
             Assert.That(selections, Is.Not.Empty,
-                "a click on an element-anchored row must leave a pane with something selected");
+                "activating an element-anchored row must leave a pane with something selected");
             Assert.That(selections.Select(s => s.Name), Has.Some.Contains(target.Element),
                 $"the selected row names the finding's element ('{target.Element}'); selections were: "
                 + string.Join(", ", selections.Select(s => $"{s.Tree}={s.Name}")));
@@ -131,39 +149,39 @@ public class ProblemsNavigationE2ETests
         });
     }
 
+    /// <summary>
+    /// THE FIRST TIER, live: a single click selects the row and moves nothing else.
+    ///
+    /// <para>Two rows, because they fail differently. The program row's element exists only in programming view,
+    /// so a selection that navigated would switch the whole application into it under the reader; the
+    /// whole-project row names no element at all and would have nowhere to go even if it did.</para>
+    /// </summary>
     [Test]
-    public void ClickingARowInsideABlocksProgramSwitchesToProgramViewFirst()
-    {
-        Assert.That(E2E.PaneRootLabel(), Is.EqualTo(E2E.ConfigurationRootLabel), "precondition: configuration view");
-        ClickFinding(ProgrammingCode);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(E2E.PaneRootLabel(), Is.Not.EqualTo(E2E.ConfigurationRootLabel),
-                "the target has no row in the configuration tree at all, so the mode has to change before it "
-                + "exists — switching is not a courtesy here, it is what makes the element reachable");
-            Assert.That(E2E.Selections(), Is.Not.Empty, "and something is selected once it is");
-        });
-    }
-
-    [Test]
-    public void ClickingTheWholeProjectRowIsNonNavigableAndLeavesTheSelectionAlone()
+    public void ASingleClickSelectsTheRowAndMovesNothingElse()
     {
         // Give the panel a selection to disturb, so "unchanged" is a real observation rather than the
         // vacuous truth of nothing having been selected in the first place.
-        ClickFinding(ConfigurationCode);
+        ActivateFinding(ConfigurationCode);
         IReadOnlyList<E2E.Selection> before = E2E.Selections();
-        Assert.That(before, Is.Not.Empty, "precondition: something is selected before the non-navigable click");
+        Assert.That(before, Is.Not.Empty, "precondition: something is selected before the single clicks");
+        Assert.That(E2E.PaneRootLabel(), Is.EqualTo(E2E.ConfigurationRootLabel), "precondition: configuration view");
 
         E2E.Row wholeProject = ClickFinding(WholeProjectCode);
-        Assert.That(wholeProject.Element, Is.EqualTo("utcs_project"),
-            "its primary location has no parsed element, so the Element cell shows the raw locator — which is "
-            + "also why the row leads nowhere");
+        E2E.Row program = ClickFinding(ProgrammingCode);
 
-        Assert.That(E2E.Selections().Select(s => $"{s.Tree}={s.Name}"),
-            Is.EqualTo(before.Select(s => $"{s.Tree}={s.Name}")),
-            "a finding about the project as a whole names no single site, so there is nowhere to go and the "
-            + "previous selection stays exactly where it was");
+        Assert.Multiple(() =>
+        {
+            Assert.That(wholeProject.Element, Is.EqualTo("utcs_project"),
+                "its primary location has no parsed element, so the Element cell shows the raw locator");
+            Assert.That(program.Element, Is.Not.Empty, "precondition: the program row does name an element");
+            Assert.That(E2E.PaneRootLabel(), Is.EqualTo(E2E.ConfigurationRootLabel),
+                "and the view did not change: the program row's element is reachable only in programming view, "
+                + "which is exactly why a single click must not be what takes the installer there");
+            Assert.That(E2E.Selections().Select(s => $"{s.Tree}={s.Name}"),
+                Is.EqualTo(before.Select(s => $"{s.Tree}={s.Name}")),
+                "no tree moved either — reading down the panel leaves the installer where they were");
+            Assert.That(E2E.OpenModalIds(), Is.Empty, "and nothing opened");
+        });
     }
 
     /// <summary>
@@ -294,7 +312,7 @@ public class ProblemsNavigationE2ETests
     /// click it. Writing that scenario anyway would have meant a retry loop around a race — a flaky test
     /// asserting a real behaviour is worse than an honest one asserting a smaller claim. The dead-end status
     /// line itself is pinned headlessly, where the validation clock can be held still, by
-    /// <c>ProblemsRevealFallbackTests</c>.</para>
+    /// <c>ProblemsActivationDeadEndTests</c>.</para>
     ///
     /// <para>What IS driven here is the property that makes the dead end rare: the panel follows the document.
     /// A row never outlives the element it names, and the round trip through undo proves the list is derived
@@ -303,10 +321,13 @@ public class ProblemsNavigationE2ETests
     [Test]
     public void DeletingARowsElementDropsTheRowAndUndoBringsItBack()
     {
-        E2E.Row target = ClickFinding(ProductFieldCode);
+        E2E.Row target = ActivateFinding(ProductFieldCode);
+        // The activation's own dialog is dismissed before anything else — the subject here is the row's
+        // lifetime, not the route, and the delete below needs the tree rather than a modal.
+        E2E.CloseAllModals(3);
         Assert.That(target.Element, Is.Not.Empty, "precondition: the row names the element about to be deleted");
         Assert.That(E2E.Selections().Select(s => s.Tree), Has.Some.EqualTo("InstallationTree"),
-            "precondition: the click left the product selected, which is what the delete then acts on");
+            "precondition: the activation left the product selected, which is what the delete then acts on");
 
         bool deleted = false;
         try
@@ -354,9 +375,9 @@ public class ProblemsNavigationE2ETests
     /// about the project — so the destination comes from the finding's CODE, and this is the live proof that the
     /// host table is wired rather than merely written.</para>
     ///
-    /// <para>It is the exact counterpart of the click test above, and the pair is the point: a single click on
-    /// this row moves nothing, because there is no element to reveal; a double-click opens the one window that
-    /// repairs it. A route that had confused the two would fail one of them.</para>
+    /// <para>It is the exact counterpart of the single-click test above, and the pair is the point: a single
+    /// click on this row moves nothing at all; a double-click opens the one window that repairs it. A route that
+    /// had confused the two would fail one of them.</para>
     /// </summary>
     [Test]
     public void ActivatingTheWholeProjectRowOpensTheProjectInformationWindow()
@@ -394,9 +415,9 @@ public class ProblemsNavigationE2ETests
     /// E4 — THE PROGRAM ROUTE, and the one that must open NOTHING.
     ///
     /// <para>A Logic finding lives inside a block's program, which the configuration tree does not draw at all:
-    /// the mode switch is what makes the element exist to select. Activating one therefore has to do the same
-    /// work a click does — enter programming mode, select the row — and then stop, because a program row is
-    /// repaired by editing the program in place, not through a properties dialog.</para>
+    /// the mode switch is what makes the element exist to select. Activating one therefore has to enter
+    /// programming mode and select the row — and then stop, because a program row is repaired by editing the
+    /// program in place, not through a properties dialog.</para>
     ///
     /// <para><b>The absence is the assertion.</b> Every other scenario here proves a window opened; this one
     /// proves none did, which is the half that a route eager to open something would break silently. It is

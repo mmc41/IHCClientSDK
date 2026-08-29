@@ -1,6 +1,6 @@
 ---
 version: 0.1.0
-last-updated: 2026-08-25
+last-updated: 2026-08-29
 status: draft
 ---
 
@@ -10,7 +10,7 @@ status: draft
 > reports every finding with its severity, its category and the element it is about — and shows none of it. An
 > installer therefore learns about a fault when a save or a transfer refuses, at the moment it is most expensive
 > to learn. This epic gives the findings a permanent home: a panel that keeps itself up to date as the project is
-> edited, and that navigates to the element a finding is about in one click.
+> edited, and that takes the installer to the element a finding is about when a row is activated.
 
 **Goal:** Let an IHC installer see, at any moment, what is wrong with the open project and go straight to it, so
 that faults are found while the project is being built rather than when it is being handed over.
@@ -18,7 +18,7 @@ that faults are found while the project is being built rather than when it is be
 **Scope:** a bottom panel listing the current findings with severity, code, message, element and category;
 continuous background revalidation as the project changes; per-tier filtering with live counts across four tiers
 (*Fatale fejl*, *Fejl*, *Advarsler*, *Information*); per-column
-sorting; one-click navigation to the offending element; saving the panel's own list as a file; and withholding
+sorting; navigation to the offending element; saving the panel's own list as a file; and withholding
 controller transfer while the project carries errors. Out of scope: suppressing or acknowledging a finding
 (deliberately foreclosed — an id is a filtering key, never a way to silence a finding), authoring new rules, and
 the documentation reports (E9 owns those; this epic's export is the findings list itself, not a document about
@@ -95,25 +95,31 @@ one I am working through.
 
 ## US-083 — Go from a finding to the element it is about
 
-**As an** IHC installer, **I want** one click on a finding to take me to the element, **so that** I can fix it
+**As an** IHC installer, **I want** activating a finding to take me to the element, **so that** I can fix it
 instead of hunting for it.
+
+The gesture is the second tier: **double-click or Enter**, never the selection. A findings list is read down,
+and a single click that moved the trees, switched the editing mode or opened a window would take a scanning
+reader on a journey they did not ask for — so a single click selects the row and does nothing else.
 
 **Acceptance criteria**
 
-- MUST: **Given** a finding about an element, **when** its row is clicked, **then** that element — or, where the
-  tree draws no row for it, the nearest element above it that has one — is selected in the tree pane that owns
-  it, with its ancestors opened so it is actually on screen; and the row named its destination before the click.
+- MUST: **Given** a finding about an element, **when** its row is activated, **then** that element — or, where
+  the tree draws no row for it, the nearest element above it that has one — is selected in the tree pane that
+  owns it, with its ancestors opened so it is actually on screen; and the row named its destination beforehand.
 
   *A value inside a product is the common case of "no row of its own": a setting, a calibration row, a modem's
-  telephone slot. The click lands on the product, and US-086's route carries on into the dialog where such a
-  value is actually edited. The bare ancestor fallback is what remains for an element outside any product.*
-- MUST: **Given** a finding about something inside a function block's program, **when** its row is clicked,
+  telephone slot. The activation lands on the product, and US-086's route carries on into the dialog where such
+  a value is actually edited. The bare ancestor fallback is what remains for an element outside any product.*
+- MUST: **Given** any finding, **when** its row is merely SELECTED — a single click, or the arrow keys — **then**
+  the row is selected and nothing else moves: no tree, no editing mode, no window.
+- MUST: **Given** a finding about something inside a function block's program, **when** its row is activated,
   **then** the application switches into programming mode on that block first.
 - MUST: **Given** a finding about a locality or product while a block's program is open, **when** its row is
-  clicked, **then** the application leaves programming mode first.
+  activated, **then** the application leaves programming mode first.
 - MUST: **Given** a finding that leads nowhere — it names no single element, or the element it names has neither
-  a row nor an ancestor with one — **when** its row is clicked, **then** nothing moves and the row said so before
-  the click; and where an element was named but cannot be shown, the status line says so too.
+  a row nor an ancestor with one — **when** its row is activated, **then** nothing moves and the row said so
+  beforehand; and where an element was named but cannot be shown, the status line says so too.
 
 ## US-084 — Be stopped from sending a project that carries errors
 
@@ -180,9 +186,9 @@ save dialog itself is a native window and is exercised through the dialog port r
 **As an** IHC installer, **I want** a finding to take me all the way to the field I have to change, **so that**
 I stop hunting for it through dialogs I already know I need.
 
-Selecting a finding reveals its element, as US-083 says. Activating one goes further: it opens the dialog the
-value lives in and puts the caret in the field itself. The two are separate gestures because they answer
-different questions — *where is this?* and *let me fix it.*
+Activating a finding reveals its element, as US-083 says. This story is the rest of that one gesture: the
+dialog the value lives in opens and the caret lands in the field itself. Selecting a row is still the quiet
+gesture that moves nothing — the two answer different questions, *which finding is this?* and *let me fix it.*
 
 **Acceptance criteria**
 
@@ -198,7 +204,7 @@ different questions — *where is this?* and *let me fix it.*
   and the caret lands in the field the finding is about. The parent dialog stays open underneath throughout.
 - MUST: **Given** a finding whose attribute the owning dialog does not offer as an editable field, **when** its
   row is activated, **then** the dialog opens and nothing is focused — and the row said "dialog", not "field",
-  before the click.
+  beforehand.
 - MUST: **Given** a finding about a value on one of a product's configurable constants, **when** its row is
   activated, **then** the product's dialog opens with that *Indstillinger* row selected and the constant's
   editor opens on top of it (US-087). A constant has no tree row of its own, so the grid is the only way to it.
@@ -214,7 +220,7 @@ different questions — *where is this?* and *let me fix it.*
 - MUST: **Given** any activated route, **when** the installer cancels out of the dialogs it opened, **then** the
   project is unchanged. This feature navigates; it never repairs anything on the installer's behalf.
 
-**The row says which depth it has, before the click.** Its tooltip names the destination: the tree, the owning
+**The row says which depth it has, before the gesture.** Its tooltip names the destination: the tree, the owning
 dialog, or the exact field. The promise and the route are computed once, from one resolver, so a row cannot
 offer a field and then open a dialog with nothing focused.
 

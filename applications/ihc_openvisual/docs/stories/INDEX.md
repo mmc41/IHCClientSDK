@@ -2,7 +2,7 @@
 scope: Navigation hub for the IHC OpenVisual behavioural specification — epics E1–E18 and their user stories (US-NNN) with Given-When-Then acceptance criteria
 exclusions: No spec content lives here; behaviour is defined only in the story files. Excludes product.md and the reference docs (see ../INDEX.md)
 research_date: 2026-08-11
-latest_update: 2026-08-29 — E3 US-087 (edit a product's configurable constants) added
+latest_update: 2026-08-29 — E18 US-083/US-086: navigation moved off the selection onto the activation gesture
 ---
 
 # OpenVisual User Stories (Epics E1–E18) Index
@@ -38,7 +38,7 @@ partly in scope, or out of scope.
 | [12-icon-language.md](12-icon-language.md) | E12 icon and colour vocabulary letting users read node type and state at a glance | US-046, icons, state colours, tree nodes, visual grammar | 118 |
 | [13-tooltips.md](13-tooltips.md) | E13 hover tooltips exposing node documentation notes and IHC resource IDs in both trees | US-047/048, tooltips, resource ID, documentation note | 110 |
 | [17-integrated-help.md](17-integrated-help.md) | E17 reading the catalog's own component and terminal descriptions where the installer chooses, identifies, documents and asks for help | US-075–079, catalog description, help action, insert lists, properties dialogs, hover | 268 |
-| [18-problems-panel.md](18-problems-panel.md) | E18 a permanent panel listing the project's validation findings, kept current in the background, with one-click navigation to the offending element | US-080–085, validation findings, four tier filters, sorting, navigation, transfer gate, findings export | 170 |
+| [18-problems-panel.md](18-problems-panel.md) | E18 a permanent panel listing the project's validation findings, kept current in the background, with double-click navigation to the offending element | US-080–085, validation findings, four tier filters, sorting, navigation, transfer gate, findings export | 241 |
 
 ### Localities & products
 

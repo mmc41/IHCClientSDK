@@ -811,7 +811,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // clock it needs for the staleness indicator come from the session too, which is where the composition
         // root put them — so there is one answer to "which thread" and one clock, not one per view-model.
         Problems = new ProblemsPanelViewModel(
-            _session, _session.Validation, RevealAndSelect, _session.ExportFindingsAsync,
+            _session, _session.Validation, _session.ExportFindingsAsync,
             status => StatusText = status, ActivateProblemAsync);
 
         RegisterCoreEditRows();

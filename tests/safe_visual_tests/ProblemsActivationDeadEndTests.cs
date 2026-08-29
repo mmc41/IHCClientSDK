@@ -13,25 +13,23 @@ using Microsoft.Extensions.Time.Testing;
 namespace safe_visual_tests;
 
 /// <summary>
-/// The panel reads the answer the reveal gives it. Selecting a row used to call the reveal and drop its bool on
-/// the floor, so a finding on an element the tree does not draw looked like a click that did nothing.
-/// <para>The fallback lands HERE and not inside the reveal itself: the reveal's other caller is the link jump,
-/// where landing on the opposite end's PARENT would be a wrong answer rather than a courtesy.</para>
+/// What ACTIVATING a row does when the route turns out to lead nowhere. The panel owns the sentence — the shell
+/// owns where a sentence is shown — and it is said only where the row could not say it first.
+/// <para>The dead end is a real state rather than an error: a finding is a fact as of the run it came from, so
+/// the element it names can be gone by the time the installer reaches for it. Saying so is the difference
+/// between that and a gesture that looks broken.</para>
 /// </summary>
-public class ProblemsRevealFallbackTests
+public class ProblemsActivationDeadEndTests
 {
-    /// <summary>A panel over a real session, with the reveal and the status line recorded rather than rendered.</summary>
+    /// <summary>A panel over a real session, with the activation and the status line recorded rather than run.</summary>
     private sealed class Rig : System.IDisposable
     {
         public FakeTimeProvider Clock { get; } = new();
         public ShellHarness Harness { get; }
         public ProblemsPanelViewModel Panel { get; }
 
-        /// <summary>Every id the panel asked to reveal, in order.</summary>
-        public List<ElementId> Revealed { get; } = [];
-
-        /// <summary>The ids the reveal REFUSES — the tree has no row for them.</summary>
-        public HashSet<ElementId> Unrevealable { get; } = [];
+        /// <summary>Every plan the panel handed on, in order.</summary>
+        public List<NavigationPlan> Activated { get; } = [];
 
         public List<string> Status { get; } = [];
 
@@ -40,12 +38,8 @@ public class ProblemsRevealFallbackTests
             Harness = ShellHarness.Create(Clock);
             var validation = new ValidationMonitor(Harness.Session, _ => ImmutableArray<ValidationFinding>.Empty);
             Panel = new ProblemsPanelViewModel(Harness.Session, validation,
-                reveal: id =>
-                {
-                    Revealed.Add(id);
-                    return !Unrevealable.Contains(id);
-                },
-                setStatus: Status.Add);
+                setStatus: Status.Add,
+                activate: plan => { Activated.Add(plan); return Task.CompletedTask; });
         }
 
         public void Dispose()
@@ -82,63 +76,61 @@ public class ProblemsRevealFallbackTests
     {
         using Rig rig = new();
         (ElementId setting, ElementId product) = await SettingInsideAProductAsync(rig);
-        rig.Unrevealable.Add(setting);
 
-        rig.Panel.SelectedRow = Row(setting, NavigationKind.Ancestor);
+        await rig.Panel.ActivateRowAsync(Row(setting, NavigationKind.Dialog));
 
         Assert.Multiple(() =>
         {
-            Assert.That(rig.Revealed, Is.EqualTo(new[] { setting, product }).AsCollection,
-                "the element is tried first, and only its refusal sends the panel up to the product");
+            Assert.That(rig.Activated.Single().Reveal, Is.EqualTo(product),
+                "the element the tree does not draw routes to the one above it that it does — which is where "
+                + "the value is edited anyway");
             Assert.That(rig.Status, Is.Empty, "landing somewhere is not a failure to report");
         });
     }
 
     [Test]
-    public async Task WhenNothingAboveHasARowEither_TheStatusLineSaysSo()
+    public async Task ARowWhoseElementIsGoneSinceTheRun_SaysSoRatherThanLookingLikeADeadGesture()
     {
         using Rig rig = new();
-        (ElementId setting, ElementId product) = await SettingInsideAProductAsync(rig);
-        rig.Unrevealable.Add(setting);
-        rig.Unrevealable.Add(product);
+        await SettingInsideAProductAsync(rig);
 
-        rig.Panel.SelectedRow = Row(setting, NavigationKind.Ancestor);
+        // An id no element in the document carries. A finding is a fact as of its run, so this is the ordinary
+        // shape of a stale row rather than a corrupt one.
+        await rig.Panel.ActivateRowAsync(Row(new ElementId(0x7FFFFFF, 0x11), NavigationKind.Tree));
 
         Assert.Multiple(() =>
         {
-            Assert.That(rig.Status, Is.EqualTo(new[] { "Elementet vises ikke i træet." }).AsCollection);
-            Assert.That(rig.Revealed, Does.Contain(product), "the ancestor was genuinely attempted");
+            Assert.That(rig.Status, Is.EqualTo(new[] { ProblemsPanelViewModel.DeadEndStatus }).AsCollection);
+            Assert.That(rig.Activated.Single().Kind, Is.EqualTo(NavigationKind.None),
+                "and the plan is handed on stated as empty, rather than the activation being skipped");
         });
     }
 
     [Test]
-    public async Task ARowThatRevealsNormally_ReportsNothingAndWalksNowhere()
+    public async Task ARowThatRoutesNormally_ReportsNothing()
     {
         using Rig rig = new();
         (ElementId _, ElementId product) = await SettingInsideAProductAsync(rig);
 
-        rig.Panel.SelectedRow = Row(product, NavigationKind.Tree);
+        await rig.Panel.ActivateRowAsync(Row(product, NavigationKind.Tree));
 
         Assert.Multiple(() =>
         {
-            Assert.That(rig.Revealed, Is.EqualTo(new[] { product }).AsCollection);
+            Assert.That(rig.Activated.Single().Reveal, Is.EqualTo(product));
             Assert.That(rig.Status, Is.Empty);
         });
     }
 
     [Test]
-    public async Task ARowWithNoElementAtAll_RevealsNothingAndReportsNothing()
+    public async Task ARowWithNoElementAtAll_ReportsNothing()
     {
         using Rig rig = new();
         await SettingInsideAProductAsync(rig);
 
-        rig.Panel.SelectedRow = Row(null, NavigationKind.None);
+        await rig.Panel.ActivateRowAsync(Row(null, NavigationKind.None));
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(rig.Revealed, Is.Empty);
-            Assert.That(rig.Status, Is.Empty,
-                "the row already says before the click that it points at no single element");
-        });
+        Assert.That(rig.Status, Is.Empty,
+            "the row already says before the gesture that it points at no single element, so a sentence "
+            + "afterwards would only repeat it");
     }
 }

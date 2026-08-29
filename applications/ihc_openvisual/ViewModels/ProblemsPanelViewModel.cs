@@ -82,7 +82,6 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     private readonly ProjectWorkflow _session;
     private readonly ValidationMonitor _validation;
     private readonly Action<Action> _post;
-    private readonly Func<ElementId, bool>? _reveal;
     private readonly Action<string>? _setStatus;
 
     /// <summary>
@@ -111,28 +110,23 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// test can drive every state transition over findings it wrote itself, without the cost — or the
     /// unpredictability — of a real validation. The shell passes the session's own.
     /// </param>
-    /// <param name="reveal">
-    /// Where a clicked row goes: reveals and selects an element, switching editing mode if the target needs it,
-    /// and answers whether it got there. Optional so the panel can be tested without a shell.
-    /// </param>
     /// <param name="export">
-    /// Where the panel's list goes when the user asks for it. A delegate rather than a service, for the same
-    /// reason <paramref name="reveal"/> is one: the panel decides WHAT is exported and must not learn about
-    /// dialogs, files or the app service to do it. Optional so the panel can be tested without a shell.
+    /// Where the panel's list goes when the user asks for it. A delegate rather than a service: the panel
+    /// decides WHAT is exported and must not learn about dialogs, files or the app service to do it. Optional
+    /// so the panel can be tested without a shell.
     /// </param>
     /// <param name="setStatus">
-    /// Where the panel says that a click landed nowhere. A delegate for the same reason the two above are:
+    /// Where the panel says that an activation landed nowhere. A delegate for the same reason the others are:
     /// the panel owns the sentence, the shell owns where a sentence is shown.
     /// </param>
     /// <param name="activate">
-    /// What an ACTIVATED row does — the deep route, as distinct from the reveal a single click already performs.
-    /// A delegate for the same reason the others are: the panel decides WHICH route a row has and must not learn
-    /// about dialogs to carry one out.
+    /// What an ACTIVATED row does — the whole navigation, which is the second tier of the gesture. A delegate
+    /// for the same reason the others are: the panel decides WHICH route a row has and must not learn about
+    /// trees or dialogs to carry one out.
     /// </param>
     public ProblemsPanelViewModel(
         ProjectWorkflow session,
         ValidationMonitor validation,
-        Func<ElementId, bool>? reveal = null,
         Func<FindingsExportRequest, Task>? export = null,
         Action<string>? setStatus = null,
         Func<NavigationPlan, Task>? activate = null)
@@ -143,7 +137,6 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         _session = session;
         _validation = validation;
         _post = session.Post;
-        _reveal = reveal;
         _setStatus = setStatus;
         _export = export;
         // Over the SESSION's compose door: the descriptor is the SDK's to build, and asking it is what makes a
@@ -320,41 +313,21 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     public double RowsOpacity => IsStaleIndicatorEngaged ? StaleOpacity : 1.0;
 
     /// <summary>
-    /// The row the list has selected. Assigning one NAVIGATES — a single click is the whole gesture, and a
-    /// list's selection is what a single click produces.
+    /// The row the list has selected. Assigning one selects and nothing more: the panel is a list to read down,
+    /// and a single click may not move the trees, switch editing mode or open a window under the reader.
     /// </summary>
     /// <remarks>
-    /// A row that names no element is left selected but goes nowhere. Clearing the selection instead would fight
-    /// the user's own click; leaving it selected, with the row's de-emphasis and tooltip saying why it leads
-    /// nowhere, is the honest answer.
+    /// Navigation is <see cref="ActivateRowAsync"/>'s, reached by double-click or Enter. The row still says
+    /// where it would lead before either gesture, through its de-emphasis and its tooltip.
     /// </remarks>
     [ObservableProperty] private ProblemRowViewModel? _selectedRow;
-
-    partial void OnSelectedRowChanged(ProblemRowViewModel? value)
-    {
-        if (_reveal is null || value?.Element is not { } element)
-            return;
-        if (_reveal(element))
-            return;
-
-        // The tree draws no row for this element — a setting inside a *_settings container, a calibration row.
-        // The nearest ancestor that HAS one is where the fix lives anyway, so land there rather than nowhere.
-        // The same predicate decided the row's NavigationKind, so what the tooltip promised is what happens.
-        if (_session.Current is { } project
-            && ProjectTreeProjector.NearestRowBearingAncestor(project, element) is { } ancestor
-            && _reveal(ancestor))
-        {
-            return;
-        }
-        _setStatus?.Invoke(DeadEndStatus);
-    }
 
     /// <summary>What the panel says when a row's element is nowhere on screen and nothing above it is either.</summary>
     public const string DeadEndStatus = "Elementet vises ikke i træet.";
 
     /// <summary>
-    /// ACTIVATION — the second tier of the gesture. A single click reveals; a double-click or Enter takes the
-    /// installer all the way to where the fix is made.
+    /// ACTIVATION — the second tier of the gesture, and the only tier that moves anything. A single click
+    /// selects; a double-click or Enter reveals the element and takes the installer on to where the fix is made.
     /// </summary>
     /// <remarks>
     /// <para>The plan is re-derived HERE rather than carried on the row, and over the CURRENT project rather
@@ -371,8 +344,17 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         {
             return Task.CompletedTask;
         }
-        return _activate(_planner.Plan(
-            project, row.Element, row.Finding.TargetAttribute, row.Finding.Code, row.Finding.Fix));
+        NavigationPlan plan = _planner.Plan(
+            project, row.Element, row.Finding.TargetAttribute, row.Finding.Code, row.Finding.Fix);
+
+        // A row that NAMED an element and still routes nowhere — the element is gone since the run, or neither
+        // it nor anything above it is drawn — is the one case the gesture cannot show for itself, so it is said.
+        // A row that named none says so before the click through its own de-emphasis, and needs no sentence.
+        if (row.Element is not null && plan.Kind is NavigationKind.None)
+        {
+            _setStatus?.Invoke(DeadEndStatus);
+        }
+        return _activate(plan);
     }
 
     /// <summary>The list area's own text, for the two states that have one. Empty where the rows speak.</summary>

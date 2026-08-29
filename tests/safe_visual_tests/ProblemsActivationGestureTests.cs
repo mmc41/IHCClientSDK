@@ -18,8 +18,9 @@ using Microsoft.Extensions.Time.Testing;
 namespace safe_visual_tests;
 
 /// <summary>
-/// The panel's TWO-TIER gesture. A single click reveals — that is what a list selection already does — and a
-/// double-click or Enter ACTIVATES, taking the installer to where the fix is actually made.
+/// The panel's TWO-TIER gesture. A single click only SELECTS — reading down a findings list may not drag the
+/// trees along or open a window — and a double-click or Enter ACTIVATES, taking the installer to where the fix
+/// is actually made.
 ///
 /// <para>Enter parity is a requirement rather than a nicety: a keyboard user must reach the fix context by the
 /// same route a mouse user does. Both gestures therefore go through one entry point, and these tests assert on
@@ -37,9 +38,6 @@ public class ProblemsActivationGestureTests : AvaloniaTestBase
         /// <summary>Every plan an activation carried out, in order.</summary>
         public List<NavigationPlan> Activated { get; } = [];
 
-        /// <summary>Every id a reveal was asked for — the FIRST tier, which activation must not disturb.</summary>
-        public List<Ihc.Vis.Model.ElementId> Revealed { get; } = [];
-
         private Rig()
         {
             Harness = ShellHarness.Create(Clock);
@@ -52,13 +50,12 @@ public class ProblemsActivationGestureTests : AvaloniaTestBase
             Rig rig = new();
             await rig.Shell.InitializeAsync(ProblemsTestData.FixturePath("Project6-Errors.vis"));
 
-            // A panel whose activation and reveal are RECORDED — same session, same validation, same planner
-            // wiring; only the two delegates differ. It is then bound to the real list by retargeting that
-            // control's DataContext, which is exactly what the view's handlers read, so the gestures below
-            // exercise the shipped code path rather than a stand-in for it.
+            // A panel whose activation is RECORDED — same session, same validation, same planner wiring; only
+            // the one delegate differs. It is then bound to the real list by retargeting that control's
+            // DataContext, which is exactly what the view's handlers read, so the gestures below exercise the
+            // shipped code path rather than a stand-in for it.
             rig.Recording = new ProblemsPanelViewModel(
                 rig.Harness.Session, rig.Harness.Session.Validation,
-                reveal: id => { rig.Revealed.Add(id); return true; },
                 activate: plan => { rig.Activated.Add(plan); return Task.CompletedTask; });
 
             rig.Clock.Advance(ValidationWorker.DefaultDebounce);
@@ -110,18 +107,21 @@ public class ProblemsActivationGestureTests : AvaloniaTestBase
         }
     }
 
-    /// <summary>A real left double-click at the control's centre, through the headless input pipeline.</summary>
-    private static void DoubleClick(Window window, Avalonia.Visual target)
+    /// <summary>A real left click at the control's centre, through the headless input pipeline.</summary>
+    private static void Click(Window window, Avalonia.Visual target, int times = 1)
     {
         Avalonia.Point centre = target.TranslatePoint(
             new Avalonia.Point(target.Bounds.Width / 2, target.Bounds.Height / 2), window)!.Value;
-        for (int i = 0; i < 2; i++)
+        for (int i = 0; i < times; i++)
         {
             window.MouseDown(centre, MouseButton.Left);
             window.MouseUp(centre, MouseButton.Left);
         }
         Dispatcher.UIThread.RunJobs();
     }
+
+    /// <summary>A real left double-click, which is the same pipeline twice over.</summary>
+    private static void DoubleClick(Window window, Avalonia.Visual target) => Click(window, target, times: 2);
 
     [AvaloniaTest]
     public async Task EnterAndDoubleClickProduceTheIdenticalActivation()
@@ -150,18 +150,22 @@ public class ProblemsActivationGestureTests : AvaloniaTestBase
     }
 
     [AvaloniaTest]
-    public async Task ASingleClickStillOnlyReveals()
+    public async Task ASingleClickOnlySelects()
     {
         using Rig rig = await Rig.ShowingFindingsAsync();
+        TableViewRow container = rig.RealizedRow(r => r.NavigationKind is not NavigationKind.None);
+        object? treeBefore = rig.Shell.SelectedInstallationNode;
 
-        rig.Panel.SelectedRow = rig.Panel.Rows.First(r => r.Element is not null);
-        Dispatcher.UIThread.RunJobs();
+        Click(rig.Window, container);
 
         Assert.Multiple(() =>
         {
-            Assert.That(rig.Revealed, Is.Not.Empty, "selecting a row reveals its element, as it always did");
+            Assert.That(rig.Panel.SelectedRow, Is.SameAs(container.DataContext),
+                "the click DID reach the row — the gesture is not ignored, it is only not a journey");
             Assert.That(rig.Activated, Is.Empty,
-                "and it does NOT activate — the deep route is the second tier of the gesture, not the first");
+                "and nothing was activated — the route is the second tier of the gesture, not the first");
+            Assert.That(rig.Shell.SelectedInstallationNode, Is.SameAs(treeBefore),
+                "so no tree moved under the reader either");
         });
     }
 

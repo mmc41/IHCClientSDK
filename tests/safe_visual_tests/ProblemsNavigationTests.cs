@@ -15,7 +15,8 @@ using NUnit.Framework;
 namespace safe_visual_tests;
 
 /// <summary>
-/// One-click navigation from a finding to the element it is about.
+/// Navigation from a finding to the element it is about. The gesture is ACTIVATION — double-click or Enter —
+/// and never the selection: a single click down the list must leave every tree exactly where it was.
 ///
 /// <para><b>Every assertion here is PANE-SPECIFIC, and that is the lesson the mechanism was built on.</b> The
 /// shell has two tree panes, each with its own selected-node property, and <c>SelectNode</c> — the obvious-looking
@@ -48,13 +49,13 @@ public class ProblemsNavigationTests
     // ── Configuration-tree targets ──────────────────────────────────────────────────────────────────────────
 
     [Test]
-    public async Task ClickingARowSelectsItsElementInTheOwningPaneNotJustInTheViewModel()
+    public async Task ActivatingARowSelectsItsElementInTheOwningPaneNotJustInTheViewModel()
     {
         using ProblemsShellRig rig = new();
         await rig.Shell.InitializeAsync();
         ElementId locality = rig.Shell.InstallationNodes[0].Children[0].ElementId!.Value;
 
-        rig.Panel.SelectedRow = RowFor(rig, locality);
+        await rig.Panel.ActivateRowAsync(RowFor(rig, locality));
 
         Assert.Multiple(() =>
         {
@@ -75,31 +76,56 @@ public class ProblemsNavigationTests
         TreeNodeViewModel locality = root.Children[0];
         root.IsExpanded = false;
 
-        rig.Panel.SelectedRow = RowFor(rig, locality.ElementId!.Value);
+        await rig.Panel.ActivateRowAsync(RowFor(rig, locality.ElementId!.Value));
 
         Assert.That(root.IsExpanded, Is.True,
-            "a selection on a collapsed branch sticks to nothing — the ancestors have to be opened first");
+            "a reveal onto a collapsed branch sticks to nothing — the ancestors have to be opened first");
+    }
+
+    // ── Selection is not navigation ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The panel is a list to READ down. Arrowing or clicking through it must not drag the trees along, switch
+    /// editing mode under the reader, or open anything — those are what the second gesture is for.
+    /// </summary>
+    [Test]
+    public async Task SelectingARowMovesNothingBecauseTheDeepRouteIsTheSecondGesture()
+    {
+        using ProblemsShellRig rig = new();
+        await rig.Shell.InitializeAsync();
+        ElementId locality = rig.Shell.InstallationNodes[0].Children[0].ElementId!.Value;
+        TreeNodeViewModel? before = rig.Shell.SelectedInstallationNode;
+
+        rig.Panel.SelectedRow = RowFor(rig, locality);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rig.Shell.SelectedInstallationNode, Is.SameAs(before),
+                "a single click only selects the finding — the tree is left where the reader had it");
+            Assert.That(rig.Panel.SelectedRow?.Element, Is.EqualTo(locality),
+                "and the row IS selected: the gesture is not ignored, it is simply not a journey");
+        });
     }
 
     // ── Non-navigable rows ──────────────────────────────────────────────────────────────────────────────────
 
     [Test]
-    public async Task ARowWithNoElementChangesNothingWhenClicked()
+    public async Task ARowWithNoElementChangesNothingWhenActivated()
     {
         using ProblemsShellRig rig = new();
         await rig.Shell.InitializeAsync();
         ElementId locality = rig.Shell.InstallationNodes[0].Children[0].ElementId!.Value;
-        rig.Panel.SelectedRow = RowFor(rig, locality);
+        await rig.Panel.ActivateRowAsync(RowFor(rig, locality));
         TreeNodeViewModel? before = rig.Shell.SelectedInstallationNode;
 
-        rig.Panel.SelectedRow = RowFor(rig, null);
+        await rig.Panel.ActivateRowAsync(RowFor(rig, null));
 
         Assert.That(rig.Shell.SelectedInstallationNode, Is.SameAs(before),
             "a whole-project finding names no single site, so there is nowhere to go and the selection stays put");
     }
 
     [Test]
-    public async Task ANonNavigableRowSaysSoRatherThanLookingLikeADeadClick()
+    public async Task ANonNavigableRowSaysSoRatherThanLookingLikeADeadGesture()
     {
         using ProblemsShellRig rig = new();
         await rig.Shell.InitializeAsync();

@@ -35,8 +35,8 @@ public partial class ProblemsPanel : UserControl
     private ProblemsPanelViewModel? Panel => Rows?.DataContext as ProblemsPanelViewModel;
 
     /// <summary>
-    /// Double-click ACTIVATES the row — the deep route. Single click is left alone: it produces the selection,
-    /// and the selection already reveals.
+    /// Double-click ACTIVATES the row — the whole route. Single click is left alone: it produces the selection
+    /// and nothing else, so reading down the list never moves the trees or opens a window.
     /// </summary>
     private void OnRowsDoubleTapped(object? sender, TappedEventArgs e)
     {

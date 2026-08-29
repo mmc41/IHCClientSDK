@@ -4400,9 +4400,9 @@ function Invoke-Mechanism-ProblemsClick {
     # whose midpoint is outside the list, and the click would land on whatever is there instead.
     Show-ScrollableItem $target
 
-    # A POINTER click, not a selection call: the panel navigates from the selection a click produces, and
-    # setting the selection directly would reach the outcome by a path no user can take -- which would make
-    # the transcript evidence of something other than the gesture under test.
+    # A POINTER click, not a selection call: setting the selection directly would reach the outcome by a path
+    # no user can take -- which would make the transcript evidence of something other than the gesture under
+    # test.
     $rect = $target.Current.BoundingRectangle
     if ([double]::IsInfinity($rect.X) -or [double]::IsNaN($rect.X) -or $rect.Width -le 0) {
         return (New-Result -Ok $false -Code 'ControlNotFound' -Message 'The row has no clickable bounds.')
@@ -4410,8 +4410,9 @@ function Invoke-Mechanism-ProblemsClick {
     $x = [int]($rect.X + [Math]::Min(60, $rect.Width / 2))
     $y = [int]($rect.Y + $rect.Height / 2)
     # --double ACTIVATES the row, where a single click only selects it. The two gestures mean different things
-    # in this panel: selection reveals the element, activation takes the installer all the way to the fix. The
-    # second click follows immediately, inside the system double-click time.
+    # in this panel: a single click moves nothing but the panel's own selection, and activation is what reveals
+    # the element and carries on to the fix. The second click follows immediately, inside the system
+    # double-click time.
     $double = [bool](Get-OptValue $Opts @('double', 'double-click') -NamedOnly)
     [Aui.Win32]::Click($x, $y)
     if ($double) { [Aui.Win32]::Click($x, $y) }
