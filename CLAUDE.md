@@ -123,12 +123,15 @@ Guidence for refactoring duplicated code:
 - Extract module/utility — when the duplicate spans multiple files in different domains
 - Extract constant or config — when the duplicate is repeated data or configuration.
 - Template/base class — when the duplicate is structural (e.g., repeated class shape).
+- Clones across unrelated modules may signal a missing shared utility
+- A clone between test files may indicate a missing test helper
+- Start with clones that have the highest line count — they have the most impact
 
 When refactoring always ensure:
 
 - All call sites are updated, not just the two reported by jscpd
 - Tests still pass after refactoring
-- Thee extracted abstraction has a clear, descriptive name
+- The extracted abstraction has a clear, descriptive name
   
 ## Development Tools
 

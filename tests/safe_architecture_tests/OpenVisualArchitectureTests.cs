@@ -193,6 +193,39 @@ namespace Ihc.Tests
                 + string.Join(", ", outsideTheScannedRoot));
         }
 
+        /// <summary>
+        /// The coverage collector's STATIC instrumentation rewrites the assembly under test and injects its tracker
+        /// into it. Whether it appears at all depends on which instrumentation mode the collector picks for the
+        /// platform, so the scan above has to tolerate it by rule rather than by having happened to see it — this
+        /// pins the injected names against <see cref="IsGeneratedBuildOutputName"/> on every platform, including one
+        /// whose own runs never produce them. Each name is asserted twice, bare and with a suffix appended, because
+        /// the collector appends a per-build one to the leaf: the exclusion may not depend on what that suffix is.
+        /// </summary>
+        [Test]
+        public void GuiScanScope_ToleratesTheCoverageInstrumentationTracker() =>
+            Assert.Multiple(() =>
+            {
+                foreach (string injected in InjectedCoverageTrackerNames)
+                {
+                    Assert.That(IsGeneratedBuildOutputName(injected), Is.True,
+                        $"'{injected}' is injected by the coverage collector, is not authored GUI code, and cannot be moved under the GUI root");
+                    Assert.That(IsGeneratedBuildOutputName(injected + "0000-any-per-build-suffix"), Is.True,
+                        $"'{injected}' must stay excluded whatever per-build suffix the collector appends to it");
+                }
+            });
+
+        // The types the coverage collector's static instrumentation injects, measured by instrumenting this app's
+        // assembly by hand (`dotnet dotnet-coverage instrument`) and diffing its metadata against the original —
+        // that delta is these two types, their static members, and a netstandard reference. Written without the
+        // per-build suffix the collector appends to the leaf: a recorded suffix would read as if it identified the
+        // type, and the next build's would differ. Spelled out rather than composed from the excluded root, so a
+        // wrong root constant fails this test instead of being confirmed by it.
+        private static readonly IReadOnlyCollection<string> InjectedCoverageTrackerNames =
+        [
+            "Microsoft.CodeCoverage.Instrumentation.Static.Tracker.StaticManagedTrackerTemplate_",
+            "Microsoft.CodeCoverage.Instrumentation.Static.Tracker.PipeHelper_",
+        ];
+
         // Build output that lands in the GUI assembly without being authored GUI code, and so is not bound by the
         // boundary rules: source-generator emissions marked [GeneratedCode] (CommunityToolkit.Mvvm parks its
         // property-name caches in its OWN root, CommunityToolkit.Mvvm.ComponentModel.__Internals), and the Avalonia
@@ -205,12 +238,25 @@ namespace Ihc.Tests
         // Debug build (the plugin removes itself from Release entirely, so this fixture's own Release run never
         // sees them), are authored by nobody here, and cannot be moved under the GUI root. They are named exactly
         // rather than excluded by a broad rule: an unexpected injected type should still fail this scan.
+        //
+        // The fourth is also IL rewriting: the coverage collector's STATIC instrumentation — which it picks on
+        // some platforms and not others, so this scan sees it on a macOS run and not on a Windows one — injects a
+        // tracker under its own root. That one is matched by root because its leaf name carries a per-build GUID.
         private static bool IsGeneratedBuildOutput(Type type) =>
             type.IsDefined(typeof(GeneratedCodeAttribute), inherit: false)
-            || (type.FullName is { } name
-                && (name.StartsWith("CompiledAvaloniaXaml", StringComparison.Ordinal)
-                    || name.Contains('!', StringComparison.Ordinal)
-                    || WeavedInTypeNames.Contains(name)));
+            || (type.FullName is { } name && IsGeneratedBuildOutputName(name));
+
+        // The name-only half of the rule, split out so the injected names it must tolerate can be pinned by a test on
+        // a platform whose own runs never produce them.
+        private static bool IsGeneratedBuildOutputName(string name) =>
+            name.StartsWith("CompiledAvaloniaXaml", StringComparison.Ordinal)
+            || name.Contains('!', StringComparison.Ordinal)
+            || name.StartsWith(CoverageInstrumentationRoot, StringComparison.Ordinal)
+            || WeavedInTypeNames.Contains(name);
+
+        // Injected by the coverage collector's static instrumentation; the leaf name carries a per-build GUID, so the
+        // root is matched rather than the name. See GuiScanScope_ToleratesTheCoverageInstrumentationTracker.
+        private const string CoverageInstrumentationRoot = "Microsoft.CodeCoverage.Instrumentation.";
 
         // Injected by the Debug-only HotAvalonia weaver; see IsGeneratedBuildOutput.
         private static readonly IReadOnlyCollection<string> WeavedInTypeNames = new HashSet<string>(StringComparer.Ordinal)
