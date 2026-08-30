@@ -63,8 +63,11 @@ There is no NuGet package yet, so clone the repository and reference the `ihccli
 ```bash
 git clone https://github.com/mmc41/IHCClientSDK.git
 cd IHCClientSDK
+dotnet tool restore
 dotnet build IHCClientSDK.sln
 ```
+
+`dotnet tool restore` installs the local tool that merges the code coverage the test suites collect. Skipping it leaves the tests themselves working — only the merged coverage report is missing.
 
 Before running any tests, tools or examples in this repo, create a private `ihcsettings.json` file in the repository root with information on your IHC installation (see [Configuration](#configuration) below). The file is needed by the tests/tools/examples located here, but NOT in your own projects if you only consume this SDK.
 

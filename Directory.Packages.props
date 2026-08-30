@@ -77,7 +77,6 @@
 
   <ItemGroup Label="Test">
     <PackageVersion Include="CompareNETObjects" Version="4.84.0" />
-    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="CsCheck" Version="4.7.0" />
     <PackageVersion Include="FakeItEasy" Version="9.0.1" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.0.0" />

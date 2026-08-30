@@ -14,7 +14,6 @@
     <PackageReference Include="NUnit3TestAdapter" />
     <PackageReference Include="NUnit.Analyzers" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="coverlet.collector" />
     <!-- Reads IL to enforce the SDK's directional layering rules that prose comments cannot.
          .NUnit adds the Check() adapter that turns a violated rule into a failing NUnit assertion. -->
     <PackageReference Include="TngTech.ArchUnitNET" />

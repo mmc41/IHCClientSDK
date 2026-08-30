@@ -51,6 +51,12 @@ jobs:
     - name: Install dependencies
       run: dotnet restore
 
+    - name: Restore local tools
+      # dotnet-coverage, which merges the per-suite coverage slices into one report. It is a local
+      # tool, so without this the merge step after each suite warns and produces nothing — the tests
+      # themselves still run and still gate the build.
+      run: dotnet tool restore
+
     - name: Build
       run: dotnet build --no-restore
 
@@ -64,27 +70,32 @@ jobs:
     #   --blame-crash       an exception escaping a POOL thread kills the host before NUnit can report
     #                       anything; blame's sequence file still names the test that was running.
     # The results are uploaded by the step at the end of the job, which runs even when a suite fails.
+    #
+    # None of these steps names a results directory. Directory.Build.targets gives each suite its own
+    # one under artifacts/coverage/raw/<suite>/, so the TRX, the blame files and that suite's coverage
+    # slice land together — and naming one here would override that and collapse all five suites into
+    # a shared directory, leaving the merged coverage report describing whichever ran last.
 
     - name: Test (controller-free unit tests)
-      run: dotnet test tests/safe_unit_tests/safe_unit_tests.csproj --no-build --logger "trx;LogFileName=safe_unit_tests.trx" --results-directory TestResults --blame-hang --blame-hang-timeout 120s --blame-crash
+      run: dotnet test tests/safe_unit_tests/safe_unit_tests.csproj --no-build --logger "trx;LogFileName=safe_unit_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash
 
     - name: Test (architecture / dependency rules)
       # ArchUnitNET reads IL to enforce the SDK's directional layering rules; controller-free and
       # render-free, so it runs on all three OSes like the unit and project-engine suites.
-      run: dotnet test tests/safe_architecture_tests/safe_architecture_tests.csproj --no-build --logger "trx;LogFileName=safe_architecture_tests.trx" --results-directory TestResults --blame-hang --blame-hang-timeout 120s --blame-crash
+      run: dotnet test tests/safe_architecture_tests/safe_architecture_tests.csproj --no-build --logger "trx;LogFileName=safe_architecture_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash
 
     - name: Test (project engine byte-fidelity)
       # Controller-free .vis project engine + ProjectAppService byte-fidelity corpus (the
       # hard-constraint gate). Needs no native render/font deps (unlike the Avalonia suites),
       # so it runs on all three OSes like the unit tests.
-      run: dotnet test tests/safe_project_tests/safe_project_tests.csproj --no-build --logger "trx;LogFileName=safe_project_tests.trx" --results-directory TestResults --blame-hang --blame-hang-timeout 120s --blame-crash
+      run: dotnet test tests/safe_project_tests/safe_project_tests.csproj --no-build --logger "trx;LogFileName=safe_project_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash
 
     - name: Test (headless Lab UI tests)
       # Avalonia + Skia headless rendering is validated on the Windows runner (the primary
       # development environment). Scope here rather than risk missing native render/font deps
       # on the Linux/macOS runners. safe_lab_tests is [NonParallelizable] and uses mock:// services.
       if: matrix.os == 'windows-latest'
-      run: dotnet test tests/safe_lab_tests/safe_lab_tests.csproj --no-build --logger "trx;LogFileName=safe_lab_tests.trx" --results-directory TestResults --blame-hang --blame-hang-timeout 120s --blame-crash
+      run: dotnet test tests/safe_lab_tests/safe_lab_tests.csproj --no-build --logger "trx;LogFileName=safe_lab_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash
 
     - name: Test (headless Visual UI tests)
       # ihc_openvisual is a CROSS-PLATFORM desktop app, so its GUI suite runs on the Linux runner too — that
@@ -92,15 +103,30 @@ jobs:
       # resolved from the platform instead of the embedded one, a path or accelerator assumption). macOS stays
       # out: no runner-specific need has surfaced, and the two legs already cover both native backends.
       if: matrix.os != 'macOS-latest'
-      run: dotnet test tests/safe_visual_tests/safe_visual_tests.csproj --no-build --logger "trx;LogFileName=safe_visual_tests.trx" --results-directory TestResults --blame-hang --blame-hang-timeout 120s --blame-crash
+      run: dotnet test tests/safe_visual_tests/safe_visual_tests.csproj --no-build --logger "trx;LogFileName=safe_visual_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash
 
     - name: Upload test results
       # always(), because the run that most needs its artifact is the one that just failed — and a green
       # run's TRX is what a later flake gets compared against.
+      # The raw .coverage slices are excluded: they are large binaries that say nothing about a failure,
+      # and the readable form of the same data is uploaded by the next step.
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: test-results-${{ matrix.os }}
-        path: TestResults/
+        path: |
+          artifacts/coverage/raw/**
+          !artifacts/coverage/raw/**/*.coverage
+        if-no-files-found: ignore
+        retention-days: 14
+
+    - name: Upload coverage report
+      # Only the Windows leg runs all five suites, so it is the only one whose merged number describes
+      # the whole repository; the other legs would upload a report with suites missing from it.
+      if: always() && matrix.os == 'windows-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: artifacts/coverage/report/
         if-no-files-found: ignore
         retention-days: 14

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+
+  <!--
+    The single place coverage scope is declared.
+
+    Directory.Build.targets points every test project at this file, so `dotnet test <suite>` collects
+    coverage with no extra flag. Opt a run out with `-p:CollectCoverage=false`; passing an empty settings
+    file does NOT work, because the `dotnet test` CLI fails on it before this file is ever read.
+
+    The collector is Microsoft's, and it ships inside Microsoft.NET.Test.Sdk — which every test project
+    already references. That is why no suite carries a coverage package reference, and why a suite added
+    later is measured without having to remember to opt in.
+  -->
+
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="Code Coverage" uri="datacollector://Microsoft/CodeCoverage/2.0">
+        <Configuration>
+          <CodeCoverage>
+
+            <ModulePaths>
+              <!--
+                Only assemblies a suite is actually responsible for. The list is the honest denominator:
+                a gap in it means a missing test rather than a design choice, so the console utilities and
+                examples — which have no tests by design — are left out instead of permanently diluting the
+                number. Adding one is a one-line edit here, at the moment someone writes tests for it.
+              -->
+              <Include>
+                <ModulePath>.*\bihcclient\.dll$</ModulePath>
+                <ModulePath>.*\bihc_openvisual\.dll$</ModulePath>
+                <ModulePath>.*\bihc_appbootstrap\.dll$</ModulePath>
+                <ModulePath>.*\bihc_telemetrybootstrap\.dll$</ModulePath>
+                <ModulePath>.*\bihc_lab\.dll$</ModulePath>
+              </Include>
+              <!--
+                Redundant against the include list above, and kept anyway: that list is hand-edited as
+                assemblies are added, and a slip which widens it must not start measuring the test host
+                or the suites themselves.
+              -->
+              <Exclude>
+                <ModulePath>.*tests\.dll$</ModulePath>
+                <ModulePath>.*testhost.*\.dll$</ModulePath>
+              </Exclude>
+            </ModulePaths>
+
+            <Sources>
+              <Exclude>
+                <!--
+                  The generated SOAP layer. It is dotnet-svcutil output compiled into ihcclient.dll, so it
+                  cannot be excluded by module path — it is the same assembly. Its contracts are exercised
+                  through the controller-backed suite, which is not part of the gate set, so leaving it in
+                  would cap the SDK's reported figure for a reason unrelated to the SDK's tests.
+
+                  The attribute rule below already reaches every one of these types. This path rule is a
+                  deliberate duplicate, not an oversight: it states where a reader looks that the layer is
+                  unmeasured, and it fails safe if a future regeneration changes or drops the attribute.
+                  Do not "simplify" either one away.
+                -->
+                <Source>.*[\\/]generatedsrc[\\/].*</Source>
+                <!-- Compiler output, not authored code: XAML codegen and designer files. -->
+                <Source>.*\.g\.cs$</Source>
+                <Source>.*\.g\.i\.cs$</Source>
+                <Source>.*\.Designer\.cs$</Source>
+              </Exclude>
+            </Sources>
+
+            <Attributes>
+              <Exclude>
+                <Attribute>^System\.Diagnostics\.CodeAnalysis\.ExcludeFromCodeCoverageAttribute$</Attribute>
+                <!-- Generic counterpart to the generatedsrc source rule above; see the WHY there. -->
+                <Attribute>^System\.CodeDom\.Compiler\.GeneratedCodeAttribute$</Attribute>
+              </Exclude>
+            </Attributes>
+
+            <!--
+              The visual suite drives the real OpenVisual process out of the test host, through pwsh and the
+              aui driver. Without this that whole E2E path contributes nothing at all.
+
+              If an instrumented child outlives its test it extends the window in which a running
+              ihc_openvisual.exe holds its bin DLLs locked, which shows up as a build that cannot overwrite
+              them. Setting this False is the escape hatch, at the cost of the E2E path's coverage.
+            -->
+            <CollectFromChildProcesses>True</CollectFromChildProcesses>
+            <UseVerifiableInstrumentation>True</UseVerifiableInstrumentation>
+
+            <!--
+              Deliberately absent: ResultsDirectory, so each suite can be pointed at its own slice from
+              Directory.Build.targets and parallel suites do not overwrite one another; and
+              TestSessionTimeout, because instrumentation makes runs slower and a cap the repo does not
+              have today is the setting most likely to turn a green suite red for an unrelated reason.
+            -->
+
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+
+</RunSettings>

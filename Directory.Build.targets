@@ -19,4 +19,103 @@
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
   </ItemGroup>
 
+  <!--
+    Code coverage, on by default for every test project.
+
+    This lives in .targets rather than .props because it depends on IsTestProject, which is set by
+    Microsoft.NET.Test.Sdk's own props — Directory.Build.props is evaluated before those and could not
+    read it. Both properties below are consumed by the VSTest task rather than at evaluation time, so
+    setting them this late is still in time. Non-test projects are left untouched.
+
+    Each suite writes its own slice. The repo's CI issues a separate `dotnet test` per suite, so a single
+    shared results directory would leave the merged report describing only whichever suite ran last.
+    The cost of per-suite slices is stated in the summary the merge prints: running one suite refreshes
+    one slice and leaves the others as they were, so a repo-wide roll-up can carry stale slices. The
+    per-suite figure is always current.
+
+    Opt out of instrumentation for a run with `-p:CollectCoverage=false`. That property exists because
+    the obvious alternative does not work: passing an empty settings file makes the `dotnet test` CLI
+    itself fail with "The path is empty", before any of this is consulted. Naming a *different* settings
+    file does work — the SDK prefers an explicit one over RunSettingsFilePath.
+  -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true' AND '$(CollectCoverage)' != 'false'">
+    <RunSettingsFilePath Condition="'$(RunSettingsFilePath)' == ''">$(MSBuildThisFileDirectory).runsettings</RunSettingsFilePath>
+    <CoverageRawDirectory>$(MSBuildThisFileDirectory)artifacts/coverage/raw/$(MSBuildProjectName)</CoverageRawDirectory>
+    <CoverageReportDirectory>$(MSBuildThisFileDirectory)artifacts/coverage/report</CoverageReportDirectory>
+    <VSTestResultsDirectory Condition="'$(VSTestResultsDirectory)' == ''">$(CoverageRawDirectory)</VSTestResultsDirectory>
+  </PropertyGroup>
+
+  <!--
+    Drop only THIS suite's slice. The reference implementation this was modelled on wipes the whole
+    results tree before every run, which is correct for a repo that runs `dotnet test` once — here it
+    would leave the merged report describing a single suite.
+  -->
+  <Target Name="CleanCoverageSlice"
+          BeforeTargets="VSTest"
+          Condition="'$(IsTestProject)' == 'true' AND '$(CollectCoverage)' != 'false'">
+    <RemoveDir Directories="$(CoverageRawDirectory)" ContinueOnError="true" />
+  </Target>
+
+  <!--
+    Fold every slice present into one report. Runs after each suite because the merged file is valid
+    after any of them, and no single suite is reliably last: CI gates suites per OS, so the lab and
+    visual suites do not run everywhere.
+
+    Nothing here may redden a green test run (coverage is a report, not a gate), hence ContinueOnError
+    throughout — a missing tool or an empty results directory warns and leaves the verdict alone.
+
+    The tool is invoked as `dotnet dotnet-coverage`, never bare: it is a LOCAL tool, and a bare call
+    resolves only if it also happens to be installed globally, which a fresh clone will not have.
+  -->
+  <Target Name="MergeCoverageReport"
+          AfterTargets="VSTest"
+          Condition="'$(IsTestProject)' == 'true' AND '$(CollectCoverage)' != 'false'">
+
+    <ItemGroup>
+      <!--
+        Blame stages a byte-identical second copy of each attachment under In/<machine>/. Merging is a
+        union so the percentage is unaffected either way, but merging the same bytes twice is waste.
+        The exclusion names only that known staging path, so an unfamiliar layout still gets picked up
+        by the wildcard rather than silently dropped.
+      -->
+      <CoverageSliceFile Include="$(MSBuildThisFileDirectory)artifacts/coverage/raw/**/*.coverage"
+                         Exclude="$(MSBuildThisFileDirectory)artifacts/coverage/raw/**/In/**/*.coverage" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <CoverageSliceArguments>@(CoverageSliceFile->'&quot;%(FullPath)&quot;', ' ')</CoverageSliceArguments>
+    </PropertyGroup>
+
+    <MakeDir Directories="$(CoverageReportDirectory)"
+             Condition="'@(CoverageSliceFile)' != ''" ContinueOnError="true" />
+
+    <Exec Condition="'@(CoverageSliceFile)' != ''"
+          WorkingDirectory="$(MSBuildThisFileDirectory)"
+          Command="dotnet dotnet-coverage merge $(CoverageSliceArguments) -o &quot;artifacts/coverage/report/merged.coverage&quot; --nologo"
+          ContinueOnError="true" StandardOutputImportance="low" />
+
+    <Exec Condition="'@(CoverageSliceFile)' != ''"
+          WorkingDirectory="$(MSBuildThisFileDirectory)"
+          Command="dotnet dotnet-coverage merge &quot;artifacts/coverage/report/merged.coverage&quot; -o &quot;artifacts/coverage/report/coverage.xml&quot; -f xml --nologo"
+          ContinueOnError="true" StandardOutputImportance="low" />
+
+    <CallTarget Targets="DisplayCoverageSummary" ContinueOnError="true"
+                Condition="'@(CoverageSliceFile)' != ''" />
+  </Target>
+
+  <!--
+    One line on the console, after the merge. Deliberately not gated on a project name: with suites
+    gated per OS there is no project that is reliably last, so every run prints the current roll-up.
+    Re-emitted through Message so it survives at the minimal verbosity CI runs at.
+  -->
+  <Target Name="DisplayCoverageSummary"
+          Condition="'$(IsTestProject)' == 'true' AND '$(CollectCoverage)' != 'false'">
+    <Exec WorkingDirectory="$(MSBuildThisFileDirectory)"
+          Command="dotnet run .build/coverage-summary.cs -- &quot;artifacts/coverage/report/coverage.xml&quot; &quot;artifacts/coverage/raw&quot; &quot;artifacts/coverage/report/Summary.txt&quot;"
+          ContinueOnError="true" ConsoleToMSBuild="true" StandardOutputImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="CoverageSummaryOutput" />
+    </Exec>
+    <Message Importance="high" Text="$(CoverageSummaryOutput)" Condition="'$(CoverageSummaryOutput)' != ''" />
+  </Target>
+
 </Project>
