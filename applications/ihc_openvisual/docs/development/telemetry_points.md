@@ -11,7 +11,9 @@ this analysis must not violate is in [`ARCHITECTURE.md`](../../../../ARCHITECTUR
 
 Symbols are named rather than line-numbered, because line numbers drift and member names do not.
 
-This is an **analysis and proposal**. Nothing in it has been implemented; §7 is the sequencing if it is adopted.
+This was an **analysis and proposal**, and §1–§9 are kept as the record of what the analysis found. It has
+since been **implemented**; §10 records the outcome, including the two places where what was built differs
+from what §2 proposed. Read §10 before treating a symbol in §1 or §2 as current — several moved.
 
 ---
 
@@ -247,6 +249,26 @@ exponential** — `Base2ExponentialBucketHistogramConfiguration` (present in the
 the right default precisely because these operations span at least four orders of magnitude and their real
 ranges have never been measured. A row moves to `ExplicitBucketHistogramConfiguration` only once a *declared*
 threshold exists to align to — not before, because inventing boundaries is inventing an SLO.
+
+> **DEVIATION, on the acceptance spike's evidence: the implementation uses EXPLICIT boundaries, not
+> exponential.** The rule above is sound about the instrument and wrong about this backend. Measured against
+> the configured OpenObserve: an exponential histogram is *ingested* and its `_sum` and `_count` are exact,
+> but its `_bucket` rows carry a bucket **index** in the boundary column — observed range −47…63 for values
+> spanning 0.004–44 s — and **no scale or base is exported anywhere on the row**, so the indices cannot be
+> converted back to seconds by any query. The distribution is therefore unreconstructable, and percentiles
+> and heatmaps are underivable. It also amplified rows about tenfold: 8 measurements produced 108 bucket rows
+> against 11 for the explicit form.
+>
+> The boundaries in force are the fallback S4.5 pre-declared, in seconds:
+> `0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30`. They are applied at the composition root by one view
+> matching `*.duration` across both meters, so a histogram added later inherits them rather than silently
+> inheriting the unitless default this section warns about. The naming convention is what makes that
+> wildcard exact.
+>
+> This does not retract the reasoning above — inventing boundaries *is* inventing an SLO, and these are
+> invented. It records that the alternative is unqueryable here, which is a worse failure than an imprecise
+> bucket edge: an imprecise boundary gives a wrong number, an unreadable one gives none at all. Revisit if
+> the collector ever exports the scale alongside the index.
 
 Exponential also protects comparisons. Explicit-bucket histograms merge only across **identical** boundary
 sets, so re-tuning boundaries between a baseline and a candidate run invalidates the comparison without
@@ -689,26 +711,28 @@ indistinguishable from a bulk insert of the same size.
 
 | Instrument | Kind | Unit | Dimensions | Boundaries | Series bound |
 |---|---|---|---|---|---|
-| `ihc.project.load.duration` | Histogram | s | `ihc.project.source`, `error.type` | exponential | sources × normalized error types (§5.4) |
-| `ihc.project.save.duration` | Histogram | s | `ihc.project.source`, `error.type` | exponential | same, small |
+| `ihc.project.load.duration` | Histogram | s | `ihc.project.source`, `error.type` | explicit (s) | sources × normalized error types (§5.4) |
+| `ihc.project.save.duration` | Histogram | s | `ihc.project.source`, `error.type` | explicit (s) | same, small |
 | `ihc.edit.apply` | Counter | `{edit}` | `ihc.edit.command`, `ihc.edit.status` | — | commands × 4 |
-| `ihc.edit.apply.duration` | Histogram | s | `ihc.edit.status` | exponential | 4 |
-| `ihc.validation.run.duration` | Histogram | s | `ihc.validation.outcome` | exponential | 4 |
+| `ihc.edit.apply.duration` | Histogram | s | `ihc.edit.status` | explicit (s) | 4 |
+| `ihc.validation.run.duration` | Histogram | s | `ihc.validation.outcome` | explicit (s) | 4 |
 | `ihc.command.invocation` | Counter | `{invocation}` | `ihc.command.id` | — | registered rows. **No error dimension** — the registry cannot observe a failure (§2 (5)) |
-| `ihc.ui.tree_update.duration` | Histogram | s | `ihc.tree.update` | exponential | 2 |
-| `ihc.ui.context_rebuild.duration` | Histogram | s | — | exponential | 1 |
+| `ihc.ui.tree_update.duration` | Histogram | s | `ihc.tree.update` | explicit (s) | 2 |
+| `ihc.ui.context_rebuild.duration` | Histogram | s | — | explicit (s) | 1 |
 | `ihc.problem.raised` | Counter | `{problem}` | `ihc.problem.code`, `ihc.problem.family` | — | catalogue size |
 | `ihc.edit.analysis.miss` | Counter | `{analysis}` | — | — | 1 |
 
 The **Boundaries** column exists so that adding a histogram to this registry forces the decision rather than
-inheriting the default that §2 Tier 0 shows to be wrong here. Every entry currently reads `exponential` for one
-reason — no operation in this table has a measured range or a declared threshold yet. The column earns its keep
-the first time one of them does and the row diverges.
+inheriting the default that §2 Tier 0 shows to be wrong here. Every entry reads `explicit (s)` for one reason,
+and it is not that any of these operations has a measured range or a declared threshold — none has. It is that
+the exponential alternative proved unqueryable against this backend; see the deviation note in §2. The column
+earns its keep the first time an operation *does* acquire a threshold and its row diverges from the shared set.
 
 **Series bound counts attribute combinations only.** A histogram's stored series is that number multiplied by
-its bucket count — 160 for the exponential default `max_size`, against 15 for the default explicit set. So
-`ihc.project.load.duration`, the widest row here, is the one to re-check if metric volume ever becomes a
-concern; the counters are unaffected.
+its bucket count — 11 for the shared explicit set (ten boundaries plus the overflow bucket), against 160 for
+the exponential default `max_size` that was rejected. So the explicit choice is roughly a fifteenfold
+reduction in stored series as well as the only queryable one. `ihc.project.load.duration`, the widest row
+here, is still the one to re-check if metric volume ever becomes a concern; the counters are unaffected.
 
 `ihc.edit.analysis.miss` is named for what it measures: `EditAnalysisCache` (`ihcclient/src/vis/editing/`), the
 per-edit open-analysis cache whose `FullAnalysisCount` already counts misses for a test. It is unrelated to the
@@ -986,3 +1010,94 @@ If only five things are done, these five, in this order:
 establishes that it covers registered shell rows only — not catalog inserts, program authoring or the Problemer
 panel — and that it can supply neither a surface nor a failure. It is a good span; it is not "every user
 gesture", and the counter must be named so nobody reads it that way.
+
+---
+
+## 10. Outcome — what was built, and where it differs from §2
+
+§1–§9 are the analysis as it stood before implementation and are left unchanged. This section is the record of
+what shipped. **Where a symbol here disagrees with one above, this section is the current one.**
+
+### 10.1 The composition root moved
+
+`SetupTelemetryAndLogging` is no longer on `AppTelemetryBootstrap`. It is
+`Ihc.Bootstrap.TelemetryBootstrap.SetupTelemetryAndLogging` in
+[`shared/ihc_telemetrybootstrap/`](../../../../shared/ihc_telemetrybootstrap/TelemetryBootstrap.cs), a
+toolkit-neutral project. `AppTelemetryBootstrap` still exists in
+[`shared/ihc_appbootstrap/`](../../../../shared/ihc_appbootstrap/AppTelemetryBootstrap.cs) and keeps only what
+needs Avalonia: `ChainedILoggerSink`, `LogToSink`, the dispatcher exception handler and the two level maps.
+
+The split was made because the three CLI utilities each carried their own `TracerProvider` rather than reuse a
+bootstrap they could not reference without dragging in a UI toolkit. They now reference the neutral half. So
+every mention of `AppTelemetryBootstrap` in §1, §2 and §6 should be read as `TelemetryBootstrap` except for the
+four Avalonia members named above.
+
+### 10.2 Tier 0 — all five parts, and the acceptance outcome behind them
+
+| Part | Built as | Where |
+|---|---|---|
+| a | `TelemetryConfiguration.Metrics` (empty ⇒ metrics disabled, mirroring `Traces`/`Logs`) | [`ihcclient/src/config/Telemetry.cs`](../../../../ihcclient/src/config/Telemetry.cs) |
+| b | `AddMeter` for both scopes + OTLP through `ConfigureOtlp` | `TelemetryBootstrap.SetupTelemetryAndLogging` |
+| c | The key documented in both shipped templates | [`ihcsettings_template.json`](../../../../ihcsettings_template.json), [`ihcsettings_example.json`](../../../../ihcsettings_example.json) |
+| d | `Metrikker:` beside `Log:` / `Spor:` / `Selvtjek:` | `MainWindowViewModel.BuildSettingsText` |
+| e | Bucket boundaries — see 10.3, which is where the deviation is | `TelemetryBootstrap.ConfigureDurationHistogramViews` |
+
+**Temporality is Delta, set explicitly.** The OTLP exporter defaults to Cumulative, under which every export
+interval re-states the running total as a new row, so any `SUM(value)` over a window double-counts. This was
+measured against the collector rather than assumed, and `MetricReaderTemporalityPreference.Delta` is set on the
+reader options.
+
+### 10.3 The bucket-boundary deviation — a wildcard view, and explicit rather than exponential
+
+§2 proposed **an `AddView` per duration histogram**. What shipped is **one view matching `*.duration`**. Two
+reasons, and both are constraints rather than preferences:
+
+- The bootstrap **cannot see either registry**. `SdkTelemetryRegistry` and `AppTelemetryRegistry` are `internal`
+  to their own assemblies, and one of those assemblies references the bootstrap — so naming instruments
+  individually here is not possible without inverting a dependency.
+- A per-instrument list is a list someone must remember to extend. The convention that a duration histogram's
+  name ends in `.duration` makes the wildcard exact, and a histogram added later inherits the boundaries
+  instead of silently inheriting the wrong default — which is the failure mode §2 called "the part most easily
+  skipped, and the one that fails quietly".
+
+The boundaries are `0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30`, in **seconds**.
+
+**Base2 exponential buckets were measured and rejected.** The acceptance spike exported the same measurements
+as both an exponential and an explicit histogram. The collector ingests the exponential form, but stores a
+bucket **index** in its boundary column with no scale exported anywhere, so the distribution cannot be
+reconstructed by any query — and it produced roughly ten times the rows for the same measurements. Explicit
+boundaries are therefore not a fallback here; they are the only queryable option against this backend.
+
+### 10.4 The instrumentation core — the one seam that mints spans and instruments
+
+Not in §2 at all, because §2 was about *where* to enrich rather than *how*. The concerns every instrumented
+operation shares — span naming, duration, outcome on both signals, a normalized `error.type`, and the guarantee
+that a fault in the instrumentation never fails the operation — live once, in
+[`ihcclient/src/config/OperationTelemetry.cs`](../../../../ihcclient/src/config/OperationTelemetry.cs).
+Instruments are declared by exactly one registry per layer: `SdkTelemetryRegistry` for the SDK and
+`ihc_openvisual.Configuration.AppTelemetryRegistry` for the host.
+
+This is enforced rather than documented: `TelemetryCoreArchitectureTests` fails the build if any SDK or GUI type
+starts a span from a raw `ActivitySource`, constructs a second `Meter`, or declares an instrument outside a
+registry. See [`ARCHITECTURE.md`](../../../../ARCHITECTURE.md) § *Observability without imposing a stack*.
+
+### 10.5 The metric-to-trace join — asked for explicitly, because the SDK's default is not the spec's
+
+The Tier-0 list in §2 says "exemplar filter (default `trace_based`)". That parenthetical is wrong, and it is
+the kind of wrong that ships silently: `trace_based` is the **specification's** default, not the .NET SDK's.
+`MeterProviderBuilderSdk.ExemplarFilter` is a nullable that stays unset until something sets it, and an unset
+filter attaches no exemplars at all. Measured twice — the built provider's field read back `null`, and metric
+rows exported by the running app carried no `exemplars` field.
+
+`TelemetryBootstrap.SetupTelemetryAndLogging` therefore calls
+`SetExemplarFilter(ExemplarFilterType.TraceBased)` explicitly. This is what makes the core's
+record-before-dispose ordering pay: instruments are recorded while the activity is still live precisely so each
+point is exemplar-eligible, and without the filter that cost is paid at every measurement for nothing.
+
+Verified end to end: a point on `ihc.edit.apply` carries
+`{trace_id, span_id, value, _timestamp}`, and following that pair reaches exactly the
+`ProjectDocumentSession.Apply` span that produced it. The duration histogram carries them too.
+
+A regression here is silent — no test fails, no error is logged, the metric simply loses its link to the
+trace — so `TelemetryCompositionTests.TheMeterProvider_AttachesExemplarsSoAMetricPointCanBeTracedBack` reads
+the filter back off the built provider and fails if the call is removed.

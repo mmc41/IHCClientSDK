@@ -30,11 +30,23 @@ namespace Ihc.Vis.Session
         /// First-wins on a duplicate id, matching the first-match order of <see cref="Project.FindById"/>.</summary>
         public static ProjectIndex Build(Project project)
         {
-            var byId = new Dictionary<ElementId, ProjectElement>();
-            var parentById = new Dictionary<ElementId, ProjectElement>();
-            Walk(project.Root, byId, parentById);
-            return new ProjectIndex(byId.ToFrozenDictionary(), parentById.ToFrozenDictionary());
+            // Rebuilt per commit, so its cost scales with the project and is paid on every edit. The element
+            // count is what makes a slow index explicable rather than merely slow. Through the core, because
+            // a fault in a walk nobody expects to throw is exactly the one whose silent success is never
+            // noticed - and every later lookup depends on this index having been built.
+            return Telemetry.Run(nameof(Build), scope =>
+            {
+                var byId = new Dictionary<ElementId, ProjectElement>();
+                var parentById = new Dictionary<ElementId, ProjectElement>();
+                Walk(project.Root, byId, parentById);
+                scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.ProjectElementCount, byId.Count);
+                return new ProjectIndex(byId.ToFrozenDictionary(), parentById.ToFrozenDictionary());
+            });
         }
+
+        /// <summary>This index's entry point into the instrumentation core.</summary>
+        private static readonly OperationTelemetry Telemetry =
+            new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(ProjectIndex));
 
         private static void Walk(
             ProjectElement element,

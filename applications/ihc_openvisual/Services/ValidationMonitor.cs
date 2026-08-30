@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Validation;
@@ -54,13 +55,20 @@ public sealed class ValidationMonitor : IDisposable
     /// The whole-project run. Injected rather than reached through <paramref name="session"/> so a test can drive
     /// every state transition without the cost — or the unpredictability — of a real validation.
     /// </param>
+    /// <param name="loggerFactory">
+    /// Where a crashed validation run is reported. Optional so every existing caller and test keeps working,
+    /// but a monitor built without one silently drops rule crashes exactly as this class used to.
+    /// </param>
     public ValidationMonitor(
         ProjectWorkflow session,
-        Func<Project, EquatableArray<ValidationFinding>> validate)
+        Func<Project, EquatableArray<ValidationFinding>> validate,
+        ILoggerFactory? loggerFactory = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(validate);
 
+        _logger = (loggerFactory ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance)
+            .CreateLogger<ValidationMonitor>();
         _session = session;
         _worker = new ValidationWorker(validate, Bind, session.Post, session.Time, OnFaulted);
 
@@ -135,6 +143,18 @@ public sealed class ValidationMonitor : IDisposable
         bool firstEver = _seenVersion is null;
         bool replacement = _session.LastChange is null && !firstEver && version != _seenVersion;
 
+        // WHICH of the four transitions this is, on the span. The class derives the branch from two facts
+        // that are individually ambiguous - Open bumps the version, MarkSaved does not move it - so a
+        // generation that fails to increment on a replacement is a bug whose only symptom is the PREVIOUS
+        // file's findings answering questions about the new one. Recording the branch is what makes that
+        // visible instead of merely wrong.
+        using Ihc.OperationScope scope = _telemetry.Start(nameof(OnDocumentChanged));
+        scope.Activity?.SetTag(ihc_openvisual.Configuration.AppTelemetryRegistry.Attributes.DocumentBranch,
+            firstEver ? ihc_openvisual.Configuration.AppTelemetryRegistry.Values.BranchFirst
+            : replacement ? ihc_openvisual.Configuration.AppTelemetryRegistry.Values.BranchReplacement
+            : _session.LastChange is not null ? ihc_openvisual.Configuration.AppTelemetryRegistry.Values.BranchEdit
+            : ihc_openvisual.Configuration.AppTelemetryRegistry.Values.BranchSave);
+
         if (firstEver || replacement)
         {
             Generation++;
@@ -142,6 +162,8 @@ public sealed class ValidationMonitor : IDisposable
             // about the new one. The worker abandons that generation's pending work when the new request reaches it.
             Result = null;
         }
+
+        scope.Activity?.SetTag(ihc_openvisual.Configuration.AppTelemetryRegistry.Attributes.DocumentGeneration, Generation);
 
         _seenVersion = version;
         _worker.Notify(new ValidationRequest(snapshot, version, Generation));
@@ -160,11 +182,23 @@ public sealed class ValidationMonitor : IDisposable
 
     private void OnFaulted(Exception fault)
     {
+        // A crashed rule used to leave NOTHING behind: the exception arrived here and was dropped, so the
+        // only symptom was a Problemer panel that quietly stopped updating. The run's own span already
+        // carries the faulted outcome and the normalized error type; this is the human-readable half, and it
+        // goes through the real ILogger pipeline so it is exported like any other error.
+        _logger.LogError(fault, "Validation run faulted for generation {Generation}", Generation);
+
         // Whatever was bound STAYS bound rather than being dropped: a failed run is not evidence that the
         // previous findings went away, and blanking the gate on a fault would open it on no evidence at all.
         if (!_disposed)
             Publish();
     }
+
+    private readonly ILogger _logger;
+
+    /// <summary>The monitor's entry point into the instrumentation core.</summary>
+    private readonly Ihc.OperationTelemetry _telemetry =
+        new(ihc_openvisual.Configuration.AppTelemetryRegistry.Surface, nameof(ValidationMonitor));
 
     private void Publish()
     {

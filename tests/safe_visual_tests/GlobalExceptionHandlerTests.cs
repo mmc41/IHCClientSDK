@@ -55,7 +55,7 @@ public class GlobalExceptionHandlerTests
         var args = new UnobservedTaskExceptionEventArgs(
             new AggregateException(new InvalidOperationException("unobserved-boom-42")));
 
-        AppTelemetryBootstrap.LogUnobservedTaskException(logger, args);
+        TelemetryBootstrap.LogUnobservedTaskException(logger, args);
 
         Assert.Multiple(() =>
         {

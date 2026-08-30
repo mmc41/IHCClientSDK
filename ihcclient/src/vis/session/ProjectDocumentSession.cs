@@ -163,11 +163,43 @@ namespace Ihc.Vis.Session
                 outcome.Status == EditStatus.Committed ? produced : default, outcome.Code);
         }
 
-        private EditOutcome ApplyInternal(ProjectCommand command, int? baseVersion, Action<ProjectEditor> execute)
+        // Through the core, classifying the RETURNED outcome rather than tagging each exit. The method has many
+        // outcome-producing exits and every one of them would otherwise need its own status, code and metric
+        // call - which is how a branch gets forgotten, and how a refusal ends up reported as a failure.
+        private EditOutcome ApplyInternal(ProjectCommand command, int? baseVersion, Action<ProjectEditor> execute) =>
+            _telemetry.Run("Apply", scope =>
+                {
+                    scope.AddSharedTag(SdkTelemetryRegistry.Attributes.EditCommand, command.GetType().Name);
+                    return ApplyCore(command, baseVersion, execute, scope);
+                },
+                EditApplyMetrics,
+                ClassifyEdit);
+
+        /// <summary>
+        /// Turns the edit's own outcome into the operation's. Reserving Error for <see cref="EditStatus.Failed"/>
+        /// is the point: a refusal is the rules working, and the two refusal paths used to report differently
+        /// - one via SetError (Error) and one by returning quietly (Unset) - for outcomes that are the same kind
+        /// of thing.
+        /// </summary>
+        private static OperationOutcome ClassifyEdit(EditOutcome outcome) => outcome.Status switch
         {
-            using Activity? activity = Telemetry.ActivitySource.StartActivity(
-                nameof(ProjectDocumentSession) + ".Apply", ActivityKind.Internal);
-            activity?.SetTag("command", command.GetType().Name);
+            EditStatus.Committed or EditStatus.NoChange => OperationOutcome.Ok,
+            EditStatus.Refused => OperationOutcome.Refused(outcome.Code.Value),
+            EditStatus.Failed => OperationOutcome.FailedWith(outcome.Code.Value),
+            _ => OperationOutcome.Ok,
+        };
+
+        private readonly OperationTelemetry _telemetry =
+            new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(ProjectDocumentSession));
+
+        /// <summary>The binding is IMMUTABLE and its instruments are static, so it is built once rather than per operation.</summary>
+        private static readonly MetricBinding EditApplyMetrics =
+            MetricBinding.For(SdkTelemetryRegistry.EditApplyDuration, SdkTelemetryRegistry.EditApply);
+
+        private EditOutcome ApplyCore(ProjectCommand command, int? baseVersion, Action<ProjectEditor> execute,
+            OperationScope scope)
+        {
+            Activity? activity = scope.Activity;
 
             if (_current is not { } current)
             {
@@ -201,7 +233,8 @@ namespace Ihc.Vis.Session
             }
             catch (EditRefusedException ex)   // a deep guard refuses only inside Execute
             {
-                ActivityExtensions.SetError(activity, ex);
+                // No SetError here: this is a REFUSAL, and marking it Error is exactly the Error/Unset split
+                // between the two refusal paths that the classification removes.
                 // The guard's OWN code, not a blanket edit.deep-guard. A deep guard refused from inside Execute
                 // after the gate allowed, which is a fact about where it was raised; what was refused is the
                 // guard's to say, and it says it. Sites that name nothing still report edit.deep-guard, because
@@ -210,8 +243,6 @@ namespace Ihc.Vis.Session
             }
             catch (Exception ex)
             {
-                ActivityExtensions.SetError(activity, ex);
-
                 // A CODED refusal raised below the gate is a REFUSAL, not a failure. The contract's central claim
                 // is that one catch shape covers every coded refusal, so this asks for the interface rather than
                 // for a list of exception types — an edit-open guard and a refused write both arrive carrying a
@@ -257,6 +288,9 @@ namespace Ihc.Vis.Session
             TrimUndo();
             _redo.Clear();
             ProjectChangeSet changes = Transition(current, updated, label, OriginApply);
+            activity?.SetTag(SdkTelemetryRegistry.Attributes.EditAddedCount, changes.Added.Count);
+            activity?.SetTag(SdkTelemetryRegistry.Attributes.EditRemovedCount, changes.Removed.Count);
+            activity?.SetTag(SdkTelemetryRegistry.Attributes.EditChangedCount, changes.Changed.Count);
             return new EditOutcome(EditStatus.Committed, label, null, changes);
         }
 

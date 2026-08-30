@@ -18,7 +18,7 @@ namespace Ihc.Vis.Validation
     /// <para>
     /// The engine's own finding carries a problem and structured locations; <see cref="ProjectValidationResult"/>
     /// carries the flatter shape its existing callers read. The conversion happens HERE, at the boundary, rather
-    /// than inside the engine — a caller that wants the locations asks <see cref="RunStructured"/>, which is the
+    /// than inside the engine — a caller that wants the locations asks <see cref="RunStructured(Ihc.Vis.Projects.Project, Ihc.Vis.Validation.ValidationProfile)"/>, which is the
     /// same run without the flattening and without naming the executor port.
     /// </para>
     /// </summary>
@@ -47,22 +47,43 @@ namespace Ihc.Vis.Validation
         /// </summary>
         /// <param name="project">The project to verify.</param>
         /// <param name="profile">Which rules run, and at what severity.</param>
-        public static EquatableArray<ValidationFinding> RunStructured(Project project, ValidationProfile profile)
+        public static EquatableArray<ValidationFinding> RunStructured(Project project, ValidationProfile profile) =>
+            RunStructured(project, profile, ProjectRules.Validator);
+
+        /// <summary>
+        /// The same door over a CALLER-SUPPLIED executor, so a host that configures the engine (per-rule
+        /// timing, say) can use its own instance without the shared static becoming configurable for everyone.
+        /// </summary>
+        /// <param name="project">The project to verify.</param>
+        /// <param name="profile">Which rules run, and at what severity.</param>
+        /// <param name="validator">The executor to run.</param>
+        public static EquatableArray<ValidationFinding> RunStructured(
+            Project project, ValidationProfile profile, IWholeProjectValidator validator)
         {
             ArgumentNullException.ThrowIfNull(project);
             ArgumentNullException.ThrowIfNull(profile);
-            return ProjectRules.Validator.Validate(project, profile);
+            ArgumentNullException.ThrowIfNull(validator);
+            return validator.Validate(project, profile);
         }
 
         /// <summary>One run under an explicit profile — the door for a controller-capability verification.</summary>
         /// <param name="project">The project to verify.</param>
         /// <param name="profile">Which rules run, and at what severity.</param>
-        public static ProjectValidationResult Run(Project project, ValidationProfile profile)
+        public static ProjectValidationResult Run(Project project, ValidationProfile profile) =>
+            Run(project, profile, ProjectRules.Validator);
+
+        /// <summary>The same door over a caller-supplied executor; see the structured overload.</summary>
+        /// <param name="project">The project to verify.</param>
+        /// <param name="profile">Which rules run, and at what severity.</param>
+        /// <param name="validator">The executor to run.</param>
+        public static ProjectValidationResult Run(
+            Project project, ValidationProfile profile, IWholeProjectValidator validator)
         {
             ArgumentNullException.ThrowIfNull(project);
             ArgumentNullException.ThrowIfNull(profile);
+            ArgumentNullException.ThrowIfNull(validator);
             return ProjectValidationResult.FromFindings(
-                [.. ProjectRules.Validator.Validate(project, profile).Select(Flatten)]);
+                [.. validator.Validate(project, profile).Select(Flatten)]);
         }
 
         /// <summary>

@@ -123,31 +123,23 @@ namespace Ihc.App
         /// </remarks>
         public async Task<MutableAdminModel> GetModel()
         {
-            using (var activity = StartActivity(nameof(GetModel)))
+            return await RunTracedAsync(nameof(GetModel), async activity =>
             {
-                try
+                // Make sure we are logged in.
+                await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+
+                // Read Model from controller.
+                var model = await DoGetModel().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+
+                // Create a deep copy for the snapshot to ensure changes to returned model don't affect snapshot
+                lock (_snapshotLock)
                 {
-                    // Make sure we are logged in.
-                    await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-                    // Read Model from controller.
-                    var model = await DoGetModel().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-                    // Create a deep copy for the snapshot to ensure changes to returned model don't affect snapshot
-                    lock (_snapshotLock)
-                    {
-                        _originalSnapshot = model.Copy();
-                    }
-
-                    activity?.SetReturnValue(model.ToString(settings.LogSensitiveData));
-                    return model;
+                    _originalSnapshot = model.Copy();
                 }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+
+                activity?.SetReturnValue(model.ToString(settings.LogSensitiveData));
+                return model;
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>
@@ -208,67 +200,59 @@ namespace Ihc.App
         /// </remarks>
         public async Task<ChangeInformation> Store(MutableAdminModel model)
         {
-            using (var activity = StartActivity(nameof(Store)))
+            return await RunTracedAsync(nameof(Store), async activity =>
             {
-                try
+                activity?.SetParameters((nameof(model), model.ToString(settings.LogSensitiveData)));
+
+                // Make defensive copy to protect against concurrent mutation now and later
+                var modelCopy = model.Copy();
+
+                // Reaches only the top-level object, exactly as in DoGetModel above: a nested value that
+                // breaks its own [StringLength] or [Required] passes here, and is refused — or not — by the
+                // leaf setter that applies it.
+                ValidationHelper.ValidateDataAnnotations(modelCopy, nameof(modelCopy));
+
+                // Make sure we are logged in.
+                await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+
+                // Load snapshot from controller if not present
+                MutableAdminModel snapshot = null;
+                lock (_snapshotLock)
                 {
-                    activity?.SetParameters((nameof(model), model.ToString(settings.LogSensitiveData)));
+                    snapshot = _originalSnapshot;
+                }
 
-                    // Make defensive copy to protect against concurrent mutation now and later
-                    var modelCopy = model.Copy();
-                    
-                    // Reaches only the top-level object, exactly as in DoGetModel above: a nested value that
-                    // breaks its own [StringLength] or [Required] passes here, and is refused — or not — by the
-                    // leaf setter that applies it.
-                    ValidationHelper.ValidateDataAnnotations(modelCopy, nameof(modelCopy));
-
-                    // Make sure we are logged in.
-                    await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-                    // Load snapshot from controller if not present
-                    MutableAdminModel snapshot = null;
+                if (snapshot == null)
+                {
+                    snapshot = await DoGetModel().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     lock (_snapshotLock)
                     {
-                        snapshot = _originalSnapshot;
+                        _originalSnapshot = snapshot;
                     }
-
-                    if (snapshot == null)
-                    {
-                        snapshot = await DoGetModel().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                        lock (_snapshotLock)
-                        {
-                            _originalSnapshot = snapshot;
-                        }
-                    }
-
-                    var changes = DetectChanges(snapshot, modelCopy);
-                    bool rebootRequiredFlag = false;
-                    if (changes.Count > 0)
-                    {
-                        rebootRequiredFlag = await ApplyChanges(changes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    }
-
-                    lock (_snapshotLock)
-                    {
-                        _originalSnapshot = modelCopy;
-                    }
-
-                    var retv = new ChangeInformation
-                    {
-                        ChangeCount = changes.Count,
-                        RebootRequired = rebootRequiredFlag
-                    };
-
-                    activity?.SetReturnValue(retv);
-
-                    return retv;
                 }
-                catch (Exception ex)
+
+                var changes = DetectChanges(snapshot, modelCopy);
+                bool rebootRequiredFlag = false;
+                if (changes.Count > 0)
                 {
-                    activity?.SetError(ex);
-                    throw;
+                    rebootRequiredFlag = await ApplyChanges(changes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
-            }
+
+                lock (_snapshotLock)
+                {
+                    _originalSnapshot = modelCopy;
+                }
+
+                var retv = new ChangeInformation
+                {
+                    ChangeCount = changes.Count,
+                    RebootRequired = rebootRequiredFlag
+                };
+
+                activity?.SetReturnValue(retv);
+
+                return retv;
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>
@@ -279,47 +263,39 @@ namespace Ihc.App
         /// <param name="stream">The stream to write JSON to (caller is responsible for disposing)</param>
         public async Task SaveAsJson(MutableAdminModel adminModel, Stream stream)
         {
-            using (var activity = StartActivity(nameof(SaveAsJson)))
+            await RunTracedAsync(nameof(SaveAsJson), async activity =>
             {
-                try
+                activity?.SetParameters((nameof(adminModel), adminModel.ToString(settings.LogSensitiveData)));
+
+                var modelCopy = (MutableAdminModel)CopyUtil.DeepCopyAndApply(adminModel, (PropertyInfo prop, object value) =>
                 {
-                    activity?.SetParameters((nameof(adminModel), adminModel.ToString(settings.LogSensitiveData)));
-
-                    var modelCopy = (MutableAdminModel)CopyUtil.DeepCopyAndApply(adminModel, (PropertyInfo prop, object value) =>
+                    // If property has SensitiveDataAttribute, encrypt the value
+                    if (prop != null && prop.GetCustomAttribute<SensitiveDataAttribute>() != null)
                     {
-                        // If property has SensitiveDataAttribute, encrypt the value
-                        if (prop != null && prop.GetCustomAttribute<SensitiveDataAttribute>() != null)
-                        {
-                            // Handle null values
-                            if (value == null)
-                                return null;
+                        // Handle null values
+                        if (value == null)
+                            return null;
 
-                            // Convert value to string unless already a string
-                            var stringValue = value as string ?? value.ToString();
+                        // Convert value to string unless already a string
+                        var stringValue = value as string ?? value.ToString();
 
-                            // Encrypt and return
-                            return secretMaker.EncryptString(stringValue);
-                        }
+                        // Encrypt and return
+                        return secretMaker.EncryptString(stringValue);
+                    }
 
-                        // Otherwise just return value as-is
-                        return value;
-                    });
+                    // Otherwise just return value as-is
+                    return value;
+                });
 
-                    var jsonOptions = new JsonSerializerOptions
-                    {
-                        WriteIndented = true,
-                        Converters = { new JsonStringEnumConverter() }
-                    };
-
-                    await JsonSerializer.SerializeAsync(stream, modelCopy, jsonOptions).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    await stream.FlushAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                }
-                catch (Exception ex)
+                var jsonOptions = new JsonSerializerOptions
                 {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                    WriteIndented = true,
+                    Converters = { new JsonStringEnumConverter() }
+                };
+
+                await JsonSerializer.SerializeAsync(stream, modelCopy, jsonOptions).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                await stream.FlushAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>
@@ -330,21 +306,13 @@ namespace Ihc.App
         /// <param name="path">File path where JSON will be written</param>
         public async Task SaveAsJson(MutableAdminModel adminModel, string path)
         {
-            using (var activity = StartActivity(nameof(SaveAsJson)))
+            await RunTracedAsync(nameof(SaveAsJson), async activity =>
             {
-                try
-                {
-                    activity?.SetParameters((nameof(adminModel), adminModel.ToString(settings.LogSensitiveData)), (nameof(path), path));
+                activity?.SetParameters((nameof(adminModel), adminModel.ToString(settings.LogSensitiveData)), (nameof(path), path));
 
-                    using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
-                    await SaveAsJson(adminModel, fileStream).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                using var fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+                await SaveAsJson(adminModel, fileStream).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>
@@ -359,79 +327,71 @@ namespace Ihc.App
         /// <exception cref="System.Text.Json.JsonException">Thrown when JSON format is invalid</exception>
         public async Task<MutableAdminModel> LoadFromJson(Stream stream)
         {
-            using (var activity = StartActivity(nameof(LoadFromJson)))
+            return await RunTracedAsync(nameof(LoadFromJson), async activity =>
             {
-                try
+                activity?.SetParameters((nameof(stream), $"Steam with length={stream.Length}"));
+
+                var jsonOptions = new JsonSerializerOptions
                 {
-                    activity?.SetParameters((nameof(stream), $"Steam with length={stream.Length}"));
-                                        
-                    var jsonOptions = new JsonSerializerOptions
-                    {
-                        WriteIndented = true,
-                        Converters = { new JsonStringEnumConverter() }
-                    };
+                    WriteIndented = true,
+                    Converters = { new JsonStringEnumConverter() }
+                };
 
-                    var adminModel = await JsonSerializer.DeserializeAsync<MutableAdminModel>(stream, jsonOptions).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                var adminModel = await JsonSerializer.DeserializeAsync<MutableAdminModel>(stream, jsonOptions).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-                    if (adminModel == null)
-                        throw new ArgumentException("Failed to deserialize AdminModel from JSON stream");
+                if (adminModel == null)
+                    throw new ArgumentException("Failed to deserialize AdminModel from JSON stream");
 
-                    // The metadata block is what the checks below read, and a file can simply not have one: it is
-                    // written from whatever the saved model carried, never stamped by SaveAsJson. Say so, rather
-                    // than dereferencing it and reporting a NullReferenceException for an ordinary bad input.
-                    if (adminModel.ModelMetadata == null)
-                        throw new ArgumentException("Missing model metadata");
+                // The metadata block is what the checks below read, and a file can simply not have one: it is
+                // written from whatever the saved model carried, never stamped by SaveAsJson. Say so, rather
+                // than dereferencing it and reporting a NullReferenceException for an ordinary bad input.
+                if (adminModel.ModelMetadata == null)
+                    throw new ArgumentException("Missing model metadata");
 
-                    string serializedTypeName = adminModel.ModelMetadata.TypeFullName;
-                    string expectedTypeName = typeof(MutableAdminModel).FullName;
-                    if (serializedTypeName!=expectedTypeName)
-                        throw new ArgumentException($"Type incompatiblitly. Got {serializedTypeName} but expected {expectedTypeName}");
+                string serializedTypeName = adminModel.ModelMetadata.TypeFullName;
+                string expectedTypeName = typeof(MutableAdminModel).FullName;
+                if (serializedTypeName!=expectedTypeName)
+                    throw new ArgumentException($"Type incompatiblitly. Got {serializedTypeName} but expected {expectedTypeName}");
 
-                    Version streamVersion = adminModel.ModelMetadata.Version;
-                    if (streamVersion == null)
-                        throw new ArgumentException("Missing version metadata");
+                Version streamVersion = adminModel.ModelMetadata.Version;
+                if (streamVersion == null)
+                    throw new ArgumentException("Missing version metadata");
 
-                    System.Version currentVersion = typeof(MutableAdminModel).Assembly.GetName().Version;
-                    if (streamVersion.Major!=currentVersion.Major)
-                        throw new ArgumentException($"Version incompatiblitly. Got {streamVersion.Major} but expected {currentVersion.Major}");
+                System.Version currentVersion = typeof(MutableAdminModel).Assembly.GetName().Version;
+                if (streamVersion.Major!=currentVersion.Major)
+                    throw new ArgumentException($"Version incompatiblitly. Got {streamVersion.Major} but expected {currentVersion.Major}");
 
-                    // Decrypt sensitive properties using deep copy with transformation
-                    var decryptedModel = (MutableAdminModel)CopyUtil.DeepCopyAndApply(adminModel, (PropertyInfo prop, object value) =>
-                    {
-                        // If property has SensitiveDataAttribute, decrypt the value
-                        if (prop != null && prop.GetCustomAttribute<SensitiveDataAttribute>() != null)
-                        {
-                            // Handle null values
-                            if (value == null)
-                                return null;
-
-                            // Value should be a string (encrypted data)
-                            var stringValue = value as string;
-                            if (stringValue == null)
-                                return value; // If not a string, return as-is
-
-                            // Decrypt and return
-                            return secretMaker.DecryptString(stringValue);
-                        }
-
-                        // Otherwise just return value as-is
-                        return value;
-                    });
-
-                    // Checks that the deserialized object exists, not the values inside it — see the note in
-                    // DoGetModel. A JSON file whose nested settings violate their annotations loads without
-                    // complaint; the type and version metadata checked above are what actually gate this path.
-                    ValidationHelper.ValidateDataAnnotations(decryptedModel, nameof(decryptedModel));
-
-                    activity?.SetReturnValue(decryptedModel.ToString(settings.LogSensitiveData));
-                    return decryptedModel;
-                }
-                catch (Exception ex)
+                // Decrypt sensitive properties using deep copy with transformation
+                var decryptedModel = (MutableAdminModel)CopyUtil.DeepCopyAndApply(adminModel, (PropertyInfo prop, object value) =>
                 {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                    // If property has SensitiveDataAttribute, decrypt the value
+                    if (prop != null && prop.GetCustomAttribute<SensitiveDataAttribute>() != null)
+                    {
+                        // Handle null values
+                        if (value == null)
+                            return null;
+
+                        // Value should be a string (encrypted data)
+                        var stringValue = value as string;
+                        if (stringValue == null)
+                            return value; // If not a string, return as-is
+
+                        // Decrypt and return
+                        return secretMaker.DecryptString(stringValue);
+                    }
+
+                    // Otherwise just return value as-is
+                    return value;
+                });
+
+                // Checks that the deserialized object exists, not the values inside it — see the note in
+                // DoGetModel. A JSON file whose nested settings violate their annotations loads without
+                // complaint; the type and version metadata checked above are what actually gate this path.
+                ValidationHelper.ValidateDataAnnotations(decryptedModel, nameof(decryptedModel));
+
+                activity?.SetReturnValue(decryptedModel.ToString(settings.LogSensitiveData));
+                return decryptedModel;
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>
@@ -446,24 +406,16 @@ namespace Ihc.App
         /// <exception cref="System.Text.Json.JsonException">Thrown when JSON format is invalid</exception>
         public async Task<MutableAdminModel> LoadFromJson(string path)
         {
-            using (var activity = StartActivity(nameof(LoadFromJson)))
+            return await RunTracedAsync(nameof(LoadFromJson), async activity =>
             {
-                try
-                {
-                    activity?.SetParameters((nameof(path), path));
+                activity?.SetParameters((nameof(path), path));
 
-                    using var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
-                    var result = await LoadFromJson(fileStream).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                using var fileStream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+                var result = await LoadFromJson(fileStream).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-                    activity?.SetReturnValue(result.ToString(settings.LogSensitiveData));
-                    return result;
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                activity?.SetReturnValue(result.ToString(settings.LogSensitiveData));
+                return result;
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>
@@ -481,7 +433,7 @@ namespace Ihc.App
         /// </remarks>
         private List<AdminChange> DetectChanges(MutableAdminModel original, MutableAdminModel current)
         {
-            using (var activity = StartActivity(nameof(DetectChanges)))
+            return RunTraced(nameof(DetectChanges), activity =>
             {
                 var changes = new List<AdminChange>();
 
@@ -659,7 +611,7 @@ namespace Ihc.App
                 activity?.SetTag("ChangeCount", changes.Count);
 
                 return changes;
-            }
+            });
         }
 
         /// <summary>
@@ -675,7 +627,7 @@ namespace Ihc.App
         /// </remarks>
         private async Task<bool> ApplyChanges(List<AdminChange> changes)
         {
-            using (var activity = StartActivity(nameof(ApplyChanges)))
+            return await RunTracedAsync(nameof(ApplyChanges), async activity =>
             {
                 bool rebootRequiredFlag = false;
 
@@ -686,7 +638,7 @@ namespace Ihc.App
                             "payload", change.Payload
                         }
                     }));
-                        
+
                     switch (change.ChangeType)
                     {
                         case AdminChangeType.UserAdded:                  
@@ -740,7 +692,7 @@ namespace Ihc.App
                 }
 
                 return rebootRequiredFlag;
-            }
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>

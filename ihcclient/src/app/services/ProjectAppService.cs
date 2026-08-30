@@ -130,8 +130,26 @@ namespace Ihc.Vis
         {
         }
 
+        /// <summary>
+        /// The file-only service, with a telemetry configuration. A separate overload rather than an optional
+        /// parameter on the existing one: an optional argument is a DIFFERENT symbol and would retire the
+        /// shipped constructor.
+        /// </summary>
+        /// <param name="settings">IHC settings.</param>
+        /// <param name="telemetry">Telemetry configuration; only its engine switches are read here.</param>
+        public ProjectAppService(IhcSettings settings, TelemetryConfiguration telemetry)
+            : this(settings,
+                   new Lazy<ICatalog>(() => new BuiltInCatalog(), LazyThreadSafetyMode.PublicationOnly),
+                   TimeProvider.System,
+                   controller: null,
+                   authService: null,
+                   telemetry: telemetry)
+        {
+        }
+
         private ProjectAppService(IhcSettings settings, Lazy<ICatalog> baseCatalog, TimeProvider timeProvider,
-                                  IControllerService? controller, IAuthenticationService? authService)
+                                  IControllerService? controller, IAuthenticationService? authService,
+                                  TelemetryConfiguration? telemetry = null)
         {
             ArgumentNullException.ThrowIfNull(settings);
             ArgumentNullException.ThrowIfNull(timeProvider);
@@ -148,6 +166,16 @@ namespace Ihc.Vis
             // never materializes the catalog, and one that does pays for it once.
             this.library = new Lazy<ILibraryBlockSource>(
                 () => new CatalogLibraryBlockSource(() => this.catalog.Value.FunctionBlocks),
+                LazyThreadSafetyMode.PublicationOnly);
+            // D17: the per-rule timing switch reaches the engine through THIS instance, so the shared static
+            // executor stays exactly as it is for every other caller. Lazy, because a service that never
+            // validates should not build one. Read from IhcSettings' telemetry section when present.
+            // Read out here rather than inside the factory: the three Lazy factories in this constructor share one
+            // compiler-generated closure, so capturing `telemetry` would pin the whole configuration object - its
+            // endpoints and header blob - for the service's lifetime to read a single bool.
+            bool perRuleTiming = telemetry?.PerRuleValidationTiming ?? false;
+            this.validator = new Lazy<IWholeProjectValidator>(
+                () => new WholeProjectValidator(ProjectRules.Registered, perRuleTiming),
                 LazyThreadSafetyMode.PublicationOnly);
             this.timeProvider = timeProvider;
             this.controller = controller;
@@ -354,7 +382,11 @@ namespace Ihc.Vis
             return await RunTracedAsync(nameof(Load), async activity =>
             {
                 byte[] bytes = await File.ReadAllBytesAsync(path).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                RecordContent(activity, bytes);
                 Project project = ProjectReader.Read(bytes);
+                // On the load too, so a decrease can be seen ACROSS the open/save pair rather than only
+                // between two saves - the corruption may already be in the file that was opened.
+                RecordLastUniqueId(activity, project);
                 activity?.SetReturnValue(project);
                 return project;
             }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -379,6 +411,28 @@ namespace Ihc.Vis
             return RunTraced(nameof(NormalizeOnOpen), activity =>
             {
                 Project normalized = project.Edit().NormalizeCatalogEnums().ToProject();
+                // WHAT SHAPE open-normalization had. Measured on an authentic vendor file, it is a pure
+                // RE-HOIST: the built-in catalog enum definitions are removed and re-added with freshly
+                // allocated ids, so added and removed are equal and nothing is changed in place. It is
+                // therefore never zero - re-minting ids is what it does, on every open, by design.
+                //
+                // The three counts are reported separately rather than summed, because the SHAPE is the
+                // signal and a sum hides it: an UNBALANCED re-hoist (added != removed) or an in-place
+                // CHANGE during normalization would each be anomalous on a file the vendor just wrote,
+                // and neither is visible in a total.
+                //
+                // Guarded, because the diff exists ONLY to answer those three tags: it walks the whole project
+                // twice to build its id maps and compares every id-bearing element, which is real work to do on
+                // every open for numbers nobody reads when no listener is attached.
+                if (activity is not null)
+                {
+                    ProjectChangeSet diff = ProjectChangeSet.Diff(
+                        project, normalized, baseVersion: 0, newVersion: 0,
+                        origin: nameof(NormalizeOnOpen), label: nameof(NormalizeOnOpen));
+                    activity.SetTag(SdkTelemetryRegistry.Attributes.NormalizeAddedCount, diff.Added.Count);
+                    activity.SetTag(SdkTelemetryRegistry.Attributes.NormalizeRemovedCount, diff.Removed.Count);
+                    activity.SetTag(SdkTelemetryRegistry.Attributes.NormalizeChangedCount, diff.Changed.Count);
+                }
                 activity?.SetReturnValue(normalized);
                 return normalized;
             });
@@ -412,8 +466,11 @@ namespace Ihc.Vis
             ProjectSaveOptions effective = options ?? ProjectSaveOptions.Default;
             await RunTracedAsync(nameof(Save), async activity =>
             {
+                RecordSaveOptions(activity, effective);
+                RecordLastUniqueId(activity, project);
                 byte[] bytes = SerializeForSave(project, effective);
                 await WriteAtomically(path, bytes, effective.CreateBackup).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                RecordContent(activity, bytes);
                 activity?.SetReturnValue(bytes.Length);
             }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
@@ -430,7 +487,75 @@ namespace Ihc.Vis
         /// </para>
         /// </summary>
         public Task SaveDocument(Project project, string path) =>
-            Save(project, path, ProjectSaveOptions.Default with { CreateBackup = true });
+            // VerifyRoundTrip, unlike the general Save: this is the door an EDITOR saves through, and an
+            // editor that writes bytes which do not reproduce the project it was shown has lost the user's
+            // work while reporting success. Re-parsing the bytes before declaring the save done turns that
+            // silent class of defect into a coded refusal. The general Save keeps its own options, because a
+            // byte-exact export or a controller upload chooses its own protections.
+            Save(project, path, ProjectSaveOptions.Default with { CreateBackup = true, VerifyRoundTrip = true });
+
+
+        /// <summary>
+        /// The EFFECTIVE save options, as span attributes. Which protections actually ran is not derivable
+        /// from anything else in the trace: two saves of the same project through different doors differ only
+        /// here, and "was verification on?" is the first question a suspect save raises.
+        /// </summary>
+        private static void RecordSaveOptions(System.Diagnostics.Activity activity, ProjectSaveOptions options)
+        {
+            if (activity is null)
+            {
+                return;
+            }
+            activity.SetTag(SdkTelemetryRegistry.Attributes.SaveVerifyRoundTrip, options.VerifyRoundTrip);
+            activity.SetTag(SdkTelemetryRegistry.Attributes.SaveValidateBeforeSave, options.ValidateBeforeSave);
+            activity.SetTag(SdkTelemetryRegistry.Attributes.SaveCreateBackup, options.CreateBackup);
+            activity.SetTag(SdkTelemetryRegistry.Attributes.SaveWriteMetadataVerbatim, options.WriteMetadataVerbatim);
+        }
+
+        /// <summary>
+        /// The id allocator high-water mark the project carries. It only ever grows for a given document, so a
+        /// value that DECREASES between two consecutive saves is allocator corruption - ids about to be reused
+        /// for different elements. Nothing else in the trace would show that, and the file itself looks fine.
+        /// </summary>
+        private static void RecordLastUniqueId(System.Diagnostics.Activity activity, Project project)
+        {
+            if (activity is null)
+            {
+                return;
+            }
+            string? lastUniqueId = project?.Root?.GetAttribute("last_unique_id");
+            if (lastUniqueId is not null)
+            {
+                activity.SetTag(SdkTelemetryRegistry.Attributes.ProjectLastUniqueId, lastUniqueId);
+            }
+        }
+
+
+        /// <summary>
+        /// The size of what was written or read, ALWAYS; and a SHA-256 of those exact bytes only when
+        /// <see cref="IhcSettings.LogSensitiveData"/> is set.
+        ///
+        /// <para>The size is unconditional because a byte count reveals nothing about content. The digest is
+        /// not: it is a stable FINGERPRINT of one customer project, so two sessions that touched the same
+        /// file become linkable across the backend even though neither record names the file. That is
+        /// precisely what makes it useful for diagnosis - "is this the same project the user reported?" is
+        /// answerable without ever transmitting the project - and precisely why it is gated. See the note
+        /// beside LogSensitiveData in ARCHITECTURE.md.</para>
+        /// </summary>
+        private void RecordContent(System.Diagnostics.Activity activity, byte[] bytes)
+        {
+            if (activity is null || bytes is null)
+            {
+                return;
+            }
+            activity.SetTag(SdkTelemetryRegistry.Attributes.ProjectFileSize, bytes.Length);
+            if (!settings.LogSensitiveData)
+            {
+                return;
+            }
+            activity.SetTag(SdkTelemetryRegistry.Attributes.ProjectContentDigest,
+                System.Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes)));
+        }
 
         private async Task WriteAtomically(string path, byte[] bytes, bool createBackup)
         {
@@ -507,7 +632,11 @@ namespace Ihc.Vis
             ArgumentNullException.ThrowIfNull(stream);
             await RunTracedAsync(nameof(Save), async activity =>
             {
-                byte[] bytes = SerializeForSave(project, options ?? ProjectSaveOptions.Default);
+                ProjectSaveOptions streamOptions = options ?? ProjectSaveOptions.Default;
+                RecordSaveOptions(activity, streamOptions);
+                RecordLastUniqueId(activity, project);
+                byte[] bytes = SerializeForSave(project, streamOptions);
+                RecordContent(activity, bytes);
                 await stream.WriteAsync(bytes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 activity?.SetReturnValue(bytes.Length);
             }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -522,7 +651,7 @@ namespace Ihc.Vis
         {
             if (options.ValidateBeforeSave)
             {
-                ProjectValidationResult validation = ProjectVerification.Run(project, StructuralProfile);
+                ProjectValidationResult validation = ProjectVerification.Run(project, StructuralProfile, validator.Value);
                 if (!validation.IsValid)
                 {
                     throw new ProjectValidationException(OperationCodes.Save, validation);
@@ -921,7 +1050,7 @@ namespace Ihc.Vis
             ArgumentNullException.ThrowIfNull(project);
             return RunTraced(nameof(Validate), activity =>
             {
-                ProjectValidationResult result = ProjectVerification.Run(project, StructuralProfile);
+                ProjectValidationResult result = ProjectVerification.Run(project, StructuralProfile, validator.Value);
                 activity?.SetReturnValue(result);
                 return result;
             });
@@ -980,6 +1109,13 @@ namespace Ihc.Vis
         private ValidationProfile StructuralProfile => ValidationProfile.ProjectOnly with { Library = library.Value };
 
         /// <summary>
+        /// This service's OWN validation executor, so the per-rule timing switch reaches the engine without
+        /// making the shared <c>ProjectRules.Validator</c> static configurable for every caller in the
+        /// process. The rule SET is still the registered one - only the instrumentation differs.
+        /// </summary>
+        private readonly Lazy<IWholeProjectValidator> validator;
+
+        /// <summary>
         /// The categorized profile with the same library port, for the same reason — stated once here
         /// rather than spelled out at each of the two runs that read it.
         /// </summary>
@@ -999,7 +1135,7 @@ namespace Ihc.Vis
             {
                 // D27: the library port comes from the catalog this service already holds, so the two rows that
                 // need a library are evaluated here and skipped by a caller who validates without one.
-                ProjectValidationResult result = ProjectVerification.Run(project, CategorizedProfile);
+                ProjectValidationResult result = ProjectVerification.Run(project, CategorizedProfile, validator.Value);
                 activity?.SetReturnValue(result);
                 return result;
             });
@@ -1029,7 +1165,7 @@ namespace Ihc.Vis
             return RunTraced(nameof(ValidateStructured), activity =>
             {
                 EquatableArray<ValidationFinding> findings =
-                    ProjectVerification.RunStructured(project, CategorizedProfile);
+                    ProjectVerification.RunStructured(project, CategorizedProfile, validator.Value);
                 activity?.SetReturnValue(findings.Length);
                 return findings;
             });
@@ -1149,7 +1285,7 @@ namespace Ihc.Vis
         // The service's own run, as the two validating overloads state it — once, so a change of profile cannot
         // reach one of them and not the other.
         private Func<IReadOnlyList<ValidationFinding>> OwnRun(Project project) =>
-            () => ProjectVerification.RunStructured(project, CategorizedProfile);
+            () => ProjectVerification.RunStructured(project, CategorizedProfile, validator.Value);
 
         // The one write path all four overloads share; they differ only in where the findings come from and
         // where the bytes go. As with GenerateReport, the sink runs after the document is complete, so a

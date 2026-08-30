@@ -76,16 +76,23 @@ namespace Ihc {
             this.logSensitiveData = logSensitiveData;
         }
 
+        // Through the core so these spans gain an outcome and an error path: as bare decoration they could
+        // only ever report that the call happened, never that it went wrong.
+        private readonly OperationTelemetry telemetry =
+            new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(CookieHandler));
+
         public string GetCookie()
         {
             lock (_lock)
             {
-                using var activity = Telemetry.ActivitySource.StartActivity(nameof(GetCookie), ActivityKind.Internal);
-                activity?.SetReturnValue(
-                   cookie == null ? "Empty" : (logSensitiveData ? cookie : UserConstants.REDACTED_PASSWORD)
-                );
+                return telemetry.Run(nameof(GetCookie), scope =>
+                {
+                    scope.Activity?.SetReturnValue(
+                       cookie == null ? "Empty" : (logSensitiveData ? cookie : UserConstants.REDACTED_PASSWORD)
+                    );
 
-                return cookie;
+                    return cookie;
+                });
             }
         }
 
@@ -93,12 +100,14 @@ namespace Ihc {
         {
             lock (_lock)
             {
-                using var activity = Telemetry.ActivitySource.StartActivity(nameof(SetCookie), ActivityKind.Internal);
-                activity?.SetParameters(
-                    (nameof(_cookie), _cookie == null ? "Empty" : (logSensitiveData ? _cookie : UserConstants.REDACTED_PASSWORD))
-                );
-            
-                cookie = _cookie;
+                telemetry.Run(nameof(SetCookie), scope =>
+                {
+                    scope.Activity.SetParameters(
+                        (nameof(_cookie), _cookie == null ? "Empty" : (logSensitiveData ? _cookie : UserConstants.REDACTED_PASSWORD))
+                    );
+
+                    cookie = _cookie;
+                });
             }
         }
     }

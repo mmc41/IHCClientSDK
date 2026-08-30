@@ -1,27 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Shared desktop-app bootstrap (review S2 / T035): the logging + OpenTelemetry start-up pipeline that
-    ihc_openvisual and ihc_lab both need. It cannot live in ihcclient — it depends on Avalonia.Logging and the
-    OpenTelemetry EXPORTERS, and the SDK core deliberately carries no logging/Avalonia dependency (D09). A small
-    library referenced by both Avalonia apps is the one place the two byte-for-byte-duplicated AppSetup files can
-    become one. Package versions come from Directory.Packages.props (central management); Microsoft.Extensions.
-    Logging.Console transitively provides the ILoggingBuilder.AddConfiguration extension used below.
+    The Avalonia-only half of the shared host bootstrap: the Avalonia→ILogger sink, the AppBuilder hook, the
+    dispatcher exception layer and the two level maps. Referenced by ihc_openvisual and ihc_lab.
+
+    The providers and OTLP wiring are NOT here — they moved to ihc_telemetrybootstrap, which carries no UI
+    dependency, so a console utility can build the same pipeline without Avalonia (R7). This project
+    references that one and adds the toolkit on top; nothing that a headless host could use belongs here.
+
+    Package versions come from Directory.Packages.props (central management).
   -->
 
   <ItemGroup>
-    <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
+    <ProjectReference Include="..\ihc_telemetrybootstrap\ihc_telemetrybootstrap.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" />
-    <PackageReference Include="OpenTelemetry" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
   </ItemGroup>
 
 </Project>

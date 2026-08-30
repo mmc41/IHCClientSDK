@@ -18,8 +18,6 @@
     <PackageReference Include="FakeItEasy" />
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
     <ProjectReference Include="..\..\shared\ihc_appbootstrap\ihc_appbootstrap.csproj" />
-    <PackageReference Include="OpenTelemetry" />
-    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Simple" />

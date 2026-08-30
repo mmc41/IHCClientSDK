@@ -1014,3 +1014,58 @@ static Ihc.Vis.Validation.FixLocation.operator ==(Ihc.Vis.Validation.FixLocation
 Ihc.Vis.Validation.IProjectInspection.Report(Ihc.Vis.Model.ProjectElement? element, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgument> arguments, Ihc.Vis.Validation.FixLocation? fix) -> void
 Ihc.Vis.Validation.ValidationFinding.Fix.get -> Ihc.Vis.Validation.FixLocation?
 Ihc.Vis.Validation.ValidationFinding.Fix.init -> void
+~Ihc.TelemetryConfiguration.Metrics.get -> string
+~Ihc.TelemetryConfiguration.Metrics.set -> void
+~const Ihc.Telemetry.MeterName = "ihcclient" -> string
+~Ihc.TelemetryConfiguration.Environment.get -> string
+~Ihc.TelemetryConfiguration.Environment.set -> void
+Ihc.MetricBinding
+Ihc.OperationOutcome
+Ihc.OperationOutcome.Equals(Ihc.OperationOutcome other) -> bool
+Ihc.OperationOutcome.Exception.get -> System.Exception?
+Ihc.OperationOutcome.OperationOutcome() -> void
+Ihc.OperationOutcome.ProblemCode.get -> string?
+Ihc.OperationOutcome.Status.get -> Ihc.OperationStatus
+Ihc.OperationScope
+Ihc.OperationScope.Activity.get -> System.Diagnostics.Activity?
+Ihc.OperationScope.AddMetricTag(string! key, object? value) -> void
+Ihc.OperationScope.AddSharedTag(string! key, object? value) -> void
+Ihc.OperationScope.Dispose() -> void
+Ihc.OperationScope.SetOutcome(Ihc.OperationOutcome value) -> void
+Ihc.OperationStatus
+Ihc.OperationStatus.Failed = 2 -> Ihc.OperationStatus
+Ihc.OperationStatus.Ok = 0 -> Ihc.OperationStatus
+Ihc.OperationStatus.Refused = 1 -> Ihc.OperationStatus
+Ihc.OperationTelemetry
+Ihc.OperationTelemetry.OperationTelemetry(Ihc.TelemetrySurface! surface, string! owner) -> void
+Ihc.OperationTelemetry.Run(string! operation, System.Action<Ihc.OperationScope!>! body, Ihc.MetricBinding? metrics = null) -> void
+Ihc.OperationTelemetry.Run<T>(string! operation, System.Func<Ihc.OperationScope!, T>! body, Ihc.MetricBinding? metrics = null, System.Func<T, Ihc.OperationOutcome>? classify = null) -> T
+Ihc.OperationTelemetry.RunAsync(string! operation, System.Func<Ihc.OperationScope!, System.Threading.Tasks.Task!>! body, Ihc.MetricBinding? metrics = null) -> System.Threading.Tasks.Task!
+Ihc.OperationTelemetry.RunAsync<T>(string! operation, System.Func<Ihc.OperationScope!, System.Threading.Tasks.Task<T>!>! body, Ihc.MetricBinding? metrics = null, System.Func<T, Ihc.OperationOutcome>? classify = null) -> System.Threading.Tasks.Task<T>!
+Ihc.OperationTelemetry.Start(string! operation, System.Diagnostics.ActivityKind kind = System.Diagnostics.ActivityKind.Internal, Ihc.MetricBinding? metrics = null, System.Collections.Generic.IEnumerable<System.Diagnostics.ActivityLink>? links = null) -> Ihc.OperationScope!
+Ihc.TelemetrySurface
+Ihc.TelemetrySurface.ActivitySource.get -> System.Diagnostics.ActivitySource!
+Ihc.TelemetrySurface.Dispose() -> void
+Ihc.TelemetrySurface.Meter.get -> System.Diagnostics.Metrics.Meter!
+Ihc.TelemetrySurface.TelemetrySurface(string! name, string? version = null) -> void
+override Ihc.OperationOutcome.Equals(object? obj) -> bool
+override Ihc.OperationOutcome.GetHashCode() -> int
+static Ihc.MetricBinding.For(System.Diagnostics.Metrics.Histogram<double>? duration = null, System.Diagnostics.Metrics.Counter<long>? occurrences = null) -> Ihc.MetricBinding!
+static Ihc.MetricBinding.None.get -> Ihc.MetricBinding!
+static Ihc.OperationOutcome.Failed(System.Exception! exception) -> Ihc.OperationOutcome
+static Ihc.OperationOutcome.FailedWith(string! problemCode) -> Ihc.OperationOutcome
+static Ihc.OperationOutcome.Ok.get -> Ihc.OperationOutcome
+static Ihc.OperationOutcome.operator !=(Ihc.OperationOutcome left, Ihc.OperationOutcome right) -> bool
+static Ihc.OperationOutcome.operator ==(Ihc.OperationOutcome left, Ihc.OperationOutcome right) -> bool
+static Ihc.OperationOutcome.Refused(string! problemCode) -> Ihc.OperationOutcome
+Ihc.TelemetrySurface.TelemetrySurface(System.Diagnostics.ActivitySource! activitySource, System.Diagnostics.Metrics.Meter! meter) -> void
+~Ihc.App.AppServiceBase.RunTraced(string operationName, System.Action<System.Diagnostics.Activity> body, Ihc.MetricBinding metrics) -> void
+~Ihc.App.AppServiceBase.RunTraced<T>(string operationName, System.Func<System.Diagnostics.Activity, T> body, Ihc.MetricBinding metrics) -> T
+~Ihc.App.AppServiceBase.RunTracedAsync(string operationName, System.Func<System.Diagnostics.Activity, System.Threading.Tasks.Task> body, Ihc.MetricBinding metrics) -> System.Threading.Tasks.Task
+~Ihc.App.AppServiceBase.RunTracedAsync<T>(string operationName, System.Func<System.Diagnostics.Activity, System.Threading.Tasks.Task<T>> body, Ihc.MetricBinding metrics) -> System.Threading.Tasks.Task<T>
+Ihc.TelemetryConfiguration.PerRuleValidationTiming.get -> bool
+Ihc.TelemetryConfiguration.PerRuleValidationTiming.set -> void
+Ihc.Vis.Validation.WholeProjectValidator.WholeProjectValidator(Ihc.Vis.Validation.RuleSet! rules, bool perRuleTiming) -> void
+static Ihc.Vis.Validation.ProjectVerification.Run(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile, Ihc.Vis.Validation.IWholeProjectValidator! validator) -> Ihc.Vis.Validation.ProjectValidationResult!
+static Ihc.Vis.Validation.ProjectVerification.RunStructured(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile, Ihc.Vis.Validation.IWholeProjectValidator! validator) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
+Ihc.Vis.ProjectAppService.ProjectAppService(Ihc.IhcSettings! settings, Ihc.TelemetryConfiguration! telemetry) -> void

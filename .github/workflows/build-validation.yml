@@ -54,26 +54,37 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
 
+    # Every suite below runs with the same diagnostics, and the reason is a failure we could NOT diagnose:
+    # a one-in-many-runs failure in the Avalonia suite that left no artifact behind, because a TRX was
+    # written only on demand and a green run wrote nothing at all. So:
+    #   --logger trx        a result file for EVERY run, green ones included — the failing test is named,
+    #                       with its output, instead of having to be reproduced first.
+    #   --blame-hang        a test that stops making progress is reported BY NAME. A deadlock otherwise
+    #                       shows up as a job that times out with no attribution whatsoever.
+    #   --blame-crash       an exception escaping a POOL thread kills the host before NUnit can report
+    #                       anything; blame's sequence file still names the test that was running.
+    # The results are uploaded by the step at the end of the job, which runs even when a suite fails.
+
     - name: Test (controller-free unit tests)
-      run: dotnet test tests/safe_unit_tests/safe_unit_tests.csproj --no-build
+      run: dotnet test tests/safe_unit_tests/safe_unit_tests.csproj --no-build --logger "trx;LogFileName=safe_unit_tests.trx" --results-directory TestResults --blame-hang --blame-hang-timeout 120s --blame-crash
 
     - name: Test (architecture / dependency rules)
       # ArchUnitNET reads IL to enforce the SDK's directional layering rules; controller-free and
       # render-free, so it runs on all three OSes like the unit and project-engine suites.
-      run: dotnet test tests/safe_architecture_tests/safe_architecture_tests.csproj --no-build
+      run: dotnet test tests/safe_architecture_tests/safe_architecture_tests.csproj --no-build --logger "trx;LogFileName=safe_architecture_tests.trx" --results-directory TestResults --blame-hang --blame-hang-timeout 120s --blame-crash
 
     - name: Test (project engine byte-fidelity)
       # Controller-free .vis project engine + ProjectAppService byte-fidelity corpus (the
       # hard-constraint gate). Needs no native render/font deps (unlike the Avalonia suites),
       # so it runs on all three OSes like the unit tests.
-      run: dotnet test tests/safe_project_tests/safe_project_tests.csproj --no-build
+      run: dotnet test tests/safe_project_tests/safe_project_tests.csproj --no-build --logger "trx;LogFileName=safe_project_tests.trx" --results-directory TestResults --blame-hang --blame-hang-timeout 120s --blame-crash
 
     - name: Test (headless Lab UI tests)
       # Avalonia + Skia headless rendering is validated on the Windows runner (the primary
       # development environment). Scope here rather than risk missing native render/font deps
       # on the Linux/macOS runners. safe_lab_tests is [NonParallelizable] and uses mock:// services.
       if: matrix.os == 'windows-latest'
-      run: dotnet test tests/safe_lab_tests/safe_lab_tests.csproj --no-build
+      run: dotnet test tests/safe_lab_tests/safe_lab_tests.csproj --no-build --logger "trx;LogFileName=safe_lab_tests.trx" --results-directory TestResults --blame-hang --blame-hang-timeout 120s --blame-crash
 
     - name: Test (headless Visual UI tests)
       # ihc_openvisual is a CROSS-PLATFORM desktop app, so its GUI suite runs on the Linux runner too — that
@@ -81,4 +92,15 @@ jobs:
       # resolved from the platform instead of the embedded one, a path or accelerator assumption). macOS stays
       # out: no runner-specific need has surfaced, and the two legs already cover both native backends.
       if: matrix.os != 'macOS-latest'
-      run: dotnet test tests/safe_visual_tests/safe_visual_tests.csproj --no-build
+      run: dotnet test tests/safe_visual_tests/safe_visual_tests.csproj --no-build --logger "trx;LogFileName=safe_visual_tests.trx" --results-directory TestResults --blame-hang --blame-hang-timeout 120s --blame-crash
+
+    - name: Upload test results
+      # always(), because the run that most needs its artifact is the one that just failed — and a green
+      # run's TRX is what a later flake gets compared against.
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ matrix.os }}
+        path: TestResults/
+        if-no-files-found: ignore
+        retention-days: 14

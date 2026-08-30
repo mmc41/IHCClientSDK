@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Ihc;
+using ihc_openvisual.Configuration;
 using Ihc.Vis;
 using Microsoft.Extensions.Logging;
 
@@ -20,6 +21,10 @@ namespace ihc_openvisual.Services;
 internal sealed class CatalogImportWorkflow(
     ProjectAppService service, IDialogService dialogs, ILogger logger, string catalogDir)
 {
+    /// <summary>This type's entry point into the instrumentation core.</summary>
+    private readonly OperationTelemetry _telemetry =
+        new(AppTelemetryRegistry.Surface, nameof(CatalogImportWorkflow));
+
     /// <summary>Raised after a catalog import changes the available products/function blocks (US-059/US-060).</summary>
     public event EventHandler? CatalogChanged;
 
@@ -85,7 +90,7 @@ internal sealed class CatalogImportWorkflow(
     /// <see cref="CatalogChanged"/> fires; on failure the error names the file (US-062). Returns true on success.</summary>
     public async Task<bool> ImportFileAsync(string path, bool persist)
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(CatalogImportWorkflow)}.{nameof(ImportFileAsync)}");
+        using OperationScope scope = _telemetry.Start(nameof(ImportFileAsync));
         try
         {
             service.ImportCatalogFile(path);
@@ -96,7 +101,7 @@ internal sealed class CatalogImportWorkflow(
         }
         catch (Exception ex)
         {
-            ActivityExtensions.SetError(activity, ex);
+            scope.SetOutcome(OperationOutcome.Failed(ex));
             // One-child chain: the shell's framing as the operation over the SDK's coded cause, so exactly one
             // sentence reaches the user and it says WHY the file was rejected (D01, case 2). The file itself is
             // US-062's obligation and is carried by the title; the English detail goes to the log.
@@ -112,7 +117,7 @@ internal sealed class CatalogImportWorkflow(
     /// <see cref="CatalogChanged"/>.</summary>
     public async Task<CatalogImportOutcome> ImportFolderAsync(string dir, bool persist)
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(CatalogImportWorkflow)}.{nameof(ImportFolderAsync)}");
+        using OperationScope scope = _telemetry.Start(nameof(ImportFolderAsync));
         if (!Directory.Exists(dir))
         {
             // The shell's own condition — it checked the folder before asking the SDK for anything — so a host code.
@@ -134,7 +139,7 @@ internal sealed class CatalogImportWorkflow(
                 }
                 catch (Exception ex)
                 {
-                    ActivityExtensions.SetError(activity, ex);
+                    scope.SetOutcome(OperationOutcome.Failed(ex));
                     logger.LogError(ex, "Folder import stopped at {File}", file);
                     // The same one-child chain as the single-file site, with the batch count as a declared argument.
                     await RaisedProblemDisplay.ShowAsync(dialogs, Naming(ImportStoppedTitle, file),

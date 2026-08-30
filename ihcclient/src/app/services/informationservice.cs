@@ -77,44 +77,36 @@ namespace Ihc.App
         /// <returns>InformationModel containing all available controller information</returns>
         public async Task<InformationModel> GetInformationModel()
         {
-            using (var activity = StartActivity(nameof(GetInformationModel)))
+            return await RunTracedAsync(nameof(GetInformationModel), async activity =>
             {
-                try
-                {                                    
-                    await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-                    // Execute API calls sequentially - systemInfo provides uptime, time, and version data
-                    var systemInfo = await configService.GetSystemInfo().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var controllerStatus = await controllerService.GetControllerState().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var sdCard = await controllerService.GetSDCardInfo().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var smsModemInfo = await smsModemService.GetSmsModemInfo().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                // Execute API calls sequentially - systemInfo provides uptime, time, and version data
+                var systemInfo = await configService.GetSystemInfo().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                var controllerStatus = await controllerService.GetControllerState().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                var sdCard = await controllerService.GetSDCardInfo().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                var smsModemInfo = await smsModemService.GetSmsModemInfo().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-                    var retv = new InformationModel
-                    {
-                        Uptime = systemInfo?.Uptime != null ? TimeSpan.FromMilliseconds(systemInfo.Uptime) : default,
-                        ControllerTime = systemInfo?.Realtimeclock ?? default,
-                        SoftwareVersion = systemInfo?.Version,
-                        ControllerStatus = controllerStatus,
-                        SdCard = sdCard,
-                        SmsModemVersion = systemInfo?.SmsModemSoftwareVersion,
-                        SerialNumber = systemInfo?.SerialNumber,
-                        ProductionDate = systemInfo?.ProductionDate,
-                        HardwareVersion = systemInfo?.HWRevision,
-                        IoVersion = systemInfo?.DatalineVersion,
-                        RfVersion = systemInfo?.RFModuleSoftwareVersion,
-                        RfSerialNumber = systemInfo?.RFModuleSerialNumber,
-                        SoftwareDate = systemInfo?.SWDate ?? default,
-                    };
-
-                    activity?.SetReturnValue(retv);
-                    return retv;
-                }
-                catch (Exception ex)
+                var retv = new InformationModel
                 {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                    Uptime = systemInfo?.Uptime != null ? TimeSpan.FromMilliseconds(systemInfo.Uptime) : default,
+                    ControllerTime = systemInfo?.Realtimeclock ?? default,
+                    SoftwareVersion = systemInfo?.Version,
+                    ControllerStatus = controllerStatus,
+                    SdCard = sdCard,
+                    SmsModemVersion = systemInfo?.SmsModemSoftwareVersion,
+                    SerialNumber = systemInfo?.SerialNumber,
+                    ProductionDate = systemInfo?.ProductionDate,
+                    HardwareVersion = systemInfo?.HWRevision,
+                    IoVersion = systemInfo?.DatalineVersion,
+                    RfVersion = systemInfo?.RFModuleSoftwareVersion,
+                    RfSerialNumber = systemInfo?.RFModuleSerialNumber,
+                    SoftwareDate = systemInfo?.SWDate ?? default,
+                };
+
+                activity?.SetReturnValue(retv);
+                return retv;
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
         /// <summary>

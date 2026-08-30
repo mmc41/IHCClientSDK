@@ -1,22 +1,25 @@
 ---
 name: openobserve
 description: >-
-  Check for and diagnose runtime errors in this repo's OpenObserve logs and traces
-  during development, using the OpenObserve query API with the telemetry settings in
+  Check for and diagnose runtime errors in this repo's OpenObserve logs, traces and
+  metrics during development, using the OpenObserve query API with the telemetry settings in
   ihcsettings.json (cross-platform, Python-stdlib only). Use this WHENEVER you need to know whether a run
   actually failed and why — after running an IHC app/example/utility, after a
   reported bug or exception, when an operation "does nothing" or silently fails, when
-  investigating errors/warnings/timeouts/slow spans, or when the user mentions
-  OpenObserve, OTel, telemetry, traces, spans, or observability. Prefer this over
+  investigating errors/warnings/timeouts/slow spans, when checking whether an instrument
+  (counter/histogram) actually reached the backend, or when the user mentions
+  OpenObserve, OTel, telemetry, traces, spans, metrics, or observability. Prefer this over
   guessing from source code alone, since the controller and OTLP export happen out of
   process. Accounts for OpenObserve's short indexing delay so a just-triggered error
   is not missed.
+model: "claude-sonnet-5"
 ---
 
 # OpenObserve error lookup & diagnosis
 
-The IHC apps, examples, and utilities export OpenTelemetry **logs** and **traces** to
-an OpenObserve collector configured in the `telemetry` section of `ihcsettings.json`.
+The IHC apps, examples, and utilities export OpenTelemetry **logs**, **traces** and
+**metrics** to an OpenObserve collector configured in the `telemetry` section of
+`ihcsettings.json`.
 Much of what goes wrong at runtime — controller/SOAP failures, dropped telemetry,
 unhandled exceptions, slow operations — is only visible there, not in the source or
 the console. This skill queries that data so you can confirm whether a run failed and
@@ -62,9 +65,49 @@ python .claude/skills/openobserve/scripts/oo_query.py --type traces \
   --sql 'SELECT operation_name,span_status,duration,trace_id FROM "ihc" ORDER BY duration DESC' --size 20
 ```
 
+## Metrics are queried differently from logs and traces
+
+Metrics have no "is it an error" question, so they are opt-in: `--type metrics` needs
+either `--metric` or `--sql`. `--type both` still means logs+traces, so every existing
+invocation is unchanged.
+
+```bash
+# Every point of one instrument from the newest launch. The DOTTED name is accepted.
+python .claude/skills/openobserve/scripts/oo_query.py --metric ihc.edit.apply --latest-run --since 1d
+
+# A histogram resolves to its whole _bucket/_count/_sum family in one call:
+python .claude/skills/openobserve/scripts/oo_query.py --metric ihc.edit.apply.duration --latest-run --since 1d
+
+# What has ever exported an instrument? (metrics are listed alongside logs and traces)
+python .claude/skills/openobserve/scripts/oo_query.py --list-streams
+```
+
+Four things about OpenObserve's metric storage decide how you query it. They are
+measured against this repo's collector, not assumed:
+
+1. **One stream per instrument**, dots replaced by underscores: `ihc.edit.apply` is
+   stream `ihc_edit_apply`. `--metric` translates for you; raw `--sql` does not.
+2. **A histogram is decomposed** Prometheus-style into `<name>_bucket`, `<name>_count`
+   and `<name>_sum`, with `_min`/`_max` as well for explicit-boundary histograms. There
+   is no stream under the bare histogram name holding the distribution — OpenObserve
+   registers an EMPTY stream there which `--list-streams` shows but the search API
+   rejects with "Search stream not found". Query the family, which `--metric` does.
+3. **`_bucket` rows are cumulative**, with the boundary in the `le` column and a final
+   `le = 'inf'` row carrying the total. A single bucket's own count is the difference
+   between adjacent rows, never `value` on its own.
+4. **Metric rows scope to a launch with `service_instance_id`** — the LOGS spelling.
+   Traces use `service_service_instance_id`. `--latest-run` picks the right field per
+   signal; hand-written SQL that uses the traces spelling silently matches nothing.
+
+**Exemplars survive ingestion.** Each metric row carries an `exemplars` JSON array of
+`{trace_id, span_id, value, _timestamp}`, so a suspicious point can be followed straight
+to the trace that produced it — the metric-to-trace join. The summary line reports how
+many an row carries; `--json` prints them in full.
+
 Useful flags: `--since 30s|15m|2h|1d` (window, default 15m), `--latest-run` (only the
 newest app launch), `--size N`, `--include-warnings`, `--no-exception-events` (traces:
-match only `span_status='ERROR'`, skip exception-carrying spans), `--stream NAME`
+match only `span_status='ERROR'`, skip exception-carrying spans), `--metric NAME`
+(metrics: one instrument or a histogram family), `--stream NAME`
 (override discovery), `--json` (raw hits), `--config PATH`, `--quiet` (don't echo the
 curl command), `--wait S --retries N` (poll for delayed data). `--errors` is optional —
 the error query is the default action.
@@ -84,6 +127,13 @@ be stale — from a run hours ago, not the one you just did. Two safeguards, bot
   time window is the wrong tool for this — it can miss an error that landed just outside
   the window *and* still include a stale one; instead sweep a wide `--since` and let
   `--latest-run` (or the printed age) separate current from old.
+- **`--latest-run` does NOT apply to `--sql`.** Raw SQL is passed through verbatim, so
+  the instance filter is never added and the query sweeps the whole window — which reads
+  exactly like one launch and silently merges the previous build's telemetry into "the
+  run I just did". The script now warns on stderr and drops the scope line from its
+  header, but the fix is yours: select `service_service_instance_id` (traces) or
+  `service_instance_id` (logs/metrics) as a column and check it per row, or put it in
+  your own `WHERE`.
 
 ## Mind the indexing delay — this is the common trap
 

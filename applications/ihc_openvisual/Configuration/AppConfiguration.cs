@@ -31,8 +31,17 @@ public sealed class AppConfiguration
     public string SettingsFilePath { get; }
 
     public AppConfiguration()
+        : this(Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory)
     {
-        string basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory;
+    }
+
+    /// <summary>
+    /// Loads from an explicit directory instead of the executable's own. Exists so a test can exercise the
+    /// REAL parse of a written <c>ihcsettings.json</c> - asserting against a hand-built
+    /// <see cref="TelemetryConfiguration"/> would prove the type has a property, not that the key is read.
+    /// </summary>
+    internal AppConfiguration(string basePath)
+    {
         SettingsFilePath = Path.Combine(basePath, "ihcsettings.json");
         SettingsFileFound = File.Exists(SettingsFilePath);
 

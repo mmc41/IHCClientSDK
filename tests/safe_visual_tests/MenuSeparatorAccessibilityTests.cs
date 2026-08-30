@@ -31,7 +31,8 @@ public class MenuSeparatorAccessibilityTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public async Task FileMenu_Separators_ReachTheAutomationTree()
     {
-        (MainWindow window, _) = await ShowShellAsync();
+        (ShellHarness harness, MainWindow window, _) = await ShowShellAsync();
+        using var _1 = harness;
 
         var file = window.GetVisualDescendants().OfType<MenuItem>()
             .Single(m => AutomationProperties.GetAutomationId(m) == "MenuFile");
@@ -55,7 +56,8 @@ public class MenuSeparatorAccessibilityTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public async Task NodeContextFlyout_ClosesWithAPerceivableRule()
     {
-        (MainWindow window, MainWindowViewModel viewModel) = await ShowShellAsync();
+        (ShellHarness harness, MainWindow window, MainWindowViewModel viewModel) = await ShowShellAsync();
+        using var _1 = harness;
         viewModel.SelectNode(viewModel.InstallationNodes[0].Children[0]);   // a locality: Egenskaber is offered
 
         var flyout = (MenuFlyout)window.Resources["NodeContextMenu"]!;
@@ -71,7 +73,8 @@ public class MenuSeparatorAccessibilityTests : AvaloniaTestBase
         }
     }
 
-    private static async Task<(MainWindow, MainWindowViewModel)> ShowShellAsync()
+    /// <summary>The harness comes back so the caller can dispose it — see <see cref="ShellHarness.Dispose"/>.</summary>
+    private static async Task<(ShellHarness harness, MainWindow window, MainWindowViewModel viewModel)> ShowShellAsync()
     {
         var harness = ShellHarness.Create();
         MainWindowViewModel viewModel = harness.CreateViewModel();
@@ -80,6 +83,6 @@ public class MenuSeparatorAccessibilityTests : AvaloniaTestBase
         var window = new MainWindow { DataContext = viewModel };
         CurrentTestWindow = window;
         window.Show();
-        return (window, viewModel);
+        return (harness, window, viewModel);
     }
 }

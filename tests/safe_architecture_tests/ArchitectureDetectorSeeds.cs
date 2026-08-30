@@ -55,3 +55,75 @@ namespace Ihc.Vis.Seeded
         }
     }
 }
+
+namespace Ihc.Telemetry.Seeded
+{
+    using System.Diagnostics;
+    using System.Diagnostics.Metrics;
+    using System.Threading.Tasks;
+
+    // Controls for the instrumentation-core bypass detector (TelemetryCoreArchitectureTests). They live in the
+    // TEST assembly, so they can never reach the production scan — which is anchored to the ihcclient and
+    // ihc_openvisual assemblies — while being run through the exact same edge scan the production rules use.
+    //
+    // These matter more than the usual seed pair, because the production roster for this rule is EMPTY: every
+    // SDK and GUI site already goes through the core. A rule whose exemption list is empty and whose subject
+    // is clean is indistinguishable from a rule that detects nothing at all, so the only thing separating
+    // "enforced" from "broken" here is that these seeds are flagged.
+
+    /// <summary>Positive control: starts a span from a raw source instead of the core. Must be flagged.</summary>
+    internal sealed class SeededDirectSpanStarter
+    {
+        private static readonly ActivitySource Source = new("Seeded.Bypass");
+
+        public void Bypass()
+        {
+            using Activity? activity = Source.StartActivity("Seeded.Bypass");
+        }
+    }
+
+    /// <summary>
+    /// Positive control for the async reach: the bypass is written inside an async body, so the call is
+    /// emitted on a compiler-generated state machine rather than on this type. A scan that only looked at
+    /// authored types would miss it, which is precisely how a bypass would be introduced in real code — every
+    /// workflow method that would want one is async.
+    /// </summary>
+    internal sealed class SeededAsyncDirectSpanStarter
+    {
+        private static readonly ActivitySource Source = new("Seeded.Bypass");
+
+        public async Task BypassAsync()
+        {
+            using Activity? activity = Source.StartActivity("Seeded.BypassAsync");
+            await Task.Yield();
+        }
+    }
+
+    /// <summary>Positive control: a second meter outside the registries. Must be flagged.</summary>
+    internal sealed class SeededMeterOwner
+    {
+        public Meter Rogue { get; } = new("Seeded.Rogue");
+    }
+
+    /// <summary>Positive control: an instrument built outside the registries. Must be flagged.</summary>
+    internal sealed class SeededInstrumentOwner(Meter meter)
+    {
+        public Counter<long> Rogue { get; } = meter.CreateCounter<long>("seeded.rogue");
+    }
+
+    /// <summary>
+    /// Negative control: the migrated form. It reaches the same outcome through the core, so it holds an
+    /// <see cref="OperationTelemetry"/>, calls <c>Start</c>, and touches an <see cref="Activity"/> — none of
+    /// which may be flagged, or the rule would forbid the very shape it exists to require.
+    /// </summary>
+    internal sealed class SeededCoreUser(TelemetrySurface surface)
+    {
+        private readonly OperationTelemetry telemetry = new(surface, nameof(SeededCoreUser));
+
+        public void Instrumented()
+        {
+            using OperationScope scope = telemetry.Start(nameof(Instrumented));
+            scope.Activity?.SetTag("seeded.tag", 1);
+        }
+    }
+}

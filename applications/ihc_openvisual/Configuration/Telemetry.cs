@@ -15,5 +15,5 @@ public static class Telemetry
     public const string ActivitySourceName = "IhcOpenVisual";
 
     public static ActivitySource ActivitySource { get; } =
-        new ActivitySource(name: ActivitySourceName, version: AppTelemetryBootstrap.GetAppVersionStr());
+        new ActivitySource(name: ActivitySourceName, version: TelemetryBootstrap.GetAppVersionStr());
 }

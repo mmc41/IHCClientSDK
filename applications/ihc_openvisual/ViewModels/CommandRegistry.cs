@@ -130,6 +130,18 @@ public sealed class CommandRegistry : ObservableObject
         return reason;
     }
 
+    /// <summary>The registry's entry point into the instrumentation core.</summary>
+    private readonly Ihc.OperationTelemetry _telemetry =
+        new(ihc_openvisual.Configuration.AppTelemetryRegistry.Surface, nameof(CommandRegistry));
+
+    /// <summary>The binding is IMMUTABLE and its instruments are static, so it is built once rather than per operation.</summary>
+    private static readonly Ihc.MetricBinding InvokeMetrics =
+        Ihc.MetricBinding.For(occurrences: ihc_openvisual.Configuration.AppTelemetryRegistry.CommandInvocation);
+
+    /// <summary>The binding is IMMUTABLE and its instruments are static, so it is built once rather than per operation.</summary>
+    private static readonly Ihc.MetricBinding ContextRebuildMetrics =
+        Ihc.MetricBinding.For(ihc_openvisual.Configuration.AppTelemetryRegistry.ContextRebuildDuration);
+
     /// <summary>Adds a row and materializes its command from the row's Gate (D02): CanExecute IS the gate,
     /// evaluated against the current context on every ask (any ICommand parameter first flows through the
     /// beforeExecute bridge, then Execute reads the context). Throws on a duplicate id — one row per command.</summary>
@@ -138,6 +150,20 @@ public sealed class CommandRegistry : ObservableObject
         _rows.Add(row.Id, row);
         Task Execute(object? parameter)
         {
+            // ONE place for all four surfaces. Menu bar, toolbar, context flyout and gesture all materialize
+            // from this same local function, so counting here counts every route without the four having to
+            // agree on anything.
+            //
+            // WHAT THIS DOES AND DOES NOT CLAIM, stated where it is declared because the name invites a
+            // wider reading. It counts REGISTERED ROWS being invoked - not feature usage, and not user
+            // gestures. There is no surface dimension, because this function structurally cannot observe
+            // WHICH of the four surfaces invoked it; and no error dimension, because it hands back the row's
+            // task and never observes whether that task faulted. Anything the shell does outside a
+            // registered row is invisible here by construction.
+            using Ihc.OperationScope scope = _telemetry.Start("Invoke", metrics:
+                InvokeMetrics);
+            scope.AddSharedTag(ihc_openvisual.Configuration.AppTelemetryRegistry.Attributes.CommandId, row.Id);
+
             _beforeExecute?.Invoke(parameter);
             return row.Execute(_context());
         }
@@ -165,6 +191,12 @@ public sealed class CommandRegistry : ObservableObject
     /// CanExecuteChanged on every materialized command.</summary>
     public void OnContextChanged()
     {
+        // The sweep re-evaluates EVERY registered row against the new context and raises CanExecuteChanged on
+        // each command. It runs on every selection change, so its cost scales with the row count and is paid
+        // constantly - which makes it the other half of the same performance question as the tree refresh.
+        using Ihc.OperationScope scope = _telemetry.Start(nameof(OnContextChanged), metrics:
+            ContextRebuildMetrics);
+
         ShellContext context = _context();
         var bar = new Dictionary<string, Availability>(_rows.Count);
         var contextMenu = new Dictionary<string, Availability>(_rows.Count);

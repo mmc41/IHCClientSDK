@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using Ihc;
+using ihc_openvisual.Configuration;
 using Ihc.Vis;
 using Ihc.Vis.Projects;
 using Microsoft.Extensions.Logging;
@@ -21,6 +22,10 @@ namespace ihc_openvisual.Services;
 internal sealed class ProjectReportWorkflow(
     ProjectAppService service, IDialogService dialogs, ILogger logger, Func<Project?> getCurrent) : IDisposable
 {
+    /// <summary>This type's entry point into the instrumentation core.</summary>
+    private readonly OperationTelemetry _telemetry =
+        new(AppTelemetryRegistry.Surface, nameof(ProjectReportWorkflow));
+
     private string? _viewDirectory;
 
     /// <summary>Where <see cref="ViewInBrowserAsync"/> puts the page it hands to the OS — a directory of its own,
@@ -42,7 +47,7 @@ internal sealed class ProjectReportWorkflow(
     /// </summary>
     public async Task ViewInBrowserAsync(ReportKind kind, ReportMode mode, ReportFormat format)
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectReportWorkflow)}.{nameof(ViewInBrowserAsync)}");
+        using OperationScope scope = _telemetry.Start(nameof(ViewInBrowserAsync));
         try
         {
             if (getCurrent() is not { } project)
@@ -60,7 +65,7 @@ internal sealed class ProjectReportWorkflow(
         }
         catch (Exception ex)
         {
-            ActivityExtensions.SetError(activity, ex);
+            scope.SetOutcome(OperationOutcome.Failed(ex));
             logger.LogError(ex, "Failed to generate the {Kind} {Mode} report for browser view", kind, mode);
             await RaisedProblemDisplay.ShowAsync(
                 dialogs, ReportFailedTitle, HostProblems.ReportViewFailed(ex), ex);
@@ -75,7 +80,7 @@ internal sealed class ProjectReportWorkflow(
     /// </summary>
     public async Task SaveAsAsync(ReportKind kind, ReportMode mode, ReportFormat format)
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectReportWorkflow)}.{nameof(SaveAsAsync)}");
+        using OperationScope scope = _telemetry.Start(nameof(SaveAsAsync));
         try
         {
             if (getCurrent() is not { } project)
@@ -91,7 +96,7 @@ internal sealed class ProjectReportWorkflow(
         }
         catch (Exception ex)
         {
-            ActivityExtensions.SetError(activity, ex);
+            scope.SetOutcome(OperationOutcome.Failed(ex));
             logger.LogError(ex, "Failed to save the {Kind} {Mode} report", kind, mode);
             await RaisedProblemDisplay.ShowAsync(
                 dialogs, ReportFailedTitle, HostProblems.ReportSaveFailed(ex), ex);

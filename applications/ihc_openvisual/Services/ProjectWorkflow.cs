@@ -7,6 +7,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Ihc;
 using ihc_openvisual.Configuration;
 using Ihc.Vis;
 using Ihc.Vis.Addressing;
@@ -96,7 +97,7 @@ public sealed class ProjectWorkflow : IDisposable
         // LAST, because it reads this workflow: everything it touches (Current, Version, LastChange, Post, Time,
         // StateChanged) is assigned above. Eager rather than lazy so no reader can create it late and miss the
         // document changes that already happened.
-        Validation = new ValidationMonitor(this, ValidateStructured);
+        Validation = new ValidationMonitor(this, ValidateStructured, loggerFactory);
     }
 
     /// <summary>
@@ -193,6 +194,10 @@ public sealed class ProjectWorkflow : IDisposable
     /// launch.</para></summary>
     public async Task StartAsync(string? startupProjectPath = null)
     {
+        using OperationScope scope = _telemetry.Start(nameof(StartAsync));
+        scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectSource,
+            string.IsNullOrWhiteSpace(startupProjectPath) ? SourceEmpty : SourceStartupArgument);
+
         // The launch file (BP-11a). OpenAsync is the same door File ▸ Open uses, so the load, the normalization,
         // the recent-list entry and the failure dialog are all the established ones; a failure just falls through
         // to the empty project below.
@@ -205,6 +210,8 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>File → New (US-002): prompt to save the open project, then open the standard empty project.</summary>
     public async Task<bool> NewAsync()
     {
+        using OperationScope scope = _telemetry.Start(nameof(NewAsync));
+        scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectSource, SourceEmpty);
         if (!await ConfirmSaveIfDirtyAsync())
             return false;
         NewInternal();
@@ -214,6 +221,11 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>File → Open (US-004): prompt to save, then load the chosen file as the single active project.</summary>
     public async Task<bool> OpenAsync(string path)
     {
+        using OperationScope scope = _telemetry.Start(nameof(OpenAsync), metrics:
+            LoadMetrics);
+        scope.AddSharedTag(AppTelemetryRegistry.Attributes.ProjectSource, SourceFile);
+        scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectPath, path);
+
         if (!await ConfirmSaveIfDirtyAsync())
             return false;
         try
@@ -224,10 +236,15 @@ public sealed class ProjectWorkflow : IDisposable
             Project loaded = _service.NormalizeOnOpen(await _service.Load(path));
             SetProject(loaded, path, dirty: false);
             _recent.Add(path);
+            scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectFileSize, FileSizeOrNull(path));
             return true;
         }
         catch (Exception ex)
         {
+            // BEFORE the dialog and the swallow. The dialog awaits a human, so recording after it would fold
+            // arbitrary think-time into the operation - and the `return false` below discards the exception
+            // entirely, which is how an open failure used to leave no trace at all.
+            scope.SetOutcome(Ihc.OperationOutcome.Failed(ex));
             _logger.LogError(ex, "Failed to open project {Path}", path);
             await RaisedProblemDisplay.ShowAsync(
                 _dialogs, OpenFailedTitle, HostProblems.ProjectOpenFailed(path, ex), ex);
@@ -244,6 +261,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>File → Save (US-003): re-save to the existing file, or fall through to Save As when unnamed.</summary>
     public async Task<bool> SaveAsync()
     {
+        using OperationScope scope = _telemetry.Start(nameof(SaveAsync));
         if (Current is null)
             return false;
         return FilePath is null ? await SaveAsAsync() : await SaveToAsync(FilePath);
@@ -252,6 +270,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>File → Save As (US-003): pick a file name and write the project there.</summary>
     public async Task<bool> SaveAsAsync()
     {
+        using OperationScope scope = _telemetry.Start(nameof(SaveAsAsync));
         if (Current is null)
             return false;
         string suggested = FilePath is not null ? Path.GetFileName(FilePath) : "Untitled.vis";
@@ -262,6 +281,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>File → Close: prompt to save, then return to a fresh empty project.</summary>
     public async Task<bool> CloseAsync()
     {
+        using OperationScope scope = _telemetry.Start(nameof(CloseAsync));
         if (!await ConfirmSaveIfDirtyAsync())
             return false;
         NewInternal();
@@ -398,7 +418,7 @@ public sealed class ProjectWorkflow : IDisposable
     {
         if (Current is not { } project)
             return false;
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(SaveFunctionBlockAsync)}");
+        using OperationScope scope = _telemetry.Start(nameof(SaveFunctionBlockAsync));
         string? normalizedNote = string.IsNullOrEmpty(note) ? null : note;
         try
         {
@@ -407,7 +427,7 @@ public sealed class ProjectWorkflow : IDisposable
         }
         catch (Exception ex)
         {
-            Ihc.ActivityExtensions.SetError(activity, ex);
+            scope.SetOutcome(Ihc.OperationOutcome.Failed(ex));
             _logger.LogError(ex, "Failed to save function block {Id} to {Path}", functionBlockId.ToToken(), filePath);
             // The engine's English message is DETAIL, never the sentence: it goes to the log above, and the
             // installer reads the SDK's own coded CAUSE (D01) — why the export failed, not merely which file it
@@ -571,42 +591,94 @@ public sealed class ProjectWorkflow : IDisposable
     /// (e.g. a non-empty locality delete) reverses as one step because it was committed as a single snapshot.
     /// A no-op (returns false) when there is nothing to undo.
     /// </summary>
-    public Task<bool> UndoAsync()
-    {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(UndoAsync)}");
-        if (_document?.Undo() is not { Status: EditStatus.Committed } outcome)
-            return Task.FromResult(false);
-        RaiseChanged(outcome.Changes);
-        return Task.FromResult(true);
-    }
+    public Task<bool> UndoAsync() => HistoryStep(nameof(UndoAsync), d => d.Undo());
 
     /// <summary>Discards the last committed edit as if it never happened — the cancel arm of an
     /// apply → dialog → cancel gesture (a cancelled product insert). Unlike <see cref="UndoAsync"/> the document
     /// restores the snapshot verbatim (a cancelled gesture burns no ids — vendor-measured, uxparity S-12) and
     /// leaves nothing on the redo stack (a gesture that never completed is not redoable). No-op (false) when
     /// there is nothing to roll back.</summary>
-    public Task<bool> RollbackAsync()
-    {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(RollbackAsync)}");
-        if (_document?.Rollback() is not { Status: EditStatus.Committed } outcome)
-            return Task.FromResult(false);
-        RaiseChanged(outcome.Changes);
-        return Task.FromResult(true);
-    }
+    public Task<bool> RollbackAsync() => HistoryStep(nameof(RollbackAsync), d => d.Rollback());
 
     /// <summary>Re-applies the last undone edit (US-052): the mirror of <see cref="UndoAsync"/>. No-op (false) when the
     /// redo history is empty.</summary>
-    public Task<bool> RedoAsync()
+    public Task<bool> RedoAsync() => HistoryStep(nameof(RedoAsync), d => d.Redo());
+
+    /// <summary>
+    /// The shared body of the three history gestures. They differ only in which document call they make, and
+    /// the classification and the change-raise below are the part that must not diverge between them.
+    /// </summary>
+    private Task<bool> HistoryStep(string operation, Func<IProjectDocument, EditOutcome> step) =>
+        Task.FromResult(_telemetry.Run(operation, scope =>
+        {
+            EditOutcome? outcome = _document is null ? null : step(_document);
+            if (outcome is not { Status: EditStatus.Committed })
+            {
+                scope.SetOutcome(ClassifyEdit(outcome));
+                return false;
+            }
+            RaiseChanged(outcome.Changes);
+            return true;
+        }));
+
+    /// <summary>Where the project in play came from: the vocabulary of the project-source dimension.</summary>
+    private const string SourceFile = "file";
+    private const string SourceEmpty = "empty";
+    private const string SourceStartupArgument = "startup-argument";
+
+    /// <summary>
+    /// The file size, or null when it cannot be read. Null rather than 0 or -1: a missing size is not a size,
+    /// and a zero would be indistinguishable from an empty file.
+    /// </summary>
+    private static long? FileSizeOrNull(string path)
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(ProjectWorkflow)}.{nameof(RedoAsync)}");
-        if (_document?.Redo() is not { Status: EditStatus.Committed } outcome)
-            return Task.FromResult(false);
-        RaiseChanged(outcome.Changes);
-        return Task.FromResult(true);
+        try
+        {
+            return new FileInfo(path).Length;
+        }
+        catch (Exception)
+        {
+            // Reporting a size is never worth failing a save over.
+            return null;
+        }
     }
+
+    /// <summary>
+    /// The workflow's entry point into the instrumentation core. Owner is the type, so spans keep reading
+    /// <c>ProjectWorkflow.&lt;operation&gt;</c>.
+    /// </summary>
+    private readonly OperationTelemetry _telemetry =
+        new(AppTelemetryRegistry.Surface, nameof(ProjectWorkflow));
+
+    /// <summary>The binding is IMMUTABLE and its instruments are static, so it is built once rather than per operation.</summary>
+    private static readonly Ihc.MetricBinding LoadMetrics =
+        Ihc.MetricBinding.For(AppTelemetryRegistry.ProjectLoadDuration);
+
+    /// <summary>The binding is IMMUTABLE and its instruments are static, so it is built once rather than per operation.</summary>
+    private static readonly Ihc.MetricBinding SaveMetrics =
+        Ihc.MetricBinding.For(AppTelemetryRegistry.ProjectSaveDuration);
+
+    /// <summary>
+    /// Turns an edit outcome into the operation's outcome. The three non-committed cases are NOT the same
+    /// thing and collapsing them into the returned <c>false</c> is what made an undo that FAILED
+    /// indistinguishable from one that had nothing to undo.
+    /// </summary>
+    private static Ihc.OperationOutcome ClassifyEdit(EditOutcome? outcome) => outcome?.Status switch
+    {
+        // No document, or nothing on the history: the operation did what it could, which was nothing.
+        null or EditStatus.NoChange or EditStatus.Committed => Ihc.OperationOutcome.Ok,
+        EditStatus.Refused => Ihc.OperationOutcome.Refused(outcome.Code.Value),
+        EditStatus.Failed => Ihc.OperationOutcome.FailedWith(outcome.Code.Value),
+        _ => Ihc.OperationOutcome.Ok,
+    };
 
     private async Task<bool> SaveToAsync(string path)
     {
+        using OperationScope scope = _telemetry.Start(nameof(SaveToAsync), metrics:
+            SaveMetrics);
+        scope.AddSharedTag(AppTelemetryRegistry.Attributes.ProjectSource, SourceFile);
+        scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectPath, path);
+
         try
         {
             // Capture the snapshot that is being written BEFORE the await (the race fix): an edit landing during
@@ -620,10 +692,13 @@ public sealed class ProjectWorkflow : IDisposable
             FilePath = path;
             _recent.Add(path);
             RaiseChanged();
+            scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectFileSize, FileSizeOrNull(path));
             return true;
         }
         catch (Exception ex)
         {
+            // BEFORE the dialog and the swallow, for the same reason as the open path above.
+            scope.SetOutcome(Ihc.OperationOutcome.Failed(ex));
             _logger.LogError(ex, "Failed to save project {Path}", path);
             await RaisedProblemDisplay.ShowAsync(
                 _dialogs, SaveFailedTitle, HostProblems.ProjectSaveFailed(path, ex), ex);
@@ -633,6 +708,10 @@ public sealed class ProjectWorkflow : IDisposable
 
     private async Task<bool> ConfirmSaveIfDirtyAsync()
     {
+        // Its OWN span, and a child of whatever lifecycle operation is running. The prompt awaits a HUMAN, so
+        // left inline its think-time would land in the parent duration and every load/save percentile would
+        // measure how fast the user reads rather than how fast the app works.
+        using OperationScope scope = _telemetry.Start(nameof(ConfirmSaveIfDirtyAsync));
         if (!IsDirty)
             return true;
         SaveChangesResult result = await _dialogs.ConfirmSaveChangesAsync(DocumentName);

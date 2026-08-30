@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-oo_query.py - Query OpenObserve logs and traces for errors during development.
+oo_query.py - Query OpenObserve logs, traces and metrics for errors during development.
 
 Reads the `telemetry` section of ihcsettings.json (the same settings the IHC apps
-export to), discovers the real log/trace stream names, and runs OpenObserve's
+export to), discovers the real log/trace/metric stream names, and runs OpenObserve's
 `_search` API over `curl`. Built for an LLM to check for and diagnose errors while
 developing against the IHC SDK/apps.
 
@@ -25,6 +25,29 @@ Examples:
 
     # Run any SQL yourself (stream names are lowercased by OpenObserve):
     python oo_query.py --type traces --sql 'SELECT * FROM "ihc" WHERE duration > 500000 ORDER BY duration DESC' --size 20
+
+    # Metrics: every point of one instrument, newest first, from the last app launch.
+    # The dotted instrument name is accepted; OpenObserve's underscore form also works.
+    python oo_query.py --metric ihc.edit.apply --latest-run
+
+    # A histogram resolves to its whole _bucket/_count/_sum family in one call:
+    python oo_query.py --metric ihc.edit.apply.duration --latest-run
+
+    # What instruments has anything ever exported?
+    python oo_query.py --type metrics --list-streams
+
+METRICS DIFFER FROM LOGS AND TRACES IN FOUR WAYS THAT CHANGE HOW YOU QUERY THEM.
+  1. There is no single metrics stream. OpenObserve creates ONE STREAM PER INSTRUMENT,
+     named with dots replaced by underscores, so `ihc.edit.apply` is stream
+     `ihc_edit_apply`. `--metric` does that translation for you.
+  2. A histogram is DECOMPOSED, Prometheus-style, into `<name>_bucket`, `<name>_count`
+     and `<name>_sum` (explicit-boundary histograms additionally get `_min`/`_max`).
+     There is no stream under the bare histogram name holding the whole distribution.
+  3. In `_bucket` rows the boundary lives in the `le` column and the counts are
+     CUMULATIVE ("less than or equal to"), with a final `le = 'inf'` row carrying the
+     total -- so the per-bucket count is a difference between adjacent rows, not `value`.
+  4. Metric rows scope to a launch with `service_instance_id`, the LOGS spelling.
+     Traces use `service_service_instance_id`. `--latest-run` picks the right one.
 """
 import argparse
 import json
@@ -42,6 +65,17 @@ CONNECT_HINT = (
 # Log severities that count as an error. OpenObserve stores the .NET LogLevel name
 # verbatim (title-case), but we include upper-case variants for other exporters.
 ERROR_SEVERITIES = ("Error", "Critical", "Fatal", "ERROR", "CRITICAL", "FATAL")
+
+# Suffixes OpenObserve appends when it decomposes a histogram into separate streams.
+# `_min`/`_max` appear for explicit-boundary histograms only, so a resolver must treat
+# every one of these as optional rather than assume a fixed family.
+HISTOGRAM_SUFFIXES = ("bucket", "count", "sum", "min", "max")
+
+# Metric rows carry the per-launch id under the LOGS spelling, not the traces one.
+# Measured against a live collector; getting this wrong silently scopes to nothing.
+INSTANCE_FIELD = {"logs": "service_instance_id",
+                  "traces": "service_service_instance_id",
+                  "metrics": "service_instance_id"}
 
 
 def find_config(explicit):
@@ -158,6 +192,50 @@ def pick_stream(base, org, auth, stream_type, override):
     return non_default[0] if non_default else streams[0]
 
 
+def resolve_metric_streams(base, org, auth, metric):
+    """
+    Map an instrument name to the stream(s) OpenObserve actually stores it under.
+
+    Accepts the dotted name the instrument is declared with (`ihc.edit.apply.duration`)
+    or the underscore name the collector shows.
+
+    A histogram is stored ONLY as its `_bucket`/`_count`/`_sum` family. OpenObserve also
+    registers an EMPTY stream under the histogram's bare name, which the streams API lists
+    but the search API rejects with "Search stream not found" -- so when a family exists the
+    bare name is deliberately excluded rather than queried and failed. A counter or gauge
+    has no family and is returned under its own name.
+    """
+    wanted = metric.strip().replace(".", "_").lower()
+    existing = set(list_streams(base, org, auth, "metrics"))
+    family = [f"{wanted}_{s}" for s in HISTOGRAM_SUFFIXES if f"{wanted}_{s}" in existing]
+    if family:
+        return family
+    return [wanted] if wanted in existing else []
+
+
+def summarize_metric(h, now):
+    ts = micros_to_iso(h.get("_timestamp"))
+    name = h.get("__name__") or "?"
+    value = h.get("value")
+    # Dimensions are whatever the instrument was tagged with, flattened to underscores.
+    skip = {"__name__", "__hash__", "_timestamp", "value", "le", "exemplars", "flag",
+            "start_time", "aggregation_temporality", "is_monotonic"}
+    dims = {k: v for k, v in h.items()
+            if k not in skip and not k.startswith(("service_", "telemetry_sdk_", "instrumentation_library_"))}
+    dim_text = " ".join(f"{k}={v}" for k, v in sorted(dims.items()))
+    le = f" le={h['le']}" if h.get("le") is not None else ""
+    temporality = (h.get("aggregation_temporality") or "").replace("AGGREGATION_TEMPORALITY_", "")
+    exemplars = ""
+    raw = h.get("exemplars")
+    if raw and raw not in ("[]", "null"):
+        try:
+            exemplars = f" exemplars={len(json.loads(raw) if isinstance(raw, str) else raw)}"
+        except (json.JSONDecodeError, TypeError):
+            exemplars = " exemplars=?"
+    return (f"[{ts} | {fmt_age(h.get('_timestamp'), now)}] {name}{le} = {value}"
+            f"  {temporality:10} run={short_inst(h)} {dim_text}{exemplars}")
+
+
 SINCE_UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
 
 
@@ -270,12 +348,54 @@ def run_once(args, base, org, auth, log_stream, trace_stream, start, end, quiet)
     want_traces = args.type in ("traces", "both")
 
     if args.sql:
-        stream_type = args.type if args.type in ("logs", "traces") else "logs"
+        stream_type = args.type if args.type in ("logs", "traces", "metrics") else "logs"
+        if args.latest_run:
+            # Raw SQL is passed through verbatim, so the instance filter the other branches add cannot be
+            # applied here without rewriting a query this script does not parse. Say so loudly: a silent
+            # no-op reads as "these rows are one launch" and quietly merges runs, which is the single
+            # easiest way to mistake a previous build's telemetry for the run just made.
+            print(f"\nWARNING: --latest-run does NOT apply to --sql; the query ran unscoped over the whole "
+                  f"window. Add \"{INSTANCE_FIELD.get(stream_type, 'service_instance_id')} = '<id>'\" "
+                  f"to the WHERE clause yourself, or select that column and check it per row.",
+                  file=sys.stderr)
         hits = search(base, org, auth, stream_type, args.sql, start, end, args.size, quiet)
         print(f"\n=== {stream_type} ({len(hits)}) ===")
+        printer = {"traces": summarize_trace, "metrics": summarize_metric}.get(stream_type, summarize_log)
         for h in hits:
-            print(json.dumps(h) if args.json else (summarize_trace(h, now) if stream_type == "traces" else summarize_log(h, now)))
+            print(json.dumps(h) if args.json else printer(h, now))
         return len(hits)
+
+    if args.metric:
+        streams = resolve_metric_streams(base, org, auth, args.metric)
+        if not streams:
+            print(f"\nNo metrics stream matches '{args.metric}'. "
+                  "`--type metrics --list-streams` shows what exists; remember a histogram "
+                  "is stored only as its _bucket/_count/_sum family.")
+            return 0
+        found = 0
+        for stream in streams:
+            where, scope = "1 = 1", ""
+            try:
+                if args.latest_run:
+                    iid = latest_instance(base, org, auth, stream, "metrics", INSTANCE_FIELD["metrics"], start, end)
+                    if iid:
+                        where = f"{INSTANCE_FIELD['metrics']} = '{iid}'"
+                        scope = f" [latest run {iid[:8]}]"
+                # _bucket rows order by boundary so the cumulative shape reads top to bottom;
+                # everything else is newest-first like the other signals.
+                order = "CAST(le AS DOUBLE)" if stream.endswith("_bucket") else "_timestamp DESC"
+                sql = f'SELECT * FROM "{stream}" WHERE {where} ORDER BY {order}'
+                hits = search(base, org, auth, "metrics", sql, start, end, args.size, quiet)
+            except SystemExit as exc:
+                # One unqueryable member must not abort the others: a histogram family is
+                # reported per stream, and a partial answer beats no answer at all.
+                print(f"\n=== metric '{stream}' (query failed) ===\n{exc}")
+                continue
+            found += len(hits)
+            print(f"\n=== metric '{stream}'{scope} ({len(hits)}) ===")
+            for h in hits:
+                print(json.dumps(h) if args.json else summarize_metric(h, now))
+        return found
 
     if want_logs and log_stream:
         sev = ERROR_SEVERITIES + ("Warning", "WARN", "WARNING") if args.include_warnings else ERROR_SEVERITIES
@@ -328,14 +448,20 @@ def main():
     # (run whenever neither --list-streams nor --sql is given). Kept so the documented,
     # self-explaining `--errors` invocation works.
     p.add_argument("--errors", action="store_true", help="Canned error query over logs and/or traces (the default action; this flag is optional).")
-    p.add_argument("--type", choices=["logs", "traces", "both"], default="both", help="Which streams to query.")
+    p.add_argument("--type", choices=["logs", "traces", "metrics", "both"], default="both",
+                   help="Which streams to query. 'both' stays logs+traces, so existing invocations are unchanged; "
+                        "metrics are opt-in because the canned error query has no meaning for them.")
+    p.add_argument("--metric",
+                   help="Canned metrics query: every point of this instrument, dotted or underscore name. "
+                        "A histogram resolves to its whole _bucket/_count/_sum family. Pair with --latest-run.")
     p.add_argument("--since", default="15m", help="Look-back window: 30s, 15m, 2h, 1d. Default 15m.")
     p.add_argument("--size", type=int, default=100, help="Max rows to return. Default 100.")
     p.add_argument("--stream", help="Override the discovered stream name.")
-    p.add_argument("--sql", help="Run custom SQL instead of the canned error query (use with --type logs|traces).")
+    p.add_argument("--sql", help="Run custom SQL instead of the canned error query (use with --type logs|traces|metrics).")
     p.add_argument("--list-streams", action="store_true", help="List stream names and exit.")
     p.add_argument("--latest-run", action="store_true",
-                   help="Scope to the newest app launch (service_instance_id), so stale errors from earlier runs are excluded.")
+                   help="Scope to the newest app launch, so stale errors from earlier runs are excluded. Uses "
+                        "service_instance_id for logs and metrics, service_service_instance_id for traces.")
     p.add_argument("--include-warnings", action="store_true", help="Also include Warning-severity logs.")
     p.add_argument("--no-exception-events", action="store_true", help="Traces: match only span_status='ERROR'.")
     p.add_argument("--json", action="store_true", help="Print raw JSON hits instead of a compact summary.")
@@ -351,9 +477,15 @@ def main():
 
     if args.list_streams:
         print(f"config: {config_path}\nbase: {base}  org: {org}")
-        print("logs  :", ", ".join(list_streams(base, org, auth, "logs")) or "(none)")
-        print("traces:", ", ".join(list_streams(base, org, auth, "traces")) or "(none)")
+        print("logs   :", ", ".join(list_streams(base, org, auth, "logs")) or "(none)")
+        print("traces :", ", ".join(list_streams(base, org, auth, "traces")) or "(none)")
+        # One stream per instrument, so this list is long and is the metric inventory.
+        print("metrics:", ", ".join(sorted(list_streams(base, org, auth, "metrics"))) or "(none)")
         return
+
+    if args.type == "metrics" and not (args.sql or args.metric):
+        sys.exit("--type metrics needs --metric <instrument> or --sql: there is no canned "
+                 "error query for metrics. `--type metrics --list-streams` lists instruments.")
 
     log_stream = pick_stream(base, org, auth, "logs", args.stream) if args.type in ("logs", "both") else None
     trace_stream = pick_stream(base, org, auth, "traces", args.stream) if args.type in ("traces", "both") else None
@@ -366,7 +498,7 @@ def main():
 
     print(f"config: {config_path}  |  base: {base}  org: {org}", file=sys.stderr)
     print(f"now: {micros_to_iso(now)}  |  window: last {args.since}"
-          + ("  |  scope: latest run only" if args.latest_run else ""), file=sys.stderr)
+          + ("  |  scope: latest run only" if args.latest_run and not args.sql else ""), file=sys.stderr)
     total = 0
     for attempt in range(1, max(1, args.retries) + 1):
         end = now_micros()

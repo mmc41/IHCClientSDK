@@ -42,6 +42,20 @@
         {"text": "Report acknowledges OpenObserve's indexing delay or look-back window when reasoning about completeness."}
       ],
       "files": []
+    },
+    {
+      "id": 3,
+      "name": "check-metric-reached-backend",
+      "prompt": "I added an ihc.edit.apply counter and an ihc.edit.apply.duration histogram and just ran OpenVisual. Did they actually reach OpenObserve, and what does the duration distribution look like?",
+      "expected_output": "Recognises that metrics are a separate signal from logs and traces, queries them with --metric (or --type metrics --sql), resolves the histogram to its _bucket/_count/_sum family rather than its bare name, scopes to the run with service_instance_id, and reads the _bucket rows as CUMULATIVE counts keyed by the le boundary.",
+      "assertions": [
+        {"text": "Uses the metrics path (--metric, or --type metrics with --sql) rather than the default logs/traces error query, which cannot see metrics at all."},
+        {"text": "Refers to the histogram through its _bucket/_count/_sum family, and does not report the bare histogram name as an empty or missing stream."},
+        {"text": "Scopes the run with service_instance_id (the logs spelling) and not service_service_instance_id, which is the traces spelling and would match nothing."},
+        {"text": "Interprets _bucket values as cumulative counts per le boundary with a final le='inf' total, rather than as per-bucket counts."},
+        {"text": "If no points are found, reports it as unknown pending the indexing/export delay rather than concluding the instrument is not wired."}
+      ],
+      "files": []
     }
   ]
 }

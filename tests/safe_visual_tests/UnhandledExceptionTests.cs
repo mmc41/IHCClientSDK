@@ -26,7 +26,7 @@ public class UnhandledExceptionTests
     {
         // (a) The unhandled-exception handler records the failure through ILogger.
         var logger = new CapturingLogger();
-        AppTelemetryBootstrap.LogUnhandledException(logger, new InvalidOperationException("boom-42"));
+        TelemetryBootstrap.LogUnhandledException(logger, new InvalidOperationException("boom-42"));
         Assert.That(logger.Messages, Has.Some.Contains("boom-42"), "the unhandled exception reaches ILogger");
         Assert.That(logger.Messages, Has.Some.Contains("Critical"), "and at a critical level");
 

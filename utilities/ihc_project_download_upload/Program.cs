@@ -3,11 +3,10 @@ using System.IO;
 using System.Threading.Tasks;
 using Ihc;
 using Microsoft.Extensions.Configuration;
+using Ihc.Bootstrap;
+using Microsoft.Extensions.Logging;
 using System.Reflection;
 using System.Text;
-using OpenTelemetry;
-using OpenTelemetry.Trace;
-using OpenTelemetry.Resources;
 
 namespace Ihc.download_upload_example
 {      
@@ -64,20 +63,12 @@ namespace Ihc.download_upload_example
 
             try
             {
-                using var telmetryTracerProvider = Sdk.CreateTracerProviderBuilder()
-                    .SetErrorStatusOnException(true)
-                    .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: AppServiceName, serviceNamespace: AppServiceNamespace))
-                    .AddSource(Ihc.Telemetry.ActivitySourceName, ActivitySourceName)
-                    .AddOtlpExporter(opts =>
-                    {
-                        if (!string.IsNullOrEmpty(telemetryConfig.Traces))
-                        {
-                            opts.Endpoint = new Uri(telemetryConfig.Traces);
-                            opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
-                            if (!string.IsNullOrEmpty(telemetryConfig.Headers))
-                                opts.Headers = telemetryConfig.Headers;
-                        }
-                    }).Build();
+                // Both providers, each gated on its configured endpoint, from the one builder every IHC host
+                // shares (R7). The hand-rolled copy this replaces tested the endpoint INSIDE the exporter
+                // callback, so an unconfigured utility still built a provider and still exported - to the OTLP
+                // default endpoint. It also gains this utility metrics, which it never had.
+                using ILoggerFactory loggerFactory = TelemetryBootstrap.SetupTelemetryAndLogging(
+                    AppServiceName, AppServiceNamespace, ActivitySourceName, telemetryConfig, config);
 
                 // Authenticate against IHC system. 
                 var login = await authService.Authenticate();
@@ -126,6 +117,10 @@ namespace Ihc.download_upload_example
             {
                 await authService.Disconnect();
             }
+
+            // A console process exits as soon as this returns, so the flush happens here rather than in a
+            // finalizer that will not run.
+            TelemetryBootstrap.Shutdown();
         }
     }
 }

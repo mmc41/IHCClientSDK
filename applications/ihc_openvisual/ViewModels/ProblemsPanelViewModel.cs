@@ -413,6 +413,13 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// <summary>Projects one bound result into rows. On the owning thread, so the snapshot read below is safe.</summary>
     private void Bind(ValidationOutcome outcome)
     {
+        // The panel's cost model, made observable. Binding walks the snapshot to index it by id and then
+        // builds one row per finding, ON THE UI THREAD - so its cost is a function of the finding count, and
+        // a project that produces a great many findings pays it on every validation run. The count is the
+        // dimension that makes a slow bind explicable rather than merely slow.
+        using Ihc.OperationScope scope = _telemetry.Start(nameof(Bind));
+        scope.Activity?.SetTag(ihc_openvisual.Configuration.AppTelemetryRegistry.Attributes.ValidationFindingCount, outcome.Findings.Count);
+
         // Resolving names needs the snapshot the run validated, and this is where it is safe to read it back off
         // the session: the monitor publishes ONLY a result whose keys are still the latest it was notified with,
         // so no change event has landed since — meaning Current is that very snapshot instance, not a successor.
@@ -430,6 +437,10 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         ResortRows();
         RecountRows();
     }
+
+    /// <summary>The panel's entry point into the instrumentation core.</summary>
+    private readonly Ihc.OperationTelemetry _telemetry =
+        new(ihc_openvisual.Configuration.AppTelemetryRegistry.Surface, nameof(ProblemsPanelViewModel));
 
     /// <summary>
     /// Every element in the snapshot that carries an id, keyed by it — <b>with a null value against an id that

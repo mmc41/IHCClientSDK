@@ -111,26 +111,23 @@ namespace Ihc
         /// </example>
         public static object DeepCopyAndApply(object src, Func<PropertyInfo, object, object> propertyValueTransformer)
         {
-            using (var activity = Telemetry.ActivitySource.StartActivity(nameof(CopyUtil) + "." + nameof(DeepCopyAndApply), ActivityKind.Internal))
+            return Telemetry.Run(nameof(DeepCopyAndApply), scope =>
             {
-                try
-                {
-                    if (propertyValueTransformer == null)
-                        throw new ArgumentNullException(nameof(propertyValueTransformer));
+                if (propertyValueTransformer == null)
+                    throw new ArgumentNullException(nameof(propertyValueTransformer));
 
-                    if (src == null)
-                        return null;
+                if (src == null)
+                    return null;
 
-                    activity?.SetTag($"{Telemetry.argsTagPrefix}{src}.Type", src.GetType());
+                scope.Activity?.SetTag($"{Ihc.Telemetry.argsTagPrefix}{src}.Type", src.GetType());
 
-                    return DoDeepCopyAndApply(src, propertyValueTransformer, 0, null, "root", Activity.Current);
-                } catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                return DoDeepCopyAndApply(src, propertyValueTransformer, 0, null, "root", Activity.Current);
+            });
         }
+
+        // Static, because the operation is: the owner name keeps the span reading "CopyUtil.DeepCopyAndApply".
+        private static readonly OperationTelemetry Telemetry =
+            new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(CopyUtil));
 
         private static object DoDeepCopyAndApply(object src, Func<PropertyInfo, object, object> propertyValueTransformer, int depth, PropertyInfo parentProperty, string path, Activity activity)
         {

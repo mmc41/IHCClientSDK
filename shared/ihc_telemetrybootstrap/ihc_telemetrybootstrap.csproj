@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The toolkit-NEUTRAL half of the shared host bootstrap: the logger factory, the tracer and meter
+    providers, the OTLP wiring, the resource and the process-wide exception handlers. It carries no UI
+    dependency at all, so a console utility can reference it without dragging in Avalonia — which is the
+    whole reason the split exists (R7). The Avalonia-only extras live in ihc_appbootstrap, which
+    references this.
+
+    An Avalonia PackageReference must never be added here. That is not merely convention: an
+    architecture test asserts this assembly has no dependency on the Avalonia namespace, so adding one
+    fails the suite rather than quietly re-coupling the console utilities to a UI toolkit.
+
+    Package versions come from Directory.Packages.props (central management);
+    Microsoft.Extensions.Logging.Console transitively provides the ILoggingBuilder.AddConfiguration
+    extension used by the setup method.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+  </ItemGroup>
+
+</Project>

@@ -12,6 +12,7 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Session;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 
 namespace safe_visual_tests;
 
@@ -174,7 +175,9 @@ public sealed class FakeDialogService : IDialogService
     public Task<string?> PickCatalogFileAsync() => Task.FromResult(CatalogFilePath);
     public Task<string?> PickCatalogFolderAsync() => Task.FromResult(CatalogFolderPath);
     public Task ShowAboutAsync() => Task.CompletedTask;
-    public Task ShowSettingsAsync(string settingsText) => Task.CompletedTask;
+    /// <summary>The text the settings dialog was last asked to show, so a test can assert on the readout.</summary>
+    public string? LastSettingsText { get; private set; }
+    public Task ShowSettingsAsync(string settingsText) { LastSettingsText = settingsText; return Task.CompletedTask; }
     public string? LastOpenedUrl { get; private set; }
     /// <summary>What the next external-open reports. False simulates a machine with no handler for the document —
     /// the case that used to be swallowed as success (UX review CORE-03).</summary>
@@ -497,7 +500,24 @@ public sealed class ShellHarness : IDisposable
     /// operations from directly, without going through the GUI workflow's thin delegators (refac3 T007).</summary>
     public ProjectAppService ProjectService { get; }
 
+    /// <summary>
+    /// The ONE clock this harness runs on — the workflow's debounces and delays and the facade's timestamps.
+    /// A <see cref="FakeTimeProvider"/> unless the caller passed something else, so the test decides when time
+    /// moves. Use <see cref="SettleValidationAsync"/> rather than advancing it by hand.
+    /// </summary>
+    public System.TimeProvider Time { get; }
+
     private readonly bool _ownsDir;
+    private bool _disposed;
+
+    private static int _live;
+
+    /// <summary>
+    /// How many harnesses have been constructed and not yet disposed. Asserted back to its pre-test value by
+    /// <see cref="NoLeakedHarnessAttribute"/>, so a helper that builds one and drops it is reported against the
+    /// test that did it rather than against whichever test is running when its timers next fire.
+    /// </summary>
+    internal static int Live => System.Threading.Volatile.Read(ref _live);
 
     private ShellHarness(string dir, bool ownsDir, System.TimeProvider? timeProvider)
     {
@@ -505,19 +525,30 @@ public sealed class ShellHarness : IDisposable
         _ownsDir = ownsDir;
         Directory.CreateDirectory(TempDir);
         Recent = new RecentProjectsStore(Path.Combine(TempDir, "recent.json"));
-        // When a clock is injected (a FakeTimeProvider), the facade uses it too — so report generation timestamps
-        // (T022) are deterministic; otherwise the default file-only service on the system clock (kept lazy).
-        ProjectService = timeProvider is null
-            ? new ProjectAppService(new IhcSettings())
-            : new ProjectAppService(new IhcSettings(), new Ihc.Vis.Catalog.BuiltInCatalog(), timeProvider);
+        // A FAKE clock by default, because the harness marshals INLINE (see the Post argument below). On a system
+        // clock every document change arms a real timer, and ~300 ms later a whole-project validation completes on
+        // a POOL thread and binds straight into ProblemsPanelViewModel.Rows — a collection bound live from
+        // ProblemsPanel.axaml. ADR-001 says that mutation is silently lossy rather than loud, the worker's own
+        // catch swallows the fault, and the timer keeps the harness alive past the test that built it, so the
+        // damage lands in whatever test is running 300 ms later. A clock nothing advances cannot do any of that.
+        // A test that genuinely wants wall-clock behaviour asks for it: Create(System.TimeProvider.System).
+        Time = timeProvider ?? new FakeTimeProvider();
+        // The facade shares that clock, so metadata and report generation timestamps (T022) are deterministic too.
+        ProjectService = new ProjectAppService(new IhcSettings(), new Ihc.Vis.Catalog.BuiltInCatalog(), Time);
         // The catalog dir is a subfolder of TempDir so Restart(dir) reuses it (US-061).
-        // The marshal is SYNCHRONOUS here and the clock is whatever the test injected: the workflow's validation
-        // monitor uses both, and a test that could not advance the debounce would hang rather than fail.
+        // The marshal is SYNCHRONOUS here, which is what makes an inline post safe: nothing may reach bound state
+        // off the caller's thread, so the clock above must never fire on its own.
         Session = new ProjectWorkflow(
             ProjectService, Recent, Dialogs, null, Path.Combine(TempDir, "catalog"),
-            post: action => action(), timeProvider: timeProvider);
+            post: action => action(), timeProvider: Time);
+        System.Threading.Interlocked.Increment(ref _live);
     }
 
+    /// <param name="timeProvider">
+    /// The clock to run on. Omit it for a <see cref="FakeTimeProvider"/> the harness owns — the right choice for
+    /// every test that does not assert about validation. Pass your own when you need to drive the debounce and
+    /// hold the handle; pass <see cref="System.TimeProvider.System"/> to opt back into wall-clock time.
+    /// </param>
     public static ShellHarness Create(System.TimeProvider? timeProvider = null) =>
         new(Path.Combine(Path.GetTempPath(), "ihc_ov_tests", Guid.NewGuid().ToString("N")), ownsDir: true,
             timeProvider);
@@ -527,6 +558,35 @@ public sealed class ShellHarness : IDisposable
     public static ShellHarness Restart(string dir) => new(dir, ownsDir: false, null);
 
     public string TempPath(string fileName) => Path.Combine(TempDir, fileName);
+
+    /// <summary>
+    /// Moves this harness's clock, firing whatever its timers owe. A no-op on a real clock, which only a test
+    /// that asked for <see cref="System.TimeProvider.System"/> can have.
+    /// </summary>
+    public void Advance(TimeSpan by)
+    {
+        if (Time is FakeTimeProvider fake)
+        {
+            fake.Advance(by);
+        }
+    }
+
+    /// <summary>
+    /// Advances past the validation quiet period and waits for the run it starts to finish — the step any
+    /// assertion about findings, the Problemer panel or the transfer gate has to take first.
+    /// <para>Validation is debounced and then runs on the pool, so a result exists only once the clock has moved
+    /// and the worker has gone idle. Asserting without this races the panel rather than testing it; on this
+    /// harness's fake clock the run never starts at all, so the assertion is simply wrong rather than flaky.</para>
+    /// </summary>
+    /// <param name="monitor">
+    /// The monitor to wait on — pass one when the test built a <see cref="ValidationMonitor"/> of its own over
+    /// this session, since the clock is shared but the idle signal is not.
+    /// </param>
+    public async Task SettleValidationAsync(ValidationMonitor? monitor = null)
+    {
+        Advance(ValidationWorker.DefaultDebounce);
+        await (monitor ?? Session.Validation).Idle.WaitAsync(TimeSpan.FromSeconds(30));
+    }
 
     /// <summary>The per-test LIBRARY folder — the same one the session was constructed with, so a test can assert
     /// where "save to the library" put the block without reaching the real %APPDATA% catalog.</summary>
@@ -538,8 +598,9 @@ public sealed class ShellHarness : IDisposable
     /// the running application's resources rather than being recorded inertly.</summary>
     /// <para>The marshal and the clock the Problemer panel runs on come from <see cref="Session"/>, so a test
     /// that needs a controllable debounce passes its clock to <see cref="Create"/> rather than here.</para>
-    public MainWindowViewModel CreateViewModel(ILoggerFactory? loggerFactory = null, IThemeService? theme = null) =>
-        new(Session, Dialogs, Recent, theme ?? new NullThemeService(), null, loggerFactory);
+    public MainWindowViewModel CreateViewModel(ILoggerFactory? loggerFactory = null, IThemeService? theme = null,
+                                               ihc_openvisual.Configuration.AppConfiguration? config = null) =>
+        new(Session, Dialogs, Recent, theme ?? new NullThemeService(), config, loggerFactory);
 
     /// <summary>
     /// The setup every programming-mode test shares: an initialized shell with an empty (unlocked) function block
@@ -562,6 +623,13 @@ public sealed class ShellHarness : IDisposable
 
     public void Dispose()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        System.Threading.Interlocked.Decrement(ref _live);
         Session.Dispose();
         if (_ownsDir)
         {

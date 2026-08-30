@@ -39,7 +39,24 @@ namespace Ihc.Vis.Catalog
         // forever — the next access retries — matching ProjectAppService's own catalog Lazy. The factory returns a
         // fresh immutable instance with no shared mutable state, so a rare concurrent double-run is harmless.
         private static readonly Lazy<MaterializedCatalog> materialized =
-            new(() => new BuiltInCatalog().Materialize(), LazyThreadSafetyMode.PublicationOnly);
+            new(MaterializeTimed, LazyThreadSafetyMode.PublicationOnly);
+
+        /// <summary>
+        /// Materializes the catalog and records how long it took. First use pays for the whole component set,
+        /// and it happens inside whatever operation touched the catalog first - so without this the cost is
+        /// attributed to that operation rather than to the catalog.
+        /// <para>Recorded as a HISTOGRAM, not a once-only counter: the Lazy above is PublicationOnly, so a
+        /// rare concurrent double-materialization is legal - and is exactly the event worth being able to
+        /// see. A counter asserting it happens once would either be wrong or hide it.</para>
+        /// </summary>
+        private static MaterializedCatalog MaterializeTimed()
+        {
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
+            MaterializedCatalog result = new BuiltInCatalog().Materialize();
+            SdkTelemetryRegistry.CatalogMaterializationDuration.Record(
+                System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalSeconds);
+            return result;
+        }
 
         // File→New templates, reassigned by AuthorTemplates() (Phase C) before Materialize() reads them. The empty
         // defaults keep the catalog materializable while Phase C is outstanding; the Phase C byte tests are what

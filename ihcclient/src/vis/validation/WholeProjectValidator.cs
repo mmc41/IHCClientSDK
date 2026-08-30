@@ -49,14 +49,31 @@ namespace Ihc.Vis.Validation
     public sealed class WholeProjectValidator : IWholeProjectValidator
     {
         private readonly RuleSet rules;
+        private readonly bool perRuleTiming;
 
         /// <summary>Builds an executor over a registered rule set.</summary>
         /// <param name="rules">The rules this executor runs.</param>
         public WholeProjectValidator(RuleSet rules)
+            : this(rules, perRuleTiming: false)
+        {
+        }
+
+        /// <summary>Builds an executor that can also time each rule individually.</summary>
+        /// <param name="rules">The rules this executor runs.</param>
+        /// <param name="perRuleTiming">
+        /// When true, each rule gets its own child span. Off by default: a whole-project run executes the entire
+        /// rule set, so a span per rule per run is an investigation cost rather than a standing one.
+        /// </param>
+        public WholeProjectValidator(RuleSet rules, bool perRuleTiming)
         {
             ArgumentNullException.ThrowIfNull(rules);
             this.rules = rules;
+            this.perRuleTiming = perRuleTiming;
         }
+
+        /// <summary>This executor's entry point into the instrumentation core.</summary>
+        private static readonly OperationTelemetry Telemetry =
+            new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(WholeProjectValidator));
 
         /// <inheritdoc/>
         public EquatableArray<ValidationFinding> Validate(Project project, ValidationProfile profile)
@@ -64,61 +81,88 @@ namespace Ihc.Vis.Validation
             ArgumentNullException.ThrowIfNull(project);
             ArgumentNullException.ThrowIfNull(profile);
 
-            ProjectAnalyses analyses = new(project);
-            ElementNodePath paths = new(analyses);
-            Dictionary<ProjectElement, int> scanOrder = ScanOrder(analyses);
-            List<Emission> emitted = [];
-
-            // BY FACE, not every registered rule. A rule that declares only RuleFaces.DialogMetadata answers a
-            // dialog's "what would be acceptable?" and has no business in the project report — and registration
-            // cannot be what enforces that, because a constraint serving one face is legal there (only a
-            // TRAVERSAL is required to declare this face). This is the single place the declaration can be
-            // honoured, so until it was made here a face declaration meant nothing to a constraint row.
-            foreach (RuleDefinition rule in rules.ForFace(RuleFaces.WholeProject))
+            // The engine's own span. A whole-project run is the single most expensive thing validation does
+            // and it sat inside the caller's span with no shape of its own - how many rules ran and how much
+            // they found are the two numbers that make one run comparable with another. Through the core, so
+            // a run the rethrow policy aborts is not the one the trace records as complete.
+            return Telemetry.Run(nameof(Validate), scope =>
             {
-                if (!profile.Includes(rule.Entry))
+                ProjectAnalyses analyses = new(project);
+                ElementNodePath paths = new(analyses);
+                Dictionary<ProjectElement, int> scanOrder = ScanOrder(analyses);
+                List<Emission> emitted = [];
+                int rulesRun = 0;
+
+                // BY FACE, not every registered rule. A rule that declares only RuleFaces.DialogMetadata answers a
+                // dialog's "what would be acceptable?" and has no business in the project report — and registration
+                // cannot be what enforces that, because a constraint serving one face is legal there (only a
+                // TRAVERSAL is required to declare this face). This is the single place the declaration can be
+                // honoured, so until it was made here a face declaration meant nothing to a constraint row.
+                foreach (RuleDefinition rule in rules.ForFace(RuleFaces.WholeProject))
                 {
-                    continue;
+                    if (!profile.Includes(rule.Entry))
+                    {
+                        continue;
+                    }
+
+                    rulesRun++;
+                    // One child span PER RULE, only behind the opt-in. Created and disposed around the rule's own
+                    // work so its duration is the rule's, not the loop's.
+                    using OperationScope? ruleScope = perRuleTiming ? Telemetry.Start("Rule") : null;
+                    ruleScope?.Activity?.SetTag(SdkTelemetryRegistry.Attributes.ValidationRuleCode, rule.Entry.Code.Value);
+
+                    Collector collector = new(
+                        project, profile.Controller, profile.Library, analyses, rule.Entry, emitted);
+                    try
+                    {
+                        if (rule.Inspection is { } traversal)
+                        {
+                            traversal(collector);
+                        }
+                        else
+                        {
+                            RunConstraints(analyses, rule, collector);
+                        }
+                    }
+                    // A shape violation is a COMPOSITION error, not a project defect, so it is deliberately outside
+                    // the report-and-continue net: swallowing it would turn "this rule contradicts its declaration"
+                    // into one more finding about the user's file, which is the opposite of what it means.
+                    catch (Exception ex) when (ex is not RuleRegistrationException
+                        && profile.FailurePolicy == RuleFailurePolicy.ReportAndContinue)
+                    {
+                        // The RUN still succeeds here, so the run's span cannot carry this: the rule's own span
+                        // is the only place that names which rule misbehaved.
+                        ruleScope?.SetOutcome(OperationOutcome.Failed(ex));
+                        emitted.Add(new Emission(
+                            rule.Entry,
+                            null,
+                            EquatableArray<ProjectElement>.Empty,
+                            EquatableArray<ProblemArgument>.Empty,
+                            emitted.Count,
+                            ex));
+                    }
+                    catch (Exception ex)
+                    {
+                        // Aborting the run. Recorded before the throw leaves, because disposal is what writes
+                        // the outcome and the scope is disposed on the way out.
+                        ruleScope?.SetOutcome(OperationOutcome.Failed(ex));
+                        throw;
+                    }
                 }
 
-                Collector collector = new(
-                    project, profile.Controller, profile.Library, analyses, rule.Entry, emitted);
-                try
-                {
-                    if (rule.Inspection is { } traversal)
-                    {
-                        traversal(collector);
-                    }
-                    else
-                    {
-                        RunConstraints(analyses, rule, collector);
-                    }
-                }
-                // A shape violation is a COMPOSITION error, not a project defect, so it is deliberately outside
-                // the report-and-continue net: swallowing it would turn "this rule contradicts its declaration"
-                // into one more finding about the user's file, which is the opposite of what it means.
-                catch (Exception ex) when (ex is not RuleRegistrationException
-                    && profile.FailurePolicy == RuleFailurePolicy.ReportAndContinue)
-                {
-                    emitted.Add(new Emission(
-                        rule.Entry,
-                        null,
-                        EquatableArray<ProjectElement>.Empty,
-                        EquatableArray<ProblemArgument>.Empty,
-                        emitted.Count,
-                        ex));
-                }
-            }
+                scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.ValidationRulesRun, rulesRun);
+                scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.ValidationFindingsEmitted, emitted.Count);
 
-            return emitted
-                .Select(e => (Finding: Build(paths, e, profile), Key: SortKey(e, scanOrder)))
-                .OrderBy(x => x.Key.Scan)
-                .ThenBy(x => x.Key.Code, StringComparer.Ordinal)
-                .ThenBy(x => x.Key.Locator, StringComparer.Ordinal)
-                .ThenBy(x => x.Key.Arguments, StringComparer.Ordinal)
-                .ThenBy(x => x.Key.Sequence)
-                .Select(x => x.Finding)
-                .ToImmutableArray();
+                return emitted
+                    .Select(e => (Finding: Build(paths, e, profile), Key: SortKey(e, scanOrder)))
+                    .OrderBy(x => x.Key.Scan)
+                    .ThenBy(x => x.Key.Code, StringComparer.Ordinal)
+                    .ThenBy(x => x.Key.Locator, StringComparer.Ordinal)
+                    .ThenBy(x => x.Key.Arguments, StringComparer.Ordinal)
+                    .ThenBy(x => x.Key.Sequence)
+                    .Select(x => x.Finding)
+                    .ToImmutableArray();
+            });
         }
 
         private static void RunConstraints(IProjectAnalyses analyses, RuleDefinition rule, Collector collector)

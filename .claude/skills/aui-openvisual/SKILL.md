@@ -10,6 +10,7 @@ description: >-
   Exposes a stable `domain.verb` command vocabulary with label-path node addressing and a uniform
   JSON result envelope, so runs are scriptable and diffable. WINDOWS ONLY — it errors with
   Code=PlatformUnsupported on macOS/Linux (UI Automation is a Windows API).
+model: "claude-sonnet-5"
 ---
 
 # aui-openvisual — UI-Automation driver for IHC OpenVisual

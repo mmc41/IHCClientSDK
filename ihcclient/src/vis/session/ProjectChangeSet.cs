@@ -42,47 +42,64 @@ namespace Ihc.Vis.Session
             IReadOnlyDictionary<ElementId, ProjectElement>? oldById = null,
             IReadOnlyDictionary<ElementId, ProjectElement>? newById = null)
         {
-            oldById ??= BuildIdMap(old.Root);
-            newById ??= BuildIdMap(updated.Root);
-
-            FrozenSet<ElementId> added = newById.Keys.Where(id => !oldById.ContainsKey(id)).ToFrozenSet();
-            FrozenSet<ElementId> removed = oldById.Keys.Where(id => !newById.ContainsKey(id)).ToFrozenSet();
-
-            var changed = new HashSet<ElementId>();
-            var childListChanged = new HashSet<ElementId>();
-            foreach ((ElementId id, ProjectElement oldEl) in oldById)
+            // The diff walks both sides and is run per commit, so its cost tracks the project size. Its four
+            // set counts are also the shape of the edit - an ordinary edit touching hundreds of elements is
+            // a fact worth seeing, and nothing else reports it. Through the core, because a fault here has
+            // no declared identity of its own: an unexpected throw that the span recorded as a success would
+            // be a commit that silently produced no change set.
+            return Telemetry.Run(nameof(Diff), scope =>
             {
-                if (!newById.TryGetValue(id, out ProjectElement? newEl))
-                {
-                    continue;
-                }
-                if (ReferenceEquals(oldEl, newEl))
-                {
-                    // The commit path shares untouched subtrees verbatim (Canonicalizer's P3 sharing rule), so the
-                    // same instance on both sides settles both questions below at once: same attrs, same id-less
-                    // subtree, same child-id sequence. Skipping here is what makes an edit cost its own path rather
-                    // than a full-tree comparison — without it every element is deep-compared on every commit.
-                    continue;
-                }
-                if (!SelfAndIdlessEqual(oldEl, newEl))
-                {
-                    changed.Add(id);   // own attrs or an id-less descendant differs (roll-up)
-                }
-                if (!ChildIdSequence(oldEl).SequenceEqual(ChildIdSequence(newEl)))
-                {
-                    childListChanged.Add(id);   // id-bearing children added/removed/reordered at this level
-                }
-            }
+                oldById ??= BuildIdMap(old.Root);
+                newById ??= BuildIdMap(updated.Root);
 
-            bool metadataChanged =
-                MetadataBlockChanged(old, updated, "project_info")
-                || MetadataBlockChanged(old, updated, "customer_info")
-                || MetadataBlockChanged(old, updated, "installer_info");
+                FrozenSet<ElementId> added = newById.Keys.Where(id => !oldById.ContainsKey(id)).ToFrozenSet();
+                FrozenSet<ElementId> removed = oldById.Keys.Where(id => !newById.ContainsKey(id)).ToFrozenSet();
 
-            return new ProjectChangeSet(
-                added, removed, changed.ToFrozenSet(), childListChanged.ToFrozenSet(),
-                metadataChanged, FullReload: false, baseVersion, newVersion, origin, label);
+                var changed = new HashSet<ElementId>();
+                var childListChanged = new HashSet<ElementId>();
+                foreach ((ElementId id, ProjectElement oldEl) in oldById)
+                {
+                    if (!newById.TryGetValue(id, out ProjectElement? newEl))
+                    {
+                        continue;
+                    }
+                    if (ReferenceEquals(oldEl, newEl))
+                    {
+                        // The commit path shares untouched subtrees verbatim (Canonicalizer's P3 sharing rule), so the
+                        // same instance on both sides settles both questions below at once: same attrs, same id-less
+                        // subtree, same child-id sequence. Skipping here is what makes an edit cost its own path rather
+                        // than a full-tree comparison — without it every element is deep-compared on every commit.
+                        continue;
+                    }
+                    if (!SelfAndIdlessEqual(oldEl, newEl))
+                    {
+                        changed.Add(id);   // own attrs or an id-less descendant differs (roll-up)
+                    }
+                    if (!ChildIdSequence(oldEl).SequenceEqual(ChildIdSequence(newEl)))
+                    {
+                        childListChanged.Add(id);   // id-bearing children added/removed/reordered at this level
+                    }
+                }
+
+                bool metadataChanged =
+                    MetadataBlockChanged(old, updated, "project_info")
+                    || MetadataBlockChanged(old, updated, "customer_info")
+                    || MetadataBlockChanged(old, updated, "installer_info");
+
+                scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.DiffAddedCount, added.Count);
+                scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.DiffRemovedCount, removed.Count);
+                scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.DiffChangedCount, changed.Count);
+                scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.DiffChildListChangedCount, childListChanged.Count);
+
+                return new ProjectChangeSet(
+                    added, removed, changed.ToFrozenSet(), childListChanged.ToFrozenSet(),
+                    metadataChanged, FullReload: false, baseVersion, newVersion, origin, label);
+            });
         }
+
+        /// <summary>This diff's entry point into the instrumentation core.</summary>
+        private static readonly OperationTelemetry Telemetry =
+            new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(ProjectChangeSet));
 
         private static Dictionary<ElementId, ProjectElement> BuildIdMap(ProjectElement root)
         {

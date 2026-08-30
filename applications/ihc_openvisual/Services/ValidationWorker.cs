@@ -77,6 +77,9 @@ public sealed class ValidationWorker : IDisposable
     /// <summary>The request waiting for a run. At most one, always the newest.</summary>
     private ValidationRequest? _pending;
 
+    /// <summary>The activity context that asked for the pending run, for the run's link. Default when none.</summary>
+    private System.Diagnostics.ActivityContext _pendingLink;
+
     private bool _running;
 
     /// <summary>Set when the quiet period elapsed while a run was in flight, so the completing run knows the
@@ -170,6 +173,12 @@ public sealed class ValidationWorker : IDisposable
 
             _latest = new DocumentKey(request.Generation, request.Version);
             _pending = request;
+            // Captured HERE, on the notifying thread, because that is the only place the triggering activity
+            // is still ambient - the run itself is off-thread and starts with no Activity.Current at all
+            // (measured; see the characterization test). It becomes a LINK rather than a parent: a debounced
+            // run serves every edit that coalesced into it, so naming one of them its parent would assert a
+            // causal ownership that is false for the rest.
+            _pendingLink = System.Diagnostics.Activity.Current?.Context ?? default;
             _duringRun = false;
             MarkBusy();
         }
@@ -201,6 +210,7 @@ public sealed class ValidationWorker : IDisposable
     {
         ValidationRequest request;
         CancellationToken token;
+        System.Diagnostics.ActivityContext link;
         lock (_gate)
         {
             if (_disposed || _pending is not { } waiting)
@@ -215,6 +225,7 @@ public sealed class ValidationWorker : IDisposable
             }
 
             request = waiting;
+            link = _pendingLink;
             _pending = null;
             _running = true;
             token = _generation.Token;
@@ -222,11 +233,17 @@ public sealed class ValidationWorker : IDisposable
 
         // Fire-and-forget, and observed: RunAsync catches everything, so no fault reaches
         // TaskScheduler.UnobservedTaskException and no run can wedge the loop.
-        _ = RunAsync(request, token);
+        _ = RunAsync(request, token, link);
     }
 
-    private async Task RunAsync(ValidationRequest request, CancellationToken token)
+    private async Task RunAsync(ValidationRequest request, CancellationToken token,
+        System.Diagnostics.ActivityContext link)
     {
+        System.Collections.Generic.IEnumerable<System.Diagnostics.ActivityLink>? links =
+            link == default ? null : new[] { new System.Diagnostics.ActivityLink(link) };
+        using Ihc.OperationScope scope = _telemetry.Start(
+            "Run", System.Diagnostics.ActivityKind.Internal,
+            RunMetrics, links);
         try
         {
             // Step 2 and the first half of step 5: an abandoned run never starts.
@@ -236,14 +253,27 @@ public sealed class ValidationWorker : IDisposable
             // Step 5 again, and step 3. Both are re-checked HERE rather than trusted from before the run: the
             // document is free to move while the pool thread works, and that is the normal case, not the edge.
             if (!token.IsCancellationRequested && IsStillCurrent(request))
+            {
+                RecordOutcome(scope, ihc_openvisual.Configuration.AppTelemetryRegistry.Values.ValidationBound);
                 _post(() => _onCompleted(new ValidationOutcome(findings, request.Version, request.Generation)));
+            }
+            else
+            {
+                // The run finished, and its answer was already stale. Reporting this as success would make a
+                // coalescing storm look like healthy throughput; reporting it as failure would make the
+                // debounce working as designed look like breakage. It is its own thing.
+                RecordOutcome(scope, ihc_openvisual.Configuration.AppTelemetryRegistry.Values.ValidationSuperseded);
+            }
         }
         catch (OperationCanceledException)
         {
-            // The document was replaced or the worker disposed. Nothing to report — the caller asked for this.
+            // The document was replaced or the worker disposed. Nothing to report - the caller asked for this.
+            RecordOutcome(scope, ihc_openvisual.Configuration.AppTelemetryRegistry.Values.ValidationAbandoned);
         }
         catch (Exception ex)
         {
+            RecordOutcome(scope, ihc_openvisual.Configuration.AppTelemetryRegistry.Values.ValidationFaulted);
+            scope.SetOutcome(Ihc.OperationOutcome.Failed(ex));
             _post(() => _onFaulted?.Invoke(ex));
         }
         finally
@@ -251,6 +281,24 @@ public sealed class ValidationWorker : IDisposable
             StartFollowUpOrGoIdle();
         }
     }
+
+    /// <summary>
+    /// The run's own four-valued outcome, on the span and as the histogram's dimension. It is deliberately
+    /// separate from the operation status the core records: only `faulted` is an ERROR, while superseded and
+    /// abandoned are the debounce working exactly as designed.
+    /// </summary>
+    private static void RecordOutcome(Ihc.OperationScope scope, string outcome)
+    {
+        scope.AddSharedTag(ihc_openvisual.Configuration.AppTelemetryRegistry.Attributes.ValidationOutcome, outcome);
+    }
+
+    /// <summary>The worker's entry point into the instrumentation core.</summary>
+    private readonly Ihc.OperationTelemetry _telemetry =
+        new(ihc_openvisual.Configuration.AppTelemetryRegistry.Surface, nameof(ValidationWorker));
+
+    /// <summary>The binding is IMMUTABLE and its instruments are static, so it is built once rather than per operation.</summary>
+    private static readonly Ihc.MetricBinding RunMetrics =
+        Ihc.MetricBinding.For(ihc_openvisual.Configuration.AppTelemetryRegistry.ValidationRunDuration);
 
     private bool IsStillCurrent(ValidationRequest request)
     {
@@ -265,6 +313,7 @@ public sealed class ValidationWorker : IDisposable
     {
         ValidationRequest follow;
         CancellationToken token;
+        System.Diagnostics.ActivityContext link;
         lock (_gate)
         {
             _running = false;
@@ -279,13 +328,14 @@ public sealed class ValidationWorker : IDisposable
             }
 
             follow = waiting;
+            link = _pendingLink;
             _pending = null;
             _duringRun = false;
             _running = true;
             token = _generation.Token;
         }
 
-        _ = RunAsync(follow, token);
+        _ = RunAsync(follow, token, link);
     }
 
     /// <summary>Cancels everything belonging to the outgoing document. Called under <see cref="_gate"/>.</summary>

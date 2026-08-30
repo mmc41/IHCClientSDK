@@ -36,6 +36,29 @@ namespace Ihc {
         public string Logs { get; set; } = string.Empty;
 
         /// <summary>
+        /// Metrics endpoint path. Empty DISABLES metrics, exactly as an empty <see cref="Traces"/> or
+        /// <see cref="Logs"/> disables those signals - so an installation that has not opted in builds no
+        /// MeterProvider and exports nothing.
+        /// </summary>
+        public string Metrics { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Deployment environment this installation reports as, e.g. <c>development</c>, <c>staging</c> or
+        /// <c>production</c>. It becomes the <c>deployment.environment.name</c> resource attribute on every
+        /// exported signal, so a developer's run and a customer site can be told apart in one backend.
+        /// <para>Unlike the endpoint keys, empty does NOT mean disabled - an unlabelled record is worse than a
+        /// conservatively labelled one, so an empty value reports <c>development</c> rather than nothing.</para>
+        /// </summary>
+        public string Environment { get; set; } = string.Empty;
+
+        /// <summary>
+        /// When true, each validation RULE gets its own child span, so a slow validation can be attributed to
+        /// the rule responsible. Off by default and deliberately so: the rule set is large and a whole-project
+        /// run executes all of it, so a span per rule per run is a cost only worth paying while investigating.
+        /// </summary>
+        public bool PerRuleValidationTiming { get; set; }
+
+        /// <summary>
         /// Additional headers for telemetry requests.
         /// </summary>
         public string Headers { get; set; } = string.Empty;
@@ -88,6 +111,13 @@ namespace Ihc {
         /// The main activity source for SDK operations.
         /// </summary>
         public static ActivitySource ActivitySource { get; } = new ActivitySource(name: ActivitySourceName, version: VersionInfo.GetSdkVersionStr());
+
+        /// <summary>
+        /// Name of the SDK's meter. Deliberately the same instrumentation-scope name as
+        /// <see cref="ActivitySourceName"/>: one scope emits both signals, so a host registers the SDK's
+        /// traces and metrics under one identity rather than two that could drift apart.
+        /// </summary>
+        public const string MeterName = ActivitySourceName;
 
         /// <summary>
         /// Tag prefix for input parameters in activity tags.
@@ -145,6 +175,12 @@ namespace Ihc {
         /// <returns>The activity for method chaining</returns>
         public static Activity SetError(this Activity activity, Exception ex)
         {
+            // The normalized error.type, from the same policy the instrumentation core applies - so a span
+            // marked failed through this extension and one marked failed by the core carry the same value.
+            // This is also the ONLY way the policy reaches the api tier: its call sites all report failure
+            // through here, and they are deliberately not being rewritten.
+            activity?.SetTag(SdkTelemetryRegistry.Attributes.ErrorType,
+                ErrorTypePolicy.Resolve(OperationOutcome.Failed(ex)));
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             activity?.AddException(ex);
             return activity;

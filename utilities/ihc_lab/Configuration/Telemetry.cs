@@ -7,6 +7,6 @@ namespace IhcLab {
         public const string AppServiceName = "IhcLab";
         public const string AppServiceNamespace = "Ihc";
         public const string ActivitySourceName = "IhcLab";
-        public static ActivitySource ActivitySource { get; } = new ActivitySource(name: ActivitySourceName, version: AppTelemetryBootstrap.GetAppVersionStr());
+        public static ActivitySource ActivitySource { get; } = new ActivitySource(name: ActivitySourceName, version: TelemetryBootstrap.GetAppVersionStr());
     }
 }

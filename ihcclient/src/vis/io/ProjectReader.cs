@@ -23,6 +23,10 @@ namespace Ihc.Vis.Io
     {
         private const int MaxElementDepth = 128;   // real projects nest ~12 deep; far past that is corrupt input
 
+        /// <summary>This reader's entry point into the instrumentation core.</summary>
+        private static readonly OperationTelemetry Telemetry =
+            new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(ProjectReader));
+
         public static Project Read(Stream stream)
         {
             ArgumentNullException.ThrowIfNull(stream);
@@ -32,66 +36,74 @@ namespace Ihc.Vis.Io
         public static Project Read(byte[] bytes)
         {
             ArgumentNullException.ThrowIfNull(bytes);
-            GuardContainer(bytes);
+            // A load's phases are indistinguishable from outside: reading, normalizing and indexing all sit
+            // inside one Load span, so a load that got slower says nothing about WHICH part did. Every one of
+            // the refusals below leaves through a throw, so the body is the core's rather than the caller's:
+            // a scope the site disposes on its way out of a throw would record the refusal as a success.
+            return Telemetry.Run(nameof(Read), scope =>
+            {
+                scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.ProjectFileSize, bytes.Length);
+                GuardContainer(bytes);
 
-            ImmutableDictionary<string, string> inlineDtd;
-            try
-            {
-                inlineDtd = InlineDtd.Capture(bytes);
-            }
-            catch (VisSchemaFormatException ex)
-            {
-                throw new ProjectFormatException(
-                    LoadRefusalCodes.DtdMalformed,
-                    $"The file's inline DTD is malformed: {ex.Message}", ex);
-            }
+                ImmutableDictionary<string, string> inlineDtd;
+                try
+                {
+                    inlineDtd = InlineDtd.Capture(bytes);
+                }
+                catch (VisSchemaFormatException ex)
+                {
+                    throw new ProjectFormatException(
+                        LoadRefusalCodes.DtdMalformed,
+                        $"The file's inline DTD is malformed: {ex.Message}", ex);
+                }
 
-            var settings = new XmlReaderSettings
-            {
-                DtdProcessing = DtdProcessing.Ignore,   // skip the inline DTD: no ATTLIST default materialization
-                IgnoreComments = true,
-                IgnoreProcessingInstructions = true,
-                IgnoreWhitespace = true,
-                CloseInput = false,
-            };
-            ProjectElement root;
-            try
-            {
-                using var buffer = new MemoryStream(bytes, writable: false);
-                using XmlReader reader = XmlReader.Create(buffer, settings);
-                root = ReadElement(reader, depth: 0);
-            }
-            catch (XmlException ex)
-            {
-                throw new ProjectFormatException(
-                    LoadRefusalCodes.NotXml,
-                    $"Not a well-formed .vis/.ihc XML document (line {ex.LineNumber}, position {ex.LinePosition}): {ex.Message}", ex);
-            }
-            if (root.Tag != "utcs_project")
-            {
-                throw new ProjectFormatException(
-                    LoadRefusalCodes.RootTag,
-                    $"Root element is <{root.Tag}>, expected <utcs_project> — not an IHC .vis/.ihc project file.");
-            }
-            if (root.GetAttribute("version_major") is null)
-            {
-                throw new ProjectFormatException(
-                    LoadRefusalCodes.VersionMissing,
-                    "The root <utcs_project> is missing its required version_major attribute — not a valid IHC project file.");
-            }
+                var settings = new XmlReaderSettings
+                {
+                    DtdProcessing = DtdProcessing.Ignore,   // skip the inline DTD: no ATTLIST default materialization
+                    IgnoreComments = true,
+                    IgnoreProcessingInstructions = true,
+                    IgnoreWhitespace = true,
+                    CloseInput = false,
+                };
+                ProjectElement root;
+                try
+                {
+                    using var buffer = new MemoryStream(bytes, writable: false);
+                    using XmlReader reader = XmlReader.Create(buffer, settings);
+                    root = ReadElement(reader, depth: 0);
+                }
+                catch (XmlException ex)
+                {
+                    throw new ProjectFormatException(
+                        LoadRefusalCodes.NotXml,
+                        $"Not a well-formed .vis/.ihc XML document (line {ex.LineNumber}, position {ex.LinePosition}): {ex.Message}", ex);
+                }
+                if (root.Tag != "utcs_project")
+                {
+                    throw new ProjectFormatException(
+                        LoadRefusalCodes.RootTag,
+                        $"Root element is <{root.Tag}>, expected <utcs_project> — not an IHC .vis/.ihc project file.");
+                }
+                if (root.GetAttribute("version_major") is null)
+                {
+                    throw new ProjectFormatException(
+                        LoadRefusalCodes.VersionMissing,
+                        "The root <utcs_project> is missing its required version_major attribute — not a valid IHC project file.");
+                }
 
-            var project = new Project(root) { InlineDtdBlocks = inlineDtd };
-            try
-            {
-                _ = project.SchemaView;   // eager: a malformed captured DTD block fails here, not at a later save
-            }
-            catch (VisSchemaFormatException ex)
-            {
-                throw new ProjectFormatException(
-                    LoadRefusalCodes.DtdMalformed,
-                    $"The file's inline DTD is malformed: {ex.Message}", ex);
-            }
-            return project;
+                var project = new Project(root) { InlineDtdBlocks = inlineDtd };
+                try
+                {
+                    _ = project.SchemaView;   // eager: a malformed captured DTD block fails here, not at a later save
+                }
+                catch (VisSchemaFormatException ex)
+                {
+                    throw new ProjectFormatException(
+                        LoadRefusalCodes.DtdMalformed,
+                        $"The file's inline DTD is malformed: {ex.Message}", ex);
+                }
+                return project;
+            });
         }
 
         private static void GuardContainer(byte[] bytes)

@@ -1,9 +1,8 @@
 ﻿using Ihc.App;
 using Microsoft.Extensions.Configuration;
+using Ihc.Bootstrap;
+using Microsoft.Extensions.Logging;
 using System.Reflection;
-using OpenTelemetry;
-using OpenTelemetry.Trace;
-using OpenTelemetry.Resources;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -17,8 +16,11 @@ namespace Ihc.example
     {
         public const string AppServiceName = "IhcInfoConsole";
         public const string AppServiceNamespace = "Ihc";
-        public const string ActivitySourceName = "IhcInfo";
-        public static ActivitySource ActivitySource { get; } = new ActivitySource(name: ActivitySourceName);
+        // Equal to AppServiceName, as in every other host. They were "IhcInfoConsole" and "IhcInfo",
+        // so this utility reported one identity as its service and another as its scope.
+        public const string ActivitySourceName = AppServiceName;
+        public static ActivitySource ActivitySource { get; } =
+            new ActivitySource(name: ActivitySourceName, version: TelemetryBootstrap.GetAppVersionStr());
 
         static async Task Main(string[] args)
         {
@@ -34,20 +36,12 @@ namespace Ihc.example
 
             try
             {
-                 using var telmetryTracerProvider = Sdk.CreateTracerProviderBuilder()
-                    .SetErrorStatusOnException(true)
-                    .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(serviceName: AppServiceName, serviceNamespace: AppServiceNamespace))
-                    .AddSource(Ihc.Telemetry.ActivitySourceName, ActivitySourceName)
-                    .AddOtlpExporter(opts =>
-                    {
-                        if (!string.IsNullOrEmpty(telemetryConfig.Traces))
-                        {
-                            opts.Endpoint = new Uri(telemetryConfig.Traces);
-                            opts.Protocol = OpenTelemetry.Exporter.OtlpExportProtocol.HttpProtobuf;
-                            if (!string.IsNullOrEmpty(telemetryConfig.Headers))
-                                opts.Headers = telemetryConfig.Headers;
-                        }
-                    }).Build();
+                // Both providers, each gated on its configured endpoint, from the one builder every IHC host
+                // shares (R7). The hand-rolled copy this replaces tested the endpoint INSIDE the exporter
+                // callback, so an unconfigured utility still built a provider and still exported - to the OTLP
+                // default endpoint. It also gains this utility metrics, which it never had.
+                using ILoggerFactory loggerFactory = TelemetryBootstrap.SetupTelemetryAndLogging(
+                    AppServiceName, AppServiceNamespace, ActivitySourceName, telemetryConfig, config);
 
                 // Create client information app service.
                 using (InformationAppService infoService = new InformationAppService(settings))
@@ -68,6 +62,10 @@ namespace Ihc.example
             {
                 Console.WriteLine($"Failed operation: {ex.Message} : {ex.StackTrace}");
             }
+
+            // A console process exits as soon as this returns, so the flush happens here rather than in a
+            // finalizer that will not run.
+            TelemetryBootstrap.Shutdown();
         }
     }
 }

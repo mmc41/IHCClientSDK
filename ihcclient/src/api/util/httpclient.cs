@@ -15,25 +15,62 @@ namespace Ihc {
     internal class Client {
         private sealed class LoggingHandler : DelegatingHandler
         {
+            /// <summary>
+            /// Request headers worth exporting, lowercased as the HTTP conventions require. Exporting every
+            /// header made the attribute set unbounded in both count and content: whatever the controller,
+            /// a proxy or a future caller chose to send became a span attribute nobody had reviewed.
+            /// </summary>
+            private static readonly string[] ExportedRequestHeaders = { "soapaction", "user-agent", LowerCookieHeaderName };
+
+            /// <summary>Response headers worth exporting, lowercased. Same reasoning as the request side.</summary>
+            private static readonly string[] ExportedResponseHeaders = { LowerSetCookieHeaderName };
+
             public LoggingHandler(HttpMessageHandler innerHandler)
                 : base(innerHandler)
             {
             }
 
+            /// <summary>
+            /// Exports the allowlisted headers of one message onto the span. Shared by the request and the
+            /// response side, which differ only in their allowlist, their tag prefix and which header is
+            /// redacted - never in the rule for what may leave the process.
+            /// </summary>
+            /// <remarks>
+            /// The caller checks the activity, so with no listener not one header name is lowercased. Passing a
+            /// null activity here would still cost that work per header, on every controller call.
+            /// </remarks>
+            private static void ExportHeaders(Activity activity, string tagPrefix, string[] allowlist,
+                string redactedHeader, System.Net.Http.Headers.HttpHeaders headers)
+            {
+                foreach (var header in headers)
+                {
+                    string name = header.Key.ToLowerInvariant();
+                    if (Array.IndexOf(allowlist, name) < 0)
+                    {
+                        continue;
+                    }
+                    activity.SetTag(tagPrefix + name.Replace('-', '_'),
+                        name == redactedHeader ? CookieHandler.REDACTED_COOKIE : string.Join(",", header.Value));
+                }
+            }
+
+            // Owner-less on purpose: an HTTP client span is named for its METHOD by convention, so a backend
+            // groups every POST together regardless of which C# method issued it, and its HTTP views key on
+            // exactly that name. No metric binding - the controller-duration histogram is recorded one layer
+            // up, at the SOAP execute-around, where the operation being timed is meaningful.
+            private static readonly OperationTelemetry Telemetry =
+                new OperationTelemetry(SdkTelemetryRegistry.Surface, string.Empty);
+
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
-                using var activity = Telemetry.ActivitySource.StartActivity(nameof(SendAsync), ActivityKind.Internal);
-                activity?.SetTag("http.request.method", request.Method); // Use opentel standard attribute name for method
-                activity?.SetTag("http.url", request.RequestUri); // Use opentel standard attribute name for url
-                foreach (var header in request.Headers) {
-                    if (header.Key == CookieHeaderName)
-                    {
-                        activity?.SetTag("http.request.header.cookie", CookieHandler.REDACTED_COOKIE);
-                    }
-                    else
-                    {
-                        activity?.SetTag("http.request.header." + header.Key, header.Value); // Not sure what standard attribute is for this.
-                    }
+                using OperationScope scope = Telemetry.Start(request.Method.Method, ActivityKind.Client);
+                Activity activity = scope.Activity;
+                activity?.SetTag("http.request.method", request.Method.Method);
+                activity?.SetTag("url.full", request.RequestUri?.ToString()); // http.url in older conventions.
+                if (activity is not null)
+                {
+                    ExportHeaders(activity, "http.request.header.", ExportedRequestHeaders,
+                        LowerCookieHeaderName, request.Headers);
                 }
 
                 HttpResponseMessage response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
@@ -47,23 +84,24 @@ namespace Ihc {
                 // connection, hence the guard.
                 try
                 {
-                    activity?.SetTag("http.response.status_code", response.StatusCode); // Use opentel standard attribute name for status code.
-                    activity?.SetTag("http.response.reason", response.ReasonPhrase); // Not sure what standard attribute is for this.
-                    foreach (var header in response.Headers)
+                    // The INT, not the HttpStatusCode enum: an enum renders as its name ("NotFound"), which no
+                    // consumer can compare against a numeric range such as status_code >= 400.
+                    activity?.SetTag("http.response.status_code", (int)response.StatusCode);
+                    if (activity is not null)
                     {
-                        if (header.Key == "Set-Cookie")
-                        {
-                            activity?.SetTag("http.response.header.set_cookie", CookieHandler.REDACTED_COOKIE);
-                        }
-                        else
-                        {
-                            activity?.SetTag("http.response.header." + header.Key, header.Value);
-                        }
+                        ExportHeaders(activity, "http.response.header.", ExportedResponseHeaders,
+                            LowerSetCookieHeaderName, response.Headers);
                     }
 
-                    if (response.IsSuccessStatusCode)
-                        activity?.SetStatus(ActivityStatusCode.Ok);
-                    else activity?.SetStatus(ActivityStatusCode.Error);
+                    // Only the failure is asserted. Ok means "the operation's owner declares this a success",
+                    // and a transport handler is not that owner - a 2xx it merely relayed is simply not an error.
+                    // The failure names itself by its STATUS CODE, the error-type policy's protocol tier: a
+                    // bounded, comparable identity rather than whichever CLR type the handler happened to raise.
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        scope.SetOutcome(OperationOutcome.FailedWith(
+                            ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture)));
+                    }
                 }
                 catch
                 {
@@ -76,6 +114,11 @@ namespace Ihc {
         }
 
         private const string CookieHeaderName = "Cookie";
+
+        // The allowlist compares against lowercased header names, so the wire spelling above cannot be reused
+        // there - HTTP header names are case-insensitive and a caller may send either.
+        private const string LowerCookieHeaderName = "cookie";
+        private const string LowerSetCookieHeaderName = "set-cookie";
 
         /// <summary>
         /// How long a pooled connection may be reused before it is replaced. Without this the process-wide

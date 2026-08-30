@@ -1,7 +1,5 @@
 ﻿using Avalonia;
 using System;
-using OpenTelemetry;
-using OpenTelemetry.Logs;
 using System.Diagnostics;
 using Avalonia.Logging;
 using IhcLab;
@@ -38,12 +36,12 @@ public class Program
             // First setup logging and telemetry. Note that this goes against above advice but seems to work.
             // In case of trouble first move some of the telemtry setup to mainwindow or so.
             config = new Configuration();
-            loggerFactory = AppTelemetryBootstrap.SetupTelemetryAndLogging(
+            loggerFactory = TelemetryBootstrap.SetupTelemetryAndLogging(
                 Telemetry.AppServiceName, Telemetry.AppServiceNamespace, Telemetry.ActivitySourceName,
                 config.telemetryConfig, config.loggingConfig);
             // Registered after the logger factory exists so the fatal exception is recorded through ILogger (hence
             // OTLP-exported), not a bare Trace write; an exception before this point is caught by Main's catch below.
-            AppDomain.CurrentDomain.UnhandledException += AppTelemetryBootstrap.UnhandledExceptionHandler(
+            AppDomain.CurrentDomain.UnhandledException += TelemetryBootstrap.UnhandledExceptionHandler(
                 loggerFactory.CreateLogger("IhcLab.UnhandledException"));
 
             // Probe the configured OTLP endpoint so a wrong endpoint/token fails loudly instead of
@@ -60,8 +58,8 @@ public class Program
         }
         finally
         {
-            // Flush and release telemetry on shutdown so the final batch of spans/logs is exported.
-            AppTelemetryBootstrap.TracerProvider?.Dispose();
+            // Before the LoggerFactory below, for the reason Shutdown documents.
+            TelemetryBootstrap.Shutdown();
             loggerFactory?.Dispose();
         }
     }

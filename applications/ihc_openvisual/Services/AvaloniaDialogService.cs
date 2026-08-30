@@ -103,14 +103,38 @@ public sealed class AvaloniaDialogService : IDialogService
 
     // The coded doors render through the shell's ONE presentation path and then reuse the same box: identity is
     // decided there, never per dialog, so a problem shown here and one shown in a future findings pane read alike.
-    public Task ShowProblemAsync(string title, Problem problem) =>
-        ShowMessageAsync(title, ProblemPresenter.Text(problem));
+    //
+    // They are also where problems are COUNTED, and that placement is the point. RaisedProblemDisplay is the
+    // tidier-looking home, but call sites reach a dialog without going through it - so counting there would
+    // under-report by exactly the paths nobody remembered. These three overloads are what a problem must pass
+    // through to become something an installer actually sees.
+    public Task ShowProblemAsync(string title, Problem problem)
+    {
+        CountProblem(problem.Code);
+        return ShowMessageAsync(title, ProblemPresenter.Text(problem));
+    }
 
-    public Task ShowProblemAsync(string title, ProblemChain chain) =>
-        ShowMessageAsync(title, ProblemPresenter.Text(chain));
+    public Task ShowProblemAsync(string title, ProblemChain chain)
+    {
+        // The CAUSE, not the operation: the operation names what was being attempted, the cause names what
+        // was wrong, and the second is the one worth counting.
+        CountProblem(chain.Cause.Code);
+        return ShowMessageAsync(title, ProblemPresenter.Text(chain));
+    }
 
-    public Task ShowProblemAsync(string title, ProblemAggregate aggregate) =>
-        ShowMessageAsync(title, ProblemPresenter.Text(aggregate));
+    public Task ShowProblemAsync(string title, ProblemAggregate aggregate)
+    {
+        // The HEAD, once - not once per item. An aggregate is ONE thing shown to the user, and counting its
+        // items would make a single dialog about a many-findings validation look like many dialogs.
+        CountProblem(aggregate.Head.Code);
+        return ShowMessageAsync(title, ProblemPresenter.Text(aggregate));
+    }
+
+    /// <summary>Records one problem actually presented, keyed by its code and the family that code belongs to.</summary>
+    private static void CountProblem(Ihc.Vis.Problems.ProblemCode code) =>
+        AppTelemetryRegistry.ProblemRaised.Add(1,
+            new KeyValuePair<string, object?>(AppTelemetryRegistry.Attributes.ProblemCode, code.Value),
+            new KeyValuePair<string, object?>(AppTelemetryRegistry.Attributes.ProblemFamily, code.Family.ToString()));
 
     public async Task<string?> PickOpenProjectAsync(string? initialDirectory)
     {

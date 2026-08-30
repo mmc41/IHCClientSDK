@@ -46,7 +46,8 @@ public class ToolbarSeparatorParityTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public async Task TheToolbarGroupsAsTheReferenceApplicationDoes()
     {
-        MainWindow window = await ShowShellAsync();
+        (ShellHarness harness, MainWindow window) = await ShowShellAsync();
+        using var _ = harness;
 
         Assert.That(BarLayout(window), Is.EqualTo(ExpectedOrder).AsCollection,
             "the reference application's bar carries ONE rule, after Gem projekt");
@@ -59,7 +60,8 @@ public class ToolbarSeparatorParityTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public async Task EveryToolbarRule_PublishesItselfAsASeparator()
     {
-        MainWindow window = await ShowShellAsync();
+        (ShellHarness harness, MainWindow window) = await ShowShellAsync();
+        using var _ = harness;
 
         IReadOnlyList<Control> rules = Rules(window);
         Assert.That(rules, Is.Not.Empty, "the toolbar draws at least one rule to publish");
@@ -87,7 +89,8 @@ public class ToolbarSeparatorParityTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public async Task TheRule_CarriesInkAndSizeAgainstTheBarBehindIt()
     {
-        MainWindow window = await ShowShellAsync();
+        (ShellHarness harness, MainWindow window) = await ShowShellAsync();
+        using var _ = harness;
 
         Control rule = Rules(window).Single();
         IBrush? ink = (rule as TemplatedControl)?.Background;
@@ -131,7 +134,8 @@ public class ToolbarSeparatorParityTests : AvaloniaTestBase
     // and not the control type it is currently implemented with. That is the whole point: the type is what changed.
     private static bool IsRule(Control control) => control.Classes.Contains("toolsep");
 
-    private static async Task<MainWindow> ShowShellAsync()
+    /// <summary>The harness comes back so the caller can dispose it — see <see cref="ShellHarness.Dispose"/>.</summary>
+    private static async Task<(ShellHarness harness, MainWindow window)> ShowShellAsync()
     {
         var harness = ShellHarness.Create();
         MainWindowViewModel viewModel = harness.CreateViewModel();
@@ -141,6 +145,6 @@ public class ToolbarSeparatorParityTests : AvaloniaTestBase
         CurrentTestWindow = window;
         window.Show();
         Dispatcher.UIThread.RunJobs();
-        return window;
+        return (harness, window);
     }
 }

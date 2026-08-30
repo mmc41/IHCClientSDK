@@ -41,6 +41,8 @@ Derive the query API from it:
 ```
 GET {base}/api/{org}/streams?type=logs      # -> {"list":[{"name":"ihc",...}], ...}
 GET {base}/api/{org}/streams?type=traces
+GET {base}/api/{org}/streams?type=metrics   # one entry PER INSTRUMENT, not one per app
+GET {base}/api/{org}/streams                # every type, each row carrying stream_type
 ```
 
 ### Search (logs, traces, metrics)
@@ -106,6 +108,52 @@ Error filter: `span_status = 'ERROR'`.
 > the `events` JSON. Warnings emitted via `AddWarning(...)` are span events tagged
 > `severity=warning`, findable with `events LIKE '%warning%'`.
 
+### Metrics streams (one per instrument) — verified live
+
+The OTLP metrics endpoint is `{Host}/api/{org}/v1/metrics`, the sibling of the `Traces`
+and `Logs` endpoints in `ihcsettings.json`. Storage differs from the other two signals in
+ways that break naive queries:
+
+**Stream naming.** One stream per instrument, dots replaced by underscores:
+`ihc.edit.apply` is stream `ihc_edit_apply`. A histogram `x` is stored ONLY as the family
+`x_bucket`, `x_count`, `x_sum` — plus `x_min` and `x_max` for an explicit-boundary
+histogram. OpenObserve also registers an EMPTY stream named `x`, which `?type=metrics`
+lists but `_search` rejects with `"Search stream not found"`. Never query the bare name of
+a histogram.
+
+**Common columns.** `_timestamp` (µs), `__name__` (the stream/metric name), `value`
+(float), `start_time` (nanoseconds, unlike `_timestamp`), `aggregation_temporality`
+(`AGGREGATION_TEMPORALITY_DELTA` | `..._CUMULATIVE`), `is_monotonic` (counters),
+`flag`, `exemplars`, `__hash__`, the resource fields (`service_name`,
+`service_namespace`, `service_version`, `service_instance_id`,
+`instrumentation_library_name`, `telemetry_sdk_*`), and one column per instrument
+dimension with dots flattened to underscores (`ihc.service` → `ihc_service`).
+
+**`le` on `_bucket` rows is the boundary and counts are CUMULATIVE**, Prometheus-style,
+ending at a literal `le = 'inf'` row holding the total. One bucket's own count is the
+difference between adjacent rows. `le` is stored as a STRING, so ordering needs
+`ORDER BY CAST(le AS DOUBLE)` — `'inf'` casts to infinity and sorts last correctly.
+
+**Run scoping uses `service_instance_id`** — the LOGS spelling, NOT the traces
+`service_service_instance_id`. Using the traces spelling here matches nothing and looks
+like "the metric never arrived".
+
+**Exemplars survive.** `exemplars` is a JSON-string array of
+`{trace_id, span_id, value, _timestamp}` recorded when a measurement was taken inside a
+sampled Activity (the exporting SDK must enable a trace-based exemplar filter). This is
+the metric→trace join: a suspicious bucket leads straight to the span that filled it.
+Note that the array is repeated on EVERY row of a histogram family, so it is a poor thing
+to `SELECT *` in bulk.
+
+> **A Base2 exponential histogram survives ingestion but is NOT queryable as a
+> distribution.** Its `_bucket` rows carry a bucket INDEX in `le` (observed range −47…63
+> for values spanning 0.004–44 s), the counts are per-bucket rather than cumulative, and
+> no scale or base field is exported anywhere on the row — so the indices cannot be
+> converted back to seconds by any query. It also amplifies rows enormously: 8
+> measurements produced 108 bucket rows versus 11 for the explicit-boundary form.
+> `_sum` and `_count` remain correct, so nothing is lost, but percentiles and heatmaps
+> are not derivable. **Prefer explicit boundaries** for anything you intend to query.
+
 ## SQL cookbook
 
 ```sql
@@ -131,6 +179,30 @@ SELECT operation_name, duration, trace_id FROM "ihc" ORDER BY duration DESC;
 -- Error counts by service
 SELECT service_name, count(*) AS n FROM "ihc"
 WHERE severity IN ('Error','Critical','Fatal') GROUP BY service_name ORDER BY n DESC;
+```
+
+Metrics (`?type=metrics`; note `service_instance_id`, the LOGS spelling):
+
+```sql
+-- Every point of a counter for one launch
+SELECT _timestamp, value, aggregation_temporality FROM "ihc_edit_apply"
+WHERE service_instance_id = '<RUN_ID>' ORDER BY _timestamp DESC;
+
+-- A histogram's distribution: cumulative counts per boundary, 'inf' last
+SELECT le, value FROM "ihc_edit_apply_duration_bucket"
+WHERE service_instance_id = '<RUN_ID>' ORDER BY CAST(le AS DOUBLE);
+
+-- Mean duration of a histogram over a window
+SELECT (SELECT sum(value) FROM "ihc_edit_apply_duration_sum") /
+       (SELECT sum(value) FROM "ihc_edit_apply_duration_count") AS mean_seconds;
+
+-- Which dimension values a counter was actually recorded with
+SELECT ihc_edit_status, sum(value) AS n FROM "ihc_edit_apply"
+GROUP BY ihc_edit_status ORDER BY n DESC;
+
+-- Follow a metric point to its trace (exemplars is a JSON string)
+SELECT _timestamp, value, exemplars FROM "ihc_edit_apply"
+WHERE exemplars <> '[]' ORDER BY _timestamp DESC;
 ```
 
 ## Indexing delay

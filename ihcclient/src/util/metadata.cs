@@ -212,61 +212,70 @@ namespace Ihc {
         /// <returns>List of metadata for service operations</returns>
         public static IReadOnlyList<ServiceOperationMetadata> GetOperations(IIHCApiService service)
         {
-            using Activity activity = Telemetry.ActivitySource.StartActivity(nameof(GetOperations), ActivityKind.Internal);
-
-            Type serviceType = ReflectionUtil.GetServiceType(service);
-
-            activity?.SetParameters((nameof(service), serviceType.Name)); // Interface name: for human-readable telemetry only.
-            activity?.SetTag("cachedResult", true); // Assume cached by default
-
-            // Key the cache by the CONCRETE implementation type, not the interface. The cached operation shapes hold
-            // MethodInfo taken from the concrete type's interface map (ReflectionUtil.GetMethods returns the concrete
-            // TargetMethods); such a MethodInfo only invokes correctly on an instance of that same concrete type. Two
-            // implementations of one interface - e.g. a FakeItEasy proxy in a test and the real service after the
-            // GUI's endpoint is switched - must therefore NOT share an entry, or WithService would rebind one type's
-            // shape onto the other's instance and MethodInfo.Invoke would throw "object does not match target type".
-            Type cacheKey = service.GetType();
-
-            var cached = _cache.GetOrAdd(cacheKey, _ =>
+            // Through the core so the span gains an outcome and an error path: as bare decoration it
+            // could only report that the lookup happened, never that reflection over the service failed.
+            return Telemetry.Run(nameof(GetOperations), scope =>
             {
-                activity?.SetTag("cachedResult", false); // Override if not cached.
+                Activity activity = scope.Activity;
 
-                MethodInfo[] methods = ReflectionUtil.GetMethods(service);
+                Type serviceType = ReflectionUtil.GetServiceType(service);
 
-                var operations = new List<ServiceOperationMetadata>();
+                activity?.SetParameters((nameof(service), serviceType.Name)); // Interface name: for human-readable telemetry only.
+                activity?.SetTag("cachedResult", true); // Assume cached by default
 
-                foreach (var method in methods)
+                // Key the cache by the CONCRETE implementation type, not the interface. The cached operation shapes hold
+                // MethodInfo taken from the concrete type's interface map (ReflectionUtil.GetMethods returns the concrete
+                // TargetMethods); such a MethodInfo only invokes correctly on an instance of that same concrete type. Two
+                // implementations of one interface - e.g. a FakeItEasy proxy in a test and the real service after the
+                // GUI's endpoint is switched - must therefore NOT share an entry, or WithService would rebind one type's
+                // shape onto the other's instance and MethodInfo.Invoke would throw "object does not match target type".
+                Type cacheKey = service.GetType();
+
+                var cached = _cache.GetOrAdd(cacheKey, _ =>
                 {
-                    // Skip property getters/setters
-                    if (method.IsSpecialName)
-                        continue;
+                    activity?.SetTag("cachedResult", false); // Override if not cached.
 
-                    // Skip methods inherited from System.Object
-                    if (method.DeclaringType == typeof(object))
-                        continue;
+                    MethodInfo[] methods = ReflectionUtil.GetMethods(service);
 
-                    // Skip methods from ICookieHandlerService, IDisposable, and IAsyncDisposable
-                    if (IsMethodFromExcludedInterface(method))
-                        continue;
+                    var operations = new List<ServiceOperationMetadata>();
 
-                    // Cache an instance-less shape (Service: null) so the static cache never pins the first
-                    // service instance (or its object graph) for the process lifetime; every returned operation is
-                    // rebound to the live instance below via WithService, so the cached shape needs no instance.
-                    operations.Add(CreateOperationInfo(null!, method));
-                }
+                    foreach (var method in methods)
+                    {
+                        // Skip property getters/setters
+                        if (method.IsSpecialName)
+                            continue;
 
-                return operations.AsReadOnly();
+                        // Skip methods inherited from System.Object
+                        if (method.DeclaringType == typeof(object))
+                            continue;
+
+                        // Skip methods from ICookieHandlerService, IDisposable, and IAsyncDisposable
+                        if (IsMethodFromExcludedInterface(method))
+                            continue;
+
+                        // Cache an instance-less shape (Service: null) so the static cache never pins the first
+                        // service instance (or its object graph) for the process lifetime; every returned operation is
+                        // rebound to the live instance below via WithService, so the cached shape needs no instance.
+                        operations.Add(CreateOperationInfo(null!, method));
+                    }
+
+                    return operations.AsReadOnly();
+                });
+
+                // The cache is keyed by service *type* and stores an instance-less operation shape (Service: null,
+                // see above). Bind every cached operation to the live `service` so Invoke() has a concrete instance
+                // to target - the caller's, never a stale (possibly disposed, or differently-configured in tests) one.
+                var retv = cached.Select(op => op.WithService(service)).ToList().AsReadOnly();
+
+                activity?.SetReturnValue(retv);
+
+                return retv;
             });
-
-            // The cache is keyed by service *type* and stores an instance-less operation shape (Service: null,
-            // see above). Bind every cached operation to the live `service` so Invoke() has a concrete instance
-            // to target - the caller's, never a stale (possibly disposed, or differently-configured in tests) one.
-            var retv = cached.Select(op => op.WithService(service)).ToList().AsReadOnly();
-
-            activity?.SetReturnValue(retv);
-
-            return retv;
         }
+
+        // Static, because the operation is.
+        private static readonly OperationTelemetry Telemetry =
+            new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(ServiceMetadata));
 
         private static bool IsMethodFromExcludedInterface(MethodInfo method)
         {

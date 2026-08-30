@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Ihc;
+using ihc_openvisual.Configuration;
 using Ihc.Vis;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
@@ -58,6 +59,10 @@ internal sealed class ProjectFindingsWorkflow(
     ProjectAppService service, IDialogService dialogs, ILogger logger,
     Func<Project?> getCurrent, Func<string> getDocumentName)
 {
+    /// <summary>This type's entry point into the instrumentation core.</summary>
+    private readonly OperationTelemetry _telemetry =
+        new(AppTelemetryRegistry.Surface, nameof(ProjectFindingsWorkflow));
+
     /// <summary>The ONE title over a findings list that could not be written.</summary>
     internal const string ExportFailedTitle = "Eksport mislykkedes";
 
@@ -72,8 +77,7 @@ internal sealed class ProjectFindingsWorkflow(
     public async Task ExportAsync(FindingsExportRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        using Activity? activity = Telemetry.ActivitySource.StartActivity(
-            $"{nameof(ProjectFindingsWorkflow)}.{nameof(ExportAsync)}");
+        using OperationScope scope = _telemetry.Start(nameof(ExportAsync));
         try
         {
             if (getCurrent() is not { } project)
@@ -98,7 +102,7 @@ internal sealed class ProjectFindingsWorkflow(
         }
         catch (Exception ex)
         {
-            ActivityExtensions.SetError(activity, ex);
+            scope.SetOutcome(OperationOutcome.Failed(ex));
             logger.LogError(ex, "Failed to export the findings list");
             await RaisedProblemDisplay.ShowAsync(
                 dialogs, ExportFailedTitle, HostProblems.FindingsExportFailed(ex), ex);

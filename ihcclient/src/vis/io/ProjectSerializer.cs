@@ -40,16 +40,25 @@ namespace Ihc.Vis.Io
             return cache;
         }
 
+        /// <summary>This serializer's entry point into the instrumentation core.</summary>
+        private static readonly OperationTelemetry Telemetry =
+            new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(ProjectSerializer));
+
         /// <summary>Serializes a project to its <c>.vis</c> byte representation, verbatim.</summary>
         public static byte[] Serialize(Project project)
         {
             ArgumentNullException.ThrowIfNull(project);
-            ProjectSchemaView view = project.SchemaView;
-            var sb = new StringBuilder(4096);
-            sb.Append(XmlDeclaration).Append(Crlf);
-            AppendDtd(sb, project.Root, view);
-            AppendElement(sb, project.Root, depth: 0, view);
-            return Encode(sb.ToString(), project.Root);
+            // Through the core rather than around it: the encoding guard and every schema guard below refuse by
+            // THROWING, so a scope this method disposed itself would record a refused save as a completed one.
+            return Telemetry.Run(nameof(Serialize), _ =>
+            {
+                ProjectSchemaView view = project.SchemaView;
+                var sb = new StringBuilder(4096);
+                sb.Append(XmlDeclaration).Append(Crlf);
+                AppendDtd(sb, project.Root, view);
+                AppendElement(sb, project.Root, depth: 0, view);
+                return Encode(sb.ToString(), project.Root);
+            });
         }
 
         private static byte[] Encode(string text, ProjectElement root)

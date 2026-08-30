@@ -28,7 +28,9 @@
     "comment": "OpenTelemetry example setting using Openobserve.ai provider. Set <token> to correct value from Datasource menu under Traces",
     "Host": "http://localhost:5080",
     "Traces": "http://localhost:5080/api/default/v1/traces",
-    "Logs": "http://localhost:5080/api/default/v1/logs",
+    "Logs": "http://localhost:5080/api/default/v1/logs",
+    "Environment": "development",
+    "Metrics": "http://localhost:5080/api/default/v1/metrics",
     "Headers": "Authorization=Basic <token>, stream-name=Ihc, organization=default",
     "SelfCheckEndpoint": "http://localhost:5080/api/default/v1/traces",
     "SelfCheckExpectedStatus": "^2\\d\\d$"

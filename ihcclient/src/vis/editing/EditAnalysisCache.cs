@@ -43,6 +43,13 @@ namespace Ihc.Vis.Editing
             byProject.TryGetValue(project, out EditAnalysis? analysis) ? analysis : null;
 
         /// <summary>Records that a full open analysis just ran (a cache miss).</summary>
-        internal static void CountFullAnalysis() => Interlocked.Increment(ref fullAnalysisCount);
+        internal static void CountFullAnalysis()
+        {
+            // The Interlocked counter STAYS: a [NonParallelizable] test reads FullAnalysisCount directly, and
+            // a metric is not readable from a test without a listener. The instrument MIRRORS it rather than
+            // replacing it, so the two can be compared - and a test asserts they agree.
+            Interlocked.Increment(ref fullAnalysisCount);
+            SdkTelemetryRegistry.EditAnalysisMiss.Add(1);
+        }
     }
 }

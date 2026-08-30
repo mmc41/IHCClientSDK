@@ -48,7 +48,7 @@ internal sealed class Program
             // handler (A-25). Startup exceptions before this point are caught by Main's catch below.
             StartupProjectPath = ParseStartupProjectPath(args);
             Config = new AppConfiguration();
-            LoggerFactory = AppTelemetryBootstrap.SetupTelemetryAndLogging(
+            LoggerFactory = TelemetryBootstrap.SetupTelemetryAndLogging(
                 Telemetry.AppServiceName, Telemetry.AppServiceNamespace, Telemetry.ActivitySourceName,
                 Config.TelemetryConfig, Config.LoggingConfig);
             // All four documented exception layers, because each catches faults the others cannot see (Avalonia
@@ -58,12 +58,12 @@ internal sealed class Program
             // window-lifecycle handlers (Closing/Closed/Activated) run straight off the window message loop, so each
             // carries its own try/catch (AP-06/WS-11), and on Linux the GLib boundary needs
             // X11PlatformOptions.ExternalGLibMainLoopExceptionLogger (wired in BuildAvaloniaApp).
-            AppDomain.CurrentDomain.UnhandledException += AppTelemetryBootstrap.UnhandledExceptionHandler(
+            AppDomain.CurrentDomain.UnhandledException += TelemetryBootstrap.UnhandledExceptionHandler(
                 LoggerFactory.CreateLogger("Ihc.OpenVisual.UnhandledException"));
             // Plain BCL, so it is safe here; the DISPATCHER layer is attached from BuildAvaloniaApp's AfterSetup
             // instead, because reading Dispatcher.UIThread this early would initialize the dispatcher before
             // Avalonia is set up (see the method comment above).
-            TaskScheduler.UnobservedTaskException += AppTelemetryBootstrap.UnobservedTaskExceptionHandler(
+            TaskScheduler.UnobservedTaskException += TelemetryBootstrap.UnobservedTaskExceptionHandler(
                 LoggerFactory.CreateLogger("Ihc.OpenVisual.UnobservedTaskException"));
 
             // Probe the configured OTLP endpoint so a wrong endpoint/token fails loudly instead of silently
@@ -87,8 +87,8 @@ internal sealed class Program
         }
         finally
         {
-            // Flush and release telemetry on shutdown so the final batch of spans/logs is exported.
-            AppTelemetryBootstrap.TracerProvider?.Dispose();
+            // Before the LoggerFactory below, for the reason Shutdown documents.
+            TelemetryBootstrap.Shutdown();
             LoggerFactory?.Dispose();
         }
     }

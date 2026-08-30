@@ -1011,7 +1011,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Opens the start-up document: <paramref name="startupProjectPath"/> (the <c>.vis</c> the app was
     /// launched on), else the empty project.</summary>
-    public Task InitializeAsync(string? startupProjectPath = null) => _session.StartAsync(startupProjectPath);
+    public Task InitializeAsync(string? startupProjectPath = null) =>
+        // Through the same wrapper every command uses. Start-up was the one path that produced NO span at all,
+        // so the work between launch and a usable window - the load, the first validation, the catalog - hung
+        // off nothing and could not be seen as one operation, nor its failure reported like any other.
+        RunAsync(nameof(InitializeAsync), () => _session.StartAsync(startupProjectPath));
 
     /// <summary>Runs the window-close save prompt (US-064); returns false to cancel the quit.
     /// <para>Routed through <see cref="RunAsync"/> — the view-model's one error boundary — because the caller is
@@ -2240,14 +2244,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private async Task RunAsync(string operation, Func<Task> action)
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(MainWindowViewModel)}.{operation}", ActivityKind.Internal);
+        // Shape B rather than the delegate form: the outcome has to be recorded BEFORE the dialog below, which
+        // awaits a person, and the contract is unchanged - the exception is still swallowed and still becomes
+        // one fixed Danish sentence.
+        using Ihc.OperationScope scope = _telemetry.Start(operation);
         try
         {
             await action();
         }
         catch (Exception ex)
         {
-            Ihc.ActivityExtensions.SetError(activity, ex);
+            scope.SetOutcome(Ihc.OperationOutcome.Failed(ex));
             _logger.LogError(ex, "Command {Operation} failed", operation);
             // Same rule as a Failed edit outcome (D01): the exception message is an English developer diagnostic
             // naming element tags, attribute names and _0x ids, so it goes to the log and the installer gets one
@@ -2257,6 +2264,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             await _dialogs.ShowProblemAsync(UnexpectedErrorTitle, HostProblems.Unexpected(ex));
         }
     }
+
+    /// <summary>
+    /// This view-model's entry point into the instrumentation core. Owner is the type, so spans keep reading
+    /// <c>MainWindowViewModel.&lt;operation&gt;</c> exactly as they did.
+    /// </summary>
+    private readonly Ihc.OperationTelemetry _telemetry =
+        new(AppTelemetryRegistry.Surface, nameof(MainWindowViewModel));
+
+    /// <summary>The binding is IMMUTABLE and its instruments are static, so it is built once rather than per operation.</summary>
+    private static readonly Ihc.MetricBinding TreeUpdateMetrics =
+        Ihc.MetricBinding.For(AppTelemetryRegistry.TreeUpdateDuration);
 
     /// <summary>The current availability context (crudarch T010, §3.2) — ONE immutable snapshot every surface
     /// gate reads (ids and value flags only; see <see cref="ShellContext"/>). Rebuilt only by
@@ -2336,6 +2354,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // back to back per edit/undo/load. It is one document transition, so it is ONE rebuild.
     private void Refresh() => AsOneContextRebuild(() =>
         {
+            // The performance cliff this exists to expose. An ordinary edit should RECONCILE in place; a
+            // rebuild tears down every node instance. Both paths merely look slow to a user, and nothing
+            // distinguishes them from outside - so an edit that silently starts rebuilding is invisible
+            // until someone notices the app has become sluggish on large projects.
+            using Ihc.OperationScope treeScope = _telemetry.Start("TreeUpdate", metrics:
+                TreeUpdateMetrics);
+
             // D07 (U-BP-06): the dirty bullet marks unsaved changes in the title; Save itself stays always-enabled.
             Title = $"{_session.DocumentName}{(_session.IsDirty ? "•" : string.Empty)} - {Constants.AppName}";
             OnPropertyChanged(nameof(UndoMenuHeader));   // the history may have grown/shrunk — refresh the Edit-menu labels (E14)
@@ -2346,6 +2371,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 // BuildProgrammingTrees clears and rebuilds both panes (fresh node instances), so — exactly like the
                 // config-mode fallback below — capture the selection by id and restore it after, else a program edit
                 // (every edit fires StateChanged → Refresh) drops the selected container to an orphan (review C5).
+                RecordTreeUpdate(treeScope, AppTelemetryRegistry.Values.TreeRebuild);
                 RebuildPreservingSelection(() =>
                     _treePanes.BuildProgrammingTrees(block, preserveExpansion: _treePanes.SameViewAsLastBuild("prog:" + blockId.ToToken())));
             }
@@ -2359,8 +2385,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 // reconcilers' roots — edits AND undo/redo, whose outcomes carry their exact delta (crudarch G3/T007);
                 // otherwise (load/save/close/mode switch/first build — LastChange null — or panes out of sync) rebuild
                 // through the reconciler, which re-seeds it (W3-6 keeps the fallback permanent, US-070).
-                if (!(sameView && _treePanes.TryReconcileConfig()))
+                if (sameView && _treePanes.TryReconcileConfig())
                 {
+                    RecordTreeUpdate(treeScope, AppTelemetryRegistry.Values.TreeReconcile);
+                }
+                else
+                {
+                    RecordTreeUpdate(treeScope, AppTelemetryRegistry.Values.TreeRebuild);
                     // The full-rebuild fallback tears down the node instances, so the reconcile path's by-identity survival
                     // of the installer's place is lost here — capture selection (which Avalonia's focus + scroll-into-view
                     // follow) by id before the rebuild and restore it after, so a load (or any reconcile fallback) lands
@@ -2369,6 +2400,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 }
             }
         });
+
+    /// <summary>
+    /// Which way the refresh went, on the span and as the histogram's dimension. Two values only, so the
+    /// series stays two: a percentile per path is exactly the comparison that makes a cliff visible.
+    /// </summary>
+    private static void RecordTreeUpdate(Ihc.OperationScope scope, string kind)
+    {
+        scope.AddSharedTag(AppTelemetryRegistry.Attributes.TreeUpdate, kind);
+    }
 
     // Captures the per-pane selection by id, runs a full <paramref name="rebuild"/> that replaces the pane nodes with
     // fresh instances, then re-selects those ids — the shared guard both Refresh rebuild branches use so a rebuild
@@ -2413,7 +2453,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private string BuildSettingsText()
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Program: {Constants.AppName} {Ihc.Bootstrap.AppTelemetryBootstrap.GetAppVersionStr()}");
+        sb.AppendLine($"Program: {Constants.AppName} {Ihc.Bootstrap.TelemetryBootstrap.GetAppVersionStr()}");
         sb.AppendLine($"SDK: {Ihc.VersionInfo.GetSdkVersionStr()}");
         sb.AppendLine();
         if (_config is null)
@@ -2431,6 +2471,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         sb.AppendLine("Telemetri:");
         sb.AppendLine($"  Log: {OrNone(_config.TelemetryConfig.Logs)}");
         sb.AppendLine($"  Spor: {OrNone(_config.TelemetryConfig.Traces)}");
+        sb.AppendLine($"  Metrikker: {OrNone(_config.TelemetryConfig.Metrics)}");
         sb.AppendLine($"  Selvtjek: {OrNone(_config.TelemetryConfig.SelfCheckEndpoint)}");
         return sb.ToString();
 

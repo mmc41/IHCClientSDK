@@ -1089,39 +1089,31 @@ namespace Ihc.App
         /// <param name="serviceInterfaces">Array of IHC API service instances to make available in the lab.</param>
         public void Configure(IhcSettings settings, IIHCApiService[] serviceInterfaces)
         {
-            using (var activity = StartActivity(nameof(Configure)))
+            RunTraced(nameof(Configure), activity =>
             {
-                try
+                if (serviceInterfaces == null)
+                    throw new ArgumentNullException(nameof(serviceInterfaces), "Service interfaces array cannot be null");
+
+                activity?.SetParameters(
+                    (nameof(settings), settings?.ToString() ?? "null"),
+                    (nameof(serviceInterfaces), serviceInterfaces.Length.ToString()));
+
+                lock (_lock)
                 {
-                    if (serviceInterfaces == null)
-                        throw new ArgumentNullException(nameof(serviceInterfaces), "Service interfaces array cannot be null");
+                    _services = serviceInterfaces
+                        .Where(service => globalSupportedServiceFilter(service))
+                        .Select(service => new ServiceItem(service, this.globalSupportedOperationFilter))
+                        .ToArray();
 
-                    activity?.SetParameters(
-                        (nameof(settings), settings?.ToString() ?? "null"),
-                        (nameof(serviceInterfaces), serviceInterfaces.Length.ToString()));
-
-                    lock (_lock)
-                    {
-                        _services = serviceInterfaces
-                            .Where(service => globalSupportedServiceFilter(service))
-                            .Select(service => new ServiceItem(service, this.globalSupportedOperationFilter))
-                            .ToArray();
-
-                        // Reset to first service (each ServiceItem tracks its own operation index, defaulting to 0)
-                        _selectedServiceIndex = 0;
-                    }
-
-                    // Fire event outside lock to avoid potential deadlocks
-                    ServicesChanged?.Invoke(this, EventArgs.Empty);
-
-                    activity?.SetTag("ServiceCount", _services?.Length ?? 0);
+                    // Reset to first service (each ServiceItem tracks its own operation index, defaulting to 0)
+                    _selectedServiceIndex = 0;
                 }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+
+                // Fire event outside lock to avoid potential deadlocks
+                ServicesChanged?.Invoke(this, EventArgs.Empty);
+
+                activity?.SetTag("ServiceCount", _services?.Length ?? 0);
+            });
         }
 
         /// <summary>
@@ -1134,9 +1126,7 @@ namespace Ihc.App
         /// <exception cref="NotSupportedException">Thrown when the operation kind is not AsyncFunction or the return type is unsupported.</exception>
         public async Task<OperationResult> DynCallSelectedOperation()
         {
-            using var activity = StartActivity(nameof(DynCallSelectedOperation));
-
-            try
+            return await RunTracedAsync(nameof(DynCallSelectedOperation), async activity =>
             {
                 IIHCApiService service;
                 ServiceOperationMetadata operationMetadata;
@@ -1244,12 +1234,10 @@ namespace Ihc.App
                 {
                     throw new NotSupportedException($"Unsupported return type: {taskType.Name} for operation '{operationName}' on service '{serviceName}'");
                 }
-            }
-            catch (Exception ex)
-            {
-                activity?.SetError(ex);
-                throw;
-            }
+            // ConfigureAwait(false) rather than a configured value: this class stores no IhcSettings (see the
+            // note below on Configure's parameter), and the awaited continuation is the scaffold's own trivial
+            // one - the body's inner awaits keep whatever they were written with.
+            }).ConfigureAwait(false);
         }
         
         /// <summary>

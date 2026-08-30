@@ -1,6 +1,9 @@
 # Add any directories, files, or patterns you don't want to be tracked by version control
 bin
 obj
+# Test run output: TRX result files and blame's sequence/dump files. Every suite writes one now, locally and
+# in CI, so a failure always leaves an artifact behind instead of having to be reproduced first.
+TestResults
 .ionide
 *.log
 *.bak

@@ -50,7 +50,8 @@ public class ToolbarDisabledAppearanceTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public async Task FreshProject_ClipboardToolbarButtons_AreDisabledWhileNewIsEnabled()
     {
-        MainWindow window = await ShowShellAsync();
+        (ShellHarness harness, MainWindow window) = await ShowShellAsync();
+        using var _ = harness;
 
         Assert.Multiple(() =>
         {
@@ -70,7 +71,8 @@ public class ToolbarDisabledAppearanceTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public async Task DisabledToolbarButton_TakesTheDisabledIconInk()
     {
-        MainWindow window = await ShowShellAsync();
+        (ShellHarness harness, MainWindow window) = await ShowShellAsync();
+        using var _ = harness;
 
         Color enabled = GlyphInk(window, "ToolbarNew");
         Color disabled = GlyphInk(window, "ToolbarCut");
@@ -93,7 +95,8 @@ public class ToolbarDisabledAppearanceTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public async Task DisabledToolbarButton_PaintsNoFillAnEnabledOneLacks()
     {
-        MainWindow window = await ShowShellAsync();
+        (ShellHarness harness, MainWindow window) = await ShowShellAsync();
+        using var _ = harness;
 
         IBrush? enabled = ContentFill(window, "ToolbarNew");
         IBrush? disabled = ContentFill(window, "ToolbarCut");
@@ -107,7 +110,8 @@ public class ToolbarDisabledAppearanceTests : AvaloniaTestBase
         });
     }
 
-    private static async Task<MainWindow> ShowShellAsync()
+    /// <summary>The harness comes back so the caller can dispose it — see <see cref="ShellHarness.Dispose"/>.</summary>
+    private static async Task<(ShellHarness harness, MainWindow window)> ShowShellAsync()
     {
         var harness = ShellHarness.Create();
         MainWindowViewModel viewModel = harness.CreateViewModel();
@@ -117,7 +121,7 @@ public class ToolbarDisabledAppearanceTests : AvaloniaTestBase
         CurrentTestWindow = window;
         window.Show();
         Dispatcher.UIThread.RunJobs();
-        return window;
+        return (harness, window);
     }
 
     private static Button ToolButton(MainWindow window, string automationId) =>

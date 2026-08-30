@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Ihc;
 using ihc_openvisual.Configuration;
 using ihc_openvisual.Services;
 using Microsoft.Extensions.Logging;
@@ -11,6 +12,10 @@ namespace ihc_openvisual.Views;
 
 public partial class AboutWindow : Window
 {
+    /// <summary>This type's entry point into the instrumentation core.</summary>
+    private readonly OperationTelemetry _telemetry =
+        new(AppTelemetryRegistry.Surface, nameof(AboutWindow));
+
     private readonly ILogger<AboutWindow> _logger;
     private readonly IDialogService? _dialogs;
 
@@ -32,7 +37,7 @@ public partial class AboutWindow : Window
         AppDescription.Text = Constants.AppDescription;
         RepoLinkText.Text = Constants.SdkRepoLink;
         RepoAuthors.Text = Constants.Authors;
-        AppVersionText.Text = $"App version: {Ihc.Bootstrap.AppTelemetryBootstrap.GetAppVersionStr()}";
+        AppVersionText.Text = $"App version: {Ihc.Bootstrap.TelemetryBootstrap.GetAppVersionStr()}";
         SdkVersionText.Text = $"SDK version: {Ihc.VersionInfo.GetSdkVersionStr()}";
     }
 
@@ -40,7 +45,7 @@ public partial class AboutWindow : Window
     // a Window handler runs off the message loop where no global exception handler can see a fault (AP-06/WS-11).
     private async void OnRepoLinkClick(object? sender, RoutedEventArgs e)
     {
-        using Activity? activity = Telemetry.ActivitySource.StartActivity($"{nameof(AboutWindow)}.{nameof(OnRepoLinkClick)}", ActivityKind.Internal);
+        using OperationScope scope = _telemetry.Start(nameof(OnRepoLinkClick));
         try
         {
             // Through the dialog port, which is where "hand something to the desktop" lives for the whole app: it
@@ -57,8 +62,7 @@ public partial class AboutWindow : Window
         catch (Exception ex)
         {
             // A browser-launch failure must not terminate the app; record it and keep the dialog open.
-            if (activity is not null)
-                Ihc.ActivityExtensions.SetError(activity, ex);
+            scope.SetOutcome(Ihc.OperationOutcome.Failed(ex));
             _logger.LogError(ex, "Could not open repository URL {Url}", Constants.SdkRepoLink);
         }
     }
