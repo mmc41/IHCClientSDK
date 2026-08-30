@@ -1,0 +1,17 @@
+{
+  "format": ["csharp"],
+  "reporters": ["ai"],
+  "output": "artifacts/jscpd",
+  "ignore": [
+    "**/bin/**",
+    "**/obj/**",
+    "**/node_modules/**",
+    "artifacts/**",
+    "tmp/**",
+    "ihcclient/generatedsrc/**",
+    "**/*.g.cs",
+    "**/*.g.i.cs",
+    "**/*.Designer.cs",
+    "tests/testdata/**"
+  ]
+}

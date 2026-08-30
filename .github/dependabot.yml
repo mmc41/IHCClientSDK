@@ -1,0 +1,23 @@
+# Every `uses:` in .github/workflows is pinned to a full commit SHA, which is what stops an
+# action owner from silently repointing a tag under us. A SHA never floats, though, so without
+# this file the pins would also never pick up an upstream security fix. Dependabot rewrites the
+# SHA and the trailing `# vN` comment together.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      # A compromised release is usually yanked within days of publication, so letting a brand
+      # new version age before we are asked to adopt it is most of the protection pinning buys.
+      # Only default-days is honoured for github-actions; the semver-*-days keys are SemVer-only.
+      # Security updates ignore cooldown entirely, so this delays adoption, never a fix.
+      default-days: 7
+    groups:
+      # One PR per week rather than one per action; each still lists the individual bumps.
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"

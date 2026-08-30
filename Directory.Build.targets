@@ -152,4 +152,50 @@
     <Message Importance="high" Text="$(CoverageSummaryOutput)" Condition="'$(CoverageSummaryOutput)' != ''" />
   </Target>
 
+  <!--
+    The repository's static checks, on for every build. Opt a run out with `-p:RunStaticChecks=false`,
+    the same shape as CollectCoverage above.
+
+    WHICH checks run is deliberately absent from this file. scripts/static_check.sh and its PowerShell
+    peer own that list, so a check can be added, changed or dropped by editing a script rather than the
+    file every project in the repository imports — and so that the checks a build runs are exactly the
+    checks a developer can run by hand. This target picks a peer by platform and translates its outcome
+    into MSBuild's vocabulary; it knows nothing else about them, and naming one here would start a
+    second list to keep honest.
+
+    The one thing it does rely on is the exit code: non-zero means a check could not RUN, never that a
+    check found something. These checks advise rather than gate, and their tools are not all restored by
+    the build, so IgnoreExitCode turns a non-zero exit into a warning. That warning stays a warning even
+    though warnings are errors repo-wide, because TreatWarningsAsErrors is passed to the compiler and
+    does not promote MSBuild's own. A peer prints its own diagnostic before exiting, so the streams are
+    left at their default importance and the warning below does not restate what they already said.
+
+    Anchored to one project rather than left to fire wherever it is imported. A solution build evaluates
+    this file once per project, so without the anchor a single `dotnet build` would repeat every check
+    for every project. ihcclient is the anchor because every buildable path here builds it, and because
+    the checks read sources, never build output — they do not care whether the other projects have
+    compiled yet.
+  -->
+  <Target Name="StaticCheck"
+          AfterTargets="Build"
+          Condition="'$(RunStaticChecks)' != 'false' AND '$(MSBuildProjectName)' == 'ihcclient'">
+
+    <Exec Condition="'$(OS)' == 'Windows_NT'"
+          Command="pwsh -NoProfile -File &quot;$(MSBuildThisFileDirectory)scripts/static_check.ps1&quot;"
+          WorkingDirectory="$(MSBuildThisFileDirectory)"
+          IgnoreExitCode="true" ContinueOnError="true">
+      <Output TaskParameter="ExitCode" PropertyName="StaticCheckExitCode" />
+    </Exec>
+
+    <Exec Condition="'$(OS)' != 'Windows_NT'"
+          Command="bash &quot;$(MSBuildThisFileDirectory)scripts/static_check.sh&quot;"
+          WorkingDirectory="$(MSBuildThisFileDirectory)"
+          IgnoreExitCode="true" ContinueOnError="true">
+      <Output TaskParameter="ExitCode" PropertyName="StaticCheckExitCode" />
+    </Exec>
+
+    <Warning Condition="'$(StaticCheckExitCode)' != '0'"
+             Text="A static check could not run (scripts/static_check exited with code $(StaticCheckExitCode)); see the message above it. Build output is unaffected." />
+  </Target>
+
 </Project>

@@ -53,6 +53,8 @@ See [ihcclient](ihcclient/README.md#status) for more details on IHC API implemen
 ### Prerequisites
 
 * [.NET SDK](https://dotnet.microsoft.com/download) 9.0 or later.
+* [Opengrep](https://github.com/opengrep/opengrep) for static security analysis (optional)
+* [jscpd](https://github.com/kucherenko/jscpd) for code duplication analysis (optional)
 * An LK IHC v3.0 controller (only needed for controller access — the `.vis` project-file engine works entirely offline).
 * Network and third-party access enabled on the controller: open the standard **IHC administrator** app from LK, log in, click access control and enable localnet or internet access plus "Open for thirdparty products". Only enable internet access if you have a firewall and know how to use it securely.
 
@@ -77,6 +79,19 @@ Then try the examples and the controller-free unit tests:
 dotnet run --project examples/ihcclient_example1/example1.csproj
 dotnet test tests/safe_unit_tests/safe_unit_tests.csproj
 ```
+
+Static checks. The script pins the ruleset to the same commit CI uses, so a local run and the
+CI run are the same scan; a bare `opengrep scan` is not, because it falls back to a mutable
+ruleset fetched from semgrep.dev. Findings are reported, not fatal — add `--error` to gate.
+
+```bash
+bash scripts/opengrep-scan.sh
+```
+
+[CodeQL](https://codeql.github.com/) runs the second half of the analysis, in CI only: it builds the
+solution and asks dataflow questions of the result, which the pattern matching above cannot answer.
+It needs no local tool and nothing to run here — see the Security tab for its findings, and
+[.github/workflows/codeql.yml](.github/workflows/codeql.yml) for what it covers.
 
 ## Usage
 

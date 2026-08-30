@@ -1,0 +1,88 @@
+name: codeql
+
+# Semantic security analysis, complementing the pattern matching in opengrep.yml. CodeQL builds a
+# database out of the sources and asks dataflow questions of it -- can a value from here reach that
+# sink -- which a regex-shaped rule cannot answer. The two overlap on the obvious cases and are kept
+# as separate workflows deliberately: neither is a superset of the other, and a scanner that has
+# stopped running is easier to notice when it owns its own job.
+#
+# REPORT-ONLY, like opengrep: results land in the Security tab and no finding fails a check here.
+# Making findings block a merge is a branch-protection setting -- require the "CodeQL" check -- not
+# an edit to this file.
+#
+# Free because this repository is public; code scanning is billed on private repositories.
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+  schedule:
+    # Weekly, because the queries change without the code changing. A query added upstream finds
+    # nothing until something re-runs the analysis, and on a quiet week nothing otherwise would.
+    - cron: '27 4 * * 1'
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '10.x' # Kept in step with build-validation.yml; the C# database comes from a real build.
+
+jobs:
+  analyze:
+
+    name: codeql-${{ matrix.language }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # Upload the analysis to code scanning.
+      actions: read          # The `actions` extractor reads workflow definitions through the API.
+
+    strategy:
+      fail-fast: false # One language's extractor failing must not discard the other's results.
+      matrix:
+        include:
+        - language: csharp
+          build-mode: manual
+
+        # The workflows themselves: unpinned action references, expression injection into a `run:`
+        # block, over-broad permissions. Every `uses:` in this repository is pinned to a SHA by hand,
+        # and this is the check that keeps that convention honest rather than merely intended.
+        - language: actions
+          build-mode: none
+
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+    - name: Setup .NET Core
+      if: matrix.language == 'csharp'
+      uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        dotnet-quality: 'ga'
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+
+    - name: Build
+      # `manual` rather than `autobuild`, because autobuild guesses at the SDK and the entry point
+      # and this solution needs the exact version set up above. jscpd is off because it is not
+      # installed on this runner and nothing here reads its report -- left on, it would warn on
+      # every run about a tool this job never wanted.
+      #
+      # Scoping the analysis is done here or not at all: the `paths-ignore` property of a CodeQL
+      # config file applies only to languages analysed WITHOUT a build, so for C# the build steps are
+      # the only scope control there is. That is why the generated SOAP layer under
+      # ihcclient/generatedsrc/ is analysed too -- it compiles as part of the SDK project and cannot
+      # be carved out without excluding the SDK. It is a handful of serializer DTOs; dismiss an alert
+      # there in the Security tab rather than adding a filter that would also hide authored code.
+      if: matrix.build-mode == 'manual'
+      run: dotnet build IHCClientSDK.sln -p:RunJscpd=false
+
+    - name: Analyze
+      uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
+      with:
+        # Distinct result sets per language, so uploading one never retires the other's alerts.
+        category: /language:${{ matrix.language }}

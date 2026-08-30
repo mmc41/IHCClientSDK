@@ -35,9 +35,9 @@ jobs:
         os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
     - name: Setup .NET Core
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
         dotnet-quality: 'ga'
@@ -56,6 +56,23 @@ jobs:
       # tool, so without this the merge step after each suite warns and produces nothing — the tests
       # themselves still run and still gate the build.
       run: dotnet tool restore
+
+    - name: Install jscpd
+      # The copy/paste scan the build runs after compiling ihcclient. It is an npm tool rather than
+      # something dotnet restore brings in, so without this step every leg would log the warning the
+      # build raises when jscpd is absent. Node ships on all three hosted runners, so no setup-node.
+      #
+      # Pinned to a major, not to a version. The scan gates nothing, so a fix inside v5 can land
+      # unreviewed; a v6 that renamed a reporter or changed the config schema could not, and would
+      # otherwise turn into a jscpd exit code warning on every leg. Dependabot cannot see a version
+      # inside a `run:` — that is the other half of why this is a range and not a pin to maintain.
+      #
+      # continue-on-error, because a registry hiccup must not fail a build over an advisory tool.
+      # The build then warns about the missing jscpd exactly as it does on a developer machine.
+      continue-on-error: true
+      # Quoted because the Windows runner runs this through PowerShell, where an unquoted ^ is at the
+      # mercy of the shell rather than reaching npm as part of the range.
+      run: npm install -g "jscpd@^5"
 
     - name: Build
       run: dotnet build --no-restore
@@ -111,7 +128,7 @@ jobs:
       # The raw .coverage slices are excluded: they are large binaries that say nothing about a failure,
       # and the readable form of the same data is uploaded by the next step.
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: test-results-${{ matrix.os }}
         path: |
@@ -126,7 +143,7 @@ jobs:
       # Carries Summary.txt, the coverage XML and the one-page HTML. The per-file HTML drill-down is
       # opt-in locally and is not generated here, so this stays small.
       if: always() && matrix.os == 'windows-latest'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: coverage-report
         path: artifacts/coverage/report/

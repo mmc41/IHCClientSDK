@@ -1,0 +1,61 @@
+name: opengrep
+
+# Static analysis over the .NET sources, the Python skill scripts and the workflow YAML itself.
+#
+# REPORT-ONLY for now: opengrep exits 0 on findings unless --error is passed, so a finding never
+# fails a build while that flag is absent. A scanner failure -- an unparseable rule, a crash --
+# still fails the job, which is the point: a gate that cannot run is not a passing gate.
+# Results land in the Security tab through the SARIF upload. Read the baseline there, then add
+# --error in scripts/opengrep-scan.sh's invocation below to let findings gate.
+#
+# Nothing here reaches the network unpinned. The engine is a release binary checked against a
+# recorded digest, and the rules are a repository checked out at a commit -- deliberately NOT
+# `--config auto`, which fetches a mutable ruleset from semgrep.dev at scan time and sends the
+# project URL along with the request.
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: opengrep
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # Upload SARIF to code scanning; free because this repository is public.
+
+    steps:
+    - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+    - name: Install Opengrep
+      # The project's own README recommends piping install.sh from `main` into a shell. That
+      # fetches unpinned code and runs it, so instead: one release asset, pinned by tag, refused
+      # unless it hashes to the digest recorded here. Bump both lines together.
+      env:
+        OPENGREP_VERSION: v1.29.0
+        OPENGREP_SHA256: 3365ef49d04893e01338d85d9bbd49b2bd5261ad4c9c0df0a6a0f8d44232ae13
+      run: |
+        curl -fsSL --retry 3 -o opengrep \
+          "https://github.com/opengrep/opengrep/releases/download/${OPENGREP_VERSION}/opengrep_manylinux_x86"
+        echo "${OPENGREP_SHA256}  opengrep" | sha256sum -c -
+        chmod +x opengrep
+        sudo mv opengrep /usr/local/bin/opengrep
+
+    - name: Scan
+      # scripts/opengrep-scan.sh is the single definition of this scan, so a developer running it
+      # locally gets the same rules. Findings do not fail the step (no --error); a scanner failure
+      # does, which is the difference this step must NOT swallow.
+      run: bash scripts/opengrep-scan.sh --sarif --sarif-output=opengrep.sarif
+
+    - name: Upload SARIF
+      # always(), so findings from a step that failed for another reason still reach the tab --
+      # but only when the scan actually produced a file, since a crashed scan leaves none.
+      if: always() && hashFiles('opengrep.sarif') != ''
+      uses: github/codeql-action/upload-sarif@6f5948dfacef28e207b48d0905cf90c03365536d # v3
+      with:
+        sarif_file: opengrep.sarif

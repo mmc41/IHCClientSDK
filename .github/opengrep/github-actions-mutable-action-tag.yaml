@@ -1,0 +1,37 @@
+# Local rule. opengrep/opengrep-rules is a December-2024 fork of semgrep-rules and carries no
+# equivalent, so without this the CI scan would not notice a workflow drifting back to a mutable
+# `uses:` ref -- the exact thing .github/workflows and .github/dependabot.yml were changed to prevent.
+rules:
+  - id: github-actions-mutable-action-tag
+    patterns:
+      - pattern: |
+          uses: "$USES"
+      - metavariable-regex:
+          metavariable: $USES
+          # Only three forms are immutable, so everything else is flagged: a local action (./ or
+          # ../), which has no upstream owner who could repoint it; a full 40-character git commit
+          # SHA; and a docker:// image carrying an @sha256: digest. A docker:// TAG is as mutable
+          # as a git tag -- the registry owner can move it -- so the digest is what makes it safe.
+          regex: ^(?!\./)(?!\.\./)(?!.*@[0-9a-f]{40}$)(?!docker://.*@sha256:[0-9a-f]{64}$).*$
+    message: >-
+      Action reference is not pinned to a full 40-character commit SHA. A tag or branch can be
+      silently repointed by the action owner. Pin the SHA and leave the version as a trailing
+      comment; Dependabot updates both together.
+    languages: [yaml]
+    severity: ERROR
+    metadata:
+      # opengrep-rules ships meta-rules that require these keys on a rule, and this file is
+      # itself inside the scanned tree, so omitting any of them makes the scan report on its
+      # own rules. They are declaration, not decoration; keep them filled in on new rules.
+      category: security
+      technology:
+        - github-actions
+      subcategory:
+        - audit
+      confidence: HIGH
+      likelihood: LOW
+      impact: HIGH
+    paths:
+      include:
+        - .github/workflows/*.yml
+        - .github/workflows/*.yaml

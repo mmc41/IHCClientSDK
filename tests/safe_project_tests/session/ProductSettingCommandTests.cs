@@ -36,7 +36,7 @@ namespace Ihc.Vis.Tests
         /// <summary>A project holding one temperature sensor, whose calibration settings are untouched.</summary>
         private static async Task<(ProjectDocumentSession Session, ElementId Product, ElementId Setting)> Placed()
         {
-            Project project = await App.Load("testdata/projects/project1-SimpelWired.vis");
+            Project project = await App.Load("testdata/projects/Project1-SimpelWired.vis");
             var session = new ProjectDocumentSession();
             session.Open(project);
             ElementId locality = project.Groups.First().Id!.Value;

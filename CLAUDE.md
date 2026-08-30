@@ -14,6 +14,12 @@ dotnet tool restore
 dotnet build IHCClientSDK.sln
 dotnet build ihcclient/ihcclient.csproj
 
+# Run the static checks a build runs, without building
+bash scripts/static_check.sh                       # pwsh -NoProfile -File scripts/static_check.ps1 on Windows
+
+# Skip the static checks a build otherwise runs
+dotnet build IHCClientSDK.sln -p:RunStaticChecks=false
+
 # Applications and GUI E2E entry points
 dotnet run --project applications/ihc_openvisual/ihc_openvisual.csproj
 dotnet run --project applications/ihc_openvisual/ihc_openvisual.csproj -- tests/testdata/projects/Project1-SimpelWired.vis
@@ -33,6 +39,10 @@ dotnet run --project utilities/ihc_settings_encrypt/ihc_settings_encrypt.csproj 
 ```
 
 For OpenVisual E2E, launch it with a fixture and drive it through `aui-openvisual`. After any application, example, or utility run, use `openobserve` to inspect telemetry. Before running a controller-backed command, follow the controller boundary and configuration guidance.
+
+Every build runs the repository's static checks once, whatever mix of projects is built. `scripts/static_check.sh` and `scripts/static_check.ps1` ARE the list -- the build files name no check, so extend a check by editing both peers and nothing else. A check whose tool is missing, or that fails to run, warns and leaves the verdict to the compiler, so never read a green build as evidence the checks ran: read the warning, or the report's timestamp. A peer exits non-zero only when a check could not RUN, never because a check found something. Opt a run out with `-p:RunStaticChecks=false`.
+
+Today that means jscpd copy/paste detection, writing `artifacts/jscpd/jscpd-ai.txt` -- one line per clone pair, then a summary. It is `.txt` because the `ai` reporter emits plain text, not markdown, whatever its name suggests. The file is written only when the scan succeeds, so a report on disk is always a report some run produced. The whole scan is declared in `.jscpd.json`: authored C# only, with the generated SOAP layer, `*.g.cs`/`*.Designer.cs` and the `tests/testdata/` oracle corpus excluded as unauthored or byte-pinned, and the reporter and output directory alongside them. That file is jscpd's own config format, so `jscpd .` by hand from the repository root is the same scan; its `output` key is why a hand-run with a file reporter lands under `artifacts/jscpd/` instead of creating `report/` in the repository root.
 
 ## Testing
 
@@ -103,6 +113,23 @@ Source example: `utilities/ihc_project_io_extractor/IhcProjectLoader.cs`.
 default: throw new ArgumentOutOfRangeException(nameof(ioType), ioType, "Unknown iotype");
 ```
 
+## Dealing with duplicated code
+
+The dotnet build automatically produce list of duplicated code in artifacts\jscpd\jscpd-ai.txt. New changes that introduce duplicated code should refactor duplications (do not touch existing duplicated code unrelated to your change unless explicitly instructed by user)
+
+Guidence for refactoring duplicated code:
+
+- Extract function — when the duplicate is a block of logic:
+- Extract module/utility — when the duplicate spans multiple files in different domains
+- Extract constant or config — when the duplicate is repeated data or configuration.
+- Template/base class — when the duplicate is structural (e.g., repeated class shape).
+
+When refactoring always ensure:
+
+- All call sites are updated, not just the two reported by jscpd
+- Tests still pass after refactoring
+- Thee extracted abstraction has a clear, descriptive name
+  
 ## Development Tools
 
 - Use the `openobserve` skill after running an app or utility, or when diagnosing a reported exception, silent failure, or slowness. A connection failure means telemetry status is unknown, not that no errors exist.

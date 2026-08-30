@@ -111,6 +111,14 @@ def load_telemetry(config_path):
                 "Could not derive the API base URL/org from telemetry.Traces/Logs, and "
                 "telemetry.Host is empty. Fill in the telemetry section of ihcsettings.json."
             )
+        # The Traces/Logs branch pins the scheme through its regex; this fallback is the only
+        # path where an arbitrary settings value reaches urlopen, which also speaks file:// and
+        # ftp://. Reject anything that is not HTTP here rather than at the request.
+        if not host.lower().startswith(("http://", "https://")):
+            sys.exit(
+                f"telemetry.Host must be an http:// or https:// URL, not {host!r}. "
+                "Fix the telemetry section of ihcsettings.json."
+            )
         base, org = host, None
     else:
         base, org = m.group(1), m.group(2)
@@ -154,6 +162,10 @@ def http_json(auth, url, body=None, quiet=False):
     if data is not None:
         req.add_header("Content-Type", "application/json")
     try:
+        # The only non-literal part of `url` is the base from load_telemetry, which rejects
+        # every scheme but http/https, and the stdlib is a deliberate constraint here: this
+        # skill must run unconfigured on Windows/Linux/mac.
+        # nosemgrep: dynamic-urllib-use-detected
         with urllib.request.urlopen(req, timeout=20) as resp:
             raw = resp.read().decode("utf-8")
     except urllib.error.HTTPError as e:
