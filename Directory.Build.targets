@@ -99,8 +99,42 @@
           Command="dotnet dotnet-coverage merge &quot;artifacts/coverage/report/merged.coverage&quot; -o &quot;artifacts/coverage/report/coverage.xml&quot; -f xml --nologo"
           ContinueOnError="true" StandardOutputImportance="low" />
 
+    <CallTarget Targets="GenerateCoverageHtml" ContinueOnError="true"
+                Condition="'@(CoverageSliceFile)' != ''" />
+
     <CallTarget Targets="DisplayCoverageSummary" ContinueOnError="true"
                 Condition="'@(CoverageSliceFile)' != ''" />
+  </Target>
+
+  <!--
+    Browsable form of the same report, for reading a specific file's uncovered lines rather than a total.
+
+    Fed the standard Microsoft coverage XML directly — the same file Summary.txt is built from, with no
+    intermediate format. That matters because ReportGenerator derives its own coverable-line denominator
+    from whatever it is given, so each conversion produces a slightly different headline percentage.
+    Reading the same file keeps the two as close as the tools allow; they still do not agree exactly,
+    and Summary.txt is the number this repository quotes. Converting to a third-party format first was
+    measured and drifts further, so do not add a conversion step here.
+
+    The default is the one-page summary. The full per-file drill-down is opt-in with
+    `-p:CoverageHtmlDetail=true`, because it writes hundreds of files and a great deal more of them
+    than anyone wants produced by every `dotnet test`.
+  -->
+  <Target Name="GenerateCoverageHtml"
+          Condition="'$(IsTestProject)' == 'true' AND '$(CollectCoverage)' != 'false'">
+
+    <PropertyGroup>
+      <CoverageHtmlReportTypes Condition="'$(CoverageHtmlDetail)' == 'true'">Html</CoverageHtmlReportTypes>
+      <CoverageHtmlReportTypes Condition="'$(CoverageHtmlReportTypes)' == ''">HtmlSummary</CoverageHtmlReportTypes>
+    </PropertyGroup>
+
+    <!-- Switching between the two modes otherwise leaves the previous mode's pages behind. -->
+    <RemoveDir Directories="$(CoverageReportDirectory)/html" ContinueOnError="true" />
+
+    <Exec Condition="Exists('$(CoverageReportDirectory)/coverage.xml')"
+          WorkingDirectory="$(MSBuildThisFileDirectory)"
+          Command="dotnet reportgenerator -reports:&quot;artifacts/coverage/report/coverage.xml&quot; -targetdir:&quot;artifacts/coverage/report/html&quot; -reporttypes:$(CoverageHtmlReportTypes) -verbosity:Warning"
+          ContinueOnError="true" StandardOutputImportance="low" />
   </Target>
 
   <!--

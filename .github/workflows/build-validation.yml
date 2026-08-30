@@ -123,6 +123,8 @@ jobs:
     - name: Upload coverage report
       # Only the Windows leg runs all five suites, so it is the only one whose merged number describes
       # the whole repository; the other legs would upload a report with suites missing from it.
+      # Carries Summary.txt, the coverage XML and the one-page HTML. The per-file HTML drill-down is
+      # opt-in locally and is not generated here, so this stays small.
       if: always() && matrix.os == 'windows-latest'
       uses: actions/upload-artifact@v4
       with:
