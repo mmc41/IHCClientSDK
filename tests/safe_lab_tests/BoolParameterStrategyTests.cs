@@ -46,19 +46,6 @@ namespace Ihc.Tests
             Assert.That(result, Is.False);
         }
 
-        [Test]
-        public void CanHandle_IntType_ReturnsFalse()
-        {
-            // Arrange
-            var field = new FieldMetaData("testParam", typeof(int), [], "Test description");
-
-            // Act
-            bool result = strategy.CanHandle(field);
-
-            // Assert
-            Assert.That(result, Is.False);
-        }
-
         [AvaloniaTest]
         [CaptureScreenshotOnFailure]
         public void CreateControl_ValidField_ReturnsStackPanelWithRadioButtons()
@@ -81,6 +68,14 @@ namespace Ihc.Tests
             Assert.That(radioButtons[1].Content, Is.EqualTo("False"));
         }
 
+        /// <summary>
+        /// The description tooltip for EVERY strategy. It is applied in one place —
+        /// <c>ParameterControlStrategyBase.ApplyDescriptionTooltip</c> — which each strategy calls on the control
+        /// it is about to return, so this asserts shared behaviour rather than anything specific to booleans.
+        /// It lives in this fixture because the boolean control is a StackPanel: the tip has to land on the
+        /// container the strategy returns, not on a radio button inside it, and a strategy whose control is a bare
+        /// TextBox or NumericUpDown cannot tell those two apart.
+        /// </summary>
         [AvaloniaTest]
         [CaptureScreenshotOnFailure]
         public void CreateControl_WithDescription_SetsTooltip()

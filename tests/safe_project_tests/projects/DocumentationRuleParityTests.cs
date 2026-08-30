@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Immutable;
 using System.Linq;
 
 namespace Ihc.Vis.Tests
@@ -22,18 +21,8 @@ namespace Ihc.Vis.Tests
     [TestFixture]
     public sealed class DocumentationRuleParityTests
     {
-        private static readonly ImmutableArray<string> MigratedIds =
-        [
-            "doc-documentation-tag", "doc-power-group", "doc-cabletype", "doc-cablenumber", "doc-position",
-            "doc-not-linked", "doc-cable-colour", "doc-address",
-        ];
-
         private static RuleSet Rules() =>
             RuleSet.Create(ProblemCatalog.Current, DocumentationRules.All(ProblemCatalog.Current));
-
-        [Test]
-        public void TheEngineReproducesTheRecordedTuplesForTheMigratedIds() =>
-            MigrationParity.AssertReproducesRecording(MigratedIds, Rules());
 
         /// <summary>
         /// The one group with NO English diagnostic, asserted as such. Adding one would not be harmless: it would

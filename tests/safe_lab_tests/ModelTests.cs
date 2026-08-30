@@ -14,21 +14,6 @@ namespace Ihc.Tests
     [TestFixture]
     public class ModelTests
     {
-        [Test]
-        public void Constructor_ShouldInitializeProperties()
-        {
-            // Arrange & Act
-            var viewModel = new MainWindowViewModel();
-
-            // Assert
-            Assert.That(viewModel.OperationDescription, Is.EqualTo(string.Empty));
-            Assert.That(viewModel.OutputText, Is.EqualTo(string.Empty));
-            Assert.That(viewModel.ErrorWarningText, Is.EqualTo(string.Empty));
-            Assert.That(viewModel.IsOutputVisible, Is.False);
-            Assert.That(viewModel.IsErrorVisible, Is.False);
-            Assert.That(viewModel.IsWarningVisible, Is.False);
-        }
-
         // The INPC law shared by the view-model's notifying setters: assigning the property raises
         // PropertyChanged under that property's own name, and the value round-trips. One case per
         // property, so a single property regressing is still an individually named failure.

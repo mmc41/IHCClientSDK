@@ -28,6 +28,7 @@ namespace Ihc.Tests
         private const string AuthenticationServiceName = "AuthenticationService";
         private const string SmsModemServiceName = "SmsModemService";
         private const string ControllerServiceName = "ControllerService";
+        private const string UserManagerServiceName = "UserManagerService";
 
         /// <summary>
         /// Helper to find a service by name in the services combobox.
@@ -108,6 +109,68 @@ namespace Ihc.Tests
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Selects <paramref name="serviceName"/> in the GUI and lets its operation list settle.
+        /// </summary>
+        /// <remarks>
+        /// A service the mocked set does not offer leaves the caller INCONCLUSIVE rather than failed: the run
+        /// could not reach the behaviour under test, which is a different thing from the behaviour being broken.
+        /// </remarks>
+        private static async Task SelectServiceAsync(ComboBox servicesComboBox, string serviceName)
+        {
+            int serviceIndex = FindServiceIndexByName(servicesComboBox, serviceName);
+            if (serviceIndex < 0)
+            {
+                Assert.Inconclusive($"{serviceName} not available in mocked services");
+            }
+
+            servicesComboBox.SelectedIndex = serviceIndex;
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+            Dispatcher.UIThread.RunJobs();
+        }
+
+        /// <summary>
+        /// Selects <paramref name="operationName"/> on the already-selected service and lets its parameter
+        /// controls be built. Inconclusive on an absent operation, for the reason
+        /// <see cref="SelectServiceAsync"/> gives.
+        /// </summary>
+        private static async Task SelectOperationAsync(
+            ComboBox operationsComboBox, string serviceName, string operationName)
+        {
+            int operationIndex = FindOperationIndexByName(operationsComboBox, operationName);
+            if (operationIndex < 0)
+            {
+                Assert.Inconclusive($"{operationName} operation not found in {serviceName}");
+            }
+
+            operationsComboBox.SelectedIndex = operationIndex;
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+            Dispatcher.UIThread.RunJobs();
+        }
+
+        /// <summary>
+        /// The parameter control at <paramref name="indexPath"/>, asserted to exist.
+        /// </summary>
+        /// <remarks>
+        /// A flow that SETS a field and later asserts on the value it produced has no use for a missing
+        /// control: skipping the assignment only defers the failure to a value mismatch further down, where
+        /// nothing names the control that was never there.
+        /// </remarks>
+        private static ParameterControlWrapper RequireParameterControl(
+            StackPanel parametersPanel, string indexPath, string fieldName)
+        {
+            var control = FindParameterControl(parametersPanel, indexPath);
+            Assert.That(control, Is.Not.Null, $"{fieldName} control (parameter {indexPath}) should exist");
+            return control!;
+        }
+
+        /// <summary>Enters a value the way a user would, and lets the resulting sync run.</summary>
+        private static void EnterValue(ParameterControlWrapper control, object? value)
+        {
+            control.SimulateUserChange(value);
+            Dispatcher.UIThread.RunJobs();
         }
 
         /// <summary>
@@ -687,88 +750,24 @@ namespace Ihc.Tests
             var operationsComboBox = window.FindControl<ComboBox>(MainWindowNames.OperationsComboBox);
             var parametersPanel = window.FindControl<StackPanel>(MainWindowNames.ParametersPanel);
 
-            // Select UserManagerService
-            int userMgrIndex = FindServiceIndexByName(servicesComboBox!, "UserManagerService");
-            if (userMgrIndex < 0)
-            {
-                Assert.Inconclusive("UserManagerService not available in mocked services");
-                return;
-            }
-            servicesComboBox!.SelectedIndex = userMgrIndex;
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-            Dispatcher.UIThread.RunJobs();
-
-            // Select AddUser operation
-            int addUserIndex = FindOperationIndexByName(operationsComboBox!, "AddUser");
-            if (addUserIndex < 0)
-            {
-                Assert.Inconclusive("AddUser operation not found in UserManagerService");
-                return;
-            }
-            operationsComboBox!.SelectedIndex = addUserIndex;
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-            Dispatcher.UIThread.RunJobs();
+            await SelectServiceAsync(servicesComboBox!, UserManagerServiceName);
+            await SelectOperationAsync(operationsComboBox!, UserManagerServiceName, "AddUser");
 
             // Generate unique username using GUID (max 20 chars)
             string testUsername = Guid.NewGuid().ToString("N").Substring(0, 20);
             string testPassword = "TestPass123";
 
-            // Fill in all IhcUser fields through GUI
-            // IhcUser has fields: Username, Password, Email, Firstname, Lastname, Phone, Group, Project, CreatedDate, LoginDate
-            var usernameControl = FindParameterControl(parametersPanel!, "0.0");  // Username
-            var passwordControl = FindParameterControl(parametersPanel!, "0.1");  // Password
-            var emailControl = FindParameterControl(parametersPanel!, "0.2");     // Email
-            var firstnameControl = FindParameterControl(parametersPanel!, "0.3"); // Firstname
-            var lastnameControl = FindParameterControl(parametersPanel!, "0.4");  // Lastname
-            var phoneControl = FindParameterControl(parametersPanel!, "0.5");     // Phone
-            var groupControl = FindParameterControl(parametersPanel!, "0.6");     // Group (enum)
-            var projectControl = FindParameterControl(parametersPanel!, "0.7");   // Project
-
-            Assert.That(usernameControl, Is.Not.Null, "Username control should exist");
-            Assert.That(passwordControl, Is.Not.Null, "Password control should exist");
-            Assert.That(groupControl, Is.Not.Null, "Group control should exist");
-
-            // Set required fields
-            usernameControl!.SimulateUserChange(testUsername);
-            Dispatcher.UIThread.RunJobs();
-
-            passwordControl!.SimulateUserChange(testPassword);
-            Dispatcher.UIThread.RunJobs();
-
-            // Set optional fields
-            if (emailControl != null)
-            {
-                emailControl.SimulateUserChange("test@example.com");
-                Dispatcher.UIThread.RunJobs();
-            }
-
-            if (firstnameControl != null)
-            {
-                firstnameControl.SimulateUserChange("Test");
-                Dispatcher.UIThread.RunJobs();
-            }
-
-            if (lastnameControl != null)
-            {
-                lastnameControl.SimulateUserChange("User");
-                Dispatcher.UIThread.RunJobs();
-            }
-
-            if (phoneControl != null)
-            {
-                phoneControl.SimulateUserChange("+1234567890");
-                Dispatcher.UIThread.RunJobs();
-            }
-
-            // Set Group to Administrators (value 0)
-            groupControl!.SimulateUserChange(IhcUserGroup.Administrators);
-            Dispatcher.UIThread.RunJobs();
-
-            if (projectControl != null)
-            {
-                projectControl.SimulateUserChange("TestProject");
-                Dispatcher.UIThread.RunJobs();
-            }
+            // Fill in the IhcUser fields this flow asserts on, through the GUI. Every one is required rather
+            // than optional here: each is read back from the created user below, so a control that is not
+            // there is a broken premise, not a field to skip.
+            EnterValue(RequireParameterControl(parametersPanel!, "0.0", "Username"), testUsername);
+            EnterValue(RequireParameterControl(parametersPanel!, "0.1", "Password"), testPassword);
+            EnterValue(RequireParameterControl(parametersPanel!, "0.2", "Email"), "test@example.com");
+            EnterValue(RequireParameterControl(parametersPanel!, "0.3", "Firstname"), "Test");
+            EnterValue(RequireParameterControl(parametersPanel!, "0.4", "Lastname"), "User");
+            EnterValue(RequireParameterControl(parametersPanel!, "0.5", "Phone"), "+1234567890");
+            EnterValue(RequireParameterControl(parametersPanel!, "0.6", "Group"), IhcUserGroup.Administrators);
+            EnterValue(RequireParameterControl(parametersPanel!, "0.7", "Project"), "TestProject");
 
             // Act - Execute AddUser operation (will throw if it fails)
             var addUserResult = await labAppService!.DynCallSelectedOperation();
@@ -776,24 +775,10 @@ namespace Ihc.Tests
             // AddUser returns Task (void), so Result should be a completed Task
 
             // Now switch to GetUsers to verify the user was added
-            // Select GetUsers operation
-            int getUsersIndex = FindOperationIndexByName(operationsComboBox!, "GetUsers");
-            if (getUsersIndex < 0)
-            {
-                Assert.Inconclusive("GetUsers operation not found in UserManagerService");
-                return;
-            }
-            operationsComboBox!.SelectedIndex = getUsersIndex;
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-            Dispatcher.UIThread.RunJobs();
+            await SelectOperationAsync(operationsComboBox!, UserManagerServiceName, "GetUsers");
 
             // GetUsers has a bool parameter "includePassword" - set it to true to get actual passwords
-            var includePasswordControl = FindParameterControl(parametersPanel!, "0");
-            if (includePasswordControl != null)
-            {
-                includePasswordControl.SimulateUserChange(true);
-                Dispatcher.UIThread.RunJobs();
-            }
+            EnterValue(RequireParameterControl(parametersPanel!, "0", "includePassword"), true);
 
             // Execute GetUsers (will throw if it fails)
             var getUsersResult = await labAppService.DynCallSelectedOperation();

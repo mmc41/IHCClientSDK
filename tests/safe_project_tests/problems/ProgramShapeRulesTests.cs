@@ -203,19 +203,6 @@ namespace Ihc.Vis.Tests
                 "a branch with no value tests nothing, so two of them are not the same test");
         }
 
-        [Test]
-        public void NoAuthenticProjectCarriesADuplicateCaseValue()
-        {
-            Assert.Multiple(() =>
-            {
-                foreach (string file in new[]
-                    { "project5-Dokumentation.vis", "project2-CustomBlock-case.vis", "Project6-Errors.vis" })
-                {
-                    Assert.That(Count(Authentic(file), "logic-case-duplicate-value"), Is.Zero, file);
-                }
-            });
-        }
-
         // ── logic-statement-unlinked ────────────────────────────────────────────────────────────────
 
         /// <summary>

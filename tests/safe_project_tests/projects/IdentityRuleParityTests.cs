@@ -5,17 +5,19 @@ using System.Linq;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// PARITY for the eight IDENTITY rules — the id vocabulary and the project's high-water mark — against the
-    /// recording made before any of them moved.
+    /// The IDENTITY rules — the id vocabulary and the project's high-water mark: that each is declared with both
+    /// halves of the language split, and the mutual exclusions no corpus case can witness on its own. What these
+    /// rules report over the corpus is pinned byte for byte by
+    /// <c>ValidationCharacterizationTests.Corpus_ReproducesItsOracleByteForByte</c>.
     ///
     /// <para><b>This is the migration that justified a shared analysis.</b> The shipped validator establishes a
     /// token-to-element map, a counter set and a maximum in ONE walk, then threads the map into the per-attribute
-    /// pass for the dangling-reference rule and the maximum into the three high-water-mark rules. Eight rules, one
-    /// walk. Migrating them as eight independent traversals would have meant eight walks — and, worse, two rules
-    /// each re-deriving "which of these two elements is the duplicate" with a chance to disagree.</para>
+    /// pass for the dangling-reference rule and the maximum into the high-water-mark rules. Every rule here, one
+    /// walk. Migrating them as independent traversals would have meant a walk each — and, worse, rules that each
+    /// re-derive "which of these two elements is the duplicate" with a chance to disagree.</para>
     ///
-    /// <para><b>The three high-water-mark rules are mutually exclusive, and the exclusivity moved into the
-    /// analysis rather than being copied into three rules.</b> Each asks which fault holds and reports only if it
+    /// <para><b>The high-water-mark rules are mutually exclusive, and the exclusivity moved into the
+    /// analysis rather than being copied into each of them.</b> Each asks which fault holds and reports only if it
     /// is its own. That preserves a product decision the shipped code records in a comment: a token that never
     /// parsed must not ALSO report "0x0 is below the highest counter", because that second sentence is derived
     /// from a phantom zero and reads as a distinct fault when it is noise.</para>
@@ -35,18 +37,6 @@ namespace Ihc.Vis.Tests
         [Test]
         public void EveryMigratedRuleIsDeclaredWithADanishLabelAndAnEnglishDiagnostic() =>
             MigrationParity.AssertDeclaredWithBothLanguages(MigratedIds, RuleKind.UserContentRule);
-
-        [Test]
-        public void TheEngineReproducesTheRecordedTuplesForTheMigratedIds() =>
-            MigrationParity.AssertReproducesRecording(MigratedIds, Rules());
-
-        [Test]
-        public void TheMigratedRulesAreSilentOnAnAuthenticVendorProject() =>
-            Assert.That(
-                new WholeProjectValidator(Rules())
-                    .Validate(MigrationParity.CorpusCase("authentic/Project1-SimpelWired"), ValidationProfile.Categorized),
-                Is.Empty,
-                "a vendor-authored file has a consistent id space; anything here is a false positive");
 
         /// <summary>
         /// The exclusivity, exercised directly rather than inferred from the corpus. A malformed high-water mark

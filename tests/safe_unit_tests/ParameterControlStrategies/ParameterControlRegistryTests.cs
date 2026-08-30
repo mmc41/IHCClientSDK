@@ -49,150 +49,41 @@ namespace Ihc.Tests
             Assert.That(registry.StrategyCount, Is.EqualTo(initialCount + 1));
         }
 
-        [Test]
-        public void GetStrategy_StringField_ReturnsStringStrategy()
+        /// <summary>
+        /// The default registry's whole type-to-strategy map, one case per pair, so a mapping that regresses
+        /// fails under its own name rather than as one unmessaged assert among several. Both faces are asserted
+        /// together because they are one decision asked twice: <c>CanHandle</c> says some strategy claims the
+        /// field, and <c>GetStrategy</c> returns the one that claimed it. Selection is first-match over the
+        /// registration order, so a pair moving here means a strategy started claiming a type that is not its own.
+        /// </summary>
+        /// <param name="fieldType">The field type the metadata layer emits.</param>
+        /// <param name="expectedStrategy">The strategy the default registry must select for it.</param>
+        [TestCase(typeof(string), typeof(StringParameterStrategy))]
+        [TestCase(typeof(bool), typeof(BoolParameterStrategy))]
+        [TestCase(typeof(int), typeof(NumericParameterStrategy))]
+        [TestCase(typeof(float), typeof(NumericParameterStrategy))]
+        [TestCase(typeof(DayOfWeek), typeof(EnumParameterStrategy))]
+        [TestCase(typeof(DateTime), typeof(DateTimeParameterStrategy))]
+        [TestCase(typeof(DateTimeOffset), typeof(DateTimeParameterStrategy))]
+        [TestCase(typeof(ResourceValue), typeof(ResourceValueParameterStrategy))]
+        [TestCase(typeof(int[]), typeof(ArrayParameterStrategy))]
+        public void GetStrategy_SupportedType_ReturnsItsStrategy(Type fieldType, Type expectedStrategy)
         {
             // Arrange
             var registry = ParameterControlRegistry.Instance;
-            var field = new FieldMetaData("testParam", typeof(string), [], "Test description");
-
-            // Act
-            var strategy = registry.GetStrategy(field);
-
-            // Assert
-            Assert.That(strategy, Is.InstanceOf<StringParameterStrategy>());
-        }
-
-        [Test]
-        public void GetStrategy_BoolField_ReturnsBoolStrategy()
-        {
-            // Arrange
-            var registry = ParameterControlRegistry.Instance;
-            var field = new FieldMetaData("testParam", typeof(bool), [], "Test description");
-
-            // Act
-            var strategy = registry.GetStrategy(field);
-
-            // Assert
-            Assert.That(strategy, Is.InstanceOf<BoolParameterStrategy>());
-        }
-
-        [Test]
-        public void GetStrategy_IntField_ReturnsNumericStrategy()
-        {
-            // Arrange
-            var registry = ParameterControlRegistry.Instance;
-            var field = new FieldMetaData("testParam", typeof(int), [], "Test description");
-
-            // Act
-            var strategy = registry.GetStrategy(field);
-
-            // Assert
-            Assert.That(strategy, Is.InstanceOf<NumericParameterStrategy>());
-        }
-
-        [Test]
-        public void Registry_GetStrategy_ReturnsCorrectStrategyType()
-        {
-            // Arrange
-            var registry = ParameterControlRegistry.Instance;
+            var field = new FieldMetaData("testParam", fieldType, SubFieldsFor(fieldType), "Test description");
 
             // Act & Assert
-            var stringField = new FieldMetaData("test", typeof(string), [], "");
-            Assert.That(registry.GetStrategy(stringField), Is.InstanceOf<StringParameterStrategy>());
-
-            var boolField = new FieldMetaData("test", typeof(bool), [], "");
-            Assert.That(registry.GetStrategy(boolField), Is.InstanceOf<BoolParameterStrategy>());
-
-            var intField = new FieldMetaData("test", typeof(int), [], "");
-            Assert.That(registry.GetStrategy(intField), Is.InstanceOf<NumericParameterStrategy>());
-
-            var enumField = new FieldMetaData("test", typeof(DayOfWeek), [], "");
-            Assert.That(registry.GetStrategy(enumField), Is.InstanceOf<EnumParameterStrategy>());
-
-            var dateField = new FieldMetaData("test", typeof(DateTime), [], "");
-            Assert.That(registry.GetStrategy(dateField), Is.InstanceOf<DateTimeParameterStrategy>());
-
-            var arrayField = new FieldMetaData("test", typeof(int[]), [new FieldMetaData("element", typeof(int), [], "")], "");
-            Assert.That(registry.GetStrategy(arrayField), Is.InstanceOf<ArrayParameterStrategy>());
+            Assert.That(registry.CanHandle(field), Is.True, $"Registry should handle {fieldType.Name}");
+            Assert.That(registry.GetStrategy(field), Is.InstanceOf(expectedStrategy));
         }
 
-        [Test]
-        public void Registry_CanHandleEnumType()
-        {
-            // Arrange
-            var registry = ParameterControlRegistry.Instance;
-            var field = new FieldMetaData("testEnum", typeof(DayOfWeek), [], "Test enum");
-
-            // Act & Assert
-            Assert.That(registry.CanHandle(field), Is.True);
-            Assert.That(registry.GetStrategy(field), Is.InstanceOf<EnumParameterStrategy>());
-        }
-
-        [Test]
-        public void Registry_CanHandleDateTimeType()
-        {
-            // Arrange
-            var registry = ParameterControlRegistry.Instance;
-            var field = new FieldMetaData("testDate", typeof(DateTime), [], "Test date");
-
-            // Act & Assert
-            Assert.That(registry.CanHandle(field), Is.True);
-            Assert.That(registry.GetStrategy(field), Is.InstanceOf<DateTimeParameterStrategy>());
-        }
-
-        [Test]
-        public void Registry_CanHandleDateTimeOffsetType()
-        {
-            // Arrange
-            var registry = ParameterControlRegistry.Instance;
-            var field = new FieldMetaData("testDateOffset", typeof(DateTimeOffset), [], "Test date offset");
-
-            // Act & Assert
-            Assert.That(registry.CanHandle(field), Is.True);
-            Assert.That(registry.GetStrategy(field), Is.InstanceOf<DateTimeParameterStrategy>());
-        }
-
-        [Test]
-        public void Registry_CanHandleResourceValueType()
-        {
-            // Arrange
-            var registry = ParameterControlRegistry.Instance;
-            var field = new FieldMetaData("testResource", typeof(ResourceValue), [], "Test resource");
-
-            // Act & Assert
-            Assert.That(registry.CanHandle(field), Is.True);
-            Assert.That(registry.GetStrategy(field), Is.InstanceOf<ResourceValueParameterStrategy>());
-        }
-
-        [Test]
-        public void Registry_CanHandleAllBasicTypes()
-        {
-            // Arrange
-            var registry = ParameterControlRegistry.Instance;
-            var types = new[]
-            {
-                typeof(string),
-                typeof(bool),
-                typeof(int),
-                typeof(float),
-                typeof(DayOfWeek),
-                typeof(DateTime),
-                typeof(int[]),
-            };
-
-            // Act & Assert
-            foreach (var type in types)
-            {
-                // Array/collection fields carry their element type as a sub-field (as the metadata layer emits);
-                // the collection strategy needs that element metadata to claim the field. Scalars have none.
-                FieldMetaData[] subTypes = type.IsArray
-                    ? [new FieldMetaData("", type.GetElementType()!, [], "")]
-                    : [];
-                var field = new FieldMetaData("test", type, subTypes, "Test field");
-                Assert.That(registry.CanHandle(field), Is.True, $"Registry should handle {type.Name}");
-            }
-        }
+        /// <summary>
+        /// An array or collection field carries its element type as a sub-field, the way the metadata layer emits
+        /// it; the collection strategy needs that element metadata to claim the field at all. A scalar has none.
+        /// </summary>
+        private static FieldMetaData[] SubFieldsFor(Type fieldType) =>
+            fieldType.IsArray ? [new FieldMetaData("element", fieldType.GetElementType()!, [], "")] : [];
 
         [Test]
         public void GetStrategy_UnsupportedType_ThrowsNotSupportedException()
@@ -205,20 +96,6 @@ namespace Ihc.Tests
             var ex = Assert.Throws<NotSupportedException>(() => registry.GetStrategy(field));
             Assert.That(ex!.Message, Does.Contain("No strategy found"));
             Assert.That(ex.Message, Does.Contain(field.Type.FullName));
-        }
-
-        [Test]
-        public void CanHandle_SupportedType_ReturnsTrue()
-        {
-            // Arrange
-            var registry = ParameterControlRegistry.Instance;
-            var field = new FieldMetaData("testParam", typeof(string), [], "Test description");
-
-            // Act
-            bool result = registry.CanHandle(field);
-
-            // Assert
-            Assert.That(result, Is.True);
         }
 
         [Test]

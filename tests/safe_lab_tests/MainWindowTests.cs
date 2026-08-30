@@ -144,6 +144,69 @@ namespace Ihc.Tests
             };
         }
 
+        /// <summary>
+        /// What the argument-synchronisation tests each start from: a started window, an
+        /// <see cref="AuthenticationServiceName"/> operation that takes at least one parameter selected in the
+        /// GUI, and the control that operation's first parameter rendered as.
+        /// </summary>
+        private sealed record ParameterSyncSetup(
+            MainWindow Window,
+            LabAppService LabAppService,
+            StackPanel ParametersPanel,
+            Control FirstParameterControl);
+
+        /// <summary>
+        /// Drives the GUI to <see cref="ParameterSyncSetup"/>. Extracted because the argument-synchronisation
+        /// tests differ only in what they then do to that control and what they read back, and stating the
+        /// arrangement in each of them buried those few lines among identical ones.
+        /// <para>
+        /// A service set that offers no parameterised operation leaves the caller INCONCLUSIVE rather than
+        /// failed: it means this run could not reach the behaviour, not that the behaviour is broken. That
+        /// distinction was drawn separately in each test body before, which is exactly the kind of precondition
+        /// that drifts apart when it is written more than once.
+        /// </para>
+        /// </summary>
+        private static async Task<ParameterSyncSetup> ArrangeParameterSyncAsync()
+        {
+            var window = await SetupMainWindowAsync();
+            var labAppService = window.LabAppService;
+            Assert.That(labAppService, Is.Not.Null, "LabAppService should be configured");
+
+            var servicesComboBox = window.FindControl<ComboBox>("ServicesComboBox");
+            var operationsComboBox = window.FindControl<ComboBox>("OperationsComboBox");
+            var parametersPanel = window.FindControl<StackPanel>("ParametersPanel");
+
+            Assert.That(servicesComboBox, Is.Not.Null, "ServicesComboBox should exist");
+            Assert.That(operationsComboBox, Is.Not.Null, "OperationsComboBox should exist");
+            Assert.That(parametersPanel, Is.Not.Null, "ParametersPanel should exist");
+
+            int authServiceIndex = FindServiceIndexByName(servicesComboBox!, AuthenticationServiceName);
+            if (authServiceIndex < 0)
+            {
+                Assert.Inconclusive($"{AuthenticationServiceName} not available in mocked services");
+            }
+
+            servicesComboBox!.SelectedIndex = authServiceIndex;
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+
+            int opWithParamsIndex = FindOperationWithParameters(operationsComboBox!, minParamCount: 1);
+            if (opWithParamsIndex < 0)
+            {
+                Assert.Inconclusive($"No {AuthenticationServiceName} operation takes a parameter");
+            }
+
+            operationsComboBox!.SelectedIndex = opWithParamsIndex;
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+
+            var control0 = FindControlByNameRecursive(parametersPanel!, "0");
+            if (control0 == null)
+            {
+                Assert.Inconclusive("Control not created for parameter 0");
+            }
+
+            return new ParameterSyncSetup(window, labAppService!, parametersPanel!, control0!);
+        }
+
         #endregion
 
         /// <summary>
@@ -279,48 +342,15 @@ namespace Ihc.Tests
         public async Task SyncArgumentsToLabAppService_ExtractsValuesFromControls()
         {
             // Arrange
-            var window = await SetupMainWindowAsync();
-            var labAppService = window.LabAppService;
-            Assert.That(labAppService, Is.Not.Null);
-
-            var servicesComboBox = window.FindControl<ComboBox>("ServicesComboBox");
-            var operationsComboBox = window.FindControl<ComboBox>("OperationsComboBox");
-            var parametersPanel = window.FindControl<StackPanel>("ParametersPanel");
-
-            int authServiceIndex = FindServiceIndexByName(servicesComboBox!, AuthenticationServiceName);
-            if (authServiceIndex < 0)
-            {
-                Assert.Inconclusive("AuthenticationService not available");
-                return;
-            }
-
-            servicesComboBox!.SelectedIndex = authServiceIndex;
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-
-            int opWithParamsIndex = FindOperationWithParameters(operationsComboBox!, minParamCount: 1);
-            if (opWithParamsIndex < 0)
-            {
-                Assert.Inconclusive("No operations with parameters available");
-                return;
-            }
-
-            operationsComboBox!.SelectedIndex = opWithParamsIndex;
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
+            var setup = await ArrangeParameterSyncAsync();
 
             // Act - Set value in first parameter
-            var control0 = FindControlByNameRecursive(parametersPanel!, "0");
-            if (control0 == null)
-            {
-                Assert.Inconclusive("Control not created for parameter 0");
-                return;
-            }
-
             string testValue = "synctest";
-            SimulateUserValueChange(control0, testValue);
+            SimulateUserValueChange(setup.FirstParameterControl, testValue);
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             // Assert - Value should be synced to LabAppService
-            var arguments = labAppService!.SelectedOperation.GetMethodArgumentsAsArray();
+            var arguments = setup.LabAppService.SelectedOperation.GetMethodArgumentsAsArray();
             Assert.That(arguments.Length, Is.GreaterThan(0), "Should have at least one argument");
             Assert.That(arguments[0], Is.EqualTo(testValue), "Value should be synced to LabAppService");
         }
@@ -334,48 +364,15 @@ namespace Ihc.Tests
         public async Task OnControlValueChanged_UpdatesLabAppServiceImmediately()
         {
             // Arrange
-            var window = await SetupMainWindowAsync();
-            var labAppService = window.LabAppService;
-            Assert.That(labAppService, Is.Not.Null);
-
-            var servicesComboBox = window.FindControl<ComboBox>("ServicesComboBox");
-            var operationsComboBox = window.FindControl<ComboBox>("OperationsComboBox");
-            var parametersPanel = window.FindControl<StackPanel>("ParametersPanel");
-
-            int authServiceIndex = FindServiceIndexByName(servicesComboBox!, AuthenticationServiceName);
-            if (authServiceIndex < 0)
-            {
-                Assert.Inconclusive("AuthenticationService not available");
-                return;
-            }
-
-            servicesComboBox!.SelectedIndex = authServiceIndex;
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-
-            int opWithParamsIndex = FindOperationWithParameters(operationsComboBox!, minParamCount: 1);
-            if (opWithParamsIndex < 0)
-            {
-                Assert.Inconclusive("No operations with parameters available");
-                return;
-            }
-
-            operationsComboBox!.SelectedIndex = opWithParamsIndex;
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-
-            var control0 = FindControlByNameRecursive(parametersPanel!, "0");
-            if (control0 == null)
-            {
-                Assert.Inconclusive("Control not created for parameter 0");
-                return;
-            }
+            var setup = await ArrangeParameterSyncAsync();
 
             // Act - Simulate user changing value
             string newValue = "immediateSyncTest";
-            SimulateUserValueChange(control0, newValue);
+            SimulateUserValueChange(setup.FirstParameterControl, newValue);
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
             // Assert - LabAppService should be updated immediately
-            var arguments = labAppService!.SelectedOperation.GetMethodArgumentsAsArray();
+            var arguments = setup.LabAppService.SelectedOperation.GetMethodArgumentsAsArray();
             Assert.That(arguments[0], Is.EqualTo(newValue),
                 "LabAppService should be updated immediately when Control value changes");
         }
@@ -389,48 +386,16 @@ namespace Ihc.Tests
         public async Task OnLabAppServiceMethodArgumentChanged_UpdatesGuiImmediately()
         {
             // Arrange
-            var window = await SetupMainWindowAsync();
-            var labAppService = window.LabAppService;
-            Assert.That(labAppService, Is.Not.Null);
-
-            var servicesComboBox = window.FindControl<ComboBox>("ServicesComboBox");
-            var operationsComboBox = window.FindControl<ComboBox>("OperationsComboBox");
-            var parametersPanel = window.FindControl<StackPanel>("ParametersPanel");
-
-            int authServiceIndex = FindServiceIndexByName(servicesComboBox!, AuthenticationServiceName);
-            if (authServiceIndex < 0)
-            {
-                Assert.Inconclusive("AuthenticationService not available");
-                return;
-            }
-
-            servicesComboBox!.SelectedIndex = authServiceIndex;
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-
-            int opWithParamsIndex = FindOperationWithParameters(operationsComboBox!, minParamCount: 1);
-            if (opWithParamsIndex < 0)
-            {
-                Assert.Inconclusive("No operations with parameters available");
-                return;
-            }
-
-            operationsComboBox!.SelectedIndex = opWithParamsIndex;
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-
-            var control0 = FindControlByNameRecursive(parametersPanel!, "0");
-            if (control0 == null)
-            {
-                Assert.Inconclusive("Control not created for parameter 0");
-                return;
-            }
+            var setup = await ArrangeParameterSyncAsync();
 
             // Act - Change value programmatically in LabAppService
             string programmaticValue = "serviceSetValue";
-            labAppService!.SelectedOperation.SetMethodArgument(0, programmaticValue);
+            setup.LabAppService.SelectedOperation.SetMethodArgument(0, programmaticValue);
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
 
-            // Assert - GUI should be updated
-            control0 = FindControlByNameRecursive(parametersPanel!, "0");
+            // Assert - GUI should be updated. The control is looked up again rather than reused: the panel may
+            // have rebuilt it in response to the change, and the assertion is about what the GUI now shows.
+            var control0 = FindControlByNameRecursive(setup.ParametersPanel, "0");
             Assert.That(GetControlValue(control0!), Is.EqualTo(programmaticValue),
                 "GUI should be updated immediately when LabAppService argument changes");
         }
@@ -478,48 +443,17 @@ namespace Ihc.Tests
         [CaptureScreenshotOnFailure]
         public async Task SubscribeToControlEvents_RecursivelySubscribes()
         {
-            // Arrange
-            var window = await SetupMainWindowAsync();
-            var servicesComboBox = window.FindControl<ComboBox>("ServicesComboBox");
-            var operationsComboBox = window.FindControl<ComboBox>("OperationsComboBox");
-            var parametersPanel = window.FindControl<StackPanel>("ParametersPanel");
+            // Arrange - the control is nested inside ParametersPanel, so reaching it at all is what makes this
+            // a test of the RECURSIVE subscription rather than of a top-level one.
+            var setup = await ArrangeParameterSyncAsync();
 
-            int authServiceIndex = FindServiceIndexByName(servicesComboBox!, AuthenticationServiceName);
-            if (authServiceIndex < 0)
-            {
-                Assert.Inconclusive("AuthenticationService not available");
-                return;
-            }
-
-            servicesComboBox!.SelectedIndex = authServiceIndex;
+            // Act - Change the value on that nested control
+            string testValue = "eventSubscribedTest";
+            SimulateUserValueChange(setup.FirstParameterControl, testValue);
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-
-            int opWithParamsIndex = FindOperationWithParameters(operationsComboBox!, minParamCount: 1);
-            if (opWithParamsIndex < 0)
-            {
-                Assert.Inconclusive("No operations with parameters available");
-                return;
-            }
-
-            operationsComboBox!.SelectedIndex = opWithParamsIndex;
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-
-            // Act - Get Control (event subscription happens in OnViewModelPropertyChanged)
-            var control0 = FindControlByNameRecursive(parametersPanel!, "0");
-            if (control0 == null)
-            {
-                Assert.Inconclusive("Control not created for parameter 0");
-                return;
-            }
 
             // Assert - Verify events are subscribed by checking that value changes trigger updates
-            var labAppService = window.LabAppService;
-            string testValue = "eventSubscribedTest";
-
-            SimulateUserValueChange(control0, testValue);
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-
-            var arguments = labAppService!.SelectedOperation.GetMethodArgumentsAsArray();
+            var arguments = setup.LabAppService.SelectedOperation.GetMethodArgumentsAsArray();
             Assert.That(arguments[0], Is.EqualTo(testValue),
                 "Event subscription should allow value changes to propagate to LabAppService");
         }

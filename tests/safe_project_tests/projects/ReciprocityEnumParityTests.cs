@@ -5,14 +5,16 @@ using System.Linq;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// PARITY for the two BIJECTION rules and the two ENUM rules against the recording made before they moved.
+    /// The BIJECTION and ENUM rules: that each is declared with both halves of the language split, and the
+    /// behaviours no corpus case witnesses. What these rules report over the corpus is pinned byte for byte by
+    /// <c>ValidationCharacterizationTests.Corpus_ReproducesItsOracleByteForByte</c>.
     ///
-    /// <para><b>The two bijection ids needed checking specifically.</b> In the shipped code both come out of ONE
+    /// <para><b>The bijection ids needed checking specifically.</b> In the shipped code both come out of ONE
     /// helper with the rule id passed in as a parameter — so a scan of call sites cannot see either id, and
     /// swapping them, or losing one, would be invisible to a reader. Here each id is bound to its own registered
     /// rule, and the tests below check that BOTH still emit and that each emits under its own id.</para>
     ///
-    /// <para><b>The two configurations differ in exactly one behaviour worth pinning.</b> A scene row may be
+    /// <para><b>The configurations differ in exactly one behaviour worth pinning.</b> A scene row may be
     /// authored UNWIRED and is legitimately skipped; a follow-link half is never unwired, so an unwired one is
     /// corruption. Getting that backwards would either flood every project that has a half-built scene, or go
     /// silent on genuinely broken wiring.</para>
@@ -29,18 +31,6 @@ namespace Ihc.Vis.Tests
         [Test]
         public void EveryMigratedRuleIsDeclaredWithADanishLabelAndAnEnglishDiagnostic() =>
             MigrationParity.AssertDeclaredWithBothLanguages(MigratedIds, RuleKind.UserContentRule);
-
-        [Test]
-        public void TheEngineReproducesTheRecordedTuplesForTheMigratedIds() =>
-            MigrationParity.AssertReproducesRecording(MigratedIds, Rules());
-
-        [Test]
-        public void TheMigratedRulesAreSilentOnAnAuthenticVendorProject() =>
-            Assert.That(
-                new WholeProjectValidator(Rules())
-                    .Validate(MigrationParity.CorpusCase("authentic/Project1-SimpelWired"), ValidationProfile.Categorized),
-                Is.Empty,
-                "a vendor-authored file has reciprocal links and consistent enums; anything here is a false positive");
 
         /// <summary>
         /// Both bijection ids emit, and each under its own. The shipped code passes the id in as a parameter, so

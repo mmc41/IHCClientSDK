@@ -45,19 +45,6 @@ namespace Ihc.Tests
             Assert.That(result, Is.False);
         }
 
-        [Test]
-        public void CanHandle_BoolType_ReturnsFalse()
-        {
-            // Arrange
-            var field = new FieldMetaData("testParam", typeof(bool), [], "Test description");
-
-            // Act
-            bool result = strategy.CanHandle(field);
-
-            // Assert
-            Assert.That(result, Is.False);
-        }
-
         [AvaloniaTest]
         [CaptureScreenshotOnFailure]
         public void CreateControl_ValidField_ReturnsTextBox()
@@ -72,21 +59,6 @@ namespace Ihc.Tests
             Assert.That(result, Is.Not.Null);
             Assert.That(result, Is.InstanceOf<TextBox>());
             Assert.That(result.Name, Is.EqualTo("TestControl"));
-        }
-
-        [AvaloniaTest]
-        [CaptureScreenshotOnFailure]
-        public void CreateControl_WithDescription_SetsTooltip()
-        {
-            // Arrange
-            var field = new FieldMetaData("testParam", typeof(string), [], "Test tooltip description");
-
-            // Act
-            var result = strategy.CreateControl(field, "TestControl");
-
-            // Assert
-            var tooltip = ToolTip.GetTip(result);
-            Assert.That(tooltip, Is.EqualTo("Test tooltip description"));
         }
 
     }

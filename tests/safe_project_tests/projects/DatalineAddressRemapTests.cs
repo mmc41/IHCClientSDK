@@ -32,17 +32,6 @@ namespace Ihc.Vis.Tests
         public void EverySuccessorIsDeclaredWithADanishLabelAndAnEnglishDiagnostic() =>
             MigrationParity.AssertDeclaredWithBothLanguages(Successors, RuleKind.UserContentRule);
 
-        /// <summary>
-        /// The three successors reproduce the recording for their own ids — the same parity check every other
-        /// migrated rule gets. Before the pipeline switched, this compared them against the ONE id's recorded
-        /// rows; after it, the recording carries the successors themselves, so the comparison is the ordinary one
-        /// and the historical equivalence is what the re-recording diff showed: 207 findings before and after,
-        /// with the same sites.
-        /// </summary>
-        [Test]
-        public void TheEngineReproducesTheRecordedTuplesForTheSuccessors() =>
-            MigrationParity.AssertReproducesRecording(Successors, Rules());
-
         /// <summary>Each of the three conditions produces its OWN id — which is the whole point of splitting.</summary>
         [Test]
         public void EachConditionProducesItsOwnId()

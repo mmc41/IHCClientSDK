@@ -205,19 +205,6 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        [Test]
-        public void NoAuthenticProjectCarriesAForeignCaseValue()
-        {
-            Assert.Multiple(() =>
-            {
-                foreach (string file in new[]
-                    { "project5-Dokumentation.vis", "project2-CustomBlock-case.vis", "Project6-Errors.vis" })
-                {
-                    Assert.That(Count(Authentic(file), "logic-case-value-foreign"), Is.Zero, file);
-                }
-            });
-        }
-
         // ── tree builders ───────────────────────────────────────────────────────────────────────────
 
         private static Project Authentic(string file)

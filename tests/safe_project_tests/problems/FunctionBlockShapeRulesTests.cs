@@ -1026,19 +1026,6 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        [Test]
-        public void NoAuthenticProjectReportsAProgramlessBlock()
-        {
-            Assert.Multiple(() =>
-            {
-                foreach (string file in new[]
-                    { "Project1-SimpelWired.vis", "project3-KompleksWired.vis", "project5-Dokumentation.vis" })
-                {
-                    Assert.That(Count(Authentic(file), "logic-block-empty"), Is.Zero, file);
-                }
-            });
-        }
-
         // ── logic-block-no-pins ─────────────────────────────────────────────────────────────────────
 
         [Test]

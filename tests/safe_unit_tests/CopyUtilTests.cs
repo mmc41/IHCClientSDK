@@ -47,38 +47,55 @@ namespace Ihc.Tests
             Assert.That(result, Is.Null);
         }
 
-        [Test]
-        public void DeepCopyAndApply_PrimitiveTypes_ReturnsSameValue()
+        /// <summary>
+        /// One case per type <c>CopyUtil.IsKnownImmutable</c> accepts. They all land on the same one-expression
+        /// branch, so this is an equivalence-class table rather than a set of independent behaviours; what it
+        /// buys is that a type quietly dropping OFF that branch — and so being reconstructed property by
+        /// property instead of returned as-is — fails under its own name.
+        /// <para>
+        /// The cases are built as data rather than stacked as <c>[TestCase]</c> attributes for a language
+        /// reason, not a stylistic one: <c>decimal</c>, <c>DateTime</c>, <c>DateTimeOffset</c>, <c>TimeSpan</c>
+        /// and <c>Guid</c> literals are not legal attribute arguments. The shape is otherwise the
+        /// type-to-expectation table <c>ParameterControlRegistryTests</c> uses.
+        /// </para>
+        /// </summary>
+        private static IEnumerable<TestCaseData> ImmutableScalarCases()
         {
-            Assert.That(CopyUtil.DeepCopyAndApply(42, IdentityTransformer), Is.EqualTo(42));
-            Assert.That(CopyUtil.DeepCopyAndApply(true, IdentityTransformer), Is.EqualTo(true));
-            Assert.That(CopyUtil.DeepCopyAndApply(3.14, IdentityTransformer), Is.EqualTo(3.14));
-            Assert.That(CopyUtil.DeepCopyAndApply('A', IdentityTransformer), Is.EqualTo('A'));
+            yield return new TestCaseData(42)
+                .SetName("DeepCopyAndApply_PrimitiveType_ReturnsSameValue");
+            yield return new TestCaseData(DayOfWeek.Monday)
+                .SetName("DeepCopyAndApply_EnumType_ReturnsSameValue");
+            yield return new TestCaseData("Hello World")
+                .SetName("DeepCopyAndApply_StringType_ReturnsSameValue");
+            yield return new TestCaseData(new DateTime(2024, 1, 1, 10, 0, 0))
+                .SetName("DeepCopyAndApply_DateTimeType_ReturnsSameValue");
+            yield return new TestCaseData(new DateTimeOffset(2024, 1, 1, 10, 0, 0, TimeSpan.Zero))
+                .SetName("DeepCopyAndApply_DateTimeOffsetType_ReturnsSameValue");
+            yield return new TestCaseData(TimeSpan.FromMinutes(90))
+                .SetName("DeepCopyAndApply_TimeSpanType_ReturnsSameValue");
+            yield return new TestCaseData(Guid.Empty)
+                .SetName("DeepCopyAndApply_GuidType_ReturnsSameValue");
+            yield return new TestCaseData(12.34m)
+                .SetName("DeepCopyAndApply_DecimalType_ReturnsSameValue");
+        }
+
+        [TestCaseSource(nameof(ImmutableScalarCases))]
+        public void DeepCopyAndApply_ImmutableScalar_ReturnsSameValue(object original)
+        {
+            var copy = CopyUtil.DeepCopyAndApply(original, IdentityTransformer);
+
+            Assert.That(copy, Is.EqualTo(original),
+                $"{original.GetType().Name} is a known-immutable scalar and must survive the copy by value");
         }
 
         [Test]
-        public void DeepCopyAndApply_StringType_ReturnsSameValue()
+        public void DeepCopyAndApply_StringType_ReturnsTheSameInstance()
         {
             var original = "Hello World";
-            var copy = CopyUtil.DeepCopyAndApply(original, IdentityTransformer);
-            Assert.That(copy, Is.EqualTo(original));
-            Assert.That(copy, Is.SameAs(original)); // Strings are immutable and interned
-        }
 
-        [Test]
-        public void DeepCopyAndApply_DateTimeType_ReturnsSameValue()
-        {
-            var original = DateTime.Now;
-            var copy = CopyUtil.DeepCopyAndApply(original, IdentityTransformer);
-            Assert.That(copy, Is.EqualTo(original));
-        }
-
-        [Test]
-        public void DeepCopyAndApply_EnumType_ReturnsSameValue()
-        {
-            var original = DayOfWeek.Monday;
-            var copy = CopyUtil.DeepCopyAndApply(original, IdentityTransformer);
-            Assert.That(copy, Is.EqualTo(original));
+            Assert.That(CopyUtil.DeepCopyAndApply(original, IdentityTransformer), Is.SameAs(original),
+                "a known-immutable scalar is handed back as-is rather than rebuilt — which only a reference "
+                + "type can witness");
         }
 
         [Test]
@@ -357,42 +374,48 @@ namespace Ihc.Tests
 
             var copy = (MutableAdminModel)CopyUtil.DeepCopyAndApply(original, IdentityTransformer);
 
-            // Verify it's a different instance
-            Assert.That(copy, Is.Not.SameAs(original));
+            Assert.That(copy, Is.Not.SameAs(original), "the model itself must be a new instance");
 
-            // Verify Users collection is deep copied
-            Assert.That(copy.Users, Is.Not.SameAs(original.Users));
-            Assert.That(copy.Users, Has.Count.EqualTo(2));
+            Assert.That(copy.Users, Is.Not.SameAs(original.Users), "Users: the set is rebuilt, not shared");
+            Assert.That(copy.Users, Has.Count.EqualTo(2), "Users: every member survives the copy");
 
-            // Verify users themselves are copied
             var copiedUsersList = copy.Users.OrderBy(u => u.Username).ToList();
             var originalUsersList = original.Users.OrderBy(u => u.Username).ToList();
-            Assert.That(copiedUsersList[0], Is.Not.SameAs(originalUsersList[0]));
-            Assert.That(copiedUsersList[0].Username, Is.EqualTo("admin"));
-            Assert.That(copiedUsersList[1], Is.Not.SameAs(originalUsersList[1]));
-            Assert.That(copiedUsersList[1].Username, Is.EqualTo("user"));
+            Assert.That(copiedUsersList[0], Is.Not.SameAs(originalUsersList[0]),
+                "Users[admin]: the element is copied, not carried over by reference");
+            Assert.That(copiedUsersList[0].Username, Is.EqualTo("admin"), "Users[admin].Username");
+            Assert.That(copiedUsersList[1], Is.Not.SameAs(originalUsersList[1]),
+                "Users[user]: the element is copied, not carried over by reference");
+            Assert.That(copiedUsersList[1].Username, Is.EqualTo("user"), "Users[user].Username");
 
-            // Verify nested settings are deep copied
-            Assert.That(copy.EmailControl, Is.Not.SameAs(original.EmailControl));
-            Assert.That(copy.EmailControl.ServerIpAddress, Is.EqualTo("10.0.0.5"));
+            Assert.That(copy.EmailControl, Is.Not.SameAs(original.EmailControl),
+                "EmailControl: the nested settings object is rebuilt");
+            Assert.That(copy.EmailControl.ServerIpAddress, Is.EqualTo("10.0.0.5"),
+                "EmailControl.ServerIpAddress");
 
-            Assert.That(copy.SmtpSettings, Is.Not.SameAs(original.SmtpSettings));
-            Assert.That(copy.SmtpSettings.Hostname, Is.EqualTo("smtp.example.com"));
+            Assert.That(copy.SmtpSettings, Is.Not.SameAs(original.SmtpSettings),
+                "SmtpSettings: the nested settings object is rebuilt");
+            Assert.That(copy.SmtpSettings.Hostname, Is.EqualTo("smtp.example.com"), "SmtpSettings.Hostname");
 
-            Assert.That(copy.DnsServers, Is.Not.SameAs(original.DnsServers));
-            Assert.That(copy.DnsServers.PrimaryDNS, Is.EqualTo("8.8.8.8"));
-            Assert.That(copy.DnsServers.SecondaryDNS, Is.EqualTo("8.8.4.4"));
+            Assert.That(copy.DnsServers, Is.Not.SameAs(original.DnsServers),
+                "DnsServers: the nested settings object is rebuilt");
+            Assert.That(copy.DnsServers.PrimaryDNS, Is.EqualTo("8.8.8.8"), "DnsServers.PrimaryDNS");
+            Assert.That(copy.DnsServers.SecondaryDNS, Is.EqualTo("8.8.4.4"), "DnsServers.SecondaryDNS");
 
-            Assert.That(copy.NetworkSettings, Is.Not.SameAs(original.NetworkSettings));
-            Assert.That(copy.NetworkSettings.IpAddress, Is.EqualTo("192.168.1.100"));
-            Assert.That(copy.NetworkSettings.HttpPort, Is.EqualTo(80));
+            Assert.That(copy.NetworkSettings, Is.Not.SameAs(original.NetworkSettings),
+                "NetworkSettings: the nested settings object is rebuilt");
+            Assert.That(copy.NetworkSettings.IpAddress, Is.EqualTo("192.168.1.100"),
+                "NetworkSettings.IpAddress");
+            Assert.That(copy.NetworkSettings.HttpPort, Is.EqualTo(80), "NetworkSettings.HttpPort");
 
-            Assert.That(copy.WebAccess, Is.Not.SameAs(original.WebAccess));
-            Assert.That(copy.WebAccess.AdministratorInternal, Is.True);
+            Assert.That(copy.WebAccess, Is.Not.SameAs(original.WebAccess),
+                "WebAccess: the nested settings object is rebuilt");
+            Assert.That(copy.WebAccess.AdministratorInternal, Is.True, "WebAccess.AdministratorInternal");
 
-            Assert.That(copy.WLanSettings, Is.Not.SameAs(original.WLanSettings));
-            Assert.That(copy.WLanSettings.Ssid, Is.EqualTo("TestNetwork"));
-            Assert.That(copy.WLanSettings.Enabled, Is.True);
+            Assert.That(copy.WLanSettings, Is.Not.SameAs(original.WLanSettings),
+                "WLanSettings: the nested settings object is rebuilt");
+            Assert.That(copy.WLanSettings.Ssid, Is.EqualTo("TestNetwork"), "WLanSettings.Ssid");
+            Assert.That(copy.WLanSettings.Enabled, Is.True, "WLanSettings.Enabled");
         }
 
         [Test]

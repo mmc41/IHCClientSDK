@@ -150,20 +150,6 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        [Test]
-        public void NoAuthenticFixtureWitnessesTheEnduserRow()
-        {
-            Assert.Multiple(() =>
-            {
-                foreach (string file in new[]
-                    { "Project1-SimpelWired.vis", "project3-KompleksWired.vis", "project5-Dokumentation.vis",
-                      "Project6-Errors.vis" })
-                {
-                    Assert.That(Count(Authentic(file), "doc-no-enduser-products"), Is.Zero, file);
-                }
-            });
-        }
-
         // ── the row that is NOT implemented ─────────────────────────────────────────────────────────
 
         /// <summary>

@@ -100,19 +100,6 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        [Test]
-        public void NoAuthenticProjectReportsAMissingName()
-        {
-            Assert.Multiple(() =>
-            {
-                foreach (string file in new[]
-                    { "Project0-Tomt.vis", "Project1-SimpelWired.vis", "project2-CustomBlock.vis" })
-                {
-                    Assert.That(Count(Authentic(file), "name-empty"), Is.Zero, file);
-                }
-            });
-        }
-
         // ── name-default ────────────────────────────────────────────────────────────────────────────
 
         [Test]

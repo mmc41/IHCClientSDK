@@ -5,23 +5,20 @@ using System.Linq;
 namespace Ihc.Vis.Tests
 {
     /// <summary>
-    /// PARITY for the STRUCTURE rules — the root's shape and version, containment, the four function-block
-    /// checks, embedded constants and the program skeleton — against the recording.
+    /// The STRUCTURE rules — the root's shape and version, containment, the function-block checks, embedded
+    /// constants and the program skeleton: that each is declared with both halves of the language split, that the
+    /// tolerated deviations keep their advisory severity, and that the locality rule defers where it must. What
+    /// these rules report over the corpus is pinned byte for byte by
+    /// <c>ValidationCharacterizationTests.Corpus_ReproducesItsOracleByteForByte</c>.
     ///
-    /// <para><b>Nine of the ten were MIGRATED and are compared against a recording made before they moved;</b>
-    /// <c>root-version-minor</c> was added later and its recording was made in the diff that added it. The
-    /// distinction matters to what a failure MEANS — a migrated row failing here is a regression, a new one
-    /// failing is a rule that does not do what its own oracle says — but not to how the comparison runs. The list
-    /// below must name every id <c>StructureRules</c> emits, because the engine side is the whole module's
-    /// output: an id missing from it shows up as an unexplained extra finding rather than as a missing rule.</para>
-    ///
-    /// <para><b>Three of the nine are WARNINGS and must stay warnings.</b> An unusual root child order, an
+    /// <para><b>The tolerated deviations are WARNINGS and must stay warnings.</b> An unusual root child order, an
     /// unmodeled containment and a deviant program skeleton all LOAD AND WORK, and vendor tooling tolerates every
     /// one of them. Promoting any of the three would be this tool asserting a rule the file format does not have,
     /// and it would block saves on files the vendor editor itself authors. The severity is therefore asserted
     /// per rule rather than left to the migration to preserve by accident.</para>
     ///
-    /// <para><b>Two rules deliberately stay out of each other's way.</b> A programming reference to an id NO
+    /// <para><b>The locality rule and the dangling-reference rule deliberately stay out of each other's
+    /// way.</b> A programming reference to an id NO
     /// element carries is the dangling-reference rule's business; the block-locality rule fires only when the id
     /// EXISTS but lives in another block. Reporting both would tell the user twice about one broken reference,
     /// and the split is what the shipped code does today.</para>
@@ -41,18 +38,6 @@ namespace Ihc.Vis.Tests
         [Test]
         public void EveryMigratedRuleIsDeclaredWithADanishLabelAndAnEnglishDiagnostic() =>
             MigrationParity.AssertDeclaredWithBothLanguages(MigratedIds, RuleKind.UserContentRule);
-
-        [Test]
-        public void TheEngineReproducesTheRecordedTuplesForTheMigratedIds() =>
-            MigrationParity.AssertReproducesRecording(MigratedIds, Rules());
-
-        [Test]
-        public void TheMigratedRulesAreSilentOnAnAuthenticVendorProject() =>
-            Assert.That(
-                new WholeProjectValidator(Rules())
-                    .Validate(MigrationParity.CorpusCase("authentic/Project1-SimpelWired"), ValidationProfile.Categorized),
-                Is.Empty,
-                "a vendor-authored file has the vendor's own structure; anything here is a false positive");
 
         /// <summary>
         /// The three advisory rules keep their severity. This is not bookkeeping: each names a state the vendor

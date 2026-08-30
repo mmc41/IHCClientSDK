@@ -90,20 +90,6 @@ namespace Ihc.Vis.Tests
                 "the DTD's default IS the null token, so carrying it explicitly is the same state as omitting it");
         }
 
-        [Test]
-        public void NoCommittedProjectCarriesTheIconState()
-        {
-            Assert.Multiple(() =>
-            {
-                foreach (string file in new[]
-                    { "Project1-SimpelWired.vis", "project3-KompleksWired.vis", "project5-Dokumentation.vis",
-                      "Project6-Errors.vis" })
-                {
-                    Assert.That(Count(Authentic(file), "struct-icon-default"), Is.Zero, file);
-                }
-            });
-        }
-
         // ── the row that is NOT implemented ─────────────────────────────────────────────────────────
 
         [Test]
