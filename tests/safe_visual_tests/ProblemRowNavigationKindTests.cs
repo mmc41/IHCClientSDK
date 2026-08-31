@@ -15,6 +15,10 @@ namespace safe_visual_tests;
 /// carried by a hint that says WHICH element the tree will land on.
 /// <para><c>Ancestor</c> is a member in its own right rather than a shade of <c>Tree</c>: a settings finding lands
 /// on the product, and a row that said "the element" would be promising something it does not do.</para>
+/// <para><b>FINDING rows only.</b> Every claim below is about a row projected from a validation finding. An
+/// internal-error row has no <c>NavigationKind</c> and never consults the planner: it is about the tool, not
+/// about the project, so it has no element to land on and nothing to promise. Its activation is asserted in
+/// <c>ProblemsActivationGestureTests</c> instead, where the gesture opens a dialog rather than a route.</para>
 /// </summary>
 public class ProblemRowNavigationKindTests
 {
@@ -156,7 +160,8 @@ public class ProblemRowNavigationKindTests
         ProblemNavigationPlanner planner = ProblemsTestData.Planner(harness.ProjectService);
         Dictionary<ElementId, ProjectElement?> byId = ProblemsPanelViewModel.IndexById(project);
 
-        var rows = harness.ProjectService.ValidateStructured(project)
+        // .Findings, not the whole structured result: a fault is not a finding and would have no row to plan.
+        var rows = harness.ProjectService.ValidateStructured(project).Findings
             .Select(f => (Finding: f, Row: ProblemsPanelViewModel.ToRow(f, project, byId, planner)))
             .ToList();
 

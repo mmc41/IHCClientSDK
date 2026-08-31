@@ -251,9 +251,28 @@ namespace Ihc
     /// instruments, in that order and while the span is still live.
     /// </summary>
     /// <remarks>
-    /// The scope tolerates a null <see cref="Activity"/> throughout. With tracing disabled
+    /// <para>The scope tolerates a null <see cref="Activity"/> throughout. With tracing disabled
     /// <c>StartActivity</c> returns null, and the metrics must keep working regardless - which is also why the
-    /// duration is measured from <see cref="Stopwatch.GetTimestamp"/> rather than read from the span.
+    /// duration is measured from <see cref="Stopwatch.GetTimestamp"/> rather than read from the span.</para>
+    ///
+    /// <para><b>The duration spans the WHOLE using-block, including time a user spent looking at a dialog.</b>
+    /// A host that reports a failure before the scope is disposed - which is the ordinary shape, because the
+    /// report belongs inside the try/catch that caught the failure - bills that modal's lifetime to this
+    /// operation. Two costs follow, and both are accepted rather than worked around:</para>
+    /// <list type="bullet">
+    /// <item><b>A failing operation's duration and histogram point include the installer reading a dialog.</b>
+    /// A support query reading p95 on an apply or a workflow histogram is reading think-time on the failure
+    /// path, and the number is otherwise indistinguishable from slow work. It is recorded here because a
+    /// reader of the metric has no other way to know.</item>
+    /// <item><b>A process that exits while a modal is open records NO span at all.</b> The scope never
+    /// disposes, so the span and the metric point are lost - not delayed, lost. This is the half that loses
+    /// data rather than distorting it, and it bites hardest where it matters most: a fatal fault whose dialog
+    /// is on screen when the app goes down leaves the log record as its only survivor.</item>
+    /// </list>
+    /// <para>Two alternatives were considered and neither taken: disposing before awaiting the dialog, which
+    /// would have fixed the second cost but split one operation's own outcome away from its span; and a
+    /// suspend/resume pair on this type, which would have put a host's presentation concern into the SDK's
+    /// measurement contract. Documenting the cost is cheaper than either, and honest.</para>
     /// </remarks>
     public sealed class OperationScope : IDisposable
     {
@@ -422,9 +441,49 @@ namespace Ihc
         /// client span is named for its method, and a backend's HTTP views key on exactly that.
         /// </param>
         public OperationTelemetry(TelemetrySurface surface, string owner)
+            : this(surface, owner, null)
+        {
+        }
+
+        /// <summary>
+        /// The same, with a FAULT REPORTER: an exception escaping one of the <c>Run</c> shapes is handed to
+        /// <paramref name="onFault"/> before it continues on its way.
+        /// </summary>
+        /// <remarks>
+        /// Reported from the catch that already runs, rather than from a second catch an owner wraps around
+        /// these calls. One frame reports for every owner of the core, and an owner cannot forget to.
+        /// <para>
+        /// FAIL-OPEN. A reporter that throws must not turn a reportable fault into a second one raised in place
+        /// of the first — the caller's own exception is what the caller is owed, unchanged.
+        /// </para>
+        /// </remarks>
+        /// <param name="surface">The layer's activity source and meter.</param>
+        /// <param name="owner">As above.</param>
+        /// <param name="onFault">Receives the operation name and the escaping exception, or null to report
+        /// nowhere.</param>
+        public OperationTelemetry(TelemetrySurface surface, string owner, Action<string, Exception>? onFault)
         {
             this.surface = surface ?? throw new ArgumentNullException(nameof(surface));
             this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
+            this.onFault = onFault;
+        }
+
+        private readonly Action<string, Exception>? onFault;
+
+        private void Report(string operation, Exception failure)
+        {
+            if (onFault is null)
+            {
+                return;
+            }
+            try
+            {
+                onFault(operation, failure);
+            }
+            catch (Exception)
+            {
+                // See the fail-open note on the constructor.
+            }
         }
 
         private string SpanName(string operation) =>
@@ -473,6 +532,7 @@ namespace Ihc
             catch (Exception ex)
             {
                 scope.SetOutcome(OperationOutcome.Failed(ex));
+                Report(operation, ex);
                 throw;
             }
         }
@@ -488,6 +548,7 @@ namespace Ihc
             catch (Exception ex)
             {
                 scope.SetOutcome(OperationOutcome.Failed(ex));
+                Report(operation, ex);
                 throw;
             }
         }
@@ -506,6 +567,7 @@ namespace Ihc
             catch (Exception ex)
             {
                 scope.SetOutcome(OperationOutcome.Failed(ex));
+                Report(operation, ex);
                 throw;
             }
         }
@@ -521,6 +583,7 @@ namespace Ihc
             catch (Exception ex)
             {
                 scope.SetOutcome(OperationOutcome.Failed(ex));
+                Report(operation, ex);
                 throw;
             }
         }

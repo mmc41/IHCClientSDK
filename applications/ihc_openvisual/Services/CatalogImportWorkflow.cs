@@ -55,8 +55,22 @@ internal sealed class CatalogImportWorkflow(
 
     /// <summary>Loads persisted imports on startup (US-061), best-effort: a single unreadable persisted file is
     /// skipped (logged); it does not stop the load or crash startup.</summary>
+    /// <remarks>
+    /// <para><b>Spanned, and the best-effort behaviour is unchanged.</b> Skipping a bad file rather than failing
+    /// start-up is the right call — an installer whose application will not open because one persisted
+    /// definition rotted has a worse problem than a missing definition. Being UNMEASURABLE is the part that was
+    /// not defensible: a machine where every persisted file is skipped started identically to one where none
+    /// were, and nothing anywhere could tell them apart afterwards.</para>
+    /// <para>The counts are on the span rather than in the outcome, because this operation does not FAIL when a
+    /// file is skipped — that is what best-effort means. A reader asking "did this installation load its
+    /// catalogue?" gets an answer from the two numbers; a reader counting failures is correctly told there were
+    /// none.</para>
+    /// </remarks>
     public void LoadPersisted()
     {
+        using Ihc.OperationScope scope = _telemetry.Start(nameof(LoadPersisted));
+        int loaded = 0;
+        int skipped = 0;
         try
         {
             if (!Directory.Exists(catalogDir))
@@ -66,18 +80,34 @@ internal sealed class CatalogImportWorkflow(
                 try
                 {
                     service.ImportCatalogFile(file);
+                    loaded++;
                 }
                 catch (Exception ex)
                 {
+                    skipped++;
                     logger.LogWarning(ex, "Skipped unreadable persisted catalog file {File}", file);
                 }
             }
         }
         catch (Exception ex)
         {
+            // The WHOLE pass failed, which is a different thing from skipping a file inside it, and the span
+            // says so. Still swallowed: start-up continues without the persisted catalogue.
+            scope.SetOutcome(Ihc.OperationOutcome.Failed(ex));
             logger.LogWarning(ex, "Failed to load persisted catalog from {Dir}", catalogDir);
         }
+        finally
+        {
+            scope.Activity?.SetTag(LoadedTag, loaded);
+            scope.Activity?.SetTag(SkippedTag, skipped);
+        }
     }
+
+    /// <summary>How many persisted definitions this start-up took in.</summary>
+    internal const string LoadedTag = "ihc.catalog.persisted_loaded";
+
+    /// <summary>How many it could not read and went on without.</summary>
+    internal const string SkippedTag = "ihc.catalog.persisted_skipped";
 
     private void PersistFile(string path)
     {
@@ -101,13 +131,13 @@ internal sealed class CatalogImportWorkflow(
         }
         catch (Exception ex)
         {
-            scope.SetOutcome(OperationOutcome.Failed(ex));
             // One-child chain: the shell's framing as the operation over the SDK's coded cause, so exactly one
             // sentence reaches the user and it says WHY the file was rejected (D01, case 2). The file itself is
             // US-062's obligation and is carried by the title; the English detail goes to the log.
-            logger.LogError(ex, "Failed to import catalog file {File}", path);
-            await RaisedProblemDisplay.ShowAsync(dialogs, Naming(ImportFailedTitle, path),
-                HostProblems.CatalogFileRejected(Path.GetFileName(path), ex), ex);
+            await FailureReport.FailedAsync(
+                scope, logger, dialogs, Naming(ImportFailedTitle, path),
+                HostProblems.CatalogFileRejected(Path.GetFileName(path), ex), ex,
+                "Failed to import catalog file {File}", path);
             return false;
         }
     }
@@ -120,8 +150,11 @@ internal sealed class CatalogImportWorkflow(
         using OperationScope scope = _telemetry.Start(nameof(ImportFolderAsync));
         if (!Directory.Exists(dir))
         {
-            // The shell's own condition — it checked the folder before asking the SDK for anything — so a host code.
-            await dialogs.ShowProblemAsync(ImportFailedTitle, HostProblems.CatalogFolderMissing(dir));
+            // The shell's own condition — it checked the folder before asking the SDK for anything — so
+            // a host code; and the scope used to end OK for an import that imported nothing.
+            await FailureReport.RefusedAsync(
+                scope, logger, dialogs, ImportFailedTitle, HostProblems.CatalogFolderMissing(dir),
+                "Catalog import folder {Dir} does not exist", dir);
             return CatalogImportOutcome.NotFound;
         }
         int count = 0;
@@ -139,11 +172,11 @@ internal sealed class CatalogImportWorkflow(
                 }
                 catch (Exception ex)
                 {
-                    scope.SetOutcome(OperationOutcome.Failed(ex));
-                    logger.LogError(ex, "Folder import stopped at {File}", file);
                     // The same one-child chain as the single-file site, with the batch count as a declared argument.
-                    await RaisedProblemDisplay.ShowAsync(dialogs, Naming(ImportStoppedTitle, file),
-                        HostProblems.CatalogImportStopped(Path.GetFileName(file), count, ex), ex);
+                    await FailureReport.FailedAsync(
+                        scope, logger, dialogs, Naming(ImportStoppedTitle, file),
+                        HostProblems.CatalogImportStopped(Path.GetFileName(file), count, ex), ex,
+                        "Folder import stopped at {File}", file);
                     stopped = true;
                     break;   // stop at the first unreadable file (US-062)
                 }

@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Ihc.Vis;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Validation;
 using ihc_openvisual.Services;
@@ -92,9 +93,18 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
 
     /// <summary>Where an ACTIVATED row's route is carried out. Optional, so the panel tests without a shell.</summary>
     private readonly Func<NavigationPlan, Task>? _activate;
+
+    /// <summary>
+    /// Where an internal row's activation goes. A SECOND delegate rather than a widening of
+    /// <see cref="_activate"/>: that one carries a <see cref="NavigationPlan"/>, and a fault has no route to
+    /// plan — pushing one through it would mean inventing a plan kind that means "not a navigation".
+    /// </summary>
+    private readonly Func<InternalError, Task>? _showInternalError;
     private readonly Func<FindingsExportRequest, Task>? _export;
     private readonly ITimer _staleTimer;
     private readonly EventHandler _onValidationChanged;
+
+    private readonly EventHandler? _onInternalErrorsChanged;
 
     /// <summary>The result the rows were projected from, so an unchanged one is not projected twice.</summary>
     private ValidationOutcome? _shown;
@@ -129,13 +139,16 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         ValidationMonitor validation,
         Func<FindingsExportRequest, Task>? export = null,
         Action<string>? setStatus = null,
-        Func<NavigationPlan, Task>? activate = null)
+        Func<NavigationPlan, Task>? activate = null,
+        InternalErrorLog? internalErrors = null,
+        Func<InternalError, Task>? showInternalError = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(validation);
 
         _session = session;
         _validation = validation;
+        _internalErrors = internalErrors;
         _post = session.Post;
         _setStatus = setStatus;
         _export = export;
@@ -143,6 +156,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         // Field claim answerable rather than guessed.
         _planner = ProblemNavigationPlanner.Over(session.GetProductDialog);
         _activate = activate;
+        _showInternalError = showInternalError;
         _staleTimer = session.Time.CreateTimer(_ => OnStaleThresholdElapsed(), null,
             Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
 
@@ -157,6 +171,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
 
         Tiers =
         [
+            new ProblemsTierViewModel(ProblemsTier.Internal, "Vis eller skjul interne fejl", ResortRows),
             new ProblemsTierViewModel(ProblemsTier.Fatal, "Vis eller skjul fatale fejl", ResortRows),
             new ProblemsTierViewModel(ProblemsTier.Error, "Vis eller skjul fejl", ResortRows),
             new ProblemsTierViewModel(ProblemsTier.Warning, "Vis eller skjul advarsler", ResortRows),
@@ -170,6 +185,16 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
 
         _onValidationChanged = (_, _) => OnValidationChanged();
         _validation.Changed += _onValidationChanged;
+        if (_internalErrors is { } errors)
+        {
+            _onInternalErrorsChanged = (_, _) => OnInternalErrorsChanged();
+            errors.Changed += _onInternalErrorsChanged;
+            // Sync to whatever the sink already holds: a fault raised during start-up is there before this
+            // panel exists, and it is exactly the fault with no other record. PUBLISHED here rather than left to
+            // the monitor sync below: a fresh monitor is on generation zero with no result, so that sync binds
+            // nothing at all and a start-up fault would sit in the projection unlisted.
+            OnInternalErrorsChanged();
+        }
         // Sync to whatever the monitor already holds: it starts with the document, and this panel does not.
         OnValidationChanged();
     }
@@ -180,20 +205,29 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// click — REPLACES the whole list, and a per-item <c>Add</c> would drive one round of container and selection
     /// bookkeeping per row where a single Reset does.
     /// </remarks>
-    public BulkObservableCollection<ProblemRowViewModel> Rows { get; } = [];
+    public BulkObservableCollection<ProblemsPanelRowViewModel> Rows { get; } = [];
 
     /// <summary>
     /// The bound findings in the ENGINE's own order, kept so a re-sort starts from the document scan rather than
     /// from whatever the previous sort left behind. That is what makes every sort stable in the way that matters:
     /// rows with an equal key come out in document order, not in the order of the last sort.
     /// </summary>
-    private readonly List<ProblemRowViewModel> _asScanned = [];
+    // The union the panel lists, and the two lists it is built from. Kept apart because they change for
+    // different reasons and at different times: a validation run replaces every finding row and must leave the
+    // faults standing, while a fault arriving must not disturb rows a run produced.
+    private readonly List<ProblemsPanelRowViewModel> _asScanned = [];
+
+    private readonly List<ProblemRowViewModel> _findingRows = [];
+
+    private readonly List<InternalErrorRowViewModel> _internalRows = [];
+
+    private readonly InternalErrorLog? _internalErrors;
 
     /// <summary>The five sortable headers, in screen order.</summary>
     public IReadOnlyList<ProblemsColumnViewModel> Columns { get; }
 
     /// <summary>
-    /// The four tiers, worst first — the filter toggles and their counts.
+    /// The tiers, worst first — the filter toggles and their counts.
     /// </summary>
     /// <remarks>
     /// A filter hides ROWS and nothing else. Every tier's count, the session's blocking answer and this panel's state
@@ -202,6 +236,10 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     public IReadOnlyList<ProblemsTierViewModel> Tiers { get; }
 
     private readonly Dictionary<ProblemsTier, ProblemsTierViewModel> _tiers;
+
+    /// <summary>The Intern fejl tier — its toggle and its count.</summary>
+    /// <inheritdoc cref="Fatals" path="/remarks"/>
+    public ProblemsTierViewModel Internals => _tiers[ProblemsTier.Internal];
 
     /// <summary>The Fatale fejl tier — its toggle and its count.</summary>
     /// <remarks>
@@ -270,8 +308,8 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// </remarks>
     private void ResortRows()
     {
-        IEnumerable<ProblemRowViewModel> visible = _asScanned.Where(IsTierShown);
-        IEnumerable<ProblemRowViewModel> sorted = SortColumn switch
+        IEnumerable<ProblemsPanelRowViewModel> visible = _asScanned.Where(IsTierShown);
+        IEnumerable<ProblemsPanelRowViewModel> sorted = SortColumn switch
         {
             ProblemsColumn.Severity => Order(r => (int)r.Tier),
             ProblemsColumn.Category => Order(r => r.CategoryLabel, DisplayOrder.Danish),
@@ -283,7 +321,8 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
 
         Rows.ReplaceAll(sorted);
 
-        IEnumerable<ProblemRowViewModel> Order<TKey>(Func<ProblemRowViewModel, TKey> key, IComparer<TKey>? comparer = null) =>
+        IEnumerable<ProblemsPanelRowViewModel> Order<TKey>(
+            Func<ProblemsPanelRowViewModel, TKey> key, IComparer<TKey>? comparer = null) =>
             // OrderBy/OrderByDescending are both STABLE, which is what preserves the engine's document order
             // among equal keys — the tie-break a reader navigating the tree depends on.
             SortAscending ? visible.OrderBy(key, comparer) : visible.OrderByDescending(key, comparer);
@@ -291,7 +330,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
 
     // A row whose tier has no toggle of its own is SHOWN, never hidden: a tier is a filtering and grouping
     // key and never a way to silence a finding, so an unrecognised one must fail towards visibility.
-    private bool IsTierShown(ProblemRowViewModel row) =>
+    private bool IsTierShown(ProblemsPanelRowViewModel row) =>
         !_tiers.TryGetValue(row.Tier, out ProblemsTierViewModel? tier) || tier.IsShown;
 
     [ObservableProperty] private ProblemsState _state = ProblemsState.Validating;
@@ -320,7 +359,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// Navigation is <see cref="ActivateRowAsync"/>'s, reached by double-click or Enter. The row still says
     /// where it would lead before either gesture, through its de-emphasis and its tooltip.
     /// </remarks>
-    [ObservableProperty] private ProblemRowViewModel? _selectedRow;
+    [ObservableProperty] private ProblemsPanelRowViewModel? _selectedRow;
 
     /// <summary>What the panel says when a row's element is nowhere on screen and nothing above it is either.</summary>
     public const string DeadEndStatus = "Elementet vises ikke i træet.";
@@ -338,19 +377,33 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// which is the whole content of the Enter/double-click parity requirement.</para>
     /// </remarks>
     /// <param name="row">The row being activated, or null when there is none.</param>
-    public Task ActivateRowAsync(ProblemRowViewModel? row)
+    public Task ActivateRowAsync(ProblemsPanelRowViewModel? row)
     {
-        if (_activate is null || row is null || _session.Current is not { } project)
+        // ROW KIND first, before the planner and before the open-project guard below — and the order is the
+        // point, not an optimisation. A fault has no element, so planning a route for one would ask the planner
+        // about something that does not exist; and a fault is MOST likely to be the only thing on screen when
+        // no project is open at all, which is exactly the case the guard below refuses. Branching after either
+        // of them would make the internal row unopenable in the situation it matters most.
+        if (row is InternalErrorRowViewModel fault)
+        {
+            return _showInternalError?.Invoke(fault.Error) ?? Task.CompletedTask;
+        }
+        if (row is not ProblemRowViewModel finding)
+        {
+            return Task.CompletedTask;
+        }
+        if (_activate is null || _session.Current is not { } project)
         {
             return Task.CompletedTask;
         }
         NavigationPlan plan = _planner.Plan(
-            project, row.Element, row.Finding.TargetAttribute, row.Finding.Code, row.Finding.Fix);
+            project, finding.Element, finding.Finding.TargetAttribute, finding.Finding.Code,
+            finding.Finding.Fix);
 
         // A row that NAMED an element and still routes nowhere — the element is gone since the run, or neither
         // it nor anything above it is drawn — is the one case the gesture cannot show for itself, so it is said.
         // A row that named none says so before the click through its own de-emphasis, and needs no sentence.
-        if (row.Element is not null && plan.Kind is NavigationKind.None)
+        if (finding.Element is not null && plan.Kind is NavigationKind.None)
         {
             _setStatus?.Invoke(DeadEndStatus);
         }
@@ -377,6 +430,10 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
             return;
         _disposed = true;
         _validation.Changed -= _onValidationChanged;
+        if (_internalErrors is { } errors && _onInternalErrorsChanged is { } handler)
+        {
+            errors.Changed -= handler;
+        }
         _staleTimer.Dispose();
     }
 
@@ -394,9 +451,12 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
             // Cleared IMMEDIATELY: rows about the previous file must not survive one frame over the new one.
             _shownGeneration = _validation.Generation;
             _shown = null;
-            _asScanned.Clear();
-            Rows.Clear();
-            RecountRows();
+            // The FINDING rows only, and the rebuild that follows is what publishes the cleared union. The faults
+            // are the sink's to clear, and it clears them on the same generation move (D02) - emptying the bound
+            // list here as well would be a second opinion about a lifetime that already has an owner, and a wrong
+            // one the moment the two disagree.
+            _findingRows.Clear();
+            RebuildScannedRows();
         }
 
         // Reference identity, not value equality: the monitor hands back the SAME result object until a new run
@@ -430,12 +490,64 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
                 ? IndexById(snapshot)
                 : [];
 
-        _asScanned.Clear();
+        _findingRows.Clear();
         Dictionary<string, int> occurrences = [];
         foreach (ValidationFinding finding in outcome.Findings)
-            _asScanned.Add(ToRow(finding, snapshot, byId, _planner, occurrences));
+            _findingRows.Add(ToRow(finding, snapshot, byId, _planner, occurrences));
+        RebuildScannedRows();
+    }
+
+    /// <summary>
+    /// Rebuilds the union the panel lists, then re-sorts and re-counts it.
+    /// </summary>
+    /// <remarks>
+    /// The faults go in FIRST, which costs nothing and means the unsorted order already matches the sorted one
+    /// for the default column - Internal is the worst tier, so a reader who has not touched a header sees the
+    /// same order either way.
+    /// </remarks>
+    private void RebuildScannedRows()
+    {
+        _asScanned.Clear();
+        _asScanned.AddRange(_internalRows);
+        _asScanned.AddRange(_findingRows);
         ResortRows();
         RecountRows();
+    }
+
+    /// <summary>
+    /// Projects the sink into rows. Called on the owning thread: the sink marshals its announcement through the
+    /// same post every other background result uses.
+    /// </summary>
+    private void OnInternalErrorsChanged()
+    {
+        if (_disposed || !ProjectInternalRows())
+        {
+            return;
+        }
+        RebuildScannedRows();
+        RefreshState();
+        OnPropertyChanged(nameof(CanCopyInternals));
+
+        // Reset, because the label is feedback about ONE copy: a "Kopieret" left standing after the list moved
+        // would claim the reader has a copy of rows that were not in it.
+        CopyInternalsText = CopyInternalsLabel;
+    }
+
+    /// <summary>Projects the sink into <c>_internalRows</c> and nothing else.</summary>
+    /// <returns>False when there is no sink to project.</returns>
+    private bool ProjectInternalRows()
+    {
+        if (_internalErrors is not { } log)
+        {
+            return false;
+        }
+        _internalRows.Clear();
+        int at = 0;
+        foreach (InternalErrorRow row in log.Rows)
+        {
+            _internalRows.Add(new InternalErrorRowViewModel(row.Error, $"{row.Error.Code.Value}@{at++}"));
+        }
+        return true;
     }
 
     /// <summary>The panel's entry point into the instrumentation core.</summary>
@@ -501,11 +613,16 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// SDK's severities and not the panel's tiers.
     /// </summary>
     /// <inheritdoc cref="TierOf" path="/remarks"/>
-    public static ValidationSeverity SeverityOf(ProblemsTier tier) => tier switch
+    public static ValidationSeverity? SeverityOf(ProblemsTier tier) => tier switch
     {
         // Fatal and Error are ONE severity. That is why the export cannot state its tier filters through
         // severities alone, and why hiding one of the two tiers is invisible in that attribute.
         ProblemsTier.Fatal => ValidationSeverity.Error,
+        // NULL, and nullable for this one member: a fault in the tool is not a finding about the project, so
+        // every severity here would be a claim about a project this tier says nothing about. Making it
+        // representable rather than throwing is what makes D05 structural — the export below filters the nulls
+        // out, so an internal row cannot reach a findings file even if someone forgets that it must not.
+        ProblemsTier.Internal => null,
         ProblemsTier.Error => ValidationSeverity.Error,
         ProblemsTier.Warning => ValidationSeverity.Warning,
         ProblemsTier.Info => ValidationSeverity.Info,
@@ -521,6 +638,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// <inheritdoc cref="TierOf" path="/remarks"/>
     public static string TierLabel(ProblemsTier tier) => tier switch
     {
+        ProblemsTier.Internal => "Intern fejl",
         ProblemsTier.Fatal => "Fatal fejl",
         ProblemsTier.Error => "Fejl",
         ProblemsTier.Warning => "Advarsel",
@@ -535,6 +653,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// <inheritdoc cref="TierOf" path="/remarks"/>
     public static string TierIcon(ProblemsTier tier) => tier switch
     {
+        ProblemsTier.Internal => "/Assets/severity-internal.svg",
         ProblemsTier.Fatal => "/Assets/severity-fatal.svg",
         ProblemsTier.Error => "/Assets/severity-error.svg",
         ProblemsTier.Warning => "/Assets/severity-warning.svg",
@@ -643,7 +762,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         foreach (ProblemsTierViewModel tier in Tiers)
             tier.Count = 0;
 
-        foreach (ProblemRowViewModel row in _asScanned)
+        foreach (ProblemsPanelRowViewModel row in _asScanned)
         {
             if (_tiers.TryGetValue(row.Tier, out ProblemsTierViewModel? tier))
                 tier.Count++;
@@ -654,6 +773,16 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     {
         ProblemsState next = _validation switch
         {
+            // FIRST, before the two arms below, and that order is the whole point. A fault raised while starting
+            // up, or by an open that failed, arrives when no result is bound and the panel would otherwise say
+            // "Validerer projektet..." across a row that is already listed - a sentence that is both false and
+            // painted over the evidence. A listed fault means the panel HAS something to show, whatever the
+            // validation run is doing, so it resolves to Findings.
+            //
+            // No sixth ProblemsState member: Findings already means "there are rows", the stale indicator keeps
+            // its own separate job, and a state that existed only to say which KIND of row is listed would have
+            // to be answered by every reader of State that does not care.
+            _ when _internalRows.Count > 0 => ProblemsState.Findings,
             { Result: null } => ProblemsState.Validating,
             { IsStale: true } => ProblemsState.Stale,
             // _asScanned, not Rows: the clean state is a statement about the RESULT, and a list emptied by the
@@ -699,6 +828,51 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     // ── Export ──────────────────────────────────────────────────────────────────────────────────────────────
 
     /// <summary>The export control's automation id — a fourth sibling of the panel's own vocabulary.</summary>
+    // ── The bulk copy of the internal rows ──────────────────────────────────────────────────────────────────
+
+    public const string CopyInternalsAutomationId = "problems.copy-internals";
+
+    /// <summary>The control at rest.</summary>
+    public const string CopyInternalsLabel = "Kopiér interne fejl";
+
+    public const string CopyInternalsAccessibleName = "Kopiér alle interne fejl";
+
+    /// <summary>After a successful copy — the same in-place feedback the details dialog gives.</summary>
+    public const string CopyInternalsDoneLabel = "Kopieret";
+
+    /// <summary>
+    /// Shown only when there is something to copy. A control that is always there and usually does nothing is
+    /// worse than one that appears with its subject: the Internal tier is empty in every healthy session, and a
+    /// permanent button would invite the reader to wonder what it would have copied.
+    /// </summary>
+    public bool CanCopyInternals => _internalRows.Count > 0;
+
+    /// <summary>
+    /// EVERY listed internal error, assembled the way the details dialog assembles ONE. That is the whole
+    /// content of this control: it exists for the fault storm, where a dialog at a time will not do, and it is
+    /// the answer to the findings export deliberately carrying none of these (D05).
+    /// <para>
+    /// LISTED, not held: the tier toggle filters this exactly as it filters the rows, because what the reader
+    /// asked to copy is what the reader can see.
+    /// </para>
+    /// </summary>
+    public string BuildInternalsPayload() => string.Join(
+        $"{Environment.NewLine}{Environment.NewLine}────────{Environment.NewLine}{Environment.NewLine}",
+        Rows.OfType<InternalErrorRowViewModel>()
+            .Select(row => new InternalErrorViewModel(row.Error, AppVersion).Payload));
+
+    /// <summary>The app build the payload records. Overridable so a test can pin the assembled text exactly.</summary>
+    internal string AppVersion { get; init; } = Ihc.Bootstrap.TelemetryBootstrap.GetAppVersionStr();
+
+    [ObservableProperty] private string _copyInternalsText = CopyInternalsLabel;
+
+    /// <summary>The copy succeeded; say so on the control.</summary>
+    public void MarkInternalsCopied() => CopyInternalsText = CopyInternalsDoneLabel;
+
+    /// <summary>There was no clipboard. The same coded refusal the details dialog raises, said the same way.</summary>
+    public void MarkInternalsCopyUnavailable() =>
+        CopyInternalsText = HostProblems.ClipboardUnavailable().Message;
+
     public const string ExportAutomationId = "problems.export";
 
     /// <summary>What the button says.</summary>
@@ -788,18 +962,26 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// Hands the visible list to whoever knows where files go. This decides WHAT is exported and nothing else.
     /// <para>
     /// <see cref="Rows"/> is already filtered by the tier toggles and ordered by the chosen column, so one
-    /// projection satisfies both fidelity requirements at once — the file holds the rows on screen, in the order
-    /// they are on screen. The findings travel whole, so the file carries what the panel could not show.
+    /// projection satisfies both fidelity requirements at once — the file holds every FINDING on screen, in the
+    /// order it is on screen. The findings travel whole, so the file carries what the panel could not show.
+    /// </para>
+    /// <para>
+    /// FINDINGS, not rows, and the narrowing is D05 rather than an oversight: the panel also lists faults in the
+    /// tool, and a findings file is a statement about the PROJECT. A fault is not part of the project, so it has
+    /// no place in a file forwarded to a support case as a description of one.
     /// </para>
     /// </summary>
     private Task Export() =>
         _export?.Invoke(new FindingsExportRequest(
-            [.. Rows.Select(r => r.Finding)],
+            [.. Rows.OfType<ProblemRowViewModel>().Select(r => r.Finding)],
             $"host:{SortColumn.ToString().ToLowerInvariant()}{(SortAscending ? string.Empty : " desc")}",
             // Enum order, never click order: the attribute states a SET, and two users who hid the same tiers in
             // a different sequence must produce the same file. Tiers is built in enum order and IsShown does not
             // reorder it, so this is belt and braces — but the property is asserted rather than assumed.
-            [.. Tiers.Where(t => t.IsShown).Select(t => t.Severity).Distinct().Order()],
+            // The nulls drop out here, which is D05 enforced by the type rather than by remembering: a tier
+            // with no severity contributes nothing to a file that speaks severities.
+            [.. Tiers.Where(t => t.IsShown).Select(t => t.Severity)
+                .OfType<ValidationSeverity>().Distinct().Order()],
             // Both Error tiers, stated separately, because the severity set above collapses them into one
             // value: showing only Fatale fejl and showing every error both record "Error".
             new ErrorTierFilter(Fatals.IsShown, Errors.IsShown)))

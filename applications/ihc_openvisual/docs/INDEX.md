@@ -68,7 +68,7 @@ latest_update: 2026-08-26 — error-list.md retired; error_catalog.md added (pro
 4. The identifier / 5. The Danish message template / 6. Declared argument slots / 7. Thresholds / 8. The predicate
 9. Wiring — the code edits an item needs, per kind
 10. Gates a new item must pass, the exact population pins it moves, and the two committed oracle sets
-11. The four list tiers — why Fatal needs a declared `RefusedOperations` rather than a fourth severity, and Information a fourth `CatalogDisposition` member
+11. The list tiers — why Fatal needs a declared `RefusedOperations` rather than a severity of its own, and Information a `CatalogDisposition` member of its own
 12. Changing, retiring and ruling out
 
 > No row inventory lives here. The compiled declarations are the truth —

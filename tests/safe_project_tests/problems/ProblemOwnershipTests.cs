@@ -37,14 +37,14 @@ namespace Ihc.Vis.Tests
         /// nothing in it can refuse a construction: an open vocabulary is what lets a host mint its own codes,
         /// and a gate added here later would close it by the back door without anyone deciding to.
         /// <para>
-        /// SIX OF THE FIFTEEN ARE THE REFUSAL CARRIERS, and they are here rather than in a layer because more
+        /// THE REFUSAL CARRIERS are here rather than in a layer because more
         /// than one layer raises the same operation: a save is refused by the serializer, by a schema guard and
         /// by the atomic writer, which share no dependency. None of them gates anything — an identity is data a
         /// site hands over, and a host can build one for its own family with no SDK type consulted.
         /// </para>
         /// </summary>
         [Test]
-        public void TheProblemContractIsFifteenTypesAndNoneOfThemIsAGate()
+        public void TheProblemContractIsExactlyTheseTypesAndNoneOfThemIsAGate()
         {
             string[] names = PublicProblemTypes().Select(t => t.Name).ToArray();
 
@@ -59,6 +59,10 @@ namespace Ihc.Vis.Tests
                     nameof(ProblemArgumentSlot),
                     nameof(ProblemArgument),
                     nameof(Problem),
+                    // A fault in the TOOL is contract too, and deliberately NOT a finding: it is the one member
+                    // of this namespace that describes the software rather than the project.
+                    nameof(InternalError),
+                    nameof(InternalErrorOrigin),
                     nameof(ProblemChain),
                     nameof(ProblemAggregate),
                     nameof(RefusalIdentity),
@@ -159,7 +163,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void TheSdkCatchAllIsSdkOwned()
         {
-            ProblemCode code = Problem.Unexpected("The element index could not be rebuilt.").Code;
+            ProblemCode code = Problem.Unexpected("CommitEdit", "The element index could not be rebuilt.").Code;
 
             Assert.Multiple(() =>
             {

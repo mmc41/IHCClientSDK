@@ -33,14 +33,13 @@ Ihc.Vis.ProjectAppService.DescribeField(Ihc.Vis.Validation.RuleTarget target) ->
 Ihc.Vis.ProjectAppService.MissingRequiredField(string? value) -> Ihc.Vis.Problems.Problem?
 Ihc.Vis.Session.EditOutcome.Code.get -> Ihc.Vis.Problems.ProblemCode
 Ihc.Vis.Session.EditOutcome.Code.init -> void
-Ihc.Vis.Session.EditOutcome.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes, out Ihc.Vis.Problems.ProblemCode Code) -> void
-Ihc.Vis.Session.EditOutcome.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode)) -> void
-Ihc.Vis.Session.EditOutcome<T>.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes, out T? Value, out Ihc.Vis.Problems.ProblemCode Code) -> void
-Ihc.Vis.Session.EditOutcome<T>.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes, T? Value, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode)) -> void
+Ihc.Vis.Session.EditOutcome.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes, out Ihc.Vis.Problems.ProblemCode Code, out Ihc.Vis.Problems.InternalError? Fault) -> void
+Ihc.Vis.Session.EditOutcome.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode), Ihc.Vis.Problems.InternalError? Fault = null) -> void
+Ihc.Vis.Session.EditOutcome<T>.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes, out T? Value, out Ihc.Vis.Problems.ProblemCode Code, out Ihc.Vis.Problems.InternalError? Fault) -> void
+Ihc.Vis.Session.EditOutcome<T>.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes, T? Value, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode), Ihc.Vis.Problems.InternalError? Fault = null) -> void
 Ihc.Vis.Session.PreviewOutcome.Code.get -> Ihc.Vis.Problems.ProblemCode
 Ihc.Vis.Session.PreviewOutcome.Code.init -> void
-Ihc.Vis.Session.PreviewOutcome.Deconstruct(out Ihc.Vis.Session.PreviewStatus Status, out Ihc.Vis.Session.ProjectChangeSet? Changes, out string? Reason, out Ihc.Vis.Problems.ProblemCode Code) -> void
-Ihc.Vis.Session.PreviewOutcome.PreviewOutcome(Ihc.Vis.Session.PreviewStatus Status, Ihc.Vis.Session.ProjectChangeSet? Changes, string? Reason, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode)) -> void
+Ihc.Vis.Session.PreviewOutcome.Deconstruct(out Ihc.Vis.Session.PreviewStatus Status, out Ihc.Vis.Session.ProjectChangeSet? Changes, out string? Reason, out Ihc.Vis.Problems.ProblemCode Code, out Ihc.Vis.Problems.InternalError? Fault) -> void
 static Ihc.Vis.Session.PreviewOutcome.Refused(string? reason, Ihc.Vis.Problems.ProblemCode code = default(Ihc.Vis.Problems.ProblemCode)) -> Ihc.Vis.Session.PreviewOutcome!
 Ihc.App.BridgeRefusalCodes
 Ihc.Vis.Catalog.ImportRefusalCodes
@@ -57,6 +56,33 @@ Ihc.Vis.Io.SaveRefusalCodes
 Ihc.Vis.Problems.IProblemCarrier
 Ihc.Vis.Problems.IProblemCarrier.Problems.get -> Ihc.Vis.Problems.ProblemChain?
 Ihc.Vis.Problems.OperationCodes
+Ihc.Vis.Problems.InternalError
+Ihc.Vis.Problems.InternalError.<Clone>$() -> Ihc.Vis.Problems.InternalError!
+Ihc.Vis.Problems.InternalError.Code.get -> Ihc.Vis.Problems.ProblemCode
+Ihc.Vis.Problems.InternalError.Code.init -> void
+Ihc.Vis.Problems.InternalError.Deconstruct(out Ihc.Vis.Problems.ProblemCode Code, out string! Message, out string? Diagnostic, out Ihc.Vis.Problems.InternalErrorOrigin Origin, out string! Detail, out System.DateTimeOffset Observed) -> void
+Ihc.Vis.Problems.InternalError.Detail.get -> string!
+Ihc.Vis.Problems.InternalError.Detail.init -> void
+Ihc.Vis.Problems.InternalError.Diagnostic.get -> string?
+Ihc.Vis.Problems.InternalError.Diagnostic.init -> void
+Ihc.Vis.Problems.InternalError.Equals(Ihc.Vis.Problems.InternalError? other) -> bool
+Ihc.Vis.Problems.InternalError.InternalError(Ihc.Vis.Problems.ProblemCode Code, string! Message, string? Diagnostic, Ihc.Vis.Problems.InternalErrorOrigin Origin, string! Detail, System.DateTimeOffset Observed) -> void
+Ihc.Vis.Problems.InternalError.Message.get -> string!
+Ihc.Vis.Problems.InternalError.Message.init -> void
+Ihc.Vis.Problems.InternalError.Observed.get -> System.DateTimeOffset
+Ihc.Vis.Problems.InternalError.Observed.init -> void
+Ihc.Vis.Problems.InternalError.Origin.get -> Ihc.Vis.Problems.InternalErrorOrigin
+Ihc.Vis.Problems.InternalError.Origin.init -> void
+Ihc.Vis.Problems.InternalErrorOrigin
+Ihc.Vis.Problems.InternalErrorOrigin.Host = 1 -> Ihc.Vis.Problems.InternalErrorOrigin
+Ihc.Vis.Problems.InternalErrorOrigin.Platform = 2 -> Ihc.Vis.Problems.InternalErrorOrigin
+Ihc.Vis.Problems.InternalErrorOrigin.Sdk = 0 -> Ihc.Vis.Problems.InternalErrorOrigin
+override Ihc.Vis.Problems.InternalError.Equals(object? obj) -> bool
+override Ihc.Vis.Problems.InternalError.GetHashCode() -> int
+override Ihc.Vis.Problems.InternalError.ToString() -> string!
+static Ihc.Vis.Problems.InternalError.From(Ihc.Vis.Problems.Problem! problem, Ihc.Vis.Problems.InternalErrorOrigin origin, string! detail) -> Ihc.Vis.Problems.InternalError!
+static Ihc.Vis.Problems.InternalError.operator !=(Ihc.Vis.Problems.InternalError? left, Ihc.Vis.Problems.InternalError? right) -> bool
+static Ihc.Vis.Problems.InternalError.operator ==(Ihc.Vis.Problems.InternalError? left, Ihc.Vis.Problems.InternalError? right) -> bool
 Ihc.Vis.Problems.Problem
 Ihc.Vis.Problems.Problem.<Clone>$() -> Ihc.Vis.Problems.Problem!
 Ihc.Vis.Problems.Problem.Arguments.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgument>
@@ -204,6 +230,7 @@ Ihc.Vis.Validation.CatalogDefect.Violation.init -> void
 Ihc.Vis.Validation.CatalogDisposition
 Ihc.Vis.Validation.CatalogDisposition.Error = 0 -> Ihc.Vis.Validation.CatalogDisposition
 Ihc.Vis.Validation.CatalogDisposition.Info = 3 -> Ihc.Vis.Validation.CatalogDisposition
+Ihc.Vis.Validation.CatalogDisposition.NotApplicable = 4 -> Ihc.Vis.Validation.CatalogDisposition
 Ihc.Vis.Validation.CatalogDisposition.Refusal = 2 -> Ihc.Vis.Validation.CatalogDisposition
 Ihc.Vis.Validation.CatalogDisposition.Warning = 1 -> Ihc.Vis.Validation.CatalogDisposition
 Ihc.Vis.Validation.CatalogInvariants
@@ -345,7 +372,7 @@ Ihc.Vis.Validation.IValueConstraint.Check(string? rawValue) -> Ihc.Vis.Validatio
 Ihc.Vis.Validation.IValueConstraint.Code.get -> Ihc.Vis.Problems.ProblemCode
 Ihc.Vis.Validation.IValueConstraint.Describe() -> Ihc.Vis.Validation.FieldConstraintMetadata
 Ihc.Vis.Validation.IWholeProjectValidator
-Ihc.Vis.Validation.IWholeProjectValidator.Validate(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
+Ihc.Vis.Validation.IWholeProjectValidator.Validate(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile) -> Ihc.Vis.Validation.StructuredValidationResult!
 Ihc.Vis.Validation.IdentityRules
 Ihc.Vis.Validation.LastUniqueIdFault
 Ihc.Vis.Validation.LastUniqueIdFault.AboveCeiling = 3 -> Ihc.Vis.Validation.LastUniqueIdFault
@@ -576,7 +603,6 @@ Ihc.Vis.Validation.VariableUsageKind.Trigger = 0 -> Ihc.Vis.Validation.VariableU
 Ihc.Vis.Validation.VariableUsageKind.Write = 2 -> Ihc.Vis.Validation.VariableUsageKind
 Ihc.Vis.Validation.VariableUsageRules
 Ihc.Vis.Validation.WholeProjectValidator
-Ihc.Vis.Validation.WholeProjectValidator.Validate(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
 Ihc.Vis.Validation.WholeProjectValidator.WholeProjectValidator(Ihc.Vis.Validation.RuleSet! rules) -> void
 Ihc.Vis.Validation.WiringRules
 const Ihc.Vis.FindingExportFormat.FileExtension = "xml" -> string!
@@ -674,7 +700,7 @@ static Ihc.Vis.Problems.OperationCodes.BridgeUpload.get -> Ihc.Vis.Problems.Prob
 static Ihc.Vis.Problems.OperationCodes.ImportCatalog.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Problems.OperationCodes.Load.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Problems.OperationCodes.Save.get -> Ihc.Vis.Problems.ProblemCode
-static Ihc.Vis.Problems.Problem.Unexpected(string! diagnostic, System.Exception? cause = null) -> Ihc.Vis.Problems.Problem!
+static Ihc.Vis.Problems.Problem.Unexpected(string! operation, string! diagnostic, System.Exception? cause = null) -> Ihc.Vis.Problems.Problem!
 static Ihc.Vis.Problems.Problem.operator !=(Ihc.Vis.Problems.Problem? left, Ihc.Vis.Problems.Problem? right) -> bool
 static Ihc.Vis.Problems.Problem.operator ==(Ihc.Vis.Problems.Problem? left, Ihc.Vis.Problems.Problem? right) -> bool
 static Ihc.Vis.Problems.ProblemAggregate.operator !=(Ihc.Vis.Problems.ProblemAggregate? left, Ihc.Vis.Problems.ProblemAggregate? right) -> bool
@@ -745,6 +771,7 @@ static Ihc.Vis.Validation.CaseTest.operator ==(Ihc.Vis.Validation.CaseTest? left
 static Ihc.Vis.Validation.CatalogDefect.operator !=(Ihc.Vis.Validation.CatalogDefect left, Ihc.Vis.Validation.CatalogDefect right) -> bool
 static Ihc.Vis.Validation.CatalogDefect.operator ==(Ihc.Vis.Validation.CatalogDefect left, Ihc.Vis.Validation.CatalogDefect right) -> bool
 static Ihc.Vis.Validation.CatalogInvariants.Check(Ihc.Vis.Validation.ProblemCatalog! catalog, System.Collections.Generic.IReadOnlyCollection<Ihc.Vis.Problems.ProblemCode>! implementedCodes) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.CatalogDefect>
+static Ihc.Vis.Validation.CatalogInvariants.CheckEntries(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.CatalogDefect>
 static Ihc.Vis.Validation.CategoryExtensions.TryParseShortCode(string! shortCode, out Ihc.Vis.Validation.ValidationCategory category) -> bool
 static Ihc.Vis.Validation.CategoryExtensions.extension(Ihc.Vis.Validation.ValidationCategory).TryParseShortCode(string! shortCode, out Ihc.Vis.Validation.ValidationCategory category) -> bool
 static Ihc.Vis.Validation.CategoryExtensions.get_ShortCode(Ihc.Vis.Validation.ValidationCategory category) -> string!
@@ -778,6 +805,7 @@ static Ihc.Vis.Validation.ModuleAddressRules.All(Ihc.Vis.Validation.ProblemCatal
 static Ihc.Vis.Validation.NamingRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
 static Ihc.Vis.Validation.ProblemCatalog.Current.get -> Ihc.Vis.Validation.ProblemCatalog!
 static Ihc.Vis.Validation.ProblemCatalog.From(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ProblemCatalogEntry!> entries) -> Ihc.Vis.Validation.ProblemCatalog!
+static Ihc.Vis.Validation.ProblemCatalog.Validated(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ProblemCatalogEntry!> entries) -> Ihc.Vis.Validation.ProblemCatalog!
 static Ihc.Vis.Validation.ProblemCatalogEntry.operator !=(Ihc.Vis.Validation.ProblemCatalogEntry? left, Ihc.Vis.Validation.ProblemCatalogEntry? right) -> bool
 static Ihc.Vis.Validation.ProblemCatalogEntry.operator ==(Ihc.Vis.Validation.ProblemCatalogEntry? left, Ihc.Vis.Validation.ProblemCatalogEntry? right) -> bool
 static Ihc.Vis.Validation.ProductAdvisoryRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
@@ -853,8 +881,8 @@ static Ihc.Vis.Editing.EditOpenRefusalCodes.All.get -> Ihc.Vis.Model.EquatableAr
 static Ihc.Vis.Problems.OperationCodes.EditOpen.get -> Ihc.Vis.Problems.ProblemCode
 const Ihc.Vis.Problems.OperationCodes.EditOpenLabel = "Projektet kunne ikke åbnes til redigering" -> string!
 static Ihc.Vis.Session.EditRefusedException.TargetMissing(string! noun) -> Ihc.Vis.Session.EditRefusedException!
-Ihc.Vis.ProjectAppService.ValidateStructured(Ihc.Vis.Projects.Project! project) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
-static Ihc.Vis.Validation.ProjectVerification.RunStructured(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
+Ihc.Vis.ProjectAppService.ValidateStructured(Ihc.Vis.Projects.Project! project) -> Ihc.Vis.Validation.StructuredValidationResult!
+static Ihc.Vis.Validation.ProjectVerification.RunStructured(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile) -> Ihc.Vis.Validation.StructuredValidationResult!
 Ihc.Vis.Problems.IProblemCarrier.Aggregate.get -> Ihc.Vis.Problems.ProblemAggregate?
 Ihc.Vis.Validation.DuplicateIdGroup
 Ihc.Vis.Validation.DuplicateIdGroup.DuplicateIdGroup(Ihc.Vis.Model.ProjectElement! Primary, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Model.ProjectElement!> Related) -> void
@@ -877,10 +905,6 @@ Ihc.Vis.Validation.RuleRegistrationFault.ShapeContradictsDeclaration = 7 -> Ihc.
 *REMOVED*Ihc.Vis.DeleteImpact.DeleteImpact(bool Deletable, bool NeedsConfirm, Ihc.Vis.DeleteKind Kind, string? Reason = null) -> void
 *REMOVED*Ihc.Vis.DeleteImpact.Reason.init -> void
 *REMOVED*Ihc.Vis.ProjectCommands.WouldExceedModemLimit(Ihc.Vis.Projects.Project! project, string! productIdentifier) -> bool
-*REMOVED*Ihc.Vis.Session.EditOutcome.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes) -> void
-*REMOVED*Ihc.Vis.Session.EditOutcome.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes) -> void
-*REMOVED*Ihc.Vis.Session.EditOutcome<T>.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes, out T? Value) -> void
-*REMOVED*Ihc.Vis.Session.EditOutcome<T>.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes, T? Value) -> void
 *REMOVED*Ihc.Vis.Session.EditVerdict.Deconstruct(out bool Ok, out string? Reason) -> void
 *REMOVED*Ihc.Vis.Session.EditVerdict.EditVerdict(bool Ok, string? Reason) -> void
 *REMOVED*Ihc.Vis.Session.PreviewOutcome.Deconstruct(out Ihc.Vis.Session.PreviewStatus Status, out Ihc.Vis.Session.ProjectChangeSet? Changes, out string? Reason) -> void
@@ -1038,6 +1062,7 @@ Ihc.OperationStatus.Ok = 0 -> Ihc.OperationStatus
 Ihc.OperationStatus.Refused = 1 -> Ihc.OperationStatus
 Ihc.OperationTelemetry
 Ihc.OperationTelemetry.OperationTelemetry(Ihc.TelemetrySurface! surface, string! owner) -> void
+Ihc.OperationTelemetry.OperationTelemetry(Ihc.TelemetrySurface! surface, string! owner, System.Action<string!, System.Exception!>? onFault) -> void
 Ihc.OperationTelemetry.Run(string! operation, System.Action<Ihc.OperationScope!>! body, Ihc.MetricBinding? metrics = null) -> void
 Ihc.OperationTelemetry.Run<T>(string! operation, System.Func<Ihc.OperationScope!, T>! body, Ihc.MetricBinding? metrics = null, System.Func<T, Ihc.OperationOutcome>? classify = null) -> T
 Ihc.OperationTelemetry.RunAsync(string! operation, System.Func<Ihc.OperationScope!, System.Threading.Tasks.Task!>! body, Ihc.MetricBinding? metrics = null) -> System.Threading.Tasks.Task!
@@ -1066,6 +1091,41 @@ Ihc.TelemetrySurface.TelemetrySurface(System.Diagnostics.ActivitySource! activit
 Ihc.TelemetryConfiguration.PerRuleValidationTiming.get -> bool
 Ihc.TelemetryConfiguration.PerRuleValidationTiming.set -> void
 Ihc.Vis.Validation.WholeProjectValidator.WholeProjectValidator(Ihc.Vis.Validation.RuleSet! rules, bool perRuleTiming) -> void
+Ihc.Vis.Validation.WholeProjectValidator.Validate(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile) -> Ihc.Vis.Validation.StructuredValidationResult!
 static Ihc.Vis.Validation.ProjectVerification.Run(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile, Ihc.Vis.Validation.IWholeProjectValidator! validator) -> Ihc.Vis.Validation.ProjectValidationResult!
-static Ihc.Vis.Validation.ProjectVerification.RunStructured(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile, Ihc.Vis.Validation.IWholeProjectValidator! validator) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
+static Ihc.Vis.Validation.ProjectVerification.RunStructured(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile, Ihc.Vis.Validation.IWholeProjectValidator! validator) -> Ihc.Vis.Validation.StructuredValidationResult!
 Ihc.Vis.ProjectAppService.ProjectAppService(Ihc.IhcSettings! settings, Ihc.TelemetryConfiguration! telemetry) -> void
+Ihc.Vis.ProjectAppService.ProjectAppService(Ihc.IhcSettings! settings, System.Action<Ihc.Vis.Problems.InternalError!>? faultPort) -> void
+
+Ihc.Vis.Validation.CatalogViolation.InternalFaultMisdeclared = 7 -> Ihc.Vis.Validation.CatalogViolation
+Ihc.Vis.Validation.RuleKind.InternalFault = 4 -> Ihc.Vis.Validation.RuleKind
+Ihc.Vis.Validation.StructuredValidationResult
+Ihc.Vis.Validation.StructuredValidationResult.<Clone>$() -> Ihc.Vis.Validation.StructuredValidationResult!
+Ihc.Vis.Validation.StructuredValidationResult.Deconstruct(out Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> Findings, out Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!> Faults) -> void
+Ihc.Vis.Validation.StructuredValidationResult.Equals(Ihc.Vis.Validation.StructuredValidationResult? other) -> bool
+Ihc.Vis.Problems.ProblemArgumentType.ProblemIdentity = 7 -> Ihc.Vis.Problems.ProblemArgumentType
+Ihc.Vis.Validation.StructuredValidationResult.Faults.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!>
+Ihc.Vis.Validation.StructuredValidationResult.Faults.init -> void
+Ihc.Vis.Validation.StructuredValidationResult.Findings.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
+Ihc.Vis.Validation.StructuredValidationResult.Findings.init -> void
+Ihc.Vis.Validation.StructuredValidationResult.StructuredValidationResult(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> Findings, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!> Faults) -> void
+static Ihc.Vis.Validation.StructuredValidationResult.operator ==(Ihc.Vis.Validation.StructuredValidationResult? left, Ihc.Vis.Validation.StructuredValidationResult? right) -> bool
+static Ihc.Vis.Validation.StructuredValidationResult.operator !=(Ihc.Vis.Validation.StructuredValidationResult? left, Ihc.Vis.Validation.StructuredValidationResult? right) -> bool
+override Ihc.Vis.Validation.StructuredValidationResult.ToString() -> string!
+override Ihc.Vis.Validation.StructuredValidationResult.GetHashCode() -> int
+override Ihc.Vis.Validation.StructuredValidationResult.Equals(object? obj) -> bool
+static Ihc.Vis.Validation.StructuredValidationResult.Empty.get -> Ihc.Vis.Validation.StructuredValidationResult!
+const Ihc.Vis.Session.EditRefusals.EditFailedMessage = "Redigeringen kunne ikke gennemføres på grund af en intern fejl. Ændringen blev ikke gemt." -> string!
+Ihc.Vis.Session.EditOutcome.Fault.get -> Ihc.Vis.Problems.InternalError?
+Ihc.Vis.Session.EditOutcome.Fault.init -> void
+*REMOVED*Ihc.Vis.Session.EditOutcome.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes) -> void
+*REMOVED*Ihc.Vis.Session.EditOutcome.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes) -> void
+*REMOVED*Ihc.Vis.Session.EditOutcome<T>.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes, out T? Value) -> void
+*REMOVED*Ihc.Vis.Session.EditOutcome<T>.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes, T? Value) -> void
+const Ihc.Vis.Session.EditRefusals.PreviewFailedMessage = "Handlingen kunne ikke vurderes på grund af en intern fejl. Projektet er uændret." -> string!
+Ihc.Vis.Session.PreviewOutcome.Fault.get -> Ihc.Vis.Problems.InternalError?
+Ihc.Vis.Session.PreviewOutcome.Fault.init -> void
+Ihc.Vis.Session.PreviewOutcome.PreviewOutcome(Ihc.Vis.Session.PreviewStatus Status, Ihc.Vis.Session.ProjectChangeSet? Changes, string? Reason, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode), Ihc.Vis.Problems.InternalError? Fault = null) -> void
+static Ihc.Vis.Session.PreviewOutcome.Faulted(string? reason, Ihc.Vis.Problems.InternalError? fault = null) -> Ihc.Vis.Session.PreviewOutcome!
+*REMOVED*static Ihc.Vis.Session.PreviewOutcome.Faulted(string? reason) -> Ihc.Vis.Session.PreviewOutcome!
+Ihc.App.AppServiceBase.AppServiceBase(System.Action<Ihc.Vis.Problems.InternalError!>? faultPort) -> void

@@ -69,7 +69,7 @@ namespace Ihc.Vis.Tests
             await Task.WhenAll(Enumerable.Range(0, Threads).Select(_ => Task.Run(() =>
                 results.Add(string.Join(
                     ",",
-                    validator.Validate(project, ValidationProfile.ProjectOnly)
+                    validator.Validate(project, ValidationProfile.ProjectOnly).Findings
                         .Select(f => $"{f.Code.Value}@{f.Primary?.Locator}"))))));
 
             Assert.Multiple(() =>
@@ -91,17 +91,24 @@ namespace Ihc.Vis.Tests
             (Project project, WholeProjectValidator validator) = Fixture(includeBrokenRule: true);
             ConcurrentBag<string> results = [];
 
+            // BOTH channels, joined into one string per thread, so a thread that got the findings right and the
+            // faults wrong is still a distinct answer rather than an equal one.
             await Task.WhenAll(Enumerable.Range(0, Threads).Select(_ => Task.Run(() =>
-                results.Add(string.Join(",",
-                    validator.Validate(project, ValidationProfile.ProjectOnly).Select(f => f.Code.Value))))));
+            {
+                StructuredValidationResult run = validator.Validate(project, ValidationProfile.ProjectOnly);
+                results.Add(string.Join(",", run.Findings.Select(f => f.Code.Value))
+                    + "|" + string.Join(",", run.Faults.Select(f => f.Code.Value)));
+            })));
 
             Assert.Multiple(() =>
             {
                 Assert.That(results.Distinct(), Has.Exactly(1).Items, "every thread saw the same run");
-                Assert.That(results.First().Split(',').Count(c => c == "addr-unassigned"), Is.EqualTo(2),
-                    "the healthy rule reported both of its sites, on every thread");
-                Assert.That(results.First(), Does.Contain("internal.unexpected"),
-                    "and the broken rule contributed exactly its own failure");
+                Assert.That(results.First().Split('|')[0].Split(',').Count(c => c == "addr-unassigned"),
+                    Is.EqualTo(2), "the healthy rule reported both of its sites, on every thread");
+                Assert.That(results.First().Split('|')[0], Does.Not.Contain("internal."),
+                    "and the crash contributed no FINDING — it says nothing about the project");
+                Assert.That(results.First().Split('|')[1], Is.EqualTo("internal.rule-failed"),
+                    "the broken rule contributed exactly its own fault, once, on every thread");
             });
         }
 

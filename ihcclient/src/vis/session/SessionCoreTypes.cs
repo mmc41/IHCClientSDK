@@ -86,6 +86,23 @@ namespace Ihc.Vis.Session
         /// condition and must read as one sentence wherever it is answered.
         /// </summary>
         public const string StaleBaseVersionRefusal = "Projektet er ændret, siden denne redigering blev forberedt.";
+
+        /// <summary>
+        /// The sentence an edit that FAULTED reports — not a refusal, and the one entry here that is not one.
+        /// It lives beside them because it lives for the same reason: this layer may not read the catalogue, so
+        /// the site carries its own copy of the Danish, and a drift test keeps that copy equal to the catalogue's
+        /// template.
+        /// </summary>
+        public const string EditFailedMessage =
+            "Redigeringen kunne ikke gennemføres på grund af en intern fejl. Ændringen blev ikke gemt.";
+
+        /// <summary>
+        /// The sentence a PREVIEW that faulted reports. Deliberately not <see cref="EditFailedMessage"/>: a
+        /// preview commits nothing, so "the change was not saved" would describe a change that was never going
+        /// to be made. Same reason for the copy living here as for its sibling above.
+        /// </summary>
+        public const string PreviewFailedMessage =
+            "Handlingen kunne ikke vurderes på grund af en intern fejl. Projektet er uændret.";
     }
 
     /// <summary>The undo-history retention policy (proposal §3.3/D1): a <see cref="Cap"/> of null means unbounded
@@ -113,16 +130,23 @@ namespace Ihc.Vis.Session
     /// a code are exactly the refusing ones and a reviewer can see that in the diff.
     /// </para>
     /// </summary>
+    /// <remarks>
+    /// <c>Fault</c> carries the captured engine fault when the status is <see cref="EditStatus.Failed"/>, and is
+    /// null otherwise. It holds the Danish sentence a host may show and the captured exception TEXT: a bare code
+    /// would leave the host holding an id it is forbidden to resolve against the catalogue, and by the time this
+    /// record reaches a caller the exception itself is long gone. <c>Reason</c> still carries the engine's
+    /// English message for the log, unchanged.
+    /// </remarks>
     public record EditOutcome(
         EditStatus Status, string Label, string? Reason, ProjectChangeSet? Changes,
-        Problems.ProblemCode Code = default);
+        Problems.ProblemCode Code = default, Problems.InternalError? Fault = null);
 
     /// <summary>An <see cref="EditOutcome"/> that also carries a produced value (e.g. a new element's id). Derives
     /// from <see cref="EditOutcome"/> so one GUI outcome→status/dialog mapping serves both shapes.</summary>
     public sealed record EditOutcome<T>(
         EditStatus Status, string Label, string? Reason, ProjectChangeSet? Changes, T? Value,
-        Problems.ProblemCode Code = default)
-        : EditOutcome(Status, Label, Reason, Changes, Code);
+        Problems.ProblemCode Code = default, Problems.InternalError? Fault = null)
+        : EditOutcome(Status, Label, Reason, Changes, Code, Fault);
 
     /// <summary>The terminal state of a <see cref="PreviewOutcome"/> — the non-committing mirror of
     /// <see cref="EditStatus"/> (M8/D05): previewing a command against the current project shows it either WOULD
@@ -148,8 +172,13 @@ namespace Ihc.Vis.Session
     /// when <see cref="PreviewStatus.WouldChange"/>), and a <see cref="Reason"/> for a refuse/fault. Distinguishing a
     /// legitimate refuse/no-change from an unexpected engine fault lets a caller surface a genuine bug instead of
     /// swallowing it as "nothing to preview" (the bare-catch it replaces conflated all three as null).</summary>
+    /// <remarks>
+    /// <c>Fault</c> carries the captured engine fault when the status is <see cref="PreviewStatus.Faulted"/>,
+    /// and is null otherwise — the same carrier, for the same reason, as <see cref="EditOutcome"/>'s.
+    /// </remarks>
     public sealed record PreviewOutcome(
-        PreviewStatus Status, ProjectChangeSet? Changes, string? Reason, Problems.ProblemCode Code = default)
+        PreviewStatus Status, ProjectChangeSet? Changes, string? Reason, Problems.ProblemCode Code = default,
+        Problems.InternalError? Fault = null)
     {
         /// <summary>The command would commit <paramref name="changes"/>.</summary>
         public static PreviewOutcome WouldChange(ProjectChangeSet changes) => new(PreviewStatus.WouldChange, changes, null);
@@ -167,8 +196,18 @@ namespace Ihc.Vis.Session
         /// <param name="verdict">The verdict that refused it.</param>
         public static PreviewOutcome Refused(EditVerdict verdict) => Refused(verdict.Reason, verdict.Code);
 
-        /// <summary>The command faulted with an unexpected engine error.</summary>
-        public static PreviewOutcome Faulted(string? reason) => new(PreviewStatus.Faulted, null, reason);
+        /// <summary>
+        /// The command faulted with an unexpected engine error.
+        /// <para>
+        /// The fault is THREADED THROUGH rather than captured here: this is a factory, not a catch site, and the
+        /// exception only exists at the catch. Capturing inside would mean either passing the exception in — the
+        /// thing the carrier exists to avoid handing around — or capturing a stack that belongs to nothing.
+        /// </para>
+        /// </summary>
+        /// <param name="reason">The engine's English message, for the log.</param>
+        /// <param name="fault">The fault captured at the catch, or null where a caller has none.</param>
+        public static PreviewOutcome Faulted(string? reason, Problems.InternalError? fault = null) =>
+            new(PreviewStatus.Faulted, null, reason, default, fault);
     }
 
     /// <summary>The read-only context a command's legality check runs against: the pre-edit project and its

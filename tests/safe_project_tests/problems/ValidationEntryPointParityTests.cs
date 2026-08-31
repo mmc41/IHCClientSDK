@@ -108,7 +108,7 @@ namespace Ihc.Vis.Tests
             ValidationProfile profile = ValidationProfile.Categorized;
 
             ProjectValidationFinding[] flat = [.. ProjectVerification.Run(project, profile).Findings];
-            ValidationFinding[] structured = [.. ProjectVerification.RunStructured(project, profile)];
+            ValidationFinding[] structured = [.. ProjectVerification.RunStructured(project, profile).Findings];
 
             Assert.Multiple(() =>
             {

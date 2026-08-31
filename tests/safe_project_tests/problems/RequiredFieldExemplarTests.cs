@@ -204,7 +204,7 @@ namespace Ihc.Vis.Tests
                 [new RuleBuilder(entry).Constrain(RequiredFieldConstraint.For(Name)).Build()]);
 
             ValidationFinding[] findings = [.. new WholeProjectValidator(rules)
-                .Validate(project, ValidationProfile.Categorized)];
+                .Validate(project, ValidationProfile.Categorized).Findings];
 
             Assert.Multiple(() =>
             {

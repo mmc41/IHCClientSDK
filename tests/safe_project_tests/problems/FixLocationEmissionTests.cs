@@ -40,7 +40,7 @@ namespace Ihc.Vis.Tests
             List<ValidationFinding> attrFindings = [];
             foreach ((string _, Func<Project> build) in ValidationCharacterizationTests.Corpus)
             {
-                attrFindings.AddRange(App.ValidateStructured(build())
+                attrFindings.AddRange(App.ValidateStructured(build()).Findings
                     .Where(f => f.Problem.Code.Value.StartsWith("attr-", StringComparison.Ordinal)));
             }
 
@@ -74,7 +74,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Corpus();
 
-            EquatableArray<ValidationFinding> findings = App.ValidateStructured(project);
+            EquatableArray<ValidationFinding> findings = App.ValidateStructured(project).Findings;
             var opted = findings.Where(f => f.Fix is not null)
                 .Select(f => f.Problem.Code.Value).Distinct().ToList();
 
@@ -95,7 +95,7 @@ namespace Ihc.Vis.Tests
         public async Task AFindingCarriesAFixLocationThroughToItsReader()
         {
             Project project = await Corpus();
-            ValidationFinding first = App.ValidateStructured(project).First();
+            ValidationFinding first = App.ValidateStructured(project).Findings.First();
             ElementId elsewhere = project.Root.Descendants().First(e => e.Id is not null).Id!.Value;
 
             ValidationFinding located = first with { Fix = new FixLocation(elsewhere, "inivalue") };

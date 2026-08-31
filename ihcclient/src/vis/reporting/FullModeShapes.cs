@@ -104,6 +104,7 @@ namespace Ihc.Vis.Reporting
             int arrival = 0;
             foreach (ValidationFinding finding in ProjectRules.Validator
                 .Validate(project, ValidationProfile.Categorized)
+                .Findings
                 .Where(f => f.Category == ValidationCategory.Documentation))
             {
                 if (Subject(project, index, finding) is { } subject)

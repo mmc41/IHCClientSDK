@@ -1,7 +1,9 @@
 using System;
 using System.IO;
-using System.Text.Json;
 using Ihc.Vis.Projects;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using ihc_openvisual.Configuration;
 
 namespace ihc_openvisual.Services;
 
@@ -14,21 +16,20 @@ namespace ihc_openvisual.Services;
 public sealed class InstallerIdentityStore
 {
     private readonly string _filePath;
+    private readonly ILogger _logger;
 
-    public InstallerIdentityStore(string filePath, string? userName = null)
+    public InstallerIdentityStore(string filePath, string? userName = null, ILoggerFactory? loggerFactory = null)
     {
         _filePath = filePath;
+        _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<InstallerIdentityStore>();
         Programmer = string.IsNullOrWhiteSpace(userName) ? Environment.UserName : userName;
         Identity = Load();
     }
 
-    public static InstallerIdentityStore CreateDefault() => new(DefaultFilePath());
+    public static InstallerIdentityStore CreateDefault(ILoggerFactory? loggerFactory = null) =>
+        new(DefaultFilePath(), loggerFactory: loggerFactory);
 
-    public static string DefaultFilePath() =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "IHC OpenVisual",
-            "installer.json");
+    public static string DefaultFilePath() => Constants.AppDataPath("installer.json");
 
     public event EventHandler? Changed;
 
@@ -60,36 +61,12 @@ public sealed class InstallerIdentityStore
     // An unset field must not reach the file at all, so blanks collapse back to "not written".
     private static string? Blank(string? value) => string.IsNullOrEmpty(value) ? null : value;
 
-    private InstallerIdentity Load()
-    {
-        if (!File.Exists(_filePath))
-            return new InstallerIdentity();
-        try
-        {
-            return JsonSerializer.Deserialize<InstallerIdentity>(File.ReadAllText(_filePath)) ?? new InstallerIdentity();
-        }
-        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
-        {
-            return new InstallerIdentity();   // a corrupt or unreadable setting must not stop the app starting
-        }
-    }
+    // A corrupt or unreadable setting must not stop the app starting; an empty identity is the fallback.
+    private InstallerIdentity Load() =>
+        JsonPreferenceStore.TryLoad<InstallerIdentity>(_filePath, _logger) ?? new InstallerIdentity();
 
-    private void Save()
-    {
-        try
-        {
-            string? dir = Path.GetDirectoryName(_filePath);
-            if (!string.IsNullOrEmpty(dir))
-                Directory.CreateDirectory(dir);
-            File.WriteAllText(_filePath, JsonSerializer.Serialize(Identity, JsonOptions));
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // Losing a preference is not worth failing the edit that triggered the write.
-        }
-    }
+    private void Save() => JsonPreferenceStore.TrySave(_filePath, Identity, _logger);
 
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 }
 
 /// <summary>The installer contact fields IHC Visual keeps as an application setting (<c>installer_info</c>).</summary>

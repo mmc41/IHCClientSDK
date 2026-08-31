@@ -51,7 +51,7 @@ public class AutomationCoverageTests : AvaloniaTestBase
     private static readonly Type[] DialogWindows =
     {
         typeof(AboutWindow), typeof(ConstantEditorWindow),
-        typeof(EnumDefinitionWindow), typeof(EnumTypeManagerWindow),
+        typeof(EnumDefinitionWindow), typeof(EnumTypeManagerWindow), typeof(InternalErrorWindow),
         typeof(ModuleMapWindow), typeof(NamePromptWindow), typeof(PinPropertiesWindow),
         typeof(ProductDialogWindow), typeof(ProjectInfoWindow), typeof(PropertiesWindow),
         typeof(ReportPickerWindow), typeof(SceneContainerWindow), typeof(SceneValueWindow),

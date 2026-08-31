@@ -359,6 +359,16 @@
     <xs:attribute name="arg_modem" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_name" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_noun" type="argumentValue" use="optional"/>
+    <!-- arg_operation and arg_rule (below) are the two slots of the internal.* family, and they are the
+         first attributes in this vocabulary that NO WRITER CAN EVER EMIT: internal errors are excluded
+         from the findings export by design, because a findings file is a statement about the project and
+         a fault in the software is not part of the project. They are published anyway, and deliberately.
+         The parity gate derives this vocabulary from the WHOLE catalogue, so the alternative was to narrow
+         that derivation to the exportable subset — a permanent exception carved into the one check that
+         keeps schema and catalogue in step, in exchange for omitting two lines. That was rejected as the
+         more expensive option. Do not delete these as dead: they are unreachable by construction, not by
+         accident, and the next reader who removes them will fail the parity gate rather than tidy it. -->
+    <xs:attribute name="arg_operation" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_other" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_output" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_parent" type="argumentValue" use="optional"/>
@@ -368,6 +378,9 @@
     <xs:attribute name="arg_product" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_program" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_pulses" type="argumentValue" use="optional"/>
+    <!-- The internal.rule-failed slot; see the note on arg_operation above for why it is published
+         although nothing can ever write it. -->
+    <xs:attribute name="arg_rule" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_scene" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_seconds" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_section" type="argumentValue" use="optional"/>

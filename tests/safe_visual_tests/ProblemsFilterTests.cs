@@ -69,14 +69,20 @@ public class ProblemsFilterTests
             Assert.That(rig.Panel.Tiers.Select(t => t.Tier),
                 Is.EqualTo(new[]
                 {
+                    ProblemsTier.Internal,
                     ProblemsTier.Fatal, ProblemsTier.Error, ProblemsTier.Warning, ProblemsTier.Info,
                 }).AsCollection,
-                "worst first, which is also the toggle row's order");
+                "worst first, which is also the toggle row's order — and Internal is worst, because the tool "
+                + "failing outranks anything the tool reports (D04)");
 
             Assert.That(
                 rig.Panel.Tiers.Select(t => (t.AutomationId, t.CountAutomationId, t.Label, t.Icon, t.Severity)),
                 Is.EqualTo(new[]
                 {
+                    // The one tier with a NULL severity: its rows are not findings, so no value here could be
+                    // true of them — and the null is what keeps them out of a findings export by construction.
+                    ("problems.filter.internal", "problems.count.internal", "Intern fejl",
+                        "/Assets/severity-internal.svg", (ValidationSeverity?)null),
                     ("problems.filter.fatal", "problems.count.fatal", "Fatal fejl",
                         "/Assets/severity-fatal.svg", ValidationSeverity.Error),
                     ("problems.filter.error", "problems.count.error", "Fejl",
@@ -319,7 +325,7 @@ public class ProblemsFilterTests
     public async Task AnInfoRowRendersItsDanishLabelAndItsOwnIcon()
     {
         using ProblemsRig rig = await MixedPanel();
-        ProblemRowViewModel info = rig.Panel.Rows.Single(r => r.Code == "i1");
+        ProblemRowViewModel info = rig.Panel.Rows.OfType<ProblemRowViewModel>().Single(r => r.Code == "i1");
 
         Assert.Multiple(() =>
         {
@@ -332,7 +338,7 @@ public class ProblemsFilterTests
     // ── The realized chrome ─────────────────────────────────────────────────────────────────────────────────
 
     [AvaloniaTest]
-    public async Task TheFourTogglesAreAddressableCheckedByDefaultAndNamedInDanish()
+    public async Task TheTierTogglesAreAddressableCheckedByDefaultAndNamedInDanish()
     {
         using ShellHarness harness = ShellHarness.Create();
         MainWindowViewModel vm = harness.CreateViewModel();
@@ -354,11 +360,11 @@ public class ProblemsFilterTests
                 Is.EqualTo(new[]
                 {
                     "problems.filter.error", "problems.filter.fatal", "problems.filter.info",
-                    "problems.filter.warning",
+                    "problems.filter.internal", "problems.filter.warning",
                 }));
             Assert.That(toggles.Select(t => t.IsChecked), Has.All.EqualTo(true), "all on by default");
             Assert.That(toggles.Select(AutomationProperties.GetName),
-                Is.EquivalentTo(new[] { "Fatal fejl", "Fejl", "Advarsel", "Information" }),
+                Is.EquivalentTo(new[] { "Intern fejl", "Fatal fejl", "Fejl", "Advarsel", "Information" }),
                 "named by their Danish tier, which is also what the icon column says");
         });
 

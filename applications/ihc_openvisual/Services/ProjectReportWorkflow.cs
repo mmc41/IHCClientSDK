@@ -60,15 +60,19 @@ internal sealed class ProjectReportWorkflow(
             // failure of it — not a silent no-op that leaves the installer waiting for a window (UX review CORE-03).
             if (!await dialogs.OpenExternalUrlAsync(path))
             {
-                await dialogs.ShowProblemAsync(ReportFailedTitle, HostProblems.ReportNotOpenable(path));
+                // This arm showed the installer a problem and left the scope ending OK, so the one
+                // outcome the boolean return exists to report was invisible to every telemetry query. Coded
+                // rather than exception-shaped, because nothing threw: the OS simply opened nothing.
+                await FailureReport.RefusedAsync(
+                    scope, logger, dialogs, ReportFailedTitle, HostProblems.ReportNotOpenable(path),
+                    "The OS opened no viewer for the {Kind} {Mode} report at {Path}", kind, mode, path);
             }
         }
         catch (Exception ex)
         {
-            scope.SetOutcome(OperationOutcome.Failed(ex));
-            logger.LogError(ex, "Failed to generate the {Kind} {Mode} report for browser view", kind, mode);
-            await RaisedProblemDisplay.ShowAsync(
-                dialogs, ReportFailedTitle, HostProblems.ReportViewFailed(ex), ex);
+            await FailureReport.FailedAsync(
+                scope, logger, dialogs, ReportFailedTitle, HostProblems.ReportViewFailed(ex), ex,
+                "Failed to generate the {Kind} {Mode} report for browser view", kind, mode);
         }
     }
 
@@ -96,10 +100,9 @@ internal sealed class ProjectReportWorkflow(
         }
         catch (Exception ex)
         {
-            scope.SetOutcome(OperationOutcome.Failed(ex));
-            logger.LogError(ex, "Failed to save the {Kind} {Mode} report", kind, mode);
-            await RaisedProblemDisplay.ShowAsync(
-                dialogs, ReportFailedTitle, HostProblems.ReportSaveFailed(ex), ex);
+            await FailureReport.FailedAsync(
+                scope, logger, dialogs, ReportFailedTitle, HostProblems.ReportSaveFailed(ex), ex,
+                "Failed to save the {Kind} {Mode} report", kind, mode);
         }
     }
 

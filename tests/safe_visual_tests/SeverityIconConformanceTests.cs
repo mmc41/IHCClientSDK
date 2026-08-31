@@ -36,7 +36,13 @@ public class SeverityIconConformanceTests
     /// refusal disposition's glyph before that, with no row to sit on.
     /// </summary>
     private static readonly string[] TierAssets =
-        ["severity-fatal.svg", "severity-error.svg", "severity-warning.svg", "severity-info.svg"];
+        [
+            // IN TIER ORDER, compared as an ordered sequence against the tier enum. Internal comes FIRST: the
+            // tool failing outranks anything it reports, because a crashed rule means rows are genuinely
+            // missing from a list the user will otherwise read as complete.
+            "severity-internal.svg",
+            "severity-fatal.svg", "severity-error.svg", "severity-warning.svg", "severity-info.svg",
+        ];
 
     /// <summary>
     /// The signal inks, and the ONLY two colour literals a severity glyph may pin.
@@ -70,6 +76,9 @@ public class SeverityIconConformanceTests
         {
             ["stop-sign"] = SeverityRed, ["cross-a"] = SeverityRed, ["cross-b"] = SeverityRed,
         },
+        // The bolt is the fault; the frame stays theme ink. Colouring whole is severity-fatal's exception
+        // alone, and this glyph IS a row among neighbouring tiers — the case that exception does not cover.
+        ["severity-internal.svg"] = new() { ["bolt"] = SeverityRed },
     };
 
     /// <summary>The checklist's ceiling for one glyph. Roomy for these; a breach means an icon grew a story.</summary>
@@ -85,6 +94,14 @@ public class SeverityIconConformanceTests
         Assert.That(File.Exists(path), Is.True, $"the asset must exist at {path}");
         return File.ReadAllText(path);
     }
+
+    /// <summary>
+    /// The glyph's own size, with line endings normalized — NOT the size the file happens to have on disk. A
+    /// CRLF clone adds a byte per line, so a raw file-length ceiling is a slightly different ceiling on Windows
+    /// than on Linux, and the suite runs on both.
+    /// </summary>
+    private static int GlyphByteCount(string file) =>
+        System.Text.Encoding.UTF8.GetByteCount(Read(file).ReplaceLineEndings("\n"));
 
     [Test]
     public void EveryTierGlyphSitsOnTheStandardCanvasWithTheStandardRootAttributes()
@@ -255,7 +272,7 @@ public class SeverityIconConformanceTests
         {
             foreach (string file in TierAssets)
             {
-                Assert.That(new FileInfo(AssetPath(file)).Length, Is.LessThanOrEqualTo(MaxBytes),
+                Assert.That(GlyphByteCount(file), Is.LessThanOrEqualTo(MaxBytes),
                     $"{file} is over {MaxBytes} bytes — at that size an icon has stopped being a glyph");
             }
         });
@@ -393,12 +410,47 @@ public class SeverityIconConformanceTests
     // ── The documentation ───────────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
+    /// No two tier glyphs are the same drawing.
+    ///
+    /// <para>The wiring test compares PATHS, so distinct paths pointing at duplicate files satisfy it while the
+    /// icon column shows the same picture twice. Internal sorts directly above Fatal, so those two are precisely
+    /// the pair a reader sees side by side — which is why sameness has to be asserted on the drawing.</para>
+    ///
+    /// <para>Compared on the drawable elements rather than on the file bytes: a comment, a stroke width or an
+    /// id can differ while the drawing is identical, and it is the drawing a user tells apart.</para>
+    /// </summary>
+    [Test]
+    public void NoTwoTierGlyphsAreTheSameDrawing()
+    {
+        Dictionary<string, string> drawings = TierAssets.ToDictionary(file => file, Shapes);
+
+        var duplicates = drawings
+            .GroupBy(pair => pair.Value, StringComparer.Ordinal)
+            .Where(group => group.Count() > 1)
+            .Select(group => string.Join(" == ", group.Select(pair => pair.Key)))
+            .ToList();
+
+        Assert.That(duplicates, Is.Empty,
+            "two tiers drawn identically read as one tier to everyone who does not hover the row: "
+            + string.Join(" | ", duplicates));
+    }
+
+    /// <summary>The glyph's drawable content, as the geometry and ink of each shape in order.</summary>
+    private static string Shapes(string file) => string.Join("|", XDocument.Parse(Read(file)).Root!.Elements()
+        .Select(shape => shape.Name.LocalName + ":" + string.Join(
+            ",",
+            shape.Attributes()
+                .Where(a => a.Name.LocalName is not "id")
+                .OrderBy(a => a.Name.LocalName, StringComparer.Ordinal)
+                .Select(a => a.Name.LocalName + "=" + a.Value))));
+
+    /// <summary>
     /// The icon-mapping document is a test SUBJECT here, copied beside the binaries by the csproj, exactly as the
     /// existing icon-registration tests read it. An asset the map does not mention is an asset the next author
     /// re-invents.
     /// </summary>
     [Test]
-    public void TheIconMapDocumentsAllFourSeverityAssets()
+    public void TheIconMapDocumentsEverySeverityAsset()
     {
         string map = File.ReadAllText(
             Path.Combine(TestContext.CurrentContext.TestDirectory, "appdocs", "icon_codes.md"));
@@ -411,7 +463,7 @@ public class SeverityIconConformanceTests
             }
 
             Assert.That(map, Does.Contain("Problemer"),
-                "and the map says where the four tier glyphs are used");
+                "and the map says where the tier glyphs are used");
         });
     }
 }

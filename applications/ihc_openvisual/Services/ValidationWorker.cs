@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Validation;
 
@@ -21,10 +22,21 @@ namespace ihc_openvisual.Services;
 public readonly record struct ValidationRequest(Project Snapshot, int Version, int Generation);
 
 /// <summary>A completed run's result, carrying the keys it ran for so a binder can re-check them.</summary>
+/// <param name="Faults">
+/// What the run BROKE, beside what it found. A crashed rule is not a finding about the project — it is the tool
+/// failing to answer, and the list is incomplete by exactly the rules that did not run.
+/// <para>
+/// It travels on the outcome rather than out a side channel so it inherits step 3 unchanged: a superseded run's
+/// faults are discarded with its findings. That is deliberate. Half a discard would be worse than either whole
+/// one, and a rule that crashed will crash again on the run that superseded it, so nothing is lost that the next
+/// outcome does not carry.
+/// </para>
+/// </param>
 public sealed record ValidationOutcome(
     EquatableArray<ValidationFinding> Findings,
     int Version,
-    int Generation);
+    int Generation,
+    EquatableArray<InternalError> Faults);
 
 /// <summary>
 /// The background validation loop: ADR-001's five-step host contract plus single-flight coalescing.
@@ -54,7 +66,7 @@ public sealed class ValidationWorker : IDisposable
     /// <summary>The quiet period a burst of changes must clear before a run starts.</summary>
     public static readonly TimeSpan DefaultDebounce = TimeSpan.FromMilliseconds(300);
 
-    private readonly Func<Project, EquatableArray<ValidationFinding>> _validate;
+    private readonly Func<Project, StructuredValidationResult> _validate;
     private readonly Action<ValidationOutcome> _onCompleted;
     private readonly Action<Action> _post;
     private readonly Action<Exception>? _onFaulted;
@@ -108,7 +120,7 @@ public sealed class ValidationWorker : IDisposable
     /// </param>
     /// <param name="debounce">Overrides <see cref="DefaultDebounce"/>.</param>
     public ValidationWorker(
-        Func<Project, EquatableArray<ValidationFinding>> validate,
+        Func<Project, StructuredValidationResult> validate,
         Action<ValidationOutcome> onCompleted,
         Action<Action> post,
         TimeProvider time,
@@ -231,9 +243,12 @@ public sealed class ValidationWorker : IDisposable
             token = _generation.Token;
         }
 
-        // Fire-and-forget, and observed: RunAsync catches everything, so no fault reaches
-        // TaskScheduler.UnobservedTaskException and no run can wedge the loop.
-        _ = RunAsync(request, token, link);
+        // Fire-and-forget, and observed TWICE over: RunAsync catches everything, so no fault reaches
+        // TaskScheduler.UnobservedTaskException and no run can wedge the loop — and the supervisor observes the
+        // task itself, so a fault that escaped that catch still reaches the sink instead of the finalizer.
+        TaskSupervisor.Fire(
+            RunAsync(request, token, link),
+            $"{nameof(ValidationWorker)}.{nameof(OnQuietPeriodElapsed)}");
     }
 
     private async Task RunAsync(ValidationRequest request, CancellationToken token,
@@ -247,7 +262,7 @@ public sealed class ValidationWorker : IDisposable
         try
         {
             // Step 2 and the first half of step 5: an abandoned run never starts.
-            EquatableArray<ValidationFinding> findings =
+            StructuredValidationResult result =
                 await Task.Run(() => _validate(request.Snapshot), token);
 
             // Step 5 again, and step 3. Both are re-checked HERE rather than trusted from before the run: the
@@ -255,7 +270,8 @@ public sealed class ValidationWorker : IDisposable
             if (!token.IsCancellationRequested && IsStillCurrent(request))
             {
                 RecordOutcome(scope, ihc_openvisual.Configuration.AppTelemetryRegistry.Values.ValidationBound);
-                _post(() => _onCompleted(new ValidationOutcome(findings, request.Version, request.Generation)));
+                _post(() => _onCompleted(new ValidationOutcome(
+                    result.Findings, request.Version, request.Generation, result.Faults)));
             }
             else
             {
@@ -335,7 +351,9 @@ public sealed class ValidationWorker : IDisposable
             token = _generation.Token;
         }
 
-        _ = RunAsync(follow, token, link);
+        TaskSupervisor.Fire(
+            RunAsync(follow, token, link),
+            $"{nameof(ValidationWorker)}.{nameof(StartFollowUpOrGoIdle)}");
     }
 
     /// <summary>Cancels everything belonging to the outgoing document. Called under <see cref="_gate"/>.</summary>

@@ -41,12 +41,12 @@ namespace Ihc.Vis.Tests
                 ]));
 
         private static ValidationFinding DuplicateToken(Project project) =>
-            App.ValidateStructured(project).Single(f => f.Code.Value == "id-duplicate-token");
+            App.ValidateStructured(project).Findings.Single(f => f.Code.Value == "id-duplicate-token");
 
         [Test]
         public void ThreeElementsOnOneIdProduceOneFindingWithTwoRelatedSites()
         {
-            EquatableArray<ValidationFinding> findings = App.ValidateStructured(SharedToken());
+            EquatableArray<ValidationFinding> findings = App.ValidateStructured(SharedToken()).Findings;
 
             ValidationFinding[] duplicates = [.. findings.Where(f => f.Code.Value == "id-duplicate-token")];
 
@@ -107,7 +107,7 @@ namespace Ihc.Vis.Tests
                 [Node("groups", null, [], [Node("group", "_0x2131", []), Node("group", "_0x2132", [])])]));
 
             ValidationFinding[] counters =
-                [.. App.ValidateStructured(project).Where(f => f.Code.Value == "id-duplicate-counter")];
+                [.. App.ValidateStructured(project).Findings.Where(f => f.Code.Value == "id-duplicate-counter")];
 
             Assert.Multiple(() =>
             {
@@ -160,7 +160,7 @@ namespace Ihc.Vis.Tests
                 [Node("groups", null, [], [Node("group", "_0xzz", [])])]));
 
             ValidationFinding finding =
-                App.ValidateStructured(project).First(f => f.Code.Value == "id-wellformed");
+                App.ValidateStructured(project).Findings.First(f => f.Code.Value == "id-wellformed");
 
             Assert.Multiple(() =>
             {
@@ -179,7 +179,7 @@ namespace Ihc.Vis.Tests
                 [Node("groups", null, [], [Node("group", "_0x2131", []), Node("group", "_0x2231", [])])]));
 
             Assert.That(
-                App.ValidateStructured(project).Where(f => f.Code.Value.StartsWith("id-duplicate", StringComparison.Ordinal)),
+                App.ValidateStructured(project).Findings.Where(f => f.Code.Value.StartsWith("id-duplicate", StringComparison.Ordinal)),
                 Is.Empty);
         }
     }

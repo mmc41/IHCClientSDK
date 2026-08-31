@@ -150,6 +150,69 @@ namespace Ihc.Vis.Tests
             AssertRefused(capture.Span("ProjectDocumentSession.Apply"), outcome);
         }
 
+        /// <summary>
+        /// The FAILED exit, which had no test at all. It classified as a failure with no code, which the
+        /// telemetry core normalizes to its catch-all bucket — so every engine fault in every command arrived as
+        /// one indistinguishable kind, with nothing on the span to say which command or which fault. Naming the
+        /// code is what gives the span an <c>error.type</c> a support query can group by.
+        /// </summary>
+        [Test]
+        public void AFailedEdit_IsAnErrorAndCarriesItsCodeRatherThanTheCatchAllBucket()
+        {
+            using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName,
+                spanNames: new[] { "ProjectDocumentSession.Apply" },
+                instruments: new[] { "ihc.edit.apply", "ihc.edit.apply.duration" });
+            IProjectDocument session = OpenSession();
+
+            EditOutcome outcome = session.Apply(new ProjectDocumentSessionTests.ThrowingCommand(AsRefusal: false));
+
+            Activity span = capture.Span("ProjectDocumentSession.Apply");
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Failed));
+                Assert.That(outcome.Code.Value, Is.EqualTo("internal.edit-failed"),
+                    "the outcome names its code, which is what the span reads");
+                Assert.That(span.Status, Is.EqualTo(ActivityStatusCode.Error),
+                    "a failure IS an error — unlike a refusal, which is the rules working");
+                Assert.That(span.GetTagItem("ihc.edit.status"), Is.EqualTo("failed"));
+                Assert.That(span.GetTagItem("error.type"), Is.EqualTo("internal.edit-failed"),
+                    "and NOT the catch-all bucket an outcome with no code normalizes to");
+            });
+        }
+
+        /// <summary>
+        /// The captured fault travels ON the outcome, so a host can report the engine break without being
+        /// handed the exception and without resolving a bare code against a catalogue it may not read.
+        /// </summary>
+        [Test]
+        public void AFailedEdit_CarriesACapturedFaultWithBothLanguages()
+        {
+            IProjectDocument session = OpenSession();
+
+            EditOutcome outcome = session.Apply(new ProjectDocumentSessionTests.ThrowingCommand(AsRefusal: false));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Reason, Is.EqualTo("engine boom"),
+                    "Reason still carries the engine's English message for the log, unchanged");
+                Assert.That(outcome.Fault, Is.Not.Null);
+                Assert.That(outcome.Fault!.Message, Does.StartWith("Redigeringen kunne ikke gennemføres"),
+                    "the Danish a host may show travels on the fault, not on Reason");
+                Assert.That(outcome.Fault.Origin, Is.EqualTo(Ihc.Vis.Problems.InternalErrorOrigin.Sdk));
+                Assert.That(outcome.Fault.Detail, Does.Contain("engine boom").And.Contain("InvalidOperationException"),
+                    "the exception is captured as TEXT at the catch, where the stack still exists");
+            });
+        }
+
+        /// <summary>A committed edit carries no fault: the field is the failure's, not every outcome's.</summary>
+        [Test]
+        public void ACommittedEdit_CarriesNoFault()
+        {
+            IProjectDocument session = OpenSession();
+
+            Assert.That(session.Apply(new AddLocality("Ny lokalitet")).Fault, Is.Null);
+        }
+
         private static void AssertRefused(Activity span, EditOutcome outcome)
         {
             Assert.Multiple(() =>

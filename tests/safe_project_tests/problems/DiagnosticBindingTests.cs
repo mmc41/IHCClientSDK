@@ -27,7 +27,7 @@ namespace Ihc.Vis.Tests
             var findings = ImmutableArray.CreateBuilder<ValidationFinding>();
             foreach ((string _, Func<Project> build) in ValidationCharacterizationTests.Corpus)
             {
-                findings.AddRange(ProjectRules.Validator.Validate(build(), ValidationProfile.Categorized));
+                findings.AddRange(ProjectRules.Validator.Validate(build(), ValidationProfile.Categorized).Findings);
             }
 
             return findings.ToImmutable();
@@ -86,7 +86,7 @@ namespace Ihc.Vis.Tests
             ]);
 
             ValidationFinding finding = new WholeProjectValidator(rules)
-                .Validate(project, ValidationProfile.ProjectOnly).Single();
+                .Validate(project, ValidationProfile.ProjectOnly).Findings.Single();
 
             Assert.Multiple(() =>
             {

@@ -6,6 +6,7 @@ using Ihc.Envelope;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text.Encodings.Web;
+using Ihc.Vis.Problems;
 
 namespace Ihc.App
 {
@@ -26,10 +27,71 @@ namespace Ihc.App
         // instance's life, and minting one per operation would allocate on every traced call.
         private readonly OperationTelemetry telemetry;
 
+        // Annotated on purpose, and only here: the rest of this file predates nullable reference types and
+        // turning them on file-wide would change shipped signatures. The port is genuinely optional, so its
+        // nullability is part of what it means.
+#nullable enable
+        // Where an unexpected fault is REPORTED, as opposed to where it is thrown. Null when the host supplied
+        // none, which is every caller that has nowhere to put one.
+        private readonly Action<InternalError>? faultPort;
+
         protected AppServiceBase()
+            : this(null)
         {
-            telemetry = new OperationTelemetry(SdkTelemetryRegistry.Surface, this.GetType().Name);
         }
+
+        /// <summary>
+        /// Builds the service with a FAULT PORT: an unexpected fault escaping a traced operation is minted as
+        /// <c>internal.unexpected</c> and handed to <paramref name="faultPort"/> before the original exception
+        /// continues on its way.
+        /// <para>
+        /// A port rather than a return value, because these operations already have a contract — they throw —
+        /// and changing that would move every caller. Reporting is a second, additive channel: the exception is
+        /// rethrown UNCHANGED, the same instance with the same stack, so nothing downstream can tell the
+        /// difference except that the fault was also seen.
+        /// </para>
+        /// </summary>
+        /// <param name="faultPort">Where to report an unexpected fault, or null to report nowhere.</param>
+        protected AppServiceBase(Action<InternalError>? faultPort)
+        {
+            // Reported from the CORE's catch, which already runs for every traced operation, rather than from a
+            // second catch wrapped around each RunTraced overload. Four such catches were four places the rule
+            // had to be remembered, and they turned the two async wrappers into state machines for a rethrow the
+            // core had already done.
+            this.faultPort = faultPort;
+            telemetry = new OperationTelemetry(
+                SdkTelemetryRegistry.Surface, this.GetType().Name, ReportUnexpected);
+        }
+
+        /// <summary>
+        /// Mints <c>internal.unexpected</c> for <paramref name="failure"/> and offers it to the port.
+        /// <para>
+        /// The <c>{operation}</c> slot binds from the operation name each <c>RunTraced</c> overload already
+        /// takes, so no site passes a duplicated literal and no scope member had to be invented to carry it.
+        /// </para>
+        /// <para>
+        /// FAIL-OPEN, deliberately: a port that throws must not turn a reportable fault into a second, worse one
+        /// on top of the caller's original. There is nowhere else to put that — this layer has no logger by
+        /// design — so it is dropped, and the caller's own exception continues untouched.
+        /// </para>
+        /// </summary>
+        private void ReportUnexpected(string operationName, Exception failure)
+        {
+            if (faultPort is not { } port)
+            {
+                return;
+            }
+            try
+            {
+                Problem problem = Problem.Unexpected(operationName, failure.Message, failure);
+                port(InternalError.From(problem, InternalErrorOrigin.Sdk, failure.ToString()));
+            }
+            catch (Exception)
+            {
+                // See the fail-open note above.
+            }
+        }
+#nullable restore
 
         /// <summary>
         /// Starts a span named <c>&lt;service&gt;.&lt;operation&gt;</c>. Kept for its shipped signature; new
@@ -52,7 +114,7 @@ namespace Ihc.App
         // The optional binding is what "paired emission" means here: pass one and the operation's duration and
         // occurrence are recorded from the SAME operation as the span, carrying the same status and error type.
 
-        // The four shipped signatures keep exactly their shipped shape. An optional parameter would have been
+        // The shipped signatures keep exactly their shipped shape. An optional parameter would have been
         // source-compatible but is a DIFFERENT symbol, which retires the shipped entry - so the binding is a
         // separate overload rather than a default argument.
 
@@ -77,7 +139,8 @@ namespace Ihc.App
             RunTracedAsync(operationName, body, null);
 
         /// <summary>Runs an async <paramref name="body"/>, also recording <paramref name="metrics"/>.</summary>
-        protected Task<T> RunTracedAsync<T>(string operationName, Func<Activity, Task<T>> body, MetricBinding metrics) =>
+        protected Task<T> RunTracedAsync<T>(
+            string operationName, Func<Activity, Task<T>> body, MetricBinding metrics) =>
             telemetry.RunAsync(operationName, scope => body(scope.Activity), metrics);
 
         /// <summary>Runs an async void <paramref name="body"/> inside a named activity, tagging + rethrowing on error.</summary>

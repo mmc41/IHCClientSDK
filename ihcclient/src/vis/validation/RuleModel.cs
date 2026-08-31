@@ -33,6 +33,19 @@ namespace Ihc.Vis.Validation
         /// and never a finding, which is exactly <see cref="CatalogDisposition.Refusal"/> and nothing else.
         /// </summary>
         OperationOutcome,
+
+        /// <summary>
+        /// A fault in the TOOL: a rule that threw, an edit that broke, an operation that faulted. It is none of
+        /// the kinds above — it is not a rule, and it is not the outcome of an operation the user asked for.
+        /// <para>
+        /// The kind and the shape are a BICONDITIONAL, checked in both directions: an entry of this kind declares
+        /// no category, no faces, no refused operations and
+        /// <see cref="CatalogDisposition.NotApplicable"/>; and an entry declaring exactly that must be of this
+        /// kind. The forward direction stops a fault row from making claims about a project it could not examine;
+        /// the reverse stops the catalogue growing a second, unlabelled shape that means the same thing.
+        /// </para>
+        /// </summary>
+        InternalFault,
     }
 
     /// <summary>

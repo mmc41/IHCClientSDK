@@ -538,6 +538,15 @@ namespace Ihc.Vis.Tests
                 (EditRefusalCodes.ContainerRejectsNode, "Den beholder kan ikke rumme denne node."),
                 (EditRefusalCodes.NotALogRow, "Ikke en Logning-række."),
                 (EditRefusalCodes.NotACommandGroup, "Målet er ikke en kommandogruppe."),
+
+                // NOT refusals, and covered here anyway. These two sentences live in EditRefusals for the same
+                // reason its refusals do -- Ihc.Vis.Session may not read Ihc.Vis.Validation, so a site carries
+                // its own copy of the Danish -- and the architecture's rule is that a drift test keeps that copy
+                // equal to the catalogue's template. Keying this list on EditRefusalCodes members would have
+                // silently excluded them, leaving the only pair whose copy is a FAULT rather than a refusal kept
+                // equal by inspection alone.
+                (new ProblemCode("internal.edit-failed"), EditRefusals.EditFailedMessage),
+                (new ProblemCode("internal.preview-failed"), EditRefusals.PreviewFailedMessage),
             ];
 
             Assert.Multiple(() =>

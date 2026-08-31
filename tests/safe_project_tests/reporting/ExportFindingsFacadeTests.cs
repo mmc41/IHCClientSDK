@@ -146,7 +146,7 @@ namespace Ihc.Vis.Tests
             ProjectAppService app = App();
             Project project = Corpus();
             ImmutableArray<ValidationFinding> reversedSubset =
-                [.. app.ValidateStructured(project).Take(5).Reverse()];
+                [.. app.ValidateStructured(project).Findings.Take(5).Reverse()];
 
             string text = await ExportToText(s => app.ExportFindings(project, reversedSubset, s));
 
@@ -168,7 +168,7 @@ namespace Ihc.Vis.Tests
         {
             ProjectAppService app = App();
             Project project = Corpus();
-            ImmutableArray<ValidationFinding> subset = [.. app.ValidateStructured(project).Take(3)];
+            ImmutableArray<ValidationFinding> subset = [.. app.ValidateStructured(project).Findings.Take(3)];
             var options = FindingExportOptions.Default with { SourceName = "panel", Order = "host:code" };
             string path = Path.Combine(TestContext.CurrentContext.WorkDirectory, "export-findings-sequence.xml");
 
@@ -230,7 +230,7 @@ namespace Ihc.Vis.Tests
                     Locator: l.Contains(" locator=\"") ? FindingExportProbe.Value(l, "locator") : null))
                 .ToImmutableArray();
 
-            var reported = app.ValidateStructured(project)
+            var reported = app.ValidateStructured(project).Findings
                 .Select(f => (
                     Code: f.Code.Value,
                     Severity: f.Severity.ToString(),

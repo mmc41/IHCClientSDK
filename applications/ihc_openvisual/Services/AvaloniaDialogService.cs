@@ -108,26 +108,39 @@ public sealed class AvaloniaDialogService : IDialogService
     // tidier-looking home, but call sites reach a dialog without going through it - so counting there would
     // under-report by exactly the paths nobody remembered. These three overloads are what a problem must pass
     // through to become something an installer actually sees.
-    public Task ShowProblemAsync(string title, Problem problem)
-    {
-        CountProblem(problem.Code);
-        return ShowMessageAsync(title, ProblemPresenter.Text(problem));
-    }
+    public Task ShowProblemAsync(string title, Problem problem) =>
+        PresentAsync(problem.Code, title, ProblemPresenter.Text(problem));
 
-    public Task ShowProblemAsync(string title, ProblemChain chain)
-    {
+    public Task ShowProblemAsync(string title, ProblemChain chain) =>
         // The CAUSE, not the operation: the operation names what was being attempted, the cause names what
         // was wrong, and the second is the one worth counting.
-        CountProblem(chain.Cause.Code);
-        return ShowMessageAsync(title, ProblemPresenter.Text(chain));
-    }
+        PresentAsync(chain.Cause.Code, title, ProblemPresenter.Text(chain));
 
-    public Task ShowProblemAsync(string title, ProblemAggregate aggregate)
-    {
+    public Task ShowProblemAsync(string title, ProblemAggregate aggregate) =>
         // The HEAD, once - not once per item. An aggregate is ONE thing shown to the user, and counting its
         // items would make a single dialog about a many-findings validation look like many dialogs.
-        CountProblem(aggregate.Head.Code);
-        return ShowMessageAsync(title, ProblemPresenter.Text(aggregate));
+        PresentAsync(aggregate.Head.Code, title, ProblemPresenter.Text(aggregate));
+
+    /// <summary>
+    /// Presents one problem and counts it — in that order, which is the whole content of this method.
+    /// </summary>
+    /// <remarks>
+    /// <para>The counter's own summary says it records a problem <b>actually presented</b>, and the three
+    /// overloads used to count BEFORE calling the presentation they were counting. So a dialog that could not be
+    /// built was counted anyway, and the metric meant "presentation attempted" while its documentation claimed
+    /// otherwise. One of the two had to move, and the comment was the drift: "attempted" is not a number anyone
+    /// wants, because the interesting question is what installers actually hit.</para>
+    /// <para><b>Counted once the presentation has STARTED, not once it is dismissed.</b> The task below completes
+    /// when a person closes the dialog, and awaiting it would fold think-time into the metric and lose the count
+    /// entirely for a process that exits with the modal up — the two costs <c>OperationScope</c> documents. A
+    /// problem shown is counted whether or not it is dismissed; a problem that never reached the screen is not
+    /// counted at all.</para>
+    /// </remarks>
+    private Task PresentAsync(Ihc.Vis.Problems.ProblemCode code, string title, string text)
+    {
+        Task shown = ShowMessageAsync(title, text);
+        CountProblem(code);
+        return shown;
     }
 
     /// <summary>Records one problem actually presented, keyed by its code and the family that code belongs to.</summary>
@@ -249,6 +262,14 @@ public sealed class AvaloniaDialogService : IDialogService
         // Passing this: the About window's repository link opens through OpenExternalUrlAsync below rather than
         // launching for itself, so there is ONE external-open policy in the app.
         await new AboutWindow(this).ShowDialog(Owner);
+    }
+
+    public async Task ShowInternalErrorAsync(Ihc.Vis.Problems.InternalError error)
+    {
+        ArgumentNullException.ThrowIfNull(error);
+        if (Owner is null)
+            return;
+        await new InternalErrorWindow(error).ShowDialog(Owner);
     }
 
     public Task ShowSettingsAsync(string settingsText) =>
@@ -430,7 +451,9 @@ public sealed class AvaloniaDialogService : IDialogService
         // dialog. This path does not go through WithOwnerAsync — it builds its window here and resolves through a
         // TaskCompletionSource rather than through ShowDialog's own task — so it has to ask for the owner itself.
         if (Owner is { } shell)
-            _ = dialog.ShowDialog(Innermost(shell));
+            TaskSupervisor.Fire(
+                dialog.ShowDialog(Innermost(shell)),
+                $"{nameof(AvaloniaDialogService)}.{nameof(ShowButtonsAsync)}");
         else
             dialog.Show();
 

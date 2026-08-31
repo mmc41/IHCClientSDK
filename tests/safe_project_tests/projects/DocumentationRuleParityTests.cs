@@ -99,7 +99,7 @@ namespace Ihc.Vis.Tests
                             Tree.Node("product_dataline", "_0x5151", [("name", "Dybt")]))))));
 
             string[] locators = [.. new WholeProjectValidator(Rules())
-                .Validate(project, ValidationProfile.Categorized)
+                .Validate(project, ValidationProfile.Categorized).Findings
                 .Select(f => f.Primary!.Locator!)
                 .Distinct()];
 
@@ -124,7 +124,7 @@ namespace Ihc.Vis.Tests
                         ])))));
 
             string[] produced = [.. new WholeProjectValidator(Rules())
-                .Validate(project, ValidationProfile.Categorized).Select(f => f.Code.Value)];
+                .Validate(project, ValidationProfile.Categorized).Findings.Select(f => f.Code.Value)];
 
             Assert.That(produced, Is.EqualTo(new[] { "doc-documentation-tag" }).AsCollection);
         }
@@ -141,8 +141,8 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(engine.Validate(project, ValidationProfile.ProjectOnly), Is.Empty);
-                Assert.That(engine.Validate(project, ValidationProfile.Categorized), Is.Not.Empty,
+                Assert.That(engine.Validate(project, ValidationProfile.ProjectOnly).Findings, Is.Empty);
+                Assert.That(engine.Validate(project, ValidationProfile.Categorized).Findings, Is.Not.Empty,
                     "precondition: the case does carry documentation gaps");
             });
         }

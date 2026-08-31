@@ -96,7 +96,8 @@ public class ProblemRowOccurrenceIdentityTests : AvaloniaTestBase
     {
         using Rig rig = await Rig.ShowingFindingsAsync();
 
-        ProblemRowViewModel row = rig.Shell.Problems.Rows.First(r => r.Element is not null);
+        ProblemRowViewModel row = rig.Shell.Problems.Rows.OfType<ProblemRowViewModel>()
+            .First(r => r.Element is not null);
 
         Assert.That(row.OccurrenceId, Does.StartWith(row.Code),
             "so a driver matching loosely on a code still reaches the occurrence rows of that code");

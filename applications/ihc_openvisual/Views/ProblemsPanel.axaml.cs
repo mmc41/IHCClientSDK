@@ -1,7 +1,13 @@
+using System;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using ihc_openvisual.ViewModels;
+using ihc_openvisual.Services;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ihc_openvisual.Views;
 
@@ -25,6 +31,9 @@ public partial class ProblemsPanel : UserControl
         AddHandler(KeyDownEvent, OnRowsKeyDown, RoutingStrategies.Tunnel);
     }
 
+    private readonly ILogger<ProblemsPanel> _logger =
+        (Program.LoggerFactory ?? NullLoggerFactory.Instance).CreateLogger<ProblemsPanel>();
+
     /// <summary>The findings list, once the template has produced it.</summary>
     private Control? Rows => this.FindControl<Control>("ProblemsContent");
 
@@ -35,6 +44,40 @@ public partial class ProblemsPanel : UserControl
     private ProblemsPanelViewModel? Panel => Rows?.DataContext as ProblemsPanelViewModel;
 
     /// <summary>
+    /// The bulk copy. The ONE Avalonia-shaped line is the clipboard lookup: everything copied is assembled on
+    /// the view-model, and <c>IClipboard</c> is a type a view-model may not name.
+    /// </summary>
+    /// <remarks>
+    /// Through <see cref="HandlerGuard"/> like every other <c>async void</c> in the view layer — this one runs
+    /// off the message loop, where no global net can see a fault, and the containment gate enforces it.
+    /// </remarks>
+    private async void OnCopyInternalsClick(object? sender, RoutedEventArgs e)
+    {
+        Exception? failure = await HandlerGuard.RunAsync(
+            CopyInternalsAsync, _logger, nameof(OnCopyInternalsClick));
+        if (failure is not null)
+        {
+            // A clipboard that threw reads the same to the user as one that was absent: nothing was copied.
+            Panel?.MarkInternalsCopyUnavailable();
+        }
+    }
+
+    private async Task CopyInternalsAsync()
+    {
+        if (Panel is not { } panel)
+        {
+            return;
+        }
+        if (TopLevel.GetTopLevel(this)?.Clipboard is not { } clipboard)
+        {
+            panel.MarkInternalsCopyUnavailable();
+            return;
+        }
+        await clipboard.SetTextAsync(panel.BuildInternalsPayload());
+        panel.MarkInternalsCopied();
+    }
+
+    /// <summary>
     /// Double-click ACTIVATES the row — the whole route. Single click is left alone: it produces the selection
     /// and nothing else, so reading down the list never moves the trees or opens a window.
     /// </summary>
@@ -42,7 +85,9 @@ public partial class ProblemsPanel : UserControl
     {
         if (Panel is { } panel)
         {
-            _ = panel.ActivateRowAsync(panel.SelectedRow);
+            TaskSupervisor.Fire(
+                panel.ActivateRowAsync(panel.SelectedRow),
+                $"{nameof(ProblemsPanel)}.{nameof(OnRowsDoubleTapped)}");
         }
     }
 
@@ -65,6 +110,8 @@ public partial class ProblemsPanel : UserControl
             return;
         }
         e.Handled = true;
-        _ = panel.ActivateRowAsync(panel.SelectedRow);
+        TaskSupervisor.Fire(
+            panel.ActivateRowAsync(panel.SelectedRow),
+            $"{nameof(ProblemsPanel)}.{nameof(OnRowsKeyDown)}");
     }
 }

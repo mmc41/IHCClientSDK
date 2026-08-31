@@ -37,7 +37,7 @@ namespace Ihc.Vis.Tests
         public void TheDuplicateAddressFixtureIsErrorMaterialSoAnErrorTierCanBeObserved()
         {
             EquatableArray<ValidationFinding> findings =
-                new ProjectAppService(TestSetup.Settings).ValidateStructured(Load(ErrorFixture));
+                new ProjectAppService(TestSetup.Settings).ValidateStructured(Load(ErrorFixture)).Findings;
 
             ValidationFinding[] errors = [.. findings.Where(f => f.Severity == ValidationSeverity.Error)];
 
@@ -60,7 +60,7 @@ namespace Ihc.Vis.Tests
         public void TheFixturesErrorIsTheDuplicateDataLineAddressRow()
         {
             EquatableArray<ValidationFinding> findings =
-                new ProjectAppService(TestSetup.Settings).ValidateStructured(Load(ErrorFixture));
+                new ProjectAppService(TestSetup.Settings).ValidateStructured(Load(ErrorFixture)).Findings;
 
             string[] errorCodes =
                 [.. findings.Where(f => f.Severity == ValidationSeverity.Error).Select(f => f.Code.Value).Distinct()];

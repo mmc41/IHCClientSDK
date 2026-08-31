@@ -305,10 +305,26 @@ namespace Ihc.Vis.Tests
         private static readonly string[] UnhashedFunctionBlockMembers =
             ["Documentation", "Inputs", "Outputs", "Settings", "InternalVariables"];
 
-        // The three committed definition files, scanned as source text by NoSourceEolBearingLiterals.
-        private static readonly string[] DefinitionFiles =
+        // Every source whose literals reach a recorded digest, scanned as source text by
+        // NoSourceEolBearingLiterals: the committed definition files, GLOBBED so a new one is covered the day it
+        // lands rather than when someone remembers this list, plus the template authoring one directory up —
+        // the skeleton, enumerator and empty-block bodies are spelled out there, and their digests are recorded
+        // here beside the catalog's own.
+        private static string[] DigestSourceFiles()
+        {
+            string catalog = Path.Combine(TestRepository.RequireRoot(), "ihcclient", "src", "vis", "catalog");
+            return
+            [
+                .. Directory.EnumerateFiles(Path.Combine(catalog, "definitions"), "*.cs"),
+                Path.Combine(catalog, "BuiltInCatalog.Templates.cs"),
+            ];
+        }
+
+        // The scan must cover these by name whatever the glob returns; see the coverage assertion below.
+        private static readonly string[] RequiredDigestSourceNames =
         [
             "BuiltInCatalog.Products.g.cs", "BuiltInCatalog.FunctionBlocks.g.cs", "BuiltInCatalog.Grammar.g.cs",
+            "BuiltInCatalog.Templates.cs",
         ];
 
         [Test]
@@ -424,26 +440,40 @@ namespace Ihc.Vis.Tests
         /// baffling failure. Both constructs are absent today and are banned here, in the file that depends on their
         /// absence. (A <c>.gitattributes</c> pin was considered: it makes the checkout deterministic but does not
         /// stop the construct being introduced, which is the actual hazard.)
+        ///
+        /// <para><b>The ban covers every source a recorded digest is built from</b>, which is more than the
+        /// transcribed definition files: the template digests above are built from literals spelled out in
+        /// <c>BuiltInCatalog.Templates.cs</c>, one directory up. Scanning only the definitions left that file free
+        /// to carry the very construct this gate exists to forbid, with the failure surfacing as a template digest
+        /// that reproduces on one OS and not the other.</para>
         /// </summary>
         [Test]
         public void DefinitionSources_CarryNoSourceEolBearingLiterals()
         {
-            string dir = Path.Combine(TestRepository.RequireRoot(), "ihcclient", "src", "vis", "catalog",
-                "definitions");
             (string Token, string Construct)[] banned =
                 [("\"\"\"", "raw string literal"), ("@\"", "verbatim string literal")];
 
-            var offenders = new List<string>();
-            foreach (string file in DefinitionFiles)
-            {
-                string text = File.ReadAllText(Path.Combine(dir, file));
-                offenders.AddRange(banned.Where(b => text.Contains(b.Token, StringComparison.Ordinal))
-                    .Select(b => $"{file}: contains a {b.Construct} ({b.Token})"));
-            }
+            string[] sources = DigestSourceFiles();
 
-            Assert.That(offenders, Is.Empty,
-                "the transcribed catalog data must hold newlines as escaped \\r\\n in regular string literals, so "
-                + "the recorded digests reproduce on every platform:\n" + string.Join("\n", offenders));
+            Assert.Multiple(() =>
+            {
+                // A glob that matched nothing, or a file renamed out from under the scan, would report NO
+                // offenders — the one way this gate goes quietly meaningless.
+                Assert.That(sources.Select(Path.GetFileName), Is.SupersetOf(RequiredDigestSourceNames),
+                    "the scan no longer covers every source a recorded digest is built from");
+
+                var offenders = new List<string>();
+                foreach (string path in sources)
+                {
+                    string text = File.ReadAllText(path);
+                    offenders.AddRange(banned.Where(b => text.Contains(b.Token, StringComparison.Ordinal))
+                        .Select(b => $"{Path.GetFileName(path)}: contains a {b.Construct} ({b.Token})"));
+                }
+
+                Assert.That(offenders, Is.Empty,
+                    "the transcribed catalog data must hold newlines as escaped \\r\\n in regular string literals, "
+                    + "so the recorded digests reproduce on every platform:\n" + string.Join("\n", offenders));
+            });
         }
 
         private static void AssertSurface(Type definition, string[] hashed, string[] unhashed)

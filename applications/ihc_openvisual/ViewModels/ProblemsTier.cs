@@ -19,6 +19,21 @@ namespace ihc_openvisual.ViewModels;
 public enum ProblemsTier
 {
     /// <summary>
+    /// A fault in the TOOL, not in the project — a rule that threw, an edit that broke, a handler that faulted.
+    /// <para>
+    /// FIRST, and therefore worst, which is a deliberate ranking rather than an accident of declaration order
+    /// (D04). The tool failing outranks anything the tool reports: a crashed rule means rows are genuinely
+    /// MISSING from a list the user will otherwise read as complete, so a fault has to be seen before the
+    /// findings it may have swallowed.
+    /// </para>
+    /// <para>
+    /// The one tier whose rows are not findings at all. It has no <see cref="ValidationSeverity"/>, carries no
+    /// category about the project, and never reaches the findings export.
+    /// </para>
+    /// </summary>
+    Internal,
+
+    /// <summary>
     /// An Error finding whose rule ALSO refuses an operation — an undeclared attribute stops the save as well as
     /// being reported. Not a fourth severity: such a finding is an <see cref="ValidationSeverity.Error"/> like
     /// any other and withholds controller transfer for the same reason, and this tier says which faults stop the

@@ -36,7 +36,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void TheAccessorKeepsTheRelatedSitesTheFlatShapeDrops()
         {
-            EquatableArray<ValidationFinding> structured = App.ValidateStructured(GroupedFindingFixture());
+            EquatableArray<ValidationFinding> structured = App.ValidateStructured(GroupedFindingFixture()).Findings;
 
             ValidationFinding[] grouped = [.. structured.Where(f => f.Related.Length > 0)];
 
@@ -59,7 +59,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = GroupedFindingFixture();
 
-            EquatableArray<ValidationFinding> structured = App.ValidateStructured(project);
+            EquatableArray<ValidationFinding> structured = App.ValidateStructured(project).Findings;
             ProjectValidationResult flat = App.ValidateCategorized(project);
 
             Assert.Multiple(() =>

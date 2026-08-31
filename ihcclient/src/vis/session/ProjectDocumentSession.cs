@@ -176,6 +176,16 @@ namespace Ihc.Vis.Session
                 ClassifyEdit);
 
         /// <summary>
+        /// The code a faulted edit reports. Naming it is what gives the span an <c>error.type</c> at all: an
+        /// outcome with no code normalizes to the catch-all bucket, so every engine fault in every command used
+        /// to arrive as one indistinguishable kind with no exception attached.
+        /// </summary>
+        private static readonly Problems.ProblemCode EditFailedCode = new("internal.edit-failed");
+
+        /// <summary>The code a faulted PREVIEW reports — its own, because a preview commits nothing.</summary>
+        private static readonly Problems.ProblemCode PreviewFailedCode = new("internal.preview-failed");
+
+        /// <summary>
         /// Turns the edit's own outcome into the operation's. Reserving Error for <see cref="EditStatus.Failed"/>
         /// is the point: a refusal is the rules working, and the two refusal paths used to report differently
         /// - one via SetError (Error) and one by returning quietly (Unset) - for outcomes that are the same kind
@@ -276,7 +286,19 @@ namespace Ihc.Vis.Session
 
                 // Anything else is broken rather than refused (incl. an engine InvalidOperationException on a
                 // malformed doc): its English text goes to the caller's log, not to an installer's dialog.
-                return new EditOutcome(EditStatus.Failed, label, ex.Message, null);
+                //
+                // The fault is CAPTURED HERE, where the exception is still in hand — by the time this record
+                // reaches a caller the stack is gone, and a bare code would leave a host holding an id it is
+                // forbidden to resolve against the catalogue. Reason keeps ex.Message for the log; the Danish
+                // sentence a host may show travels on Fault.
+                return new EditOutcome(EditStatus.Failed, label, ex.Message, null, EditFailedCode,
+                    new Problems.InternalError(
+                        EditFailedCode,
+                        EditRefusals.EditFailedMessage,
+                        ex.Message,
+                        Problems.InternalErrorOrigin.Sdk,
+                        ex.ToString(),
+                        DateTimeOffset.UtcNow));
             }
 
             if (updated is null)   // no-op (an allocator burn makes the project differ, so it is not one)
@@ -397,7 +419,16 @@ namespace Ihc.Vis.Session
                 }
                 catch (Exception ex)   // an unexpected engine fault — surfaced, not swallowed as "nothing to preview" (D05)
                 {
-                    return PreviewOutcome.Faulted(ex.Message);
+                    // Captured HERE, where the exception still exists; the factory only threads it through.
+                    return PreviewOutcome.Faulted(
+                        ex.Message,
+                        new Problems.InternalError(
+                            PreviewFailedCode,
+                            EditRefusals.PreviewFailedMessage,
+                            ex.Message,
+                            Problems.InternalErrorOrigin.Sdk,
+                            ex.ToString(),
+                            DateTimeOffset.UtcNow));
                 }
                 return updated is null
                     ? PreviewOutcome.NoChange

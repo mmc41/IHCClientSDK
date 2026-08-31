@@ -1,0 +1,77 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:a="using:Avalonia.Automation"
+        xmlns:vm="using:ihc_openvisual.ViewModels"
+        x:DataType="vm:InternalErrorViewModel"
+        mc:Ignorable="d" d:DesignWidth="640" d:DesignHeight="460"
+        x:Class="ihc_openvisual.Views.InternalErrorWindow"
+        a:AutomationProperties.AutomationId="InternalErrorWindow"
+        Title="Intern fejl"
+        Width="640" Height="460" MinWidth="420" MinHeight="280"
+        WindowStartupLocation="CenterOwner"
+        CanResize="True"
+        ShowInTaskbar="False">
+    <!-- Resizable, unlike every other dialog in the app, and that is the reason this is its own window rather
+         than a ShowButtonsAsync call: a captured detail is 20+ long lines, and a SizeToContent dialog would
+         either clip it or grow past the screen. -->
+    <DockPanel Margin="20">
+        <!-- Luk LAST in the visual tree and last in the tab order, per the app's dismissal contract. Kopiér
+             sits before it: the reader copies, then closes. -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8"
+                    HorizontalAlignment="Right" Margin="0,16,0,0">
+            <!-- Content is BOUND, not set: the label is transient feedback the view-model owns, so that the
+                 confirmation (and the coded refusal that replaces it when there is no clipboard) is headlessly
+                 testable rather than reachable only through a real clipboard. -->
+            <Button Name="CopyButton" MinWidth="110"
+                    a:AutomationProperties.AutomationId="CopyButton"
+                    a:AutomationProperties.Name="Kopiér fejloplysningerne"
+                    Content="{Binding CopyText}"
+                    Click="OnCopyClick"/>
+            <Button Name="CloseButton"
+                    Content="Luk" MinWidth="84"
+                    a:AutomationProperties.AutomationId="CloseButton"
+                    IsCancel="True" IsDefault="True" Click="OnCloseClick"/>
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Top" Spacing="6">
+            <!-- The Danish sentence WHOLE, straight from the record. Nothing here re-words, prefixes or
+                 assembles it: a message is rendered as it was bound, or it is not rendered.
+                 Plain TextBlocks, not selectable ones: these two carry no technical payload to lift out by
+                 hand, and the copy button takes the WHOLE fault anyway. -->
+            <TextBlock Name="Sentence"
+                       a:AutomationProperties.AutomationId="InternalErrorSentence"
+                       FontSize="{DynamicResource TitleFontSize}"
+                       TextWrapping="Wrap"/>
+
+            <!-- What a support case needs to say WHICH fault this is: the code, where it came from, and when. -->
+            <TextBlock Name="Identity"
+                       a:AutomationProperties.AutomationId="InternalErrorIdentity"
+                       FontSize="{DynamicResource CaptionFontSize}"
+                       Foreground="{DynamicResource SecondaryTextBrush}"
+                       TextWrapping="Wrap"/>
+
+            <!-- BOUND, not repeated: the copied text heads this same section with this same word, and the
+                 view-model is where that word is declared. A literal here would be a second copy the copy
+                 payload could silently drift away from. -->
+            <TextBlock Name="DetailLabel" Text="{x:Static vm:InternalErrorViewModel.DetailLabel}"
+                       FontSize="{DynamicResource BodyFontSize}" FontWeight="Bold"
+                       Margin="0,10,0,0"/>
+        </StackPanel>
+
+        <!-- A read-only TextBox rather than the SelectableTextBlock the design named, and the reason is
+             measured rather than stylistic: Avalonia's text-block peer answers GetName from its own Text, so it
+             ignores both AutomationProperties.Name and LabeledBy and can never be resolved by a screen reader
+             while it is empty. The app already uses read-only TextBox for exactly this shape (PinPropertiesWindow
+             names its read-only field the same way). It is selectable, scrollable and monospace either way. -->
+        <TextBox Name="DetailText"
+                 a:AutomationProperties.AutomationId="InternalErrorDetail"
+                 a:AutomationProperties.LabeledBy="{Binding #DetailLabel}"
+                 IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 FontFamily="{DynamicResource MonoFontFamily}"
+                 FontSize="{DynamicResource CaptionFontSize}"/>
+    </DockPanel>
+</Window>

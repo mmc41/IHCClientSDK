@@ -50,6 +50,10 @@ public sealed class DesignMainWindowViewModel : MainWindowViewModel
 
     private static ProjectWorkflow DesignWorkflow(IDialogService dialogs, RecentProjectsStore recent)
     {
+        // NO fault port and no fault sink, deliberately — the omission is the design decision, not an
+        // oversight of the real root's wiring. The previewer's process has no logging pipeline, no Problemer
+        // panel and no user to report to, so a port here would have nowhere to report and a sink would collect
+        // rows nothing can render. Both doors are optional for exactly this case.
         var service = new ProjectAppService(new IhcSettings());
         var workflow = new ProjectWorkflow(service, recent, dialogs, catalogDir: DesignPath("catalog"));
         // The standard empty project, so the previewer shows the shell with its ten localities rather than two

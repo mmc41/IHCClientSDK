@@ -209,7 +209,7 @@ namespace Ihc.Vis.Tests
 
         /// <summary>
         /// Every site the corpus produces, through the SAME face the characterization oracle records: the app
-        /// service's categorized run. Not <c>ProjectRules.Validator.Validate(project, ValidationProfile.Categorized)</c>,
+        /// service's categorized run. Not <c>ProjectRules.Validator.Validate(project, ValidationProfile.Categorized).Findings</c>,
         /// which comes up short — the service's own profile carries the library port some rows need (D27),
         /// and a denominator that quietly differed from the oracle's would make every count below unfalsifiable.
         ///
@@ -227,7 +227,7 @@ namespace Ihc.Vis.Tests
                 var found = ImmutableArray.CreateBuilder<(string, ValidationFinding)>();
                 foreach ((string name, Func<Project> build) in ValidationCharacterizationTests.Corpus)
                 {
-                    foreach (ValidationFinding finding in app.ValidateStructured(build()))
+                    foreach (ValidationFinding finding in app.ValidateStructured(build()).Findings)
                     {
                         found.Add((name, finding));
                     }

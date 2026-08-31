@@ -114,6 +114,15 @@ public sealed class FakeDialogService : IDialogService
     /// <summary>The last coded problem SHOWN, so a test can assert on its identity instead of on its prose.</summary>
     public Problem? LastProblem { get; private set; }
 
+    /// <summary>Forgets what has been shown so far — how a test asserts on ITS OWN operation rather than on
+    /// whatever set-up happened to raise.</summary>
+    public void Reset()
+    {
+        LastProblem = null;
+        LastProblemChain = null;
+        LastOpenedUrl = null;
+    }
+
     /// <summary>The chain, when the site framed an SDK failure — the operation is on it, unrendered.</summary>
     public ProblemChain? LastProblemChain { get; private set; }
 
@@ -175,6 +184,13 @@ public sealed class FakeDialogService : IDialogService
     public Task<string?> PickCatalogFileAsync() => Task.FromResult(CatalogFilePath);
     public Task<string?> PickCatalogFolderAsync() => Task.FromResult(CatalogFolderPath);
     public Task ShowAboutAsync() => Task.CompletedTask;
+    /// <summary>Every internal error the shell asked to show, in order — what an activation test asserts on.</summary>
+    public List<Ihc.Vis.Problems.InternalError> ShownInternalErrors { get; } = [];
+    public Task ShowInternalErrorAsync(Ihc.Vis.Problems.InternalError error)
+    {
+        ShownInternalErrors.Add(error);
+        return Task.CompletedTask;
+    }
     /// <summary>The text the settings dialog was last asked to show, so a test can assert on the readout.</summary>
     public string? LastSettingsText { get; private set; }
     public Task ShowSettingsAsync(string settingsText) { LastSettingsText = settingsText; return Task.CompletedTask; }
@@ -233,11 +249,30 @@ public sealed class FakeDialogService : IDialogService
     /// </summary>
     public Func<PinPropertiesInput, PinPropertiesResult?>? PinPropertiesResponder { get; set; }
 
-    public Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input, System.Func<PinPropertiesResult, Task>? onApply = null)
+    /// <summary>What the next dialog presses Anvend with, before answering — the vendor's apply-and-stay-open.
+    /// Null for a dialog that only ever answers.</summary>
+    public PinPropertiesResult? PinPropertiesApply { get; set; }
+
+    /// <summary>
+    /// The Anvend callback the last dialog was handed, KEPT so a test can invoke it after the opening call has
+    /// returned — which is the only way to reproduce what the real window does. A window presses Anvend on its
+    /// OWN stack, long after the flow that supplied the callback left its error boundary; a fake that only
+    /// invoked it inside the awaited call would be back inside that boundary and would prove nothing about it.
+    /// </summary>
+    public System.Func<PinPropertiesResult, Task>? LastPinApply { get; private set; }
+
+    public async Task<PinPropertiesResult?> EditPinPropertiesAsync(PinPropertiesInput input, System.Func<PinPropertiesResult, Task>? onApply = null)
     {
         EditPinPropertiesCalls++;
         LastPinPropertiesInput = input;
-        return Task.FromResult(PinPropertiesResponder is not null ? PinPropertiesResponder(input) : PinPropertiesResult);
+        LastPinApply = onApply;
+        // Anvend BEFORE the answer, through the same callback the real window uses, so a test can exercise the
+        // apply-and-stay-open path rather than only the closing one.
+        if (PinPropertiesApply is { } applied && onApply is not null)
+        {
+            await onApply(applied);
+        }
+        return PinPropertiesResponder is not null ? PinPropertiesResponder(input) : PinPropertiesResult;
     }
 
     /// <summary>Makes the generic product dialog answer Cancel. Needed explicitly because the DEFAULT is
@@ -480,6 +515,9 @@ public sealed class CapturingLoggerFactory : ILoggerFactory
 {
     public CapturingLogger Logger { get; } = new();
     public List<string> Messages => Logger.Messages;
+
+    /// <summary>Forgets what has been logged so far, so a test asserts on its own operation.</summary>
+    public void Clear() => Logger.Messages.Clear();
     public ILogger CreateLogger(string categoryName) => Logger;
     public void AddProvider(ILoggerProvider provider) { }
     public void Dispose() { }
@@ -519,7 +557,8 @@ public sealed class ShellHarness : IDisposable
     /// </summary>
     internal static int Live => System.Threading.Volatile.Read(ref _live);
 
-    private ShellHarness(string dir, bool ownsDir, System.TimeProvider? timeProvider)
+    private ShellHarness(string dir, bool ownsDir, System.TimeProvider? timeProvider,
+                         ILoggerFactory? loggerFactory = null)
     {
         TempDir = dir;
         _ownsDir = ownsDir;
@@ -539,7 +578,7 @@ public sealed class ShellHarness : IDisposable
         // The marshal is SYNCHRONOUS here, which is what makes an inline post safe: nothing may reach bound state
         // off the caller's thread, so the clock above must never fire on its own.
         Session = new ProjectWorkflow(
-            ProjectService, Recent, Dialogs, null, Path.Combine(TempDir, "catalog"),
+            ProjectService, Recent, Dialogs, loggerFactory, Path.Combine(TempDir, "catalog"),
             post: action => action(), timeProvider: Time);
         System.Threading.Interlocked.Increment(ref _live);
     }
@@ -549,9 +588,10 @@ public sealed class ShellHarness : IDisposable
     /// every test that does not assert about validation. Pass your own when you need to drive the debounce and
     /// hold the handle; pass <see cref="System.TimeProvider.System"/> to opt back into wall-clock time.
     /// </param>
-    public static ShellHarness Create(System.TimeProvider? timeProvider = null) =>
+    public static ShellHarness Create(System.TimeProvider? timeProvider = null,
+                                     ILoggerFactory? loggerFactory = null) =>
         new(Path.Combine(Path.GetTempPath(), "ihc_ov_tests", Guid.NewGuid().ToString("N")), ownsDir: true,
-            timeProvider);
+            timeProvider, loggerFactory);
 
     /// <summary>A second session over an existing directory — simulates restarting the app, so the per-user state
     /// left in <paramref name="dir"/> (e.g. persisted catalog imports) is picked up again.</summary>
@@ -599,8 +639,9 @@ public sealed class ShellHarness : IDisposable
     /// <para>The marshal and the clock the Problemer panel runs on come from <see cref="Session"/>, so a test
     /// that needs a controllable debounce passes its clock to <see cref="Create"/> rather than here.</para>
     public MainWindowViewModel CreateViewModel(ILoggerFactory? loggerFactory = null, IThemeService? theme = null,
-                                               ihc_openvisual.Configuration.AppConfiguration? config = null) =>
-        new(Session, Dialogs, Recent, theme ?? new NullThemeService(), config, loggerFactory);
+                                               ihc_openvisual.Configuration.AppConfiguration? config = null,
+                                               InternalErrorLog? internalErrors = null) =>
+        new(Session, Dialogs, Recent, theme ?? new NullThemeService(), config, loggerFactory, internalErrors);
 
     /// <summary>
     /// The setup every programming-mode test shares: an initialized shell with an empty (unlocked) function block
@@ -613,13 +654,26 @@ public sealed class ShellHarness : IDisposable
     /// </summary>
     public async Task<MainWindowViewModel> EnterProgrammingModeOnNewBlockAsync()
     {
+        MainWindowViewModel vm = await WithNewFunctionBlockAsync();
+        vm.EnterProgrammingModeCommand.Execute(NewBlockNode(vm));
+        return vm;
+    }
+
+    /// <summary>The same placement WITHOUT entering programming mode — for the gestures that act on the block
+    /// from the configuration tree, where entering the block would change what is under test.</summary>
+    public async Task<MainWindowViewModel> WithNewFunctionBlockAsync()
+    {
         MainWindowViewModel vm = CreateViewModel();
         await vm.InitializeAsync();
         ElementId locality = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await Session.AddEmptyFunctionBlockAsync(locality);
-        vm.EnterProgrammingModeCommand.Execute(vm.FunctionNodes[0].Children[0].Children[0]);
         return vm;
     }
+
+    /// <summary>The placed block's own tree row — the <c>FunctionNodes[0].Children[0].Children[0]</c> path, in
+    /// one place so a tree-shape change is one edit.</summary>
+    public static TreeNodeViewModel NewBlockNode(MainWindowViewModel vm) =>
+        vm.FunctionNodes[0].Children[0].Children[0];
 
     public void Dispose()
     {
@@ -635,5 +689,57 @@ public sealed class ShellHarness : IDisposable
         {
             try { Directory.Delete(TempDir, recursive: true); } catch { /* best-effort temp cleanup */ }
         }
+    }
+}
+
+/// <summary>
+/// The static supervisor port, attached for the life of a <c>using</c> and detached on the way out.
+/// </summary>
+/// <remarks>
+/// The port is process-wide static, so a test that attaches one and returns without detaching leaks it into
+/// whatever runs next — the fixture that follows then collects another test's faults, or reports into a list that
+/// has gone out of scope. Written out per test it was a <c>try</c>/<c>finally</c> whose <c>finally</c> is the line
+/// a new test forgets; a <c>using</c> cannot be forgotten halfway.
+/// </remarks>
+internal sealed class SupervisedFaults : IDisposable
+{
+    /// <summary>Every fault the supervisor reported while this capture was attached, in order.</summary>
+    public List<Ihc.Vis.Problems.InternalError> Rows { get; } = [];
+
+    private SupervisedFaults() => TaskSupervisor.ReportTo(Rows.Add);
+
+    /// <summary>Attaches a fresh capture to the supervisor's port.</summary>
+    public static SupervisedFaults Capture() => new();
+
+    public void Dispose() => TaskSupervisor.ReportTo(null);
+}
+
+/// <summary>
+/// A temporary directory that removes itself, whatever the test does.
+/// </summary>
+/// <remarks>
+/// A trailing <c>Directory.Delete</c> at the end of a test body is skipped by every assertion that fails above
+/// it, so a red run is also the run that leaks its scratch directories. Deletion is best-effort for the reason
+/// <see cref="ShellHarness"/>'s is: a file still held open by the code under test must not turn a passing test
+/// into a failing teardown.
+/// </remarks>
+internal sealed class ScratchDir : IDisposable
+{
+    /// <summary>The created directory's full path.</summary>
+    public string Path { get; }
+
+    /// <param name="prefix">Names the directory, so a leaked one says which fixture made it.</param>
+    public ScratchDir(string prefix)
+    {
+        Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), prefix + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path);
+    }
+
+    /// <summary>A path INSIDE this directory. The file need not exist.</summary>
+    public string File(string name) => System.IO.Path.Combine(Path, name);
+
+    public void Dispose()
+    {
+        try { Directory.Delete(Path, recursive: true); } catch { /* best-effort temp cleanup */ }
     }
 }

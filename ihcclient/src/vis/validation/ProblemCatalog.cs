@@ -39,7 +39,7 @@ namespace Ihc.Vis.Validation
         }
 
         /// <summary>The SDK's catalogue, assembled from the per-section declarations. Built once, frozen.</summary>
-        public static ProblemCatalog Current { get; } = From(ProblemCatalogEntries.All);
+        public static ProblemCatalog Current { get; } = Validated(ProblemCatalogEntries.All);
 
         /// <summary>
         /// Every entry, ordered by code. The count a completeness check reads is <see cref="Total"/> — never a
@@ -77,6 +77,29 @@ namespace Ihc.Vis.Validation
         /// <param name="entries">The entries to hold; they are ordered by code.</param>
         public static ProblemCatalog From(EquatableArray<ProblemCatalogEntry> entries) =>
             new(entries.OrderBy(e => e.Code.Value, StringComparer.Ordinal).ToImmutableArray());
+
+        /// <summary>
+        /// Builds a catalogue and REFUSES a defective one — the door a composition root uses.
+        /// <para>
+        /// The entry-local invariants (<see cref="CatalogInvariants.CheckEntries"/>) hold here, and a violation
+        /// throws rather than being reported: a catalogue is composed once, in a static initializer, and a
+        /// defective one handed out there is a defect every reader inherits. <see cref="From"/> stays unchecked
+        /// beside this, and must, because the invariants' own negative controls are deliberately broken
+        /// catalogues that have to be constructible.
+        /// </para>
+        /// </summary>
+        /// <param name="entries">The entries to hold.</param>
+        /// <exception cref="InvalidOperationException">An entry breaks an invariant it declares.</exception>
+        public static ProblemCatalog Validated(EquatableArray<ProblemCatalogEntry> entries)
+        {
+            ProblemCatalog catalog = From(entries);
+            EquatableArray<CatalogDefect> defects = CatalogInvariants.CheckEntries(catalog);
+            return defects.Length == 0
+                ? catalog
+                : throw new InvalidOperationException(
+                    "The problem catalogue is malformed: "
+                    + string.Join(", ", defects.Select(d => $"{d.Code.Value}={d.Violation}")));
+        }
     }
 
     /// <summary>Why a catalogue is malformed.</summary>
@@ -121,6 +144,20 @@ namespace Ihc.Vis.Validation
         /// a head IS the operation rather than a cause of one.
         /// </summary>
         RefusalWithoutRefusedOperation,
+
+        /// <summary>
+        /// The internal-fault BICONDITIONAL, broken in one direction or the other. One member for one
+        /// biconditional, as <see cref="CategoryMisplaced"/> is:
+        /// <see cref="RuleKind.InternalFault"/> ⟺ no category, no faces, no refused operations and
+        /// <see cref="CatalogDisposition.NotApplicable"/>.
+        /// <para>
+        /// Forward, it stops a row about a fault in the TOOL from carrying a claim about the project it could not
+        /// examine — a severity, a face an executor would consume, an operation it refused. Backward, it stops the
+        /// catalogue growing a second shape that means the same thing under a different kind, which is how two
+        /// rows come to be treated differently for no reason a reader can find.
+        /// </para>
+        /// </summary>
+        InternalFaultMisdeclared,
     }
 
     /// <summary>One violated invariant.</summary>
@@ -155,6 +192,31 @@ namespace Ihc.Vis.Validation
             ArgumentNullException.ThrowIfNull(implementedCodes);
 
             ImmutableArray<CatalogDefect>.Builder defects = ImmutableArray.CreateBuilder<CatalogDefect>();
+            defects.AddRange(CheckEntries(catalog));
+            if (implementedCodes.Count == 0)
+            {
+                return defects.ToImmutable();
+            }
+            return CheckRulePairing(catalog, implementedCodes, defects);
+        }
+
+        /// <summary>
+        /// The half that needs NOTHING but the declarations: duplicate ids, category placement, refused-operation
+        /// legality, and the internal-fault biconditional. Split out because that is exactly what a composition
+        /// root can enforce — the rest asks which codes something implements, and only a completeness check knows
+        /// that.
+        /// <para>
+        /// Before the split these invariants were reachable only from a test, so a defective entry reached
+        /// production whenever the test that would have caught it was not run.
+        /// </para>
+        /// </summary>
+        /// <param name="catalog">The catalogue to check.</param>
+        /// <returns>Every entry-local violation. Empty is the passing state.</returns>
+        public static EquatableArray<CatalogDefect> CheckEntries(ProblemCatalog catalog)
+        {
+            ArgumentNullException.ThrowIfNull(catalog);
+
+            ImmutableArray<CatalogDefect>.Builder defects = ImmutableArray.CreateBuilder<CatalogDefect>();
             HashSet<string> seen = new(StringComparer.Ordinal);
             foreach (ProblemCatalogEntry entry in catalog.Entries)
             {
@@ -187,13 +249,30 @@ namespace Ihc.Vis.Validation
                 {
                     defects.Add(new CatalogDefect(entry.Code, CatalogViolation.RefusalWithoutRefusedOperation));
                 }
+
+                // Both directions of one biconditional, so a fault row cannot describe a project and a row
+                // shaped like a fault cannot go unlabelled. Written as an equality between two booleans rather
+                // than as two ifs: that is what makes it a biconditional rather than two rules that could drift.
+                bool saysNothingAboutAProject =
+                    entry.Category is null
+                    && entry.Faces == RuleFaces.None
+                    && !refuses
+                    && entry.Disposition == CatalogDisposition.NotApplicable;
+                if ((entry.Kind == RuleKind.InternalFault) != saysNothingAboutAProject)
+                {
+                    defects.Add(new CatalogDefect(entry.Code, CatalogViolation.InternalFaultMisdeclared));
+                }
             }
 
-            if (implementedCodes.Count == 0)
-            {
-                return defects.ToImmutable();
-            }
+            return defects.ToImmutable();
+        }
 
+        // The other half: which codes something implements is not a property of the declarations, so it cannot
+        // be answered where a catalogue is composed. Only a completeness check knows the implemented set.
+        private static EquatableArray<CatalogDefect> CheckRulePairing(
+            ProblemCatalog catalog, IReadOnlyCollection<ProblemCode> implementedCodes,
+            ImmutableArray<CatalogDefect>.Builder defects)
+        {
             HashSet<string> implemented = new(implementedCodes.Select(c => c.Value), StringComparer.Ordinal);
             foreach (ProblemCatalogEntry entry in catalog.Entries)
             {

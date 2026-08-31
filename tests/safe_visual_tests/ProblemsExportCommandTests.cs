@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
@@ -5,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Automation;
 using Avalonia.Headless.NUnit;
 using Avalonia.VisualTree;
+using Ihc.Vis;
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Validation;
@@ -286,11 +289,52 @@ public class ProblemsExportCommandTests
             Assert.That(rig.Panel.Rows, Has.Count.EqualTo(2), "precondition: the filter dropped one");
             Assert.That(
                 request.Findings.ToArray(),
-                Is.EqualTo(rig.Panel.Rows.Select(r => r.Finding).ToArray()),
+                Is.EqualTo(rig.Panel.Rows.OfType<ProblemRowViewModel>().Select(r => r.Finding).ToArray()),
                 "the visible rows' own findings, in their order");
             Assert.That(
                 request.Findings.Select(f => f.Code.Value), Is.EqualTo(new[] { "a-code", "c-code" }),
                 "sorted by code, and without the hidden Info row");
+        });
+    }
+
+    /// <summary>
+    /// A findings file is a statement about the PROJECT, so the faults listed beside the findings never reach it
+    /// (D05). A panel showing nothing BUT faults therefore writes a file with no finding in it at all — which is
+    /// the honest answer rather than an empty one: the project really does have no findings.
+    /// </summary>
+    /// <remarks>
+    /// Asserted on the WRITTEN FILE, not only on the request. The request carrying no fault is the panel doing
+    /// its job; a file with no <c>finding</c> element is what a support case actually receives, and only the
+    /// second of those is the promise. The file is written through the same facade call the export workflow
+    /// makes, so nothing between the panel and the bytes is stubbed out.
+    /// </remarks>
+    [Test]
+    public async Task APanelShowingOnlyFaultsExportsAFileWithNoFindingElement()
+    {
+        using ProblemsRig rig = new();
+        await rig.WithNewProjectAsync();
+        rig.InternalErrors.Append(ProblemsTestData.Fault());
+
+        await rig.Panel.ExportCommand.ExecuteAsync(null);
+
+        FindingsExportRequest request = rig.Exported.Single();
+        string path = Path.Combine(rig.Harness.TempDir, "faults-only.xml");
+        await rig.Harness.ProjectService.ExportFindings(
+            rig.Harness.Session.Current!, request.Findings.AsImmutableArray(), path,
+            FindingExportOptions.Default);
+        string written = await File.ReadAllTextAsync(path);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rig.Panel.Rows, Has.Count.EqualTo(1),
+                "non-vacuity: the panel really is listing the fault");
+            Assert.That(request.Findings, Is.Empty, "no fault is handed over as if it were a finding");
+            Assert.That(written, Does.Contain("ihc_project_findings"),
+                "non-vacuity: a real export document really was written");
+            Assert.That(written, Does.Not.Contain("<finding"),
+                "and the file a support case receives holds no finding element at all");
+            Assert.That(written, Does.Not.Contain("internal.rule-failed"),
+                "nor the fault's code anywhere else in it");
         });
     }
 

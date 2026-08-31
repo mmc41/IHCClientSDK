@@ -69,7 +69,7 @@ namespace Ihc.Vis.Tests
             {
                 Project project = build();
                 var app = new ProjectAppService(TestSetup.Settings);
-                foreach (ValidationFinding finding in app.ValidateStructured(project))
+                foreach (ValidationFinding finding in app.ValidateStructured(project).Findings)
                 {
                     // A finding that names no element cannot contradict a tag — a whole-project row, or one whose
                     // locator did not parse. It is not a violation and not a witness either.

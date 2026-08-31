@@ -26,8 +26,6 @@ namespace safe_visual_tests;
 /// </summary>
 public class InsertStatusHonestyTests
 {
-    private const string LampeudtagIdentifier = "Lampeudtag";
-
     /// <summary>The claim must not be made while the dialog is still open.</summary>
     [Test]
     public async Task WhileTheInsertDialogIsOpen_NothingClaimsTheProductIsInserted()
@@ -41,7 +39,7 @@ public class InsertStatusHonestyTests
             return new ProductDialogEdits([]);   // an ordinary OK with nothing changed
         };
 
-        await InsertLampeudtagAsync(vm);
+        await InsertGesture.InsertLampeudtagAsync(vm);
 
         Assert.That(statusDuringDialog, Does.Not.Contain("indsat"),
             $"the installer can still cancel, so nothing is inserted yet — status read '{statusDuringDialog}'");
@@ -55,7 +53,7 @@ public class InsertStatusHonestyTests
         var (harness, vm) = await ShellAsync();
         using var _ = harness;
 
-        await InsertLampeudtagAsync(vm);
+        await InsertGesture.InsertLampeudtagAsync(vm);
 
         Assert.That(vm.StatusText, Does.Contain("indsat").And.Contain("Køkken"));
     }
@@ -69,26 +67,13 @@ public class InsertStatusHonestyTests
         using var _ = harness;
         harness.Dialogs.CancelProductDialog = true;
 
-        await InsertLampeudtagAsync(vm);
+        await InsertGesture.InsertLampeudtagAsync(vm);
 
         Assert.Multiple(() =>
         {
             Assert.That(vm.StatusText, Does.Contain("annulleret"));
-            Assert.That(Kitchen(vm).Children, Is.Empty, "a cancelled insert places nothing");
+            Assert.That(InsertGesture.Kitchen(vm).Children, Is.Empty, "a cancelled insert places nothing");
         });
-    }
-
-    private static TreeNodeViewModel Kitchen(MainWindowViewModel vm) =>
-        vm.InstallationNodes[0].Children.Single(c => c.DisplayName == "Køkken");
-
-    private static async Task InsertLampeudtagAsync(MainWindowViewModel vm)
-    {
-        vm.SelectNode(Kitchen(vm));
-        ProductMenuItemViewModel leaf = vm.ProductsMenu
-            .Single(f => f.Header == CatalogMenu.WiredProductsCategory)
-            .Children.Single(c => c.Header == "Output")
-            .Children.Single(c => c.Header == LampeudtagIdentifier);
-        await ((IAsyncRelayCommand)leaf.Command!).ExecuteAsync(null);
     }
 
     private static async Task<(ShellHarness harness, MainWindowViewModel vm)> ShellAsync()

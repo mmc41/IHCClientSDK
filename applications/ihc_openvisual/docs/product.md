@@ -72,6 +72,12 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   *Pinned by:* `ProblemsPanelSkeletonTests`
   (`ThePanelSitsBetweenTheTreesAndTheStatusBarNotBelowIt`, `TheVisRowTogglesThePanelAndIsAlwaysAvailable`),
   `ProblemsListTests.TheBoundRowsAreExactlyTheEnginesFindingsWithTheirMessagesVerbatim`.
+- The same panel is also where the program reports **its own** failures, which the original reports nowhere: a
+  rule that crashed, an operation that threw, a boundary that discarded a fault, a telemetry pipeline that is
+  down. These are listed above every finding and are marked as failures of the tool rather than of the project,
+  because a reader who cannot tell the two apart will look for the fault in their own work.
+  *Pinned by:* `ValidationFaultRoutingTests.ACrashedRuleIsListedAsAnInternalRow`,
+  `ProblemsPanelInternalRowTests.AFaultRowSortsAboveEveryFinding`.
 - Suggestion drop-downs (*Placering*, *Identifikationskode*, *Kabeltype* and the cable-colour fields) offer the
   **values already used in the open project**, where the original offers a **machine-local history** of what was
   typed on that installation. The original's list therefore differs between two people opening the same project
@@ -521,6 +527,22 @@ block; manage a personal library.
 **Functional Requirements**:
 
 - FR-8.1: Validate CONTINUOUSLY — the project is revalidated in the background as it is edited, and the findings are listed in a permanent panel with their severity, code, message, element and category, filterable per tier with live counts, sortable per column, and navigable to the offending element by ACTIVATING a row — double-click or Enter. A single click only selects: the panel is a list to read down, and moving the trees, the editing mode or a window under a reader who is merely scanning it is the panel taking a journey the reader did not ask for. The list has **four tiers** — *Fatale fejl*, *Fejl*, *Advarsler*, *Information* — each filtering independently. **Error findings withhold controller transfer**; the advisory tiers never do. A project that has not been validated yet is not treated as faulty. (A **Fatale fejl** row is an Error finding whose rule also REFUSES an operation — an undeclared attribute stops the save as well as being reported. It is a presentation tier, not a fourth severity: such a row is an Error like any other, so it withholds transfer for exactly the reason the *Fejl* tier does, and separating the two tells the user which faults must be repaired before the project can even be written. A refusal that produces no finding at all — an unopenable file — is still not a panel row, having no project to be a row in.)
+- FR-8.1b: Report the program's OWN failures in the same panel, as an *Intern fejl* tier ABOVE every finding.
+  What belongs here is a failure of the tool: a validation rule that crashed, an operation that ended in an
+  unexpected fault, a native boundary that discarded one, a telemetry pipeline that is not carrying anything.
+  Such a row has **no severity and no category** — it is not a statement about the project, so placing it on the
+  project's scale would be a category error — and it therefore **never withholds transfer**: the project is not
+  at fault. It ranks above every finding because the tool failing outranks anything the tool reports, and
+  because a crashed rule means findings are genuinely MISSING from a list the reader would otherwise take as
+  complete. Each row carries where the failure came from — the engine, this program, or the platform beneath it
+  — so a report can say whose code failed without relying on the wording. Activating a row opens its details,
+  **including when no project is open at all**, which is exactly the case a start-up failure produces. The
+  details show the Danish sentence whole, the identity beside it, and the captured technical readout below under
+  *Teknisk detalje*, with one control that copies the whole report and one on the panel that copies every listed
+  row at once. These rows are **excluded from the findings export**: a findings file is a statement about the
+  project, and a failure of the program is not part of the project — the bulk copy is what serves that need
+  instead. They live for the session and are cleared when a different project is opened, and a failure that
+  repeats is one row rather than many.
 - FR-8.1a: Navigate from a finding to the CONTROL that fixes it. Selecting a finding does nothing but select it (FR-8.1); ACTIVATING one — double-click or Enter, which behave identically — reveals its element and follows the finding all the way to the field: the owning element's dialog opens, a value that lives on a sub-item opens that sub-item's editor **stacked on the still-open parent**, and the caret lands in the field the finding is about. The route is **honest before the click**: the row names the depth it has — the tree, the owning dialog, or the exact field — and a value the dialog does not offer as an editable field degrades to opening the dialog rather than promising a field it cannot focus. A finding that names no field on an element the tree draws — an empty locality, a variable written but never read — lands on that row and opens **nothing**, because its repair is a gesture there and a dialog would be a modal to dismiss first. A finding about the project itself, which names no element at all, opens the one window that repairs it. Everything one activation opens is **one visit**: it commits as a single undoable change, and cancelling discards all of it. Navigation never repairs anything on the user's behalf.
 - FR-8.2: Unlimited undo/redo across all edit operations within a session — no configured step cap, bounded only by process memory. **Prefer making an irreversible action undoable over guarding it with a dialog** — no project mutation currently needs the guard.
 - FR-8.3: Ids of existing elements are never renumbered or reused; deletions leave holes (ids are monotonic and never recycled).

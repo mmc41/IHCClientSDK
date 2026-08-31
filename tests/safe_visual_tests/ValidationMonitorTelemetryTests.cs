@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using ihc_openvisual.Services;
 using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
@@ -22,8 +23,55 @@ namespace safe_visual_tests;
 [TestFixture]
 public class ValidationMonitorTelemetryTests
 {
-    private static readonly EquatableArray<ValidationFinding> NoFindings =
-        new System.Collections.Immutable.ImmutableArray<ValidationFinding>();
+    private static readonly StructuredValidationResult NoFindings = StructuredValidationResult.Empty;
+
+    /// <summary>
+    /// REPRODUCE-FIRST for the silent-staleness defect: a faulted run used to leave a LOG LINE and
+    /// nothing else, so the panel went on showing rows that describe a document state the run never reached —
+    /// and they read as current. The row is the fix, and its sentence is what carries the consequence.
+    /// </summary>
+    /// <remarks>
+    /// Asserted on the sentence and the code TOGETHER. The catch-all would have satisfied a code-only assertion
+    /// while telling the reader nothing they can act on; what makes this row worth having is that it says the
+    /// list may be out of date.
+    /// </remarks>
+    [Test]
+    public async Task AFaultingRunLeavesADurableRowSayingTheListMayBeStale()
+    {
+        using ShellHarness harness = ShellHarness.Create();
+        List<Ihc.Vis.Problems.InternalError> reported = [];
+        bool shouldThrow = false;
+
+        using var monitor = new ValidationMonitor(
+            harness.Session,
+            _ => shouldThrow ? throw new System.TimeoutException("a rule hung") : NoFindings,
+            onFault: reported.Add);
+
+        await harness.Session.NewAsync();
+        await harness.SettleValidationAsync(monitor);
+        Assert.That(reported, Is.Empty, "a healthy run reports nothing");
+
+        shouldThrow = true;
+        ElementId locality = harness.Session.Current!.Groups[0].Id!.Value;
+        await harness.Session.AddEmptyFunctionBlockAsync(locality);
+        await harness.SettleValidationAsync(monitor);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(reported, Has.Count.EqualTo(1), "the fault is now durable, not only logged");
+            Ihc.Vis.Problems.InternalError row = reported[0];
+            Assert.That(row.Code.Value, Is.EqualTo("app.openvisual.validation-faulted"),
+                "its OWN code, not the shell's catch-all");
+            Assert.That(row.Message, Is.EqualTo(HostProblems.ValidationFaulted().Message),
+                "rendered WHOLE from the catalogue, never re-worded here");
+            Assert.That(row.Message, Does.Contain("forældet"),
+                "and the sentence carries the CONSEQUENCE: the list on screen may be out of date");
+            Assert.That(row.Origin, Is.EqualTo(Ihc.Vis.Problems.InternalErrorOrigin.Host),
+                "the loop around the engine failed, not a rule inside it");
+            Assert.That(row.Detail, Does.Contain("a rule hung"),
+                "with the original exception captured for a support case");
+        });
+    }
 
     /// <summary>
     /// The gate's assertion. A REAL ILogger, never a mock: the point is that the fault reaches the logging

@@ -29,6 +29,7 @@ A code whose first dotted segment is `app` is host-owned; every other code is th
 | A condition that refuses an SDK operation (fatal) | SDK | `ProblemCatalogEntries.ProjectFindings.cs` (the cause) and/or `ProblemCatalogEntries.cs` (the operation head) | category on the cause only |
 | A precondition that refuses one edit command | SDK | `ProblemCatalogEntries.EditRefusals.cs` | nothing but slots |
 | An outcome of an action **this app** could not carry through | This app | `Services/HostProblemCatalog.cs` | slots only |
+| A fault in the TOOL rather than in anything it describes | SDK, or this app | `ProblemCatalogEntries.InternalFaults.cs`, or `Services/HostProblemCatalog.cs` | slots only |
 
 **A host authors no findings.** A finding is a statement about the `.vis` file, the SDK owns the file, and a
 second opinion minted in an app is how two catalogues start disagreeing. Every `app.openvisual.*` entry is an
@@ -48,6 +49,24 @@ fails any entry that breaks this, and the entry it rejects is schema-legal — t
 | **Warning** | same | one of eight | `Warning` | same | at least one | `Warning` |
 | **Information** | same | one of eight | `Info` — see [§11.2](#112-information--the-fourth-disposition) | same | at least one | `Info` |
 | **Host outcome** | `OperationOutcomes` | `null` | `Refusal` | `OperationOutcome` | `None` | — |
+| **Internal fault** | `OperationOutcomes` | `null` | `NotApplicable` | `InternalFault` | `None` | — |
+
+**An internal fault is the one kind that says nothing about a project.** Every other row above describes the
+`.vis` file, a definition file, or an action the user asked for. This one describes the tool failing — a rule
+that crashed, an operation that threw, a platform boundary that discarded an exception, a telemetry pipeline
+that is down. It therefore sets `Disposition = NotApplicable` rather than `Refusal`: refusing is a thing an
+operation does about a request, and there was no request. `CatalogInvariants` enforces the whole row as a
+biconditional — an entry is `InternalFault` exactly when it declares no category, no faces, no refusal and
+`NotApplicable` — so a fault cannot acquire a category by accident and a finding cannot borrow this kind.
+
+**It carries an ORIGIN, which no other item does.** `Sdk`, `Host` or `Platform` — the engine, this application,
+or the layer beneath it. A support question can then say whose code failed without reading the sentence, and the
+Danish sentence is free to describe the consequence instead of the blame.
+
+**It is excluded from the findings export by design.** A findings file is a statement about the project, and a
+software fault is not part of the project; the export's grammar requires a category and a severity on every
+finding, and an internal fault has neither. What replaces the export for these is the panel's own bulk copy —
+see [the Problemer panel story](stories/18-problems-panel.md).
 
 Six consequences of this table are load-bearing:
 
@@ -81,7 +100,7 @@ Six consequences of this table are load-bearing:
   [§7.1](#71-firmware-bounds)'s rule.
 
 Together these give the findings LIST its four tiers. Three of them are populated; `Info` is declarable and no
-row declares it yet. [§11](#11-the-four-list-tiers-and-how-each-derives) states how each one derives.
+row declares it yet. [§11](#11-the-list-tiers-and-how-each-derives) states how each one derives.
 
 ### The eight categories
 
@@ -113,8 +132,8 @@ see [§10](#10-gates-a-new-item-must-pass).
 | 1 | `Code` | `ProblemCode` | See [§4](#4-the-identifier). |
 | 2 | `Section` | `ProblemCatalogSection` | `ProjectFindings`, `CatalogDefinitionFindings`, `OperationOutcomes`. |
 | 3 | `Category` | `ValidationCategory?` | One of the eight, or `null`. Non-null **exactly when** `Section` is not `OperationOutcomes`. |
-| 4 | `Disposition` | `CatalogDisposition` | `Error`, `Warning`, `Info`, `Refusal`. Three finding tiers and one refusal; see [§11.2](#112-information--the-fourth-disposition). |
-| 5 | `Kind` | `RuleKind` | `UserContentRule`, `SchemaSerializationGuard`, `EditPrecondition`, `OperationOutcome`. |
+| 4 | `Disposition` | `CatalogDisposition` | `Error`, `Warning`, `Info`, `Refusal`, `NotApplicable`. The finding tiers, a refusal, and — for a row that is neither, i.e. a fault in the tool — `NotApplicable`; see [§11.2](#112-information--the-fourth-disposition). |
+| 5 | `Kind` | `RuleKind` | `UserContentRule`, `SchemaSerializationGuard`, `EditPrecondition`, `OperationOutcome`, `InternalFault`. `InternalFault` is required exactly when `Disposition` is `NotApplicable`, and refused otherwise. |
 | 6 | `Faces` | `RuleFaces` | `None` for anything realised at a throw site; `WholeProject` and/or `DialogMetadata` for a registered rule. A registered rule declaring `None` is refused. |
 | 7 | `Target` | `RuleTarget` | `(tag, attribute)` — e.g. `new RuleTarget("product", "address")`. A **null tag** means one of two things, decided by the attribute: with one it is the **wildcard**, *this attribute on whatever element the rule reports*; without one it is the project as a whole. Rejected when the schema registry knows the tag and not the attribute — and a wildcard is rejected when **no** registered element declares the attribute, so a typo cannot register as a rule that silently never fires. |
 | 8 | `Shape` | `FindingShape` | `OneFinding` (one repair clears everything), `OnePerOccurrence` (the usual choice for a content row — write it out, because the enum's zero value is `OneFinding` and `default` here silently means that), `PrimaryWithRelated` (one repair, but the user must see every site). |
@@ -146,7 +165,7 @@ Then the init-only fields:
 | `RequiresControllerLimits` | `bool` | When the row needs a target controller's capability limits | Such a rule is absent from the default project-only profile: it does not run and does not report, rather than guessing. |
 | `RequiresLibrary` | `bool` | When the row can only be decided against the library a placed block claims | Same posture: skipped when no `ILibraryBlockSource` was supplied. |
 | `FirmwareBound` | `DeclaredFirmwareBound?` | When the row's condition is a controller-firmware or shipped-block errata | The release that fixed the defect — see [§7.1](#71-firmware-bounds). **The opposite posture from the two flags above**: the row runs and reports with NO firmware supplied, and a declared `ValidationProfile.Firmware` can only WITHHOLD a finding whose fix that target is already past. There is deliberately no `RequiresFirmware` flag, and adding one would be the defect: an enabling flag skips the row exactly when nobody has named a controller, which is while the project is being designed. |
-| `RefusedOperations` | `EquatableArray<ProblemCode>` | When the row also REFUSES an operation | The operation heads it refuses, from `OperationCodes.All` — `io.load`, `io.save`, `edit.open`, `import.catalog`, `bridge.download`, `bridge.upload`. Empty for the great majority. `CatalogInvariants.Check` refuses a code that is not a head. Declare what a site actually raises. problem-catalogue §4's **Blocks** column is generated FROM this field and publishes one word per head — `Open`, `Save · Export`, `Edit-open`, `Import`, `Download`, `Upload` — so the column can express every declaration, and adding a seventh head is a decision about how §4 words it rather than something a renderer settles by omission. Two consumers: the finding carries it (`ValidationFinding.RefusedOperations`), and the panel derives its *Fatale fejl* tier from it — see [§11](#11-the-four-list-tiers-and-how-each-derives). **It pairs with `Error` or `Refusal`, and that is now ENFORCED**: `CatalogInvariants.Check` reports `RefusedOperationOnAdvisoryDisposition` for a `Warning`/`Info` row that declares one, and `RefusalWithoutRefusedOperation` for a `Refusal` content row that declares none — a refusal has to say which operation it stops. The other way in is closed too: `ValidationProfile.SeverityFor` **throws** when an override demotes a refusing row below `Error`, rather than flooring it silently. |
+| `RefusedOperations` | `EquatableArray<ProblemCode>` | When the row also REFUSES an operation | The operation heads it refuses, from `OperationCodes.All` — `io.load`, `io.save`, `edit.open`, `import.catalog`, `bridge.download`, `bridge.upload`. Empty for the great majority. `CatalogInvariants.Check` refuses a code that is not a head. Declare what a site actually raises. problem-catalogue §4's **Blocks** column is generated FROM this field and publishes one word per head — `Open`, `Save · Export`, `Edit-open`, `Import`, `Download`, `Upload` — so the column can express every declaration, and adding a seventh head is a decision about how §4 words it rather than something a renderer settles by omission. Two consumers: the finding carries it (`ValidationFinding.RefusedOperations`), and the panel derives its *Fatale fejl* tier from it — see [§11](#11-the-list-tiers-and-how-each-derives). **It pairs with `Error` or `Refusal`, and that is now ENFORCED**: `CatalogInvariants.Check` reports `RefusedOperationOnAdvisoryDisposition` for a `Warning`/`Info` row that declares one, and `RefusalWithoutRefusedOperation` for a `Refusal` content row that declares none — a refusal has to say which operation it stops. The other way in is closed too: `ValidationProfile.SeverityFor` **throws** when an override demotes a refusing row below `Error`, rather than flooring it silently. |
 
 ---
 
@@ -510,9 +529,9 @@ same edit.
 
 ---
 
-## 11. The four list tiers, and how each derives
+## 11. The list tiers, and how each derives
 
-The findings list shows **fatal errors, errors, warnings and information messages**. All four tiers ship.
+The list shows **internal errors, fatal errors, errors, warnings and information messages** — every tier ships.
 This section states how each one derives.
 
 | Tier | Danish | Derives from | Status |

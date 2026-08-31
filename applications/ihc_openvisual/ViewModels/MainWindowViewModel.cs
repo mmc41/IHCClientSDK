@@ -517,11 +517,6 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // The single outcome→status/dialog rule (W2-14): Committed → success status; NoChange → silent (a no-op edit
     // leaves the status alone); Refused → the refusal reason as status; Failed → an error dialog. Applying a command
     // through the session and mapping its outcome here is how the VM drives every edit, replacing the per-op wrappers.
-    /// <summary>The one sentence shown when an edit FAILS (as opposed to being refused): the engine's own message
-    /// is an English developer diagnostic, so it goes to the log and the installer gets this.</summary>
-    internal const string EditFailedMessage =
-        "Redigeringen kunne ikke gennemføres på grund af en intern fejl. Ændringen blev ikke gemt.";
-
     /// <summary>The title over an insertion that could not happen — the shell's own framing of an SDK refusal it
     /// narrates below (T043). Named because two insert paths raise the same box.</summary>
     internal const string InsertFailedTitle = "Indsætning mislykkedes";
@@ -558,7 +553,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     internal static string UnexpectedErrorMessage => HostProblemCatalog.Unexpected.MessageTemplate;
 
     /// <summary>The generic that stands in wherever a non-committed outcome has no sentence this app may show —
-    /// deliberately not <see cref="EditFailedMessage"/>, which <see cref="ReportOutcomeAsync"/> has already put in
+    /// deliberately not the SDK's own fault sentence, which <see cref="ReportOutcomeAsync"/> has already put in
     /// front of the installer by the time a still-open dialog needs this.</summary>
     internal const string EditRejectedMessage = "Handlingen blev afvist.";
 
@@ -570,38 +565,73 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// Danish (FR-2.6 / D13), whereas a failure's reason is the engine's own exception message, an English
     /// developer diagnostic naming element tags, attribute names and <c>_0x</c> ids.
     /// </summary>
-    internal static string? UserFacingRefusal(EditOutcome outcome) =>
+    /// <param name="overrideSentence">
+    /// A sentence the CALLER has authored for its own context, used in place of the SDK's wording — the pin
+    /// dialog's "Datalinie X, klemme Y er ikke en gyldig adresse.", which names the values the installer just
+    /// typed where the SDK can only describe the rule. It is offered to <c>Refused</c> alone: a caller supplying
+    /// one is describing a refusal, and letting it reach a failure or a no-op is exactly how the pin flow came to
+    /// tell installers their address was invalid when it was not. It replaces the WORDS, never the identity —
+    /// the outcome's code is still what the presenter renders around it.
+    /// </param>
+    internal static string? UserFacingRefusal(EditOutcome outcome, string? overrideSentence = null) =>
         outcome.Status == EditStatus.Refused
             // RENDERED through the shell's one presentation path, so a refusal shown in the status bar carries
             // the same bracketed identity it carries in a dialog (R18). Showing the sentence raw here made one
             // refusal identified on one surface and anonymous on another, which is the difference between a user
             // who can quote a code and one who can only paraphrase a sentence.
             ? ProblemPresenter.Text(new Problem(
-                outcome.Code, outcome.Reason ?? string.Empty, EquatableArray<ProblemArgument>.Empty))
+                outcome.Code, overrideSentence ?? outcome.Reason ?? string.Empty,
+                EquatableArray<ProblemArgument>.Empty))
             : null;
 
-    private async Task<EditOutcome> ReportOutcomeAsync(EditOutcome outcome, string? successStatus)
+    /// <summary>
+    /// THE reader of an edit outcome. Every flow hands its outcome here rather than switching on
+    /// <see cref="EditStatus"/> itself, because the statuses that are not <c>Committed</c> are not
+    /// interchangeable: a refusal is the installer's to act on, a no-op has nothing to say, and a failure needs a
+    /// dialog, a log record and a span. A caller that reduced them to "not committed" reported one sentence for
+    /// all three, and reported it about the wrong thing twice.
+    /// </summary>
+    /// <param name="refusalOverride">The caller's own refusal wording — see <see cref="UserFacingRefusal"/>.</param>
+    private async Task<EditOutcome> ReportOutcomeAsync(
+        EditOutcome outcome, string? successStatus, string? refusalOverride = null)
     {
         switch (outcome.Status)
         {
             case EditStatus.Committed when successStatus is not null: StatusText = successStatus; break;
-            // Refused: the SDK's reason IS the user-facing sentence (Danish since T015) — shown verbatim.
-            case EditStatus.Refused when UserFacingRefusal(outcome) is { } refusal: StatusText = refusal; break;
+            // Refused: the SDK's reason IS the user-facing sentence (Danish since T015) — shown verbatim, unless
+            // the caller authored one for a context the SDK cannot see.
+            case EditStatus.Refused when UserFacingRefusal(outcome, refusalOverride) is { } refusal:
+                StatusText = refusal;
+                break;
             // Failed: the reason is an ENGINE EXCEPTION message — a developer diagnostic, in English, naming
             // element tags and attribute names. Showing it put untranslated internals in front of the installer,
             // so it is logged and one fixed Danish sentence is shown instead. A refusal is a rule the installer
             // can act on; a failure is a defect they can only report, and the log is where the detail belongs.
             case EditStatus.Failed:
                 _logger.LogError("Edit failed: {Label} — {Reason}", outcome.Label, outcome.Reason);
-                await _dialogs.ShowProblemAsync(EditFailedTitle, HostProblems.EditFailed(outcome.Reason));
+                // The SDK words its own fault (T023/T025): the outcome carries an InternalError whose Danish
+                // sentence is already bound, so this renders it WHOLE and adds only a title. The shell used to
+                // mint a second code saying the same thing in its own voice, which is one condition with two
+                // sentences and two ids.
+                //
+                // A Failed outcome with no fault is an SDK contract violation, not a case to paper over with an
+                // invented sentence: it is logged above, and the shell says nothing it cannot attribute.
+                if (outcome.Fault is { } fault)
+                {
+                    await _dialogs.ShowProblemAsync(EditFailedTitle,
+                        new Problem(fault.Code, fault.Message, EquatableArray<ProblemArgument>.Empty,
+                            fault.Diagnostic));
+                }
                 break;
         }
         return outcome;
     }
 
     /// <summary>Applies a command through the session and maps its outcome (W2-14); returns whether it committed.</summary>
-    private async Task<bool> ApplyAsync(ProjectCommand command, string? successStatus = null) =>
-        (await ReportOutcomeAsync(await _session.ApplyAsync(command), successStatus)).Status == EditStatus.Committed;
+    private async Task<bool> ApplyAsync(
+        ProjectCommand command, string? successStatus = null, string? refusalOverride = null) =>
+        (await ReportOutcomeAsync(await _session.ApplyAsync(command), successStatus, refusalOverride))
+            .Status == EditStatus.Committed;
 
     /// <summary>Applies a value-producing command and maps its outcome; returns the produced id, or null when it did
     /// not commit.</summary>
@@ -768,8 +798,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         RecentProjectsStore recent,
         IThemeService theme,
         AppConfiguration? config = null,
-        ILoggerFactory? loggerFactory = null)
+        ILoggerFactory? loggerFactory = null,
+        InternalErrorLog? internalErrors = null)
     {
+        _internalErrors = internalErrors;
         _session = session;
         _dialogs = dialogs;
         _recent = recent;
@@ -779,7 +811,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         CurrentTheme = theme.Current;
         CurrentTextScale = theme.TextScale;
         _properties = new PropertiesDialogCoordinator(
-            _session, _dialogs, (command, status) => ApplyAsync(command, status), status => StatusText = status);
+            _session, _dialogs, (command, status, refusal) => ApplyAsync(command, status, refusal),
+            status => StatusText = status, RunAsync);
         _programAuthoring = new ProgramAuthoringCoordinator(
             _session, _dialogs, RunAsync, (command, status) => ApplyAsync(command, status), SelectNode,
             status => StatusText = status, () => SelectedNode, () => _programmingBlockId, NotifyProgramMenuGates);
@@ -812,7 +845,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // root put them — so there is one answer to "which thread" and one clock, not one per view-model.
         Problems = new ProblemsPanelViewModel(
             _session, _session.Validation, _session.ExportFindingsAsync,
-            status => StatusText = status, ActivateProblemAsync);
+            status => StatusText = status, ActivateProblemAsync,
+            internalErrors: _internalErrors,
+            showInternalError: _dialogs.ShowInternalErrorAsync);
 
         RegisterCoreEditRows();
         RegisterNodeRows();
@@ -1396,7 +1431,19 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 // Cancelled: roll the insert back — NOT Undo. Rollback restores the snapshot verbatim (the vendor
                 // burns no ids on Annuller — S-12) and leaves no redo entry, where Undo deliberately keeps the
                 // raised id counter (alignment F-10) and would leave the cancelled insert redoable.
-                await _session.RollbackAsync();
+                //
+                // Its ANSWER decides the sentence. Announcing the cancellation without reading it stated the
+                // gesture's outcome before anything had established it, and a roll-back that did not happen is a
+                // fault the installer cannot act on — so the detail goes to the log and the status line says only
+                // what is true.
+                if (!await _session.RollbackAsync())
+                {
+                    _logger.LogError(
+                        "Rollback of the cancelled insert of {Product} under {Locality} did not happen",
+                        productName, localityName);
+                    StatusText = $"Indsætning af '{productName}' kunne ikke fortrydes.";
+                    return;
+                }
                 StatusText = $"Indsætning af '{productName}' annulleret.";
                 return;
             }
@@ -1479,8 +1526,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// plan, and a second derivation here is how a tooltip and a click come to disagree.</para>
     /// <para>The reveal is attempted FIRST and its answer honoured: a plan whose target has since gone leaves the
     /// dialog unopened and says so, rather than opening a dialog for an element that is no longer there.</para>
+    /// <para>Carried out INSIDE the error boundary, like every other command. The panel activates by discarding
+    /// the task this returns, so without one a fault on the way to the fix reached nobody: no dialog, no log
+    /// record, no span, and a double-click that looked ignored.</para>
     /// </remarks>
-    private async Task ActivateProblemAsync(NavigationPlan plan)
+    private Task ActivateProblemAsync(NavigationPlan plan) => RunAsync(nameof(ActivateProblemAsync), async () =>
     {
         // A HOST window first: a whole-project finding has no element, so there is no tree leg to walk and the
         // reveal below would have nothing to aim at.
@@ -1498,7 +1548,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         {
             await _properties.ExecuteAsync(hop);
         }
-    }
+    });
 
     private void RegisterCoreEditRows()
     {
@@ -2261,7 +2311,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // fixed Danish sentence. This is the widest instance of that channel — every command routes through
             // here — and it is the one place that cannot name what failed, since it catches for all of them.
             StatusText = UnexpectedErrorMessage;
-            await _dialogs.ShowProblemAsync(UnexpectedErrorTitle, HostProblems.Unexpected(ex));
+            // ONE Problem for both channels, so the row and the dialog cannot come to say different things about
+            // the same fault.
+            Ihc.Vis.Problems.Problem problem = HostProblems.Unexpected(ex);
+            // BEFORE the dialog, which awaits a person. Two reasons, and the second is the one that matters: a
+            // dialog is dismissed and gone, so without this the fault flashed once and left nothing behind — and
+            // a process that dies while the modal is up would otherwise have recorded nothing at all here.
+            _internalErrors?.Append(Ihc.Vis.Problems.InternalError.From(
+                problem, Ihc.Vis.Problems.InternalErrorOrigin.Host,
+                $"{nameof(MainWindowViewModel)}.{operation}: {ex}"));
+            await _dialogs.ShowProblemAsync(UnexpectedErrorTitle, problem);
         }
     }
 
@@ -2271,6 +2330,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// </summary>
     private readonly Ihc.OperationTelemetry _telemetry =
         new(AppTelemetryRegistry.Surface, nameof(MainWindowViewModel));
+
+    /// <summary>
+    /// The application's fault sink, or none. Held rather than reached for: it outlives every document and is
+    /// shared by every layer that can fault, so the composition root owns it and this is one of its readers.
+    /// </summary>
+    private readonly InternalErrorLog? _internalErrors;
 
     /// <summary>The binding is IMMUTABLE and its instruments are static, so it is built once rather than per operation.</summary>
     private static readonly Ihc.MetricBinding TreeUpdateMetrics =

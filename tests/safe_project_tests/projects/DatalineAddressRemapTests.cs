@@ -45,7 +45,7 @@ namespace Ihc.Vis.Tests
                         Tree.Node("dataline_input", "_0x5104", [("address_dataline", "_0x5"), ("name", "B")])))));
 
             ILookup<string, string> byId = new WholeProjectValidator(Rules())
-                .Validate(project, ValidationProfile.Categorized)
+                .Validate(project, ValidationProfile.Categorized).Findings
                 .ToLookup(f => f.Code.Value, f => f.Primary!.Locator!);
 
             Assert.Multiple(() =>
@@ -71,7 +71,7 @@ namespace Ihc.Vis.Tests
                         Tree.Node("dataline_input", "_0x5101", [("address_dataline", ElementId.NullToken)]),
                         Tree.Node("dataline_output", "_0x5201", [])))));
 
-            Assert.That(new WholeProjectValidator(Rules()).Validate(project, ValidationProfile.Categorized), Is.Empty);
+            Assert.That(new WholeProjectValidator(Rules()).Validate(project, ValidationProfile.Categorized).Findings, Is.Empty);
         }
 
         /// <summary>An input and an output may hold the same number: uniqueness is per DIRECTION.</summary>
@@ -84,7 +84,7 @@ namespace Ihc.Vis.Tests
                         Tree.Node("dataline_input", "_0x5101", [("address_dataline", "_0x5")]),
                         Tree.Node("dataline_output", "_0x5201", [("address_dataline", "_0x5")])))));
 
-            Assert.That(new WholeProjectValidator(Rules()).Validate(project, ValidationProfile.Categorized), Is.Empty);
+            Assert.That(new WholeProjectValidator(Rules()).Validate(project, ValidationProfile.Categorized).Findings, Is.Empty);
         }
 
         /// <summary>

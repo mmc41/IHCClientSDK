@@ -75,7 +75,7 @@ public class DeviceSettingsRouteTests
                 $"precondition: storing 50 in {tag} — {outcome.Reason}");
         }
 
-        ValidationFinding finding = harness.ProjectService.ValidateStructured(harness.Session.Current!)
+        ValidationFinding finding = harness.ProjectService.ValidateStructured(harness.Session.Current!).Findings
             .First(f => f.Problem.Code.Value == "dev-dimmer-range-inverted"
                 && f.Primary?.Element == product);
         return (harness, vm, product, finding);

@@ -63,6 +63,11 @@ public sealed class ProjectWorkflow : IDisposable
     /// test and wrong anywhere else.
     /// </param>
     /// <param name="timeProvider">The clock every debounce and delay in the shell runs on — see <see cref="Time"/>.</param>
+    /// <param name="faultSink">
+    /// Where the validation loop's internal errors go for the user to see. Supplied by the composition root
+    /// rather than built here, because the sink outlives every document and more than the validation loop
+    /// reports to it; a workflow that owned one would give each document a sink of its own.
+    /// </param>
     public ProjectWorkflow(
         ProjectAppService service,
         RecentProjectsStore recent,
@@ -72,7 +77,8 @@ public sealed class ProjectWorkflow : IDisposable
         InstallerIdentityStore? installerIdentity = null,
         DataTableStore? dataTables = null,
         Action<Action>? post = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        Action<InternalError>? faultSink = null)
     {
         _service = service;
         _recent = recent;
@@ -82,10 +88,10 @@ public sealed class ProjectWorkflow : IDisposable
         // Not defaulted to CreateDefault(): an unconfigured session must not read (or write) the real user's
         // settings file, so tests and design-time instances start from an empty in-memory identity.
         InstallerIdentity = installerIdentity ?? new InstallerIdentityStore(
-            Path.Combine(catalogDir ?? DefaultCatalogDir(), "installer.json"));
+            Path.Combine(catalogDir ?? DefaultCatalogDir(), "installer.json"), loggerFactory: loggerFactory);
         // Same rule: the data tables are application state, so an unconfigured session gets its own file.
         DataTables = dataTables ?? new DataTableStore(
-            Path.Combine(catalogDir ?? DefaultCatalogDir(), "datatables.json"));
+            Path.Combine(catalogDir ?? DefaultCatalogDir(), "datatables.json"), loggerFactory);
         _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<ProjectWorkflow>();
         _catalogDir = catalogDir ?? DefaultCatalogDir();
         _reports = new ProjectReportWorkflow(_service, _dialogs, _logger, () => Current);
@@ -97,7 +103,9 @@ public sealed class ProjectWorkflow : IDisposable
         // LAST, because it reads this workflow: everything it touches (Current, Version, LastChange, Post, Time,
         // StateChanged) is assigned above. Eager rather than lazy so no reader can create it late and miss the
         // document changes that already happened.
-        Validation = new ValidationMonitor(this, ValidateStructured, loggerFactory);
+        // The STRUCTURED result, whole: what the run found and what it broke are one answer, and the half that
+        // was dropped here was the half nothing else could recover.
+        Validation = new ValidationMonitor(this, ValidateStructured, loggerFactory, faultSink);
     }
 
     /// <summary>
@@ -120,8 +128,7 @@ public sealed class ProjectWorkflow : IDisposable
     public ValidationMonitor Validation { get; }
 
     /// <summary>The app-data folder persisted catalog imports are copied into and loaded from on startup (US-061).</summary>
-    private static string DefaultCatalogDir() => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "IHC OpenVisual", "catalog");
+    private static string DefaultCatalogDir() => Constants.AppDataPath("catalog");
 
     public Project? Current => _document?.Current;
 
@@ -241,13 +248,11 @@ public sealed class ProjectWorkflow : IDisposable
         }
         catch (Exception ex)
         {
-            // BEFORE the dialog and the swallow. The dialog awaits a human, so recording after it would fold
-            // arbitrary think-time into the operation - and the `return false` below discards the exception
-            // entirely, which is how an open failure used to leave no trace at all.
-            scope.SetOutcome(Ihc.OperationOutcome.Failed(ex));
-            _logger.LogError(ex, "Failed to open project {Path}", path);
-            await RaisedProblemDisplay.ShowAsync(
-                _dialogs, OpenFailedTitle, HostProblems.ProjectOpenFailed(path, ex), ex);
+            // The outcome BEFORE the dialog, and all three in one call: the `return false` below discards the
+            // exception entirely, which is how an open failure used to leave no trace at all.
+            await FailureReport.FailedAsync(
+                scope, _logger, _dialogs, OpenFailedTitle, HostProblems.ProjectOpenFailed(path, ex), ex,
+                "Failed to open project {Path}", path);
             return false;
         }
     }
@@ -348,7 +353,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// thread before the work starts (ADR-001, host contract step 1). A door reading <see cref="Current"/> itself
     /// would take that read off the owning thread, where the pair is no longer atomic.
     /// </remarks>
-    public EquatableArray<ValidationFinding> ValidateStructured(Project project) =>
+    public StructuredValidationResult ValidateStructured(Project project) =>
         _service.ValidateStructured(project);
 
     /// <summary>The catalog products as slim insert-menu items (<see cref="CatalogItem"/>) — what the insert menu binds to.</summary>
@@ -427,18 +432,36 @@ public sealed class ProjectWorkflow : IDisposable
         }
         catch (Exception ex)
         {
-            scope.SetOutcome(Ihc.OperationOutcome.Failed(ex));
-            _logger.LogError(ex, "Failed to save function block {Id} to {Path}", functionBlockId.ToToken(), filePath);
-            // The engine's English message is DETAIL, never the sentence: it goes to the log above, and the
-            // installer reads the SDK's own coded CAUSE (D01) — why the export failed, not merely which file it
-            // was writing, which the shell's framing already carries as the chain's operation.
-            await RaisedProblemDisplay.ShowAsync(
-                _dialogs, SaveFailedTitle, HostProblems.BlockExportFailed(name, filePath, ex), ex);
+            // The engine's English message is DETAIL, never the sentence: it goes to the log, and the installer
+            // reads the SDK's own coded CAUSE (D01) — why the export failed, not merely which file it was
+            // writing, which the shell's framing already carries as the chain's operation.
+            await FailureReport.FailedAsync(
+                scope, _logger, _dialogs, SaveFailedTitle,
+                HostProblems.BlockExportFailed(name, filePath, ex), ex,
+                "Failed to save function block {Id} to {Path}", functionBlockId.ToToken(), filePath);
             return false;
         }
         EditOutcome outcome = await ApplyAsync(
             Commands.SaveFunctionBlockToLibrary(project, functionBlockId, name, Environment.UserName, normalizedNote));
-        return outcome.Status == EditStatus.Committed;
+        if (outcome.Status == EditStatus.Committed)
+        {
+            return true;
+        }
+        // The .ifb is written by now; the library COMMIT is what did not happen. Reducing this to a bool left the
+        // scope above reading OK even for a refusal, so the one channel that could show this was saying the
+        // opposite.
+        //
+        // The outcome's CODE is logged and its Reason deliberately is not: which of an outcome's reasons may reach
+        // a reader is decided in exactly ONE place in this application, and a second reader here would be a second
+        // judgement to keep in step with it. Reporting a refused library commit to the installer therefore belongs
+        // to the view-model's classifier, not here.
+        scope.SetOutcome(ClassifyEdit(outcome));
+        if (outcome.Status is EditStatus.Refused or EditStatus.Failed)
+        {
+            _logger.LogError("Library commit for function block {Id} ended {Status} ({Code})",
+                functionBlockId.ToToken(), outcome.Status, outcome.Code.Value);
+        }
+        return false;
     }
 
     /// <summary>
@@ -449,7 +472,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// immediately, which is the whole point of "saving to the library" and is exactly what a picked path elsewhere
     /// on disk would NOT do.
     /// </summary>
-    /// <returns>The file written, or null when the export or the library commit failed.</returns>
+    /// <returns>The file written, or null when the export, the library commit or the registration failed.</returns>
     public async Task<string?> SaveFunctionBlockToLibraryAsync(ElementId functionBlockId, string name, string note)
     {
         Directory.CreateDirectory(_catalogDir);
@@ -459,8 +482,12 @@ public sealed class ProjectWorkflow : IDisposable
         // persist:false — the file is ALREADY in the catalog folder, so PersistFile would copy it onto itself.
         // This call is for the registration half: it parses the block into the live catalog and fires
         // CatalogChanged, which is what rebuilds the insertion menus.
-        await _catalog.ImportFileAsync(path, persist: false);
-        return path;
+        //
+        // Its answer is the gesture's answer. Registering is the half that makes the block appear under
+        // Indsæt ▸ FunktionsBlokke, so a rejected registration did not save the block to the LIBRARY however
+        // well the file was written — and ImportFileAsync has already shown the installer why. Discarding this
+        // put a success line under that rejection dialog: two contradictory statements about one action.
+        return await _catalog.ImportFileAsync(path, persist: false) ? path : null;
     }
 
     /// <summary>The block's name as a file name. A block name is free text and may hold characters no file system
@@ -697,11 +724,10 @@ public sealed class ProjectWorkflow : IDisposable
         }
         catch (Exception ex)
         {
-            // BEFORE the dialog and the swallow, for the same reason as the open path above.
-            scope.SetOutcome(Ihc.OperationOutcome.Failed(ex));
-            _logger.LogError(ex, "Failed to save project {Path}", path);
-            await RaisedProblemDisplay.ShowAsync(
-                _dialogs, SaveFailedTitle, HostProblems.ProjectSaveFailed(path, ex), ex);
+            // The outcome BEFORE the dialog and the swallow, for the same reason as the open path above.
+            await FailureReport.FailedAsync(
+                scope, _logger, _dialogs, SaveFailedTitle, HostProblems.ProjectSaveFailed(path, ex), ex,
+                "Failed to save project {Path}", path);
             return false;
         }
     }

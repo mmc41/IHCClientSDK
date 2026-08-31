@@ -34,7 +34,7 @@
             <Setter Property="FontFamily" Value="{DynamicResource MonoFontFamily}"/>
             <Setter Property="FontSize" Value="{DynamicResource MonoFontSize}"/>
         </Style>
-        <!-- A heading CHIP: the export button, matched to the three tier ToggleButtons it sits beside. Every
+        <!-- A heading CHIP: the export button, matched to the tier ToggleButtons it sits beside. Every
              setter here has a counterpart in the ToggleButton style above, so the four controls in that row are
              one set. It is a class rather than a plain `Button` selector because the five sort-column headers
              are Buttons too, and they are a different thing entirely — a header row, not a chip. -->
@@ -102,6 +102,20 @@
                          padding-free Border one level up shows the reason where the button cannot (measured, both
                          directions, in DisabledTooltipSpikeTests). Keep it padding-free: ProblemsPanelDensityTests
                          measures the heading band's height, and this must not add to it. -->
+                    <!-- Beside the export, and only while there is something to copy. It is the answer to the
+                         findings export deliberately carrying no internal error (D05): a fault storm needs all of
+                         it at once, and one details dialog at a time will not do. Same chip shape as its
+                         neighbours; its label is BOUND because it flips to the confirmation in place, exactly as
+                         the details dialog's copy button does. -->
+                    <Button DockPanel.Dock="Right" Classes="chip"
+                            Name="CopyInternalsButton"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding CanCopyInternals}"
+                            Click="OnCopyInternalsClick"
+                            a:AutomationProperties.AutomationId="{x:Static vm:ProblemsPanelViewModel.CopyInternalsAutomationId}"
+                            a:AutomationProperties.Name="{x:Static vm:ProblemsPanelViewModel.CopyInternalsAccessibleName}"
+                            Content="{Binding CopyInternalsText}"/>
+
                     <Border DockPanel.Dock="Right"
                             Background="Transparent"
                             VerticalAlignment="Center"
@@ -146,7 +160,7 @@
                                      a:AutomationProperties.Name="Validerer"
                                      ToolTip.Tip="Projektet valideres…"/>
 
-                        <!-- The four tier filters. ToggleButtons rather than checkboxes because each one carries its
+                        <!-- The tier filters, worst first. ToggleButtons rather than checkboxes because each one carries its
                              tier's icon and live count, and because a ToggleButton exposes UI Automation's Toggle
                              pattern — so a driver flips a tier the same way a user does. They stay one element per
                              tier rather than an ItemsControl over the tier list for that same reason: the
@@ -157,6 +171,19 @@
                              re-worded tier cannot move the rows and leave these buttons behind.
                              The COUNT beside each one is of the whole result, not of the visible rows: switching a
                              tier off must never look like its findings were fixed. -->
+                        <ToggleButton a:AutomationProperties.AutomationId="{Binding Internals.AutomationId}"
+                                      a:AutomationProperties.Name="{Binding Internals.Label}"
+                                      a:AutomationProperties.HelpText="{Binding Internals.HelpText}"
+                                      IsChecked="{Binding Internals.IsShown, Mode=TwoWay}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <svg:Svg Width="12" Height="12" Path="{Binding Internals.Icon}"
+                                         CurrentColor="{DynamicResource IconColor}"/>
+                                <TextBlock Text="{Binding Internals.Label}"/>
+                                <TextBlock Text="{Binding Internals.Count}" FontWeight="SemiBold"
+                                           a:AutomationProperties.AutomationId="{Binding Internals.CountAutomationId}"/>
+                            </StackPanel>
+                        </ToggleButton>
+
                         <ToggleButton a:AutomationProperties.AutomationId="{Binding Fatals.AutomationId}"
                                       a:AutomationProperties.Name="{Binding Fatals.Label}"
                                       a:AutomationProperties.HelpText="{Binding Fatals.HelpText}"
@@ -262,7 +289,7 @@
                     <Style Selector="TableViewColumnHeadersPresenter">
                         <Setter Property="Margin" Value="0,-7,0,-10"/>
                     </Style>
-                    <Style Selector="TableViewRow" x:DataType="vm:ProblemRowViewModel">
+                    <Style Selector="TableViewRow" x:DataType="vm:ProblemsPanelRowViewModel">
                         <Setter Property="Padding" Value="6,3"/>
                         <Setter Property="MinHeight" Value="0"/>
                         <Setter Property="a:AutomationProperties.AutomationId" Value="{Binding Code}"/>
@@ -297,7 +324,7 @@
                     <TableViewColumn Header="{Binding #ProblemsContent.((vm:ProblemsPanelViewModel)DataContext).Columns[0]}"
                                      Width="100">
                         <TableViewColumn.CellTemplate>
-                            <DataTemplate x:DataType="vm:ProblemRowViewModel">
+                            <DataTemplate x:DataType="vm:ProblemsPanelRowViewModel">
                                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                                     <svg:Svg Width="12" Height="12" Path="{Binding TierIcon}"
                                              CurrentColor="{DynamicResource IconColor}"/>
@@ -313,7 +340,7 @@
                              dimmer than one that does. The row is still listed — it is a real finding — it just
                              does not invite a click that would do nothing. -->
                         <TableViewColumn.CellTemplate>
-                            <DataTemplate x:DataType="vm:ProblemRowViewModel">
+                            <DataTemplate x:DataType="vm:ProblemsPanelRowViewModel">
                                 <TextBlock Text="{Binding ElementName}" Opacity="{Binding ElementEmphasis}"
                                            VerticalAlignment="Center"/>
                             </DataTemplate>
@@ -324,7 +351,7 @@
                              narrower than its longest value, and a kebab-case id cut mid-word would read as a
                              complete id rather than as a truncation. -->
                         <TableViewColumn.CellTemplate>
-                            <DataTemplate x:DataType="vm:ProblemRowViewModel">
+                            <DataTemplate x:DataType="vm:ProblemsPanelRowViewModel">
                                 <TextBlock Text="{Binding Code}" TextTrimming="CharacterEllipsis"
                                            VerticalAlignment="Center"/>
                             </DataTemplate>
@@ -335,10 +362,14 @@
 
                 <!-- Never disabled and never hit-test-blocked: the rows a stale panel is showing are the previous
                      result, which is still the best information available, so they stay clickable while dimmed. -->
+                <!-- IsVisible follows the EMPTINESS OF THE ROWS, not of the sentence. A fault raised before
+                     the first validation result leaves the panel with a row to show while the state still
+                     has a sentence; keying on the sentence painted "Validerer projektet..." straight across
+                     the one row the user needed to read. -->
                 <TextBlock Name="ProblemsStateText"
                            a:AutomationProperties.AutomationId="ProblemsStateText"
                            Text="{Binding StateText}"
-                           IsVisible="{Binding StateText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           IsVisible="{Binding !Rows.Count}"
                            HorizontalAlignment="Center" VerticalAlignment="Center"
                            Opacity="0.7"/>
             </Grid>

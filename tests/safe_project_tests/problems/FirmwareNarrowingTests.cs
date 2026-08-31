@@ -52,7 +52,7 @@ namespace Ihc.Vis.Tests
         private static string[] Run(ValidationProfile profile, params ProblemCatalogEntry[] entries)
         {
             (Project project, WholeProjectValidator validator) = Fixture(entries);
-            return [.. validator.Validate(project, profile).Select(f => f.Code.Value)];
+            return [.. validator.Validate(project, profile).Findings.Select(f => f.Code.Value)];
         }
 
         /// <summary>

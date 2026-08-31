@@ -31,9 +31,9 @@ namespace Ihc.Vis.Validation
     /// a finding's category stays non-null, because a refusal produces no finding.
     /// </param>
     /// <param name="Disposition">
-    /// What this row costs: an Error, Warning or Info finding, or a refusal.
+    /// What this row costs: a finding at one of the declared severities, a refusal, or neither.
     /// </param>
-    /// <param name="Kind">Which of the four rule kinds realises this row.</param>
+    /// <param name="Kind">Which rule kind realises this row.</param>
     /// <param name="Faces">
     /// Which faces consume it. <see cref="RuleFaces.None"/> is correct for an operation outcome, which is realised
     /// at a throw site rather than by an executor, and is rejected for a registered rule.

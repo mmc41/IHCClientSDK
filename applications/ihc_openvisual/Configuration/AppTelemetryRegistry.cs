@@ -73,6 +73,20 @@ internal static class AppTelemetryRegistry
             description: "Problems presented to the user through the dialog service.");
 
     /// <summary>
+    /// Faults in the TOOL, as they reach the sink — keyed by code and by where the fault was observed.
+    /// <para>
+    /// SEPARATE from <see cref="ProblemRaised"/> on purpose. That counter means "a problem was PRESENTED to a
+    /// user through the dialog service", and folding faults into it would silently change what every existing
+    /// query over it measures — most internal errors are never presented at all, and the ones that are would be
+    /// counted twice. Two questions, two instruments.
+    /// </para>
+    /// </summary>
+    internal static Counter<long> InternalErrorObserved { get; } =
+        Surface.Meter.CreateCounter<long>(
+            "ihc.internal_error.observed", unit: "{fault}",
+            description: "Faults in the application or the SDK, as recorded by the internal-error sink.");
+
+    /// <summary>
     /// Custom attribute names this layer emits. Values live in <see cref="Values"/>; separating the two is
     /// what lets the drift test check names against the naming rules without tripping over vocabulary.
     /// </summary>
@@ -110,6 +124,9 @@ internal static class AppTelemetryRegistry
 
         /// <summary>The problem's family, i.e. the first dotted segment of its code.</summary>
         public const string ProblemFamily = "ihc.problem.family";
+
+        /// <summary>Where a fault was OBSERVED — the SDK, this application, or the machine underneath.</summary>
+        public const string InternalErrorOrigin = "ihc.internal_error.origin";
     }
 
     /// <summary>The closed vocabularies the attributes above take. Values, never names.</summary>

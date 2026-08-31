@@ -14,6 +14,25 @@ using Ihc.Vis.Schema;
 namespace Ihc.Vis.Validation
 {
     /// <summary>
+    /// What one validation run produced: what it found in the PROJECT, and what went wrong in the TOOL while it
+    /// looked. Two channels rather than one list, because they answer different questions and only one of them is
+    /// about the file — a crashed rule reported as a finding is the engine describing itself as a project defect.
+    /// </summary>
+    /// <param name="Findings">Everything the rules reported about the project, in the run's deterministic order.</param>
+    /// <param name="Faults">
+    /// The rules that threw. Their findings are missing from <paramref name="Findings"/>, which is why a run
+    /// carrying any of these is INCOMPLETE by an amount nothing can measure.
+    /// </param>
+    public sealed record StructuredValidationResult(
+        EquatableArray<ValidationFinding> Findings,
+        EquatableArray<InternalError> Faults)
+    {
+        /// <summary>A run that found nothing and broke nothing.</summary>
+        public static StructuredValidationResult Empty { get; } =
+            new(EquatableArray<ValidationFinding>.Empty, EquatableArray<InternalError>.Empty);
+    }
+
+    /// <summary>
     /// THE FINDINGS FACE — the collect-all whole-project executor. Runs every rule that declares this face and
     /// that the profile selects, and reports everything it finds.
     /// <para>
@@ -31,15 +50,17 @@ namespace Ihc.Vis.Validation
         /// <summary>Runs every rule the profile selects over the project.</summary>
         /// <param name="project">The project to validate.</param>
         /// <param name="profile">Which rules run, and at what severity.</param>
-        EquatableArray<ValidationFinding> Validate(Project project, ValidationProfile profile);
+        StructuredValidationResult Validate(Project project, ValidationProfile profile);
     }
 
     /// <summary>
     /// The collect-all executor over a registered <see cref="RuleSet"/>.
     /// <para>
-    /// A rule that THROWS does not abort the pass by default. It contributes one <c>internal.unexpected</c>
-    /// finding carrying the exception as its English diagnostic and the run continues — otherwise a project with a
-    /// novel shape stops being validated at all and the user gets a clean bill of health produced by a crash.
+    /// A rule that THROWS does not abort the pass by default. It contributes one <c>internal.rule-failed</c>
+    /// FAULT — never a finding — and the run continues, so a project with a novel shape does not stop being
+    /// validated altogether and nobody gets a clean bill of health produced by a crash. The fault is on its own
+    /// channel because the crash says nothing whatever about the project: giving it a severity and a category
+    /// meant inventing both.
     /// <see cref="RuleFailurePolicy.Rethrow"/> is the diagnostic alternative.
     /// </para>
     /// <para>
@@ -76,7 +97,7 @@ namespace Ihc.Vis.Validation
             new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(WholeProjectValidator));
 
         /// <inheritdoc/>
-        public EquatableArray<ValidationFinding> Validate(Project project, ValidationProfile profile)
+        public StructuredValidationResult Validate(Project project, ValidationProfile profile)
         {
             ArgumentNullException.ThrowIfNull(project);
             ArgumentNullException.ThrowIfNull(profile);
@@ -150,10 +171,31 @@ namespace Ihc.Vis.Validation
                     }
                 }
 
-                scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.ValidationRulesRun, rulesRun);
-                scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.ValidationFindingsEmitted, emitted.Count);
+                // The two channels part here. A crashed rule is counted as neither a finding nor a rule that
+                // reported one, so the emitted count is the FINDINGS' count and not the list's length.
+                //
+                // ONE pass, and the fault list is created only if there is a fault: on the normal path the fault
+                // channel is empty, so a second filtering pass over every emission would be pure overhead paid by
+                // every healthy run. Relative order among the kept emissions is untouched, which is what the
+                // committed oracles pin.
+                List<Emission> reported = new(emitted.Count);
+                List<InternalError>? faults = null;
+                foreach (Emission emission in emitted)
+                {
+                    if (emission.Failure is null)
+                    {
+                        reported.Add(emission);
+                    }
+                    else
+                    {
+                        (faults ??= []).Add(Fault(emission));
+                    }
+                }
 
-                return emitted
+                scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.ValidationRulesRun, rulesRun);
+                scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.ValidationFindingsEmitted, reported.Count);
+
+                EquatableArray<ValidationFinding> findings = reported
                     .Select(e => (Finding: Build(paths, e, profile), Key: SortKey(e, scanOrder)))
                     .OrderBy(x => x.Key.Scan)
                     .ThenBy(x => x.Key.Code, StringComparer.Ordinal)
@@ -162,6 +204,11 @@ namespace Ihc.Vis.Validation
                     .ThenBy(x => x.Key.Sequence)
                     .Select(x => x.Finding)
                     .ToImmutableArray();
+                return new StructuredValidationResult(
+                    findings,
+                    faults is null
+                        ? EquatableArray<InternalError>.Empty
+                        : EquatableArray.Create<InternalError>([.. faults]));
             });
         }
 
@@ -232,16 +279,6 @@ namespace Ihc.Vis.Validation
         private static ValidationFinding Build(ElementNodePath paths, Emission emission, ValidationProfile profile)
         {
             ProblemCatalogEntry entry = emission.Entry;
-            if (emission.Failure is { } failure)
-            {
-                return new ValidationFinding(
-                    Problem.Unexpected($"Rule '{entry.Code.Value}' threw: {failure.Message}", failure),
-                    ValidationSeverity.Error,
-                    entry.Category ?? ValidationCategory.FileIntegrity,
-                    null,
-                    EquatableArray<FindingLocation>.Empty);
-            }
-
             // BOTH texts bind from the same arguments. Binding only the message left the English diagnostic —
             // the one text written for the person reading the log — carrying its slots as literal placeholders.
             Problem problem = new(entry.Code, string.Empty, emission.Arguments, entry.Diagnostic);
@@ -343,6 +380,46 @@ namespace Ihc.Vis.Validation
             }
 
             return order;
+        }
+
+        /// <summary>The code a crashed rule is reported under.</summary>
+        private static readonly ProblemCode RuleFailedCode = new("internal.rule-failed");
+
+        /// <summary>The slot its sentence declares.</summary>
+        private const string RuleSlot = "rule";
+
+        /// <summary>
+        /// A rule that threw, as a fault rather than a finding. The Danish sentence and the English diagnostic
+        /// are BOUND FROM THE CATALOGUE ENTRY, not written here: this layer may read the catalogue, so there is
+        /// no reason for a second copy of either text to exist.
+        /// <para>
+        /// The exception is captured as a STRING and the exception itself is dropped. That is what keeps
+        /// <c>Message</c>, <c>StackTrace</c> and <c>ToString</c> out of reach of whatever displays this later.
+        /// </para>
+        /// </summary>
+        private static InternalError Fault(Emission emission)
+        {
+            Exception failure = emission.Failure!;
+            ProblemCatalogEntry entry = ProblemCatalog.Current.TryGet(RuleFailedCode, out ProblemCatalogEntry row)
+                ? row
+                : throw new InvalidOperationException(
+                    $"The catalogue has no '{RuleFailedCode.Value}' entry to word a rule failure with.");
+
+            Problem problem = new(
+                RuleFailedCode,
+                entry.MessageTemplate,
+                EquatableArray.Create<ProblemArgument>(
+                    [new ProblemArgument(RuleSlot, emission.Entry.Code.Value)]),
+                entry.Diagnostic,
+                failure);
+
+            return new InternalError(
+                RuleFailedCode,
+                entry.BindTemplate(problem),
+                entry.BindDiagnostic(problem),
+                InternalErrorOrigin.Sdk,
+                failure.ToString(),
+                DateTimeOffset.UtcNow);
         }
 
         /// <summary>One reported violation, before it becomes a finding. Carries its emission order as a tiebreak.</summary>

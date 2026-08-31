@@ -132,8 +132,9 @@ namespace Ihc.Vis.Tests
         /// <summary>
         /// The per-rule child span, which the opt-in timing exists to make comparable. Under the default
         /// report-and-continue policy the RUN succeeds — the throwing rule contributes an
-        /// <c>internal.unexpected</c> finding and the pass carries on — so the run's own span is the wrong
-        /// place to look, and the rule's span is the only one that can say which rule misbehaved.
+        /// <c>internal.rule-failed</c> FAULT, on its own channel and never as a finding, and the pass carries
+        /// on — so the run's own span is the wrong place to look, and the rule's span is the only one that can
+        /// say which rule misbehaved.
         /// </summary>
         [Test]
         public void AThrowingRuleUnderPerRuleTiming_RecordsTheFailureOnTheRuleSpan()

@@ -185,7 +185,7 @@ namespace Ihc.Vis.Tests
                 [new RuleBuilder(entry).Constrain(new PinBounds()).Build()]);
 
             ValidationFinding finding = new WholeProjectValidator(rules)
-                .Validate(project, ValidationProfile.ProjectOnly).Single();
+                .Validate(project, ValidationProfile.ProjectOnly).Findings.Single();
 
             Assert.Multiple(() =>
             {

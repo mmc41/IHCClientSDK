@@ -897,7 +897,7 @@ prose, and they live as doc-comments on each declaration.
 | `resource-enum-unwired` | LOG | Error | UserContentRule | Active | Enumerator ikke forbundet |
 | `scenes-without-output` | SCN | Error | UserContentRule | Active | Scener uden udgang |
 
-### Operation outcomes (49)
+### Operation outcomes (52)
 
 | Id | Cat | Costs | Kind | Status | Danish label |
 | --- | --- | --- | --- | --- | --- |
@@ -947,9 +947,12 @@ prose, and they live as doc-comments on each declaration.
 | `edit.variable-not-added` | — | Refusal | EditPrecondition | Active | Variablen blev ikke tilføjet. |
 | `import.catalog` | — | Refusal | OperationOutcome | Active | Katalogfilen kunne ikke indlæses |
 | `import.definition-invalid` | — | Refusal | OperationOutcome | Active | Definitionen kunne ikke bygges |
-| `internal.unexpected` | — | Refusal | OperationOutcome | Active | Uventet fejl |
+| `internal.edit-failed` | — | NotApplicable | InternalFault | Active | Redigeringen kunne ikke gennemføres på grund af en intern fejl. Ændringen blev ikke gemt. |
+| `internal.preview-failed` | — | NotApplicable | InternalFault | Active | Handlingen kunne ikke vurderes på grund af en intern fejl. Projektet er uændret. |
+| `internal.rule-failed` | — | NotApplicable | InternalFault | Active | Valideringsreglen '{rule}' fejlede. Listen kan mangle fejl. |
+| `internal.unexpected` | — | NotApplicable | InternalFault | Active | Uventet fejl under '{operation}'. |
 | `io.load` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke åbnes |
 | `io.save` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke gemmes: {count} fejl skal rettes først. |
 
-**Total: 227 entries.** 219 active, 4 retired, 4 ruled out.
+**Total: 230 entries.** 222 active, 4 retired, 4 ruled out.
 <!-- END GENERATED -->

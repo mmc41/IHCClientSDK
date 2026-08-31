@@ -86,7 +86,7 @@ namespace Ihc.Vis.Tests
                 Is.EqualTo(RuleFailurePolicy.ReportAndContinue),
                 "the profile under test must be the forgiving one, or this proves nothing");
             Assert.That(
-                () => new WholeProjectValidator(rules).Validate(project, ValidationProfile.ProjectOnly),
+                () => new WholeProjectValidator(rules).Validate(project, ValidationProfile.ProjectOnly).Findings,
                 Throws.InstanceOf<RuleRegistrationException>());
         }
 
@@ -120,7 +120,7 @@ namespace Ihc.Vis.Tests
                 foreach ((string name, Func<Project> build) in ValidationCharacterizationTests.Corpus)
                 {
                     Assert.That(
-                        () => ProjectRules.Validator.Validate(build(), ValidationProfile.Categorized),
+                        () => ProjectRules.Validator.Validate(build(), ValidationProfile.Categorized).Findings,
                         Throws.Nothing, name);
                 }
             });

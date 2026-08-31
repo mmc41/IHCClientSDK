@@ -469,6 +469,43 @@ namespace Ihc.Tests
         // "access denied"). A bare ex.Message as the whole message is not on this list and must not be added:
         // that is the D01 leak — an English engine diagnostic standing alone on a Danish screen.
         // The two logging entries are the opposite case: the log is where a diagnostic belongs.
+    /// <summary>
+        /// Every door out of an exception onto the screen. <c>Message</c> was the only one banned, which was an
+        /// oversight rather than a permission: a details surface reading <c>StackTrace</c> or <c>ToString()</c>
+        /// would leak exactly the same English developer text, past a gate that never looked at those members.
+        /// <para>
+        /// <c>ToString</c> is named UNQUALIFIED because the scan matches on the declaring type as well, so this
+        /// bans <c>Exception.ToString</c> and nothing else — a view-model calling <c>ToString</c> on an int is
+        /// not this rule's business.
+        /// </para>
+        /// </summary>
+        private static readonly string[] ExceptionTextMemberNames =
+            { "get_Message", "Message", "get_StackTrace", "StackTrace", "ToString" };
+
+        /// <summary>
+        /// Banned entries that NO seeded probe can trip, each for a measured reason. Declared rather than derived
+        /// so that adding a member here is a decision someone has to write down, and pinned by
+        /// <see cref="EveryUnarmableExceptionTextMember_ReallyCannotBeTripped"/> so the reasons stay true.
+        /// <list type="bullet">
+        /// <item><c>Message</c> / <c>StackTrace</c> — a property read emits <c>get_X</c>, so these bare spellings
+        /// match no IL edge. Kept because they cost nothing and would catch a model that named members the other
+        /// way.</item>
+        /// <item><c>ToString</c> — <b>not enforced, and cannot be.</b> <c>ex.ToString()</c> compiles to a call on
+        /// <c>System.Object.ToString</c>, because that is where the method is declared; the edge model carries no
+        /// receiver type, so it is indistinguishable from every record's generated <c>ToString</c>. Banning it on
+        /// <c>System.Object</c> instead was measured: it flags dozens of compiler-generated record members, which
+        /// would turn the exemption list from a triage record into noise. The entry stays as a marker of intent,
+        /// and the ban that actually closes the details-surface door is <c>get_StackTrace</c>.</item>
+        /// </list>
+        /// </summary>
+        private static readonly string[] UnarmableExceptionTextMembers =
+            { "Message", "StackTrace", "ToString" };
+
+        /// <summary>The banned members a seeded probe can trip — everything the scan can actually attribute to
+        /// <see cref="System.Exception"/>.</summary>
+        private static IEnumerable<string> ArmedExceptionTextMembers =>
+            ExceptionTextMemberNames.Except(UnarmableExceptionTextMembers);
+
         private static readonly IReadOnlyCollection<MethodCallExemption> ExceptionMessageExemptions =
             new[]
             {
@@ -500,25 +537,64 @@ namespace Ihc.Tests
         [Test]
         public void ExceptionMessages_DoNotBecomeUserFacingText() =>
             AssertDoesNotCallMembers(Gui, GuiRoot, typeof(System.Exception).FullName!,
-                new[] { "get_Message", "Message" }, "an exception's Message",
+                ExceptionTextMemberNames, "an exception's own text",
                 "an exception message is an English developer diagnostic; it belongs in the log, or as named detail "
                 + "under a Danish sentence — never as the message the installer is shown",
                 ExceptionMessageExemptions);
 
-        // Seeded violator for the control.
+        // Seeded violators, ONE PER BANNED DOOR. Separate methods rather than one that reads all three, because
+        // the control below arms each member on its own: a single probe reading Message would let the two members
+        // added later pass their control on the strength of a violation that has nothing to do with them.
         private static class SeededExceptionMessageShower
         {
             public static string Show(System.Exception error) => error.Message;
+
+            public static string? ShowTrace(System.Exception error) => error.StackTrace;
+
+            public static string ShowWhole(System.Exception error) => error.ToString();
         }
 
-        /// <summary>Positive control for <see cref="ExceptionMessages_DoNotBecomeUserFacingText"/>.</summary>
+        /// <summary>
+        /// Positive control for <see cref="ExceptionMessages_DoNotBecomeUserFacingText"/> — one case PER BANNED
+        /// MEMBER, so each door is proven to be watched by a detector that actually fires on it.
+        /// </summary>
+        /// <remarks>
+        /// Looped inside one test rather than written as a <c>[TestCase]</c> per member: the loop's subject is the
+        /// LIST, so a member added to <see cref="ExceptionTextMemberNames"/> without a seeded probe fails here
+        /// instead of being silently unarmed. That is the failure this control exists for.
+        /// </remarks>
         [Test]
-        public void ExceptionMessageScan_IsArmed() =>
-            Assert.Throws<AssertionException>(() =>
-                AssertDoesNotCallMembers(OwnTestAssembly.Value, typeof(OpenVisualArchitectureTests).Namespace!,
-                    typeof(System.Exception).FullName!, new[] { "get_Message", "Message" },
-                    "seeded probe", "seeded probe", ExceptionMessageExemptions),
-                "the production assertion must reject the seeded exception-message read");
+        public void ExceptionMessageScan_IsArmed()
+        {
+            foreach (string member in ArmedExceptionTextMembers)
+            {
+                Assert.Throws<AssertionException>(() =>
+                    AssertDoesNotCallMembers(OwnTestAssembly.Value, typeof(OpenVisualArchitectureTests).Namespace!,
+                        typeof(System.Exception).FullName!, new[] { member },
+                        "seeded probe", "seeded probe", ExceptionMessageExemptions),
+                    $"the production assertion must reject the seeded read of Exception.{member} — a banned "
+                    + "member with no probe that trips it is a rule nobody has shown to work");
+            }
+        }
+
+        /// <summary>
+        /// The unarmable list is a claim about what the scan can see, so it is checked rather than trusted: each
+        /// entry must really fail to trip the rule even with a probe reading it. An entry that starts tripping is
+        /// a member that CAN be enforced, and it belongs in the armed set where a control proves it works.
+        /// </summary>
+        [Test]
+        public void EveryUnarmableExceptionTextMember_ReallyCannotBeTripped()
+        {
+            foreach (string member in UnarmableExceptionTextMembers)
+            {
+                Assert.DoesNotThrow(() =>
+                    AssertDoesNotCallMembers(OwnTestAssembly.Value, typeof(OpenVisualArchitectureTests).Namespace!,
+                        typeof(System.Exception).FullName!, new[] { member },
+                        "seeded probe", "seeded probe", ExceptionMessageExemptions),
+                    $"Exception.{member} now trips the scan — move it out of the unarmable list and arm it, "
+                    + "because a member that can be enforced should be");
+            }
+        }
 
         /// <summary>
         /// Every exemption above must still name a real call site. An exemption that stops matching is not
@@ -530,7 +606,8 @@ namespace Ihc.Tests
         public void EveryExceptionMessageExemption_StillNamesARealCallSite()
         {
             var actual = MethodCallEdges(Gui, GuiRoot)
-                .Where(edge => edge.TargetType == typeof(System.Exception).FullName && edge.Member == "get_Message")
+                .Where(edge => edge.TargetType == typeof(System.Exception).FullName
+                               && ExceptionTextMemberNames.Contains(edge.Member))
                 .Select(edge => new MethodCallExemption(OutermostTypeName(edge.Origin), edge.OriginMember))
                 .ToHashSet();
 

@@ -155,7 +155,8 @@ namespace Ihc.Vis.Tests
         public void Problem_UnexpectedIsTheNamedSdkCatchAll()
         {
             InvalidOperationException cause = new("index rebuild failed");
-            Problem problem = Problem.Unexpected("The element index could not be rebuilt after the commit.", cause);
+            Problem problem = Problem.Unexpected(
+                "CommitEdit", "The element index could not be rebuilt after the commit.", cause);
 
             Assert.Multiple(() =>
             {
@@ -163,10 +164,13 @@ namespace Ihc.Vis.Tests
                 Assert.That(problem.Code.Family, Is.EqualTo(ProblemFamily.Internal));
                 Assert.That(problem.Diagnostic, Is.EqualTo("The element index could not be rebuilt after the commit."));
                 Assert.That(problem.Cause, Is.SameAs(cause));
-                Assert.That(problem.Arguments.IsEmpty, Is.True);
-                // A short FIXED Danish label, per the catalogue convention — not the English diagnostic, and not
-                // a sentence assembled from it.
-                Assert.That(problem.Message, Is.EqualTo("Uventet fejl"));
+                // The catch-all is the ONE code that cannot say what went wrong, so it names the operation it
+                // was raised under — a sentence reporting a failure and identifying nothing is worth little to
+                // the reader who has to report it.
+                Assert.That(problem.Arguments.Select(a => a.Name), Is.EqualTo(new[] { "operation" }).AsCollection);
+                // Bound from the catalogue's own template with DATA — never the English diagnostic, and never a
+                // sentence assembled out of one.
+                Assert.That(problem.Message, Is.EqualTo("Uventet fejl under 'CommitEdit'."));
             });
         }
 
@@ -191,6 +195,9 @@ namespace Ihc.Vis.Tests
                     nameof(ProblemArgumentType.Number),
                     nameof(ProblemArgumentType.AttributeValue),
                     nameof(ProblemArgumentType.Path),
+                    // An ENGINE identifier — a rule or code id. Still data, not prose: it names part of the
+                    // tool, so it neither carries words of the source language nor needs translating.
+                    nameof(ProblemArgumentType.ProblemIdentity),
                 }));
 
                 foreach (string prose in new[] { "Sentence", "Phrase", "Label", "Text", "Message" })

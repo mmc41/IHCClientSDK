@@ -21,6 +21,7 @@ public sealed class NullDialogService : IDialogService
     public Task<string?> PickOpenProjectAsync(string? initialDirectory) => Task.FromResult<string?>(null);
     public Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName) => Task.FromResult<string?>(null);
     public Task ShowAboutAsync() => Task.CompletedTask;
+    public Task ShowInternalErrorAsync(Ihc.Vis.Problems.InternalError error) => Task.CompletedTask;
     public Task ShowSettingsAsync(string settingsText) => Task.CompletedTask;
     public Task<bool> OpenExternalUrlAsync(string url) => Task.FromResult(true);
     public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null, string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null, ElementDialogField? focus = null) => Task.FromResult<PropertiesResult?>(null);

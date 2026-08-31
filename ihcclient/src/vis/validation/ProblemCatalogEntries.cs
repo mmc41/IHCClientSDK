@@ -13,33 +13,12 @@ namespace Ihc.Vis.Validation
     /// heads — <c>io.load</c>, <c>io.save</c>, <c>import.catalog</c>, <c>bridge.download</c>,
     /// <c>bridge.upload</c> — and each is introduced by the work that gives that operation a coded outcome, so
     /// that a code and its refusal site arrive together rather than a code arriving first with nothing behind it.
-    /// <c>internal.unexpected</c> is the exception and is here already, because the problem contract mints it
-    /// without any operation: it is the catch-all every other failure falls back to.
+    /// The <c>internal.*</c> family used to sit here too; it has a file of its own now, because a fault in the
+    /// tool is not the disposition of an operation the user asked for.
     /// </para>
     /// </summary>
     internal static partial class ProblemCatalogEntries
     {
-        /// <summary>
-        /// The SDK catch-all. Not an operation: whatever failed, this is what the installer is told when the
-        /// engine has nothing more specific to say, with the English diagnostic going to the log.
-        /// PREDICATE: none — it is raised, never detected.
-        /// </summary>
-        private static ProblemCatalogEntry InternalUnexpected =>
-            new ProblemCatalogEntry(
-                new ProblemCode("internal.unexpected"),
-                ProblemCatalogSection.OperationOutcomes,
-                null,
-                CatalogDisposition.Refusal,
-                RuleKind.OperationOutcome,
-                RuleFaces.None,
-                default,
-                FindingShape.OneFinding,
-                default,
-                "Uventet fejl")
-            {
-                Evidence = EvidenceMark.Unknown,
-            };
-
         /// <summary>
         /// A CATALOG DEFINITION FILE that will not be taken in. The head over the cause that says why — one head
         /// for both the runtime import and the install-directory scan, because both are the same act (reading a
@@ -208,13 +187,13 @@ namespace Ihc.Vis.Validation
             ImportCatalogOperation,
             ImportDefinitionInvalid,
             IoLoad,
-            InternalUnexpected,
             IoSaveValidationFailed,
             EditOpenRefused,
         ];
 
         /// <summary>Every declaration in every section — what <see cref="ProblemCatalog.Current"/> is built from.</summary>
         internal static EquatableArray<ProblemCatalogEntry> All =>
-            [.. ProjectFindings, .. CatalogDefinitionFindings, .. OperationOutcomes, .. EditRefusals];
+            [.. ProjectFindings, .. CatalogDefinitionFindings, .. OperationOutcomes, .. EditRefusals,
+             .. InternalFaults];
     }
 }

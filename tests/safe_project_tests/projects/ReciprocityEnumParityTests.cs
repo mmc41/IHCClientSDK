@@ -40,7 +40,7 @@ namespace Ihc.Vis.Tests
         public void BothBijectionIdsStillEmitUnderTheirOwnId()
         {
             string[] produced = [.. new WholeProjectValidator(Rules())
-                .Validate(MigrationParity.CorpusCase("synthetic/bijection"), ValidationProfile.Categorized)
+                .Validate(MigrationParity.CorpusCase("synthetic/bijection"), ValidationProfile.Categorized).Findings
                 .Select(f => f.Code.Value)];
 
             Assert.Multiple(() =>
@@ -77,10 +77,10 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(engine.Validate(sceneOnly, ValidationProfile.Categorized).Select(f => f.Code.Value),
+                Assert.That(engine.Validate(sceneOnly, ValidationProfile.Categorized).Findings.Select(f => f.Code.Value),
                     Does.Not.Contain("scene-bijection"),
                     "an unwired scene row is a half-built scene, not corruption");
-                Assert.That(engine.Validate(linkOnly, ValidationProfile.Categorized).Select(f => f.Code.Value),
+                Assert.That(engine.Validate(linkOnly, ValidationProfile.Categorized).Findings.Select(f => f.Code.Value),
                     Does.Contain("link-bijection"),
                     "an unwired follow-link half is never authored, so it is corruption");
             });
@@ -103,7 +103,7 @@ namespace Ihc.Vis.Tests
                             [("name", "V"), ("typedef", "_0x2141"), ("inivalue", "_0xdead01")])))));
 
             string[] produced = [.. new WholeProjectValidator(Rules())
-                .Validate(project, ValidationProfile.Categorized).Select(f => f.Code.Value)];
+                .Validate(project, ValidationProfile.Categorized).Findings.Select(f => f.Code.Value)];
 
             Assert.Multiple(() =>
             {

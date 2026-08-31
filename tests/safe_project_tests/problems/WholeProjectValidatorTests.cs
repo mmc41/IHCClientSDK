@@ -76,7 +76,7 @@ namespace Ihc.Vis.Tests
             ProblemCatalogEntry entry = Entry("addr-unassigned", template: "Adresse mangler");
 
             WholeProjectValidator validator = new(Compose([(entry, i => i.Report(terminal, default))]).Rules);
-            ValidationFinding finding = validator.Validate(project, ValidationProfile.ProjectOnly).Single();
+            ValidationFinding finding = validator.Validate(project, ValidationProfile.ProjectOnly).Findings.Single();
 
             Assert.Multiple(() =>
             {
@@ -111,7 +111,7 @@ namespace Ihc.Vis.Tests
             foreach (IEnumerable<(ProblemCatalogEntry, ProjectInspection)> order in Permutations(rules))
             {
                 WholeProjectValidator validator = new(Compose(order).Rules);
-                runs.Add([.. validator.Validate(project, ValidationProfile.ProjectOnly)
+                runs.Add([.. validator.Validate(project, ValidationProfile.ProjectOnly).Findings
                     .Select(f => $"{f.Code.Value}@{f.Primary?.Locator}")]);
             }
 
@@ -131,6 +131,17 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        /// <summary>
+        /// A crashed rule costs its own result and nothing else: the healthy rules still report, and the crash
+        /// is reported on the FAULT channel.
+        /// <para>
+        /// <c>FindingExportRuleFailureTests</c> was RETIRED here rather than rewritten. That fixture asked what
+        /// an exported file says when a rule broke, and the answer is now "nothing at all" — a crashed rule
+        /// produces no finding, so it never reaches the writer and the fixture had no subject left. Its one
+        /// surviving property, that the run continues and the healthy rule's finding still lands, is what this
+        /// test asserts directly at the engine, without the export detour.
+        /// </para>
+        /// </summary>
         [Test]
         public void ARuleThatThrowsCostsItsOwnResultAndNotTheRun()
         {
@@ -143,19 +154,27 @@ namespace Ihc.Vis.Tests
                 (Entry("bbb-healthy"), i => i.Report(terminal, default)),
             ]).Rules);
 
-            ValidationFinding[] findings = [.. validator.Validate(project, ValidationProfile.ProjectOnly)];
+            StructuredValidationResult run = validator.Validate(project, ValidationProfile.ProjectOnly);
 
             Assert.Multiple(() =>
             {
-                Assert.That(findings, Has.Length.EqualTo(2), "the healthy rule still reported");
-                Assert.That(findings.Select(f => f.Code.Value), Does.Contain("bbb-healthy"));
+                Assert.That(run.Findings.Select(f => f.Code.Value),
+                    Is.EqualTo(new[] { "bbb-healthy" }).AsCollection,
+                    "the healthy rule still reported, and the crash contributed NO finding: it is a statement "
+                    + "about the engine, and a finding is a statement about the project");
 
-                ValidationFinding failure = findings.Single(f => f.Code.Value == "internal.unexpected");
-                Assert.That(failure.Severity, Is.EqualTo(ValidationSeverity.Error));
-                Assert.That(failure.Problem.Diagnostic, Does.Contain("aaa-broken").And.Contain("rule bug"),
-                    "the English diagnostic names the rule and the exception; the user sees the fixed Danish label");
-                Assert.That(failure.Problem.Message, Is.EqualTo("Uventet fejl"));
-                Assert.That(failure.Problem.Cause, Is.TypeOf<InvalidOperationException>());
+                Ihc.Vis.Problems.InternalError fault = run.Faults.Single();
+                Assert.That(fault.Code.Value, Is.EqualTo("internal.rule-failed"));
+                Assert.That(fault.Origin, Is.EqualTo(Ihc.Vis.Problems.InternalErrorOrigin.Sdk));
+                Assert.That(fault.Message,
+                    Is.EqualTo("Valideringsreglen 'aaa-broken' fejlede. Listen kan mangle fejl."),
+                    "the Danish names the rule AND hedges — a rule may have emitted findings before it threw, so "
+                    + "'the list may be missing errors' is the strongest true statement available");
+                Assert.That(fault.Diagnostic, Does.Contain("aaa-broken"),
+                    "the English sentence binds the same slot, so the log names the rule too");
+                Assert.That(fault.Detail,
+                    Does.Contain("rule bug").And.Contain(nameof(InvalidOperationException)),
+                    "the exception is CAPTURED as text; nothing downstream is handed the exception itself");
             });
         }
 
@@ -168,7 +187,7 @@ namespace Ihc.Vis.Tests
 
             ValidationProfile diagnostic = ValidationProfile.ProjectOnly with { FailurePolicy = RuleFailurePolicy.Rethrow };
 
-            Assert.That(() => validator.Validate(project, diagnostic),
+            Assert.That(() => validator.Validate(project, diagnostic).Findings,
                 Throws.TypeOf<InvalidOperationException>().With.Message.EqualTo("rule bug"));
         }
 
@@ -191,10 +210,10 @@ namespace Ihc.Vis.Tests
                     i => i.Report(terminal, default)),
             ]).Rules);
 
-            string[] structural = [.. validator.Validate(project, ValidationProfile.ProjectOnly).Select(f => f.Code.Value)];
-            string[] categorized = [.. validator.Validate(project, ValidationProfile.Categorized).Select(f => f.Code.Value)];
+            string[] structural = [.. validator.Validate(project, ValidationProfile.ProjectOnly).Findings.Select(f => f.Code.Value)];
+            string[] categorized = [.. validator.Validate(project, ValidationProfile.Categorized).Findings.Select(f => f.Code.Value)];
             string[] withController = [.. validator
-                .Validate(project, ValidationProfile.Categorized with { Controller = ControllerCapabilityLimits.VendorDocumented })
+                .Validate(project, ValidationProfile.Categorized with { Controller = ControllerCapabilityLimits.VendorDocumented }).Findings
                 .Select(f => f.Code.Value)];
 
             Assert.Multiple(() =>
@@ -225,9 +244,9 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(validator.Validate(project, ValidationProfile.ProjectOnly).Single().Severity,
+                Assert.That(validator.Validate(project, ValidationProfile.ProjectOnly).Findings.Single().Severity,
                     Is.EqualTo(ValidationSeverity.Warning));
-                Assert.That(validator.Validate(project, strict).Single().Severity,
+                Assert.That(validator.Validate(project, strict).Findings.Single().Severity,
                     Is.EqualTo(ValidationSeverity.Error));
             });
         }
@@ -260,7 +279,7 @@ namespace Ihc.Vis.Tests
                 {
                     Overrides = EquatableArray.Create<SeverityOverride>(
                         [new SeverityOverride(entry.Code, ValidationSeverity.Info)]),
-                });
+                }).Findings;
 
             Assert.Multiple(() =>
             {
@@ -332,7 +351,8 @@ namespace Ihc.Vis.Tests
                     "and it escapes Validate — the executor's rule-throws policy covers a RULE body, not the "
                     + "profile the run was handed");
 
-                Assert.That(silent.Validate(project, Overriding(refusing, ValidationSeverity.Warning)), Is.Empty,
+                Assert.That(silent.Validate(project, Overriding(refusing, ValidationSeverity.Warning)).Findings,
+                    Is.Empty,
                     "lazy by construction: an illegal override on a rule that never emits is never consulted");
 
                 Assert.That(Overriding(refusing, ValidationSeverity.Error).SeverityFor(refusing),
@@ -340,7 +360,7 @@ namespace Ihc.Vis.Tests
                     "naming a refusing row at Error is legal — the guard bars the demotion, not the mention");
 
                 Assert.That(firing.Validate(project, Overriding(advisory, ValidationSeverity.Info))
-                        .Single(f => f.Code.Value == "addr-unassigned").Severity,
+                        .Findings.Single(f => f.Code.Value == "addr-unassigned").Severity,
                     Is.EqualTo(ValidationSeverity.Info),
                     "a row that refuses nothing may still be demoted: the guard is about the consequence the row "
                     + "carries, not about the lever");
@@ -365,7 +385,7 @@ namespace Ihc.Vis.Tests
             WholeProjectValidator validator = new(Compose(
                 [(entry, i => i.ReportGroup(first, EquatableArray.Create<ProjectElement>([second]), default))]).Rules);
 
-            ValidationFinding finding = validator.Validate(project, ValidationProfile.ProjectOnly).Single();
+            ValidationFinding finding = validator.Validate(project, ValidationProfile.ProjectOnly).Findings.Single();
 
             Assert.Multiple(() =>
             {
@@ -393,7 +413,7 @@ namespace Ihc.Vis.Tests
                 (Entry("mmm-marker"), i => i.Report(project.Root.Children[1], default)),
             ]).Rules);
 
-            Assert.That(validator.Validate(project, ValidationProfile.ProjectOnly).Select(f => f.Code.Value),
+            Assert.That(validator.Validate(project, ValidationProfile.ProjectOnly).Findings.Select(f => f.Code.Value),
                 Is.EqualTo(new[] { "aaa-first", "mmm-marker", "bbb-second" }).AsCollection,
                 "the second sibling sorts AFTER the marker between them, so identity decided the order");
         }
@@ -427,7 +447,7 @@ namespace Ihc.Vis.Tests
                 ]);
 
             EquatableArray<ValidationFinding> findings =
-                new WholeProjectValidator(rules).Validate(project, ValidationProfile.ProjectOnly);
+                new WholeProjectValidator(rules).Validate(project, ValidationProfile.ProjectOnly).Findings;
 
             Assert.Multiple(() =>
             {
@@ -474,7 +494,7 @@ namespace Ihc.Vis.Tests
                 [new RuleBuilder(entry).Constrain(new AlwaysFails(entry.Code)).Build()]);
 
             EquatableArray<ValidationFinding> findings =
-                new WholeProjectValidator(rules).Validate(project, ValidationProfile.ProjectOnly);
+                new WholeProjectValidator(rules).Validate(project, ValidationProfile.ProjectOnly).Findings;
 
             Assert.That(findings.Select(f => f.Primary?.Locator),
                 Is.EqualTo(new[] { "_0x2a", "_0x3a" }).AsCollection,
@@ -497,7 +517,7 @@ namespace Ihc.Vis.Tests
                 ProblemCatalog.From(ImmutableArray.Create(entry)),
                 [new RuleBuilder(entry).Constrain(new AlwaysFails(entry.Code)).Build()]);
 
-            Assert.That(new WholeProjectValidator(rules).Validate(project, ValidationProfile.ProjectOnly),
+            Assert.That(new WholeProjectValidator(rules).Validate(project, ValidationProfile.ProjectOnly).Findings,
                 Is.Empty);
         }
 
@@ -540,7 +560,7 @@ namespace Ihc.Vis.Tests
             ]).Rules);
 
             Dictionary<string, ValidationFinding> byCode = validator
-                .Validate(project, ValidationProfile.ProjectOnly)
+                .Validate(project, ValidationProfile.ProjectOnly).Findings
                 .ToDictionary(f => f.Code.Value);
 
             Assert.Multiple(() =>
@@ -548,9 +568,10 @@ namespace Ihc.Vis.Tests
                 Assert.That(byCode["aaa-declared"].TargetAttribute, Is.EqualTo("cable_colour"));
                 Assert.That(byCode["bbb-undeclared"].TargetAttribute, Is.Null,
                     "an entry that names no attribute must not invent one");
-                Assert.That(byCode["internal.unexpected"].TargetAttribute, Is.Null,
+                Assert.That(byCode.ContainsKey("internal.rule-failed"), Is.False,
                     "a rule that threw reports an ENGINE fault, which is about no field of the user's project — "
-                    + "the same reason the failure branch carries no refused operations");
+                    + "so it is not in this dictionary at all, and the question of its target attribute cannot "
+                    + "be asked. It used to be answered with a null on an invented finding");
                 Assert.That(byCode["ddd-grouped"].TargetAttribute, Is.EqualTo("note"),
                     "the attribute belongs to the FINDING, so a grouped one carries it once rather than per site");
             });

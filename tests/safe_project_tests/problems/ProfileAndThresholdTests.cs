@@ -59,7 +59,7 @@ namespace Ihc.Vis.Tests
                 Entry("addr-unassigned", CatalogDisposition.Warning),
                 Entry("dataline-address-range", CatalogDisposition.Error));
 
-            EquatableArray<ValidationFinding> findings = validator.Validate(project, ValidationProfile.ProjectOnly);
+            EquatableArray<ValidationFinding> findings = validator.Validate(project, ValidationProfile.ProjectOnly).Findings;
 
             Assert.Multiple(() =>
             {
@@ -78,7 +78,7 @@ namespace Ihc.Vis.Tests
             (Project project, WholeProjectValidator validator) = Fixture(
                 Entry("addr-unassigned", CatalogDisposition.Warning));
 
-            EquatableArray<ValidationFinding> findings = validator.Validate(project, ValidationProfile.ProjectOnly);
+            EquatableArray<ValidationFinding> findings = validator.Validate(project, ValidationProfile.ProjectOnly).Findings;
 
             Assert.Multiple(() =>
             {
@@ -107,8 +107,8 @@ namespace Ihc.Vis.Tests
                     [new SeverityOverride(advisory.Code, ValidationSeverity.Error)]),
             };
 
-            EquatableArray<ValidationFinding> lenientRun = validator.Validate(project, lenient);
-            EquatableArray<ValidationFinding> strictRun = validator.Validate(project, beforeUpload);
+            EquatableArray<ValidationFinding> lenientRun = validator.Validate(project, lenient).Findings;
+            EquatableArray<ValidationFinding> strictRun = validator.Validate(project, beforeUpload).Findings;
 
             Assert.Multiple(() =>
             {
@@ -139,8 +139,8 @@ namespace Ihc.Vis.Tests
                 Entry("addr-unassigned", CatalogDisposition.Warning),
                 Entry("doc-cabletype", CatalogDisposition.Warning, ValidationCategory.Documentation));
 
-            string[] structural = [.. validator.Validate(project, ValidationProfile.ProjectOnly).Select(f => f.Code.Value)];
-            string[] categorized = [.. validator.Validate(project, ValidationProfile.Categorized).Select(f => f.Code.Value)];
+            string[] structural = [.. validator.Validate(project, ValidationProfile.ProjectOnly).Findings.Select(f => f.Code.Value)];
+            string[] categorized = [.. validator.Validate(project, ValidationProfile.Categorized).Findings.Select(f => f.Code.Value)];
 
             Assert.Multiple(() =>
             {
@@ -161,9 +161,9 @@ namespace Ihc.Vis.Tests
                 ValidationCategory.ProjectStructure, needsController: true);
             (Project project, WholeProjectValidator validator) = Fixture(capacity);
 
-            EquatableArray<ValidationFinding> withoutLimits = validator.Validate(project, ValidationProfile.ProjectOnly);
+            EquatableArray<ValidationFinding> withoutLimits = validator.Validate(project, ValidationProfile.ProjectOnly).Findings;
             EquatableArray<ValidationFinding> withLimits = validator.Validate(project,
-                ValidationProfile.ProjectOnly with { Controller = ControllerCapabilityLimits.VendorDocumented });
+                ValidationProfile.ProjectOnly with { Controller = ControllerCapabilityLimits.VendorDocumented }).Findings;
 
             Assert.Multiple(() =>
             {

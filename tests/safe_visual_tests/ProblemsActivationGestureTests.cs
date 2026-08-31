@@ -38,6 +38,12 @@ public class ProblemsActivationGestureTests : AvaloniaTestBase
         /// <summary>Every plan an activation carried out, in order.</summary>
         public List<NavigationPlan> Activated { get; } = [];
 
+        /// <summary>Every internal error an activation opened the details surface for, in order.</summary>
+        public List<Ihc.Vis.Problems.InternalError> Shown { get; } = [];
+
+        /// <summary>The panel's fault sink, so a test can put a fault on screen.</summary>
+        public InternalErrorLog Sink { get; } = new();
+
         private Rig()
         {
             Harness = ShellHarness.Create(Clock);
@@ -69,6 +75,32 @@ public class ProblemsActivationGestureTests : AvaloniaTestBase
             return rig;
         }
 
+        /// <summary>
+        /// A panel showing ONE fault and NO findings, with no project ever opened — which is not an edge case
+        /// but the case that matters most: a start-up fault is exactly the fault that arrives before there is a
+        /// document, and it is the one the user most needs to be able to open.
+        /// </summary>
+        public static Rig ShowingAFaultWithNoProject()
+        {
+            Rig rig = new();
+            rig.Sink.Append(new Ihc.Vis.Problems.InternalError(
+                new Ihc.Vis.Problems.ProblemCode("app.openvisual.unexpected"),
+                "Uventet fejl under 'Start'.", "boom", Ihc.Vis.Problems.InternalErrorOrigin.Host,
+                "at Startup()", DateTimeOffset.UnixEpoch));
+            rig.Recording = new ProblemsPanelViewModel(
+                rig.Harness.Session, rig.Harness.Session.Validation,
+                internalErrors: rig.Sink,
+                showInternalError: error => { rig.Shown.Add(error); return Task.CompletedTask; });
+            CurrentTestWindow = rig.Window;
+            rig.Window.Show();
+            Dispatcher.UIThread.RunJobs();
+            rig.List.DataContext = rig.Recording;
+            Dispatcher.UIThread.RunJobs();
+            Assert.That(rig.Harness.Session.Current, Is.Null, "precondition: no project is open");
+            Assert.That(rig.Panel.Rows, Has.Count.EqualTo(1), "sanity: the fault is on screen");
+            return rig;
+        }
+
         public ProblemsPanelViewModel Recording { get; private set; } = null!;
 
         public ProblemsPanelViewModel Panel => Recording;
@@ -83,6 +115,11 @@ public class ProblemsActivationGestureTests : AvaloniaTestBase
         public TableViewRow RealizedRow(Func<ProblemRowViewModel, bool> wanted) =>
             Window.GetVisualDescendants().OfType<TableViewRow>()
                 .First(r => r.DataContext is ProblemRowViewModel row && wanted(row));
+
+        /// <summary>The realized container for the single fault row.</summary>
+        public TableViewRow RealizedFaultRow() =>
+            Window.GetVisualDescendants().OfType<TableViewRow>()
+                .First(r => r.DataContext is InternalErrorRowViewModel);
 
         /// <summary>
         /// Puts keyboard focus on the selected ROW, not on the list. A key event is routed from whatever holds
@@ -202,12 +239,60 @@ public class ProblemsActivationGestureTests : AvaloniaTestBase
     public async Task ActivatingARowThatLeadsNowhereStillProducesItsHonestPlan()
     {
         using Rig rig = await Rig.ShowingFindingsAsync();
-        ProblemRowViewModel nowhere = rig.Panel.Rows.First(r => r.NavigationKind is NavigationKind.None);
+        ProblemRowViewModel nowhere = rig.Panel.Rows.OfType<ProblemRowViewModel>()
+            .First(r => r.NavigationKind is NavigationKind.None);
 
         await rig.Panel.ActivateRowAsync(nowhere);
 
         Assert.That(rig.Activated.Single(),
             Is.EqualTo(new NavigationPlan(null, null, NavigationKind.None)),
             "the route is stated as empty rather than silently skipped, so the executor can say so");
+    }
+
+    /// <summary>
+    /// The gate's assertion: BOTH gestures open the details surface for an internal row, and they open it for
+    /// the same fault. Parity is a requirement for this row kind exactly as it is for a finding row — a keyboard
+    /// user must reach the detail by the same route a mouse user does.
+    /// </summary>
+    [AvaloniaTest]
+    public void EnterAndDoubleClickBothOpenTheInternalErrorDialog()
+    {
+        using Rig rig = Rig.ShowingAFaultWithNoProject();
+        TableViewRow container = rig.RealizedFaultRow();
+        rig.Panel.SelectedRow = (ProblemsPanelRowViewModel)container.DataContext!;
+        Dispatcher.UIThread.RunJobs();
+
+        rig.FocusSelectedRow();
+        rig.Window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+        Dispatcher.UIThread.RunJobs();
+        DoubleClick(rig.Window, container);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rig.Shown, Has.Count.EqualTo(2), "both gestures opened it");
+            Assert.That(rig.Shown[0], Is.EqualTo(rig.Shown[1]), "and on the same fault");
+            Assert.That(rig.Shown[0].Code.Value, Is.EqualTo("app.openvisual.unexpected"));
+            Assert.That(rig.Activated, Is.Empty,
+                "and NOT as a navigation: a fault has no element, so the planner is never asked");
+        });
+    }
+
+    /// <summary>
+    /// A single click still only SELECTS. The two-tier gesture is not weakened by the new row kind: reading down
+    /// the list must not throw a modal window up under the reader.
+    /// </summary>
+    [AvaloniaTest]
+    public void ASingleClickOnAFaultRowOnlySelects()
+    {
+        using Rig rig = Rig.ShowingAFaultWithNoProject();
+        TableViewRow container = rig.RealizedFaultRow();
+
+        Click(rig.Window, container);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rig.Panel.SelectedRow, Is.SameAs(container.DataContext), "it selected");
+            Assert.That(rig.Shown, Is.Empty, "and opened nothing");
+        });
     }
 }

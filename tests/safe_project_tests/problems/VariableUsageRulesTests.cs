@@ -159,7 +159,7 @@ namespace Ihc.Vis.Tests
             // Through the REGISTERED rule set, not a stand-in: this is the row's end-to-end narrowing proof.
             ImmutableArray<string> Run(ValidationProfile profile) =>
                 [.. new WholeProjectValidator(ProjectRules.Registered)
-                    .Validate(HolidaySchedule(count: 1), profile)
+                    .Validate(HolidaySchedule(count: 1), profile).Findings
                     .Select(f => f.Code.Value).Where(id => id == "logic-holiday-schedule-firmware")];
 
             Assert.Multiple(() =>

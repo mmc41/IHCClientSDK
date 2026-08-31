@@ -66,5 +66,9 @@ public class OutcomeReasonTests
     /// </summary>
     [Test]
     public void TheFallbackSentence_IsDistinctFromTheFailureDialogs() =>
-        Assert.That(MainWindowViewModel.EditRejectedMessage, Is.Not.EqualTo(MainWindowViewModel.EditFailedMessage));
+        // Compared against the SDK's own sentence now: since T025 the shell mints no failure code of its own, so
+        // what a Failed edit puts on screen is EditRefusals.EditFailedMessage, rendered whole from the outcome's
+        // captured fault.
+        Assert.That(MainWindowViewModel.EditRejectedMessage,
+            Is.Not.EqualTo(Ihc.Vis.Session.EditRefusals.EditFailedMessage));
 }

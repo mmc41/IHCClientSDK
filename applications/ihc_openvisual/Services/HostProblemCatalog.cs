@@ -46,6 +46,18 @@ internal static class HostProblemCodes
     /// </summary>
     public static ProblemCode ValidationErrorsBlockSend { get; } = new("app.openvisual.validation-errors-block-send");
 
+    /// <summary>The telemetry pipeline is down, so nothing this run records will be exported.</summary>
+    public static ProblemCode TelemetryPipelineDown { get; } = new("app.openvisual.telemetry-pipeline-down");
+
+    /// <summary>An exception crossed a native platform boundary and was discarded there.</summary>
+    public static ProblemCode PlatformFault { get; } = new("app.openvisual.platform-fault");
+
+    /// <summary>A whole validation run failed, so the listed findings no longer describe the document.</summary>
+    public static ProblemCode ValidationFaulted { get; } = new("app.openvisual.validation-faulted");
+
+    /// <summary>There was no clipboard to copy to, so nothing was copied.</summary>
+    public static ProblemCode ClipboardUnavailable { get; } = new("app.openvisual.clipboard-unavailable");
+
     /// <summary>No telemetry host is configured, so there is nothing to open.</summary>
     public static ProblemCode TelemetryHostMissing { get; } = new("app.openvisual.telemetry-host-missing");
 
@@ -123,9 +135,12 @@ internal static class HostProblemCatalog
     /// This app's declarations, frozen. Its own catalogue object rather than entries added to the SDK's: the SDK
     /// must not know the host's rows, and the two are checked TOGETHER for id uniqueness instead.
     /// </summary>
-    public static ProblemCatalog Current { get; } = ProblemCatalog.From(EquatableArray.Create<ProblemCatalogEntry>(
+    // Validated, not From: this is a composition root, so a defective row is refused HERE rather than
+    // reported by whichever test happens to run. The SDK's own root does the same.
+    public static ProblemCatalog Current { get; } = ProblemCatalog.Validated(EquatableArray.Create<ProblemCatalogEntry>(
     [
         Unexpected, EditFailed, ControllerRequiredSend, ControllerRequiredRetrieve, ValidationErrorsBlockSend,
+        ClipboardUnavailable, ValidationFaulted, PlatformFault, TelemetryPipelineDown,
         TelemetryHostMissing, TelemetryHostUnreachable,
         CatalogFileRejected, CatalogFolderMissing, CatalogImportStopped,
         ReportNotOpenable, ReportViewFailed, ReportSaveFailed,
@@ -143,11 +158,21 @@ internal static class HostProblemCatalog
         "Handlingen kunne ikke gennemføres på grund af en intern fejl. Detaljerne er skrevet til loggen.",
         "An exception escaped a command handler; the shell caught it at the boundary.");
 
-    /// <summary>An edit that passed its preconditions faulted inside the engine, so nothing was committed.</summary>
+    /// <summary>
+    /// RETIRED. An edit that passed its preconditions and then faulted inside the engine is the SDK's fault to
+    /// word, and since T023 the SDK does: a <c>Failed</c> outcome carries an <c>InternalError</c> with
+    /// <c>internal.edit-failed</c>'s Danish sentence already bound, so the shell renders it whole and adds only
+    /// a title. This row said the same thing in a second voice.
+    /// <para>
+    /// KEPT rather than deleted, which is what retirement is for: the duplicate-code invariant reads every entry,
+    /// so an id that stays occupied can never be handed to a different condition.
+    /// </para>
+    /// </summary>
     internal static ProblemCatalogEntry EditFailed => Outcome(
         HostProblemCodes.EditFailed,
         "Redigeringen kunne ikke gennemføres på grund af en intern fejl. Ændringen blev ikke gemt.",
-        "An accepted edit ended in an engine fault; the outcome's reason is the English engine diagnostic.");
+        "An accepted edit ended in an engine fault; the outcome's reason is the English engine diagnostic.")
+        with { Status = ProblemCodeStatus.Retired };
 
     /// <summary>
     /// Sending needs a controller. TWO codes rather than one with a verb argument: the two sentences differ in
@@ -175,6 +200,58 @@ internal static class HostProblemCatalog
         HostProblemCodes.ValidationErrorsBlockSend,
         "Projektet indeholder fejl. Ret dem i Problemer-panelet, før projektet sendes.",
         "The latest completed validation bound at least one Error finding; the shell withholds the transfer.");
+
+    /// <summary>
+    /// The start-up self-check found the telemetry endpoint unreachable, rejecting, or misconfigured — so every
+    /// span, metric and log line this run produces is being dropped.
+    /// </summary>
+    /// <remarks>
+    /// This row is the ONE finding that cannot rely on telemetry to be seen, which is the whole reason it needs a
+    /// surface of its own: the mechanism that would otherwise report it is the mechanism that is down. The
+    /// self-check's own message is an operator-facing English diagnostic naming an endpoint and a status, so it
+    /// travels as the diagnostic; the Danish sentence says the consequence.
+    /// </remarks>
+    internal static ProblemCatalogEntry TelemetryPipelineDown => Outcome(
+        HostProblemCodes.TelemetryPipelineDown,
+        "Telemetri kunne ikke sendes. Diagnostik for denne kørsel gemmes ikke.",
+        "The telemetry self-check reported a problem status, so exported telemetry is being dropped.");
+
+    /// <summary>
+    /// An exception crossed a native platform boundary and was DISCARDED there — the app neither handled it nor
+    /// died of it, because the boundary cannot propagate a managed exception at all.
+    /// </summary>
+    /// <remarks>
+    /// Its own code, and its own wording, because every other outcome sentence in this catalogue would be a lie
+    /// here. "Handlingen kunne ikke gennemføres" tells the reader one action failed and the rest is fine; nobody
+    /// knows that. What is actually true is narrower and stranger: something failed, it was thrown away by a
+    /// layer that had no choice, and the state of the program afterwards is not established. The row is a RECORD,
+    /// never a recovery — and it is worth saying precisely because nothing else in the app will.
+    /// </remarks>
+    internal static ProblemCatalogEntry PlatformFault => Outcome(
+        HostProblemCodes.PlatformFault,
+        "En fejl i platformslaget blev registreret og kasseret. Programmets tilstand er ukendt.",
+        "An exception crossed a native platform boundary; the boundary discarded it, so no recovery happened.");
+
+    /// <summary>
+    /// A validation RUN failed outright — not a rule inside it, which the engine catches and reports for itself,
+    /// but the run around them. Its own code rather than the shell's catch-all, because the catch-all says only
+    /// that something unexpected happened, and the fact that matters here is the CONSEQUENCE: the rows still on
+    /// screen describe a document state the run never reached, and they read as current.
+    /// </summary>
+    internal static ProblemCatalogEntry ValidationFaulted => Outcome(
+        HostProblemCodes.ValidationFaulted,
+        "Valideringen stoppede. Listen er muligvis forældet.",
+        "A whole validation run faulted; the bound findings are kept but no longer describe the document.");
+
+    /// <summary>
+    /// The platform offered no clipboard, so the copy could not happen. Its sentence is short on purpose: it is
+    /// rendered ON the copy button, in place of its label, because the dialog raising it is modal over every
+    /// other surface the shell could have said it on.
+    /// </summary>
+    internal static ProblemCatalogEntry ClipboardUnavailable => Outcome(
+        HostProblemCodes.ClipboardUnavailable,
+        "Udklipsholderen er ikke tilgængelig.",
+        "TopLevel exposed no IClipboard, so there was nothing to copy to.");
 
     /// <summary>No telemetry host is configured in <c>ihcsettings.json</c>.</summary>
     internal static ProblemCatalogEntry TelemetryHostMissing => Outcome(
@@ -307,17 +384,26 @@ internal static class HostProblems
     public static Problem Unexpected(Exception cause) =>
         Bind(HostProblemCatalog.Unexpected, Detail(cause), cause);
 
-    /// <summary>An accepted edit ended in an engine fault.</summary>
-    /// <param name="diagnostic">The outcome's English reason. Logged, never rendered.</param>
-    public static Problem EditFailed(string? diagnostic) =>
-        Bind(HostProblemCatalog.EditFailed, diagnostic, null);
-
     /// <summary>Sending the project needs a connected controller.</summary>
     public static Problem ControllerRequiredSend() => Bind(HostProblemCatalog.ControllerRequiredSend, null, null);
 
     /// <summary>Retrieving a project needs a connected controller.</summary>
     public static Problem ControllerRequiredRetrieve() =>
         Bind(HostProblemCatalog.ControllerRequiredRetrieve, null, null);
+
+    /// <summary>Telemetry is not reaching its endpoint, so this run leaves no exported diagnostics.</summary>
+    /// <param name="diagnostic">The self-check's own English message, naming the endpoint and what it answered.</param>
+    public static Problem TelemetryPipelineDown(string diagnostic) =>
+        Bind(HostProblemCatalog.TelemetryPipelineDown, diagnostic, null);
+
+    /// <summary>An exception was discarded at a native platform boundary; nothing recovered from it.</summary>
+    public static Problem PlatformFault() => Bind(HostProblemCatalog.PlatformFault, null, null);
+
+    /// <summary>A validation run failed, so what the panel lists may no longer describe the document.</summary>
+    public static Problem ValidationFaulted() => Bind(HostProblemCatalog.ValidationFaulted, null, null);
+
+    /// <summary>Nothing was copied, because the platform offered no clipboard.</summary>
+    public static Problem ClipboardUnavailable() => Bind(HostProblemCatalog.ClipboardUnavailable, null, null);
 
     /// <summary>No telemetry host is configured.</summary>
     public static Problem TelemetryHostMissing() => Bind(HostProblemCatalog.TelemetryHostMissing, null, null);

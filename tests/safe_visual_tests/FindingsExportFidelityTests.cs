@@ -37,7 +37,7 @@ public class FindingsExportFidelityTests
 
     /// <summary>The rows the panel is showing right now, as the pair a file line can also speak.</summary>
     private static (string Code, string Severity)[] Visible(ProblemsShellRig rig) =>
-        [.. rig.Panel.Rows.Select(r => (r.Code, r.Severity.ToString()))];
+        [.. rig.Panel.Rows.OfType<ProblemRowViewModel>().Select(r => (r.Code, r.Severity.ToString()))];
 
     /// <summary>
     /// The fixture, opened and validated through the real shell: 151 findings across two populated tiers — 150

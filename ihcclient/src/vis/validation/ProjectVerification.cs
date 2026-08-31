@@ -47,7 +47,7 @@ namespace Ihc.Vis.Validation
         /// </summary>
         /// <param name="project">The project to verify.</param>
         /// <param name="profile">Which rules run, and at what severity.</param>
-        public static EquatableArray<ValidationFinding> RunStructured(Project project, ValidationProfile profile) =>
+        public static StructuredValidationResult RunStructured(Project project, ValidationProfile profile) =>
             RunStructured(project, profile, ProjectRules.Validator);
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace Ihc.Vis.Validation
         /// <param name="project">The project to verify.</param>
         /// <param name="profile">Which rules run, and at what severity.</param>
         /// <param name="validator">The executor to run.</param>
-        public static EquatableArray<ValidationFinding> RunStructured(
+        public static StructuredValidationResult RunStructured(
             Project project, ValidationProfile profile, IWholeProjectValidator validator)
         {
             ArgumentNullException.ThrowIfNull(project);
@@ -83,7 +83,7 @@ namespace Ihc.Vis.Validation
             ArgumentNullException.ThrowIfNull(profile);
             ArgumentNullException.ThrowIfNull(validator);
             return ProjectValidationResult.FromFindings(
-                [.. validator.Validate(project, profile).Select(Flatten)]);
+                [.. validator.Validate(project, profile).Findings.Select(Flatten)]);
         }
 
         /// <summary>

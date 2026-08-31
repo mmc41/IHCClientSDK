@@ -56,7 +56,10 @@ namespace Ihc.Vis.Tests
             internal override void Execute(ProjectEditor editor) => throw new InvalidOperationException("must not run");
         }
 
-        private sealed record ThrowingCommand(bool AsRefusal) : ProjectCommand
+        /// <summary>A command whose Execute throws — the only way to reach the session's engine-fault exit.
+        /// INTERNAL rather than private because more than one fixture needs a failing edit, and a second
+        /// copy of it would be a second definition of what "the engine broke" means.</summary>
+        internal sealed record ThrowingCommand(bool AsRefusal) : ProjectCommand
         {
             internal override string Describe(Project project) => "Throw";
             internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;
@@ -206,6 +209,34 @@ namespace Ihc.Vis.Tests
                 Assert.That(failed.Status, Is.EqualTo(EditStatus.Failed), "a plain exception is a failure");
                 Assert.That(failed.Reason, Is.EqualTo("engine boom"), "the message is preserved");
                 Assert.That(refused.Status, Is.EqualTo(EditStatus.Refused), "EditRefusedException is a refusal");
+            });
+        }
+
+        /// <summary>
+        /// A faulted preview carries the captured fault, so a host can report the engine break without being
+        /// handed the exception. The sentence is the PREVIEW's own, not the edit's: a preview commits nothing,
+        /// so "the change was not saved" would describe a change that was never going to be made.
+        /// </summary>
+        [Test]
+        public async Task Preview_ThatFaults_CarriesTheCapturedFaultAndItsOwnSentence()
+        {
+            (ProjectDocumentSession session, _, _) = await OpenWithLocality();
+
+            PreviewOutcome faulted = session.Preview(new ThrowingCommand(AsRefusal: false));
+            PreviewOutcome refused = session.Preview(new AlwaysRefuse("nope"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(faulted.Fault, Is.Not.Null);
+                Assert.That(faulted.Fault!.Code.Value, Is.EqualTo("internal.preview-failed"),
+                    "its OWN code, not the edit's — the two say different things about what the project is now");
+                Assert.That(faulted.Fault.Message, Does.Contain("Projektet er uændret"),
+                    "and its own sentence, which is the whole reason for a second code");
+                Assert.That(faulted.Fault.Detail, Does.Contain("engine boom"),
+                    "captured as text at the catch, where the exception still exists");
+                Assert.That(faulted.Reason, Is.EqualTo("engine boom"),
+                    "Reason still carries the engine's English message, unchanged");
+                Assert.That(refused.Fault, Is.Null, "a refusal is the rules working and carries no fault");
             });
         }
 

@@ -69,6 +69,12 @@ namespace Ihc.Vis.Tests
                 + "product ruling closes the gap. Recorded in the entry, and the success it turns on is executed "
                 + "by ImportBridgeRefusalTests.ReadingAFileAsTheWrongCatalogKindStillSucceedsToday; introducing "
                 + "a refusal is a product decision, not a rule-authoring one."),
+            ("internal.rule-failed",
+                "Declared here, raised by the validation executor's rule-crash branch, which T019 writes. Until "
+                + "then nothing mints it. NOTE for whoever closes this: the executor lives under vis/validation, "
+                + "which MintedCodes deliberately does not scan, so adding the raiser alone will not clear this "
+                + "line -- the code has to become visible to the scan, or this row and its KnownUnauthored "
+                + "sibling stay."),
         ];
 
         /// <summary>
@@ -123,11 +129,17 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
-        /// The Active rows that carry words while nothing raises them — every one an operation head whose sentence
-        /// frames a refusal its CAUSES raise, so the head itself is never minted alone. Asserted exactly, in both
-        /// directions, like every other list in this file.
+        /// The Active rows that carry words while nothing raises them yet. Asserted exactly, in both directions,
+        /// like every other list in this file, and read by <see cref="EveryActiveEntryHasSomethingBehindIt"/> too
+        /// — which otherwise requires an unimplemented row to be wordless, and would refuse the very shape this
+        /// list exists to permit.
         /// </summary>
-        private static readonly string[] KnownUnauthored = [];
+        private static readonly string[] KnownUnauthored =
+        [
+            // The other half of internal.rule-failed's interlock: it carries D06's sentence from the day it is
+            // declared, because the sentence IS the decision, and its raiser arrives with T019.
+            "internal.rule-failed",
+        ];
 
         [Test]
         public void EveryActiveEntryHasSomethingBehindIt()
@@ -171,8 +183,12 @@ namespace Ihc.Vis.Tests
                     Assert.That(entry.Status, Is.EqualTo(ProblemCodeStatus.Active),
                         $"{code} is a real finding with no implementation yet — a RuledOut status would claim the "
                         + "condition is not a finding, which is false");
-                    Assert.That(entry.MessageTemplate, Is.Empty,
-                        $"{code} has no user-facing text yet, which is what an unimplemented row looks like");
+                    // Wordless is what an unimplemented row normally looks like — UNLESS the row is also named
+                    // in KnownUnauthored, the list that exists for exactly the other case. The two lists are
+                    // asserted exactly and in both directions, so a row appearing in both is a claim made twice
+                    // and checked twice, not a hole: its words are deliberate and its raiser is owed.
+                    Assert.That(entry.MessageTemplate, KnownUnauthored.Contains(code) ? Is.Not.Empty : Is.Empty,
+                        $"{code} is unimplemented; it carries words only if KnownUnauthored says it should");
                 }
             });
         }

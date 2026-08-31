@@ -111,6 +111,23 @@ namespace Ihc.Vis.Validation
         /// </para>
         /// </summary>
         Info,
+
+        /// <summary>
+        /// The row makes no statement about the project at all — the entry describes a fault in the TOOL. It
+        /// reports as no finding severity and refuses no operation, so it is neither a finding tier nor
+        /// <see cref="Refusal"/>.
+        /// <para>
+        /// The distinction from <see cref="Refusal"/> is the whole reason this member exists, and it is the
+        /// opposite claim: a refusal says the operation was NOT carried through, while a crashed rule carries the
+        /// validation pass THROUGH — the run completes and returns its findings, minus whatever that rule would
+        /// have added. Publishing such a row as a refusal would tell a reader the run had been stopped.
+        /// </para>
+        /// <para>
+        /// APPENDED last, for the reason <see cref="Info"/> records: nothing reads these ordinals, and a new
+        /// member at the end adds one line to the public-API baseline instead of rewriting several.
+        /// </para>
+        /// </summary>
+        NotApplicable,
     }
 
     /// <summary>

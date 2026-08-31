@@ -17,6 +17,63 @@ namespace Ihc.Vis.Tests
     /// </summary>
     public class RunTracedTests
     {
+        /// <summary>
+        /// The FAULT PORT (D16): an unexpected fault escaping a traced operation is reported before the original
+        /// exception continues. Both halves matter and neither implies the other — a channel that reported and
+        /// swallowed would silently change every caller's contract, and one that rethrew without reporting is
+        /// what this exists to replace.
+        /// </summary>
+        [Test]
+        public void AFaultingOperation_ReportsToThePort_AndStillThrowsTheOriginalException()
+        {
+            List<Ihc.Vis.Problems.InternalError> reported = [];
+            var app = new ProjectAppService(TestSetup.Settings, reported.Add);
+            string missing = "does-not-exist-" + nameof(AFaultingOperation_ReportsToThePort_AndStillThrowsTheOriginalException) + ".vis";
+
+            System.Exception thrown = Assert.CatchAsync(async () => await app.Load(missing))!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(reported, Has.Count.EqualTo(1), "the fault reached the port exactly once");
+                Ihc.Vis.Problems.InternalError fault = reported[0];
+                Assert.That(fault.Code.Value, Is.EqualTo("internal.unexpected"));
+                Assert.That(fault.Origin, Is.EqualTo(Ihc.Vis.Problems.InternalErrorOrigin.Sdk));
+                Assert.That(fault.Message, Is.EqualTo("Uventet fejl under 'Load'."),
+                    "the {operation} slot binds from the operation name RunTraced already takes — no site "
+                    + "passes a duplicated literal");
+                Assert.That(fault.Detail, Does.Contain(missing),
+                    "the exception is captured as text, so the detail still names what could not be found");
+                Assert.That(thrown.Message, Is.EqualTo(fault.Diagnostic),
+                    "and the caller's own exception is what surfaced, unchanged");
+            });
+        }
+
+        /// <summary>Without a port there is nothing to report to, and the operation behaves exactly as before.</summary>
+        [Test]
+        public void AFaultingOperation_WithNoPort_StillThrows()
+        {
+            var app = new ProjectAppService(TestSetup.Settings);
+
+            Assert.CatchAsync(async () => await app.Load("does-not-exist-" + nameof(AFaultingOperation_WithNoPort_StillThrows) + ".vis"));
+        }
+
+        /// <summary>
+        /// FAIL-OPEN: a port that throws must not turn a reportable fault into a second, worse one on top of the
+        /// caller's original. The caller still sees its own exception, not the port's.
+        /// </summary>
+        [Test]
+        public void APortThatThrows_DoesNotReplaceTheCallersOwnException()
+        {
+            var app = new ProjectAppService(TestSetup.Settings,
+                _ => throw new System.InvalidOperationException("the port is broken"));
+
+            System.Exception thrown = Assert.CatchAsync(
+                async () => await app.Load("does-not-exist-" + nameof(APortThatThrows_DoesNotReplaceTheCallersOwnException) + ".vis"))!;
+
+            Assert.That(thrown.Message, Does.Not.Contain("the port is broken"),
+                "the port's own failure is dropped; the caller's work reports what actually went wrong with it");
+        }
+
         [Test]
         public void ProjectAppServiceMethods_EmitNamedActivity_AndTagErrorWhenBodyThrows()
         {

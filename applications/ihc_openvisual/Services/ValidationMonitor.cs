@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Validation;
 
@@ -59,13 +60,21 @@ public sealed class ValidationMonitor : IDisposable
     /// Where a crashed validation run is reported. Optional so every existing caller and test keeps working,
     /// but a monitor built without one silently drops rule crashes exactly as this class used to.
     /// </param>
+    /// <param name="onFault">
+    /// Where a fault is reported for the user to SEE, as opposed to the log line that is for a support case.
+    /// Optional, and a monitor built without one is choosing the old behaviour: the run's telemetry and its log
+    /// line still happen, and the panel still shows nothing.
+    /// </param>
     public ValidationMonitor(
         ProjectWorkflow session,
-        Func<Project, EquatableArray<ValidationFinding>> validate,
-        ILoggerFactory? loggerFactory = null)
+        Func<Project, StructuredValidationResult> validate,
+        ILoggerFactory? loggerFactory = null,
+        Action<InternalError>? onFault = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(validate);
+
+        _onFault = onFault;
 
         _logger = (loggerFactory ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance)
             .CreateLogger<ValidationMonitor>();
@@ -177,7 +186,28 @@ public sealed class ValidationMonitor : IDisposable
             return;
 
         Result = outcome;
+        // The faults BEFORE the publish, so a reader woken by Changed already sees the whole answer: what the
+        // run found and what it broke arrived together, and a panel that re-read one without the other would
+        // paint a list it is about to have to repaint.
+        foreach (InternalError fault in outcome.Faults)
+        {
+            Report(fault);
+        }
         Publish();
+    }
+
+    /// <summary>Hands one fault to the sink, if there is one. Guarded because a sink that throws must not turn a
+    /// reportable fault into an unreportable one — the same fail-open the SDK's own port takes.</summary>
+    private void Report(InternalError fault)
+    {
+        try
+        {
+            _onFault?.Invoke(fault);
+        }
+        catch (Exception broken)
+        {
+            _logger.LogError(broken, "The internal-error sink threw while reporting {Code}", fault.Code.Value);
+        }
     }
 
     private void OnFaulted(Exception fault)
@@ -188,6 +218,18 @@ public sealed class ValidationMonitor : IDisposable
         // goes through the real ILogger pipeline so it is exported like any other error.
         _logger.LogError(fault, "Validation run faulted for generation {Generation}", Generation);
 
+        // And a row the user can actually see. HOST origin, not Sdk: what failed here is the loop that RUNS the
+        // engine, and the exception escaped the engine's own per-rule guard rather than being raised by it — so
+        // attributing it to the SDK would name the wrong half of the app in a support case.
+        //
+        // Its OWN code rather than the shell's catch-all. "Uventet fejl" is true and says nothing a reader can
+        // act on; what matters here is the consequence — the rows below are still on screen and now describe a
+        // document state this run never reached. A reader who is not told that reads them as current, which is
+        // the silent-staleness defect this wiring exists to remove.
+        Problem problem = HostProblems.ValidationFaulted();
+        Report(InternalError.From(
+            problem, InternalErrorOrigin.Host, $"{nameof(ValidationMonitor)}.{nameof(OnFaulted)}: {fault}"));
+
         // Whatever was bound STAYS bound rather than being dropped: a failed run is not evidence that the
         // previous findings went away, and blanking the gate on a fault would open it on no evidence at all.
         if (!_disposed)
@@ -195,6 +237,8 @@ public sealed class ValidationMonitor : IDisposable
     }
 
     private readonly ILogger _logger;
+
+    private readonly Action<InternalError>? _onFault;
 
     /// <summary>The monitor's entry point into the instrumentation core.</summary>
     private readonly Ihc.OperationTelemetry _telemetry =

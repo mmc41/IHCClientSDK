@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using ihc_openvisual.Configuration;
 
 namespace ihc_openvisual.Services;
 
@@ -68,21 +70,20 @@ public sealed class DataTableStore
     ];
 
     private readonly string _filePath;
+    private readonly ILogger _logger;
     private Dictionary<string, ImmutableArray<string>> _texts;
 
-    public DataTableStore(string filePath)
+    public DataTableStore(string filePath, ILoggerFactory? loggerFactory = null)
     {
         _filePath = filePath;
+        _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<DataTableStore>();
         _texts = Load();
     }
 
-    public static DataTableStore CreateDefault() => new(DefaultFilePath());
+    public static DataTableStore CreateDefault(ILoggerFactory? loggerFactory = null) =>
+        new(DefaultFilePath(), loggerFactory);
 
-    public static string DefaultFilePath() =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "IHC OpenVisual",
-            "datatables.json");
+    public static string DefaultFilePath() => Constants.AppDataPath("datatables.json");
 
     /// <summary>The texts the installer has added to one table, in the order they were added. An unknown key —
     /// or a table never added to — reads as empty rather than throwing: every table exists, most are empty.</summary>
@@ -99,39 +100,18 @@ public sealed class DataTableStore
         Save();
     }
 
+    // A corrupt setting must not stop the app: an unreadable file reads as no tables at all.
     private Dictionary<string, ImmutableArray<string>> Load()
     {
-        if (!File.Exists(_filePath))
-            return new Dictionary<string, ImmutableArray<string>>(StringComparer.Ordinal);
-        try
-        {
-            Dictionary<string, string[]>? raw =
-                JsonSerializer.Deserialize<Dictionary<string, string[]>>(File.ReadAllText(_filePath));
-            return raw is null
-                ? new Dictionary<string, ImmutableArray<string>>(StringComparer.Ordinal)
-                : raw.ToDictionary(p => p.Key, p => p.Value.ToImmutableArray(), StringComparer.Ordinal);
-        }
-        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
-        {
-            return new Dictionary<string, ImmutableArray<string>>(StringComparer.Ordinal);   // as InstallerIdentityStore: a corrupt setting must not stop the app
-        }
+        Dictionary<string, string[]>? raw =
+            JsonPreferenceStore.TryLoad<Dictionary<string, string[]>>(_filePath, _logger);
+        return raw is null
+            ? new Dictionary<string, ImmutableArray<string>>(StringComparer.Ordinal)
+            : raw.ToDictionary(p => p.Key, p => p.Value.ToImmutableArray(), StringComparer.Ordinal);
     }
 
-    private void Save()
-    {
-        try
-        {
-            string? dir = Path.GetDirectoryName(_filePath);
-            if (!string.IsNullOrEmpty(dir))
-                Directory.CreateDirectory(dir);
-            File.WriteAllText(_filePath,
-                JsonSerializer.Serialize(_texts.ToDictionary(p => p.Key, p => p.Value.ToArray()), JsonOptions));
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            // Losing a preference is not worth failing the edit that triggered the write.
-        }
-    }
+    private void Save() =>
+        JsonPreferenceStore.TrySave(
+            _filePath, _texts.ToDictionary(p => p.Key, p => p.Value.ToArray()), _logger);
 
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 }

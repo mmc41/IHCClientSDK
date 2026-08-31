@@ -388,7 +388,7 @@ namespace Ihc.Vis.Tests
             Project dimmer = Placed(("product_rs485_led_dimmer", "_0x4409"));
 
             ImmutableArray<string> Run(ValidationProfile profile) =>
-                [.. new WholeProjectValidator(ProjectRules.Registered).Validate(dimmer, profile)
+                [.. new WholeProjectValidator(ProjectRules.Registered).Validate(dimmer, profile).Findings
                     .Select(f => f.Code.Value).Where(id => id == "rs485-dimmer-firmware-link-errors")];
 
             Assert.Multiple(() =>

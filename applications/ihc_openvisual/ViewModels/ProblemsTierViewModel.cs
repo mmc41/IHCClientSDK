@@ -36,7 +36,7 @@ public sealed partial class ProblemsTierViewModel : ObservableObject
     /// panel is keyed on and the severity is what the SDK's file format speaks — and the two stopped being one
     /// value the moment a tier could be narrower than a severity.
     /// </summary>
-    public ValidationSeverity Severity => ProblemsPanelViewModel.SeverityOf(Tier);
+    public ValidationSeverity? Severity => ProblemsPanelViewModel.SeverityOf(Tier);
 
     /// <summary>The tier's Danish word — the same one its rows carry, read from the one place that names it.</summary>
     public string Label => ProblemsPanelViewModel.TierLabel(Tier);

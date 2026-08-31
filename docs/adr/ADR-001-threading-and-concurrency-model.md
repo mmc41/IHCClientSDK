@@ -290,6 +290,36 @@ with internal fault handling. A host that adds any also registers the layered ne
 `SetObserved()`) for orphaned pool work, and `AppDomain.CurrentDomain.UnhandledException` for other background
 threads. This binds new fire-and-forget code; it requires no change to what exists.
 
+**Amended: the dispatcher net now HANDLES a fault, and that is a trade rather than a safety judgement.** The
+earlier position was that a faulted UI thread must never be resumed, because resuming continues on possibly
+corrupt state. It is now resumed: `AppTelemetryBootstrap.DispatcherExceptionHandler` sets `args.Handled = true`,
+records the fault durably, and lets the application carry on. What is traded is a process whose state is
+guaranteed clean, for a fault the user can actually report — a UI-thread fault is the commonest way an Avalonia
+application of this shape dies, and with nothing persisted across the crash it is otherwise the one class of
+fault nobody can describe afterwards. An unreportable crash is worse than a reportable inconsistency.
+
+Resuming is **not** claimed to be safe, and one earlier assessment of it was wrong: a document session that
+mutates several fields in sequence with no rollback, or raises a synchronous multicast whose later subscribers
+are starved when an earlier one throws, is left mid-sequence by a fault here. Two things genuinely bound the
+damage and they are the only two — the project document is an immutable value, so no fault interrupting the code
+around it can leave the document half-edited; and the handler's circuit breaker bounds how long a session that
+HAS been corrupted keeps producing rows.
+
+The breaker is **inline in the handler, not in whatever receives the reports**, because `Handled` is
+set-once-true: a receiver that de-duplicates recognises a repeat only after the fault has already been swallowed,
+when nothing downstream can escalate it any more. The handler therefore counts occurrences of one fault identity
+— the exception type plus the top frame of its stack — and leaves the third and later ones unhandled, so the
+framework escalates them exactly as it did before the flag was ever set. Without that bound, a fault raised on
+every repaint yields an application that neither works nor dies.
+
+**Cancellation is answered before any of this.** An `OperationCanceledException` (and so a
+`TaskCanceledException`) reaching the dispatcher is marked handled and recorded nowhere: an application that
+cancels routinely — a debounced background pass swapping its token source on every generation — would otherwise
+report its own cancellation machinery working as designed.
+
+A host that registers the dispatcher net inherits all of the above; a host that wants the old escalate-always
+behaviour registers no handler, or one that sets nothing.
+
 Those three nets do not cover the shape the view layer actually produces most of. An `async void` event handler has
 no caller to catch it, and a **window-lifecycle** handler (`Closing`, `Closed`, `Activated`) runs straight off the
 window message loop, where neither the dispatcher net nor the `AppDomain` net can see the fault at all — the app

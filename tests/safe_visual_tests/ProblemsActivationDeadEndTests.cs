@@ -36,7 +36,7 @@ public class ProblemsActivationDeadEndTests
         public Rig()
         {
             Harness = ShellHarness.Create(Clock);
-            var validation = new ValidationMonitor(Harness.Session, _ => ImmutableArray<ValidationFinding>.Empty);
+            var validation = new ValidationMonitor(Harness.Session, _ => StructuredValidationResult.Empty);
             Panel = new ProblemsPanelViewModel(Harness.Session, validation,
                 setStatus: Status.Add,
                 activate: plan => { Activated.Add(plan); return Task.CompletedTask; });

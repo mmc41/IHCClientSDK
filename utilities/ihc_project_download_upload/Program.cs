@@ -30,7 +30,9 @@ namespace Ihc.download_upload_example
                 return;
             }
 
-            string command = args[0].ToUpper();
+            // Invariant: the command words are ASCII, and a Turkish locale would fold 'i' to 'İ', leaving a
+            // correctly typed command unrecognized on that machine alone.
+            string command = args[0].ToUpperInvariant();
             string path = args[1];
             if (command != CMD_GET && command != CMD_STORE)
             {

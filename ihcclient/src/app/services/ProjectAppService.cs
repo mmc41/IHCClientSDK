@@ -147,9 +147,31 @@ namespace Ihc.Vis
         {
         }
 
+        /// <summary>
+        /// The file-only service with a FAULT PORT: an unexpected fault escaping any traced operation is minted
+        /// as <c>internal.unexpected</c> and handed to <paramref name="faultPort"/> before the original exception
+        /// is rethrown unchanged. A separate overload rather than an optional parameter, for the reason the
+        /// telemetry overload above records: an optional argument is a different symbol and would retire the
+        /// shipped constructor.
+        /// </summary>
+        /// <param name="settings">IHC settings.</param>
+        /// <param name="faultPort">Where to report an unexpected fault, or null to report nowhere.</param>
+        public ProjectAppService(IhcSettings settings, Action<Ihc.Vis.Problems.InternalError>? faultPort)
+            : this(settings,
+                   new Lazy<ICatalog>(() => new BuiltInCatalog(), LazyThreadSafetyMode.PublicationOnly),
+                   TimeProvider.System,
+                   controller: null,
+                   authService: null,
+                   telemetry: null,
+                   faultPort: faultPort)
+        {
+        }
+
         private ProjectAppService(IhcSettings settings, Lazy<ICatalog> baseCatalog, TimeProvider timeProvider,
                                   IControllerService? controller, IAuthenticationService? authService,
-                                  TelemetryConfiguration? telemetry = null)
+                                  TelemetryConfiguration? telemetry = null,
+                                  Action<Ihc.Vis.Problems.InternalError>? faultPort = null)
+            : base(faultPort)
         {
             ArgumentNullException.ThrowIfNull(settings);
             ArgumentNullException.ThrowIfNull(timeProvider);
@@ -1159,15 +1181,15 @@ namespace Ihc.Vis
         /// </para>
         /// </summary>
         /// <param name="project">The project to validate.</param>
-        public EquatableArray<ValidationFinding> ValidateStructured(Project project)
+        public StructuredValidationResult ValidateStructured(Project project)
         {
             ArgumentNullException.ThrowIfNull(project);
             return RunTraced(nameof(ValidateStructured), activity =>
             {
-                EquatableArray<ValidationFinding> findings =
+                StructuredValidationResult result =
                     ProjectVerification.RunStructured(project, CategorizedProfile, validator.Value);
-                activity?.SetReturnValue(findings.Length);
-                return findings;
+                activity?.SetReturnValue(result.Findings.Length);
+                return result;
             });
         }
 
@@ -1284,8 +1306,12 @@ namespace Ihc.Vis
 
         // The service's own run, as the two validating overloads state it — once, so a change of profile cannot
         // reach one of them and not the other.
+        // The FAULTS are discarded here BY DESIGN, not by oversight. A findings export is a statement about the
+        // PROJECT; a fault is a statement about the software that examined it, and putting one in the file would
+        // make the export say something it has no business saying. The run still reports its faults to whoever
+        // asked for a validation — this path simply is not that caller.
         private Func<IReadOnlyList<ValidationFinding>> OwnRun(Project project) =>
-            () => ProjectVerification.RunStructured(project, CategorizedProfile, validator.Value);
+            () => ProjectVerification.RunStructured(project, CategorizedProfile, validator.Value).Findings;
 
         // The one write path all four overloads share; they differ only in where the findings come from and
         // where the bytes go. As with GenerateReport, the sink runs after the document is complete, so a

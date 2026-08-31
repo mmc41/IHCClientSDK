@@ -16,19 +16,40 @@ using Ihc.Vis.Validation;
 namespace ihc_openvisual.ViewModels;
 
 /// <summary>
+/// Applies a command and reports its outcome through the view-model's one classifier. A named delegate rather
+/// than a <c>Func</c> so <paramref name="refusalOverride"/> can be OPTIONAL: the flows that have nothing to add
+/// to a refusal do not mention it, which is what keeps the override an exception rather than a habit.
+/// </summary>
+/// <param name="refusalOverride">The caller's own wording for a refusal, or null for the SDK's.</param>
+internal delegate Task ApplyAndReport(ProjectCommand command, string successStatus, string? refusalOverride = null);
+
+/// <summary>
 /// fablerefac W3-8: the per-node-type <i>Properties</i> dialog flows, extracted from
 /// <see cref="MainWindowViewModel"/> (C# 12 primary ctor). <see cref="OpenAsync"/> is the node dispatch; each flow
 /// reads the element through a typed SDK read view (<see cref="PinView"/>/<see cref="ProductView"/>/
 /// <see cref="DimmerView"/> or <see cref="ElementView"/>), opens its dialog through
 /// <see cref="IDialogService"/>, and applies the result as a command via <paramref name="applyAndReport"/> — the
-/// view-model's single outcome→status/dialog rule (<paramref name="setStatus"/> serves the one flow, pin
-/// addressing, that reports a bespoke message). No raw schema attribute reads remain in this layer.
+/// view-model's single outcome→status/dialog rule. <paramref name="setStatus"/> serves the one report that is not
+/// an outcome at all: a pin edit COLLECTED into a product visit, which is committed later by the visit.
+/// No raw schema attribute reads remain in this layer.
 /// </summary>
+/// <param name="guarded">
+/// D10. A callback this class hands to a dialog window runs LATER, on that window's own stack, outside the error
+/// boundary the flow that supplied it was already inside. Anvend and Konfigurer are the two such callbacks, and a
+/// fault in either reaches only the window's <c>HandlerGuard</c> — floor 3, which logs and returns, so the
+/// installer who pressed the button sees nothing at all.
+/// <para><b>Wrapped at the SUPPLIER, and that is the whole design.</b> This class already holds the view-model's
+/// boundary; the windows deliberately hold no view-model reference, so wrapping at the consumer would mean giving
+/// a view one — which is exactly what the layering rules forbid.</para>
+/// <para>Each window's own <c>HandlerGuard</c> call STAYS. It is the floor-3 backstop for everything this
+/// boundary does not cover, and a floor is not made redundant by a better floor above it.</para>
+/// </param>
 internal sealed class PropertiesDialogCoordinator(
     ProjectWorkflow session,
     IDialogService dialogs,
-    Func<ProjectCommand, string, Task> applyAndReport,
-    Action<string> setStatus)
+    ApplyAndReport applyAndReport,
+    Action<string> setStatus,
+    Func<string, Func<Task>, Task> guarded)
 {
     /// <summary>Opens the properties dialog appropriate to the element's type (the node dispatch, US-044). A modem, a
     /// product, a data-line pin, a scenes container, a scene value, an enum variable, and a locality/function block
@@ -526,11 +547,20 @@ internal sealed class PropertiesDialogCoordinator(
         string? routeFocus = hop?.Attribute;
         ProductDialogEdits? result = await dialogs.EditProductDialogAsync(
             descriptor, terminals, settings, arrival,
-            onStep: action =>
+            onStep: async action =>
             {
                 string? focus = routeFocus;
                 routeFocus = null;
-                return StepIntoAsync(productId, action, pendingTerminals, pendingSettings, focus);
+                // The boundary returns no value, so the result is carried out in a local. A fault leaves it
+                // NULL, and null is already this callback's "nothing to refresh" answer — so the dialog keeps
+                // the rows it has instead of being handed a half-built refresh, while the installer gets the
+                // dialog, the status line and the failed span from floor 1.
+                ProductDialogRefresh? refresh = null;
+                await guarded(
+                    KonfigurerOperation,
+                    async () => refresh = await StepIntoAsync(
+                        productId, action, pendingTerminals, pendingSettings, focus));
+                return refresh;
             });
         if (result is null)
             return false;   // cancelled — the product keeps its documentation AND its addressing
@@ -557,6 +587,13 @@ internal sealed class PropertiesDialogCoordinator(
 
         return true;
     }
+
+    /// <summary>What the span for a guarded Anvend is called. A constant so the name a support case reads is
+    /// the gesture, not a method that happens to implement it.</summary>
+    internal const string AnvendOperation = "PinProperties.Anvend";
+
+    /// <summary>What the span for a guarded Konfigurer is called.</summary>
+    internal const string KonfigurerOperation = "ProductDialog.Konfigurer";
 
     /// <summary>
     /// A composite the installer stepped into WHILE the product dialog is open. It runs over that dialog and
@@ -819,15 +856,20 @@ internal sealed class PropertiesDialogCoordinator(
                 setStatus($"{view.Name} blev adresseret til datalinie {r.DataLine}, klemme {r.Terminal}.");
                 return;
             }
-            // A bespoke failure message (invalid address) rather than the generic mapping, so read the outcome
-            // directly.
-            EditOutcome outcome = await session.ApplyAsync(session.Commands.UpdatePin(session.Current!, pinId, r));
-            setStatus(outcome.Status == EditStatus.Committed
-                ? $"{view.Name} blev adresseret til datalinie {r.DataLine}, klemme {r.Terminal}."
-                : $"Datalinie {r.DataLine}, klemme {r.Terminal} er ikke en gyldig adresse.");
+            // The address sentence names the values the installer just typed, which the SDK's own refusal cannot,
+            // so it is handed in as the REFUSAL OVERRIDE rather than written over whatever came back. Reading the
+            // outcome here as a bool is what made a no-op and an engine failure both read as an invalid address.
+            await applyAndReport(
+                session.Commands.UpdatePin(session.Current!, pinId, r),
+                $"{view.Name} blev adresseret til datalinie {r.DataLine}, klemme {r.Terminal}.",
+                $"Datalinie {r.DataLine}, klemme {r.Terminal} er ikke en gyldig adresse.");
         }
 
-        PinPropertiesResult? result = await dialogs.EditPinPropertiesAsync(input, Commit);
+        // GUARDED for the dialog, RAW for the local call. The dialog invokes its copy on its own stack, after
+        // this flow's boundary has been left behind; the call below is still inside it, and wrapping that one
+        // too would nest one boundary in another for no gain.
+        PinPropertiesResult? result = await dialogs.EditPinPropertiesAsync(
+            input, r => guarded(AnvendOperation, () => Commit(r)));
         if (result is null)
             return;   // cancelled — the pin keeps its addressing
         await Commit(result);

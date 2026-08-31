@@ -102,10 +102,9 @@ internal sealed class ProjectFindingsWorkflow(
         }
         catch (Exception ex)
         {
-            scope.SetOutcome(OperationOutcome.Failed(ex));
-            logger.LogError(ex, "Failed to export the findings list");
-            await RaisedProblemDisplay.ShowAsync(
-                dialogs, ExportFailedTitle, HostProblems.FindingsExportFailed(ex), ex);
+            await FailureReport.FailedAsync(
+                scope, logger, dialogs, ExportFailedTitle, HostProblems.FindingsExportFailed(ex), ex,
+                "Failed to export the findings list");
         }
     }
 

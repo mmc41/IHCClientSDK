@@ -72,6 +72,60 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
+        /// A COMPOSITION ROOT refuses a defective catalogue outright, rather than handing one out and leaving a
+        /// completeness test somewhere to notice. The invariants were reachable only from a test before this, so
+        /// a defect reached production whenever the test that would have caught it was not run.
+        /// <para>
+        /// The unchecked factory keeps its own job in the same breath: every negative control in this fixture is
+        /// a deliberately broken entry, so a factory that validated would make them unconstructible and the
+        /// invariants could then only ever be run against a healthy catalogue.
+        /// </para>
+        /// </summary>
+        [Test]
+        public void AComposedCatalogueRefusesADefectiveEntry_ButTheRawFactoryStillBuildsOne()
+        {
+            EquatableArray<ProblemCatalogEntry> defective = EquatableArray.Create<ProblemCatalogEntry>(
+            [
+                // The internal-fault shape declared as an ordinary content rule — T015's reverse direction.
+                new(new ProblemCode("internal.unlabelled"), ProblemCatalogSection.OperationOutcomes, null,
+                    CatalogDisposition.NotApplicable, RuleKind.UserContentRule, RuleFaces.None, default,
+                    FindingShape.OneFinding, default, "Label"),
+            ]);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(() => ProblemCatalog.Validated(defective), Throws.InvalidOperationException,
+                    "a composition root may not hand out a catalogue whose entries break their own invariants");
+                Assert.That(ProblemCatalog.From(defective).Total, Is.EqualTo(1),
+                    "and the raw factory stays unchecked, or the negative controls above cannot be built");
+            });
+        }
+
+        /// <summary>
+        /// The entry-local half stands alone. It is what a composition root can run, because it needs nothing but
+        /// the declarations; the rule-pairing half needs the set of implemented codes, which only a completeness
+        /// check knows.
+        /// </summary>
+        [Test]
+        public void CheckEntriesReportsDeclarationDefectsAndNeverTheRulePairing()
+        {
+            ProblemCatalog missingItsRule = ProblemCatalog.From(EquatableArray.Create<ProblemCatalogEntry>(
+            [
+                new(new ProblemCode("unimplemented"), ProblemCatalogSection.ProjectFindings,
+                    ValidationCategory.Logic, CatalogDisposition.Warning, RuleKind.UserContentRule,
+                    RuleFaces.WholeProject, default, FindingShape.OnePerOccurrence, default, "Label"),
+            ]));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(CatalogInvariants.CheckEntries(missingItsRule), Is.Empty,
+                    "nothing is wrong with this DECLARATION; whether a rule implements it is a different question");
+                Assert.That(CatalogInvariants.CheckEntries(Catalog), Is.Empty,
+                    "and the shipped catalogue satisfies the half a composition root enforces");
+            });
+        }
+
+        /// <summary>
         /// The invariants, armed. A check that only ever runs against a healthy catalogue is a check nobody knows
         /// can fail, so each violation is exercised against a deliberately broken one built here.
         /// </summary>
@@ -97,6 +151,22 @@ namespace Ihc.Vis.Tests
                     Disposition = CatalogDisposition.Refusal,
                 };
 
+            // The internal-fault BICONDITIONAL, seeded from BOTH directions. A row of that kind describes a
+            // fault in the TOOL, so it may carry nothing that describes a project; and a row that carries
+            // nothing describing a project must SAY which kind it is, or the catalogue grows a second shape
+            // nothing names. One check, two ways to break it, and each is a real mistake an author can make.
+            ProblemCatalogEntry internalFaultThatDescribesAProject =
+                Row("internal.fault-with-a-face", ProblemCatalogSection.OperationOutcomes, null) with
+                {
+                    Kind = RuleKind.InternalFault,   // ...but keeps a Warning disposition and a whole-project face
+                };
+            ProblemCatalogEntry faultShapedRowOfAnotherKind =
+                Row("internal.fault-unlabelled", ProblemCatalogSection.OperationOutcomes, null) with
+                {
+                    Disposition = CatalogDisposition.NotApplicable,
+                    Faces = RuleFaces.None,   // ...the whole shape, declared as an ordinary content rule
+                };
+
             ProblemCatalog broken = ProblemCatalog.From(EquatableArray.Create<ProblemCatalogEntry>(
             [
                 Row("twice", ProblemCatalogSection.ProjectFindings, ValidationCategory.Logic),
@@ -106,6 +176,8 @@ namespace Ihc.Vis.Tests
                 Row("unimplemented", ProblemCatalogSection.ProjectFindings, ValidationCategory.Logic),
                 advisoryThatRefuses,
                 refusalNamingNothing,
+                internalFaultThatDescribesAProject,
+                faultShapedRowOfAnotherKind,
             ]));
 
             // The same two shapes made legal, plus the operation head that declares nothing BY RULE. A check
@@ -127,6 +199,14 @@ namespace Ihc.Vis.Tests
                     Section = ProblemCatalogSection.OperationOutcomes,
                     Category = null,
                 },
+                // The well-formed internal fault: no category, no face, no refusal, and a disposition that makes
+                // no claim about the project. A check that reported every declaration-free row would fail here.
+                Row("internal.fault-well-formed", ProblemCatalogSection.OperationOutcomes, null) with
+                {
+                    Disposition = CatalogDisposition.NotApplicable,
+                    Kind = RuleKind.InternalFault,
+                    Faces = RuleFaces.None,
+                },
             ]));
 
             CatalogViolation[] fromDeclarations = [.. CatalogInvariants.Check(broken, []).Select(d => d.Violation)];
@@ -146,6 +226,15 @@ namespace Ihc.Vis.Tests
                 Assert.That(attributed,
                     Does.Contain(("refusal-naming-nothing", CatalogViolation.RefusalWithoutRefusedOperation)),
                     "a Refusal content row naming no head must be reported");
+
+                Assert.That(attributed,
+                    Does.Contain(("internal.fault-with-a-face", CatalogViolation.InternalFaultMisdeclared)),
+                    "an internal-fault row that keeps a face, a severity or a refusal is describing the project "
+                    + "it could not examine");
+                Assert.That(attributed,
+                    Does.Contain(("internal.fault-unlabelled", CatalogViolation.InternalFaultMisdeclared)),
+                    "and a row with exactly that shape must declare the kind — the biconditional is checked in "
+                    + "both directions, so the shape cannot exist unlabelled");
 
                 Assert.That(CatalogInvariants.Check(compliant, []), Is.Empty,
                     "an Error row may refuse, a Refusal row that names its head is what every shipped refusal "
@@ -220,6 +309,10 @@ namespace Ihc.Vis.Tests
                 (CatalogDisposition.Warning, ValidationSeverity.Warning),
                 (CatalogDisposition.Info, ValidationSeverity.Info),
                 (CatalogDisposition.Refusal, null),
+                // Null for a DIFFERENT reason than Refusal's, and the difference is the point: a refusal has no
+                // severity because the operation was stopped, while this one has none because the row says
+                // nothing about the project at all. Both map to null; only one of them is a claim about a run.
+                (CatalogDisposition.NotApplicable, null),
             ];
 
             Assert.Multiple(() =>

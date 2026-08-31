@@ -39,7 +39,7 @@ namespace Ihc.Vis.Tests
 
         /// <summary>The structured finding, which is where a row's related sites are visible at all.</summary>
         private static ValidationFinding Structured(Project project, string code) =>
-            new ProjectAppService(TestSetup.Settings).ValidateStructured(project)
+            new ProjectAppService(TestSetup.Settings).ValidateStructured(project).Findings
                 .Single(f => f.Code.Value == code);
 
         // ── link-product-unwired ────────────────────────────────────────────────────────────────────

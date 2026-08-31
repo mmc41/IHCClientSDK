@@ -78,7 +78,7 @@ namespace Ihc.Vis.Tests
             Project project = MigrationParity.CorpusCase("synthetic/fb-locality");
             ProjectElement block = project.Root.DescendantsAndSelf().First(e => e.Tag == "functionblock");
             string[] localityFindings = [.. new WholeProjectValidator(Rules())
-                .Validate(project, ValidationProfile.Categorized)
+                .Validate(project, ValidationProfile.Categorized).Findings
                 .Where(f => f.Code.Value == "fb-local-ref")
                 .Select(f => f.Primary!.Locator!)];
 
@@ -86,7 +86,7 @@ namespace Ihc.Vis.Tests
             Project dangling = new(Repoint(project.Root));
 
             string[] afterRepointing = [.. new WholeProjectValidator(Rules())
-                .Validate(dangling, ValidationProfile.Categorized)
+                .Validate(dangling, ValidationProfile.Categorized).Findings
                 .Where(f => f.Code.Value == "fb-local-ref")
                 .Select(f => f.Primary!.Locator!)];
 

@@ -200,6 +200,45 @@ public class CatalogImportTests
             "the Ordinal-first file (B_first.def) imports first, so its product precedes the other — deterministic across filesystems");
     }
 
+    /// <summary>
+    /// REPRODUCE-FIRST for `sec 10.3` row 16: the start-up persisted-catalog load was best-effort AND unspanned,
+    /// so a machine where every persisted file was skipped started identically to one where none were, and
+    /// nothing afterwards could tell them apart.
+    /// </summary>
+    /// <remarks>
+    /// The best-effort behaviour is deliberately UNCHANGED and is asserted here too: a rotted definition must not
+    /// stop the application opening. What changed is that the pass is now measurable — the counts say what
+    /// happened, and a skipped file does not make the span an error, because best-effort means it is not one.
+    /// </remarks>
+    [Test]
+    public void ThePersistedLoadRecordsASpanCountingWhatItLoadedAndSkipped()
+    {
+        using Ihc.Tests.Shared.TelemetryCapture capture = Ihc.Tests.Shared.TelemetryCapture.Listen(
+            ihc_openvisual.Configuration.Telemetry.ActivitySourceName, spanPrefix: "CatalogImportWorkflow.");
+        using TraceProbe probe = TraceProbe.Start();
+        using var harness = ShellHarness.Create();
+        var catalogDir = Path.Combine(harness.TempDir, "catalog");
+        Directory.CreateDirectory(catalogDir);
+        File.Copy(SampleProductDef(), Path.Combine(catalogDir, "good.def"));
+        File.WriteAllText(Path.Combine(catalogDir, "rotten.def"), "this is not a definition file");
+
+        using var restart = ShellHarness.Restart(harness.TempDir);
+
+        System.Diagnostics.Activity span = probe.Spans(capture)
+            .Last(a => a.OperationName.EndsWith("LoadPersisted", StringComparison.Ordinal));
+        Assert.Multiple(() =>
+        {
+            Assert.That(span.GetTagItem(CatalogImportWorkflow.LoadedTag), Is.EqualTo(1));
+            Assert.That(span.GetTagItem(CatalogImportWorkflow.SkippedTag), Is.EqualTo(1),
+                "the pass says how many it went on without — which nothing could say before");
+            Assert.That(span.Status, Is.EqualTo(System.Diagnostics.ActivityStatusCode.Unset),
+                "a skipped file is not a failed pass: best-effort means exactly that");
+            Assert.That(restart.ProjectService.GetAvailableProducts().Select(p => p.ProductIdentifier),
+                Does.Contain("_0x9f01"),
+                "and the good file still loaded — the best-effort behaviour is unchanged");
+        });
+    }
+
     // US-059/US-044: the Library menu command imports the picked file and refreshes the insertion menus.
     [Test]
     public async Task ImportCatalogFileCommand_ImportsPickedFile()

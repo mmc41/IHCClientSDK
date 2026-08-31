@@ -45,6 +45,31 @@ internal static class ProblemsTestData
         };
 
     /// <summary>
+    /// One constructed fault — the sibling of <see cref="Finding"/> for the panel's other row kind.
+    /// </summary>
+    /// <remarks>
+    /// Here rather than as a private factory per fixture, for the reason <see cref="Finding"/> is: the argument
+    /// order of a six-field record is a thing each copy has to get right independently, and
+    /// <see cref="InternalError.Message"/> next to <see cref="InternalError.Diagnostic"/> is a Danish sentence
+    /// next to an English one — swapped, every assertion still passes and the row shows the wrong language.
+    /// </remarks>
+    public static InternalError Fault(
+        string code = "internal.rule-failed",
+        string? message = null,
+        string diagnostic = "Rule threw",
+        InternalErrorOrigin origin = InternalErrorOrigin.Sdk,
+        string detail = "at Rule()") =>
+        new(new ProblemCode(code), message ?? RuleFailedMessage, diagnostic, origin, detail,
+            DateTimeOffset.UnixEpoch);
+
+    /// <summary>
+    /// The catalogue's sentence for a crashed validation rule, in ONE place. Retyped per fixture it was the
+    /// template's text with as many test-side copies as there were fixtures asserting on it.
+    /// </summary>
+    public const string RuleFailedMessage =
+        "Valideringsreglen 'name-empty' fejlede. Listen kan mangle fejl.";
+
+    /// <summary>
     /// The checkout root, found by walking up from the test assembly to the solution file. Needed by anything
     /// that reaches SOURCE rather than build output — a driver script, a checked-in document to regenerate.
     /// </summary>
@@ -151,19 +176,38 @@ internal sealed class ProblemsRig : IDisposable
     /// <summary>Every export request the panel handed over, in order — what an export test asserts against.</summary>
     public List<FindingsExportRequest> Exported { get; } = [];
 
+    /// <summary>The fault sink the panel presents beside its findings — this rig owns it, so a test can append
+    /// to it directly.</summary>
+    public ihc_openvisual.Services.InternalErrorLog InternalErrors { get; } = new();
+
     public ProblemsRig(Func<Ihc.Vis.Projects.Project, EquatableArray<ValidationFinding>> validate)
+        : this(project => new StructuredValidationResult(validate(project), EquatableArray<InternalError>.Empty))
+    {
+    }
+
+    /// <summary>
+    /// The rig over a STRUCTURED result — the door for a test about the fault channel rather than the findings
+    /// one, and for a <paramref name="validate"/> that throws.
+    /// </summary>
+    /// <remarks>
+    /// The findings overload above delegates here. Rebuilt by hand per fixture it was the same
+    /// harness→monitor→panel wiring three times over, each free to wire <c>onFault</c> or <c>internalErrors</c>
+    /// slightly differently from the rig it was copied from — and a panel wired to a different sink than its
+    /// monitor reports to is a test that can only ever pass.
+    /// </remarks>
+    public ProblemsRig(Func<Ihc.Vis.Projects.Project, StructuredValidationResult> validate)
     {
         Harness = ShellHarness.Create(Clock);
         // A monitor of its own rather than the session's: the panel is the thing under test here, and it must be
         // drivable over findings the test chose rather than over whatever the real engine happens to produce.
-        Validation = new ValidationMonitor(Harness.Session, validate);
+        Validation = new ValidationMonitor(Harness.Session, validate, onFault: InternalErrors.Append);
         // The export delegate RECORDS rather than writes: what the panel decides to export is the panel's
         // behaviour, and where it ends up is the workflow's.
         Panel = new ProblemsPanelViewModel(Harness.Session, Validation, export: request =>
         {
             Exported.Add(request);
             return Task.CompletedTask;
-        });
+        }, internalErrors: InternalErrors);
     }
 
     /// <summary>Advances past the quiet period and waits for the run it starts to finish.</summary>

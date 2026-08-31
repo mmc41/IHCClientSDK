@@ -85,4 +85,35 @@ public class ProblemRaisedTelemetryTests : AvaloniaTestBase
                 "code and family only - a title or a message would be unbounded");
         });
     }
+
+    /// <summary>
+    /// A problem that never reaches the screen is NOT counted — the property the counter's own summary claims
+    /// ("one problem actually presented") and the code did not have: it counted first and presented second, so a
+    /// dialog that could not be built was counted anyway and the metric silently meant "presentation attempted".
+    /// </summary>
+    /// <remarks>
+    /// Driven by running OUTSIDE an Avalonia context — a plain <c>[Test]</c> rather than <c>[AvaloniaTest]</c> —
+    /// which is a real way for presentation to fail rather than a stubbed one: with no platform there is no
+    /// window to build. The count is asserted absent for THIS code specifically, so the fixture's other cases
+    /// cannot mask it.
+    /// </remarks>
+    [Test]
+    public void APresentationThatFailsIsNotCounted()
+    {
+        using TelemetryCapture counts = TelemetryCapture.ListenWithTracingDisabled(
+            ihc_openvisual.Configuration.Telemetry.ActivitySourceName,
+            instruments: new[] { "ihc.problem.raised" });
+        var dialogs = new AvaloniaDialogService(
+            Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(() => dialogs.ShowProblemAsync("T", ProblemWith("app.openvisual.never-shown")),
+                Throws.Exception,
+                "non-vacuity: presentation really did fail, rather than the test asserting on a path that worked");
+            Assert.That(PointsFor(counts, "app.openvisual.never-shown"), Is.Empty,
+                "nothing reached the screen, so nothing is counted — the counter used to fire first");
+        });
+    }
+
 }

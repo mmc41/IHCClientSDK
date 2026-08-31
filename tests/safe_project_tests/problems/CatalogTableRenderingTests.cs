@@ -69,6 +69,29 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
+        /// Both gates above compare a rendered region — always LF — against the file as the WORKING TREE holds
+        /// it, and that is the checkout's business, not the catalogue's: a clone made with
+        /// <c>core.autocrlf=true</c>, which is the Windows CI runner's default, hands back every line with a CR
+        /// the declarations never rendered. Without normalization the two gates report "the checked-in copy is
+        /// stale" on a fresh Windows clone and pass on the checkout whose own regeneration wrote the file — a
+        /// verdict about git configuration wearing the words of a governance failure.
+        /// </summary>
+        [Test]
+        public void TheGatesReadTheSameRegionWhicheverLineEndingsTheCheckoutHas()
+        {
+            string document = File.ReadAllText(CataloguePath);
+            string crlf = document.Replace("\r\n", "\n").Replace("\n", "\r\n");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ReadGeneratedRegion(crlf, BeginMarker),
+                    Is.EqualTo(ReadGeneratedRegion(document, BeginMarker)), "the catalogue index");
+                Assert.That(ReadGeneratedRegion(crlf, CountsBeginMarker),
+                    Is.EqualTo(ReadGeneratedRegion(document, CountsBeginMarker)), "the category counts");
+            });
+        }
+
+        /// <summary>
         /// §4's <b>Blocks</b> column, on the same footing as the two tables above: rendered from each row's
         /// <see cref="ProblemCatalogEntry.RefusedOperations"/> and compared against the checked-in cells.
         ///
@@ -533,6 +556,12 @@ namespace Ihc.Vis.Tests
             TestContext.Out.WriteLine($"rewrote the {what} in {path}");
         }
 
+        /// <summary>
+        /// Reads one generated region, with the line endings normalized to the renderer's LF. The region is
+        /// compared for CONTENT: what the file holds in the working tree is the checkout's business, and a
+        /// clone made with <c>core.autocrlf=true</c> — the Windows CI runner's default — hands every line back
+        /// with a CR the declarations never rendered.
+        /// </summary>
         private static string ReadGeneratedRegion(string document, string beginMarker)
         {
             int begin = document.IndexOf(beginMarker, StringComparison.Ordinal);
@@ -543,7 +572,7 @@ namespace Ihc.Vis.Tests
             int end = document.IndexOf(EndMarker, body, StringComparison.Ordinal);
             Assert.That(end, Is.GreaterThan(body), "the generated region has no end marker");
 
-            return document[body..end].Trim('\n', '\r');
+            return document[body..end].Replace("\r\n", "\n").Trim('\n', '\r');
         }
 
         /// <summary>

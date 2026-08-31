@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Ihc;
 using Ihc.Vis;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Validation;
 using ihc_openvisual.Services;
@@ -53,14 +54,18 @@ public class ValidationWorkerTests
         public int MaxConcurrent;
         public Func<Project, EquatableArray<ValidationFinding>>? Body;
 
-        public EquatableArray<ValidationFinding> Validate(Project project)
+        /// <summary>What the run BROKE, when a probe is asked to produce a fault as well as findings.</summary>
+        public EquatableArray<InternalError> Faulting;
+
+        public StructuredValidationResult Validate(Project project)
         {
             int now = Interlocked.Increment(ref Concurrent);
             InterlockedMax(ref MaxConcurrent, now);
             try
             {
                 Validated.Enqueue(project);
-                return Body?.Invoke(project) ?? EquatableArray<ValidationFinding>.Empty;
+                return new StructuredValidationResult(
+                    Body?.Invoke(project) ?? EquatableArray<ValidationFinding>.Empty, Faulting);
             }
             finally
             {
@@ -353,5 +358,64 @@ public class ValidationWorkerTests
             Assert.That(outcome.Version, Is.EqualTo(11));
             Assert.That(outcome.Generation, Is.EqualTo(4), "the keys travel with the result so a binder can re-check them");
         });
+    }
+
+    /// <summary>
+    /// A run's FAULTS travel on its outcome beside its findings — the loop carries what the engine broke, not
+    /// only what it found. Without this the crash is discarded at the layer that has the only copy of it.
+    /// </summary>
+    [Test]
+    public async Task AnOutcomeCarriesTheRunsFaultsBesideItsFindings()
+    {
+        (ValidationWorker worker, Probe probe, FakeTimeProvider clock) = Build();
+        using ValidationWorker _ = worker;
+        InternalError fault = ProblemsTestData.Fault(diagnostic: "Rule 'name-empty' threw");
+        probe.Faulting = System.Collections.Immutable.ImmutableArray.Create(fault);
+
+        worker.Notify(new ValidationRequest(NewProject(), 1, 1));
+        clock.Advance(Debounce);
+        await IdleAsync(worker);
+
+        Assert.That(probe.Bound.Single().Faults, Is.EqualTo(new[] { fault }));
+    }
+
+    /// <summary>
+    /// A SUPERSEDED run's faults are discarded with its findings — the outcome is dropped whole.
+    /// </summary>
+    /// <remarks>
+    /// Worth pinning rather than leaving to chance, because the tempting alternative reads as more careful and is
+    /// worse: reporting a superseded run's fault while discarding its findings would put a row on screen about a
+    /// document state nobody is looking at any more. The rule that crashed crashes again on the run that
+    /// superseded this one, so the next outcome carries it.
+    /// </remarks>
+    [Test]
+    public async Task ASupersededRunsFaultsAreDiscardedWithIt()
+    {
+        (ValidationWorker worker, Probe probe, FakeTimeProvider clock) = Build();
+        using ValidationWorker _ = worker;
+        TaskCompletionSource started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        probe.Faulting = System.Collections.Immutable.ImmutableArray.Create(new InternalError(
+            new ProblemCode("internal.rule-failed"), "Reglen fejlede.", "threw",
+            InternalErrorOrigin.Sdk, "at Rule()", DateTimeOffset.UnixEpoch));
+        probe.Body = _ =>
+        {
+            started.TrySetResult();
+            release.Task.GetAwaiter().GetResult();
+            return EquatableArray<ValidationFinding>.Empty;
+        };
+
+        worker.Notify(new ValidationRequest(NewProject(), 1, 1));
+        clock.Advance(Debounce);
+        await started.Task;
+        // The document moves on while that run is still inside the engine, so its answer is stale on arrival.
+        worker.Notify(new ValidationRequest(NewProject(), 2, 1));
+        probe.Body = null;
+        release.TrySetResult();
+        clock.Advance(Debounce);
+        await IdleAsync(worker);
+
+        Assert.That(probe.Bound.Select(o => o.Version), Is.EqualTo(new[] { 2 }),
+            "only the current run bound at all — faults included, because the outcome is one answer");
     }
 }

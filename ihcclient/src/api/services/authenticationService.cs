@@ -145,7 +145,9 @@ namespace Ihc {
 
         public Task<IhcUser> Authenticate(string userName, string password, Application application = Application.openapi)
         {
-            return DoAuthenticate(userName, password, application.ToString().ToLower());
+            // Invariant: the controller expects the ASCII application name, which a Turkish locale would fold to
+            // a dotless 'ı' for any member carrying an I.
+            return DoAuthenticate(userName, password, application.ToString().ToLowerInvariant());
         }
 
         private async Task<IhcUser> DoAuthenticate(string userName, string password, string application)

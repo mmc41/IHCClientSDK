@@ -74,9 +74,12 @@ public class MessageSiteRegisterTests
     private static readonly Site[] Register =
     [
         // ---- MainWindowViewModel ----
-        new("MainWindowViewModel.ReportOutcomeAsync (a Failed edit)", Owner.Host, HostProblemCodes.EditFailed,
-            "The engine faulted while executing an edit the shell had already accepted. The SDK's reason is an "
-            + "English developer diagnostic, so it goes to the log and the shell owns the Danish sentence."),
+        new("MainWindowViewModel.ReportOutcomeAsync (a Failed edit)", Owner.Sdk,
+            new ProblemCode("internal.edit-failed"),
+            "The engine faulted while executing an edit the shell had already accepted — and the SDK words its "
+            + "own fault (T023). A Failed outcome carries an InternalError whose Danish sentence is already "
+            + "bound, so the shell renders it whole and adds only a title. It used to mint "
+            + "app.openvisual.edit-failed for this, which is now Retired: one condition, one id, one voice."),
         new("MainWindowViewModel.Help", Owner.Uncoded, null,
             "Not an outcome: it shows the element's own documentation note, or a fixed line when it has none. A "
             + "code beside help CONTENT would be identity on a text the installer authored."),
@@ -109,6 +112,31 @@ public class MessageSiteRegisterTests
         new("MainWindowViewModel.InsertProductAsync (modem limit)", Owner.Sdk, EditRefusalCodes.ModemLimit,
             "The at-most-one-modem rule is the SDK's, and so are its sentence and its remedy (T043). The shell "
             + "keeps only the title, which names the rule."),
+        new("Program.ReportSelfCheckAsync (pipeline down)", Owner.Host,
+            HostProblemCodes.TelemetryPipelineDown,
+            "The SDK returns a self-check RESULT and takes no view on how a host surfaces it; deciding that a "
+            + "dropped pipeline is worth a row is this application's policy. Its own code rather than the "
+            + "browser-facing telemetry-host codes, which are about opening a viewer, not about export failing."),
+        new("Program.CreateX11Options (GLib boundary)", Owner.Host, HostProblemCodes.PlatformFault,
+            "A native boundary discarded an exception. HOST-owned because the SDK has no notion of a GLib main "
+            + "loop, but its ORIGIN is Platform: what failed is neither ours nor the engine's. Its own code "
+            + "because every other outcome sentence would claim something nobody knows — that one action failed, "
+            + "or that the rest of the app is fine."),
+        new("ValidationMonitor.OnFaulted", Owner.Host, HostProblemCodes.ValidationFaulted,
+            "A whole run failing is the HOST's loop failing, not a rule: the engine catches a rule crash and "
+            + "reports it for itself as internal.rule-failed. Its own code rather than the catch-all because "
+            + "the fact worth telling is the consequence — the rows still listed describe a document state the "
+            + "run never reached, and nothing else on screen says so."),
+        new("ProblemsPanel.OnCopyInternalsClick (no clipboard)", Owner.Host,
+            HostProblemCodes.ClipboardUnavailable,
+            "The bulk copy is the same platform reach as the dialog's, at the surface that exists for a fault "
+            + "storm: the findings export deliberately carries no internal error, so this control is the only "
+            + "way to take all of them at once. Same code, because it is the same condition."),
+        new("InternalErrorWindow.OnCopyClick (no clipboard)", Owner.Host,
+            HostProblemCodes.ClipboardUnavailable,
+            "The clipboard is a PLATFORM facility this application reached for; the SDK has no notion of one, "
+            + "so there is no engine code to narrate. Reported in place on the button rather than in a dialog: "
+            + "this site is already inside a modal, so a second window over it would be worse than the failure."),
         new("MainWindowViewModel.TelemetryDiagnosticsAsync (no host)", Owner.Host,
             HostProblemCodes.TelemetryHostMissing,
             "Application configuration, read from this app's own settings file. The SDK has no telemetry host."),
@@ -242,17 +270,35 @@ public class MessageSiteRegisterTests
     }
 
     /// <summary>
-    /// Every code this app declares is USED by a site. A minted code nothing raises is the same defect as a site
-    /// with no code, from the other end — and it is how a vocabulary grows entries nobody can ever see.
+    /// Every ACTIVE code this app declares is USED by a site. A minted code nothing raises is the same defect as
+    /// a site with no code, from the other end — and it is how a vocabulary grows entries nobody can ever see.
+    /// <para>
+    /// RETIRED codes are excluded, and that is not a loophole: a retirement keeps the id occupied so it can never
+    /// be handed to a different condition, and its whole content is that nothing raises it any more. Requiring a
+    /// site for one would make retiring a code impossible.
+    /// </para>
     /// </summary>
     [Test]
-    public void EveryHostCodeIsShownBySomeSite()
+    public void EveryActiveHostCodeIsShownBySomeSite()
     {
+        // DISTINCT, because one code may legitimately be shown at more than one site: the clipboard refusal is
+        // raised by both the details dialog and the panel's bulk copy, and it is the SAME condition in both. The
+        // property this asserts is a set equality — every active code shown somewhere, every shown code active —
+        // and multiplicity was only ever 1:1 by accident.
         IReadOnlyCollection<string> used =
-            [.. Register.Where(s => s.Owner == Owner.Host).Select(s => s.Code!.Value.Value)];
+            [.. Register.Where(s => s.Owner == Owner.Host).Select(s => s.Code!.Value.Value).Distinct()];
+        IReadOnlyCollection<string> active =
+            [.. HostProblemCatalog.Current.Entries
+                .Where(e => e.Status == ProblemCodeStatus.Active)
+                .Select(e => e.Code.Value)];
 
-        Assert.That(HostProblemCodes.All.Select(c => c.Value), Is.EquivalentTo(used),
-            "the declared host codes and the codes the sites show are the same set");
+        Assert.Multiple(() =>
+        {
+            Assert.That(active, Is.EquivalentTo(used),
+                "the declared ACTIVE host codes and the codes the sites show are the same set");
+            Assert.That(HostProblemCodes.All.Select(c => c.Value), Does.Contain("app.openvisual.edit-failed"),
+                "and the retired id stays declared, so nothing can reuse it");
+        });
     }
 
     /// <summary>
@@ -303,11 +349,12 @@ public class MessageSiteRegisterTests
     /// The coded door is actually USED where the register says a site is coded, so a row cannot claim a code while
     /// the site still hands over a string.
     /// <para>
-    /// TWO spellings count, because there are two ways to reach the same door. A site that knows which SHAPE it
-    /// has calls <c>ShowProblemAsync</c> directly; a site catching an exception routes through
+    /// THREE spellings count, because there are three ways to reach the same door. A site that knows which SHAPE
+    /// it has calls <c>ShowProblemAsync</c> directly; a site catching an exception routes through
     /// <c>RaisedProblemDisplay.ShowAsync</c>, which picks the shape the exception carries and then calls that
-    /// very door. Accepting only the literal name would fail a site for using the SHARED decision instead of
-    /// repeating it — the opposite of what this register is for.
+    /// very door; and a workflow reporting a failure routes through <c>FailureReport</c>, which calls one of the
+    /// first two after recording the outcome and the log line. Accepting only the literal name would fail a site
+    /// for using the SHARED decision instead of repeating it — the opposite of what this register is for.
     /// </para>
     /// </summary>
     [Test]
@@ -330,7 +377,9 @@ public class MessageSiteRegisterTests
                 Assert.That(File.Exists(path), Is.True, path);
                 string source = File.ReadAllText(path);
                 Assert.That(
-                    Occurrences(source, ".ShowProblemAsync(") + Occurrences(source, "RaisedProblemDisplay.ShowAsync("),
+                    Occurrences(source, ".ShowProblemAsync(")
+                    + Occurrences(source, "RaisedProblemDisplay.ShowAsync(")
+                    + Occurrences(source, "FailureReport."),
                     Is.GreaterThan(0), file);
             }
         });

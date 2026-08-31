@@ -31,7 +31,7 @@ namespace Ihc.Vis.Tests
             foreach ((string name, Func<Project> build) in ValidationCharacterizationTests.Corpus)
             {
                 foreach (ValidationFinding finding in
-                    ProjectRules.Validator.Validate(build(), ValidationProfile.Categorized))
+                    ProjectRules.Validator.Validate(build(), ValidationProfile.Categorized).Findings)
                 {
                     found.Add((name, finding));
                 }

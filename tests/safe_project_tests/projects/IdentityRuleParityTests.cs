@@ -51,7 +51,7 @@ namespace Ihc.Vis.Tests
                 .Select(finding => finding.Code)];
 
             string[] produced = [.. new WholeProjectValidator(Rules())
-                .Validate(project, ValidationProfile.Categorized)
+                .Validate(project, ValidationProfile.Categorized).Findings
                 .Select(f => f.Code.Value)
                 .Where(code => code.StartsWith("luid-", StringComparison.Ordinal))];
 
@@ -77,7 +77,7 @@ namespace Ihc.Vis.Tests
                     Tree.Node("group", "_0x2121", []))));
 
             string[] produced = [.. new WholeProjectValidator(Rules())
-                .Validate(project, ValidationProfile.Categorized)
+                .Validate(project, ValidationProfile.Categorized).Findings
                 .Select(f => f.Code.Value)];
 
             Assert.Multiple(() =>

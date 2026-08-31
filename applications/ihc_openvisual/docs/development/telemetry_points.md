@@ -85,9 +85,11 @@ telemetry composition root for both Avalonia apps. Called from `ihc_openvisual/P
   `AddSource("ihcclient", "IhcOpenVisual")` so SDK and app spans share one trace;
 - OTLP over `HttpProtobuf`.
 
-Around it, `Program.cs` wires the startup connectivity probe (`Ihc.TelemetrySelfCheck.ProbeAndReportAsync`) and
-four exception layers (AppDomain, Dispatcher, UnobservedTask, and the X11/GLib logger in `CreateX11Options`),
-with `Main`'s own `catch` as the fifth.
+Around it, `Program.cs` wires the startup connectivity probe and the exception layers. The probe goes through
+`Ihc.TelemetrySelfCheck.ProbeAsync` — the structured door — because the SDK's report-for-me sibling writes to
+`Trace` and `Console.Error`, neither of which a `WinExe` has a reader for; `Program.ReportSelfCheckAsync`
+routes the outcome to the log and, when it is a problem, to the fault sink. The exception layers are AppDomain,
+Dispatcher, UnobservedTask and the X11/GLib logger in `CreateX11Options`, with `Main`'s own `catch` as the last.
 
 ### 1.2 The two ActivitySources
 

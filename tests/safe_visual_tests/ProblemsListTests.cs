@@ -55,7 +55,7 @@ public class ProblemsListTests
         await rig.SettleAsync();
 
         EquatableArray<ValidationFinding> expected =
-            rig.Harness.ProjectService.ValidateStructured(rig.Harness.Session.Current!);
+            rig.Harness.ProjectService.ValidateStructured(rig.Harness.Session.Current!).Findings;
 
         Assert.Multiple(() =>
         {
@@ -100,7 +100,7 @@ public class ProblemsListTests
         await rig.Harness.Session.NewAsync();
         await rig.SettleAsync();
 
-        Assert.That(rig.Panel.Rows.Select(r => r.Severity),
+        Assert.That(rig.Panel.Rows.OfType<ProblemRowViewModel>().Select(r => r.Severity),
             Is.Ordered.Using<ValidationSeverity>((a, b) => ((int)a).CompareTo((int)b)),
             "the enum's own order IS the severity order — Error 0, Warning 1, Info 2");
     }

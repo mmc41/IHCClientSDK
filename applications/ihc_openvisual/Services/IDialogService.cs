@@ -506,6 +506,12 @@ public interface IDialogService
 
     Task ShowAboutAsync();
 
+    /// <summary>
+    /// Opens the details surface for one internal error (its Danish sentence, its identity, and the captured
+    /// technical detail). Returns when the installer closes it; there is no result to carry back.
+    /// </summary>
+    Task ShowInternalErrorAsync(Ihc.Vis.Problems.InternalError error);
+
     Task ShowSettingsAsync(string settingsText);
 
     /// <summary>Opens a URL (or a local document) in the OS default handler. Returns whether the handler was

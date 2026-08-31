@@ -212,7 +212,7 @@ public class ProblemsPanelViewModelTests
                 ValidationCategory.Documentation, new FindingLocation("_0x1", locality, null)));
         await rig.SettleAsync();
 
-        ProblemRowViewModel row = rig.Panel.Rows.Single();
+        ProblemRowViewModel row = rig.Panel.Rows.OfType<ProblemRowViewModel>().Single();
         Assert.Multiple(() =>
         {
             Assert.That(row.Code, Is.EqualTo("doc-name-empty"), "the finding's own code, read off the problem");
@@ -248,8 +248,10 @@ public class ProblemsPanelViewModelTests
                 ValidationCategory.ProjectStructure, null));
         await rig.SettleAsync();
 
-        ProblemRowViewModel root = rig.Panel.Rows.Single(r => r.Code == "doc-project-info-blank");
-        ProblemRowViewModel nowhere = rig.Panel.Rows.Single(r => r.Code == "prj-capacity-exceeded");
+        ProblemRowViewModel root = rig.Panel.Rows.OfType<ProblemRowViewModel>()
+            .Single(r => r.Code == "doc-project-info-blank");
+        ProblemRowViewModel nowhere = rig.Panel.Rows.OfType<ProblemRowViewModel>()
+            .Single(r => r.Code == "prj-capacity-exceeded");
 
         Assert.Multiple(() =>
         {
@@ -512,10 +514,139 @@ public class ProblemsPanelViewModelTests
         Assert.Multiple(() =>
         {
             Assert.That(rig.Panel.Rows, Has.Count.EqualTo(2), "non-vacuity");
-            Assert.That(rig.Panel.Rows.Select(r => r.Finding), Is.All.Not.Null);
+            Assert.That(rig.Panel.Rows.OfType<ProblemRowViewModel>().Select(r => r.Finding), Is.All.Not.Null);
             Assert.That(
-                rig.Panel.Rows.Select(r => r.Finding.Code.Value),
+                rig.Panel.Rows.OfType<ProblemRowViewModel>().Select(r => r.Finding.Code.Value),
                 Is.EqualTo(new[] { "doc-name-empty", "prj-capacity-exceeded" }));
         });
+    }
+
+    // ── The bulk copy of the internal rows (D05's counterpart to the export exclusion) ───────────────────────
+
+    private static Ihc.Vis.Problems.InternalError Fault(string code, string sentence = "Uventet fejl.") =>
+        ProblemsTestData.Fault(code, sentence, "boom", detail: $"at {code}()");
+
+    /// <summary>Returns the rig too: it owns a validation timer that outlives the test, and the suite's own
+    /// leak detector fails any test that drops one.</summary>
+    private static (ProblemsShellRig Rig, ProblemsPanelViewModel Panel) PanelWith(
+        params Ihc.Vis.Problems.InternalError[] faults)
+    {
+        ProblemsShellRig rig = new();
+        InternalErrorLog log = new();
+        foreach (Ihc.Vis.Problems.InternalError fault in faults)
+        {
+            log.Append(fault);
+        }
+        return (rig, new ProblemsPanelViewModel(rig.Harness.Session, rig.Harness.Session.Validation,
+            internalErrors: log) { AppVersion = "1.2.3" });
+    }
+
+    /// <summary>
+    /// The gate's assertion: EVERY listed internal error is in the copied text. The control exists for the fault
+    /// storm, so copying some of them would be the failure, not a partial success.
+    /// </summary>
+    [Test]
+    public void TheBulkCopyCarriesEveryListedInternalError()
+    {
+        var (rig, panel) = PanelWith(
+            Fault("internal.rule-failed", "Reglen fejlede."),
+            Fault("app.openvisual.unexpected", "Uventet fejl under 'Start'."),
+            Fault("internal.edit-failed", "Redigeringen kunne ikke gennemføres."));
+        using var _ = rig;
+        using var _p = panel;
+
+        string payload = panel.BuildInternalsPayload();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(panel.Rows.OfType<InternalErrorRowViewModel>().Count(), Is.EqualTo(3),
+                "non-vacuity: three rows are listed");
+            foreach (string code in new[]
+                     { "internal.rule-failed", "app.openvisual.unexpected", "internal.edit-failed" })
+            {
+                Assert.That(payload, Does.Contain(code), code);
+            }
+            Assert.That(payload, Does.Contain("Reglen fejlede."), "the Danish sentences travel too");
+            Assert.That(payload, Does.Contain("at internal.edit-failed()"), "and the captured detail");
+            Assert.That(payload, Does.Contain("1.2.3"), "and the build they were observed in");
+        });
+    }
+
+    /// <summary>
+    /// LISTED, not held: a tier switched off is not in the copy, because what the reader asked for is what the
+    /// reader can see. The count on the chip still says how many there are — switching a tier off must never
+    /// look like the faults were fixed — but the copy follows the list.
+    /// </summary>
+    [Test]
+    public void TheBulkCopyFollowsTheTierToggle()
+    {
+        var (rig, panel) = PanelWith(Fault("internal.rule-failed"));
+        using var _ = rig;
+        using var _p = panel;
+
+        panel.Internals.IsShown = false;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(panel.BuildInternalsPayload(), Is.Empty);
+            Assert.That(panel.Internals.Count, Is.EqualTo(1), "the count is of the whole result");
+        });
+    }
+
+    /// <summary>The control appears with its subject and not before: the Internal tier is empty in every healthy
+    /// session, and a permanent button would invite the reader to wonder what it would have copied.</summary>
+    [Test]
+    public void TheBulkCopyIsOfferedOnlyWhenThereAreInternalRows()
+    {
+        var (emptyRig, none) = PanelWith();
+        using var _e = emptyRig;
+        using var _n = none;
+        var (rig, some) = PanelWith(Fault("internal.rule-failed"));
+        using var _ = rig;
+        using var _s = some;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(none.CanCopyInternals, Is.False);
+            Assert.That(some.CanCopyInternals, Is.True);
+        });
+    }
+
+    /// <summary>The same in-place feedback the details dialog gives, and the same coded refusal.</summary>
+    [Test]
+    public void TheBulkCopyReportsInPlace()
+    {
+        var (rig, panel) = PanelWith(Fault("internal.rule-failed"));
+        using var _ = rig;
+        using var _p = panel;
+        Assert.That(panel.CopyInternalsText, Is.EqualTo("Kopiér interne fejl"));
+
+        panel.MarkInternalsCopied();
+        Assert.That(panel.CopyInternalsText, Is.EqualTo("Kopieret"));
+
+        panel.MarkInternalsCopyUnavailable();
+        Assert.That(panel.CopyInternalsText,
+            Is.EqualTo(HostProblems.ClipboardUnavailable().Message),
+            "asserted against the catalogue, so the control and the catalogue cannot drift");
+    }
+
+    /// <summary>
+    /// A confirmation left standing after the list moved would claim the reader has a copy of rows that were not
+    /// in it. The label resets whenever the sink changes.
+    /// </summary>
+    [Test]
+    public void TheConfirmationResetsWhenTheListMoves()
+    {
+        ProblemsShellRig rig = new();
+        using var _ = rig;
+        InternalErrorLog log = new();
+        log.Append(Fault("internal.rule-failed"));
+        using ProblemsPanelViewModel panel =
+            new(rig.Harness.Session, rig.Harness.Session.Validation, internalErrors: log);
+        panel.MarkInternalsCopied();
+
+        log.Append(Fault("app.openvisual.unexpected"));
+
+        Assert.That(panel.CopyInternalsText, Is.EqualTo("Kopiér interne fejl"));
     }
 }

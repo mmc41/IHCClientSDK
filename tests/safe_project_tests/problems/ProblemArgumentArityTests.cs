@@ -123,6 +123,9 @@ namespace Ihc.Vis.Tests
             [ProblemArgumentType.Number] = typeof(double),
             [ProblemArgumentType.AttributeValue] = typeof(string),
             [ProblemArgumentType.Path] = typeof(string),
+            // An engine identifier is text like every other identity kind here — ElementIdentity is a string
+            // too, though ElementId exists — so a factory takes it as one rather than as a ProblemCode.
+            [ProblemArgumentType.ProblemIdentity] = typeof(string),
         };
 
         [Test]
@@ -308,7 +311,7 @@ namespace Ihc.Vis.Tests
             {
                 foreach ((string name, Func<Project> build) in ValidationCharacterizationTests.Corpus)
                 {
-                    foreach (ValidationFinding finding in app.ValidateStructured(build()))
+                    foreach (ValidationFinding finding in app.ValidateStructured(build()).Findings)
                     {
                         string code = finding.Problem.Code.Value;
                         if (!ProblemCatalog.Current.TryGet(finding.Problem.Code, out ProblemCatalogEntry entry))

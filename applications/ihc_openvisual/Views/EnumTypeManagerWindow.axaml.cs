@@ -85,7 +85,19 @@ public partial class EnumTypeManagerWindow : Window
 
     private void OnValueSelectionChanged(object? sender, SelectionChangedEventArgs e) => UpdateButtons();
 
-    private async void OnNewType(object? sender, RoutedEventArgs e)
+    // ── The button gestures ─────────────────────────────────────────────────────────────────────────────
+    //
+    // Each is a one-line async void shell over a private async Task body, and the shell does nothing but hand
+    // the body to the guard. Written this way rather than as a try/catch per gesture because a floor copied per
+    // gesture is as many floors as there are gestures, free to drift; the guard also leaves a durable row,
+    // which a hand-written catch here
+    // would have had to remember to do. The BODY keeps the gesture's name so a stack frame still says which
+    // button was pressed.
+
+    private async void OnNewType(object? sender, RoutedEventArgs e) =>
+        await HandlerGuard.RunAsync(NewTypeAsync, _logger, nameof(OnNewType));
+
+    private async Task NewTypeAsync()
     {
         if (await Prompt("Opret ny enumerator type", "Navn") is { } name)
         {
@@ -93,7 +105,10 @@ public partial class EnumTypeManagerWindow : Window
         }
     }
 
-    private async void OnRenameType(object? sender, RoutedEventArgs e)
+    private async void OnRenameType(object? sender, RoutedEventArgs e) =>
+        await HandlerGuard.RunAsync(RenameTypeAsync, _logger, nameof(OnRenameType));
+
+    private async Task RenameTypeAsync()
     {
         if (SelectedType is not { } type)
             return;
@@ -103,7 +118,10 @@ public partial class EnumTypeManagerWindow : Window
         }
     }
 
-    private async void OnDeleteType(object? sender, RoutedEventArgs e)
+    private async void OnDeleteType(object? sender, RoutedEventArgs e) =>
+        await HandlerGuard.RunAsync(DeleteTypeAsync, _logger, nameof(OnDeleteType));
+
+    private async Task DeleteTypeAsync()
     {
         if (SelectedType is { } type)
         {
@@ -111,7 +129,10 @@ public partial class EnumTypeManagerWindow : Window
         }
     }
 
-    private async void OnNewValue(object? sender, RoutedEventArgs e)
+    private async void OnNewValue(object? sender, RoutedEventArgs e) =>
+        await HandlerGuard.RunAsync(NewValueAsync, _logger, nameof(OnNewValue));
+
+    private async Task NewValueAsync()
     {
         if (SelectedType is not { } type)
             return;
@@ -121,7 +142,10 @@ public partial class EnumTypeManagerWindow : Window
         }
     }
 
-    private async void OnRenameValue(object? sender, RoutedEventArgs e)
+    private async void OnRenameValue(object? sender, RoutedEventArgs e) =>
+        await HandlerGuard.RunAsync(RenameValueAsync, _logger, nameof(OnRenameValue));
+
+    private async Task RenameValueAsync()
     {
         if (SelectedType is not { } type || ValuesList.SelectedIndex is var index && index < 0)
             return;
@@ -131,7 +155,10 @@ public partial class EnumTypeManagerWindow : Window
         }
     }
 
-    private async void OnDeleteValue(object? sender, RoutedEventArgs e)
+    private async void OnDeleteValue(object? sender, RoutedEventArgs e) =>
+        await HandlerGuard.RunAsync(DeleteValueAsync, _logger, nameof(OnDeleteValue));
+
+    private async Task DeleteValueAsync()
     {
         if (SelectedType is { } type && ValuesList.SelectedIndex >= 0)
         {
@@ -139,6 +166,12 @@ public partial class EnumTypeManagerWindow : Window
                 new EnumTypeManagerOperation.DeleteValue(type.Name, ValuesList.SelectedIndex), selectType: type.Name);
         }
     }
+
+    /// <summary>Where the guard records a fault. Nullable-tolerant: a previewer-constructed window has no
+    /// logging pipeline, and the guard takes null.</summary>
+    private readonly Microsoft.Extensions.Logging.ILogger _logger =
+        (Program.LoggerFactory ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance)
+            .CreateLogger("Ihc.OpenVisual.EnumTypeManagerWindow");
 
     private Task<string?> Prompt(string title, string initial) =>
         NamePromptWindow.ShowAsync(this, new NamePromptInput(title, initial, _input.Blank));

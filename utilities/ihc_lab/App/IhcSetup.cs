@@ -184,6 +184,9 @@ public class IhcFakeSetup
 
         A.CallTo(() => service.GetProjectInfo()).Returns(Task.FromResult(MockProjectInfo()));
 
+        // A raw string literal keeps its SOURCE FILE's line endings, so the mock project would arrive LF from a
+        // Linux checkout and CRLF from a Windows one. A .vis carries CRLF, and mock:// must hand the engine the
+        // same bytes a controller would, on every machine.
         A.CallTo(() => service.GetProject()).Returns(Task.FromResult(new Ihc.ProjectFile("project-mock.vis",
             """
             <?xml version="1.0" encoding="ISO-8859-1"?>
@@ -193,7 +196,7 @@ public class IhcFakeSetup
                 <installer_info name="Mock Installer" country="Danmark"/>
                 <project_info programmer="Mock Programmer" number="12345" description="Mock test project"/>
             </utcs_project>
-            """
+            """.ReplaceLineEndings("\r\n")
         )));
 
         A.CallTo(() => service.StoreProject(A<ProjectFile>._)).ReturnsLazily((ProjectFile prj) =>

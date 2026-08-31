@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <!-- A refusal colours WHOLE — sign and cross alike — because it is the one severity glyph that is not a row
-       among neighbouring tiers but a stop in a dialog, beside its own Danish sentence. See icons_design.md §5. -->
-  <polygon id="stop-sign" points="7.4,3 16.6,3 21,7.4 21,16.6 16.6,21 7.4,21 3,16.6 3,7.4" stroke="#E8A400"/>
-  <line id="cross-a" x1="8.4" y1="8.4" x2="15.6" y2="15.6" stroke="#B91C1C"/>
-  <line id="cross-b" x1="15.6" y1="8.4" x2="8.4" y2="15.6" stroke="#B91C1C"/>
+  <!-- A fault in the TOOL, not in the project. The frame keeps the theme ink so the glyph reads on a dark
+       surface, and only the bolt carries the failure red - the whole-glyph colouring is severity-fatal's alone.
+       The silhouette is deliberately a SQUARE: Internal sorts directly above Fatal, so the two sit adjacent in
+       the icon column and must be told apart at row size by outline, not by reading the mark inside.
+       See icons_design.md 5.1. -->
+  <rect id="frame" x="3.5" y="3.5" width="17" height="17" rx="2.5"/>
+  <polyline id="bolt" points="13.8,7 9.4,12.6 12.6,12.6 10.2,17" stroke="#B91C1C"/>
 </svg>

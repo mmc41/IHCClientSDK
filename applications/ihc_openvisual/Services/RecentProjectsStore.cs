@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using ihc_openvisual.Configuration;
 
 namespace ihc_openvisual.Services;
 
@@ -16,21 +18,20 @@ public sealed class RecentProjectsStore
     public const int MaxItems = 4;
 
     private readonly string _filePath;
+    private readonly ILogger _logger;
     private readonly List<string> _items = new();
 
-    public RecentProjectsStore(string filePath)
+    public RecentProjectsStore(string filePath, ILoggerFactory? loggerFactory = null)
     {
         _filePath = filePath;
+        _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<RecentProjectsStore>();
         Load();
     }
 
-    public static RecentProjectsStore CreateDefault() => new(DefaultFilePath());
+    public static RecentProjectsStore CreateDefault(ILoggerFactory? loggerFactory = null) =>
+        new(DefaultFilePath(), loggerFactory);
 
-    public static string DefaultFilePath() =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "IHC OpenVisual",
-            "recent.json");
+    public static string DefaultFilePath() => Constants.AppDataPath("recent.json");
 
     public event EventHandler? Changed;
 
@@ -51,36 +52,20 @@ public sealed class RecentProjectsStore
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    // A corrupt recent-list must never block start-up; an empty list is the fallback.
     private void Load()
     {
-        if (!File.Exists(_filePath))
-            return;
-        try
-        {
-            PersistModel? model = JsonSerializer.Deserialize<PersistModel>(File.ReadAllText(_filePath));
-            if (model?.Items is { } items)
-                _items.AddRange(items.Take(MaxItems));
-            LastDirectory = model?.LastDirectory;
-        }
-        catch (Exception)
-        {
-            // A corrupt recent-list must never block start-up; start with an empty list.
-        }
+        PersistModel? model = JsonPreferenceStore.TryLoad<PersistModel>(_filePath, _logger);
+        if (model?.Items is { } items)
+            _items.AddRange(items.Take(MaxItems));
+        LastDirectory = model?.LastDirectory;
     }
 
-    private void Save()
-    {
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
-            var model = new PersistModel { Items = _items.ToList(), LastDirectory = LastDirectory };
-            File.WriteAllText(_filePath, JsonSerializer.Serialize(model));
-        }
-        catch (Exception)
-        {
-            // Persisting the recent list is best-effort; ignore IO failures.
-        }
-    }
+    private void Save() =>
+        JsonPreferenceStore.TrySave(
+            _filePath,
+            new PersistModel { Items = _items.ToList(), LastDirectory = LastDirectory },
+            _logger);
 
     private sealed class PersistModel
     {

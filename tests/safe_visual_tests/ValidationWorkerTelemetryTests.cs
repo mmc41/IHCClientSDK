@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ihc_openvisual.Services;
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Validation;
 using Microsoft.Extensions.Time.Testing;
@@ -24,8 +25,7 @@ namespace safe_visual_tests;
 [TestFixture]
 public class ValidationWorkerTelemetryTests
 {
-    private static readonly EquatableArray<ValidationFinding> NoFindings =
-        new System.Collections.Immutable.ImmutableArray<ValidationFinding>();
+    private static readonly StructuredValidationResult NoFindings = StructuredValidationResult.Empty;
 
     /// <summary>A minimal project; the worker never inspects it, the fake validate delegate does.</summary>
     private static Project EmptyProject() =>

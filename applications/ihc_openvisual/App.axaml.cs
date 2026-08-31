@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -33,23 +34,48 @@ public partial class App : Application
             AppConfiguration? config = Program.Config;
             Ihc.IhcSettings settings = config?.IhcSettings ?? new Ihc.IhcSettings();
 
-            var projectService = new ProjectAppService(settings);
-            var recent = RecentProjectsStore.CreateDefault();
+            // The marshal for every background result the shell binds. It is declared HERE, at the composition
+            // root, because this is the only layer allowed to name Avalonia — the fault sink, the workflow, its
+            // validation monitor and the worker all take it as a delegate. Background priority so binding a
+            // findings list never competes with input or render.
+            //
+            // ONE delegate, shared. Written out per consumer it was the same three lines asserting in a comment
+            // that they matched; a priority changed in one copy would silently give two background results two
+            // different orderings.
+            Action<Action> post = action => Avalonia.Threading.Dispatcher.UIThread.Post(
+                action, Avalonia.Threading.DispatcherPriority.Background);
+
+            // FIRST, before anything that can fault into it. The application's own fault sink: it outlives
+            // every document, is shared by every layer that can fault, and is what makes an internal error
+            // durable rather than a log line nobody reads. It marshals through the same post the workflow uses,
+            // so a fault arriving off the dispatcher reaches the UI thread the way findings do.
+            var internalErrors = new InternalErrorLog(post);
+            // The SDK's fault port (D16). An exception escaping an app-service operation is reported here before
+            // it continues to its caller, so a failure that some catch further up turns into a dialog the user
+            // dismisses still leaves a row behind. The SDK names no sink type and no logger: it takes a
+            // delegate, and the composition root is the only layer that knows what is on the other end of it.
+            var projectService = new ProjectAppService(settings, internalErrors.Append);
+            var recent = RecentProjectsStore.CreateDefault(loggerFactory);
             var dialogs = new AvaloniaDialogService(loggerFactory);
-            // The marshal for every background result the shell binds. It is supplied HERE, at the composition
-            // root, because this is the only layer allowed to name Avalonia — the workflow, its validation
-            // monitor and the worker all take it as a delegate. Background priority so binding a findings list
-            // never competes with input or render.
             var session = new ProjectWorkflow(projectService, recent, dialogs, loggerFactory,
-                installerIdentity: InstallerIdentityStore.CreateDefault(),
-                dataTables: DataTableStore.CreateDefault(),
-                post: action => Avalonia.Threading.Dispatcher.UIThread.Post(
-                    action, Avalonia.Threading.DispatcherPriority.Background));
+                installerIdentity: InstallerIdentityStore.CreateDefault(loggerFactory),
+                dataTables: DataTableStore.CreateDefault(loggerFactory),
+                post: post,
+                faultSink: internalErrors.Append);
+            // Cleared where the findings list resets (D02). Subscribed to the monitor's own announcement rather
+            // than to a new event: the sink compares the generation itself, so nothing below has to know it exists.
+            session.Validation.Changed += (_, _) => internalErrors.FollowGeneration(session.Validation.Generation);
+            // The supervisor's port. Set HERE, once, because the supervisor is static — its callers are view
+            // code-behind and a worker, layers with no constructor a port could be injected through. Unset, it
+            // still observes; it simply has nowhere to report to.
+            TaskSupervisor.ReportTo(internalErrors.Append);
+
             var themeService = new ThemeService();
             // Adopt the platform's high-contrast preference now and keep following it (US-001): Avalonia reports
             // the preference but ships no high-contrast theme, so the palette is ours to supply (BP-13).
             themeService.FollowPlatformContrast();
-            var viewModel = new MainWindowViewModel(session, dialogs, recent, themeService, config, loggerFactory);
+            var viewModel = new MainWindowViewModel(session, dialogs, recent, themeService, config, loggerFactory,
+                internalErrors);
 
             var window = new MainWindow { DataContext = viewModel };
             dialogs.Owner = window;

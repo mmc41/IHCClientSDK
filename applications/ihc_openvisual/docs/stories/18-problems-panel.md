@@ -239,3 +239,52 @@ no visit to belong to and commits on its own, which is the one place the two rou
 deepest are additionally driven end to end through UI Automation on Windows: a terminal's cable-colour finding
 activated by both gestures, and a product field finding. What no automated test covers is whether the caret is
 where the installer was *looking* — a judgement about attention rather than about behaviour.
+
+## US-088 — Be told when the tool itself has failed
+
+**As an** IHC installer, **I want** a failure of the program itself to appear in the panel and stay there,
+**so that** I can see that what I am looking at may be incomplete, and can send someone the details.
+
+**Acceptance criteria**
+
+- MUST: **Given** a validation rule crashes, **when** the run completes, **then** the list carries a row for the
+  crash rather than an error about my project — a rule that crashed means findings are missing, which is a
+  different thing from a project that has a fault.
+- MUST: **Given** a whole validation run fails, **when** the findings already on screen are left standing,
+  **then** a row says the list may be out of date: keeping the findings is right, because a failed run is no
+  evidence they went away, and reading them as current is what the row prevents.
+- MUST: **Given** any such row is listed, **when** the panel decides what to show, **then** the rows come first,
+  above every finding — the tool failing outranks anything the tool reports.
+- MUST: **Given** a row for a failure of the program, **when** its severity is read, **then** it has none: it is
+  not an error about the project, and giving it one would place it on a scale it does not belong to.
+- MUST: **Given** such a row exists, **when** the transfer gate is consulted, **then** it does not block the
+  transfer — the project is not at fault.
+- MUST: **Given** a row is activated by double-click or by Enter, **when** no project is open at all, **then**
+  its details still open — a failure during start-up is exactly the one that arrives before there is a project,
+  and is the one most worth reading.
+- MUST: **Given** the details are shown, **when** they are read, **then** the Danish sentence stands at the top
+  whole, the code, where it came from and when are shown beside it, and the technical detail sits below under
+  its own heading — the detail is a readout to be lifted out, never the message.
+- MUST: **Given** the details are shown, **when** the copy control is used, **then** everything a report needs
+  is copied at once — the code, the Danish sentence, the English diagnostic, the origin, the time, the program
+  version and the captured detail — and the control says so where it stands.
+- MUST: **Given** the copy cannot happen, **when** it is attempted, **then** it says so in Danish in place. A
+  second window over a window that is already open would hide the very text being copied.
+- MUST: **Given** several such rows are listed, **when** all of them are wanted at once, **then** one control on
+  the panel copies every listed one — the case a details window at a time cannot serve.
+- MUST: **Given** rows have been hidden by the tier filter, **when** they are copied in bulk, **then** what is
+  copied is what is on screen, while the count beside the filter still reports all of them: hiding a row must
+  never read as having fixed it.
+- MUST: **Given** no such row is listed, **when** the panel is read, **then** the bulk copy is not offered —
+  a control that is always present and usually does nothing invites the reader to wonder what it would copy.
+- MUST: **Given** the findings export is used, **when** the file is written, **then** it holds no such row: a
+  findings file is a statement about the project, and a failure of the program is not part of the project.
+- MUST: **Given** a different project is opened, **when** the panel is read, **then** the rows from the previous
+  one are gone — they described a session that has ended.
+- SHOULD: **Given** the same failure happens repeatedly, **when** the list is read, **then** it is one row
+  rather than many, so a storm does not bury the first one.
+
+**Readiness:** Ready — every criterion above is observable in `safe_visual_tests`, including the ordering, the
+gate's indifference, the export's exclusion, the activation with no project open, and the details window's own
+layout. What no automated test covers is whether an installer reading *Intern fejl* understands it as "the
+program failed" rather than "my project is wrong" — a judgement about wording, not about behaviour.

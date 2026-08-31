@@ -44,28 +44,66 @@ public sealed class AppConfiguration
     {
         SettingsFilePath = Path.Combine(basePath, "ihcsettings.json");
         SettingsFileFound = File.Exists(SettingsFilePath);
+        (LoggingConfig, TelemetryConfig, IhcSettings) = Read(basePath, SettingsFileFound);
+    }
 
-        IConfigurationRoot config = new ConfigurationBuilder()
-            .SetBasePath(basePath)
-            .AddJsonFile("ihcsettings.json", optional: true)
-            .Build();
-
-        LoggingConfig = config.GetSection("Logging");
-        TelemetryConfig = config.GetSection(TelemetryConfiguration.Key).Get<TelemetryConfiguration>()
-                          ?? new TelemetryConfiguration();
-
-        IhcSettings settings;
+    /// <summary>
+    /// The WHOLE read, guarded as one — the JSON parse included. A file the parser rejects throws
+    /// <see cref="InvalidDataException"/> out of the configuration builder, which happens before the logger
+    /// factory exists: the process would end with nothing written anywhere and, from a windowed executable with
+    /// no console, no visible sign at all. A file editor that will not open because a settings file is malformed
+    /// is the worst shape that failure can take.
+    /// <para>
+    /// A method rather than inline, so the fallback is reachable by a test without starting a process.
+    /// </para>
+    /// </summary>
+    private static (IConfigurationSection Logging, TelemetryConfiguration Telemetry, IhcSettings Settings)
+        Read(string basePath, bool settingsFileFound)
+    {
         try
         {
-            settings = SettingsFileFound ? IhcSettings.GetFromConfiguration(config) : new IhcSettings();
+            IConfigurationRoot config = new ConfigurationBuilder()
+                .SetBasePath(basePath)
+                .AddJsonFile("ihcsettings.json", optional: true)
+                .Build();
+
+            return (
+                config.GetSection("Logging"),
+                config.GetSection(TelemetryConfiguration.Key).Get<TelemetryConfiguration>()
+                    ?? new TelemetryConfiguration(),
+                Settled(ControllerSettings(config, settingsFileFound)));
         }
         catch (Exception)
         {
-            // A malformed or partial ihcclient section must not prevent the editor from starting.
-            settings = new IhcSettings();
+            // Every fallback the class documents, taken together: local logging only, telemetry off, blank
+            // controller settings. Deliberately silent — there is nothing to report to yet, which is the whole
+            // reason this has to degrade rather than throw. Program's last-resort line is the channel for it.
+            return (Defaults.GetSection("Logging"), new TelemetryConfiguration(), Settled(new IhcSettings()));
         }
-
-        // Continuing on the captured (UI) context can deadlock the GUI; force it off as the utilities do.
-        IhcSettings = settings with { AsyncContinueOnCapturedContext = false };
     }
+
+    /// <summary>
+    /// The controller section keeps a guard OF ITS OWN, inside the whole-read guard above. The two fall back
+    /// independently on purpose: the sections are independent, so a malformed <c>ihcclient</c> section must not
+    /// also discard a telemetry section that read perfectly well. Folding them into one guard silently did
+    /// exactly that.
+    /// </summary>
+    private static IhcSettings ControllerSettings(IConfigurationRoot config, bool settingsFileFound)
+    {
+        try
+        {
+            return settingsFileFound ? IhcSettings.GetFromConfiguration(config) : new IhcSettings();
+        }
+        catch (Exception)
+        {
+            return new IhcSettings();
+        }
+    }
+
+    // Continuing on the captured (UI) context can deadlock the GUI; force it off as the utilities do.
+    private static IhcSettings Settled(IhcSettings settings) =>
+        settings with { AsyncContinueOnCapturedContext = false };
+
+    // An empty root, so the fallback still hands out a real (empty) section rather than null.
+    private static readonly IConfigurationRoot Defaults = new ConfigurationBuilder().Build();
 }

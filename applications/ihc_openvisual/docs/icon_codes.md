@@ -193,6 +193,7 @@ author finds them instead of drawing a fifth.
 
 | Asset | Stands for | Construction | Used by |
 | --- | --- | --- | --- |
+| `severity-internal.svg` | **Intern fejl** — a fault in the TOOL, not in the project | rounded square (theme ink) + bolt in signal red | Problemer panel: severity column, Intern fejl filter toggle |
 | `severity-error.svg` | **Fejl** — blocks a save/upload | ring (theme ink) + diagonal cross in signal red | Problemer panel: severity column, Fejl filter toggle |
 | `severity-warning.svg` | **Advarsel** — advisory | triangle (theme ink) + bang bar/dot in the heading blue | Problemer panel: severity column, Advarsel filter toggle |
 | `severity-info.svg` | **Information** — advisory, lower | ring + tittle/stem, theme ink throughout | Problemer panel: severity column, Information filter toggle |

@@ -182,7 +182,7 @@ public class ProblemsNavigationTests
     {
         Project snapshot = await harness.ProjectService.Load(ProjectWithTwoScenesSharingAnId(harness));
         Dictionary<ElementId, ProjectElement?> byId = ProblemsPanelViewModel.IndexById(snapshot);
-        return [.. harness.ProjectService.ValidateStructured(snapshot)
+        return [.. harness.ProjectService.ValidateStructured(snapshot).Findings
             .Select(f => ProblemsPanelViewModel.ToRow(f, snapshot, byId, ProblemsTestData.Planner(harness.ProjectService)))];
     }
 
