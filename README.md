@@ -40,6 +40,8 @@ open source alternatives to applications and fills that gap for experienced .NET
 
 The project is an early preview/beta. Current version: 0.8.1.
 
+NB: Openvisual is alpha-quality - not yet fully tested.
+
 The SDK currently supports v3.0 IHC controllers only. Support for pre-3.0 controllers is possible but requires contributors interested in this. See [this issue](https://github.com/mmc41/IHCClientSDK/issues/1) to discuss this subject and to keep track of future support.
 
 Definitely missing is a ready-to-consume NuGet package for the client. I expect to publish a package if there is interest. For now you will have to build the client yourself.

@@ -101,10 +101,35 @@ namespace Ihc.Tests
                 $"'{Supervised.TypeFullName}' declares no '{Supervised.Member}' — the allowance now admits nothing");
         }
 
+        /// <summary>
+        /// The three rules below read the GUI assembly's IL, and a run that collects coverage by STATIC
+        /// instrumentation rewrites it: a probe is planted after every call, which lands between a discarded task
+        /// and the <c>pop</c> that discards it. The scan then reports not a different answer but NO answer — the
+        /// rule reads that as "no unsupervised discards" and the honesty lists read it as "every exemption is
+        /// stale", which is how a green rule and a red list came from the same blindness.
+        ///
+        /// <para>So the question is withheld rather than answered from a body nobody wrote. The gate is not lost:
+        /// whether the rewrite happens is a property of the RUN, not of the code, so the legs whose collector
+        /// rewrites nothing still enforce it on the same commit — and a developer on a leg that does can get it
+        /// back with <c>-p:CollectCoverage=false</c>. The seeded controls further down are unaffected either way,
+        /// because the test assembly is outside the measured set: the detector is still proven armed here.</para>
+        /// </summary>
+        private static void SkipWhenTheGuiAssemblyWasRewritten()
+        {
+            if (CoverageInstrumentation.Rewrote(Gui))
+            {
+                Assert.Ignore(
+                    "this run collects coverage by rewriting the assembly under test, so its IL is not the IL "
+                    + "anyone wrote and a discard cannot be read out of it; the legs that rewrite nothing enforce "
+                    + "this rule on the same commit, and -p:CollectCoverage=false enforces it here");
+            }
+        }
+
         /// <summary>The rule. A discard is supervised, or it is named — there is no third answer.</summary>
         [Test]
         public void EveryTaskDiscard_IsSupervised_OrIsNamed()
         {
+            SkipWhenTheGuiAssemblyWasRewritten();
             IReadOnlyList<ContainmentSite> sites = TaskDiscardScan.Sites(Gui, Supervised);
             var named = Baseline.Select(d => d.Site).Concat(Exemptions.Select(x => x.Site)).ToHashSet();
 
@@ -119,6 +144,7 @@ namespace Ihc.Tests
         [Test]
         public void EveryBaselineEntry_StillNamesARealDiscard()
         {
+            SkipWhenTheGuiAssemblyWasRewritten();
             var sites = TaskDiscardScan.Sites(Gui, Supervised).ToHashSet();
 
             Assert.That(Baseline.Where(d => !sites.Contains(d.Site)).Select(d => $"{d.Site} (owed by {d.PaidBy})"),
@@ -131,6 +157,7 @@ namespace Ihc.Tests
         [Test]
         public void EveryExemption_StillNamesARealDiscard()
         {
+            SkipWhenTheGuiAssemblyWasRewritten();
             var sites = TaskDiscardScan.Sites(Gui, Supervised).ToHashSet();
 
             Assert.That(Exemptions.Where(x => !sites.Contains(x.Site)).Select(x => x.Site.ToString()), Is.Empty,
@@ -193,6 +220,17 @@ namespace Ihc.Tests
                     Is.True, "and the supervisor anchor is load-bearing: the real one is not the seeded one");
             });
         }
+
+        /// <summary>The skip is itself a way for the rule to stop meaning anything: a guard that fired everywhere
+        /// would withhold the verdict on every leg and leave a green suite behind saying nothing. This is its
+        /// negative control — an assembly nobody rewrote must not trip it, and the test assembly is outside the
+        /// measured set, so it is exactly that on every platform including the ones that do rewrite.</summary>
+        [Test]
+        public void TheRewriteGuard_DoesNotFireOnAnAssemblyNobodyRewrote() =>
+            Assert.That(CoverageInstrumentation.Rewrote(typeof(OpenVisualTaskDiscardArchitectureTests).Assembly),
+                Is.False,
+                "nothing rewrites the test assembly, so a guard that reports otherwise would skip this fixture's "
+                + "rules on every platform and leave the suite green while enforcing nothing");
 
         /// <summary>The awaited control lives in its own test because an async method's body is in a state machine,
         /// so the scan has to reach it there rather than in the method a reader sees.</summary>

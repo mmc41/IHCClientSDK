@@ -251,12 +251,8 @@ namespace Ihc.Tests
         private static bool IsGeneratedBuildOutputName(string name) =>
             name.StartsWith("CompiledAvaloniaXaml", StringComparison.Ordinal)
             || name.Contains('!', StringComparison.Ordinal)
-            || name.StartsWith(CoverageInstrumentationRoot, StringComparison.Ordinal)
+            || CoverageInstrumentation.IsInjectedTypeName(name)
             || WeavedInTypeNames.Contains(name);
-
-        // Injected by the coverage collector's static instrumentation; the leaf name carries a per-build GUID, so the
-        // root is matched rather than the name. See GuiScanScope_ToleratesTheCoverageInstrumentationTracker.
-        private const string CoverageInstrumentationRoot = "Microsoft.CodeCoverage.Instrumentation.";
 
         // Injected by the Debug-only HotAvalonia weaver; see IsGeneratedBuildOutput.
         private static readonly IReadOnlyCollection<string> WeavedInTypeNames = new HashSet<string>(StringComparer.Ordinal)
