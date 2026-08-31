@@ -8,6 +8,7 @@ using NUnit.Framework;
 using IhcLab;
 using Ihc.App;
 using Ihc;
+using static Ihc.Tests.LabGuiProbe;
 
 namespace Ihc.Tests
 {
@@ -22,68 +23,6 @@ namespace Ihc.Tests
         private const string SmsModemServiceName = "SmsModemService";
 
         #region Helper Methods
-
-        /// <summary>
-        /// Helper to find control by name recursively.
-        /// </summary>
-        private static Control? FindControlByNameRecursive(Control parent, string name)
-        {
-            if (parent.Name == name)
-                return parent;
-
-            if (parent is Panel panel)
-            {
-                foreach (var child in panel.Children)
-                {
-                    if (child is Control childControl)
-                    {
-                        var found = FindControlByNameRecursive(childControl, name);
-                        if (found != null)
-                            return found;
-                    }
-                }
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Helper to find a service by name in the services combobox.
-        /// </summary>
-        private static int FindServiceIndexByName(ComboBox servicesComboBox, string serviceName)
-        {
-            var items = servicesComboBox.Items.Cast<LabAppService.ServiceItem>().ToArray();
-            for (int i = 0; i < items.Length; i++)
-            {
-                if (items[i].DisplayName == serviceName)
-                    return i;
-            }
-            return -1;
-        }
-
-        /// <summary>
-        /// Helper to find an operation by name in the operations combobox.
-        /// </summary>
-        private static int FindOperationIndexByName(ComboBox operationsComboBox, string operationName, int? parameterCount = null)
-        {
-            var items = operationsComboBox.Items.Cast<LabAppService.OperationItem>().ToArray();
-            for (int i = 0; i < items.Length; i++)
-            {
-                if (items[i].DisplayName == operationName)
-                {
-                    if (parameterCount.HasValue)
-                    {
-                        if (items[i].OperationMetadata.Parameters.Length == parameterCount.Value)
-                            return i;
-                    }
-                    else
-                    {
-                        return i;
-                    }
-                }
-            }
-            return -1;
-        }
 
         /// <summary>
         /// Helper to find the first operation with at least the specified number of parameters.
@@ -106,27 +45,8 @@ namespace Ihc.Tests
         /// </summary>
         private static void SimulateUserValueChange(Control control, object? value)
         {
-            // Set value based on control type
-            switch (control)
-            {
-                case TextBox textBox:
-                    textBox.Text = value?.ToString() ?? string.Empty;
-                    break;
-                case NumericUpDown numeric:
-                    if (value != null)
-                        numeric.Value = Convert.ToDecimal(value);
-                    break;
-                case ComboBox combo:
-                    combo.SelectedItem = value;
-                    break;
-                case DatePicker datePicker:
-                    if (value is DateTimeOffset dto)
-                        datePicker.SelectedDate = dto;
-                    else if (value is DateTime dt)
-                        datePicker.SelectedDate = new DateTimeOffset(dt);
-                    break;
-            }
             // Controls trigger their own value changed events automatically
+            TrySetControlValue(control, value);
         }
 
         /// <summary>

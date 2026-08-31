@@ -17,10 +17,9 @@ namespace Ihc.Vis.Tests
     /// the direct target). Oracle <c>Project1-SimpelWired.vis</c> holds wired products (with catalog pins) and a
     /// locked library block ("Kip", <c>locked="yes"</c>) with an internal program.
     /// </summary>
-    public class CatalogPinDeleteGuardTests
+    public class CatalogPinDeleteGuardTests : SessionCommandFixture
     {
         private const string Oracle = "Project1-SimpelWired.vis";
-        private static ProjectAppService App => new(TestSetup.Settings);
         private static Task<Project> LoadOracle() => App.Load("testdata/projects/" + Oracle);
 
         private static bool IsPinTag(string tag) =>
@@ -42,13 +41,6 @@ namespace Ihc.Vis.Tests
             ProjectElement lockedBlock = project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("locked") == "yes");
             return lockedBlock.Descendants().First(e => e.Tag == "action");
-        }
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
         }
 
         // ---- Engine (ProjectEditor.DeleteById): the authoritative guard ----

@@ -22,46 +22,10 @@ namespace safe_visual_tests;
 /// </summary>
 public class ProblemRowOccurrenceIdentityTests : AvaloniaTestBase
 {
-    private sealed class Rig : IDisposable
-    {
-        public FakeTimeProvider Clock { get; } = new();
-        public ShellHarness Harness { get; }
-        public MainWindowViewModel Shell { get; }
-        public MainWindow Window { get; }
-
-        private Rig()
-        {
-            Harness = ShellHarness.Create(Clock);
-            Shell = Harness.CreateViewModel();
-            Window = new MainWindow { DataContext = Shell };
-        }
-
-        public static async Task<Rig> ShowingFindingsAsync()
-        {
-            Rig rig = new();
-            await rig.Shell.InitializeAsync(ProblemsTestData.FixturePath("Project6-Errors.vis"));
-            rig.Clock.Advance(ValidationWorker.DefaultDebounce);
-            await rig.Shell.Problems.Idle.WaitAsync(TimeSpan.FromSeconds(30));
-            CurrentTestWindow = rig.Window;
-            rig.Window.Show();
-            Dispatcher.UIThread.RunJobs();
-            Assert.That(rig.Shell.Problems.Rows, Is.Not.Empty,
-                "sanity: the fixture must produce findings, or every assertion below is vacuous");
-            return rig;
-        }
-
-        public void Dispose()
-        {
-            Window.Close();
-            Shell.Dispose();
-            Harness.Dispose();
-        }
-    }
-
     [AvaloniaTest]
     public async Task EveryRowOfAMultiOccurrenceCodeCarriesADistinctIdentity()
     {
-        using Rig rig = await Rig.ShowingFindingsAsync();
+        using ProblemsWindowRig rig = await ProblemsWindowRig.ShowingFindingsAsync();
 
         var repeated = rig.Shell.Problems.Rows
             .GroupBy(r => r.Code)
@@ -83,7 +47,7 @@ public class ProblemRowOccurrenceIdentityTests : AvaloniaTestBase
     [AvaloniaTest]
     public async Task NoTwoRowsInTheWholeListShareAnIdentity()
     {
-        using Rig rig = await Rig.ShowingFindingsAsync();
+        using ProblemsWindowRig rig = await ProblemsWindowRig.ShowingFindingsAsync();
 
         var ids = rig.Shell.Problems.Rows.Select(r => r.OccurrenceId).ToList();
 
@@ -94,7 +58,7 @@ public class ProblemRowOccurrenceIdentityTests : AvaloniaTestBase
     [AvaloniaTest]
     public async Task TheIdentityNamesTheCodeAndTheSiteTheEngineRecorded()
     {
-        using Rig rig = await Rig.ShowingFindingsAsync();
+        using ProblemsWindowRig rig = await ProblemsWindowRig.ShowingFindingsAsync();
 
         ProblemRowViewModel row = rig.Shell.Problems.Rows.OfType<ProblemRowViewModel>()
             .First(r => r.Element is not null);
@@ -111,7 +75,7 @@ public class ProblemRowOccurrenceIdentityTests : AvaloniaTestBase
     [AvaloniaTest]
     public async Task ARealizedRowPublishesBothTheCodeAndItsOccurrenceIdentity()
     {
-        using Rig rig = await Rig.ShowingFindingsAsync();
+        using ProblemsWindowRig rig = await ProblemsWindowRig.ShowingFindingsAsync();
 
         TableViewRow[] realized = [.. rig.Window.GetVisualDescendants().OfType<TableViewRow>()];
         Assert.That(realized, Is.Not.Empty, "sanity: rows are realized");

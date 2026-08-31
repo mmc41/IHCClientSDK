@@ -4,6 +4,7 @@ using System.Linq;
 using ihc_openvisual.Services;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Validation;
+using Ihc.Tests.Shared;
 
 namespace safe_visual_tests;
 
@@ -123,7 +124,7 @@ public class HostPhrasingStandardTests
         {
             foreach (ProblemCatalogEntry entry in HostEntries)
             {
-                IReadOnlyList<string> placeholders = Placeholders(entry.MessageTemplate);
+                IReadOnlyList<string> placeholders = MessageTemplate.Placeholders(entry.MessageTemplate);
                 IReadOnlyList<string> slots = [.. entry.Slots.Select(s => s.Name)];
 
                 Assert.That(placeholders, Is.EquivalentTo(slots),
@@ -149,7 +150,7 @@ public class HostPhrasingStandardTests
             Assert.That(ShapeOffences("skrevet med lille begyndelsesbogstav"), Is.Not.Empty, "a lowercase open is caught");
             Assert.That(ShapeOffences("To  mellemrum"), Is.Not.Empty, "a double space is caught");
             Assert.That(ShapeOffences("TODO: uskrevet"), Is.Not.Empty, "an unauthored TODO is caught");
-            Assert.That(Placeholders("Filen '{file}' i {folder}"), Is.EquivalentTo(new[] { "file", "folder" }),
+            Assert.That(MessageTemplate.Placeholders("Filen '{file}' i {folder}"), Is.EquivalentTo(new[] { "file", "folder" }),
                 "and the placeholder reader finds both, so the slot comparison is not vacuous");
         });
     }
@@ -198,20 +199,4 @@ public class HostPhrasingStandardTests
         return offences;
     }
 
-    /// <summary>The <c>{slot}</c> names a template uses, in order of appearance.</summary>
-    private static IReadOnlyList<string> Placeholders(string template)
-    {
-        List<string> names = [];
-        for (int open = template.IndexOf('{'); open >= 0;
-             open = template.IndexOf('{', open + 1))
-        {
-            int close = template.IndexOf('}', open);
-            if (close > open + 1)
-            {
-                names.Add(template[(open + 1)..close]);
-            }
-        }
-
-        return names;
-    }
 }

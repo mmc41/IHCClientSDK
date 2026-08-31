@@ -19,20 +19,8 @@ namespace Ihc.Vis.Tests
     /// <c>backup="yes"</c> on internal flags, so such attributes are already read and written; only the EDIT was
     /// withheld.</para>
     /// </summary>
-    public class ValueBackupScopeTests
+    public class ValueBackupScopeTests : SessionCommandFixture
     {
-        private static IhcSettings Settings => TestSetup.Settings;
-        private static ProjectAppService App => new(Settings);
-
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         /// <summary>An UNLOCKED block, plus a freshly authored variable of <paramref name="tag"/> in its settings
         /// container — the shape the vendor's dialog was read on. Authored rather than fished out of a fixture so
         /// the case is exercised rather than skipped.</summary>

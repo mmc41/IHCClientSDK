@@ -17,6 +17,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The ReflectionUtil contract, shared with safe_unit_tests, which runs the same assertions over a
+         FakeItEasy proxy. Linking it here contacts no controller: the fixture only constructs a service. -->
+    <Compile Include="..\shared\ReflectionUtilContract.cs" Link="shared\ReflectionUtilContract.cs" />
+  </ItemGroup>
   <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">
     <!-- NB: Settings file is required for running/testing but allow build without the file to support compilation in a DevOps pipeline -->
     <Copy SourceFiles="..\..\ihcsettings.json" DestinationFolder="$(OutDir)" Condition="Exists('..\..\ihcsettings.json')" />

@@ -10,6 +10,7 @@ using IhcLab;
 using IhcLab.ParameterControls;
 using Ihc.App;
 using Ihc;
+using static Ihc.Tests.LabGuiProbe;
 
 namespace Ihc.Tests
 {
@@ -30,46 +31,6 @@ namespace Ihc.Tests
         private const string ControllerServiceName = "ControllerService";
         private const string UserManagerServiceName = "UserManagerService";
 
-        /// <summary>
-        /// Helper to find a service by name in the services combobox.
-        /// </summary>
-        private static int FindServiceIndexByName(ComboBox servicesComboBox, string serviceName)
-        {
-            var items = servicesComboBox.Items.Cast<LabAppService.ServiceItem>().ToArray();
-            for (int i = 0; i < items.Length; i++)
-            {
-                if (items[i].DisplayName == serviceName)
-                    return i;
-            }
-            return -1;
-        }
-
-        /// <summary>
-        /// Helper to find an operation by name and parameter count in the operations combobox.
-        /// </summary>
-        private static int FindOperationIndexByName(ComboBox operationsComboBox, string operationName, int? parameterCount = null)
-        {
-            var items = operationsComboBox.Items.Cast<LabAppService.OperationItem>().ToArray();
-            for (int i = 0; i < items.Length; i++)
-            {
-                if (items[i].DisplayName == operationName)
-                {
-                    // If parameter count is specified, check it matches
-                    if (parameterCount.HasValue)
-                    {
-                        if (items[i].OperationMetadata.Parameters.Length == parameterCount.Value)
-                            return i;
-                    }
-                    else
-                    {
-                        return i;
-                    }
-                }
-            }
-            return -1;
-        }
-
-
         #region Test Helpers
 
         /// <summary>
@@ -82,30 +43,6 @@ namespace Ihc.Tests
             if (control != null)
             {
                 return new ParameterControlWrapper(control);
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Helper to find control by name recursively.
-        /// </summary>
-        private static Control? FindControlByNameRecursive(Control parent, string name)
-        {
-            if (parent.Name == name)
-                return parent;
-
-            if (parent is Panel panel)
-            {
-                foreach (var child in panel.Children)
-                {
-                    if (child is Control childControl)
-                    {
-                        var found = FindControlByNameRecursive(childControl, name);
-                        if (found != null)
-                            return found;
-                    }
-                }
             }
 
             return null;
@@ -209,31 +146,10 @@ namespace Ihc.Tests
                     {
                         metadata.Strategy.SetValue(_control, value, metadata.Field);
                     }
-                    else
+                    else if (!TrySetControlValue(_control, value))
                     {
-                        // Fallback: Set value based on control type
-                        switch (_control)
-                        {
-                            case TextBox textBox:
-                                textBox.Text = value?.ToString() ?? string.Empty;
-                                break;
-                            case NumericUpDown numeric:
-                                if (value != null)
-                                    numeric.Value = Convert.ToDecimal(value);
-                                break;
-                            case ComboBox combo:
-                                combo.SelectedItem = value;
-                                break;
-                            case DatePicker datePicker:
-                                if (value is DateTimeOffset dto)
-                                    datePicker.SelectedDate = dto;
-                                else if (value is DateTime dt)
-                                    datePicker.SelectedDate = new DateTimeOffset(dt);
-                                break;
-                            default:
-                                SetValueToRadioButtons(value);
-                                break;
-                        }
+                        // Fallback for the one control shape the probe does not write: a radio-button group.
+                        SetValueToRadioButtons(value);
                     }
                 }
             }

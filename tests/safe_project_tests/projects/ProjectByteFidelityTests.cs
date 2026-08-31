@@ -30,25 +30,7 @@ namespace Ihc.Vis.Tests
             return new ProjectAppService(Settings).Load(ms).GetAwaiter().GetResult();
         }
 
-        [TestCase("Project0-Tomt.vis")]
-        [TestCase("Project1-SimpelWired.vis")]
-        [TestCase("project2-CustomBlock.vis")]
-        [TestCase("project2-control-save.vis")]
-        [TestCase("project2-CustomBlock-refdelete.vis")]
-        [TestCase("project2-CustomBlock-logicgroups.vis")]
-        [TestCase("project2-CustomBlock-case.vis")]
-        [TestCase("project3-KompleksWired.vis")]
-        [TestCase("project3-KompleksWired-copied.vis")]
-        [TestCase("project3-KompleksWired-mutated.vis")]
-        [TestCase("project3-KompleksWired-enumvalues.vis")]
-        [TestCase("project3-KompleksWired-projektinfo.vis")]
-        [TestCase("project3-KompleksWired-scenelinks.vis")]
-        [TestCase("project3-KompleksWired-enumappend.vis")]
-        [TestCase("project3-KompleksWired-gemsideeffect.vis")]
-        [TestCase("project4-PrgTokens.vis")]
-        [TestCase("project4-PrgTokens-round2.vis")]
-        [TestCase("project5-Dokumentation.vis")]
-        [TestCase("Project6-Errors.vis")]
+        [TestCaseSource(typeof(ProjectOracles), nameof(ProjectOracles.All))]
         public void Serialize_RoundTrip_IsByteIdentical(string file)
         {
             byte[] original = TestData.ReadBytes("projects/" + file);
@@ -58,25 +40,7 @@ namespace Ihc.Vis.Tests
             TestData.AssertBytesIdentical(original, reserialized, $"ProjectSerializer round-trip of {file}");
         }
 
-        [TestCase("Project0-Tomt.vis")]
-        [TestCase("Project1-SimpelWired.vis")]
-        [TestCase("project2-CustomBlock.vis")]
-        [TestCase("project2-control-save.vis")]
-        [TestCase("project2-CustomBlock-refdelete.vis")]
-        [TestCase("project2-CustomBlock-logicgroups.vis")]
-        [TestCase("project2-CustomBlock-case.vis")]
-        [TestCase("project3-KompleksWired.vis")]
-        [TestCase("project3-KompleksWired-copied.vis")]
-        [TestCase("project3-KompleksWired-mutated.vis")]
-        [TestCase("project3-KompleksWired-enumvalues.vis")]
-        [TestCase("project3-KompleksWired-projektinfo.vis")]
-        [TestCase("project3-KompleksWired-scenelinks.vis")]
-        [TestCase("project3-KompleksWired-enumappend.vis")]
-        [TestCase("project3-KompleksWired-gemsideeffect.vis")]
-        [TestCase("project4-PrgTokens.vis")]
-        [TestCase("project4-PrgTokens-round2.vis")]
-        [TestCase("project5-Dokumentation.vis")]
-        [TestCase("Project6-Errors.vis")]
+        [TestCaseSource(typeof(ProjectOracles), nameof(ProjectOracles.All))]
         public async Task Save_PreserveExistingMetadata_IsByteIdentical(string file)
         {
             byte[] original = TestData.ReadBytes("projects/" + file);

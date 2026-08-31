@@ -13,25 +13,18 @@ namespace Ihc.Vis.Tests
     /// ordering (export FIRST) means a failed <c>.ifb</c> export leaves the project unmutated. Oracle: the UNLOCKED
     /// <c>Custom blok</c> of <c>project2-CustomBlock.vis</c>.
     /// </summary>
-    public class SaveToLibraryTests
+    public class SaveToLibraryTests : SessionCommandFixture
     {
         private static IhcSettings Settings => TestSetup.Settings;
-        private static Task<Project> Load() => new ProjectAppService(Settings).Load("testdata/projects/project2-CustomBlock.vis");
+        private static Task<Project> LoadOracle() => new ProjectAppService(Settings).Load("testdata/projects/project2-CustomBlock.vis");
 
         private static ProjectElement Fb(Project p, string name) =>
             p.Root.Descendants().First(e => e.Tag == "functionblock" && e.GetAttribute("name") == name);
 
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         [Test]
         public async Task SaveToLibrary_TransformsBlockInPlace_LockedRenamedAndStamped()
         {
-            Project project = await Load();
+            Project project = await LoadOracle();
             ElementId id = Fb(project, "Custom blok").Id!.Value;
             ProjectDocumentSession session = Session(project);
 
@@ -83,7 +76,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task SaveToLibrary_OneUndo_RestoresThePriorUnlockedBlock()
         {
-            Project project = await Load();
+            Project project = await LoadOracle();
             ProjectElement before = Fb(project, "Custom blok");
             ElementId id = before.Id!.Value;
             string priorName = before.GetAttribute("name")!;
@@ -104,7 +97,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task SaveToLibrary_LockedTransform_SurvivesSaveReload()
         {
-            Project project = await Load();
+            Project project = await LoadOracle();
             ElementId id = Fb(project, "Custom blok").Id!.Value;
             ProjectDocumentSession session = Session(project);
             session.Apply(new SaveFunctionBlockToLibrary(id, "MyLib", "Author", new DateOnly(2026, 7, 11), null));

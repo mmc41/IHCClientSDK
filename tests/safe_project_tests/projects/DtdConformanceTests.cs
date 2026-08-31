@@ -31,21 +31,9 @@ namespace Ihc.Vis.Tests
             return events;
         }
 
-        [TestCase("Project0-Tomt.vis")]
-        [TestCase("Project1-SimpelWired.vis")]
-        [TestCase("project2-CustomBlock.vis")]
-        [TestCase("project2-control-save.vis")]
-        [TestCase("project2-CustomBlock-refdelete.vis")]
-        [TestCase("project2-CustomBlock-logicgroups.vis")]
-        [TestCase("project2-CustomBlock-case.vis")]
-        [TestCase("project3-KompleksWired.vis")]
-        [TestCase("project3-KompleksWired-mutated.vis")]
-        [TestCase("project3-KompleksWired-copied.vis")]
-        [TestCase("project3-KompleksWired-enumvalues.vis")]
-        [TestCase("project3-KompleksWired-projektinfo.vis")]
-        [TestCase("project3-KompleksWired-scenelinks.vis")]
-        [TestCase("project3-KompleksWired-enumappend.vis")]
-        [TestCase("project3-KompleksWired-gemsideeffect.vis")]
+        [TestCaseSource(typeof(ProjectOracles), nameof(ProjectOracles.All))]
+        // Authored in-session rather than by the vendor, so they are not part of the byte-identity corpus, but
+        // the grammar they must satisfy is the same one.
         [TestCase("LiveAuthored/step02-pir2.vis")]
         [TestCase("LiveAuthored/step06-luxtemp.vis")]
         public async Task SerializedOutput_ValidatesAgainstItsOwnInlineDtd(string oracle)

@@ -18,17 +18,8 @@ namespace Ihc.Vis.Tests
     /// the engine boundary; the GUI half (leaf authors, header is inert) is pinned in safe_visual_tests.
     /// </para>
     /// </summary>
-    public class ArithmeticAuthoringTests
+    public class ArithmeticAuthoringTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         private static ElementId Find(Project project, string name) =>
             project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("name") == "Custom blok")

@@ -8,18 +8,8 @@ namespace Ihc.Vis.Tests
     /// <c>Apply</c> is one history entry (a single Undo reverses the whole bundle); if any part's legality check
     /// refuses, the whole gesture is Refused with nothing committed.
     /// </summary>
-    public class CompositeCommandTests
+    public class CompositeCommandTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         [Test]
         public async Task Composite_OfTwoParts_IsOneUndoStep()
         {

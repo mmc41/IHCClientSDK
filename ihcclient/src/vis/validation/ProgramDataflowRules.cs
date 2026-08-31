@@ -86,12 +86,9 @@ namespace Ihc.Vis.Validation
         /// </summary>
         private static void BlockRecursive(IProjectInspection inspection)
         {
-            ITopologyAnalysis topology = inspection.Analyses.Topology;
-            IProgramUsageAnalysis usage = inspection.Analyses.Usage;
-
-            var triggers = new Dictionary<ProjectElement, HashSet<ProjectElement>>(ReferenceEqualityComparer.Instance);
-            var writes = new Dictionary<ProjectElement, HashSet<ProjectElement>>(ReferenceEqualityComparer.Instance);
-            Collect(topology, usage, triggers, writes);
+            (ITopologyAnalysis topology,
+             Dictionary<ProjectElement, HashSet<ProjectElement>> triggers,
+             Dictionary<ProjectElement, HashSet<ProjectElement>> writes) = BuildDataflow(inspection);
 
             ProjectElement Node(ProjectElement program) =>
                 topology.NearestAncestorOrSelf(program, "functionblock") ?? program;
@@ -301,12 +298,9 @@ namespace Ihc.Vis.Validation
         /// </summary>
         private static void SelfTrigger(IProjectInspection inspection)
         {
-            ITopologyAnalysis topology = inspection.Analyses.Topology;
-            IProgramUsageAnalysis usage = inspection.Analyses.Usage;
-
-            var triggers = new Dictionary<ProjectElement, HashSet<ProjectElement>>(ReferenceEqualityComparer.Instance);
-            var writes = new Dictionary<ProjectElement, HashSet<ProjectElement>>(ReferenceEqualityComparer.Instance);
-            Collect(topology, usage, triggers, writes);
+            (_,
+             Dictionary<ProjectElement, HashSet<ProjectElement>> triggers,
+             Dictionary<ProjectElement, HashSet<ProjectElement>> writes) = BuildDataflow(inspection);
 
             foreach ((ProjectElement program, HashSet<ProjectElement> triggered) in triggers)
             {
@@ -329,6 +323,31 @@ namespace Ihc.Vis.Validation
         }
 
         // ---- the shared reads ------------------------------------------------------------------------------
+
+        /// <summary>
+        /// The document's program dataflow: for each program, the variables that trigger it and the variables it
+        /// writes, keyed by reference so two identically-named elements stay apart.
+        /// </summary>
+        /// <remarks>
+        /// The two rows that reason about loops need the same two maps, and building them at each rule's head
+        /// twice was two chances for one of them to key, seed or contract the edges differently from the other.
+        /// The topology comes back with them because a caller that resolves a program to its enclosing block
+        /// needs the same analysis the collection walked.
+        /// </remarks>
+        private static (ITopologyAnalysis Topology,
+                        Dictionary<ProjectElement, HashSet<ProjectElement>> Triggers,
+                        Dictionary<ProjectElement, HashSet<ProjectElement>> Writes)
+            BuildDataflow(IProjectInspection inspection)
+        {
+            ITopologyAnalysis topology = inspection.Analyses.Topology;
+            IProgramUsageAnalysis usage = inspection.Analyses.Usage;
+
+            var triggers = new Dictionary<ProjectElement, HashSet<ProjectElement>>(ReferenceEqualityComparer.Instance);
+            var writes = new Dictionary<ProjectElement, HashSet<ProjectElement>>(ReferenceEqualityComparer.Instance);
+            Collect(topology, usage, triggers, writes);
+
+            return (topology, triggers, writes);
+        }
 
         /// <summary>Groups the model's triggers and writes by TOP-LEVEL program.</summary>
         private static void Collect(

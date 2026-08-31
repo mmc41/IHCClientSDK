@@ -14,13 +14,8 @@ namespace Ihc.Vis.Tests
     /// Name/Note and output-backup cases, and project3's locked library blocks (which carry real condition groups and enum
     /// variables) for the logic-toggle and enum-state cases.
     /// </summary>
-    public class LockedBlockInPlaceGuardTests
+    public class LockedBlockInPlaceGuardTests : SessionCommandFixture
     {
-        private static IhcSettings Settings => TestSetup.Settings;
-        private static ProjectAppService App => new(Settings);
-
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
         private static ProjectElement Fb(Project p, string name) =>
             p.Root.Descendants().First(e => e.Tag == "functionblock" && e.GetAttribute("name") == name);
 
@@ -29,13 +24,6 @@ namespace Ihc.Vis.Tests
             p.Root.Descendants().First(e => e.Tag == "functionblock" && e.GetAttribute("locked") == "yes"
                 && e.Descendants().Any(d => d.Tag == "conditions")
                 && e.Descendants().Any(d => d.Tag == "resource_enum"));
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
 
         // ---- locked-block in-place rules: internals refused; instance Name/Note allowed ----
 

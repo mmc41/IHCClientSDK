@@ -31,44 +31,6 @@ namespace safe_visual_tests;
 /// </summary>
 public class ProblemsPanelDensityTests : AvaloniaTestBase
 {
-    /// <summary>A realized shell over a fixture that produces 150 findings, with the validation debounce driven
-    /// off a fake clock so the rows are bound before anything is measured.</summary>
-    private sealed class Rig : IDisposable
-    {
-        public FakeTimeProvider Clock { get; } = new();
-        public ShellHarness Harness { get; }
-        public MainWindowViewModel Shell { get; }
-        public MainWindow Window { get; }
-
-        private Rig()
-        {
-            Harness = ShellHarness.Create(Clock);
-            Shell = Harness.CreateViewModel();
-            Window = new MainWindow { DataContext = Shell };
-        }
-
-        public static async Task<Rig> ShowingFindingsAsync()
-        {
-            Rig rig = new();
-            await rig.Shell.InitializeAsync(ProblemsTestData.FixturePath("Project6-Errors.vis"));
-            rig.Clock.Advance(ValidationWorker.DefaultDebounce);
-            await rig.Shell.Problems.Idle.WaitAsync(TimeSpan.FromSeconds(30));
-            CurrentTestWindow = rig.Window;
-            rig.Window.Show();
-            Dispatcher.UIThread.RunJobs();
-            Assert.That(rig.Shell.Problems.Rows, Is.Not.Empty,
-                "sanity: the fixture must produce findings, or every measurement below is vacuous");
-            return rig;
-        }
-
-        public void Dispose()
-        {
-            Window.Close();
-            Shell.Dispose();
-            Harness.Dispose();
-        }
-    }
-
     // Visual descendants, not logical: the sort headers and the row cells are template/data-template content,
     // which the logical tree does not carry.
     private static Control ById(Visual root, string id) =>
@@ -89,7 +51,7 @@ public class ProblemsPanelDensityTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public async Task TheFindingsAreSetInTheMonospaceFaceNotTheProportionalUiFont()
     {
-        using Rig rig = await Rig.ShowingFindingsAsync();
+        using ProblemsWindowRig rig = await ProblemsWindowRig.ShowingFindingsAsync();
 
         TextBlock cell = FirstCellText(rig.Window);
         TextBlock header = ById(rig.Window, "problems.sort.code").GetVisualDescendants().OfType<TextBlock>().First();
@@ -110,7 +72,7 @@ public class ProblemsPanelDensityTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public async Task TheFindingsAreSetSmallerThanTheSurroundingWorkspace()
     {
-        using Rig rig = await Rig.ShowingFindingsAsync();
+        using ProblemsWindowRig rig = await ProblemsWindowRig.ShowingFindingsAsync();
 
         double workspace = rig.Window.FontSize;
 
@@ -133,7 +95,7 @@ public class ProblemsPanelDensityTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public async Task TheDefaultPanelHeightShowsAScreenfulOfFindingsNotAHandful()
     {
-        using Rig rig = await Rig.ShowingFindingsAsync();
+        using ProblemsWindowRig rig = await ProblemsWindowRig.ShowingFindingsAsync();
 
         double rowHeight = RealizedRows(rig.Window)[0].Bounds.Height;
         ScrollContentPresenter viewport = ById(rig.Window, "ProblemsList")
@@ -154,7 +116,7 @@ public class ProblemsPanelDensityTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public async Task TheColumnHeaderBandDoesNotOutweighTheRowsItLabels()
     {
-        using Rig rig = await Rig.ShowingFindingsAsync();
+        using ProblemsWindowRig rig = await ProblemsWindowRig.ShowingFindingsAsync();
 
         double rowHeight = RealizedRows(rig.Window)[0].Bounds.Height;
         Control headers = ById(rig.Window, "ProblemsList")
@@ -173,7 +135,7 @@ public class ProblemsPanelDensityTests : AvaloniaTestBase
     [CaptureScreenshotOnFailure]
     public async Task ThePanelTitleBandSitsLevelWithTheTreePaneHeaders()
     {
-        using Rig rig = await Rig.ShowingFindingsAsync();
+        using ProblemsWindowRig rig = await ProblemsWindowRig.ShowingFindingsAsync();
 
         double problems = ByName(rig.Window, "ProblemsPanelHeader").FindAncestorOfType<Border>()!.Bounds.Height;
         double trees = rig.Window.GetVisualDescendants().OfType<TextBlock>()

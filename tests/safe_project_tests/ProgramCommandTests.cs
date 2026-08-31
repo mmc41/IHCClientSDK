@@ -10,18 +10,8 @@ namespace Ihc.Vis.Tests
     /// fablerefac W2-9: the programming-authoring command family — a representative authoring edit byte-round-trips
     /// against the engine, ToggleLogMark is reversible, and a command aimed at the wrong container is Refused.
     /// </summary>
-    public class ProgramCommandTests
+    public class ProgramCommandTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         // T037: each authorable arithmetic cell (incl. the mixed-conversion codes _0x5f/_0x69/_0x6e/_0x78) authors via
         // the engine with the F-108 grid opcode and survives a save→reload byte round-trip.
         [Test]

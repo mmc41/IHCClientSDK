@@ -11,18 +11,8 @@ namespace Ihc.Vis.Tests
     /// engine's own MoveSubtree/ReorderSubtree/CopySubtree; a cascade DeleteNode reverses as one undo step; an
     /// illegal move (self/descendant or wrong container) is Refused.
     /// </summary>
-    public class StructureCommandTests
+    public class StructureCommandTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         private static (ElementId Product, ElementId SourceLoc, ElementId TargetLoc) PickProductAndTwoLocalities(Project project)
         {
             System.Collections.Generic.List<ProjectElement> groups = project.Groups.ToList();

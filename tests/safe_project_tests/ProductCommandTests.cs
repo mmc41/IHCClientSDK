@@ -11,18 +11,8 @@ namespace Ihc.Vis.Tests
     /// fablerefac W2-6: the product/pin/function-block command family — AddProduct returns a resolvable id;
     /// ApplyProductDialog/UpdatePin apply their edits; UnlockFunctionBlock then Undo re-locks (E14 / W0-3 #5).
     /// </summary>
-    public class ProductCommandTests
+    public class ProductCommandTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         [Test]
         public async Task UnlockFunctionBlock_WrongTagId_IsRefused_NotFailed()
         {

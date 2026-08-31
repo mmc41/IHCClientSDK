@@ -12,18 +12,8 @@ namespace Ihc.Vis.Tests
     /// an authoring edit round-trips, and the ⭐ unlock→undo standing regression (re-lock + session stays alive).
     /// Controller-free, no ShellHarness. The app-level file keeps only its UI concerns (pane refresh, E14 labels/menu).
     /// </summary>
-    public class SessionHistoryTests
+    public class SessionHistoryTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         private static bool IsLocked(ProjectDocumentSession session, ElementId id) =>
             session.Current!.FindById(id)!.GetAttribute("locked") == "yes";
 

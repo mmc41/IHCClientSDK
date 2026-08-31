@@ -36,6 +36,9 @@
     <Compile Include="..\shared\FindingOracleHarness.cs" Link="shared\FindingOracleHarness.cs" />
     <Compile Include="..\shared\TelemetryRegistryContract.cs" Link="shared\TelemetryRegistryContract.cs" />
     <Compile Include="..\shared\TelemetryCapture.cs" Link="shared\TelemetryCapture.cs" />
+    <!-- One reader of {slot} syntax, shared with safe_project_tests: both suites gate a catalogue's templates
+         against its declared slots, so they must agree on what a placeholder is. -->
+    <Compile Include="..\shared\MessageTemplate.cs" Link="shared\MessageTemplate.cs" />
     <!-- The headless failure-screenshot capture and the NUnit command that decides when to run it, shared with
          safe_lab_tests: cross-thread dispatch onto the session, a timeout and exception marshalling, and an
          outcome test that cannot be read off the test result alone. A bug in either is a deadlock or a silently

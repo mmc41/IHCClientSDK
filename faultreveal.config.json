@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/mmc41/faultreveal/main/schemas/faultreveal.config.schema.json",
+  "analysis": {
+    "exclude": [
+      "**/bin/**",
+      "**/obj/**",
+      "**/*.g.cs",
+      "**/*.Designer.cs",
+      "**/*.generated.cs",
+      "**/TestResults/**",
+      "**/artifacts/**",
+      "**/.ionide/**",
+      "**/*.log",
+      "**/*.bak",
+      "**/node_modules/**",
+      "**/.fake/**",
+      "**/tmp/**",
+      "**/.vscode/**",
+      "**/.aiworkdata/**",
+      "**/ihcsettings.json*",
+      "**/.mcp.json/**",
+      "**/.opengrep-rules/**"
+    ]
+  },
+  "validation": {
+    "testPath": "IHCClientSDK.sln",
+    "maxLlmCalls": 1000
+  }
+}

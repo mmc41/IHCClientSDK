@@ -29,23 +29,11 @@ namespace Ihc.Vis.Tests
         /// imply the Danish label is a translation of something, when the label has always been the whole message.
         /// </summary>
         [Test]
-        public void TheEightLabelsAreDanishAlreadyAndCarryNoEnglishSentence()
+        public void TheLabelsAreDanishAlreadyAndCarryNoEnglishSentence()
         {
-            (string Code, string Label)[] expected =
-            [
-                ("doc-documentation-tag", "Mangler Id-kode"),
-                ("doc-power-group", "Mangler Lysgruppe"),
-                ("doc-cabletype", "Mangler Kabeltype"),
-                ("doc-cablenumber", "Mangler Kabelnummer"),
-                ("doc-position", "Mangler Placering"),
-                ("doc-not-linked", "Ikke forbundet"),
-                ("doc-cable-colour", "Mangler Ledningsfarve"),
-                ("doc-address", "Mangler Adresse"),
-            ];
-
             Assert.Multiple(() =>
             {
-                foreach ((string code, string label) in expected)
+                foreach ((string code, string label) in DocumentationLabels.Expected)
                 {
                     Assert.That(ProblemCatalog.Current.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry),
                         Is.True, code);

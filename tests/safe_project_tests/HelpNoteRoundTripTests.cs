@@ -17,17 +17,8 @@ namespace Ihc.Vis.Tests
     /// therefore leave a project that never set one byte-identical.
     /// </para>
     /// </summary>
-    public class HelpNoteRoundTripTests
+    public class HelpNoteRoundTripTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         private static ElementId VariableIn(Project project, string blockName, string variableName) =>
             project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("name") == blockName)

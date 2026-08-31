@@ -16,18 +16,8 @@ namespace Ihc.Vis.Tests
     /// than asserting over the in-memory tree alone.
     /// </para>
     /// </summary>
-    public class AddProgramCommandTests
+    public class AddProgramCommandTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         private static ElementId ProgramsOf(Project project, string blockName) =>
             project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("name") == blockName)

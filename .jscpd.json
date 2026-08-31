@@ -21,6 +21,19 @@
     "**/*.g.i.cs",
     "**/*.Designer.cs",
     "tests/testdata/**",
-    "examples/**"
+    "examples/**",
+    "ihcclient/src/vis/validation/ProblemCatalogEntries.*.cs"
+  ],
+  "ignorePattern": [
+    "(?m)^using [^;\\r]*;\\r?$",
+    "(?m)^global using [^;\\r]*;\\r?$",
+    "(?m)^[ \\t]*(?:using )?(?:var|ShellHarness) harness = ShellHarness\\.Create\\(\\);\\r?$",
+    "(?m)^[ \\t]*(?:using )?(?:var|MainWindowViewModel) (?:vm|viewModel) = harness\\.CreateViewModel\\(\\);\\r?$",
+    "(?m)^[ \\t]*await (?:vm|viewModel)\\.InitializeAsync\\(\\);\\r?$",
+    "(?m)^[ \\t]*(?:Avalonia\\.Threading\\.)?Dispatcher\\.UIThread\\.RunJobs\\(\\);\\r?$",
+    "(?m)^[ \\t]*window\\.CaptureRenderedFrame\\(\\);\\r?$",
+    "(?m)^[ \\t]*(?:var|Window) window = new MainWindow \\{ DataContext = (?:vm|viewModel) \\};\\r?$",
+    "(?m)^[ \\t]*CurrentTestWindow = window;\\r?$",
+    "(?m)^[ \\t]*window\\.Show\\(\\);\\r?$"
   ]
 }

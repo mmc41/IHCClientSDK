@@ -10,18 +10,8 @@ namespace Ihc.Vis.Tests
     /// and redoing away reads dirty. Controller-free, no ShellHarness. The app-level test keeps only its UI concern
     /// (no close-prompt when clean).
     /// </summary>
-    public class SessionSavePointTests
+    public class SessionSavePointTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);   // startClean → the save point is the opened snapshot
-            return session;
-        }
-
         [Test]   // from SavePointTests.Undo_BackToSavedState_IsNotDirty
         public async Task Undo_BackToSavedState_IsNotDirty()
         {

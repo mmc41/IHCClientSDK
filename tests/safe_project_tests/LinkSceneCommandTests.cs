@@ -13,18 +13,8 @@ namespace Ihc.Vis.Tests
     /// pair is Refused with a reason; a valid function-block link commits and matches the engine's own Link), and
     /// the scene commands byte-round-trip against the engine (SetSceneValue / note).
     /// </summary>
-    public class LinkSceneCommandTests
+    public class LinkSceneCommandTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         private static ElementId FirstPin(Project project, ElementId fbId, string section) =>
             project.FindById(fbId)!.FindChild(section)!.Children.First(c => c.Id is not null).Id!.Value;
 

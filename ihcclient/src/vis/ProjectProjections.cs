@@ -177,15 +177,9 @@ namespace Ihc.Vis
             public IReadOnlyList<string> GetEnumeratorTypes()
             {
                 var types = new List<string>();
-                if (project.Child("enum_definitions") is { } container)
+                foreach ((_, string name) in EnumeratorDefinitions(project))
                 {
-                    foreach (ProjectElement def in container.Children.Where(c => c.Tag == "enum_definition"))
-                    {
-                        if (project.View(def).Name is { } name && name != UserTextsTableName)
-                        {
-                            types.Add(name);
-                        }
-                    }
+                    types.Add(name);
                 }
                 return types;
             }
@@ -211,22 +205,15 @@ namespace Ihc.Vis
             public IReadOnlyList<EnumTypeView> GetEnumeratorTypeViews()
             {
                 var types = new List<EnumTypeView>();
-                if (project.Child("enum_definitions") is { } container)
+                foreach ((ProjectElement def, string name) in EnumeratorDefinitions(project))
                 {
-                    foreach (ProjectElement def in container.Children.Where(c => c.Tag == "enum_definition"))
-                    {
-                        if (project.View(def).Name is not { } name || name == UserTextsTableName)
-                        {
-                            continue;
-                        }
-                        bool readOnly = (def.GetAttribute("typeid") ?? ElementId.NullToken) != ElementId.NullToken;
-                        types.Add(new EnumTypeView(name, readOnly,
-                            def.Children
-                                .Where(v => v.Tag == "enum_value")
-                                .OrderBy(v => EnumValueIndex.Of(v))
-                                .Select(v => project.View(v).Name ?? string.Empty)
-                                .ToImmutableArray()));
-                    }
+                    bool readOnly = (def.GetAttribute("typeid") ?? ElementId.NullToken) != ElementId.NullToken;
+                    types.Add(new EnumTypeView(name, readOnly,
+                        def.Children
+                            .Where(v => v.Tag == "enum_value")
+                            .OrderBy(v => EnumValueIndex.Of(v))
+                            .Select(v => project.View(v).Name ?? string.Empty)
+                            .ToImmutableArray()));
                 }
                 types.Sort((a, b) => EnumTypeDisplayOrder.Compare(a.DisplayName, b.DisplayName));
                 return types;
@@ -323,6 +310,32 @@ namespace Ihc.Vis
                 slots.Add(documented.TryGetValue(line, out DatalineModule? m) ? m : new DatalineModule(line, "", "", ""));
             }
             return slots.MoveToImmutable();
+        }
+
+        /// <summary>
+        /// The project-global enum definitions a type list offers, each with its display name: every
+        /// <c>enum_definition</c> under <c>enum_definitions</c> except the user-defined-texts data table, which
+        /// has its own dialog.
+        /// </summary>
+        /// <remarks>
+        /// One walk behind both projections, because <c>GetEnumeratorTypeViews</c> promises the same set as
+        /// <c>GetEnumeratorTypes</c> — a promise two hand-maintained copies of this filter can only keep by
+        /// coincidence.
+        /// </remarks>
+        private static IEnumerable<(ProjectElement Definition, string Name)> EnumeratorDefinitions(Project project)
+        {
+            if (project.Child("enum_definitions") is not { } container)
+            {
+                yield break;
+            }
+
+            foreach (ProjectElement def in container.Children.Where(c => c.Tag == "enum_definition"))
+            {
+                if (project.View(def).Name is { } name && name != UserTextsTableName)
+                {
+                    yield return (def, name);
+                }
+            }
         }
 
         // The effective attribute value, or "" when the element is absent (all the metadata attributes default to

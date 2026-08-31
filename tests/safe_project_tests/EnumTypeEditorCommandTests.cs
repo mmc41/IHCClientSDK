@@ -13,18 +13,8 @@ namespace Ihc.Vis.Tests
     /// type-<c>Ny</c> stays live. These tests pin the five commands that back those buttons, and in particular that an
     /// illegal edit comes back <see cref="EditStatus.Refused"/> with a sentence — not <see cref="EditStatus.Failed"/>.
     /// </summary>
-    public class EnumTypeEditorCommandTests
+    public class EnumTypeEditorCommandTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         // A user (non-catalog) type with at least one value — the target every editable case needs.
         private static EnumTypeView EditableTypeWithValues(Project project) =>
             project.GetEnumeratorTypeViews().First(t => !t.IsReadOnly && t.Values.Length > 0);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Ihc.Tests.Shared;
 
 namespace Ihc.Vis.Tests
 {
@@ -218,7 +219,7 @@ namespace Ihc.Vis.Tests
             {
                 foreach (ProblemCatalogEntry entry in ProblemCatalog.Current.Entries)
                 {
-                    Assert.That(Placeholders(entry.MessageTemplate),
+                    Assert.That(MessageTemplate.Placeholders(entry.MessageTemplate),
                         Is.EquivalentTo(entry.Slots.Select(s => s.Name)),
                         $"{entry.Code.Value}: template placeholders and declared slots must be the same set");
                 }
@@ -240,27 +241,10 @@ namespace Ihc.Vis.Tests
                     "the shipped catalogue declares slots on most of its data-carrying rows");
                 Assert.That(slotted.Sum(e => e.Slots.Length), Is.GreaterThan(slotted.Length),
                     "and some rows declare more than one, so the set comparison is not a length check in disguise");
-                Assert.That(Placeholders("Adresse {address} er brugt af {owner}"),
+                Assert.That(MessageTemplate.Placeholders("Adresse {address} er brugt af {owner}"),
                     Is.EquivalentTo(new[] { "address", "owner" }),
                     "and the placeholder reader finds both, so a template's half of the comparison is real");
             });
-        }
-
-        /// <summary>The placeholder names in a template, in the order they appear.</summary>
-        /// <param name="template">The Danish message template to read.</param>
-        private static IReadOnlyList<string> Placeholders(string template)
-        {
-            List<string> names = [];
-            for (int open = template.IndexOf('{'); open >= 0; open = template.IndexOf('{', open + 1))
-            {
-                int close = template.IndexOf('}', open);
-                if (close > open + 1)
-                {
-                    names.Add(template[(open + 1)..close]);
-                }
-            }
-
-            return names;
         }
 
         /// <summary>

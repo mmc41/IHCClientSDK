@@ -31,7 +31,11 @@ public class CaptureScreenshotOnFailureAttribute : Attribute, IWrapSetUpTearDown
 public abstract class AvaloniaTestBase
 {
     /// <summary>The window currently under test; registered by each test for failure capture.</summary>
-    protected static Window? CurrentTestWindow { get; set; }
+    /// <remarks>
+    /// <c>internal</c> as well as <c>protected</c> so a shared rig — which is not itself a fixture and so cannot
+    /// reach a protected member — can register the window it shows. The capture is a shared static either way.
+    /// </remarks>
+    protected internal static Window? CurrentTestWindow { get; set; }
 
     /// <summary>
     /// Called by <see cref="CaptureScreenshotOnFailureAttribute"/> on failure: renders

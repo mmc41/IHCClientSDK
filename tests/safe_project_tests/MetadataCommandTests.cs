@@ -13,18 +13,8 @@ namespace Ihc.Vis.Tests
     /// (byte-verified against the vendor oracle in <c>EnumAppendReplayByteFidelityTests</c>); and a dimmer-settings
     /// edit writes the six <c>dimmer_setting_*</c> values.
     /// </summary>
-    public class MetadataCommandTests
+    public class MetadataCommandTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         // The pre-existing empty, editable (non-catalog) enumerator in project3 — the vendor's "TestEnum".
         private static string EmptyEditableEnumName(Project project) =>
             project.Child("enum_definitions")!.Children

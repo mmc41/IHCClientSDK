@@ -27,6 +27,9 @@
     <Compile Include="..\shared\ReportOracleHarness.cs" Link="shared\ReportOracleHarness.cs" />
     <Compile Include="..\shared\TelemetryRegistryContract.cs" Link="shared\TelemetryRegistryContract.cs" />
     <Compile Include="..\shared\TelemetryCapture.cs" Link="shared\TelemetryCapture.cs" />
+    <!-- The ReflectionUtil contract, shared with safe_integration_tests, which runs the same assertions over a
+         real service instance. -->
+    <Compile Include="..\shared\ReflectionUtilContract.cs" Link="shared\ReflectionUtilContract.cs" />
   </ItemGroup>
 
     <ItemGroup>

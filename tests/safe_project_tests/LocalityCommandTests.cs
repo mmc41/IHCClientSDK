@@ -10,18 +10,8 @@ namespace Ihc.Vis.Tests
     /// own AddGroup; RenameLocality's label uses the pre-edit name (D10) and Evaluate refuses a missing element;
     /// DeleteLocality cascades its contents and undoes as one step.
     /// </summary>
-    public class LocalityCommandTests
+    public class LocalityCommandTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         [Test]
         public async Task AddLocality_Commits_ReturnsResolvableId_MatchesEngineAddGroup()
         {

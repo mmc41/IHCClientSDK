@@ -743,6 +743,40 @@ namespace Ihc.App
         }
 
         /// <summary>
+        /// The selected service and operation as one value, so a setter can read the selection before and after
+        /// its change and still report both once it has left the lock.
+        /// </summary>
+        private readonly record struct SelectionSnapshot(
+            int ServiceIndex, ServiceItem Service, int OperationIndex, OperationItem Operation);
+
+        /// <summary>
+        /// Reads the current selection. The caller must already hold <c>_lock</c> — this only reads the fields the
+        /// caller is in the middle of changing, so it acquires nothing of its own.
+        /// </summary>
+        private SelectionSnapshot CaptureSelection()
+        {
+            int serviceIndex = _selectedServiceIndex;
+            ServiceItem service = (_services.Length > serviceIndex) ? _services[serviceIndex] : null;
+            int operationIndex = service?.SelectedOperationIndex ?? 0;
+            OperationItem operation = (service?.OperationItems != null && service.OperationItems.Length > operationIndex)
+                ? service.OperationItems[operationIndex]
+                : null;
+
+            return new SelectionSnapshot(serviceIndex, service, operationIndex, operation);
+        }
+
+        /// <summary>
+        /// Raises the CurrentOperationChanged event for a completed selection change. Call it from outside the
+        /// lock: a handler runs on the caller's thread and may re-enter this service.
+        /// </summary>
+        private void OnCurrentOperationChanged(SelectionSnapshot before, SelectionSnapshot after) =>
+            OnCurrentOperationChanged(
+                before.ServiceIndex, after.ServiceIndex,
+                before.Service, after.Service,
+                before.OperationIndex, after.OperationIndex,
+                before.Operation, after.Operation);
+
+        /// <summary>
         /// Gets or sets the index of the currently selected service.
         /// When switched, the operation selection automatically reflects the previously selected operation for that service.
         /// Access is thread-safe.
@@ -760,14 +794,8 @@ namespace Ihc.App
             }
             set
             {
-                int oldServiceIndex;
-                int newServiceIndex;
-                ServiceItem oldService;
-                ServiceItem newService;
-                int oldOperationIndex;
-                int newOperationIndex;
-                OperationItem oldOperation;
-                OperationItem newOperation;
+                SelectionSnapshot before;
+                SelectionSnapshot after;
 
                 lock (_lock)
                 {
@@ -777,34 +805,14 @@ namespace Ihc.App
                     if (value < 0 || value >= _services.Length)
                         throw new ArgumentOutOfRangeException(nameof(value), $"SelectedServiceIndex must be between 0 and {_services.Length - 1}, but was {value}");
 
-                    // Capture old state
-                    oldServiceIndex = _selectedServiceIndex;
-                    oldService = (_services.Length > oldServiceIndex) ? _services[oldServiceIndex] : null;
-                    oldOperationIndex = oldService?.SelectedOperationIndex ?? 0;
-                    oldOperation = (oldService != null && oldService.OperationItems != null && oldService.OperationItems.Length > oldOperationIndex)
-                        ? oldService.OperationItems[oldOperationIndex]
-                        : null;
-
-                    // Set new value
+                    before = CaptureSelection();
                     _selectedServiceIndex = value;
-
-                    // Capture new state
-                    newServiceIndex = _selectedServiceIndex;
-                    newService = _services[newServiceIndex];
-                    newOperationIndex = newService.SelectedOperationIndex;
-                    newOperation = (newService.OperationItems != null && newService.OperationItems.Length > newOperationIndex)
-                        ? newService.OperationItems[newOperationIndex]
-                        : null;
+                    after = CaptureSelection();
                 }
 
-                // Fire event outside lock if state changed
-                if (oldServiceIndex != newServiceIndex)
+                if (before.ServiceIndex != after.ServiceIndex)
                 {
-                    OnCurrentOperationChanged(
-                        oldServiceIndex, newServiceIndex,
-                        oldService, newService,
-                        oldOperationIndex, newOperationIndex,
-                        oldOperation, newOperation);
+                    OnCurrentOperationChanged(before, after);
                 }
             }
         }
@@ -832,14 +840,8 @@ namespace Ihc.App
             }
             set
             {
-                int oldServiceIndex;
-                int newServiceIndex;
-                ServiceItem oldService;
-                ServiceItem newService;
-                int oldOperationIndex;
-                int newOperationIndex;
-                OperationItem oldOperation;
-                OperationItem newOperation;
+                SelectionSnapshot before;
+                SelectionSnapshot after;
 
                 lock (_lock)
                 {
@@ -857,34 +859,14 @@ namespace Ihc.App
                     if (value < 0 || value >= operationItems.Length)
                         throw new ArgumentOutOfRangeException(nameof(value), $"SelectedOperationIndex must be between 0 and {operationItems.Length - 1}, but was {value}");
 
-                    // Capture old state
-                    oldServiceIndex = _selectedServiceIndex;
-                    oldService = _services[oldServiceIndex];
-                    oldOperationIndex = oldService.SelectedOperationIndex;
-                    oldOperation = (oldService.OperationItems != null && oldService.OperationItems.Length > oldOperationIndex)
-                        ? oldService.OperationItems[oldOperationIndex]
-                        : null;
-
-                    // Set new value
+                    before = CaptureSelection();
                     _services[_selectedServiceIndex].SelectedOperationIndex = value;
-
-                    // Capture new state (service stays the same, operation changed)
-                    newServiceIndex = _selectedServiceIndex;
-                    newService = _services[newServiceIndex];
-                    newOperationIndex = newService.SelectedOperationIndex;
-                    newOperation = (newService.OperationItems != null && newService.OperationItems.Length > newOperationIndex)
-                        ? newService.OperationItems[newOperationIndex]
-                        : null;
+                    after = CaptureSelection();
                 }
 
-                // Fire event outside lock if operation changed
-                if (oldOperationIndex != newOperationIndex)
+                if (before.OperationIndex != after.OperationIndex)
                 {
-                    OnCurrentOperationChanged(
-                        oldServiceIndex, newServiceIndex,
-                        oldService, newService,
-                        oldOperationIndex, newOperationIndex,
-                        oldOperation, newOperation);
+                    OnCurrentOperationChanged(before, after);
                 }
             }
         }
@@ -923,15 +905,8 @@ namespace Ihc.App
             }
             set
             {
-                int oldServiceIndex;
-                int newServiceIndex;
-                ServiceItem oldService;
-                ServiceItem newService;
-                int oldOperationIndex;
-                int newOperationIndex;
-                OperationItem oldOperation;
-                OperationItem newOperation;
-                bool changed = false;
+                SelectionSnapshot before;
+                SelectionSnapshot after;
 
                 lock (_lock)
                 {
@@ -948,38 +923,16 @@ namespace Ihc.App
                     if (serviceIndex == -1)
                         throw new ArgumentException("The operation's service is not part of the configured services", nameof(value));
 
-                    // Capture old state
-                    oldServiceIndex = _selectedServiceIndex;
-                    oldService = _services[oldServiceIndex];
-                    oldOperationIndex = oldService.SelectedOperationIndex;
-                    oldOperation = (oldService.OperationItems != null && oldService.OperationItems.Length > oldOperationIndex)
-                        ? oldService.OperationItems[oldOperationIndex]
-                        : null;
-
-                    // Select the service and operation
+                    before = CaptureSelection();
                     _selectedServiceIndex = serviceIndex;
                     owningService.SelectOperation(value);
-
-                    // Capture new state
-                    newServiceIndex = _selectedServiceIndex;
-                    newService = _services[newServiceIndex];
-                    newOperationIndex = newService.SelectedOperationIndex;
-                    newOperation = (newService.OperationItems != null && newService.OperationItems.Length > newOperationIndex)
-                        ? newService.OperationItems[newOperationIndex]
-                        : null;
-
-                    // Check if anything changed
-                    changed = (oldServiceIndex != newServiceIndex) || (oldOperationIndex != newOperationIndex);
+                    after = CaptureSelection();
                 }
 
-                // Fire event outside lock if state changed
-                if (changed)
+                // This is the one setter that can move either half of the selection on its own.
+                if (before.ServiceIndex != after.ServiceIndex || before.OperationIndex != after.OperationIndex)
                 {
-                    OnCurrentOperationChanged(
-                        oldServiceIndex, newServiceIndex,
-                        oldService, newService,
-                        oldOperationIndex, newOperationIndex,
-                        oldOperation, newOperation);
+                    OnCurrentOperationChanged(before, after);
                 }
             }
         }
@@ -1006,14 +959,8 @@ namespace Ihc.App
             }
             set
             {
-                int oldServiceIndex;
-                int newServiceIndex;
-                ServiceItem oldService;
-                ServiceItem newService;
-                int oldOperationIndex;
-                int newOperationIndex;
-                OperationItem oldOperation;
-                OperationItem newOperation;
+                SelectionSnapshot before;
+                SelectionSnapshot after;
 
                 lock (_lock)
                 {
@@ -1027,34 +974,14 @@ namespace Ihc.App
                     if (index == -1)
                         throw new ArgumentException("The provided service is not part of the configured services", nameof(value));
 
-                    // Capture old state
-                    oldServiceIndex = _selectedServiceIndex;
-                    oldService = _services[oldServiceIndex];
-                    oldOperationIndex = oldService.SelectedOperationIndex;
-                    oldOperation = (oldService.OperationItems != null && oldService.OperationItems.Length > oldOperationIndex)
-                        ? oldService.OperationItems[oldOperationIndex]
-                        : null;
-
-                    // Set new value
+                    before = CaptureSelection();
                     _selectedServiceIndex = index;
-
-                    // Capture new state
-                    newServiceIndex = _selectedServiceIndex;
-                    newService = _services[newServiceIndex];
-                    newOperationIndex = newService.SelectedOperationIndex;
-                    newOperation = (newService.OperationItems != null && newService.OperationItems.Length > newOperationIndex)
-                        ? newService.OperationItems[newOperationIndex]
-                        : null;
+                    after = CaptureSelection();
                 }
 
-                // Fire event outside lock if service changed
-                if (oldServiceIndex != newServiceIndex)
+                if (before.ServiceIndex != after.ServiceIndex)
                 {
-                    OnCurrentOperationChanged(
-                        oldServiceIndex, newServiceIndex,
-                        oldService, newService,
-                        oldOperationIndex, newOperationIndex,
-                        oldOperation, newOperation);
+                    OnCurrentOperationChanged(before, after);
                 }
             }
         }

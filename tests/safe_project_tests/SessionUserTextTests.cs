@@ -10,18 +10,8 @@ namespace Ihc.Vis.Tests
     /// table on first use), Edit renames by id, Delete removes only that row. Read back through the
     /// <c>GetDataTables</c> projection. The app-level file keeps its view-model/dialog wiring.
     /// </summary>
-    public class SessionUserTextTests
+    public class SessionUserTextTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         private static ElementId ParseId(string token)
         {
             ElementId.TryParse(token, out ElementId id);

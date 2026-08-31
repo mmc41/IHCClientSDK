@@ -26,18 +26,9 @@ namespace Ihc.Vis.Tests
     /// coverage never passes through a state where it is absent.</para>
     /// </summary>
     [TestFixture]
-    public sealed class SessionRefusalPropertiesTests
+    public sealed class SessionRefusalPropertiesTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-
         private static Task<Project> LoadFixture() => App.Load("testdata/projects/project3-KompleksWired.vis");
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            ProjectDocumentSession session = new();
-            session.Open(project);
-            return session;
-        }
 
         /// <summary>A command refused because its target does not exist.</summary>
         private static ProjectCommand RefusedCommand() =>

@@ -13,18 +13,8 @@ namespace Ihc.Vis.Tests
     /// produced bytes are unchanged) and apply through a session with the same effect. This establishes the
     /// factory pattern every later R1 family follows.
     /// </summary>
-    public class ProjectCommandsGatewayTests
+    public class ProjectCommandsGatewayTests : SessionCommandFixture
     {
-        private static ProjectAppService App => new(TestSetup.Settings);
-        private static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
-
-        private static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
-
         [Test]
         public async Task AddLocality_FactoryResolvesExactlyAsDirectConstruction()
         {

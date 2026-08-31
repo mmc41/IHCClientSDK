@@ -507,21 +507,9 @@ namespace Ihc.Vis.Tests
         [Test]
         public void TheDocumentationRowsCarryTheirExistingDanishLabelsVerbatim()
         {
-            (string Code, string Label)[] expected =
-            [
-                ("doc-documentation-tag", "Mangler Id-kode"),
-                ("doc-power-group", "Mangler Lysgruppe"),
-                ("doc-cabletype", "Mangler Kabeltype"),
-                ("doc-cablenumber", "Mangler Kabelnummer"),
-                ("doc-position", "Mangler Placering"),
-                ("doc-not-linked", "Ikke forbundet"),
-                ("doc-cable-colour", "Mangler Ledningsfarve"),
-                ("doc-address", "Mangler Adresse"),
-            ];
-
             Assert.Multiple(() =>
             {
-                foreach ((string code, string label) in expected)
+                foreach ((string code, string label) in DocumentationLabels.Expected)
                 {
                     Assert.That(Catalog.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry), Is.True, code);
                     Assert.That(entry.MessageTemplate, Is.EqualTo(label), code);

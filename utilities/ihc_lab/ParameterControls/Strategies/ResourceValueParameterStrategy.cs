@@ -20,6 +20,29 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
 
     private sealed record PayloadField(string Name, PayloadKind Kind);
 
+    /// <summary>
+    /// The five named sub-controls this strategy reads and writes, resolved in one place.
+    /// </summary>
+    /// <remarks>
+    /// The name suffixes are the only link between the panel this strategy BUILDS and the two directions that
+    /// later address it. Written out at each direction, renaming a sub-control silently broke whichever half was
+    /// not edited: the lookup returns null and the field reads as absent rather than as misspelled.
+    /// </remarks>
+    private readonly record struct Widgets(
+        NumericUpDown? ResourceId,
+        TextBox? TypeString,
+        CheckBox? IsValueRuntime,
+        ComboBox? ValueKind,
+        StackPanel? PayloadHost)
+    {
+        public static Widgets Of(StackPanel mainPanel) =>
+            new(FindNamed<NumericUpDown>(mainPanel, $"{mainPanel.Name}.ResourceID"),
+                FindNamed<TextBox>(mainPanel, $"{mainPanel.Name}.TypeString"),
+                FindNamed<CheckBox>(mainPanel, $"{mainPanel.Name}.IsValueRuntime"),
+                FindNamed<ComboBox>(mainPanel, $"{mainPanel.Name}.ValueKind"),
+                FindNamed<StackPanel>(mainPanel, $"{mainPanel.Name}.Payload"));
+    }
+
     /// <summary>The payload field(s) for each ValueKind (field name matches the SOAP/UnionValue shape).</summary>
     private static PayloadField[] PayloadFieldsFor(ResourceValue.ValueKind kind) => kind switch
     {
@@ -149,12 +172,8 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
     public override object? ExtractValue(Control control, FieldMetaData field)
     {
         var mainPanel = RequireControl<StackPanel>(control);
-
-        var resourceIdControl = FindNamed<NumericUpDown>(mainPanel, $"{mainPanel.Name}.ResourceID");
-        var typeStringControl = FindNamed<TextBox>(mainPanel, $"{mainPanel.Name}.TypeString");
-        var isValueRuntimeControl = FindNamed<CheckBox>(mainPanel, $"{mainPanel.Name}.IsValueRuntime");
-        var valueKindControl = FindNamed<ComboBox>(mainPanel, $"{mainPanel.Name}.ValueKind");
-        var payloadHost = FindNamed<StackPanel>(mainPanel, $"{mainPanel.Name}.Payload");
+        var (resourceIdControl, typeStringControl, isValueRuntimeControl, valueKindControl, payloadHost) =
+            Widgets.Of(mainPanel);
 
         int resourceId = (int)(resourceIdControl?.Value ?? 0);
         var kind = SelectedKind(valueKindControl);
@@ -174,12 +193,8 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
     public override void SetValue(Control control, object? value, FieldMetaData field)
     {
         var mainPanel = RequireControl<StackPanel>(control);
-
-        var resourceIdControl = FindNamed<NumericUpDown>(mainPanel, $"{mainPanel.Name}.ResourceID");
-        var typeStringControl = FindNamed<TextBox>(mainPanel, $"{mainPanel.Name}.TypeString");
-        var isValueRuntimeControl = FindNamed<CheckBox>(mainPanel, $"{mainPanel.Name}.IsValueRuntime");
-        var valueKindControl = FindNamed<ComboBox>(mainPanel, $"{mainPanel.Name}.ValueKind");
-        var payloadHost = FindNamed<StackPanel>(mainPanel, $"{mainPanel.Name}.Payload");
+        var (resourceIdControl, typeStringControl, isValueRuntimeControl, valueKindControl, payloadHost) =
+            Widgets.Of(mainPanel);
 
         if (value is not ResourceValue resourceValue)
         {
