@@ -1,5 +1,6 @@
 using Ihc.Vis.Problems;
 using System.Text;
+using System.Xml;
 using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
 
@@ -32,6 +33,111 @@ namespace Ihc.Vis.Tests
 
             Assert.That(body.GetAttribute("name"), Is.EqualTo("Tænd/sluk æøå"),
                 "a UTF-8-without-BOM catalog file must not be mojibaked through a Latin-1 decode");
+        }
+
+        // ----- CatalogReader element-walk hardening, at parity with its ProjectReader twin -----
+        //
+        // CatalogReader.ReadElement and ProjectReader.ReadElement are the same walk over two file families, and
+        // the hardening had only ever been added to the project side. Both refusals below are reachable from a
+        // user-chosen file: ProjectAppService imports a .def/.ifb through this reader.
+
+        private static byte[] NestedCatalogFile(int depth)
+        {
+            StringBuilder document = new("<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>"
+                + "<product_dataline id=\"_0x153\" product_identifier=\"_0x2101\">");
+            for (int i = 0; i < depth; i++)
+            {
+                document.Append("<group>");
+            }
+            for (int i = 0; i < depth; i++)
+            {
+                document.Append("</group>");
+            }
+            document.Append("</product_dataline>");
+            return Encoding.Latin1.GetBytes(document.ToString());
+        }
+
+        /// <summary>
+        /// Unbounded recursion here is not a bad error message, it is process death: the depth that overflows the
+        /// stack raises <see cref="StackOverflowException"/>, which .NET does not let anyone catch. The guard has
+        /// to refuse the file while there is still a stack to refuse it on.
+        /// </summary>
+        [Test]
+        public void CatalogReader_ExcessiveNesting_IsRefusedRatherThanRecursedUnbounded()
+        {
+            using var ms = new MemoryStream(NestedCatalogFile(300));
+
+            Assert.That(() => CatalogReader.Read(ms),
+                Throws.TypeOf<XmlException>().With.Message.Contains("nesting exceeds"),
+                "a catalog file nested past the reader's ceiling must refuse, not recurse");
+        }
+
+        /// <summary>
+        /// The nesting a real component file uses, as the control the refusal needs: a ceiling that rejected
+        /// ordinary depth would refuse the vendor's own corpus.
+        /// </summary>
+        [Test]
+        public void CatalogReader_OrdinaryNesting_StillReads()
+        {
+            using var ms = new MemoryStream(NestedCatalogFile(12));
+
+            Assert.That(CatalogReader.Read(ms).Tag, Is.EqualTo("product_dataline"));
+        }
+
+        /// <summary>
+        /// Character data was silently dropped, and silence is the whole problem: the catalog model is
+        /// attribute-only, so text that loads is text the next write loses — and CatalogFileWriter is byte-exact
+        /// against the vendor's own files, which is exactly where a silent loss stops being recoverable.
+        /// </summary>
+        [Test]
+        public void CatalogReader_CharacterData_IsRefusedRatherThanDroppedSilently()
+        {
+            using var ms = new MemoryStream(Encoding.Latin1.GetBytes(
+                "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>"
+                + "<product_dataline id=\"_0x153\" product_identifier=\"_0x2101\">noget tekst</product_dataline>"));
+
+            Assert.That(() => CatalogReader.Read(ms),
+                Throws.TypeOf<XmlException>().With.Message.Contains("character data"),
+                "text inside a catalog element must refuse at read, not vanish at the next write");
+        }
+
+        /// <summary>
+        /// Indentation is not character data. Without this control the guard above would refuse every
+        /// hand-formatted component file in the vendor corpus.
+        /// </summary>
+        [Test]
+        public void CatalogReader_WhitespaceBetweenElements_StillReads()
+        {
+            using var ms = new MemoryStream(Encoding.Latin1.GetBytes(
+                """
+                <?xml version="1.0" encoding="ISO-8859-1"?>
+                <product_dataline id="_0x153" product_identifier="_0x2101">
+                  <group />
+                </product_dataline>
+                """));
+
+            Assert.That(CatalogReader.Read(ms).Children, Has.Length.EqualTo(1));
+        }
+
+        /// <summary>
+        /// Through the path-taking entry point the refusal must arrive as the coded import refusal naming the
+        /// file, which is what a host can show — the same treatment every other unparsable catalog file gets.
+        /// </summary>
+        [Test]
+        public void ReadProduct_ExcessivelyNestedFile_SurfacesCodedRefusalNamingThePath()
+        {
+            string path = Path.Combine(Path.GetTempPath(), "ihc-deep-" + Guid.NewGuid().ToString("N") + ".def");
+            File.WriteAllBytes(path, NestedCatalogFile(300));
+            try
+            {
+                Assert.That(() => CatalogReader.ReadProduct(path),
+                    Throws.TypeOf<RefusedImportException>().With.Message.Contains(path),
+                    "a malformed catalog file must surface as a coded refusal that names it");
+            }
+            finally
+            {
+                File.Delete(path);
+            }
         }
 
         // ----- discovery failure surfacing -----

@@ -1,6 +1,4 @@
 using System;
-using System.IO;
-using System.Reflection;
 using Microsoft.Extensions.Configuration;
 
 namespace Ihc
@@ -130,14 +128,6 @@ namespace Ihc
         /// Will decrypt sensitive data if encryption is enabled (using SimpleSecret)
         /// </summary>
         /// <returns>The IHC client settings.</returns>
-        public static IhcSettings GetFromFile()
-        {
-            string basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory;
-            IConfigurationRoot config = new ConfigurationBuilder()
-                      .SetBasePath(basePath)
-                      .AddJsonFile("ihcsettings.json")
-                      .Build();
-            return GetFromConfiguration(config);
-        }
+        public static IhcSettings GetFromFile() => GetFromConfiguration(IhcConfiguration.FromAppDirectory());
     }
 }

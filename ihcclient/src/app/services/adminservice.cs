@@ -23,18 +23,14 @@ namespace Ihc.App
     /// When saving via Store(), only the detected changes are sent to the controller, minimizing API calls.
     /// Some configuration changes (DNS, network, WLAN) require a controller reboot to take effect.
     /// </remarks>
-    public class AdminAppService : AppServiceBase, IDisposable, IAsyncDisposable
+    public class AdminAppService : AuthenticatedAppServiceBase
     {
-        public readonly IAuthenticationService authService;
         private readonly IUserManagerService userService;
         private readonly IConfigurationService configService;
         private MutableAdminModel _originalSnapshot;
         private readonly object _snapshotLock = new object();
-        private readonly bool ownedServices;
 
         private SimpleSecret secretMaker;
-
-        private IhcSettings settings;
 
         /// <summary>
         /// Summary of changes made to controller.
@@ -59,12 +55,10 @@ namespace Ihc.App
         /// <param name="settings">IHC configuration settings</param>
         /// <param name="fileEnryption">Should confidential fields be encrypted/decrypted in stored files</param>
         public AdminAppService(IhcSettings settings, bool fileEnryption)
+            : base(settings, new AuthenticationService(settings), ownsAuthService: true)
         {
-            this.settings = settings;
-            this.authService = new AuthenticationService(settings);
             this.userService = new UserManagerService(this.authService);
             this.configService = new ConfigurationService(this.authService);
-            this.ownedServices = true;
             this.secretMaker = new SimpleSecret(enable: fileEnryption);
         }
 
@@ -78,12 +72,10 @@ namespace Ihc.App
         /// <param name="userService">User manager service instance</param>
         /// <param name="configService">Configuration service instance</param>
         public AdminAppService(IhcSettings settings, bool fileEnryption, IAuthenticationService authService, IUserManagerService userService, IConfigurationService configService)
+            : base(settings, authService, ownsAuthService: false)
         {
-            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
             this.userService = userService ?? throw new ArgumentNullException(nameof(userService));
             this.configService = configService ?? throw new ArgumentNullException(nameof(configService));
-            this.ownedServices = false;
             this.secretMaker = new SimpleSecret(enable: fileEnryption);
         }
 
@@ -695,38 +687,5 @@ namespace Ihc.App
             }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
-        /// <summary>
-        /// Dispose of owned services if they were created by this instance.
-        /// </summary>
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
-        /// <summary>
-        /// Releases the owned services. A derived type that overrides this must call the base implementation.
-        /// </summary>
-        /// <param name="disposing">True when called from <see cref="Dispose()"/>, false from a finalizer.</param>
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing && ownedServices && authService!=null)
-            {
-                authService.Dispose();
-            }
-        }
-
-        /// <summary>
-        /// Async dispose of owned services if they were created by this instance.
-        /// </summary>
-        public async ValueTask DisposeAsync()
-        {
-            if (ownedServices && authService!=null)
-            {
-                await authService.DisposeAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            }
-
-            GC.SuppressFinalize(this);
-        }
     }
 }

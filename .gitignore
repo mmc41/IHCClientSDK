@@ -22,8 +22,11 @@ tmp
 # Exclude IHC project files.
 .\*.vis
 
-# Important to exclude - user config file - contains secrets.
-ihcsettings.json
+# Important to exclude - user config file - contains secrets. The glob also covers the
+# ihcsettings.json.tmp that ihc_settings_encrypt swaps through and that a kill can strand, which
+# holds the same password. The tracked ihcsettings_example/_template files are named with an
+# underscore and are deliberately outside it.
+ihcsettings.json*
 .mcp.json
 
 # Pinned Opengrep ruleset, cloned by scripts/opengrep-scan.sh.

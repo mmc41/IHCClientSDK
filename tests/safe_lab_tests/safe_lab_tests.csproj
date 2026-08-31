@@ -25,4 +25,13 @@
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
     <ProjectReference Include="..\..\utilities\ihc_lab\ihc_lab.csproj" />
   </ItemGroup>
+
+  <!-- The headless failure-screenshot capture and the NUnit command that decides when to run it, shared with
+       safe_visual_tests: cross-thread dispatch onto the session, a timeout and exception marshalling, and an
+       outcome test that cannot be read off the test result alone. A bug in either is a deadlock or a silently
+       missing screenshot rather than a red test. Linked the same way the other suites link tests/shared. -->
+  <ItemGroup>
+    <Compile Include="..\shared\HeadlessScreenshot.cs" Link="shared\HeadlessScreenshot.cs" />
+    <Compile Include="..\shared\ScreenshotCaptureCommand.cs" Link="shared\ScreenshotCaptureCommand.cs" />
+  </ItemGroup>
 </Project>

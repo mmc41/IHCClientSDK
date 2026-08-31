@@ -55,19 +55,37 @@ namespace Ihc {
         }
       });
     }
-    public static string SerializeXml<A>(A x) where A : class {    
-      try {    
+    // The configured serializer per message type, keyed by the type itself rather than by a rendered string.
+    private static readonly ConcurrentDictionary<Type, XmlSerializer> configuredSerializers = new ConcurrentDictionary<Type, XmlSerializer>();
+
+    // The serializer for A, configured the ONE way both directions need. Reading and writing must agree on
+    // the "utcs" type namespace for the round trip to hold at all, and a shared invariant kept as two copies
+    // of its own setup is one edit away from being false.
+    //
+    // The override graph is a per-type constant, so it is built once and not per message: every SOAP call
+    // reached this, and the key GetOrCreateSerializer builds records only THAT overrides were supplied, never
+    // what they said - so the whole graph was being constructed and rendered into a ~200-character key only to
+    // land on a serializer already cached. Keying on the Type collapses that to one reference-hash lookup.
+    // GetOrCreateSerializer stays the builder underneath: it is the unit under test in SerializationUnitTest.
+    private static XmlSerializer BuildSerializer<A>() where A : class {
+      return configuredSerializers.GetOrAdd(typeof(A), static type => {
         var attrs = new XmlAttributeOverrides();
         var attr = new XmlAttributes();
         var typ = new XmlTypeAttribute();
         typ.Namespace = "utcs";
 
         attr.XmlType = typ;
-        var genericTypes = typeof(A).GetGenericArguments();
+        var genericTypes = type.GetGenericArguments();
         foreach(var genericType in genericTypes)
             attrs.Add(genericType, attr);
- 
-        // Retrive ns specifiation from object if it is there and use it 
+
+        return GetOrCreateSerializer(type, attrs, genericTypes);
+      });
+    }
+
+    public static string SerializeXml<A>(A x) where A : class {
+      try {
+        // Retrive ns specifiation from object if it is there and use it
         // explictly for the serializer - as a side effect this will also
         // cause build-in xsi and xsd namespaces to be omitted by default 
         // as we would like for simple requests.
@@ -78,7 +96,7 @@ namespace Ihc {
                     .FirstOrDefault(p => true) as XmlSerializerNamespaces;
 
 
-        var xmlSerializer = GetOrCreateSerializer(typeof(A), attrs, genericTypes);
+        var xmlSerializer = BuildSerializer<A>();
         var settings = new XmlWriterSettings() { OmitXmlDeclaration = true, Indent = true, Encoding = new UTF8Encoding(false), NamespaceHandling = NamespaceHandling.OmitDuplicates };
 
         using (var stream = new MemoryStream())
@@ -100,18 +118,7 @@ namespace Ihc {
 
     public static A DeserializeXml<A>(string xml) where A : class {
         try {
-            var attrs = new XmlAttributeOverrides();
-            var attr = new XmlAttributes();
-            var typ = new XmlTypeAttribute();
-            typ.Namespace = "utcs";
-
-            attr.XmlType = typ;
-
-            var genericTypes = typeof(A).GetGenericArguments();
-            foreach(var genericType in genericTypes)
-                attrs.Add(genericType, attr);
-
-            var xmlSerializer = GetOrCreateSerializer(typeof(A), attrs, genericTypes);
+            var xmlSerializer = BuildSerializer<A>();
             // Read characters straight from the decoded string via a TextReader so no
             // byte re-encoding can corrupt the payload. (Previously this used
             // Encoding.ASCII.GetBytes, which flattened every non-ASCII character - e.g.

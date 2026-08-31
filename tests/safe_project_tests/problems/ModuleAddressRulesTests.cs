@@ -5,6 +5,7 @@ using System.Linq;
 using Ihc.Vis.Addressing;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
+using static Ihc.Vis.Tests.RuleProbe;
 
 namespace Ihc.Vis.Tests
 {
@@ -24,15 +25,6 @@ namespace Ihc.Vis.Tests
     [TestFixture]
     public sealed class ModuleAddressRulesTests
     {
-        private static ProjectValidationResult Validate(Project project) =>
-            new ProjectAppService(TestSetup.Settings).ValidateCategorized(project);
-
-        private static int Count(Project project, string ruleId) =>
-            Validate(project).Findings.Count(f => f.RuleId == ruleId);
-
-        private static string Message(Project project, string ruleId) =>
-            Validate(project).Findings.First(f => f.RuleId == ruleId).Message;
-
         private static double Threshold(string code, string name)
         {
             Assert.That(ProblemCatalog.Current.TryGet(new ProblemCode(code), out ProblemCatalogEntry entry), Is.True);

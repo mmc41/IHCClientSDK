@@ -5,7 +5,6 @@ using Ihc;
 using Microsoft.Extensions.Configuration;
 using Ihc.Bootstrap;
 using Microsoft.Extensions.Logging;
-using System.Reflection;
 using System.Text;
 
 namespace Ihc.download_upload_example
@@ -47,11 +46,7 @@ namespace Ihc.download_upload_example
             }
 
             // Read configuration settings
-            string basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory;
-            IConfigurationRoot config = new ConfigurationBuilder()
-                      .SetBasePath(basePath)
-                      .AddJsonFile("ihcsettings.json")
-                      .Build();
+            IConfigurationRoot config = IhcConfiguration.FromAppDirectory();
 
             // Read configuration settings
             var settings = IhcSettings.GetFromConfiguration(config);

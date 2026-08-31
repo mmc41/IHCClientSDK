@@ -51,8 +51,13 @@ namespace Ihc.Vis.Validation
         /// The (tag, attribute) pairs that are BLOCK-LOCAL programming references. Locality is a per-pair fact and
         /// not an attribute-name fact: a switch case's <c>link</c> is a local variable reference while a
         /// follow-link half's <c>link</c> is legitimately cross-block, so the name alone cannot decide it.
+        /// <para>
+        /// <c>internal</c> rather than private so the parity test can build its fixtures FROM this set instead of
+        /// restating it. A test that re-declares the pairs it is checking keeps passing when a pair is added here,
+        /// which is silent coverage rot in the one test whose whole purpose is parity.
+        /// </para>
         /// </summary>
-        private static readonly ImmutableHashSet<(string Tag, string Attribute)> BlockLocalReferences =
+        internal static readonly ImmutableHashSet<(string Tag, string Attribute)> BlockLocalReferences =
         [
             ("event", "link1"), ("event", "link2"),
             ("condition", "link1"), ("condition", "link2"),

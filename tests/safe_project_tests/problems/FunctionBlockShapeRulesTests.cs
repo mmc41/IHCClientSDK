@@ -7,6 +7,7 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
 using Ihc.Vis.Validation;
+using static Ihc.Vis.Tests.RuleProbe;
 
 namespace Ihc.Vis.Tests
 {
@@ -25,24 +26,6 @@ namespace Ihc.Vis.Tests
     [TestFixture]
     public sealed class FunctionBlockShapeRulesTests
     {
-        private static ProjectValidationResult Validate(Project project) =>
-            new ProjectAppService(TestSetup.Settings).ValidateCategorized(project);
-
-        private static int Count(Project project, string ruleId) =>
-            Validate(project).Findings.Count(f => f.RuleId == ruleId);
-
-        private static string Message(Project project, string ruleId) =>
-            Validate(project).Findings.First(f => f.RuleId == ruleId).Message;
-
-        /// <summary>A run under an explicit library — null means "a caller that has none".</summary>
-        private static int Count(Project project, string ruleId, ILibraryBlockSource? library) =>
-            ProjectVerification.Run(project, ValidationProfile.Categorized with { Library = library })
-                .Findings.Count(f => f.RuleId == ruleId);
-
-        private static string Message(Project project, string ruleId, ILibraryBlockSource? library) =>
-            ProjectVerification.Run(project, ValidationProfile.Categorized with { Library = library })
-                .Findings.First(f => f.RuleId == ruleId).Message;
-
         /// <summary>
         /// A library holding one 1.1.01/e block whose named timer stores the given minute — plus, for the port's
         /// type-only half, whatever further identities a caller names. Only 1.1.01/e has a BODY; the extra

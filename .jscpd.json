@@ -1,17 +1,26 @@
 {
-  "format": ["csharp"],
-  "reporters": ["ai"],
+  "format": [
+    "csharp"
+  ],
+  "reporters": [
+    "ai"
+  ],
   "output": "artifacts/jscpd",
   "ignore": [
+    ".claude/**",
+    ".codex/**",
+    ".vscode/**",
     "**/bin/**",
     "**/obj/**",
     "**/node_modules/**",
     "artifacts/**",
     "tmp/**",
     "ihcclient/generatedsrc/**",
+    "ihcclient/wsdl/**",
     "**/*.g.cs",
     "**/*.g.i.cs",
     "**/*.Designer.cs",
-    "tests/testdata/**"
+    "tests/testdata/**",
+    "examples/**"
   ]
 }

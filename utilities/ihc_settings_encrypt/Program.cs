@@ -186,15 +186,7 @@ class Program
                 ihcclientNode["password"] = resultPassword;
                 encryptionNode["isEncrypted"] = true;
 
-                // Write back to file with formatting
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                };
-
-                string updatedJson = root.ToJsonString(options);
-                File.WriteAllText(filePath, updatedJson);
+                WriteSettingsFile(root, filePath);
 
                 Console.WriteLine($"Success! Password encrypted in: {filePath}");
                 Console.WriteLine($"The file has been updated with:");
@@ -230,15 +222,7 @@ class Program
                 ihcclientNode["password"] = resultPassword;
                 encryptionNode["isEncrypted"] = false;
 
-                // Write back to file with formatting
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                };
-
-                string updatedJson = root.ToJsonString(options);
-                File.WriteAllText(filePath, updatedJson);
+                WriteSettingsFile(root, filePath);
 
                 Console.WriteLine($"Success! Password decrypted in: {filePath}");
                 Console.WriteLine($"The file has been updated with:");
@@ -256,5 +240,82 @@ class Program
             Console.Error.WriteLine(ex.StackTrace);
             return 1;
         }
+    }
+
+    /// <summary>
+    /// Writes <paramref name="root"/> back over <paramref name="filePath"/>, formatted the one way both the
+    /// encrypt and the decrypt path need.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The write goes through a temporary file in the SAME directory and is then swapped into place, because
+    /// File.WriteAllText truncates before it writes: a failure part-way through would leave this file holding
+    /// neither the old password nor the new one, and an unparseable settings file is one a host cannot start
+    /// from. Same directory so the swap stays on one volume.
+    /// </para>
+    /// <para>
+    /// The swap must not hand the settings file weaker protection than it had. A newly created file gets
+    /// whatever the DIRECTORY grants — 0644 under a common umask, only the inherited ACEs on Windows — so
+    /// renaming one of those over a deliberately locked-down credentials file would publish the password
+    /// while appearing to do nothing but reformat it. The temporary is therefore created carrying the
+    /// settings file's own Unix mode, which the rename takes with it, and swapped in with File.Replace,
+    /// which keeps the replaced file's ACLs on Windows.
+    /// </para>
+    /// <para>
+    /// On the decrypt path the temporary holds the plaintext password. It is deleted when the write or the
+    /// swap fails, but nothing can delete it if the process is killed in between, so it is created with the
+    /// settings file's protection rather than the directory's, and .gitignore covers its name.
+    /// </para>
+    /// </remarks>
+    internal static void WriteSettingsFile(JsonNode root, string filePath)
+    {
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
+        string tempPath = filePath + ".tmp";
+        try
+        {
+            WriteProtectedAs(tempPath, root.ToJsonString(options), filePath);
+            File.Replace(tempPath, filePath, destinationBackupFileName: null);
+        }
+        catch
+        {
+            // Best effort: the original file is still intact, and there is nowhere better to report a
+            // failure to clean up than the exception already on its way out.
+            try { File.Delete(tempPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Creates <paramref name="path"/> holding <paramref name="content"/>, protected as
+    /// <paramref name="protectedAs"/> is protected.
+    /// </summary>
+    /// <remarks>
+    /// The mode is given at creation rather than applied afterwards, because a chmod that follows the open
+    /// leaves a window in which the password is readable by whoever the directory's default mode allows. A
+    /// stale file left by an earlier kill is deleted rather than truncated, since a truncating open would
+    /// keep the mode that file already had — the one thing this must not inherit.
+    /// </remarks>
+    private static void WriteProtectedAs(string path, string content, string protectedAs)
+    {
+        var fileOptions = new FileStreamOptions
+        {
+            Mode = FileMode.CreateNew,
+            Access = FileAccess.Write,
+            Share = FileShare.None,
+        };
+        if (!OperatingSystem.IsWindows())
+        {
+            fileOptions.UnixCreateMode = File.GetUnixFileMode(protectedAs);
+        }
+
+        File.Delete(path);
+        using var stream = new FileStream(path, fileOptions);
+        using var writer = new StreamWriter(stream);
+        writer.Write(content);
     }
 }

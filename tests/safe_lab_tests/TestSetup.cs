@@ -1,6 +1,4 @@
 using System;
-using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using NUnit.Framework;
@@ -9,13 +7,12 @@ using NUnit.Framework.Internal;
 using NUnit.Framework.Internal.Commands;
 using Ihc;
 using Ihc.Bootstrap;
-using System.Reflection;
+using Ihc.Tests.Shared;
 using IhcLab;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
-using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using Avalonia.Logging;
@@ -76,67 +73,7 @@ namespace Ihc.Tests
     {
         public NUnit.Framework.Internal.Commands.TestCommand Wrap(NUnit.Framework.Internal.Commands.TestCommand command)
         {
-            return new ScreenshotCaptureCommand(command);
-        }
-
-        /// <summary>
-        /// Custom test command that wraps test execution with screenshot capture on failure.
-        /// </summary>
-        private class ScreenshotCaptureCommand : NUnit.Framework.Internal.Commands.DelegatingTestCommand
-        {
-            public ScreenshotCaptureCommand(NUnit.Framework.Internal.Commands.TestCommand innerCommand)
-                : base(innerCommand)
-            {
-            }
-
-            public override NUnit.Framework.Internal.TestResult Execute(NUnit.Framework.Internal.TestExecutionContext context)
-            {
-                TestResult result;
-                Exception? testException = null;
-
-                try
-                {
-                    // Execute the actual test (which includes AvaloniaTest's command wrapping)
-                    result = innerCommand.Execute(context);
-                }
-                catch (Exception ex)
-                {
-                    testException = ex;
-                    result = context.CurrentResult;
-                }
-
-                // Capture screenshot only if test actually failed (not for Inconclusive or Passed)
-                // Check result status first to avoid capturing for Assert.Inconclusive() or Assert.Pass()
-                bool shouldCaptureScreenshot = result?.ResultState.Status == TestStatus.Failed;
-
-                // Also capture if there's an unhandled exception that's not from Assert.Inconclusive or Assert.Pass
-                if (testException != null && !shouldCaptureScreenshot)
-                {
-                    // Don't capture for test outcome exceptions (Inconclusive, Success)
-                    var exceptionType = testException.GetType().Name;
-                    shouldCaptureScreenshot = exceptionType != "InconclusiveException" && exceptionType != "SuccessException";
-                }
-
-                if (shouldCaptureScreenshot)
-                {
-                    try
-                    {
-                        AvaloniaTestBase.CaptureScreenshotOnFailure();
-                    }
-                    catch (Exception captureEx)
-                    {
-                        TestContext.Out.WriteLine($"Failed to capture screenshot: {captureEx.Message}");
-                    }
-                }
-
-                // Re-throw original test exception if there was one
-                if (testException != null)
-                {
-                    throw testException;
-                }
-
-                return result!;
-            }
+            return new ScreenshotCaptureCommand(command, () => AvaloniaTestBase.CaptureScreenshotOnFailure());
         }
     }
 
@@ -354,109 +291,17 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// Captures a screenshot of the current test window when a test fails.
-        ///
-        /// <para>
-        /// This method is called automatically by <see cref="CaptureScreenshotOnFailureAttribute"/>
-        /// when a test fails. It should not be called directly in test code.
-        /// </para>
-        ///
-        /// <para><strong>Technical Implementation:</strong></para>
-        /// <para>
-        /// The method executes screenshot capture through Avalonia's headless session dispatcher
-        /// to ensure the platform render interface is available. It uses <c>ManualResetEventSlim</c>
-        /// to synchronously wait up to 5 seconds for the asynchronous capture to complete.
-        /// </para>
-        ///
-        /// <para>
-        /// If <see cref="CurrentTestWindow"/> is null, the method logs a warning and returns without
-        /// capturing. Screenshots are saved to the <c>TestFailureScreenshots/</c> directory with
-        /// timestamped filenames.
-        /// </para>
+        /// Called by <see cref="CaptureScreenshotOnFailureAttribute"/> on failure; not to be called from test
+        /// code. Delegates to <see cref="HeadlessScreenshot.CaptureOnFailure"/>, which owns the capture
+        /// contract, and clears <see cref="CurrentTestWindow"/> so no window leaks into the next test.
         /// </summary>
         /// <param name="customDescription">Optional custom description for the screenshot attachment in test results.</param>
         internal static void CaptureScreenshotOnFailure(string? customDescription = null)
         {
-            if (CurrentTestWindow == null)
-            {
-                TestContext.Out.WriteLine("No window registered for screenshot capture");
-                return;
-            }
-
-            // Screenshot capture must happen through the session's dispatcher to ensure render interface is available
-            var session = Avalonia.Headless.HeadlessUnitTestSession.GetOrStartForAssembly(typeof(AvaloniaTestBase).Assembly);
-
-            if (session == null)
-            {
-                TestContext.Out.WriteLine("ERROR: Avalonia headless session is null");
-                return;
-            }
-
             try
             {
-                Bitmap? bitmap = null;
-                Exception? captureException = null;
-                using var completionSignal = new ManualResetEventSlim(false);
-
-                // Dispatch screenshot capture on the session's thread where render interface is available
-                session.Dispatch(() =>
-                {
-                    try
-                    {
-                        Dispatcher.UIThread.RunJobs();
-                        bitmap = CurrentTestWindow.CaptureRenderedFrame();
-                    }
-                    catch (Exception ex)
-                    {
-                        captureException = ex;
-                    }
-                    finally
-                    {
-                        completionSignal.Set(); // Signal that dispatch is complete
-                    }
-                }, CancellationToken.None);
-
-                // Wait for dispatch to complete
-                if (!completionSignal.Wait(TimeSpan.FromSeconds(5)))
-                {
-                    TestContext.Out.WriteLine("Warning: Screenshot capture timed out after 5 seconds");
-                    return;
-                }
-
-                if (captureException != null)
-                {
-                    throw captureException;
-                }
-
-                if (bitmap == null)
-                {
-                    TestContext.Out.WriteLine("Warning: CaptureRenderedFrame() returned null");
-                    return;
-                }
-
-                // Create screenshots directory in test output
-                var testName = TestContext.CurrentContext.Test.Name;
-                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                var safeTestName = string.Join("_", testName.Split(Path.GetInvalidFileNameChars()));
-
-                var outputDir = Path.Combine(
-                    TestContext.CurrentContext.TestDirectory,
-                    "TestFailureScreenshots");
-                Directory.CreateDirectory(outputDir);
-
-                var filename = $"{safeTestName}_{timestamp}.png";
-                var filepath = Path.Combine(outputDir, filename);
-
-                // Save the bitmap as PNG
-                bitmap.Save(filepath, PngBitmapEncoderOptions.Default);
-
-                var description = customDescription ?? "Test Failure Screenshot";
-                TestContext.Out.WriteLine($"Test failure screenshot saved: {filepath}");
-                TestContext.AddTestAttachment(filepath, description);
-            }
-            catch (Exception ex)
-            {
-                TestContext.Out.WriteLine($"Failed to capture test failure screenshot: {ex}");
+                HeadlessScreenshot.CaptureOnFailure(
+                    CurrentTestWindow, typeof(AvaloniaTestBase).Assembly, customDescription);
             }
             finally
             {

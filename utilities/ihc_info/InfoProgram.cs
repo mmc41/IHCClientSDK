@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Configuration;
 using Ihc.Bootstrap;
 using Microsoft.Extensions.Logging;
-using System.Reflection;
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -24,11 +23,7 @@ namespace Ihc.example
 
         static async Task Main(string[] args)
         {
-            string basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory;
-            IConfigurationRoot config = new ConfigurationBuilder()
-                      .SetBasePath(basePath)
-                      .AddJsonFile("ihcsettings.json")
-                      .Build();
+            IConfigurationRoot config = IhcConfiguration.FromAppDirectory();
 
             // Read configuration settings
             var settings = IhcSettings.GetFromConfiguration(config);

@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 
 using Ihc.Vis.Schema;
+using static Ihc.Vis.Tests.RuleProbe;
 
 namespace Ihc.Vis.Tests
 {
@@ -23,15 +24,6 @@ namespace Ihc.Vis.Tests
     [TestFixture]
     public sealed class ScenarioRulesTests
     {
-        private static ProjectValidationResult Validate(Project project) =>
-            new ProjectAppService(TestSetup.Settings).ValidateCategorized(project);
-
-        private static int Count(Project project, string ruleId) =>
-            Validate(project).Findings.Count(f => f.RuleId == ruleId);
-
-        private static string Message(Project project, string ruleId) =>
-            Validate(project).Findings.First(f => f.RuleId == ruleId).Message;
-
         /// <summary>The declared maximum scene ramp, in seconds, read from the entry that owns it.</summary>
         private static double DeclaredRampLimit
         {

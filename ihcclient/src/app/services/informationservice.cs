@@ -10,16 +10,12 @@ namespace Ihc.App
     /// Provides access to system status, versions, time settings, and controller information.
     /// Will auto-authenticate with provided settings unless already authenticated.
     /// </summary>
-    public class InformationAppService : AppServiceBase, IDisposable, IAsyncDisposable
+    public class InformationAppService : AuthenticatedAppServiceBase
     {
-        public readonly IAuthenticationService authService;
         private readonly IConfigurationService configService;
         private readonly ITimeManagerService timeService;
         private readonly IControllerService controllerService;
         private readonly ISmsModemService smsModemService;
-        private readonly bool ownedServices;
-
-        private IhcSettings settings;
 
         /// <summary>
         /// Create an InformationService instance with IhcSettings only.
@@ -27,14 +23,12 @@ namespace Ihc.App
         /// </summary>
         /// <param name="settings">IHC configuration settings</param>
         public InformationAppService(IhcSettings settings)
+            : base(settings, new AuthenticationService(settings), ownsAuthService: true)
         {
-            this.settings = settings;
-            this.authService = new AuthenticationService(settings);
             this.configService = new ConfigurationService(authService);
             this.timeService = new TimeManagerService(authService);
             this.controllerService = new ControllerService(authService);
             this.smsModemService = new SmsModemService(authService);
-            this.ownedServices = true;
         }
 
         /// <summary>
@@ -48,14 +42,12 @@ namespace Ihc.App
         /// <param name="controllerService">Controller service instance</param>
         /// <param name="smsModemService">SMS modem service instance</param>
         public InformationAppService(IhcSettings settings, IAuthenticationService authService, IConfigurationService configService, ITimeManagerService timeService, IControllerService controllerService, ISmsModemService smsModemService)
+            : base(settings, authService, ownsAuthService: false)
         {
-            this.settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
             this.configService = configService ?? throw new ArgumentNullException(nameof(configService));
             this.timeService = timeService ?? throw new ArgumentNullException(nameof(timeService));
             this.controllerService = controllerService ?? throw new ArgumentNullException(nameof(controllerService));
             this.smsModemService = smsModemService ?? throw new ArgumentNullException(nameof(smsModemService));
-            this.ownedServices = false;
         }
 
         /// <summary>
@@ -109,38 +101,5 @@ namespace Ihc.App
             }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
-        /// <summary>
-        /// Dispose of owned services if they were created by this instance.
-        /// </summary>
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
-        /// <summary>
-        /// Releases the owned services. A derived type that overrides this must call the base implementation.
-        /// </summary>
-        /// <param name="disposing">True when called from <see cref="Dispose()"/>, false from a finalizer.</param>
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing && ownedServices && authService!=null)
-            {
-                authService.Dispose();
-            }
-        }
-
-        /// <summary>
-        /// Async dispose of owned services if they were created by this instance.
-        /// </summary>
-        public async ValueTask DisposeAsync()
-        {
-            if (ownedServices && authService!=null)
-            {
-                await authService.DisposeAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-            }
-
-            GC.SuppressFinalize(this);
-        }
     }
 }

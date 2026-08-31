@@ -36,6 +36,12 @@
     <Compile Include="..\shared\FindingOracleHarness.cs" Link="shared\FindingOracleHarness.cs" />
     <Compile Include="..\shared\TelemetryRegistryContract.cs" Link="shared\TelemetryRegistryContract.cs" />
     <Compile Include="..\shared\TelemetryCapture.cs" Link="shared\TelemetryCapture.cs" />
+    <!-- The headless failure-screenshot capture and the NUnit command that decides when to run it, shared with
+         safe_lab_tests: cross-thread dispatch onto the session, a timeout and exception marshalling, and an
+         outcome test that cannot be read off the test result alone. A bug in either is a deadlock or a silently
+         missing screenshot rather than a red test. -->
+    <Compile Include="..\shared\HeadlessScreenshot.cs" Link="shared\HeadlessScreenshot.cs" />
+    <Compile Include="..\shared\ScreenshotCaptureCommand.cs" Link="shared\ScreenshotCaptureCommand.cs" />
   </ItemGroup>
 
   <Import Project="..\TestData.props" />

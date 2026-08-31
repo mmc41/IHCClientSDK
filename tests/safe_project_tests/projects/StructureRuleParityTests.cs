@@ -103,12 +103,10 @@ namespace Ihc.Vis.Tests
         /// <summary>Re-points every block-local programming reference at an id no element in the project carries.</summary>
         private static ProjectElement Repoint(ProjectElement element)
         {
-            (string Tag, string Attribute)[] local =
-            [
-                ("event", "link1"), ("event", "link2"), ("condition", "link1"), ("condition", "link2"),
-                ("action", "link1"), ("action", "link2"), ("case_action", "variable"), ("case_action", "value"),
-                ("program_case", "link"),
-            ];
+            // Read from the rule's own declaration rather than restating it. A second literal here would keep
+            // this test passing after a pair is added to StructureRules, which is precisely the drift the
+            // parity test exists to catch.
+            ImmutableHashSet<(string Tag, string Attribute)> local = StructureRules.BlockLocalReferences;
 
             ImmutableArray<(string, string)> attrs = [.. element.Attrs.Select(a =>
                 local.Contains((element.Tag, a.Item1)) && a.Item2 != "_0x0"

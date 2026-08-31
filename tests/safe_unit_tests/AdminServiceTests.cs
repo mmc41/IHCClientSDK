@@ -49,6 +49,36 @@ namespace Ihc.Tests
             };
         }
 
+        /// <summary>
+        /// Arranges the seven reads <see cref="AdminAppService.GetModel"/> makes for its snapshot, so a test states
+        /// only the values it is about and every other read still answers with a default instance. Adding a getter to
+        /// that snapshot is one edit here rather than one per test.
+        /// </summary>
+        private void ArrangeSnapshot(
+            IReadOnlySet<IhcUser>? users = null,
+            EmailControlSettings? emailControl = null,
+            SMTPSettings? smtp = null,
+            DNSServers? dns = null,
+            NetworkSettings? network = null,
+            WebAccessControl? webAccess = null,
+            WLanSettings? wlan = null)
+        {
+            A.CallTo(() => fakeUserService.GetUsers(true))
+                .Returns(Task.FromResult(users ?? new HashSet<IhcUser>()));
+            A.CallTo(() => fakeConfigService.GetEmailControlSettings())
+                .Returns(Task.FromResult(emailControl ?? new EmailControlSettings()));
+            A.CallTo(() => fakeConfigService.GetSMTPSettings())
+                .Returns(Task.FromResult(smtp ?? new SMTPSettings()));
+            A.CallTo(() => fakeConfigService.GetDNSServers())
+                .Returns(Task.FromResult(dns ?? new DNSServers()));
+            A.CallTo(() => fakeConfigService.GetNetworkSettings())
+                .Returns(Task.FromResult(network ?? new NetworkSettings()));
+            A.CallTo(() => fakeConfigService.GetWebAccessControl())
+                .Returns(Task.FromResult(webAccess ?? new WebAccessControl()));
+            A.CallTo(() => fakeConfigService.GetWLanSettings())
+                .Returns(Task.FromResult(wlan ?? new WLanSettings()));
+        }
+
         [Test]
         public async Task GetAdminModel_ReturnsModelWithData()
         {
@@ -100,13 +130,7 @@ namespace Ihc.Tests
                 Ssid = "TestNetwork"
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(testUsers));
-            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(testEmailControl));
-            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(testSmtp));
-            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(testDns));
-            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(testNetwork));
-            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(testWebAccess));
-            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(testWLan));
+            ArrangeSnapshot(testUsers, testEmailControl, testSmtp, testDns, testNetwork, testWebAccess, testWLan);
 
             var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
 
@@ -146,9 +170,7 @@ namespace Ihc.Tests
             var testEmailControl = new EmailControlSettings { ServerIpAddress = "mail.test.com" };
             var testSmtp = new SMTPSettings { Hostname = "smtp.test.com" };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(testUsers));
-            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(testEmailControl));
-            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(testSmtp));
+            ArrangeSnapshot(testUsers, testEmailControl, testSmtp);
 
             var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
@@ -178,13 +200,7 @@ namespace Ihc.Tests
                 new IhcUser { Username = "user1", Email = "user1@test.com", Group = IhcUserGroup.Users }
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(initialUsers));
-            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
-            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
-            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
-            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings()));
-            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
-            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
+            ArrangeSnapshot(initialUsers);
 
             var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
@@ -214,13 +230,7 @@ namespace Ihc.Tests
                 new IhcUser { Username = "user2", Email = "user2@test.com", Group = IhcUserGroup.Users }
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(initialUsers));
-            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
-            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
-            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
-            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings()));
-            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
-            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
+            ArrangeSnapshot(initialUsers);
 
             var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
@@ -260,13 +270,7 @@ namespace Ihc.Tests
                 }
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(initialUsers));
-            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
-            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
-            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
-            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings()));
-            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
-            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
+            ArrangeSnapshot(initialUsers);
 
             var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
@@ -305,9 +309,7 @@ namespace Ihc.Tests
                 Ssl = false
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>()));
-            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(initialEmailControl));
-            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
+            ArrangeSnapshot(emailControl: initialEmailControl);
 
             var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
@@ -341,9 +343,7 @@ namespace Ihc.Tests
                 SendLowBatteryNotificationRecipient = ""
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>()));
-            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
-            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(initialSmtp));
+            ArrangeSnapshot(smtp: initialSmtp);
 
             var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
@@ -372,13 +372,7 @@ namespace Ihc.Tests
                 SecondaryDNS = "8.8.4.4"
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>()));
-            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
-            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
-            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(initialDns));
-            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings()));
-            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
-            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
+            ArrangeSnapshot(dns: initialDns);
 
             var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
@@ -410,13 +404,7 @@ namespace Ihc.Tests
                 HttpsPort = 443
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>()));
-            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
-            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
-            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
-            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(initialNetwork));
-            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
-            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
+            ArrangeSnapshot(network: initialNetwork);
 
             var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
@@ -448,13 +436,7 @@ namespace Ihc.Tests
                 EncryptionType = "AES"
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>()));
-            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
-            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
-            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
-            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings()));
-            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
-            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(initialWLan));
+            ArrangeSnapshot(wlan: initialWLan);
 
             var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
@@ -482,13 +464,7 @@ namespace Ihc.Tests
                 new IhcUser { Username = "user1", Email = "user1@test.com", Group = IhcUserGroup.Users }
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(testUsers));
-            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings()));
-            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings()));
-            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
-            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings()));
-            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
-            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
+            ArrangeSnapshot(testUsers);
 
             var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
 
@@ -559,9 +535,7 @@ namespace Ihc.Tests
                 SendLowBatteryNotificationRecipient = ""
             };
 
-            A.CallTo(() => fakeUserService.GetUsers(true)).Returns(Task.FromResult<IReadOnlySet<IhcUser>>(initialUsers));
-            A.CallTo(() => fakeConfigService.GetEmailControlSettings()).Returns(Task.FromResult(initialEmailControl));
-            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(initialSmtp));
+            ArrangeSnapshot(initialUsers, initialEmailControl, initialSmtp);
 
             var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
             var model = await service.GetModel();
@@ -796,19 +770,6 @@ namespace Ihc.Tests
                     "precondition: a null netmask must break NetworkSettings' own [Required]");
             });
 
-        private void ArrangeController(SMTPSettings smtp, NetworkSettings network)
-        {
-            A.CallTo(() => fakeUserService.GetUsers(true))
-                .Returns(Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>()));
-            A.CallTo(() => fakeConfigService.GetEmailControlSettings())
-                .Returns(Task.FromResult(new EmailControlSettings { ServerIpAddress = "mail.test.com" }));
-            A.CallTo(() => fakeConfigService.GetSMTPSettings()).Returns(Task.FromResult(smtp));
-            A.CallTo(() => fakeConfigService.GetDNSServers()).Returns(Task.FromResult(new DNSServers()));
-            A.CallTo(() => fakeConfigService.GetNetworkSettings()).Returns(Task.FromResult(network));
-            A.CallTo(() => fakeConfigService.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl()));
-            A.CallTo(() => fakeConfigService.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings()));
-        }
-
         /// <summary>A controller reporting values its own annotations forbid is still readable — the check at the
         /// end of DoGetModel does not reach them.</summary>
         [Test]
@@ -816,7 +777,7 @@ namespace Ihc.Tests
         {
             (SMTPSettings smtp, NetworkSettings network) = IllegalNestedValues();
             AssertReallyIllegal(smtp, network);
-            ArrangeController(smtp, network);
+            ArrangeSnapshot(smtp: smtp, network: network);
             var service = new AdminAppService(
                 settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
 
@@ -836,7 +797,7 @@ namespace Ihc.Tests
         {
             (SMTPSettings smtp, NetworkSettings network) = IllegalNestedValues();
             AssertReallyIllegal(smtp, network);
-            ArrangeController(new SMTPSettings { Hostname = "smtp.test.com" }, new NetworkSettings());
+            ArrangeSnapshot(smtp: new SMTPSettings { Hostname = "smtp.test.com" });
             var service = new AdminAppService(
                 settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
             MutableAdminModel model = await service.GetModel();

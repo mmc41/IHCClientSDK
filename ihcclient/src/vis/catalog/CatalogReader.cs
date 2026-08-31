@@ -159,7 +159,7 @@ namespace Ihc.Vis.Catalog
             using var textReader = new StreamReader(new MemoryStream(bytes, writable: false), SniffEncoding(bytes),
                                                     detectEncodingFromByteOrderMarks: true);
             using XmlReader reader = XmlReader.Create(textReader, settings);
-            return ReadElement(reader);
+            return ReadElement(reader, depth: 0);
         }
 
         // Internal (not private): CatalogDtdParser.CaptureHeadText decodes file bytes with the identical rule, so
@@ -183,8 +183,16 @@ namespace Ihc.Vis.Catalog
             return CatalogTextEncodingExtensions.Classify(bytes).TextEncoding();
         }
 
-        private static ProjectElement ReadElement(XmlReader reader)
+        // The depth and character-data guards are this walk's, not just its twin's: a .def/.ifb reaches here from
+        // a user-chosen path through ProjectAppService's import, so the same hostile input the .vis reader has
+        // always refused arrives on this side too. Both refuse as XmlException, which ParseCatalogFile already
+        // turns into the coded import-catalog-unparsable refusal naming the file.
+        private static ProjectElement ReadElement(XmlReader reader, int depth)
         {
+            if (ElementWalkGuards.DepthMessage(depth, "an IHC Visual catalog component file") is { } depthMessage)
+            {
+                throw new XmlException(depthMessage);
+            }
             reader.MoveToContent();
             string tag = reader.LocalName;
             ImmutableArray<(string, string)> attrs = ReadAttributes(reader);
@@ -209,7 +217,7 @@ namespace Ihc.Vis.Catalog
                 }
                 if (reader.NodeType == XmlNodeType.Element)
                 {
-                    children.Add(ReadElement(reader));
+                    children.Add(ReadElement(reader, depth + 1));
                 }
                 else if (reader.NodeType == XmlNodeType.None)
                 {
@@ -217,10 +225,23 @@ namespace Ihc.Vis.Catalog
                 }
                 else
                 {
+                    GuardNoCharacterData(reader, tag);
                     reader.Read();
                 }
             }
             return new ProjectElement(tag, id, attrs, children.ToImmutable());
+        }
+
+        // CatalogFileWriter re-emits this body byte-for-byte, so text that loaded here would be text the next
+        // write silently dropped — against the vendor's own files, where the loss is unrecoverable.
+        private static void GuardNoCharacterData(XmlReader reader, string parentTag)
+        {
+            if (ElementWalkGuards.CharacterDataMessage(reader, parentTag,
+                    "the catalog model is attribute-only, and loading this file would silently lose the text on write.")
+                is { } message)
+            {
+                throw new XmlException(message);
+            }
         }
 
         private static ImmutableArray<(string, string)> ReadAttributes(XmlReader reader)

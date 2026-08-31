@@ -84,6 +84,107 @@ namespace Ihc.IOExtractor {
         * Returns file extension to use.
         */
         public abstract String FileExtension();
+
+        /**
+        * Appends one line per entry, separating them with a comma. The separator belongs to the
+        * gap between two entries, not to an entry, which is why the last one does not get one -
+        * every output format here is a list literal that a trailing comma would break.
+        */
+        protected static void AppendCommaSeparatedLines<T>(T[] entries, StringBuilder buf, Action<T, StringBuilder> appendEntry)
+        {
+            for (int i = 0; i < entries.Length; ++i)
+            {
+                appendEntry(entries[i], buf);
+                if (i < entries.Length - 1)
+                {
+                    buf.Append(",");
+                }
+                buf.Append(Environment.NewLine);
+            }
+        }
+    };
+
+    /**
+    * Common base class for the generators that emit a header comment and then one named block of
+    * constants per IO direction. What differs between them is the block, not the walk, so the walk
+    * lives here and each concrete generator supplies only its own block - and, where its language
+    * needs one, an enclosing declaration.
+    */
+    public abstract class ConstantBlockGenerator : GeneratorBase {
+        private readonly string extension;
+        private readonly string prologue;
+        private readonly string epilogue;
+
+        /**
+        * @param extension the generated file's extension.
+        * @param prologue the declaration the blocks nest in, for a language that needs one; "" for none.
+        * @param epilogue closes whatever the prologue opened.
+        */
+        public ConstantBlockGenerator(IConfiguration config, string extension, string prologue = "", string epilogue = "")
+                : base(config) {
+            this.extension = extension;
+            this.prologue = prologue;
+            this.epilogue = epilogue;
+        }
+
+        public override String Generate(IhcProjectLoader project)
+        {
+            StringBuilder buf = new StringBuilder();
+
+            buf.AppendFormat("// {0}" + Environment.NewLine, header);
+
+            buf.Append(prologue);
+            AppendIoBlock(project.GetIO(IOType.Input), "Inputs", buf);
+            AppendIoBlock(project.GetIO(IOType.Output), "Outputs", buf);
+            buf.Append(epilogue);
+
+            return buf.ToString();
+        }
+
+        public override String FileExtension() {
+            return extension;
+        }
+
+        /**
+        * Emits one named block holding a constant per IO entry.
+        */
+        protected abstract void AppendIoBlock(IOMeta[] ioAry, string blockName, StringBuilder buf);
+    };
+
+    /**
+    * Generator for the script languages, whose blocks differ only in how the block and its members are
+    * spelled. The spellings are constructor arguments rather than overridden methods, so this class is
+    * CONCRETE: a dialect is an instantiation, not a subclass, and Program.cs shows what each one emits
+    * without a reader having to resolve two constructors through two base classes.
+    */
+    public class ScriptConstantGenerator : ConstantBlockGenerator {
+        private readonly string blockOpenFormat;
+        private readonly string memberFormat;
+        private readonly string blockClose;
+
+        /**
+        * @param blockOpenFormat opens the block; {0} is the block name.
+        * @param memberFormat one member; {0} is its identifier and {1} its hex resource id.
+        * @param blockClose closes the block. Passed alongside the open so a dialect's whole block shape
+        *        sits at one call site rather than half here and half in the base.
+        */
+        public ScriptConstantGenerator(IConfiguration config, string extension,
+                                       string blockOpenFormat, string memberFormat, string blockClose)
+                : base(config, extension) {
+            this.blockOpenFormat = blockOpenFormat;
+            this.memberFormat = memberFormat;
+            this.blockClose = blockClose;
+        }
+
+        protected override void AppendIoBlock(IOMeta[] ioAry, string blockName, StringBuilder buf)
+        {
+            buf.AppendFormat(blockOpenFormat + Environment.NewLine, blockName);
+
+            AppendCommaSeparatedLines(ioAry, buf, (io, b) =>
+                b.AppendFormat(memberFormat, GetIdentifierName(io), io.ResourceId.ToString("X8")));
+
+            buf.Append(blockClose + Environment.NewLine + Environment.NewLine);
+        }
     };
 
     /**
@@ -91,7 +192,6 @@ namespace Ihc.IOExtractor {
     */
     public class JsonGenerator : GeneratorBase {
         public JsonGenerator(IConfiguration config) : base(config) {
-            var section = config.GetSection("JsonGenerator");
         }
 
         public override String Generate(IhcProjectLoader project)
@@ -118,27 +218,21 @@ namespace Ihc.IOExtractor {
 
         private void GenerateIoList(IOMeta[] ioAry, StringBuilder buf)
         {
-            for (int i = 0; i < ioAry.Length; ++i)
+            AppendCommaSeparatedLines(ioAry, buf, (io, b) =>
             {
-                var io = ioAry[i];
-                buf.Append("  {");
-                buf.AppendFormat("\" GroupId\" : {0}, ", io.GroupId);
-                buf.AppendFormat("\"ResourceId\" : {0}, ", io.ResourceId);
-                buf.AppendFormat("\"ProductId\" : {0}, ", io.ProductId);
-                buf.AppendFormat("\"GroupName\" : \"{0}\", ", io.GroupName.Replace("\"", "\\\""));
-                buf.AppendFormat("\"DatalineName\" : \"{0}\", ", io.DatalineName.Replace("\"", "\\\""));
-                buf.AppendFormat("\"ProductName\" : \"{0}\", ", io.ProductName.Replace("\"", "\\\""));
-                buf.AppendFormat("\"ProductPosition\" : \"{0}\", ", io.ProductPosition.Replace("\"", "\\\""));
-                buf.AppendFormat("\"ProductNote\" : \"{0}\", ", io.ProductNote.Replace("\"", "\\\""));
-                buf.AppendFormat("\"DatalineNameNote\" : \"{0}\", ", io.DatalineNote.Replace("\"", "\\\""));
-                buf.AppendFormat("\"IdentifierName\" : \"{0}\" ", GetIdentifierName(io));
-                buf.Append(" }");
-                if (i < ioAry.Length - 1)
-                {
-                    buf.Append(",");
-                }
-                buf.Append(Environment.NewLine);
-            }
+                b.Append("  {");
+                b.AppendFormat("\" GroupId\" : {0}, ", io.GroupId);
+                b.AppendFormat("\"ResourceId\" : {0}, ", io.ResourceId);
+                b.AppendFormat("\"ProductId\" : {0}, ", io.ProductId);
+                b.AppendFormat("\"GroupName\" : \"{0}\", ", io.GroupName.Replace("\"", "\\\""));
+                b.AppendFormat("\"DatalineName\" : \"{0}\", ", io.DatalineName.Replace("\"", "\\\""));
+                b.AppendFormat("\"ProductName\" : \"{0}\", ", io.ProductName.Replace("\"", "\\\""));
+                b.AppendFormat("\"ProductPosition\" : \"{0}\", ", io.ProductPosition.Replace("\"", "\\\""));
+                b.AppendFormat("\"ProductNote\" : \"{0}\", ", io.ProductNote.Replace("\"", "\\\""));
+                b.AppendFormat("\"DatalineNameNote\" : \"{0}\", ", io.DatalineNote.Replace("\"", "\\\""));
+                b.AppendFormat("\"IdentifierName\" : \"{0}\" ", GetIdentifierName(io));
+                b.Append(" }");
+            });
         }
 
         public override String FileExtension() {
@@ -149,36 +243,21 @@ namespace Ihc.IOExtractor {
     /**
     * C# generator for input/output constants.
     */
-    public class CSharpGenerator : GeneratorBase {
-        private readonly string ns;
-
-        public CSharpGenerator(IConfiguration config) : base(config) {
-            var section = config.GetSection("CSharpGenerator");
-            ns = section["namespace"];
+    public class CSharpGenerator : ConstantBlockGenerator {
+        public CSharpGenerator(IConfiguration config)
+                : base(config, "cs", Prologue(config), "}" + Environment.NewLine) {
         }
 
-        public override String Generate(IhcProjectLoader project)
+        private static string Prologue(IConfiguration config)
         {
-            var inputs = project.GetIO(IOType.Input);
-            var outputs = project.GetIO(IOType.Output);
-
-            StringBuilder buf = new StringBuilder();
-
-            buf.AppendFormat("// {0}" + Environment.NewLine, header);
-
-            buf.Append("namespace " + ns + " {" + Environment.NewLine);
-            
-            GenerateIoList(inputs, "Inputs", buf);
-            GenerateIoList(outputs, "Outputs", buf);
-
-            buf.Append("}" + Environment.NewLine);
-
-            return buf.ToString();
+            return "namespace " + config.GetSection("CSharpGenerator")["namespace"] + " {" + Environment.NewLine;
         }
 
-        private void GenerateIoList(IOMeta[] ioAry, string className, StringBuilder buf)
+        // A class member per line, terminated rather than separated, so this one does not go through
+        // AppendCommaSeparatedLines.
+        protected override void AppendIoBlock(IOMeta[] ioAry, string blockName, StringBuilder buf)
         {
-            buf.Append("  public sealed class " + className + " { " + Environment.NewLine);
+            buf.Append("  public sealed class " + blockName + " { " + Environment.NewLine);
 
             foreach (var io in ioAry)
             {
@@ -186,102 +265,6 @@ namespace Ihc.IOExtractor {
             }
 
             buf.Append("  }" + Environment.NewLine);
-        }
-
-        public override String FileExtension() {
-            return "cs";
-        }
-    };
-
-    /**
-    * Javascript generator for input/output constants.
-    */
-    public class JSGenerator : GeneratorBase {
-        public JSGenerator(IConfiguration config) : base(config) {
-            var section = config.GetSection("JSGenerator");
-        }
-
-        public override String Generate(IhcProjectLoader project)
-        {
-            var inputs = project.GetIO(IOType.Input);
-            var outputs = project.GetIO(IOType.Output);
-
-            StringBuilder buf = new StringBuilder();
-
-            buf.AppendFormat("// {0}" + Environment.NewLine, header);
-       
-            GenerateIoList(inputs, "Inputs", buf);
-            GenerateIoList(outputs, "Outputs", buf);
-
-            return buf.ToString();
-        }
-
-        private void GenerateIoList(IOMeta[] ioAry, string objectName, StringBuilder buf)
-        {
-            buf.Append(" export const " + objectName + " = { " + Environment.NewLine);
-
-            for (int i = 0; i < ioAry.Length; ++i)
-            {
-                var io = ioAry[i];
-                buf.AppendFormat("    {0} : 0x{1}", GetIdentifierName(io), io.ResourceId.ToString("X8"));
-                if (i < ioAry.Length - 1)
-                {
-                    buf.Append(",");
-                }
-                buf.Append(Environment.NewLine);
-            }
-
-            buf.Append(" };" + Environment.NewLine + Environment.NewLine);
-        }
-
-        public override String FileExtension() {
-            return "js";
-        }
-    };
-
-    /**
-    * Typescript generator for input/output constants.
-    */
-    public class TSGenerator : GeneratorBase {
-        public TSGenerator(IConfiguration config) : base(config) {
-            var section = config.GetSection("TSGenerator");
-        }
-
-        public override String Generate(IhcProjectLoader project)
-        {
-            var inputs = project.GetIO(IOType.Input);
-            var outputs = project.GetIO(IOType.Output);
-
-            StringBuilder buf = new StringBuilder();
-
-            buf.AppendFormat("// {0}" + Environment.NewLine, header);
-       
-            GenerateIoList(inputs, "Inputs", buf);
-            GenerateIoList(outputs, "Outputs", buf);
-
-            return buf.ToString();
-        }
-
-        private void GenerateIoList(IOMeta[] ioAry, string objectName, StringBuilder buf)
-        {
-            buf.Append(" export const enum " + objectName + " { " + Environment.NewLine);
-
-            for (int i = 0; i < ioAry.Length; ++i)
-            {
-                var io = ioAry[i];
-                buf.AppendFormat("    {0} = 0x{1}", GetIdentifierName(io), io.ResourceId.ToString("X8"));
-                if (i < ioAry.Length - 1)
-                {
-                    buf.Append(",");
-                }
-                buf.Append(Environment.NewLine);
-            }
-
-            buf.Append(" };" + Environment.NewLine + Environment.NewLine);
-        }
-
-        public override String FileExtension() {
-            return "ts";
         }
     };
 }

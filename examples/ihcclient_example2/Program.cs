@@ -1,9 +1,7 @@
 ﻿using System;
-using System.IO;
 using System.Threading.Tasks;
 using Ihc;
 using Microsoft.Extensions.Configuration;
-using System.Reflection;
 
 namespace Ihc.example
 {
@@ -15,10 +13,7 @@ namespace Ihc.example
         static async Task Main(string[] args)
         {
           // Access configuration file that stores IHC and SDK setup informnation including username, password etc.
-          IConfigurationRoot config = new ConfigurationBuilder()
-                    .SetBasePath(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location))
-                    .AddJsonFile("ihcsettings.json")
-                    .Build();          
+          IConfigurationRoot config = IhcConfiguration.FromAppDirectory();
 
           // Use this way to read IHC client settings from configuration file as it decrypts sensitive data if encryption is enabled.
           IhcSettings settings = IhcSettings.GetFromConfiguration(config);                    

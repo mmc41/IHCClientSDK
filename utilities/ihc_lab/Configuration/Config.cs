@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Reflection;
 using Ihc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -20,11 +19,7 @@ namespace IhcLab
         public Configuration()
         {
             // Access configuration file that stores IHC and SDK setup informnation including username, password etc.
-            string basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory;
-            IConfigurationRoot config = new ConfigurationBuilder()
-                        .SetBasePath(basePath)
-                        .AddJsonFile("ihcsettings.json")
-                        .Build();
+            IConfigurationRoot config = IhcConfiguration.FromAppDirectory();
 
             IConfigurationSection? loggingConfig = config.GetSection("Logging");
             TelemetryConfiguration? telemetryConfig = config.GetSection("telemetry").Get<TelemetryConfiguration>();

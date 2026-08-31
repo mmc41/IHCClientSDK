@@ -36,6 +36,9 @@
     <!-- The catalog→insert-menu projection (CatalogMenu) is Avalonia-free VM logic in the OpenVisual app; unit-test
          it here (H2/T004). Referencing the app assembly for its testable logic matches the existing ihc_lab ref. -->
     <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
+    <!-- The credentials-file rewrite in ihc_settings_encrypt, for the same reason as the ihc_lab ref: its
+         testable logic is in the utility, not in the SDK. -->
+    <ProjectReference Include="..\..\utilities\ihc_settings_encrypt\ihc_settings_encrypt.csproj" />
   </ItemGroup>
 
   <!-- T002 characterization: the ProjectTreeProjector sub-program-name branch needs a real oracle carrying

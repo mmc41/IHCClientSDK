@@ -21,8 +21,6 @@ namespace Ihc.Vis.Io
     /// </summary>
     internal static class ProjectReader
     {
-        private const int MaxElementDepth = 128;   // real projects nest ~12 deep; far past that is corrupt input
-
         /// <summary>This reader's entry point into the instrumentation core.</summary>
         private static readonly OperationTelemetry Telemetry =
             new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(ProjectReader));
@@ -154,11 +152,9 @@ namespace Ihc.Vis.Io
 
         private static ProjectElement ReadElement(XmlReader reader, int depth)
         {
-            if (depth > MaxElementDepth)
+            if (ElementWalkGuards.DepthMessage(depth, "a .vis project") is { } depthMessage)
             {
-                throw new ProjectFormatException(
-                    LoadRefusalCodes.Depth,
-                    $"Element nesting exceeds {MaxElementDepth} levels; the file is corrupt or not a .vis project.");
+                throw new ProjectFormatException(LoadRefusalCodes.Depth, depthMessage);
             }
             reader.MoveToContent();
             string tag = reader.LocalName;
@@ -203,23 +199,12 @@ namespace Ihc.Vis.Io
 
         private static void GuardNoCharacterData(XmlReader reader, string parentTag)
         {
-            if (reader.NodeType is not (XmlNodeType.Text or XmlNodeType.CDATA or XmlNodeType.SignificantWhitespace)
-                || string.IsNullOrWhiteSpace(reader.Value))
+            if (ElementWalkGuards.CharacterDataMessage(reader, parentTag,
+                    "the .vis model is attribute-only, and loading this file would silently lose the text on save.")
+                is { } message)
             {
-                return;   // whitespace-only nodes carry no information the model would lose
+                throw new ProjectFormatException(LoadRefusalCodes.CharacterData, message);
             }
-            string excerpt = reader.Value.Trim();
-            if (excerpt.Length > 40)
-            {
-                excerpt = excerpt.Substring(0, 40) + "...";
-            }
-            string at = reader is IXmlLineInfo { } info && info.HasLineInfo()
-                ? $" (line {info.LineNumber}, position {info.LinePosition})"
-                : string.Empty;
-            throw new ProjectFormatException(
-                LoadRefusalCodes.CharacterData,
-                $"Element <{parentTag}> contains character data (\"{excerpt}\"){at}; the .vis model is " +
-                "attribute-only, and loading this file would silently lose the text on save.");
         }
 
         private static ImmutableArray<(string, string)> ReadAttributes(XmlReader reader)

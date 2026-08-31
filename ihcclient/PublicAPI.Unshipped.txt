@@ -855,8 +855,6 @@ static Ihc.Vis.Validation.VariableUsage.operator !=(Ihc.Vis.Validation.VariableU
 static Ihc.Vis.Validation.VariableUsage.operator ==(Ihc.Vis.Validation.VariableUsage? left, Ihc.Vis.Validation.VariableUsage? right) -> bool
 static Ihc.Vis.Validation.VariableUsageRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
 static Ihc.Vis.Validation.WiringRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-virtual Ihc.App.AdminAppService.Dispose(bool disposing) -> void
-virtual Ihc.App.InformationAppService.Dispose(bool disposing) -> void
 virtual Ihc.AuthenticationService.Dispose(bool disposing) -> void
 virtual Ihc.Vis.Validation.ProjectInspection.Invoke(Ihc.Vis.Validation.IProjectInspection! inspection) -> void
 ~override Ihc.Vis.Problems.ProblemArgument.Equals(object obj) -> bool
@@ -1137,3 +1135,18 @@ Ihc.Vis.Session.PreviewOutcome.PreviewOutcome(Ihc.Vis.Session.PreviewStatus Stat
 static Ihc.Vis.Session.PreviewOutcome.Faulted(string? reason, Ihc.Vis.Problems.InternalError? fault = null) -> Ihc.Vis.Session.PreviewOutcome!
 *REMOVED*static Ihc.Vis.Session.PreviewOutcome.Faulted(string? reason) -> Ihc.Vis.Session.PreviewOutcome!
 Ihc.App.AppServiceBase.AppServiceBase(System.Action<Ihc.Vis.Problems.InternalError!>? faultPort) -> void
+Ihc.IhcConfiguration
+~const Ihc.IhcConfiguration.SettingsFileName = "ihcsettings.json" -> string
+~static Ihc.IhcConfiguration.FromAppDirectory() -> Microsoft.Extensions.Configuration.IConfigurationRoot
+Ihc.App.AuthenticatedAppServiceBase
+~Ihc.App.AuthenticatedAppServiceBase.AuthenticatedAppServiceBase(Ihc.IhcSettings settings, Ihc.IAuthenticationService authService, bool ownsAuthService) -> void
+~readonly Ihc.App.AuthenticatedAppServiceBase.authService -> Ihc.IAuthenticationService
+Ihc.App.AuthenticatedAppServiceBase.Dispose() -> void
+virtual Ihc.App.AuthenticatedAppServiceBase.Dispose(bool disposing) -> void
+Ihc.App.AuthenticatedAppServiceBase.DisposeAsync() -> System.Threading.Tasks.ValueTask
+*REMOVED*Ihc.App.AdminAppService.Dispose() -> void
+*REMOVED*Ihc.App.AdminAppService.DisposeAsync() -> System.Threading.Tasks.ValueTask
+*REMOVED*Ihc.App.InformationAppService.Dispose() -> void
+*REMOVED*Ihc.App.InformationAppService.DisposeAsync() -> System.Threading.Tasks.ValueTask
+*REMOVED*~readonly Ihc.App.AdminAppService.authService -> Ihc.IAuthenticationService
+*REMOVED*~readonly Ihc.App.InformationAppService.authService -> Ihc.IAuthenticationService

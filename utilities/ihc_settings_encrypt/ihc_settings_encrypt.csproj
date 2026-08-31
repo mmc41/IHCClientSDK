@@ -7,6 +7,9 @@
   
   <ItemGroup>
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj"/>
+    <!-- The settings file this utility rewrites holds a password, so the protection it carries across the
+         rewrite is testable behaviour rather than an implementation detail. -->
+    <InternalsVisibleTo Include="safe_unit_tests" />
   </ItemGroup>
 
 </Project>

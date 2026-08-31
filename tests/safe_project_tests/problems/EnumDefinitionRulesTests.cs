@@ -5,6 +5,7 @@ using System.Linq;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Schema;
 using Ihc.Vis.Validation;
+using static Ihc.Vis.Tests.RuleProbe;
 
 namespace Ihc.Vis.Tests
 {
@@ -25,15 +26,6 @@ namespace Ihc.Vis.Tests
     public sealed class EnumDefinitionRulesTests
     {
         private const string UserTexts = "User-defined texts";
-
-        private static ProjectValidationResult Validate(Project project) =>
-            new ProjectAppService(TestSetup.Settings).ValidateCategorized(project);
-
-        private static int Count(Project project, string ruleId) =>
-            Validate(project).Findings.Count(f => f.RuleId == ruleId);
-
-        private static ProjectValidationFinding Single(Project project, string ruleId) =>
-            Validate(project).Findings.Single(f => f.RuleId == ruleId);
 
         // ── enum-def-duplicate-name ─────────────────────────────────────────────────────────────────
 

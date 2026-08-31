@@ -485,14 +485,21 @@ namespace Ihc {
             }
         }
 
-        private static string GetMethodDescription(MethodInfo method)
+        /// <summary>
+        /// Runs <paramref name="lookup"/> against the declaring type first, then against every interface the
+        /// declaring type implements, returning the first documentation found.
+        /// </summary>
+        /// <remarks>
+        /// The interface leg goes through <see cref="Type.GetInterfaceMap"/> rather than matching by name: an
+        /// explicitly implemented member is not named after the interface method it satisfies, so the map is
+        /// the only thing that pairs them. Shared by the summary and parameter lookups — the walk is the same
+        /// for both and only the lookup performed at each stop differs.
+        /// </remarks>
+        private static string FindThroughDeclaringTypeThenInterfaces(
+            MethodInfo method, Func<MethodInfo, Type, string> lookup)
         {
-            var xmlDoc = LoadXmlDocumentation();
-            if (xmlDoc == null)
-                return string.Empty;
-
             // Try to find documentation from the declaring type first
-            var description = TryGetDescriptionForType(xmlDoc, method, method.DeclaringType);
+            var description = lookup(method, method.DeclaringType);
             if (description != null)
                 return description;
 
@@ -509,7 +516,7 @@ namespace Ihc {
                     if (index >= 0)
                     {
                         var interfaceMethod = interfaceMap.InterfaceMethods[index];
-                        description = TryGetDescriptionForType(xmlDoc, interfaceMethod, iface);
+                        description = lookup(interfaceMethod, iface);
                         if (description != null)
                             return description;
                     }
@@ -519,38 +526,24 @@ namespace Ihc {
             return string.Empty;
         }
 
+        private static string GetMethodDescription(MethodInfo method)
+        {
+            var xmlDoc = LoadXmlDocumentation();
+            if (xmlDoc == null)
+                return string.Empty;
+
+            return FindThroughDeclaringTypeThenInterfaces(method,
+                (m, type) => TryGetDescriptionForType(xmlDoc, m, type));
+        }
+
         private static string GetParameterDescription(MethodInfo method, string parameterName)
         {
             var xmlDoc = LoadXmlDocumentation();
             if (xmlDoc == null)
                 return string.Empty;
 
-            // Try to find documentation from the declaring type first
-            var description = TryGetParameterDescriptionForType(xmlDoc, method, method.DeclaringType, parameterName);
-            if (description != null)
-                return description;
-
-            // If not found, try all implemented interfaces
-            if (method.DeclaringType != null)
-            {
-                var interfaces = method.DeclaringType.GetInterfaces();
-                foreach (var iface in interfaces)
-                {
-                    // Get the interface map to find the corresponding interface method
-                    var interfaceMap = method.DeclaringType.GetInterfaceMap(iface);
-                    var index = Array.IndexOf(interfaceMap.TargetMethods, method);
-
-                    if (index >= 0)
-                    {
-                        var interfaceMethod = interfaceMap.InterfaceMethods[index];
-                        description = TryGetParameterDescriptionForType(xmlDoc, interfaceMethod, iface, parameterName);
-                        if (description != null)
-                            return description;
-                    }
-                }
-            }
-
-            return string.Empty;
+            return FindThroughDeclaringTypeThenInterfaces(method,
+                (m, type) => TryGetParameterDescriptionForType(xmlDoc, m, type, parameterName));
         }
 
         /// <summary>

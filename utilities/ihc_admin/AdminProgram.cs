@@ -6,7 +6,6 @@ using Ihc.App;
 using Microsoft.Extensions.Configuration;
 using Ihc.Bootstrap;
 using Microsoft.Extensions.Logging;
-using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -53,11 +52,7 @@ namespace Ihc.download_upload_example
             }
 
             // Read configuration settings
-            string basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory;
-            IConfigurationRoot config = new ConfigurationBuilder()
-                      .SetBasePath(basePath)
-                      .AddJsonFile("ihcsettings.json")
-                      .Build();
+            IConfigurationRoot config = IhcConfiguration.FromAppDirectory();
 
             var encrypted = EncryptionConfiguration.GetFromConfiguration(config);
             var settings = IhcSettings.GetFromConfiguration(config);

@@ -29,8 +29,13 @@ namespace Ihc.IOExtractor {
                  return;
             }
 
+            // Ihc.IhcConfiguration.FromAppDirectory() is the shared form of this, but reaching it would mean
+            // referencing the whole SDK from a utility that deliberately parses .vis with its own loader. The
+            // guard is what matters: GetEntryAssembly() is null outside a managed Main, and Location is empty
+            // for a single-file publish.
+            string basePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location) ?? AppContext.BaseDirectory;
             IConfigurationRoot config = new ConfigurationBuilder()
-                                .SetBasePath(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location))
+                                .SetBasePath(basePath)
                                 .AddJsonFile("ihcsettings.json")
                                 .Build();
 
@@ -38,11 +43,11 @@ namespace Ihc.IOExtractor {
 
             IConfiguration appConfig = config.GetSection("projectExtrator");
           
-            var generators = new GeneratorBase[] { 
-                new JsonGenerator(appConfig), 
-                new JSGenerator(appConfig), 
-                new TSGenerator(appConfig), 
-                new CSharpGenerator(appConfig) 
+            var generators = new GeneratorBase[] {
+                new JsonGenerator(appConfig),
+                new ScriptConstantGenerator(appConfig, "js", " export const {0} = {{ ", "    {0} : 0x{1}", " };"),
+                new ScriptConstantGenerator(appConfig, "ts", " export const enum {0} {{ ", "    {0} = 0x{1}", " };"),
+                new CSharpGenerator(appConfig)
             };
 
             var projectFileName = Path.GetFileName(ihcProjectName);
