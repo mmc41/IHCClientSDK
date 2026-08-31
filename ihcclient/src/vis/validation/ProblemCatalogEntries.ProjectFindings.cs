@@ -5708,6 +5708,32 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
+        /// The validation run that had to clear the write did not complete, because a rule threw.
+        /// REFUSES: Save · Export, in <c>ProjectAppService.SerializeForSave</c> — ahead of the errors-found
+        /// refusal, because a run carrying a fault has no verdict to read and its findings list is short by an
+        /// unmeasurable amount. It is its own row rather than the errors-found one: that sentence counts the
+        /// blocking errors a user must repair, and a faulted run with none would ask for zero repairs.
+        /// </summary>
+        private static ProblemCatalogEntry SaveValidationIncomplete =>
+            new ProblemCatalogEntry(
+                new ProblemCode("save-validation-incomplete"),
+                ProblemCatalogSection.ProjectFindings,
+                ValidationCategory.FileIntegrity,
+                CatalogDisposition.Refusal,
+                RuleKind.OperationOutcome,
+                RuleFaces.None,
+                default,
+                FindingShape.OneFinding,
+                default,
+                "Projektet blev ikke gemt: kontrollen kunne ikke gennemføres.")
+            {
+                RefusedOperations = [OperationCodes.Save],
+                Diagnostic = "A rule threw during the validation run that had to clear this write, so the "
+                    + "findings are incomplete and the write is abandoned; the faults name the rules that failed.",
+                Evidence = EvidenceMark.Unknown,
+            };
+
+        /// <summary>
         /// Every member of a scene switches its output off: an "all off" scene, or an unfinished one.
         /// PREDICATE: a scene with at least one resolvable member row, every one of which is off — a
         /// <c>scene_relay</c> with <c>relay_value</c> absent or <c>off</c>, or a <c>scene_dimmer</c> at
@@ -6295,6 +6321,7 @@ namespace Ihc.Vis.Validation
             Rs485DimmerSceneMultiOff,
             SaveRoundtripMismatch,
             SaveTargetUnwritable,
+            SaveValidationIncomplete,
             SceneAllOff,
             SceneBijection,
             SceneDimmingOutOfRange,

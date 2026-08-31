@@ -574,23 +574,58 @@ public class ProblemsPanelViewModelTests
 
     /// <summary>
     /// LISTED, not held: a tier switched off is not in the copy, because what the reader asked for is what the
-    /// reader can see. The count on the chip still says how many there are — switching a tier off must never
-    /// look like the faults were fixed — but the copy follows the list.
+    /// reader can see — and the control follows the payload. Hiding the Internal tier empties the payload, so a
+    /// button still offered there is a button that copies an empty string, with the reader invited to press it
+    /// by the very control that would do nothing.
+    ///
+    /// <para>The chip's count is deliberately NOT the predicate: it counts the whole result, because switching a
+    /// tier off must never look like the faults were fixed. Held and listed are two different questions, and
+    /// this control asks the second.</para>
     /// </summary>
     [Test]
-    public void TheBulkCopyFollowsTheTierToggle()
+    public void TheBulkCopyIsWithdrawnWhenItsTierIsHiddenAndReturnsWhenShown()
     {
         var (rig, panel) = PanelWith(Fault("internal.rule-failed"));
         using var _ = rig;
         using var _p = panel;
+        Assert.That(panel.CanCopyInternals, Is.True, "precondition: a fault is held and listed");
 
         panel.Internals.IsShown = false;
 
         Assert.Multiple(() =>
         {
-            Assert.That(panel.BuildInternalsPayload(), Is.Empty);
-            Assert.That(panel.Internals.Count, Is.EqualTo(1), "the count is of the whole result");
+            Assert.That(panel.BuildInternalsPayload(), Is.Empty, "nothing is listed, so nothing would be copied");
+            Assert.That(panel.CanCopyInternals, Is.False, "so the control must not be offered");
+            Assert.That(panel.Internals.Count, Is.EqualTo(1),
+                "and the chip still counts the whole result — hiding a tier is not fixing anything");
         });
+
+        panel.Internals.IsShown = true;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(panel.CanCopyInternals, Is.True, "showing the tier brings both back");
+            Assert.That(panel.BuildInternalsPayload(), Is.Not.Empty);
+        });
+    }
+
+    /// <summary>
+    /// The tier toggle NOTIFIES the predicate. The binding is <c>IsVisible="{Binding CanCopyInternals}"</c>, so a
+    /// predicate that changed without saying so leaves the button on screen with the old answer — the defect
+    /// still present, merely invisible to a test that reads the property directly.
+    /// </summary>
+    [Test]
+    public void HidingTheTierRaisesTheChangeNotificationTheBindingNeeds()
+    {
+        var (rig, panel) = PanelWith(Fault("internal.rule-failed"));
+        using var _ = rig;
+        using var _p = panel;
+        List<string?> notified = [];
+        panel.PropertyChanged += (_, e) => notified.Add(e.PropertyName);
+
+        panel.Internals.IsShown = false;
+
+        Assert.That(notified, Does.Contain(nameof(ProblemsPanelViewModel.CanCopyInternals)));
     }
 
     /// <summary>The control appears with its subject and not before: the Internal tier is empty in every healthy

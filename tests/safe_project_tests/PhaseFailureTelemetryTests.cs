@@ -33,16 +33,6 @@ namespace Ihc.Vis.Tests
     [TestFixture]
     public sealed class PhaseFailureTelemetryTests
     {
-        /// <summary>A project the serializer accepts: every #REQUIRED attribute of the registry's root block.</summary>
-        private static Project Minimal(params (string Name, string Value)[] extraAttrs) =>
-            new(new ProjectElement("utcs_project", null,
-                [
-                    ("version_major", "4"), ("version_minor", "0"),
-                    ("id1", "_0x1"), ("id2", "_0x2"), ("last_unique_id", "_0x3"),
-                    .. extraAttrs,
-                ],
-                []));
-
         /// <summary>Runs work that must throw, and hands back the span the failing phase left behind.</summary>
         private static Activity SpanOfFailedPhase(string operationName, Action work)
         {
@@ -79,14 +69,14 @@ namespace Ihc.Vis.Tests
         public void ASerializeThatCannotEncodeTheProject_RecordsTheFailureOnItsSpan() =>
             AssertRecordsTheFailure(
                 SpanOfFailedPhase("ProjectSerializer.Serialize",
-                    () => ProjectSerializer.Serialize(Minimal(("icon", "€")))),
+                    () => ProjectSerializer.Serialize(Tree.MinimalProject(("icon", "€")))),
                 "attr-latin1");
 
         [Test]
         public void AReportAskedForAnUnsupportedMimetype_RecordsTheFailureOnItsSpan() =>
             AssertRecordsTheFailure(
                 SpanOfFailedPhase("ReportGenerator.Generate",
-                    () => ReportGenerator.Generate(Minimal(), ReportKind.Functions, ReportMode.Standard,
+                    () => ReportGenerator.Generate(Tree.MinimalProject(), ReportKind.Functions, ReportMode.Standard,
                         "application/pdf", null, DateTimeOffset.UnixEpoch)),
                 "System.ArgumentException");
 
@@ -94,7 +84,7 @@ namespace Ihc.Vis.Tests
         public void ADiffThatFaults_RecordsTheFailureOnItsSpan() =>
             AssertRecordsTheFailure(
                 SpanOfFailedPhase("ProjectChangeSet.Diff",
-                    () => ProjectChangeSet.Diff(null!, Minimal(), 1, 2, "test", "test")),
+                    () => ProjectChangeSet.Diff(null!, Tree.MinimalProject(), 1, 2, "test", "test")),
                 "_OTHER");
 
         [Test]
@@ -125,7 +115,7 @@ namespace Ihc.Vis.Tests
 
             AssertRecordsTheFailure(
                 SpanOfFailedPhase("WholeProjectValidator.Validate",
-                    () => validator.Validate(Minimal(), diagnostic)),
+                    () => validator.Validate(Tree.MinimalProject(), diagnostic)),
                 "System.InvalidOperationException");
         }
 
@@ -152,7 +142,7 @@ namespace Ihc.Vis.Tests
                 Telemetry.ActivitySourceName,
                 spanNames: ["WholeProjectValidator.Rule", "WholeProjectValidator.Validate"]);
 
-            validator.Validate(Minimal(), ValidationProfile.ProjectOnly);
+            validator.Validate(Tree.MinimalProject(), ValidationProfile.ProjectOnly);
 
             Activity rule = capture.Span("WholeProjectValidator.Rule");
             Activity run = capture.Span("WholeProjectValidator.Validate");

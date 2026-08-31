@@ -441,7 +441,10 @@ Ihc.Vis.Validation.ProjectStructureRules
 Ihc.Vis.Validation.ProjectValidationException.Operation.get -> Ihc.Vis.Problems.ProblemCode
 Ihc.Vis.Validation.ProjectValidationException.Problems.get -> Ihc.Vis.Problems.ProblemAggregate!
 Ihc.Vis.Validation.ProjectValidationException.ProjectValidationException(Ihc.Vis.Problems.ProblemCode operation, Ihc.Vis.Validation.ProjectValidationResult! result) -> void
+Ihc.Vis.Validation.ProjectValidationResult.Faults.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!>
+Ihc.Vis.Validation.ProjectValidationResult.Faults.init -> void
 Ihc.Vis.Validation.ProjectValidationResult.Infos.get -> System.Collections.Immutable.ImmutableArray<string!>
+Ihc.Vis.Validation.ProjectValidationResult.IsComplete.get -> bool
 Ihc.Vis.Validation.ProjectVerification
 Ihc.Vis.Validation.ReciprocityAndEnumRules
 Ihc.Vis.Validation.RequiredFieldConstraint
@@ -557,6 +560,8 @@ Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis
 Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>).Infos.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
 Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>).IsValid.get -> bool
 Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>).Warnings.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
+Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!>)
+Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!>).IsComplete.get -> bool
 Ihc.Vis.Validation.ValidationProfile
 Ihc.Vis.Validation.ValidationProfile.<Clone>$() -> Ihc.Vis.Validation.ValidationProfile!
 Ihc.Vis.Validation.ValidationProfile.Audience.get -> Ihc.Vis.Validation.ProfileAudience
@@ -694,6 +699,7 @@ static Ihc.Vis.Io.SaveRefusalCodes.AttrUndeclared.get -> Ihc.Vis.Problems.Refusa
 static Ihc.Vis.Io.SaveRefusalCodes.ElementUndeclared.get -> Ihc.Vis.Problems.RefusalIdentity
 static Ihc.Vis.Io.SaveRefusalCodes.RoundTripMismatch.get -> Ihc.Vis.Problems.RefusalIdentity
 static Ihc.Vis.Io.SaveRefusalCodes.TargetUnwritable.get -> Ihc.Vis.Problems.RefusalIdentity
+static Ihc.Vis.Io.SaveRefusalCodes.ValidationIncomplete.get -> Ihc.Vis.Problems.RefusalIdentity
 static Ihc.Vis.Problems.OperationCodes.All.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemCode>
 static Ihc.Vis.Problems.OperationCodes.BridgeDownload.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Problems.OperationCodes.BridgeUpload.get -> Ihc.Vis.Problems.ProblemCode
@@ -836,6 +842,7 @@ static Ihc.Vis.Validation.ValidationGate.get_Errors(Ihc.Vis.Model.EquatableArray
 static Ihc.Vis.Validation.ValidationGate.get_Infos(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> findings) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
 static Ihc.Vis.Validation.ValidationGate.get_IsValid(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> findings) -> bool
 static Ihc.Vis.Validation.ValidationGate.get_Warnings(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> findings) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
+static Ihc.Vis.Validation.ValidationGate.get_IsComplete(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!> faults) -> bool
 static Ihc.Vis.Validation.ValidationProfile.Categorized.get -> Ihc.Vis.Validation.ValidationProfile!
 static Ihc.Vis.Validation.ValidationProfile.ProjectOnly.get -> Ihc.Vis.Validation.ValidationProfile!
 static Ihc.Vis.Validation.ValidationProfile.operator !=(Ihc.Vis.Validation.ValidationProfile? left, Ihc.Vis.Validation.ValidationProfile? right) -> bool
@@ -1106,6 +1113,7 @@ Ihc.Vis.Validation.StructuredValidationResult.Equals(Ihc.Vis.Validation.Structur
 Ihc.Vis.Problems.ProblemArgumentType.ProblemIdentity = 7 -> Ihc.Vis.Problems.ProblemArgumentType
 Ihc.Vis.Validation.StructuredValidationResult.Faults.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!>
 Ihc.Vis.Validation.StructuredValidationResult.Faults.init -> void
+Ihc.Vis.Validation.StructuredValidationResult.IsComplete.get -> bool
 Ihc.Vis.Validation.StructuredValidationResult.Findings.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
 Ihc.Vis.Validation.StructuredValidationResult.Findings.init -> void
 Ihc.Vis.Validation.StructuredValidationResult.StructuredValidationResult(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> Findings, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!> Faults) -> void

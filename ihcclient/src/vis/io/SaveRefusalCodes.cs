@@ -7,8 +7,8 @@ namespace Ihc.Vis.Io
     /// The identity of every condition that stops a project being written, ready to raise.
     /// <para>
     /// Each member is a whole <see cref="RefusalIdentity"/> rather than a bare code, because a refusing site
-    /// needs four things at once — the operation, the cause, and the Danish words for each — and three of the
-    /// six sites sit below the validation engine, which may not be read from there. Bundling them is what keeps
+    /// needs four things at once — the operation, the cause, and the Danish words for each — and some of the
+    /// sites sit below the validation engine, which may not be read from there. Bundling them is what keeps
     /// one spelling of a refusal instead of one per site.
     /// </para>
     /// <para>
@@ -18,13 +18,13 @@ namespace Ihc.Vis.Io
     /// seeing nothing.
     /// </para>
     /// <para>
-    /// Four of the six causes are ALSO whole-project findings — <c>attr-latin1</c>, <c>attr-required</c>,
+    /// Some causes are ALSO whole-project findings — <c>attr-latin1</c>, <c>attr-required</c>,
     /// <c>attr-undeclared</c> and <c>element-undeclared</c> each report at validate and refuse at save. That is
     /// one row with two faces, not two rows: the Danish sentence a user reads is the same either way, which is
     /// why the labels here are the catalogue's own templates and a test pins that they still agree.
     /// </para>
     /// <para>
-    /// Those four labels carry ARGUMENT SLOTS, so the member below holds the template and the raising site binds
+    /// Those labels carry ARGUMENT SLOTS, so the member below holds the template and the raising site binds
     /// it with <see cref="RefusalIdentity.Binding"/> — the site is the only place that knows which attribute on
     /// which element failed. Keeping the template on the member is what lets the drift gate compare it to the
     /// catalogue entry; a member that stored a bound sentence would have nothing to compare.
@@ -54,9 +54,29 @@ namespace Ihc.Vis.Io
         public static RefusalIdentity RoundTripMismatch { get; } =
             Refusing("save-roundtrip-mismatch", "Projektet kan ikke gemmes uden tab");
 
+        /// <summary>
+        /// The validation run that had to clear this write did not finish: a rule threw, so the checklist is
+        /// short by an amount nothing can measure.
+        /// <para>
+        /// DISTINCT from the errors-found refusal on purpose. That one counts blocking errors and tells the user
+        /// how many to repair; this one says the check never reached a verdict, which is a different fact and
+        /// asks for a different action. A faulted run with no findings reported through the other sentence would
+        /// send the user to fix errors that do not exist.
+        /// </para>
+        /// <para>
+        /// The sentence names no rule and no number, because neither is a stable thing to word it with: the
+        /// faults themselves are the channel that names which rule failed, each already carrying the
+        /// <c>internal.rule-failed</c> sentence that does so.
+        /// </para>
+        /// </summary>
+        public static RefusalIdentity ValidationIncomplete { get; } =
+            Refusing("save-validation-incomplete",
+                "Projektet blev ikke gemt: kontrollen kunne ikke gennemføres.");
+
         /// <summary>Every refusal in this family, for the check that each cause has a catalogue entry.</summary>
         public static Ihc.Vis.Model.EquatableArray<RefusalIdentity> All { get; } =
             System.Collections.Immutable.ImmutableArray.Create(
-                AttrLatin1, AttrRequired, AttrUndeclared, ElementUndeclared, TargetUnwritable, RoundTripMismatch);
+                AttrLatin1, AttrRequired, AttrUndeclared, ElementUndeclared, TargetUnwritable, RoundTripMismatch,
+                ValidationIncomplete);
     }
 }

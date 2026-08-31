@@ -35,22 +35,12 @@ namespace Ihc.Vis.Tests
     {
         private static ProblemCatalog Catalog => ProblemCatalog.Current;
 
-        /// <summary>A project the serializer accepts: every #REQUIRED attribute of the registry's root block.</summary>
-        private static Project Minimal(params (string Name, string Value)[] extraAttrs) =>
-            new(new ProjectElement("utcs_project", null,
-                [
-                    ("version_major", "4"), ("version_minor", "0"),
-                    ("id1", "_0x1"), ("id2", "_0x2"), ("last_unique_id", "_0x3"),
-                    .. extraAttrs,
-                ],
-                []));
-
         private static RefusedOperationException RefusedBySerializer(Project project) =>
             Assert.Throws<RefusedOperationException>(() => ProjectSerializer.Serialize(project))!;
 
         [Test]
         public void ANonLatin1AttributeIsRefusedAsAttrLatin1() =>
-            AssertRefusal(RefusedBySerializer(Minimal(("icon", "€"))),
+            AssertRefusal(RefusedBySerializer(Tree.MinimalProject(("icon", "€"))),
                 SaveRefusalCodes.AttrLatin1, "ISO-8859-1",
                 "Tegn kan ikke gemmes i attributten 'icon' på <utcs_project>.");
 
@@ -66,14 +56,14 @@ namespace Ihc.Vis.Tests
 
         [Test]
         public void AnUndeclaredAttributeIsRefusedAsAttrUndeclared() =>
-            AssertRefusal(RefusedBySerializer(Minimal(("no_such_attribute", "x"))),
+            AssertRefusal(RefusedBySerializer(Tree.MinimalProject(("no_such_attribute", "x"))),
                 SaveRefusalCodes.AttrUndeclared, "is not declared",
                 "Ukendt attribut 'no_such_attribute' på <utcs_project>.");
 
         [Test]
         public void AnUndeclaredElementTypeIsRefusedAsElementUndeclared()
         {
-            Project project = new(Minimal().Root with
+            Project project = new(Tree.MinimalProject().Root with
             {
                 Children = [new ProjectElement("no_such_element_type", null, [], [])],
             });
@@ -91,10 +81,10 @@ namespace Ihc.Vis.Tests
         [Test]
         public void BytesThatDoNotReproduceTheProjectAreRefusedAsSaveRoundtripMismatch()
         {
-            byte[] other = ProjectSerializer.Serialize(Minimal(("icon", "_0x9")));
+            byte[] other = ProjectSerializer.Serialize(Tree.MinimalProject(("icon", "_0x9")));
 
             RefusedOperationException refusal = Assert.Throws<RefusedOperationException>(
-                () => ProjectRoundTripVerifier.Verify(Minimal(("icon", "_0x8")), other))!;
+                () => ProjectRoundTripVerifier.Verify(Tree.MinimalProject(("icon", "_0x8")), other))!;
 
             AssertRefusal(refusal, SaveRefusalCodes.RoundTripMismatch, "Serialize/re-parse mismatch");
         }
@@ -114,7 +104,7 @@ namespace Ihc.Vis.Tests
             try
             {
                 RefusedWriteException refusal = Assert.ThrowsAsync<RefusedWriteException>(
-                    async () => await app.Save(Minimal(), path, ProjectSaveOptions.PreserveExistingMetadata))!;
+                    async () => await app.Save(Tree.MinimalProject(), path, ProjectSaveOptions.PreserveExistingMetadata))!;
 
                 Assert.Multiple(() =>
                 {
@@ -139,7 +129,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public void AWellFormedProjectStillSerializes()
         {
-            byte[] bytes = ProjectSerializer.Serialize(Minimal());
+            byte[] bytes = ProjectSerializer.Serialize(Tree.MinimalProject());
 
             Assert.That(bytes, Is.Not.Empty);
         }

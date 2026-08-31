@@ -66,7 +66,8 @@ public sealed class ProjectWorkflow : IDisposable
     /// <param name="faultSink">
     /// Where the validation loop's internal errors go for the user to see. Supplied by the composition root
     /// rather than built here, because the sink outlives every document and more than the validation loop
-    /// reports to it; a workflow that owned one would give each document a sink of its own.
+    /// reports to it — the SDK writes to the same one through the service's fault port; a workflow that owned
+    /// one would give each document a sink of its own.
     /// </param>
     public ProjectWorkflow(
         ProjectAppService service,
@@ -103,6 +104,7 @@ public sealed class ProjectWorkflow : IDisposable
         // LAST, because it reads this workflow: everything it touches (Current, Version, LastChange, Post, Time,
         // StateChanged) is assigned above. Eager rather than lazy so no reader can create it late and miss the
         // document changes that already happened.
+        //
         // The STRUCTURED result, whole: what the run found and what it broke are one answer, and the half that
         // was dropped here was the half nothing else could recover.
         Validation = new ValidationMonitor(this, ValidateStructured, loggerFactory, faultSink);
@@ -558,6 +560,10 @@ public sealed class ProjectWorkflow : IDisposable
     // The ONE publish-on-commit rule both Apply overloads obey, written once: an outcome the document COMMITTED is
     // the only one that changed the project, so it is the only one whose delta reaches the reconciler. Generic over
     // the outcome so the value-producing overload hands its own EditOutcome<T> straight back to its caller.
+    // A FAILED outcome's fault is NOT recorded here. The engine catches the exception and mints the fault, so the
+    // engine reports it — through the same sink, on the service's own fault port. Re-reporting it from this side
+    // would file one break twice, and reading a status to infer "something broke" is a derivation the layer that
+    // caught the exception never had to make.
     private TOutcome Publish<TOutcome>(TOutcome outcome) where TOutcome : EditOutcome
     {
         if (outcome.Status == EditStatus.Committed)

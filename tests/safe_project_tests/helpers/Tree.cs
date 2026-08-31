@@ -37,5 +37,25 @@ namespace Ihc.Vis.Tests
                 [("version_major", "4"), ("version_minor", "0"), ("id1", "_0x1"), ("id2", "_0x2"),
                  ("last_unique_id", "_0xffff")],
                 children));
+
+        /// <summary>
+        /// The smallest project the SERIALIZER accepts: a bare, childless root, so nothing but the gate under
+        /// test can refuse a write of it.
+        /// </summary>
+        /// <remarks>
+        /// Distinct from <see cref="WithRoot"/>, which exists for rule tests and seeds a high-water
+        /// <c>last_unique_id</c> so no counter rule fires beside the one being exercised. This one is for the
+        /// SAVE and EDIT paths, where the document is a backdrop rather than the subject.
+        /// <para>
+        /// Metadata is written VERBATIM by the fixtures that use it: a vendor-like re-stamp needs a
+        /// <c>&lt;modified&gt;</c> element, and adding one would put a second reason to refuse beside the one
+        /// under test.
+        /// </para>
+        /// </remarks>
+        /// <param name="extraAttrs">Root attributes to add, for a test that needs one.</param>
+        public static Project MinimalProject(params (string Name, string Value)[] extraAttrs) =>
+            new(Node("utcs_project", null,
+                [("version_major", "4"), ("version_minor", "0"), ("id1", "_0x1"), ("id2", "_0x2"),
+                 ("last_unique_id", "_0x3"), .. extraAttrs]));
     }
 }

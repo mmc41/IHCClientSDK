@@ -32,9 +32,24 @@ A code whose first dotted segment is `app` is host-owned; every other code is th
 | A fault in the TOOL rather than in anything it describes | SDK, or this app | `ProblemCatalogEntries.InternalFaults.cs`, or `Services/HostProblemCatalog.cs` | slots only |
 
 **A host authors no findings.** A finding is a statement about the `.vis` file, the SDK owns the file, and a
-second opinion minted in an app is how two catalogues start disagreeing. Every `app.openvisual.*` entry is an
-operation outcome with no category, no severity and no face; `HostProblemCatalogTests.AHostAuthoredFindingIsRejected`
-fails any entry that breaks this, and the entry it rejects is schema-legal — the rule is about ownership.
+second opinion minted in an app is how two catalogues start disagreeing.
+
+A host entry is therefore one of exactly **two** shapes, both with no category, no severity and no face:
+
+| Host shape | `Disposition` | `Kind` | Builder in `HostProblemCatalog` | What it records |
+| --- | --- | --- | --- | --- |
+| **Host outcome** | `Refusal` | `OperationOutcome` | `Outcome(code, template, diagnostic, slots…)` | An action this app declined or could not carry through |
+| **Host internal fault** | `NotApplicable` | `InternalFault` | `Fault(code, template, diagnostic, slots…)` | This app, or a layer under it, breaking |
+
+Pick by what the row RECORDS, not by how it is surfaced: a fault shown in a dialog is still a fault. A row
+that says the tool broke — a handler that threw, a discarded platform exception, a dead telemetry pipeline, a
+validation run that failed — takes the fault shape. Declaring one as an outcome passes `CatalogInvariants`
+VACUOUSLY: the biconditional in [§2](#2-the-item-kinds-and-the-axes-each-one-sets) compares a row against its
+own declaration, so a row that mislabels itself is never caught by it.
+
+`HostProblemCatalogTests` fails any entry that is neither shape, and fails a host-authored FINDING against a
+seeded entry that is schema-legal — the rule there is about ownership. A retired row is declared on the shape
+it would have had: retirement reserves the id, it does not excuse the declaration from being true.
 
 ---
 
@@ -450,8 +465,9 @@ bound as a `Problem`, then **two outside it** — a declared code with no site i
 
 1. `HostProblemCodes` — a `ProblemCode` property with a doc-comment saying what the app could not carry
    through.
-2. `HostProblemCatalog` — the entry through the `Outcome(code, template, diagnostic, slots…)` helper, and the
-   member added to the `Current` list.
+2. `HostProblemCatalog` — the entry through `Outcome(code, template, diagnostic, slots…)` or
+   `Fault(code, template, diagnostic, slots…)`, whichever shape [§1](#1-which-catalogue-owns-what) says the row
+   is, and the member added to the `Current` list.
 3. `HostProblems` — the typed factory, **where the site shows a bound `Problem`**: one parameter per declared
    slot, plus the originating `Exception` where there is one. `Detail(cause)` is the only place in this
    application that reads an exception's message, and it moves it into the diagnostic slot. Where the SDK raised
@@ -614,6 +630,14 @@ findings oracles, and it gives the send gate a better question than *"any Error"
 still asks that one — `app.openvisual.validation-errors-block-send` withholds the transfer on any Error
 finding — but the fact it would need in order to name the blocked operation now travels on the finding,
 which is the whole point of a row that is fatal to one operation and to nothing else.
+
+**The gate asks a second question beside that one.** `app.openvisual.validation-incomplete-blocks-send`
+withholds the transfer while the latest completed run carried FAULTS — a rule crashed, so the checklist
+reached no verdict. It is a separate row rather than a widening of the one above because the two ask the
+reader for different things: the errors sentence says repair what the panel lists, and here the panel's list
+is precisely what cannot be trusted. A faulted run that found nothing would otherwise refuse the transfer
+while asking for zero repairs. The SDK refuses the same condition one layer down under its own
+`save-validation-incomplete`, so an upload is stopped whether or not a host gate ran.
 
 **The open-blockers are a different surface.** Listing them means a *"this file would not open"* view over
 one refusal chain, not the project findings list. Do not fold them into the panel. (Eleven of the twelve

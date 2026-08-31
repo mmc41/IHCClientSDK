@@ -167,10 +167,45 @@ namespace Ihc.Vis
         {
         }
 
+        /// <summary>
+        /// A service over a caller-supplied CATALOG and CLOCK whose validation runs through a SUBSTITUTED
+        /// executor — the combination no shipped constructor expresses.
+        /// <para>See the remarks for why this is a factory and not another constructor.</para>
+        /// <para>
+        /// Internal, and it exists for one condition nothing else can produce. The engine's fault channel fills
+        /// only when a rule THROWS and no registered rule does, so a substituted <paramref name="validator"/> is
+        /// the only way to reach the save and upload gates that read that channel; without it they could be
+        /// asserted only by reading them.
+        /// </para>
+        /// </summary>
+        /// <param name="settings">IHC settings.</param>
+        /// <param name="catalog">The catalog to resolve against.</param>
+        /// <param name="timeProvider">The clock re-stamped metadata is taken from.</param>
+        /// <param name="validator">The executor every validation runs through.</param>
+        /// <param name="controller">The controller for the download/upload bridge, or null for a file-only service.</param>
+        /// <param name="authService">The auth whose cookie session <paramref name="controller"/> rides.</param>
+        /// <remarks>
+        /// A FACTORY rather than a constructor overload: with the cross-cutting dependencies optional it would
+        /// be ambiguous against the shipped <c>(settings, catalog, timeProvider, …)</c> constructor for any
+        /// caller inside this assembly, and adding one more constructor to distinguish them is what produced
+        /// the crowd it is trying to join.
+        /// </remarks>
+        internal static ProjectAppService CreateComposed(
+            IhcSettings settings, ICatalog catalog, TimeProvider timeProvider,
+            IWholeProjectValidator validator,
+            IControllerService? controller = null, IAuthenticationService? authService = null) =>
+            new(settings,
+                new Lazy<ICatalog>(catalog ?? throw new ArgumentNullException(nameof(catalog))),
+                timeProvider,
+                controller,
+                authService,
+                validatorOverride: validator);
+
         private ProjectAppService(IhcSettings settings, Lazy<ICatalog> baseCatalog, TimeProvider timeProvider,
                                   IControllerService? controller, IAuthenticationService? authService,
                                   TelemetryConfiguration? telemetry = null,
-                                  Action<Ihc.Vis.Problems.InternalError>? faultPort = null)
+                                  Action<Ihc.Vis.Problems.InternalError>? faultPort = null,
+                                  IWholeProjectValidator? validatorOverride = null)
             : base(faultPort)
         {
             ArgumentNullException.ThrowIfNull(settings);
@@ -196,9 +231,11 @@ namespace Ihc.Vis
             // compiler-generated closure, so capturing `telemetry` would pin the whole configuration object - its
             // endpoints and header blob - for the service's lifetime to read a single bool.
             bool perRuleTiming = telemetry?.PerRuleValidationTiming ?? false;
-            this.validator = new Lazy<IWholeProjectValidator>(
-                () => new WholeProjectValidator(ProjectRules.Registered, perRuleTiming),
-                LazyThreadSafetyMode.PublicationOnly);
+            this.validator = validatorOverride is { } supplied
+                ? new Lazy<IWholeProjectValidator>(supplied)
+                : new Lazy<IWholeProjectValidator>(
+                    () => new WholeProjectValidator(ProjectRules.Registered, perRuleTiming),
+                    LazyThreadSafetyMode.PublicationOnly);
             this.timeProvider = timeProvider;
             this.controller = controller;
             // R0: a controller-bearing service authenticates the SAME cookie session the controller rides, so the
@@ -271,7 +308,7 @@ namespace Ihc.Vis
             ArgumentNullException.ThrowIfNull(project);
             return RunTraced(nameof(OpenDocument), activity =>
             {
-                var document = new ProjectDocumentSession(history);
+                var document = new ProjectDocumentSession(history, FaultPort);
                 document.Open(project, startClean);
                 return (IProjectDocument)document;
             });
@@ -357,9 +394,12 @@ namespace Ihc.Vis
         // Opens a throwaway, single-use document session over the project (D02): the stateless runner behind every
         // facade Apply/CanApply/Preview. Deliberately never hoisted into a persistent field — this door is the
         // one-shot runner; the persistent document an interactive frontend holds is what OpenDocument returns (D01).
-        private static ProjectDocumentSession OpenScratch(Project project)
+        //
+        // An INSTANCE method, for the port: a scratch session mints the same faults a held one does, and returns
+        // before any caller could notice them. Static, it was the one edit path whose faults nothing could report.
+        private ProjectDocumentSession OpenScratch(Project project)
         {
-            var document = new ProjectDocumentSession();
+            var document = new ProjectDocumentSession(history: null, FaultPort);
             document.Open(project, startClean: true);
             return document;
         }
@@ -673,7 +713,22 @@ namespace Ihc.Vis
         {
             if (options.ValidateBeforeSave)
             {
-                ProjectValidationResult validation = ProjectVerification.Run(project, StructuralProfile, validator.Value);
+                ProjectValidationResult validation =
+                    ProjectVerification.Run(project, StructuralProfile, validator.Value);
+
+                // INCOMPLETENESS is decided before validity, because a run that lost a rule to a crash has no
+                // verdict to read: its findings are short by an amount nothing can measure, so "no blocking
+                // errors" would be a clean bill of health produced by the crash. It gets its own code rather than
+                // riding the errors-found refusal, whose sentence counts the errors a user must repair — a
+                // faulted run with none would send the reader to fix nothing.
+                if (!validation.IsComplete)
+                {
+                    throw new RefusedOperationException(
+                        SaveRefusalCodes.ValidationIncomplete,
+                        "The validation run that had to clear this write did not complete: "
+                        + string.Join(" | ", validation.Faults.Select(fault => fault.Diagnostic ?? fault.Message)));
+                }
+
                 if (!validation.IsValid)
                 {
                     throw new ProjectValidationException(OperationCodes.Save, validation);

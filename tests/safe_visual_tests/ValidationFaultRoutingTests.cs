@@ -29,11 +29,7 @@ namespace safe_visual_tests;
 [TestFixture]
 public class ValidationFaultRoutingTests : AvaloniaTestBase
 {
-    /// <summary>The catalogue's sentence for a crashed rule, with the rule named.</summary>
-    private static InternalError RuleFailed(string rule = "name-empty") =>
-        ProblemsTestData.Fault(
-            message: $"Valideringsreglen '{rule}' fejlede. Listen kan mangle fejl.",
-            diagnostic: $"Rule '{rule}' threw");
+    private static InternalError RuleFailed(string rule = "name-empty") => ProblemsTestData.RuleFailed(rule);
 
     /// <summary>
     /// The gate's assertion: a rule that crashed is listed as an Internal row, and NOT as the Filintegritet error

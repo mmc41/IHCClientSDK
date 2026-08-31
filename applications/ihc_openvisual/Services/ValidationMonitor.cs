@@ -48,8 +48,14 @@ public sealed class ValidationMonitor : IDisposable
 
     private bool _disposed;
 
-    /// <summary>What <see cref="HasBlockingFindings"/> last said, so <see cref="BlockingChanged"/> means it moved.</summary>
-    private bool _wasBlocking;
+    /// <summary>
+    /// What the two gate-facing answers last said, so <see cref="BlockingChanged"/> means one of them moved.
+    /// </summary>
+    /// <remarks>
+    /// ONE latch over the pair rather than one each: a gate rebuilds its whole context from both, so a second
+    /// event beside this would rebuild it twice for a single transition in which both moved together.
+    /// </remarks>
+    private (bool Blocking, bool Incomplete) _wasGating;
 
     /// <param name="session">The document whose changes drive the loop.</param>
     /// <param name="validate">
@@ -95,7 +101,9 @@ public sealed class ValidationMonitor : IDisposable
     /// </summary>
     public event EventHandler? Changed;
 
-    /// <summary>Raised only when <see cref="HasBlockingFindings"/> actually FLIPS.</summary>
+    /// <summary>
+    /// Raised only when <see cref="HasBlockingFindings"/> or <see cref="HasIncompleteRun"/> actually FLIPS.
+    /// </summary>
     /// <remarks>
     /// Separate from <see cref="Changed"/> because a gate and a panel want different granularities. The panel
     /// re-reads on every move; a gate rebuilds a whole command context, and doing that on each staleness tick
@@ -132,6 +140,23 @@ public sealed class ValidationMonitor : IDisposable
     /// be free to disagree with the refusal the transfer itself raises.
     /// </remarks>
     public bool HasBlockingFindings => Result is { } bound && !bound.Findings.IsValid;
+
+    /// <summary>
+    /// Whether the latest COMPLETED result is INCOMPLETE — a rule crashed, so the run reached no verdict about
+    /// the project. False while nothing is bound, for the same reason <see cref="HasBlockingFindings"/> is.
+    /// </summary>
+    /// <remarks>
+    /// A SECOND question, not a harder version of the first. <see cref="HasBlockingFindings"/> answers "does the
+    /// project have defects", and a crashed rule says nothing about that — reading a fault as blocking would
+    /// refuse a transfer on the strength of our own bug, and reading it as clean would pass one on a checklist
+    /// that never finished. Both answers are needed because they ask for different words and a different action.
+    /// <para>
+    /// Read through the SDK's <c>IsComplete</c>, exactly as <see cref="HasBlockingFindings"/> reads its
+    /// <c>IsValid</c>: the refusal the save and upload gates raise is defined once, and a second derivation here
+    /// would be free to disagree with it — in the direction of letting an unverified project reach a controller.
+    /// </para>
+    /// </remarks>
+    public bool HasIncompleteRun => Result is { } bound && !bound.Faults.IsComplete;
 
     /// <summary>
     /// Completes when no validation is running or pending. Tests await it instead of sleeping; nothing in the
@@ -226,6 +251,10 @@ public sealed class ValidationMonitor : IDisposable
         // act on; what matters here is the consequence — the rows below are still on screen and now describe a
         // document state this run never reached. A reader who is not told that reads them as current, which is
         // the silent-staleness defect this wiring exists to remove.
+        //
+        // IT IS THE SECOND ROW, AND THAT IS DELIBERATE — do not "fix" the pair as a duplicate. Why the SDK's own
+        // row stands beside it, and why suppressing either would be worse, is argued where it is pinned:
+        // ValidationFaultRoutingCompositionTests.
         Problem problem = HostProblems.ValidationFaulted();
         Report(InternalError.From(
             problem, InternalErrorOrigin.Host, $"{nameof(ValidationMonitor)}.{nameof(OnFaulted)}: {fault}"));
@@ -248,10 +277,10 @@ public sealed class ValidationMonitor : IDisposable
     {
         Changed?.Invoke(this, EventArgs.Empty);
 
-        bool blocking = HasBlockingFindings;
-        if (blocking == _wasBlocking)
+        (bool Blocking, bool Incomplete) gating = (HasBlockingFindings, HasIncompleteRun);
+        if (gating == _wasGating)
             return;
-        _wasBlocking = blocking;
+        _wasGating = gating;
         BlockingChanged?.Invoke(this, EventArgs.Empty);
     }
 

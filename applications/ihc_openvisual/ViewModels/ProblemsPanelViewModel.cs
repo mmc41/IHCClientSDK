@@ -321,6 +321,11 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
 
         Rows.ReplaceAll(sorted);
 
+        // The bulk-copy control reads Rows, so it moves whenever this does — including on a TIER TOGGLE, which
+        // reaches the panel through here and nowhere else. Its binding is IsVisible, so a predicate that
+        // changed without saying so leaves a button on screen answering the previous question.
+        OnPropertyChanged(nameof(CanCopyInternals));
+
         IEnumerable<ProblemsPanelRowViewModel> Order<TKey>(
             Func<ProblemsPanelRowViewModel, TKey> key, IComparer<TKey>? comparer = null) =>
             // OrderBy/OrderByDescending are both STABLE, which is what preserves the engine's document order
@@ -526,7 +531,6 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         }
         RebuildScannedRows();
         RefreshState();
-        OnPropertyChanged(nameof(CanCopyInternals));
 
         // Reset, because the label is feedback about ONE copy: a "Kopieret" left standing after the list moved
         // would claim the reader has a copy of rows that were not in it.
@@ -844,8 +848,15 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// Shown only when there is something to copy. A control that is always there and usually does nothing is
     /// worse than one that appears with its subject: the Internal tier is empty in every healthy session, and a
     /// permanent button would invite the reader to wonder what it would have copied.
+    /// <para>
+    /// LISTED, not held, and asked of the SAME list <see cref="BuildInternalsPayload"/> assembles from. Counting
+    /// the rows HELD left the button offered while the Internal tier was hidden, where the payload is empty: a
+    /// control inviting the reader to copy nothing. Reading <see cref="Rows"/> rather than restating the filter
+    /// that produced it is what keeps the two answers equal through whatever <see cref="ResortRows"/> filters on
+    /// next.
+    /// </para>
     /// </summary>
-    public bool CanCopyInternals => _internalRows.Count > 0;
+    public bool CanCopyInternals => Rows.OfType<InternalErrorRowViewModel>().Any();
 
     /// <summary>
     /// EVERY listed internal error, assembled the way the details dialog assembles ONE. That is the whole

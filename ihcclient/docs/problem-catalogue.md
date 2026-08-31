@@ -91,7 +91,7 @@ a correct project, so they ask for no repair and no judgement.
 
 | Code | Fatal error | Error | Warning | Information | Total |
 | --- | --- | --- | --- | --- | --- |
-| **INT** | 18 | 16 | 9 | 0 | 43 |
+| **INT** | 19 | 16 | 9 | 0 | 44 |
 | **WIR** | 0 | 1 | 6 | 1 | 8 |
 | **LOG** | 0 | 13 | 24 | 6 | 43 |
 | **SCN** | 0 | 2 | 8 | 0 | 10 |
@@ -99,7 +99,7 @@ a correct project, so they ask for no repair and no judgement.
 | **DEV** | 0 | 1 | 10 | 4 | 15 |
 | **DOC** | 0 | 0 | 18 | 0 | 18 |
 | **PRJ** | 0 | 10 | 6 | 5 | 21 |
-| **Total** | **18** | **48** | **92** | **20** | **178** |
+| **Total** | **19** | **48** | **92** | **20** | **179** |
 <!-- END GENERATED -->
 
 ## 2. Severity
@@ -179,6 +179,7 @@ better copy of the file, a re-export, or a repair.
 | `attr-required` | INT | Fatal error | Save · Export | A `#REQUIRED` attribute is missing | The file would violate the DTD it declares inline — IHC Visual rejects the element |
 | `save-target-unwritable` | INT | Fatal error | Save · Export | The destination cannot be written (locked, read-only, missing, or out of space) | The write is abandoned before any existing file is touched |
 | `save-roundtrip-mismatch` | INT | Fatal error | Save · Export | Re-reading the just-written bytes does not reproduce the project | The file would not say what the project says; the write is rolled back |
+| `save-validation-incomplete` | INT | Fatal error | Save · Export | A rule threw during the validation run that had to clear the write, so the findings are incomplete | The checklist never reached a verdict, and "no blocking errors" would be a clean bill of health produced by the crash — on upload, the one sink with no `.BAK`. **Distinct from the errors-found refusal on purpose:** that sentence counts the errors a user must repair, so a faulted run with none would ask for zero repairs. **The faults name the rules**, each carrying `internal.rule-failed`; this row says only that the check did not finish |
 | `import-catalog-unparsable` | INT | Fatal error | Import | A `.def` / `.ifb` catalog file cannot be parsed | Nothing can be taken from it; the import is abandoned whole |
 | `import-catalog-wrong-kind` | INT | Fatal error | Import | The imported file is not the catalog kind it is offered as | A product definition and a function block are not interchangeable |
 | `import-controller-no-project` | INT | Fatal error | Download | The controller holds no stored project to download | There is nothing to import |
@@ -709,7 +710,7 @@ fall behind the declarations. Edit the declarations, not this table.
 The evidence and rationale columns of the sections above are deliberately absent here: they are
 prose, and they live as doc-comments on each declaration.
 
-### Project findings (167)
+### Project findings (168)
 
 | Id | Cat | Costs | Kind | Status | Danish label |
 | --- | --- | --- | --- | --- | --- |
@@ -870,6 +871,7 @@ prose, and they live as doc-comments on each declaration.
 | `rs485-dimmer-scene-multi-off` | SCN | Warning | UserContentRule | Active | Scenariet '{scene}' slukker {dimmers} LED-dæmpere samtidig, men kun én af dem når at svare. |
 | `save-roundtrip-mismatch` | INT | Refusal | OperationOutcome | Active | Projektet kan ikke gemmes uden tab |
 | `save-target-unwritable` | INT | Refusal | OperationOutcome | Active | Filen kunne ikke skrives |
+| `save-validation-incomplete` | INT | Refusal | OperationOutcome | Active | Projektet blev ikke gemt: kontrollen kunne ikke gennemføres. |
 | `scene-all-off` | SCN | Warning | UserContentRule | Active | Scenariet '{scene}' slukker alle {members} medlemmer. |
 | `scene-bijection` | SCN | Error | UserContentRule | Active | Scenerækken er ensidig: <{tag}> '{id}' er ikke forbundet begge veje til en partner af den modsatte type. |
 | `scene-dimming-out-of-range` | SCN | Warning | UserContentRule | Active | Scenemedlemmet '{member}' har lysniveauet {value} %; det gyldige område er {minimum}-{maximum} %. |
@@ -954,5 +956,5 @@ prose, and they live as doc-comments on each declaration.
 | `io.load` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke åbnes |
 | `io.save` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke gemmes: {count} fejl skal rettes først. |
 
-**Total: 230 entries.** 222 active, 4 retired, 4 ruled out.
+**Total: 231 entries.** 223 active, 4 retired, 4 ruled out.
 <!-- END GENERATED -->

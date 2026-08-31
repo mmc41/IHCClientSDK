@@ -42,6 +42,9 @@ namespace Ihc.Vis.Session
         private ProjectIndex? _index;
         private int _version;
 
+        /// <summary>Where a fault this session mints is reported, or null when nothing collects them.</summary>
+        private readonly Action<Problems.InternalError>? _faultPort;
+
         private readonly record struct HistoryEntry(Project Snapshot, string Label);
 
         // The transition-origin tags stamped on a ProjectChangeSet, naming which operation produced it (a consumer
@@ -55,8 +58,27 @@ namespace Ihc.Vis.Session
         /// <summary>Creates a session with the given history policy. The default is <see cref="HistoryPolicy.Unlimited"/>
         /// (W4-4): undo depth is bounded only by process memory now that a committed snapshot path-copies just the
         /// subtrees it changed (W4-3), so a history entry costs its changed path, not a full tree.</summary>
-        public ProjectDocumentSession(HistoryPolicy? history = null) =>
+        public ProjectDocumentSession(HistoryPolicy? history = null)
+            : this(history, faultPort: null)
+        {
+        }
+
+        /// <summary>
+        /// The same session over the owning service's fault port, so a fault this layer MINTS is reported by the
+        /// layer that minted it.
+        /// </summary>
+        /// <remarks>
+        /// Internal rather than a defaulted parameter on the public constructor: that signature is shipped, and
+        /// a port is not something a caller constructing a session by hand supplies — the service that owns the
+        /// port is the only one with one to give.
+        /// </remarks>
+        /// <param name="history">The history policy, as above.</param>
+        /// <param name="faultPort">Where a minted fault is reported, or null to report nowhere.</param>
+        internal ProjectDocumentSession(HistoryPolicy? history, Action<Problems.InternalError>? faultPort)
+        {
             _history = history ?? HistoryPolicy.Unlimited;
+            _faultPort = faultPort;
+        }
 
         /// <summary>Raised after <see cref="Apply(ProjectCommand, int?)"/>/<see cref="Undo"/>/<see cref="Redo"/>
         /// with the structural change set, so a projector can reconcile in place.</summary>
@@ -186,6 +208,37 @@ namespace Ihc.Vis.Session
         private static readonly Problems.ProblemCode PreviewFailedCode = new("internal.preview-failed");
 
         /// <summary>
+        /// Offers a minted fault to the port and hands the SAME value back, so a mint site reports and returns in
+        /// one expression and the two can never drift into describing different events.
+        /// </summary>
+        /// <remarks>
+        /// Reporting is ADDITIVE: the fault still travels on the outcome, so a caller that never wired a port
+        /// loses nothing and a shell's dialog reads the value it always read. What it buys is that the layer
+        /// which CAUGHT the exception is the layer that announces it — a consumer above no longer has to infer
+        /// "a Failed outcome means something broke", and the one-shot facade doors, which return before anyone
+        /// above could infer anything, are covered by the same line.
+        /// <para>
+        /// FAIL-OPEN, for the reason <c>AppServiceBase</c>'s port is: a broken sink must not turn a reportable
+        /// fault into a second, worse one on top of the outcome the caller is owed.
+        /// </para>
+        /// </remarks>
+        private Problems.InternalError Report(Problems.InternalError fault)
+        {
+            if (_faultPort is { } port)
+            {
+                try
+                {
+                    port(fault);
+                }
+                catch (Exception)
+                {
+                    // See the fail-open note above.
+                }
+            }
+            return fault;
+        }
+
+        /// <summary>
         /// Turns the edit's own outcome into the operation's. Reserving Error for <see cref="EditStatus.Failed"/>
         /// is the point: a refusal is the rules working, and the two refusal paths used to report differently
         /// - one via SetError (Error) and one by returning quietly (Unset) - for outcomes that are the same kind
@@ -292,13 +345,13 @@ namespace Ihc.Vis.Session
                 // forbidden to resolve against the catalogue. Reason keeps ex.Message for the log; the Danish
                 // sentence a host may show travels on Fault.
                 return new EditOutcome(EditStatus.Failed, label, ex.Message, null, EditFailedCode,
-                    new Problems.InternalError(
+                    Report(new Problems.InternalError(
                         EditFailedCode,
                         EditRefusals.EditFailedMessage,
                         ex.Message,
                         Problems.InternalErrorOrigin.Sdk,
                         ex.ToString(),
-                        DateTimeOffset.UtcNow));
+                        DateTimeOffset.UtcNow)));
             }
 
             if (updated is null)   // no-op (an allocator burn makes the project differ, so it is not one)
@@ -422,13 +475,13 @@ namespace Ihc.Vis.Session
                     // Captured HERE, where the exception still exists; the factory only threads it through.
                     return PreviewOutcome.Faulted(
                         ex.Message,
-                        new Problems.InternalError(
+                        Report(new Problems.InternalError(
                             PreviewFailedCode,
                             EditRefusals.PreviewFailedMessage,
                             ex.Message,
                             Problems.InternalErrorOrigin.Sdk,
                             ex.ToString(),
-                            DateTimeOffset.UtcNow));
+                            DateTimeOffset.UtcNow)));
                 }
                 return updated is null
                     ? PreviewOutcome.NoChange

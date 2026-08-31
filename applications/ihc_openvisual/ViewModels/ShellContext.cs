@@ -31,7 +31,12 @@ public sealed record ShellContext(
     // (not yet validated, or a run still in flight), which is deliberate: "no result" is not evidence of a fault,
     // and a gate refusing there would grey the transfer on every cold start. TRAILING and defaulted for the same
     // reason ControllerConnected is — every existing construction site keeps compiling and keeps allowing.
-    bool ProjectHasValidationErrors = false)
+    bool ProjectHasValidationErrors = false,
+    // Whether the LATEST COMPLETED validation run did not FINISH — a rule crashed, so its findings are
+    // missing and the run reached no verdict. A second flag beside the one above rather than a widening of it:
+    // "the project has defects" and "the check never finished" ask the user for different things, and the
+    // gate words them differently. False while nothing is bound, for the same reason its neighbour is.
+    bool ProjectValidationIncomplete = false)
 {
     /// <summary>The closed-shell context (no project, nothing selected) — the pre-initialization value.</summary>
     public static ShellContext Empty { get; } = new(
@@ -41,7 +46,8 @@ public sealed record ShellContext(
         Node: null, Clipboard: null,
         CanUndo: false, CanRedo: false,
         ControllerConnected: false,
-        ProjectHasValidationErrors: false);
+        ProjectHasValidationErrors: false,
+        ProjectValidationIncomplete: false);
 }
 
 /// <summary>A VALUE snapshot of the active tree row, projected from <see cref="TreeNodeViewModel"/> at rebuild

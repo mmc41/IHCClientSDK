@@ -77,13 +77,28 @@ namespace Ihc.Vis.Validation
         /// <param name="profile">Which rules run, and at what severity.</param>
         /// <param name="validator">The executor to run.</param>
         public static ProjectValidationResult Run(
-            Project project, ValidationProfile profile, IWholeProjectValidator validator)
+            Project project, ValidationProfile profile, IWholeProjectValidator validator) =>
+            Flatten(RunStructured(project, profile, validator));
+
+        /// <summary>
+        /// One run in the flatter shape existing callers read — BOTH channels of it.
+        /// <para>
+        /// The structured LOCATIONS do not survive (see <see cref="Flatten(ValidationFinding)"/>), but the
+        /// faults do, carried across to <see cref="ProjectValidationResult.Faults"/> rather than dropped. They
+        /// travel beside the findings and never among them: giving a crashed rule a severity would state the
+        /// engine's own defect as a defect in the user's file. Carrying them is what lets EVERY gate over this
+        /// face read <see cref="ProjectValidationResult.IsComplete"/>, instead of only the gates that know to
+        /// reach past it for <see cref="RunStructured(Project, ValidationProfile, IWholeProjectValidator)"/>.
+        /// </para>
+        /// </summary>
+        /// <param name="run">The structured run to convert.</param>
+        private static ProjectValidationResult Flatten(StructuredValidationResult run)
         {
-            ArgumentNullException.ThrowIfNull(project);
-            ArgumentNullException.ThrowIfNull(profile);
-            ArgumentNullException.ThrowIfNull(validator);
-            return ProjectValidationResult.FromFindings(
-                [.. validator.Validate(project, profile).Findings.Select(Flatten)]);
+            ProjectValidationResult flat = ProjectValidationResult.FromFindings([.. run.Findings.Select(Flatten)]);
+            // Guarded rather than an unconditional `with`, so a run that broke nothing keeps the shared
+            // ProjectValidationResult.Success instance FromFindings hands back for an empty list. A clone would
+            // have replaced that singleton on the one path every clean save and validate takes.
+            return run.IsComplete ? flat : flat with { Faults = run.Faults };
         }
 
         /// <summary>

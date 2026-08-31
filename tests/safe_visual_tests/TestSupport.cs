@@ -558,7 +558,8 @@ public sealed class ShellHarness : IDisposable
     internal static int Live => System.Threading.Volatile.Read(ref _live);
 
     private ShellHarness(string dir, bool ownsDir, System.TimeProvider? timeProvider,
-                         ILoggerFactory? loggerFactory = null)
+                         ILoggerFactory? loggerFactory = null,
+                         Action<Ihc.Vis.Problems.InternalError>? faultSink = null)
     {
         TempDir = dir;
         _ownsDir = ownsDir;
@@ -573,13 +574,17 @@ public sealed class ShellHarness : IDisposable
         // A test that genuinely wants wall-clock behaviour asks for it: Create(System.TimeProvider.System).
         Time = timeProvider ?? new FakeTimeProvider();
         // The facade shares that clock, so metadata and report generation timestamps (T022) are deterministic too.
+        // No fault port on it, and not for want of wanting one: the constructor that takes a catalog, a clock AND
+        // a port is internal to the SDK, and this assembly is deliberately not an InternalsVisibleTo of it (L5).
+        // A fixture that needs a service reporting into its own sink builds one from the public two-argument
+        // constructor instead, as ValidationFaultRoutingCompositionTests does.
         ProjectService = new ProjectAppService(new IhcSettings(), new Ihc.Vis.Catalog.BuiltInCatalog(), Time);
         // The catalog dir is a subfolder of TempDir so Restart(dir) reuses it (US-061).
         // The marshal is SYNCHRONOUS here, which is what makes an inline post safe: nothing may reach bound state
         // off the caller's thread, so the clock above must never fire on its own.
         Session = new ProjectWorkflow(
             ProjectService, Recent, Dialogs, loggerFactory, Path.Combine(TempDir, "catalog"),
-            post: action => action(), timeProvider: Time);
+            post: action => action(), timeProvider: Time, faultSink: faultSink);
         System.Threading.Interlocked.Increment(ref _live);
     }
 
@@ -588,10 +593,15 @@ public sealed class ShellHarness : IDisposable
     /// every test that does not assert about validation. Pass your own when you need to drive the debounce and
     /// hold the handle; pass <see cref="System.TimeProvider.System"/> to opt back into wall-clock time.
     /// </param>
+    /// <param name="faultSink">
+    /// Where the workflow's internal errors go. Omit it for a harness that collects none — the right choice
+    /// for every test that does not assert about faults; pass one to read what a route actually recorded.
+    /// </param>
     public static ShellHarness Create(System.TimeProvider? timeProvider = null,
-                                     ILoggerFactory? loggerFactory = null) =>
+                                     ILoggerFactory? loggerFactory = null,
+                                     Action<Ihc.Vis.Problems.InternalError>? faultSink = null) =>
         new(Path.Combine(Path.GetTempPath(), "ihc_ov_tests", Guid.NewGuid().ToString("N")), ownsDir: true,
-            timeProvider, loggerFactory);
+            timeProvider, loggerFactory, faultSink);
 
     /// <summary>A second session over an existing directory — simulates restarting the app, so the per-user state
     /// left in <paramref name="dir"/> (e.g. persisted catalog imports) is picked up again.</summary>
@@ -706,7 +716,14 @@ internal sealed class SupervisedFaults : IDisposable
     /// <summary>Every fault the supervisor reported while this capture was attached, in order.</summary>
     public List<Ihc.Vis.Problems.InternalError> Rows { get; } = [];
 
-    private SupervisedFaults() => TaskSupervisor.ReportTo(Rows.Add);
+    private SupervisedFaults()
+    {
+        // DISCARD before attaching. Buffering is armed whenever no port is set, so a fault some other test
+        // reported while nothing was attached would otherwise drain into THIS capture's list the instant it
+        // attaches — and read as something this test caused.
+        TaskSupervisor.ReportTo(null);
+        TaskSupervisor.ReportTo(Rows.Add);
+    }
 
     /// <summary>Attaches a fresh capture to the supervisor's port.</summary>
     public static SupervisedFaults Capture() => new();

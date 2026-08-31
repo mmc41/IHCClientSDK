@@ -64,6 +64,21 @@ namespace Ihc.App
         }
 
         /// <summary>
+        /// The same port, for a component this service OWNS that mints its own fault rather than throwing one.
+        /// <para>
+        /// <see cref="ReportUnexpected"/> cannot serve those: it fires only when an exception ESCAPES a traced
+        /// operation, and it mints <c>internal.unexpected</c>. A layer that catches its own exception, converts
+        /// it into a value and hands that value back — the document session's failed edit — never escapes and
+        /// already has a code of its own. It reports what it minted, through here.
+        /// </para>
+        /// <para>
+        /// <c>private protected</c>: the components that mint their own faults are this assembly's, and a
+        /// <c>protected</c> member on a public base would publish the port to anyone deriving from outside.
+        /// </para>
+        /// </summary>
+        private protected Action<InternalError>? FaultPort => faultPort;
+
+        /// <summary>
         /// Mints <c>internal.unexpected</c> for <paramref name="failure"/> and offers it to the port.
         /// <para>
         /// The <c>{operation}</c> slot binds from the operation name each <c>RunTraced</c> overload already

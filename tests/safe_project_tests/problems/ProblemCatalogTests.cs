@@ -47,12 +47,12 @@ namespace Ihc.Vis.Tests
                 // are `dataline-address`, `capacity-modules-exceeded` (split into the three capacity rows under
                 // D2) and `capacity-addresses` (split again, per direction, so a project over on both no longer
                 // reports two findings distinguishable only by their numbers).
-                Assert.That(project, Has.Count.EqualTo(167));
-                Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Active), Is.EqualTo(160));
+                Assert.That(project, Has.Count.EqualTo(168));
+                Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Active), Is.EqualTo(161));
                 Assert.That(project.Count(e => e.Status == ProblemCodeStatus.RuledOut), Is.EqualTo(4));
                 Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Retired), Is.EqualTo(3));
 
-                // The ten codes that already shipped with no catalogue row behind them, plus the one MINTED
+                // The codes that already shipped with no catalogue row behind them, plus the one MINTED
                 // here: `block-identity-missing`, the function-block half of `identity-missing`'s split.
                 Assert.That(definitions, Has.Count.EqualTo(11));
 
@@ -433,22 +433,20 @@ namespace Ihc.Vis.Tests
         /// Some project rows §4 publishes as Fatal also produce a finding today — the four schema guards that
         /// refuse a save (and, for <c>attr-undeclared</c>, an edit-open) while reporting at validate, plus the
         /// version check the reader does not actually perform. Those are <see cref="CatalogDisposition.Error"/>
-        /// entries here: two faces, published honestly, not a contradiction. The 18 refusals have no finding face
-        /// at all, which is exactly the population the operation-outcome work has to give a coded refusal.
+        /// entries here: two faces, published honestly, not a contradiction. The refusal rows have no finding
+        /// face at all, which is exactly the population the operation-outcome work has to give a coded refusal.
         ///
-        /// <para>The name carries no count for the reporting half deliberately. It said "Four" until
-        /// <c>attr-required</c>'s §4 row was corrected from "Error | —" to "Fatal error | Save · Export" — the row
-        /// had always refused the save, so the number was only ever a count of how many the DOCUMENT admitted.
-        /// The 18 does not move with it: nothing here reclassifies an entry.</para>
+        /// <para>The name carries NO count, and neither does this prose: the number belongs in the assertion,
+        /// where a change that moves it fails loudly instead of leaving a stale word in a name.</para>
         /// </summary>
         [Test]
-        public void EighteenProjectRowsAreRefusalsAndThePublishedFatalsThatReportAreErrors()
+        public void ProjectRefusalRowsHaveNoFindingFaceAndThePublishedFatalsThatReportAreErrors()
         {
             IReadOnlyList<ProblemCatalogEntry> project = InSection(ProblemCatalogSection.ProjectFindings);
 
             Assert.Multiple(() =>
             {
-                Assert.That(project.Count(e => e.Disposition == CatalogDisposition.Refusal), Is.EqualTo(18));
+                Assert.That(project.Count(e => e.Disposition == CatalogDisposition.Refusal), Is.EqualTo(19));
 
                 foreach (string reporting in
                     new[] { "element-undeclared", "attr-undeclared", "attr-latin1", "attr-required", "root-version" })

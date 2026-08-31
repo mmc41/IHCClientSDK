@@ -20,6 +20,9 @@ namespace safe_visual_tests;
 [TestFixture]
 public class TaskSupervisorTests
 {
+    // SetUp as well as TearDown: detaching also DISCARDS the pre-attach buffer, so this is what keeps a
+    // fault another fixture reported while nothing was attached out of this one's expectations.
+    [SetUp]
     [TearDown]
     public void DetachThePort() => TaskSupervisor.ReportTo(null);
 

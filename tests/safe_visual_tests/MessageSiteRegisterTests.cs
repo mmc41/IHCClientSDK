@@ -97,6 +97,14 @@ public class MessageSiteRegisterTests
             + "read by exactly the same person as one shown in a box. Host-owned because gating an upload on "
             + "findings is THIS application's policy — the SDK reports the findings and takes no view on whether "
             + "a transfer may proceed."),
+        new("MainWindowViewModel.RegisterAppRows/controller.send gate (incomplete run)", Owner.Host,
+            HostProblemCodes.ValidationIncompleteBlocksSend,
+            "The same gate as the row above, answering its OTHER question, and registered separately because it "
+            + "is a separate sentence with a separate owner-decision behind it. Host-owned for the reason its "
+            + "neighbour is: the SDK reports that the run broke, and whether a transfer may proceed over an "
+            + "unfinished check is this application's policy. It is not a variant of the errors wording — that "
+            + "one tells the reader to repair what the panel lists, and here the panel's list is precisely what "
+            + "reached no verdict."),
         new("MainWindowViewModel.InsertFunctionBlockAsync", Owner.Sdk, EditRefusalCodes.LibraryBlockMissing,
             "The catalog is the SDK's, so the reason no such block exists is the SDK's to word (T043)."),
         new("MainWindowViewModel.Delete", Owner.Sdk, EditRefusalCodes.DeletionRefusedCatalogPin,

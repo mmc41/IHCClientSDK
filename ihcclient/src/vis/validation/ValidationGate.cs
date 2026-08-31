@@ -3,6 +3,7 @@ using System.Collections.Immutable;
 using System.Linq;
 
 using Ihc.Vis.Model;
+using Ihc.Vis.Problems;
 
 namespace Ihc.Vis.Validation
 {
@@ -50,6 +51,21 @@ namespace Ihc.Vis.Validation
             /// </summary>
             public EquatableArray<ValidationFinding> Infos =>
                 findings.Where(f => f.Severity == ValidationSeverity.Info).ToImmutableArray();
+        }
+
+        extension(EquatableArray<InternalError> faults)
+        {
+            /// <summary>
+            /// Whether the run REACHED A VERDICT: true unless a rule threw. The second gate question, beside
+            /// <c>IsValid</c> — "does the project have defects" and "did the check finish" are different, and a
+            /// caller that must not act on a partial answer asks this one first.
+            /// </summary>
+            /// <remarks>
+            /// Here, next to blocking, for the reason blocking is here: every gate in the product is one reader
+            /// of it. A second derivation elsewhere would be free to disagree with the refusal the transfer
+            /// itself raises, and it would disagree in the direction of letting an unverified project through.
+            /// </remarks>
+            public bool IsComplete => faults.IsEmpty;
         }
     }
 }

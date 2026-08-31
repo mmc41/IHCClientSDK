@@ -70,6 +70,15 @@ internal static class ProblemsTestData
         "Valideringsreglen 'name-empty' fejlede. Listen kan mangle fejl.";
 
     /// <summary>
+    /// The fault a named rule's crash produces, for a fixture that needs the rule name in the sentence rather
+    /// than only the default one <see cref="RuleFailedMessage"/> spells. Here for the reason its neighbours are:
+    /// retyped per fixture, the Danish template gained a test-side copy per fixture asserting on it.
+    /// </summary>
+    public static InternalError RuleFailed(string rule = "name-empty") =>
+        Fault(message: $"Valideringsreglen '{rule}' fejlede. Listen kan mangle fejl.",
+              diagnostic: $"Rule '{rule}' threw");
+
+    /// <summary>
     /// The checkout root, found by walking up from the test assembly to the solution file. Needed by anything
     /// that reaches SOURCE rather than build output — a driver script, a checked-in document to regenerate.
     /// </summary>

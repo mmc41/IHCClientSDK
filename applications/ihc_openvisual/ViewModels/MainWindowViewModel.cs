@@ -1876,13 +1876,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // findings for a transfer that could not happen anyway. It reads the LATEST COMPLETED bound result and
         // never re-validates here — the accepted staleness is one debounce plus one run, and UploadTo's own
         // validation remains the correctness gate at transfer time.
-        RegisterAppRow("controller.send", "F5", _ => SendProject(),
-            ctx => !ctx.ControllerConnected
-                ? EditVerdict.Refuse("Ingen controller er forbundet.")
-                : ctx.ProjectHasValidationErrors
-                    ? EditVerdict.Refuse(HostProblemCodes.ValidationErrorsBlockSend,
-                        HostProblemCatalog.ValidationErrorsBlockSend.MessageTemplate)
-                    : ProjectOpenGate(ctx),
+        RegisterAppRow("controller.send", "F5", _ => SendProject(), SendGate,
             Surfaces.MenuBar | Surfaces.Toolbar);   // T020: a real toolbar button (persistent surface)
         RegisterAppRow("controller.retrieve", null, _ => RetrieveProject(),
             ctx => ctx.ControllerConnected
@@ -1918,6 +1912,28 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     private static EditVerdict ProjectOpenGate(ShellContext ctx) =>
         ctx.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse(EditRefusals.NoProjectOpenRefusal);
+
+    /// <summary>
+    /// The transfer's preconditions, in the order their sentences answer.
+    /// </summary>
+    /// <remarks>
+    /// INCOMPLETENESS is asked before validity, and gets its own sentence. A run that lost a rule to a crash
+    /// reached no verdict, so "the project has errors" would point the reader at a panel whose list is the very
+    /// thing that cannot be trusted — and on a faulted run that found nothing it would ask for zero repairs.
+    /// What this condition asks for is another run, not a repair.
+    /// </remarks>
+    private static EditVerdict SendGate(ShellContext ctx)
+    {
+        if (!ctx.ControllerConnected)
+            return EditVerdict.Refuse("Ingen controller er forbundet.");
+        if (ctx.ProjectValidationIncomplete)
+            return EditVerdict.Refuse(HostProblemCodes.ValidationIncompleteBlocksSend,
+                HostProblemCatalog.ValidationIncompleteBlocksSend.MessageTemplate);
+        if (ctx.ProjectHasValidationErrors)
+            return EditVerdict.Refuse(HostProblemCodes.ValidationErrorsBlockSend,
+                HostProblemCatalog.ValidationErrorsBlockSend.MessageTemplate);
+        return ProjectOpenGate(ctx);
+    }
 
     // Ctrl+I/Ctrl+U pin authoring: only inside an UNLOCKED block's programming view (A-27).
     private EditVerdict ProgrammingAuthoringGate(ShellContext ctx) =>
@@ -2398,7 +2414,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             Clipboard: _clipboardId is { } clipboardSource ? new ClipboardContext(clipboardSource, _clipboardIsCut) : null,
             CanUndo: _session.CanUndo, CanRedo: _session.CanRedo,
             ControllerConnected: IsControllerConnected,
-            ProjectHasValidationErrors: _session.Validation.HasBlockingFindings);
+            ProjectHasValidationErrors: _session.Validation.HasBlockingFindings,
+            ProjectValidationIncomplete: _session.Validation.HasIncompleteRun);
         // The generated catalog leaves are gated on the same selection/pane inputs the registry rows are, but
         // they are ICommands rather than registry rows, so the sweep above does not reach them (alignment F-8).
         // Here, in the ONE funnel every availability trigger already passes through, rather than at each of the

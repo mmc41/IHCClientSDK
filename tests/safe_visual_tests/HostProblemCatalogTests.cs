@@ -86,13 +86,76 @@ public class HostProblemCatalogTests
     }
 
     [Test]
-    public void EveryHostEntryIsAnOperationOutcomeAndNeverAFinding()
+    public void EveryHostEntryIsOneOfTheTwoLegalShapesAndNeverAFinding()
     {
         Assert.Multiple(() =>
         {
             foreach (ProblemCatalogEntry entry in HostProblemCatalog.Current.Entries)
             {
                 Assert.That(FindingOffences(entry), Is.Empty, entry.Code.Value);
+            }
+        });
+    }
+
+    /// <summary>
+    /// The rows that record a fault in the TOOL declare themselves faults.
+    ///
+    /// <para><b>Why it matters that they say so.</b> <c>CatalogInvariants</c> checks a BICONDITIONAL — a row is
+    /// <c>InternalFault</c> exactly when it says nothing about a project — but it can only check what a row
+    /// DECLARES. A fault row declaring itself an operation outcome satisfies the invariant vacuously: nothing
+    /// compares the declaration against what the row actually records, so the appendix's promise that a host may
+    /// author internal faults was wired to nothing.</para>
+    ///
+    /// <para><b>Which rows, and why only these.</b> Each of them is raised because the TOOL broke, not because
+    /// an operation was declined: a handler threw, telemetry is down, a platform boundary discarded an
+    /// exception, a validation run failed. A refusal like <c>controller-required-send</c> is the opposite — the
+    /// rules working — and stays an operation outcome.</para>
+    /// </summary>
+    [Test]
+    public void TheRowsThatRecordAToolFaultAreDeclaredInternalFaults()
+    {
+        ProblemCatalogEntry[] faults =
+        [
+            HostProblemCatalog.Unexpected,
+            HostProblemCatalog.TelemetryPipelineDown,
+            HostProblemCatalog.PlatformFault,
+            HostProblemCatalog.ValidationFaulted,
+        ];
+
+        Assert.Multiple(() =>
+        {
+            foreach (ProblemCatalogEntry entry in faults)
+            {
+                Assert.That(entry.Kind, Is.EqualTo(RuleKind.InternalFault), entry.Code.Value);
+                Assert.That(entry.Disposition, Is.EqualTo(CatalogDisposition.NotApplicable), entry.Code.Value);
+                Assert.That(entry.Category, Is.Null, entry.Code.Value);
+                Assert.That(entry.Faces, Is.EqualTo(RuleFaces.None), entry.Code.Value);
+                Assert.That(entry.RefusedOperations, Is.Empty, entry.Code.Value);
+            }
+        });
+    }
+
+    /// <summary>
+    /// A refusal stays a refusal. The control for the test above: without it, moving EVERY host row onto the
+    /// fault shape would pass, and the family would lose the distinction it is being taught.
+    /// </summary>
+    [Test]
+    public void ARowThatRecordsADeclinedOperationStaysAnOperationOutcome()
+    {
+        ProblemCatalogEntry[] outcomes =
+        [
+            HostProblemCatalog.ControllerRequiredSend,
+            HostProblemCatalog.ValidationErrorsBlockSend,
+            HostProblemCatalog.ValidationIncompleteBlocksSend,
+            HostProblemCatalog.ClipboardUnavailable,
+        ];
+
+        Assert.Multiple(() =>
+        {
+            foreach (ProblemCatalogEntry entry in outcomes)
+            {
+                Assert.That(entry.Kind, Is.EqualTo(RuleKind.OperationOutcome), entry.Code.Value);
+                Assert.That(entry.Disposition, Is.EqualTo(CatalogDisposition.Refusal), entry.Code.Value);
             }
         });
     }
@@ -235,8 +298,15 @@ public class HostProblemCatalogTests
     }
 
     /// <summary>
-    /// Why an entry is not something this family may author. A list rather than a bool so the failure names the
-    /// offending axis, and shared by the pin and its armed counterpart so both judge by one rule.
+    /// Why a host entry is not the host's to author, or empty when it is. A list rather than a bool so the
+    /// failure names the offending axis, and shared by the pin and its armed counterpart so both judge by one
+    /// rule.
+    /// <para>
+    /// TWO shapes are legal, not one: an OPERATION OUTCOME (something the app declined to do) and an INTERNAL
+    /// FAULT (a record that the tool broke). Both are permitted to a host by the error catalogue's own rules.
+    /// What stays forbidden is a FINDING — a statement about the project — which is the ownership rule this
+    /// check exists for, and every clause below still rejects one.
+    /// </para>
     /// </summary>
     private static IReadOnlyList<string> FindingOffences(ProblemCatalogEntry entry)
     {
@@ -246,14 +316,13 @@ public class HostProblemCatalogTests
             offences.Add($"section is {entry.Section}, and a host may only author operation outcomes");
         }
 
-        if (entry.Kind != RuleKind.OperationOutcome)
+        // The pair, not either half. A kind and a disposition that disagree is exactly the misdeclaration this
+        // check was widened to catch: before, a fault row could call itself an outcome and nothing noticed.
+        if ((entry.Kind, entry.Disposition) is not ((RuleKind.OperationOutcome, CatalogDisposition.Refusal)
+            or (RuleKind.InternalFault, CatalogDisposition.NotApplicable)))
         {
-            offences.Add($"kind is {entry.Kind}");
-        }
-
-        if (entry.Disposition != CatalogDisposition.Refusal)
-        {
-            offences.Add($"disposition is {entry.Disposition}, which reports a finding");
+            offences.Add($"kind is {entry.Kind} with disposition {entry.Disposition}, which is neither of the "
+                + "two host shapes (an operation outcome that refuses, or an internal fault that grades nothing)");
         }
 
         if (entry.Severity is not null)

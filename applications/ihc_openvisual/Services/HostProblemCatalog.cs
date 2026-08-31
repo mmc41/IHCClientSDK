@@ -16,9 +16,10 @@ namespace ihc_openvisual.Services;
 /// from wherever the condition arises, while its entry is read only by governance and by presentation.
 /// </para>
 /// <para>
-/// Every one of these is an OPERATION OUTCOME of the shell's own — an action of this application that could not be
-/// carried through. Where the SDK owns the condition, the shell narrates the SDK's code instead of minting one
-/// here; the per-site register in <c>MessageSiteRegisterTests</c> records which is which, and why.
+/// Each of these is either an OPERATION OUTCOME of the shell's own — an action of this application that could
+/// not be carried through — or an INTERNAL FAULT it observed in itself. Where the SDK owns the condition, the
+/// shell narrates the SDK's code instead of minting one here; the per-site register in
+/// <c>MessageSiteRegisterTests</c> records which is which, and why.
 /// </para>
 /// </summary>
 internal static class HostProblemCodes
@@ -45,6 +46,14 @@ internal static class HostProblemCodes
     /// a console tool over the same engine is free to transfer anyway.
     /// </summary>
     public static ProblemCode ValidationErrorsBlockSend { get; } = new("app.openvisual.validation-errors-block-send");
+
+    /// <summary>
+    /// The latest validation run did not FINISH, so the shell withholds the transfer. Host-owned for the same
+    /// reason its neighbour is: the SDK reports that the run broke, and whether a transfer may proceed on an
+    /// unfinished check is this application's policy.
+    /// </summary>
+    public static ProblemCode ValidationIncompleteBlocksSend { get; } =
+        new("app.openvisual.validation-incomplete-blocks-send");
 
     /// <summary>The telemetry pipeline is down, so nothing this run records will be exported.</summary>
     public static ProblemCode TelemetryPipelineDown { get; } = new("app.openvisual.telemetry-pipeline-down");
@@ -119,12 +128,17 @@ internal static class HostProblemCodes
 /// within this one), every code has an entry, arguments are declared and typed (the compiler enforces arity and
 /// type at each factory's call site), retirement keeps an id reserved, and the user-facing text is Danish.
 ///
-/// <para><b>Operation outcomes only, never findings.</b> Every entry here is
-/// <see cref="ProblemCatalogSection.OperationOutcomes"/> / <see cref="RuleKind.OperationOutcome"/> /
-/// <see cref="CatalogDisposition.Refusal"/> with no category and no face. A finding is a statement about the
-/// <c>.vis</c> file, the SDK owns the file, and a second opinion about it minted in an app is how two catalogues
-/// start disagreeing. <c>HostProblemCatalogTests</c> pins that, and pins it against a seeded finding rather than
-/// only over the rows that happen to exist.</para>
+/// <para><b>Two shapes, and never a finding.</b> Every entry here is
+/// <see cref="ProblemCatalogSection.OperationOutcomes"/> with no category and no face, and is one of two
+/// things: an OPERATION OUTCOME (<see cref="RuleKind.OperationOutcome"/> /
+/// <see cref="CatalogDisposition.Refusal"/>) — something this app declined to do — or an INTERNAL FAULT
+/// (<see cref="RuleKind.InternalFault"/> / <see cref="CatalogDisposition.NotApplicable"/>) — a record that
+/// the tool broke. A fault grades nothing and refuses nothing, so declaring one as an outcome satisfied the
+/// catalogue's biconditional vacuously and taught the family the wrong shape.
+/// What stays forbidden is a FINDING: that is a statement about the <c>.vis</c> file, the SDK owns the file,
+/// and a second opinion about it minted in an app is how two catalogues start disagreeing.
+/// <c>HostProblemCatalogTests</c> pins all of it, and pins the prohibition against a seeded finding rather
+/// than only over the rows that happen to exist.</para>
 ///
 /// <para><b>These declarations are the only truth.</b> The family has no published row table to keep in step:
 /// enumerate <see cref="Current"/> to learn what this app can report.</para>
@@ -140,6 +154,7 @@ internal static class HostProblemCatalog
     public static ProblemCatalog Current { get; } = ProblemCatalog.Validated(EquatableArray.Create<ProblemCatalogEntry>(
     [
         Unexpected, EditFailed, ControllerRequiredSend, ControllerRequiredRetrieve, ValidationErrorsBlockSend,
+        ValidationIncompleteBlocksSend,
         ClipboardUnavailable, ValidationFaulted, PlatformFault, TelemetryPipelineDown,
         TelemetryHostMissing, TelemetryHostUnreachable,
         CatalogFileRejected, CatalogFolderMissing, CatalogImportStopped,
@@ -153,7 +168,7 @@ internal static class HostProblemCatalog
     /// fixed text and the exception's own message is the English <see cref="ProblemCatalogEntry.Diagnostic"/> —
     /// invariant 10, and the reason this app never shows an engine diagnostic to an installer.
     /// </summary>
-    internal static ProblemCatalogEntry Unexpected => Outcome(
+    internal static ProblemCatalogEntry Unexpected => Fault(
         HostProblemCodes.Unexpected,
         "Handlingen kunne ikke gennemføres på grund af en intern fejl. Detaljerne er skrevet til loggen.",
         "An exception escaped a command handler; the shell caught it at the boundary.");
@@ -167,8 +182,14 @@ internal static class HostProblemCatalog
     /// KEPT rather than deleted, which is what retirement is for: the duplicate-code invariant reads every entry,
     /// so an id that stays occupied can never be handed to a different condition.
     /// </para>
+    /// <para>
+    /// It is declared on the FAULT shape with its siblings, retired or not. What it recorded was an engine
+    /// fault, so the outcome shape was as wrong here as it was on its live siblings — and a retired row is
+    /// read by exactly the governance that the misdeclaration fools. Retirement reserves the id; it does not
+    /// excuse the declaration from being true.
+    /// </para>
     /// </summary>
-    internal static ProblemCatalogEntry EditFailed => Outcome(
+    internal static ProblemCatalogEntry EditFailed => Fault(
         HostProblemCodes.EditFailed,
         "Redigeringen kunne ikke gennemføres på grund af en intern fejl. Ændringen blev ikke gemt.",
         "An accepted edit ended in an engine fault; the outcome's reason is the English engine diagnostic.")
@@ -202,6 +223,26 @@ internal static class HostProblemCatalog
         "The latest completed validation bound at least one Error finding; the shell withholds the transfer.");
 
     /// <summary>
+    /// The upload gate's OTHER refusal: the run that had to clear the transfer crashed part-way, so the panel
+    /// beside it is showing a list that reached no verdict.
+    /// </summary>
+    /// <remarks>
+    /// Its own row rather than the errors one, because that sentence tells the reader to repair what the panel
+    /// lists — and here the panel's list is the thing that cannot be trusted. Telling a user to fix findings
+    /// that were never produced is worse than saying nothing.
+    /// <para>
+    /// The sentence points at the Problemer panel exactly as its sibling does, and for a better reason: the
+    /// fault that stopped the run is LISTED there, on the Internal tier. "Try again" would have been the
+    /// wrong advice — a run repeats itself on the next edit without being asked.
+    /// </para>
+    /// </remarks>
+    internal static ProblemCatalogEntry ValidationIncompleteBlocksSend => Outcome(
+        HostProblemCodes.ValidationIncompleteBlocksSend,
+        "Kontrollen af projektet blev ikke fuldført. Se Problemer-panelet, før projektet sendes.",
+        "The latest completed validation run carried faults, so its findings are incomplete and the shell "
+        + "withholds the transfer.");
+
+    /// <summary>
     /// The start-up self-check found the telemetry endpoint unreachable, rejecting, or misconfigured — so every
     /// span, metric and log line this run produces is being dropped.
     /// </summary>
@@ -211,7 +252,7 @@ internal static class HostProblemCatalog
     /// self-check's own message is an operator-facing English diagnostic naming an endpoint and a status, so it
     /// travels as the diagnostic; the Danish sentence says the consequence.
     /// </remarks>
-    internal static ProblemCatalogEntry TelemetryPipelineDown => Outcome(
+    internal static ProblemCatalogEntry TelemetryPipelineDown => Fault(
         HostProblemCodes.TelemetryPipelineDown,
         "Telemetri kunne ikke sendes. Diagnostik for denne kørsel gemmes ikke.",
         "The telemetry self-check reported a problem status, so exported telemetry is being dropped.");
@@ -227,7 +268,7 @@ internal static class HostProblemCatalog
     /// layer that had no choice, and the state of the program afterwards is not established. The row is a RECORD,
     /// never a recovery — and it is worth saying precisely because nothing else in the app will.
     /// </remarks>
-    internal static ProblemCatalogEntry PlatformFault => Outcome(
+    internal static ProblemCatalogEntry PlatformFault => Fault(
         HostProblemCodes.PlatformFault,
         "En fejl i platformslaget blev registreret og kasseret. Programmets tilstand er ukendt.",
         "An exception crossed a native platform boundary; the boundary discarded it, so no recovery happened.");
@@ -238,7 +279,7 @@ internal static class HostProblemCatalog
     /// that something unexpected happened, and the fact that matters here is the CONSEQUENCE: the rows still on
     /// screen describe a document state the run never reached, and they read as current.
     /// </summary>
-    internal static ProblemCatalogEntry ValidationFaulted => Outcome(
+    internal static ProblemCatalogEntry ValidationFaulted => Fault(
         HostProblemCodes.ValidationFaulted,
         "Valideringen stoppede. Listen er muligvis forældet.",
         "A whole validation run faulted; the bound findings are kept but no longer describe the document.");
@@ -347,17 +388,48 @@ internal static class HostProblemCatalog
         new ProblemArgumentSlot("path", ProblemArgumentType.Path));
 
     /// <summary>
-    /// The one entry shape this family has: an operation outcome, no category, no face, refusing rather than
-    /// reporting. Written once because every row here is that shape BY RULE — a host authors no findings — so
-    /// fifteen literal repetitions of the same five arguments would only be fifteen chances to get one wrong.
+    /// One of the family's two entry shapes: an OPERATION OUTCOME — something the app declined to do, no
+    /// category, no face, refusing rather than reporting. Written once because a row of this shape repeats the
+    /// same arguments every time, and each literal repetition would be one more chance to get one wrong.
+    /// <para>
+    /// The other shape is <see cref="Fault"/>, for a row that records the TOOL breaking. Both are legal for a
+    /// host; what is not legal is a FINDING, which is a statement about the project and the SDK's to make.
+    /// </para>
     /// </summary>
     private static ProblemCatalogEntry Outcome(
+        ProblemCode code, string template, string diagnostic, params ProblemArgumentSlot[] slots) =>
+        Entry(CatalogDisposition.Refusal, RuleKind.OperationOutcome, code, template, diagnostic, slots);
+
+    /// <summary>
+    /// The family's other entry shape: a FAULT IN THE TOOL. No category, no face, no refused operation and
+    /// <see cref="CatalogDisposition.NotApplicable"/> — which is the state
+    /// <see cref="CatalogInvariants"/>'s biconditional requires of a row declaring itself an internal fault.
+    /// <para>
+    /// A fault answers none of a finding's questions and must not pretend to. It has no severity because it
+    /// grades nothing about the project, no category because it classifies nothing, and refuses no operation
+    /// because it is not a decision — it is a record that something broke. Declaring one as an operation
+    /// outcome satisfied the invariant VACUOUSLY: the check compares a row against its own declaration, so a
+    /// row that mislabels itself is never caught by it.
+    /// </para>
+    /// </summary>
+    private static ProblemCatalogEntry Fault(
+        ProblemCode code, string template, string diagnostic, params ProblemArgumentSlot[] slots) =>
+        Entry(CatalogDisposition.NotApplicable, RuleKind.InternalFault, code, template, diagnostic, slots);
+
+    /// <summary>
+    /// What both shapes above have in common, which is everything except the two axes that tell them apart.
+    /// The entry constructor is POSITIONAL, so a second hand-written copy of its argument list is a slip
+    /// that lands silently on the wrong axis; written once, the next axis added to
+    /// <see cref="ProblemCatalogEntry"/> is threaded through one place.
+    /// </summary>
+    private static ProblemCatalogEntry Entry(
+        CatalogDisposition disposition, RuleKind kind,
         ProblemCode code, string template, string diagnostic, params ProblemArgumentSlot[] slots) =>
         new(code,
             ProblemCatalogSection.OperationOutcomes,
             null,
-            CatalogDisposition.Refusal,
-            RuleKind.OperationOutcome,
+            disposition,
+            kind,
             RuleFaces.None,
             default,
             FindingShape.OneFinding,

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Ihc.Vis.Problems;
@@ -14,19 +15,65 @@ namespace ihc_openvisual.Services;
 /// to the sink with the ORIGIN it was started from, which is the one fact the fault itself cannot carry.</para>
 ///
 /// <para><b>Static, like the guard beside it</b>, because the callers are view code-behind and a worker — layers
-/// with no constructor a port could be injected through. The port is set once by the composition root and
-/// NO-OPS when unset, so a test, a design-time instance and a headless run all supervise without reporting.</para>
+/// with no constructor a port could be injected through. The port is set once by the composition root, and a
+/// fault reported before it arrives is BUFFERED rather than dropped — the start-up reporters run first, so
+/// "no port yet" is the normal state at exactly the moment the most interesting faults happen.</para>
 /// </summary>
 internal static class TaskSupervisor
 {
+    /// <summary>How many faults reported before a port is attached are kept.</summary>
+    /// <remarks>
+    /// The SINK's own bound, not a second one chosen to match it: what this buffer holds is on its way there,
+    /// so a backlog it could not accept would be a bound with nothing behind it. The OLDEST is what a full
+    /// buffer gives up, for <see cref="InternalErrorLog"/>'s reason — a fault storm is the normal shape of a
+    /// bad day, and the newest faults are the ones a reader still has a chance of acting on.
+    /// </remarks>
+    internal const int BufferCapacity = InternalErrorLog.DefaultCapacity;
+
     private static Action<InternalError>? port;
 
+    /// <summary>What was reported while no port was attached, oldest first. Guarded by <see cref="Gate"/>.</summary>
+    private static readonly Queue<InternalError> Buffered = new();
+
+    /// <summary>Guards <see cref="port"/> and <see cref="Buffered"/> TOGETHER, which is the point of it.</summary>
+    /// <remarks>
+    /// Deciding "is a port attached?" and "then buffer instead" have to be one step. Read separately, a report
+    /// racing an attach can see no port, then buffer into a queue the attach has already drained — which loses
+    /// exactly the fault this buffer exists to keep.
+    /// </remarks>
+    private static readonly object Gate = new();
+
     /// <summary>
-    /// Points the supervisor at the sink. Called once, by the composition root. Passing null detaches it, which
-    /// is what a test does when it has finished with its own.
+    /// Points the supervisor at the sink and hands it whatever was reported before it arrived, oldest first.
+    /// Called once, by the composition root. Passing null detaches it, which is what a test does when it has
+    /// finished with its own.
     /// </summary>
+    /// <remarks>
+    /// DETACHING DISCARDS the backlog and re-arms buffering. The supervisor is process-wide static and the suite
+    /// detaches in teardown, so a backlog that survived a detach would hand one test's faults to the next, and a
+    /// one-shot latch that never re-armed would make the behaviour untestable.
+    /// </remarks>
     /// <param name="faultPort">Where a supervised fault goes, or null to report nowhere.</param>
-    internal static void ReportTo(Action<InternalError>? faultPort) => Volatile.Write(ref port, faultPort);
+    internal static void ReportTo(Action<InternalError>? faultPort)
+    {
+        InternalError[] backlog;
+        lock (Gate)
+        {
+            port = faultPort;
+            backlog = [.. Buffered];
+            Buffered.Clear();
+        }
+        if (faultPort is not { } sink)
+        {
+            return;   // Detached: the backlog above was the discard.
+        }
+        // Drained OUTSIDE the lock. The sink marshals to the owning thread and raises its own change event, and
+        // holding this type's lock across another component's work is how two correct components deadlock.
+        foreach (InternalError fault in backlog)
+        {
+            Deliver(sink, fault);
+        }
+    }
 
     /// <summary>
     /// Observes <paramref name="work"/> and reports a fault in it as <c>app.openvisual.unexpected</c>.
@@ -72,7 +119,7 @@ internal static class TaskSupervisor
     }
 
     /// <summary>
-    /// Reports one fault to the app's sink, if a port has been set.
+    /// Reports one fault to the app's sink, or holds it until a port is attached.
     /// </summary>
     /// <remarks>
     /// Shared with <see cref="Views.HandlerGuard"/> rather than duplicated there. This type owns the app's
@@ -84,14 +131,10 @@ internal static class TaskSupervisor
     /// <param name="origin">Where it was observed, as <c>Type.Member</c> — the fault cannot say this itself.</param>
     internal static void Report(Exception fault, string origin)
     {
-        // Checked BEFORE the payload is built, because building it is the expensive half: the interpolation
-        // below calls Exception.ToString(), which formats the whole stack trace. Unset is the normal state of a
-        // test, a design-time instance and a headless run, and none of them should pay for a report nobody
-        // receives.
-        if (Volatile.Read(ref port) is null)
-        {
-            return;
-        }
+        // The payload is built even with no port attached, and that is the price of the buffer: a report made
+        // before the composition root arrives has to be KEPT, and it cannot be kept without being formed. The
+        // interpolation calls Exception.ToString(), so an unattached run pays for a stack trace it may never
+        // show — bounded by BufferCapacity, and cheap beside losing the start-up faults altogether.
         Report(HostProblems.Unexpected(fault), InternalErrorOrigin.Host, $"{origin}: {fault}");
     }
 
@@ -108,18 +151,41 @@ internal static class TaskSupervisor
     /// <param name="detail">The captured technical text, including where it was observed.</param>
     internal static void Report(Problem problem, InternalErrorOrigin origin, string detail)
     {
-        if (Volatile.Read(ref port) is not { } sink)
+        InternalError fault = InternalError.From(problem, origin, detail);
+        Action<InternalError> sink;
+        lock (Gate)
         {
-            return;
+            if (port is not { } attached)
+            {
+                // No port YET. The stamp on the fault is already taken, so what a late delivery loses is only
+                // its promptness, not when it happened.
+                if (Buffered.Count == BufferCapacity)
+                {
+                    Buffered.Dequeue();
+                }
+                Buffered.Enqueue(fault);
+                return;
+            }
+            sink = attached;
         }
+        Deliver(sink, fault);
+    }
+
+    /// <summary>Hands one fault to the sink, absorbing a sink that throws.</summary>
+    /// <remarks>
+    /// Fail-open, for the same reason the SDK's fault port is: a broken sink must not turn a reportable fault
+    /// into a second one raised from a continuation nobody is watching either. Per fault rather than around the
+    /// drain, so one bad row does not take the rest of the backlog with it.
+    /// </remarks>
+    private static void Deliver(Action<InternalError> sink, InternalError fault)
+    {
         try
         {
-            sink(InternalError.From(problem, origin, detail));
+            sink(fault);
         }
         catch (Exception)
         {
-            // Fail-open, for the same reason the SDK's fault port is: a broken sink must not turn a reportable
-            // fault into a second one raised from a continuation nobody is watching either.
+            // See the fail-open note above.
         }
     }
 }

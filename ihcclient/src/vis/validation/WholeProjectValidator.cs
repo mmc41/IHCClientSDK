@@ -30,6 +30,13 @@ namespace Ihc.Vis.Validation
         /// <summary>A run that found nothing and broke nothing.</summary>
         public static StructuredValidationResult Empty { get; } =
             new(EquatableArray<ValidationFinding>.Empty, EquatableArray<InternalError>.Empty);
+
+        /// <summary>
+        /// Whether this run REACHED A VERDICT: true unless a rule threw. The question the <c>Faults</c> remark
+        /// above states and, until now, no member answered — read from <see cref="ValidationGate"/> so the
+        /// structured face, the flat face and a host's gate all give one answer.
+        /// </summary>
+        public bool IsComplete => Faults.IsComplete;
     }
 
     /// <summary>
