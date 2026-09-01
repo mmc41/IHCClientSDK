@@ -362,8 +362,11 @@ namespace IhcLab
                         }
                         catch (Exception ex)
                         {
-                            // Log the exception for diagnostics even though we recover from it
-                            System.Diagnostics.Debug.WriteLine($"Failed to update LabAppService.SelectedServiceIndex to {value}: {ex.Message}");
+                            // The real logger, not Debug.WriteLine: that method is [Conditional("DEBUG")], so the
+                            // compiler removed the call from every Release build and this catch recovered in
+                            // total silence — the only symptom a support case could see was a combo box snapping
+                            // back. The exception is passed, not just its message, so the type and stack survive.
+                            logger.LogError(ex, "Failed to select service index {Index}", value);
 
                             // If update fails, revert to previous value to maintain synchronization
                             _selectedServiceIndex = _labAppService.SelectedServiceIndex;
@@ -419,8 +422,9 @@ namespace IhcLab
                         }
                         catch (Exception ex)
                         {
-                            // Log the exception for diagnostics even though we recover from it
-                            System.Diagnostics.Debug.WriteLine($"Failed to update LabAppService.SelectedOperationIndex to {value}: {ex.Message}");
+                            // See the sibling setter: Debug.WriteLine is compiled out of Release, so this
+                            // recovery used to leave no record of what it recovered from.
+                            logger.LogError(ex, "Failed to select operation index {Index}", value);
 
                             // If update fails, revert to previous value to maintain synchronization
                             _selectedOperationIndex = _labAppService.SelectedOperationIndex;

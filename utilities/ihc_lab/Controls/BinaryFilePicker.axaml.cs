@@ -143,7 +143,7 @@ public partial class BinaryFilePicker : UserControl, BinaryFile
         }
         catch (Exception ex)
         {
-            UpdateStatusLabel($"Error: {ex.Message}");
+            UpdateStatusLabel(UploadFilePickerOptions.ReportUploadFailure(ex, nameof(BinaryFilePicker)));
         }
     }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Platform.Storage;
+using Microsoft.Extensions.Logging;
 
 namespace IhcLab;
 
@@ -56,6 +57,31 @@ internal static class UploadFilePickerOptions
         var patterns = NormalizePatterns(extensions);
         string descriptor = patterns.Length == 0 ? fallbackNoun : string.Join("/", patterns);
         return $"Upload {descriptor} File";
+    }
+
+    /// <summary>
+    /// Records a failed upload, and answers the one line the picker puts on its status label.
+    /// </summary>
+    /// <remarks>
+    /// <para>Both pickers reduced the exception to <c>$"Error: {ex.Message}"</c> on a transient label and kept
+    /// nothing else. Neither control has a logger of its own, and the caller is an <c>async void</c> click
+    /// handler, so no boundary above saw the fault either: the type and the stack were gone the moment the label
+    /// was written, on the path that reads the file the user just picked.</para>
+    /// <para>Here rather than twice, for the reason <see cref="Build"/> is here: these two controls are siblings
+    /// that already share their dialog wording, and a copy in each is a copy free to drift. The logger comes
+    /// from <c>Program.loggerFactory</c>, which is how everything else in this application reaches the
+    /// pipeline.</para>
+    /// </remarks>
+    /// <param name="failure">What went wrong.</param>
+    /// <param name="picker">The control reporting it, for the log category.</param>
+    /// <returns>The status-label text — unchanged, so the user sees exactly what they saw before.</returns>
+    public static string ReportUploadFailure(Exception failure, string picker)
+    {
+        ArgumentNullException.ThrowIfNull(failure);
+        (Program.loggerFactory ?? Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance)
+            .CreateLogger(picker)
+            .LogError(failure, "Uploading a picked file failed in {Picker}", picker);
+        return $"Error: {failure.Message}";
     }
 
     private static string[] NormalizePatterns(IEnumerable<string>? extensions)

@@ -231,5 +231,50 @@ namespace Ihc.Vis.Problems
         /// <param name="detail">The captured technical text, including where it was observed.</param>
         public static InternalError From(Problem problem, InternalErrorOrigin origin, string detail) =>
             new(problem.Code, problem.Message, problem.Diagnostic, origin, detail, DateTimeOffset.UtcNow);
+
+        /// <summary>
+        /// The key a layer stamps into <see cref="Exception.Data"/> once it has reported that exception as an
+        /// internal fault, so no layer above it reports the same instance again.
+        /// </summary>
+        /// <remarks>
+        /// <para><b>One fault is one row, however many layers catch it.</b> An exception escaping a traced
+        /// app-service operation is reported by the SDK's own port and then RETHROWN unchanged, so a host catch
+        /// one level up sees the very same instance and has every reason to report it too. The two reports carry
+        /// different codes and different captured detail, which is exactly what a sink de-duplicating on code and
+        /// detail cannot fold — so the duplication has to be recognised where the identity still exists.</para>
+        /// <para><b>Declared here, in the SDK, because both sides need the same string.</b> The SDK stamps it and
+        /// a host checks it; a host-private copy would be a contract held in two places and free to drift.</para>
+        /// <para><b>The FIRST reporter wins</b>, which is the innermost one — the layer closest to the fault, and
+        /// the only one that can name the operation it broke.</para>
+        /// </remarks>
+        public const string ReportedKey = "ihc.internal-error.reported";
+
+        /// <summary>
+        /// Claims <paramref name="failure"/> for reporting, answering false when some layer already reported it.
+        /// </summary>
+        /// <remarks>
+        /// Fail-open on an exception whose <see cref="Exception.Data"/> refuses writes — a custom type may
+        /// override it, and de-duplication that swallowed a fault it could not mark would be worse than the
+        /// duplicate it removes. The caller supplies the lock, since the layers that call this do not share one.
+        /// </remarks>
+        /// <param name="failure">The exception about to be reported.</param>
+        /// <returns>True when the caller should report it.</returns>
+        public static bool ClaimReport(Exception failure)
+        {
+            ArgumentNullException.ThrowIfNull(failure);
+            try
+            {
+                if (failure.Data.Contains(ReportedKey))
+                {
+                    return false;
+                }
+                failure.Data[ReportedKey] = true;
+            }
+            catch (Exception)
+            {
+                // Unmarkable: report it, and accept that a second sighting of this one would report twice.
+            }
+            return true;
+        }
     }
 }

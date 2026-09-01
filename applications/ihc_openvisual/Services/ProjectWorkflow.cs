@@ -33,6 +33,9 @@ public sealed class ProjectWorkflow : IDisposable
 {
     private readonly ProjectAppService _service;
     private readonly RecentProjectsStore _recent;
+
+    /// <summary>Where a fault in the TOOL goes — see <see cref="ReportInternalFault"/>. Null when nobody wired one.</summary>
+    private readonly Action<InternalError>? _faultSink;
     private readonly IDialogService _dialogs;
     private readonly ILogger<ProjectWorkflow> _logger;
 
@@ -64,7 +67,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// </param>
     /// <param name="timeProvider">The clock every debounce and delay in the shell runs on — see <see cref="Time"/>.</param>
     /// <param name="faultSink">
-    /// Where the validation loop's internal errors go for the user to see. Supplied by the composition root
+    /// Where this workflow's internal errors go for the user to see. Supplied by the composition root
     /// rather than built here, because the sink outlives every document and more than the validation loop
     /// reports to it — the SDK writes to the same one through the service's fault port; a workflow that owned
     /// one would give each document a sink of its own.
@@ -84,6 +87,7 @@ public sealed class ProjectWorkflow : IDisposable
         _service = service;
         _recent = recent;
         _dialogs = dialogs;
+        _faultSink = faultSink;
         Post = post ?? (action => action());
         Time = timeProvider ?? TimeProvider.System;
         // Not defaulted to CreateDefault(): an unconfigured session must not read (or write) the real user's
@@ -99,7 +103,7 @@ public sealed class ProjectWorkflow : IDisposable
         // The document NAME is what the SDK cannot supply: a Project carries no path, so the source a
         // findings file records has to come from the session that opened it.
         _findings = new ProjectFindingsWorkflow(_service, _dialogs, _logger, () => Current, () => DocumentName);
-        _catalog = new CatalogImportWorkflow(_service, _dialogs, _logger, _catalogDir);
+        _catalog = new CatalogImportWorkflow(_service, _dialogs, _logger, _catalogDir, ReportInternalFault);
         _catalog.LoadPersisted();   // persisted imports load on startup (US-061)
         // LAST, because it reads this workflow: everything it touches (Current, Version, LastChange, Post, Time,
         // StateChanged) is assigned above. Eager rather than lazy so no reader can create it late and miss the
@@ -237,16 +241,18 @@ public sealed class ProjectWorkflow : IDisposable
 
         if (!await ConfirmSaveIfDirtyAsync())
             return false;
+        Project loaded;
         try
         {
             // Opening is not a passive read: the catalog enums are re-hoisted with fresh ids, so a file opened and
             // saved back unchanged legitimately differs from the file that was opened. Done before SetProject so it
             // lands outside the undo history and leaves the document clean — it is part of opening, not an edit.
-            Project loaded = _service.NormalizeOnOpen(await _service.Load(path));
-            SetProject(loaded, path, dirty: false);
-            _recent.Add(path);
-            scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectFileSize, FileSizeOrNull(path));
-            return true;
+            loaded = _service.NormalizeOnOpen(await _service.Load(path));
+            // ADOPTED inside this guard, deliberately. Creating or re-opening the document and building its index
+            // is what makes the project open at all, so a failure here means there is NO open document and the
+            // answer has to be false — containing it would let this method report success over a null document,
+            // and StartAsync would then skip the empty-project fallback that keeps the shell usable.
+            AdoptProject(loaded, path, dirty: false);
         }
         catch (Exception ex)
         {
@@ -257,6 +263,18 @@ public sealed class ProjectWorkflow : IDisposable
                 "Failed to open project {Path}", path);
             return false;
         }
+
+        // THE DOCUMENT IS OPEN FROM HERE. What is left is announcing it, and each announcement runs arbitrary
+        // subscriber code — the whole tree/title rebuild and the validation monitor on one, the recent-files menu
+        // on the other. Neither says anything about whether the file could be read.
+        //
+        // They used to share the guard above, so a broken subscriber answered FALSE for a project that had opened
+        // perfectly well; and because StartAsync falls through to the empty starter project on a false, a
+        // double-clicked .vis was silently replaced by an empty one behind a dialog saying it could not be opened.
+        Contain(() => RaiseChanged(), $"{nameof(OpenAsync)} state notification");
+        Contain(() => _recent.Add(path), $"{nameof(OpenAsync)} recent list");
+        scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectFileSize, FileSizeOrNull(path));
+        return true;
     }
 
     public async Task<bool> OpenWithPickerAsync()
@@ -712,21 +730,13 @@ public sealed class ProjectWorkflow : IDisposable
         scope.AddSharedTag(AppTelemetryRegistry.Attributes.ProjectSource, SourceFile);
         scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectPath, path);
 
+        // Capture the snapshot that is being written BEFORE the await (the race fix): an edit landing during
+        // the file I/O must not be marked clean — the save point is exactly the snapshot the file holds.
+        Project snapshot = Current!;
         try
         {
-            // Capture the snapshot that is being written BEFORE the await (the race fix): an edit landing during
-            // the file I/O must not be marked clean — the save point is exactly the snapshot the file holds.
-            Project snapshot = Current!;
             // SaveDocument, not Save: the editor's save keeps the file it replaces as a .BAK side-file.
             await _service.SaveDocument(snapshot, path);
-            // The exact written snapshot becomes the save point — the document computes dirty by reference, so an
-            // edit that slipped in during the write stays dirty (the race fix).
-            _document!.MarkSaved(snapshot);
-            FilePath = path;
-            _recent.Add(path);
-            RaiseChanged();
-            scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectFileSize, FileSizeOrNull(path));
-            return true;
         }
         catch (Exception ex)
         {
@@ -735,6 +745,59 @@ public sealed class ProjectWorkflow : IDisposable
                 scope, _logger, _dialogs, SaveFailedTitle, HostProblems.ProjectSaveFailed(path, ex), ex,
                 "Failed to save project {Path}", path);
             return false;
+        }
+
+        // THE BYTES ARE ON DISK FROM HERE. What follows is this application's own bookkeeping — the save point,
+        // the adopted path, the recent entry, the repaint — and a fault in any of it says nothing about whether
+        // the project was written.
+        //
+        // It used to share the guard above, so a broken repaint handler reported "Projektet kunne ikke gemmes"
+        // over a complete file and sent the installer looking for work that was never lost; and because a coded
+        // operation outcome does not reach the fault sink, the real cause was recorded nowhere they could see.
+        // Reported as what it is instead: an internal fault, with the save still answered as the success it was.
+        // Contained ONE STEP AT A TIME, not as a block: these are independent, and the repaint is last. Under a
+        // single guard a fault in the recent-list store skipped RaiseChanged, so the window kept showing the old
+        // title and the unsaved marker over a save that had succeeded — the very symptom that made this defect
+        // visible in the first place.
+        //
+        // The exact written snapshot becomes the save point — the document computes dirty by reference, so an
+        // edit that slipped in during the write stays dirty (the race fix).
+        Contain(() => _document!.MarkSaved(snapshot), $"{nameof(SaveToAsync)} save point");
+        Contain(() => FilePath = path, $"{nameof(SaveToAsync)} path adoption");
+        Contain(() => _recent.Add(path), $"{nameof(SaveToAsync)} recent list");
+        Contain(() => RaiseChanged(), $"{nameof(SaveToAsync)} state notification");
+        scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectFileSize, FileSizeOrNull(path));
+        return true;
+    }
+
+    /// <summary>
+    /// Records a fault in the TOOL — one this workflow cannot describe as an outcome of the operation the user
+    /// asked for, because the operation succeeded and something afterwards broke.
+    /// </summary>
+    /// <remarks>
+    /// Through the composition root's sink, which is the same one the SDK's fault port and the validation loop
+    /// write to, so a fault raised here is one more row in <i>Intern fejl</i> rather than a second channel.
+    /// FAIL-OPEN, like every other writer to that sink: a sink that throws must not become the failure reported
+    /// on top of the one being reported.
+    /// </remarks>
+    private void ReportInternalFault(Exception failure, string origin)
+    {
+        // The exception itself, and no {Message} beside it: the pipeline already renders it whole, and reading
+        // Exception.Message here is the shell's one banned door onto English diagnostic text (ADR-004).
+        _logger.LogError(failure, "Internal fault in {Origin}", origin);
+        if (_faultSink is not { } sink)
+        {
+            return;
+        }
+        try
+        {
+            sink(InternalError.From(
+                HostProblems.Unexpected(failure), InternalErrorOrigin.Host,
+                $"{nameof(ProjectWorkflow)}.{origin}: {failure}"));
+        }
+        catch (Exception)
+        {
+            // See the fail-open note above.
         }
     }
 
@@ -766,17 +829,56 @@ public sealed class ProjectWorkflow : IDisposable
 
     private void SetProject(Project project, string? path, bool dirty)
     {
-        // One persistent document for the workflow's lifetime (crudarch D01): created via the service door on the
-        // first load, re-opened per load/create after. Each Open resets history and version (US-052). A project
-        // loaded clean can be returned to (save point = the opened snapshot); an already-dirty one has no clean
-        // state to return to (startClean: false) — which the FACTORY carries too, so the first load opens once
-        // instead of building the index twice (review F04).
+        AdoptProject(project, path, dirty);
+        RaiseChanged();
+    }
+
+    /// <summary>
+    /// The STATE half of opening a project, with no notification: the document is created or re-opened and the
+    /// path adopted, and nothing else is told.
+    /// </summary>
+    /// <remarks>
+    /// Split from the announcement because the two have opposite failure meanings, and conflating them was a real
+    /// defect: this half FAILING means there is no open document, so an open must answer false, while the
+    /// announcement failing means only that a subscriber broke after the document was already open. A guard that
+    /// contained both let <see cref="OpenAsync"/> answer true with <c>_document</c> still null.
+    /// <para>
+    /// One persistent document for the workflow's lifetime (crudarch D01): created via the service door on the
+    /// first load, re-opened per load/create after. Each Open resets history and version (US-052). A project
+    /// loaded clean can be returned to (save point = the opened snapshot); an already-dirty one has no clean
+    /// state to return to (startClean: false) — which the FACTORY carries too, so the first load opens once
+    /// instead of building the index twice (review F04).
+    /// </para>
+    /// </remarks>
+    private void AdoptProject(Project project, string? path, bool dirty)
+    {
         if (_document is { } document)
             document.Open(project, startClean: !dirty);
         else
             _document = _service.OpenDocument(project, startClean: !dirty);
         FilePath = path;
-        RaiseChanged();
+    }
+
+    /// <summary>
+    /// Runs one bookkeeping step, containing a fault in it as an internal fault.
+    /// </summary>
+    /// <remarks>
+    /// Per STEP, never around a group of them. Bookkeeping steps are independent — marking the save point, adding
+    /// a recent entry, telling the shell to repaint — and one guard around the lot means the first to break
+    /// silently skips the rest. That is not hypothetical: with the recent-list update ahead of the repaint under
+    /// one guard, a fault in the store left the window title showing the old document over a save that had
+    /// succeeded.
+    /// </remarks>
+    private void Contain(Action step, string origin)
+    {
+        try
+        {
+            step();
+        }
+        catch (Exception ex)
+        {
+            ReportInternalFault(ex, origin);
+        }
     }
 
     // Publishes the current state to the GUI. `change` is the incremental edit's change set (reconcile in place) or

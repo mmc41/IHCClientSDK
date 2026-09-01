@@ -42,6 +42,17 @@ namespace Ihc.Vis.Tests
             internal override void Execute(ProjectEditor editor) => throw new InvalidOperationException(Boom);
         }
 
+        /// <summary>The VALUE-PRODUCING shape of <see cref="ThrowingCommand"/> — every insert is one of these.</summary>
+        private sealed record ThrowingValueCommand : ProjectCommand<ElementId>
+        {
+            internal override string Describe(Project project) => "Throwing value edit";
+
+            internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;
+
+            internal override ElementId ExecuteCore(ProjectEditor editor) =>
+                throw new InvalidOperationException(Boom);
+        }
+
         private sealed record RefusingCommand : ProjectCommand
         {
             internal override string Describe(Project project) => "Refusing edit";
@@ -146,6 +157,53 @@ namespace Ihc.Vis.Tests
                 Assert.That(outcome.Status, Is.EqualTo(EditStatus.Failed));
                 Assert.That(outcome.Fault, Is.Not.Null);
                 Assert.That(outcome.Fault!.Code.Value, Is.EqualTo("internal.edit-failed"));
+            });
+        }
+
+        /// <summary>
+        /// A VALUE-PRODUCING edit that faults carries its fault too.
+        ///
+        /// <para>The generic overload rebuilds the outcome to attach the produced value, and rebuilding is where
+        /// a field gets left behind: <see cref="EditOutcome{T}"/> takes <c>Fault</c> as a trailing optional
+        /// argument, so omitting it compiles and silently reads null. Every insert in the shell goes through this
+        /// overload, and a host that shows its dialog only for an outcome that carries a fault therefore said
+        /// NOTHING when one of them broke — no dialog, no status line — while the same fault raised by a
+        /// non-generic edit was reported normally.</para>
+        /// </summary>
+        [Test]
+        public void AValueProducingEditThatFaultsCarriesItsFaultToo()
+        {
+            (ProjectAppService service, List<InternalError> reported) = ServiceWithPort();
+
+            EditOutcome<ElementId> outcome =
+                service.OpenDocument(Tree.MinimalProject()).Apply(new ThrowingValueCommand());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Failed), "precondition: the edit broke");
+                Assert.That(outcome.Fault, Is.Not.Null,
+                    "a Failed outcome with no fault is the contract violation a host cannot report around");
+                Assert.That(outcome.Fault!.Code.Value, Is.EqualTo("internal.edit-failed"));
+                Assert.That(outcome.Fault, Is.SameAs(reported[0]),
+                    "and it is the SAME value the port was handed, as it is for the non-generic overload");
+            });
+        }
+
+        /// <summary>The code travels with it: a host reads the outcome's code to title its dialog.</summary>
+        [Test]
+        public void AValueProducingFaultKeepsTheNonGenericOutcomesShape()
+        {
+            (ProjectAppService service, _) = ServiceWithPort();
+            IProjectDocument document = service.OpenDocument(Tree.MinimalProject());
+
+            EditOutcome plain = document.Apply(new ThrowingCommand());
+            EditOutcome<ElementId> valued = document.Apply(new ThrowingValueCommand());
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(valued.Status, Is.EqualTo(plain.Status));
+                Assert.That(valued.Code, Is.EqualTo(plain.Code));
+                Assert.That(valued.Fault!.Code, Is.EqualTo(plain.Fault!.Code));
             });
         }
 

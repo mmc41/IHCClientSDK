@@ -75,6 +75,45 @@ public class AppConfigurationFallbackTests
         });
     }
 
+    /// <summary>
+    /// Degrading is right; degrading SILENTLY is not. An app running with telemetry off and blank controller
+    /// settings because its configuration could not be read looks exactly like one nobody configured, and until
+    /// now nothing anywhere recorded which of the two had happened.
+    /// </summary>
+    /// <remarks>
+    /// The class justified its silence with "there is nothing to report to yet … Program's last-resort line is
+    /// the channel for it". Both halves are false: this guard is inside the constructor, so <c>Main</c>'s catch
+    /// never sees it, and <see cref="ihc_openvisual.Services.TaskSupervisor"/> was since built to BUFFER faults
+    /// raised before the composition root attaches — which is precisely this moment.
+    /// </remarks>
+    [Test]
+    public void AMalformedSettingsFile_IsRecordedAsAnInternalFault()
+    {
+        using ScratchDir dir = DirectoryWith("{ this is not json");
+        using CapturedFaults captured = new();
+
+        AppConfiguration config = new(dir.Path);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(config.TelemetryConfig.Logs, Is.Null.Or.Empty, "precondition: it still degraded");
+            Assert.That(captured.Rows, Is.Not.Empty, "and said so somewhere a person can reach");
+            Assert.That(captured.Rows[0].Origin, Is.EqualTo(Ihc.Vis.Problems.InternalErrorOrigin.Host));
+        });
+    }
+
+    /// <summary>A file that reads perfectly well reports nothing — the record is for failures, not for start-up.</summary>
+    [Test]
+    public void AUsableSettingsFile_RecordsNoFault()
+    {
+        using ScratchDir dir = DirectoryWith("""{ "telemetry": { "Logs": "http://collector.local/v1/logs" } }""");
+        using CapturedFaults captured = new();
+
+        _ = new AppConfiguration(dir.Path);
+
+        Assert.That(captured.Rows, Is.Empty);
+    }
+
     /// <summary>No file at all is the ordinary case for this editor, not a failure.</summary>
     [Test]
     public void NoSettingsFile_YieldsDefaults()

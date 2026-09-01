@@ -18,8 +18,14 @@ namespace ihc_openvisual.Services;
 /// the stateless <see cref="ProjectAppService"/>; raises <see cref="CatalogChanged"/> which
 /// <see cref="ProjectWorkflow"/> forwards so the insertion menus rebuild. Holds no document state.
 /// </summary>
+/// <param name="reportFault">
+/// Where a fault in the TOOL goes — see <see cref="Announce"/>. Supplied by the owning
+/// <see cref="ProjectWorkflow"/> so there is ONE implementation of "record an internal fault" for the shell's
+/// workflows rather than a second copy here; omit it and such a fault is logged only.
+/// </param>
 internal sealed class CatalogImportWorkflow(
-    ProjectAppService service, IDialogService dialogs, ILogger logger, string catalogDir)
+    ProjectAppService service, IDialogService dialogs, ILogger logger, string catalogDir,
+    Action<Exception, string>? reportFault = null)
 {
     /// <summary>This type's entry point into the instrumentation core.</summary>
     private readonly OperationTelemetry _telemetry =
@@ -126,8 +132,6 @@ internal sealed class CatalogImportWorkflow(
             service.ImportCatalogFile(path);
             if (persist)
                 PersistFile(path);
-            CatalogChanged?.Invoke(this, EventArgs.Empty);
-            return true;
         }
         catch (Exception ex)
         {
@@ -139,6 +143,38 @@ internal sealed class CatalogImportWorkflow(
                 HostProblems.CatalogFileRejected(Path.GetFileName(path), ex), ex,
                 "Failed to import catalog file {File}", path);
             return false;
+        }
+
+        // THE DEFINITION IS REGISTERED FROM HERE, and with persist it has also been COPIED into the catalog
+        // folder, which LoadPersisted re-reads at every start-up. Announcing that is bookkeeping: the subscriber
+        // rebuilds the insertion menus, which re-projects the definition just taken in.
+        //
+        // It used to share the guard above, so a fault in the menu rebuild reported "this is not a valid
+        // definition file" about a file that had been accepted AND copied — a rejection the installer could not
+        // act on, over a file that then reappeared on every later launch. Worse through the library route, where
+        // SaveFunctionBlockToLibraryAsync ties its own answer to this one: the block was called invalid while its
+        // .ifb sat in the library and the project's block was already renamed and locked.
+        Announce(nameof(ImportFileAsync));
+        return true;
+    }
+
+    /// <summary>
+    /// Raises <see cref="CatalogChanged"/>, containing a subscriber that throws.
+    /// </summary>
+    /// <remarks>
+    /// The notification is the LAST step of an import and runs after the definition is registered and persisted,
+    /// so a fault in it cannot make the import untrue. It is recorded as what it is — a fault in the tool — and
+    /// the import still answers with what it actually did.
+    /// </remarks>
+    private void Announce(string origin)
+    {
+        try
+        {
+            CatalogChanged?.Invoke(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            reportFault?.Invoke(ex, $"{nameof(CatalogImportWorkflow)}.{origin} notification");
         }
     }
 
@@ -184,7 +220,10 @@ internal sealed class CatalogImportWorkflow(
         }
         finally
         {
-            CatalogChanged?.Invoke(this, EventArgs.Empty);
+            // Contained: an exception leaving a finally REPLACES whatever the method was returning, so a throwing
+            // subscriber used to discard the outcome of N files that were imported and persisted, and surface as
+            // the shell's generic catch-all instead.
+            Announce(nameof(ImportFolderAsync));
         }
         return new CatalogImportOutcome(count, stopped);
     }

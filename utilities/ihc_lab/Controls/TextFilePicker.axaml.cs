@@ -163,7 +163,7 @@ public partial class TextFilePicker : UserControl, TextFile
         }
         catch (Exception ex)
         {
-            UpdateStatusLabel($"Error: {ex.Message}");
+            UpdateStatusLabel(UploadFilePickerOptions.ReportUploadFailure(ex, nameof(TextFilePicker)));
         }
     }
 

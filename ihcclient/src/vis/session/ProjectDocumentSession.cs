@@ -181,8 +181,11 @@ namespace Ihc.Vis.Session
                 outcome = ApplyInternal(command, baseVersion, editor => produced = command.ExecuteCore(editor));
             }
             NotifyChanged(outcome.Changes);
+            // The FAULT travels too. It is a trailing optional argument, so leaving it off compiled and read null
+            // — and a host shows its failure dialog only for an outcome that carries one, which made every broken
+            // INSERT (they all come through this overload) report nothing at all to the installer.
             return new EditOutcome<T>(outcome.Status, outcome.Label, outcome.Reason, outcome.Changes,
-                outcome.Status == EditStatus.Committed ? produced : default, outcome.Code);
+                outcome.Status == EditStatus.Committed ? produced : default, outcome.Code, outcome.Fault);
         }
 
         // Through the core, classifying the RETURNED outcome rather than tagging each exit. The method has many

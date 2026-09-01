@@ -760,3 +760,29 @@ internal sealed class ScratchDir : IDisposable
         try { Directory.Delete(Path, recursive: true); } catch { /* best-effort temp cleanup */ }
     }
 }
+
+/// <summary>
+/// Collects what the application reports to its static fault port, for the span of a test.
+/// </summary>
+/// <remarks>
+/// <para><b>The detach on entry is the load-bearing part.</b> <c>TaskSupervisor</c> BUFFERS faults reported while
+/// no port is attached and drains that buffer into the next port to attach, so a fixture that merely attaches
+/// inherits whatever an earlier test raised with nothing listening — which reads as its own subject reporting a
+/// fault it never reported. Detaching first discards the backlog and re-arms buffering; attaching then starts
+/// from empty.</para>
+/// <para>A disposable rather than a <c>[SetUp]</c>/<c>[TearDown]</c> pair copied into each fixture: the pair was
+/// copied into three, and the copies did not agree about the backlog.</para>
+/// </remarks>
+internal sealed class CapturedFaults : IDisposable
+{
+    /// <summary>What was reported while this was attached, in order.</summary>
+    public List<Ihc.Vis.Problems.InternalError> Rows { get; } = [];
+
+    public CapturedFaults()
+    {
+        ihc_openvisual.Services.TaskSupervisor.ReportTo(null);
+        ihc_openvisual.Services.TaskSupervisor.ReportTo(Rows.Add);
+    }
+
+    public void Dispose() => ihc_openvisual.Services.TaskSupervisor.ReportTo(null);
+}

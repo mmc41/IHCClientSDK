@@ -73,11 +73,16 @@ public sealed class AppConfiguration
                     ?? new TelemetryConfiguration(),
                 Settled(ControllerSettings(config, settingsFileFound)));
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Every fallback the class documents, taken together: local logging only, telemetry off, blank
-            // controller settings. Deliberately silent — there is nothing to report to yet, which is the whole
-            // reason this has to degrade rather than throw. Program's last-resort line is the channel for it.
+            // controller settings. Degrading is right; degrading SILENTLY is not — an editor running unconfigured
+            // because its settings could not be read is indistinguishable from one nobody configured.
+            //
+            // Reported through the supervisor's port, which BUFFERS until the composition root attaches: this
+            // runs inside the constructor, so Main's last-resort line never sees it, and the buffer exists for
+            // exactly this moment. Not a dialog — the editor still starts, which is the whole point.
+            Services.TaskSupervisor.Report(ex, $"{nameof(AppConfiguration)}.{nameof(Read)}");
             return (Defaults.GetSection("Logging"), new TelemetryConfiguration(), Settled(new IhcSettings()));
         }
     }
@@ -96,6 +101,12 @@ public sealed class AppConfiguration
         }
         catch (Exception)
         {
+            // NOT reported as a fault, unlike the outer guard, and the difference is measured rather than
+            // stylistic: this editor is file-only, so a settings file carrying just a telemetry section is an
+            // ORDINARY configuration — and GetFromConfiguration throws on the absent ihcclient section every
+            // time. Reporting here would put an internal-error row in front of every installer who configured
+            // telemetry and no controller. A malformed section arrives as the same exception from the same call,
+            // so the two cannot be told apart at this layer; the common one wins.
             return new IhcSettings();
         }
     }

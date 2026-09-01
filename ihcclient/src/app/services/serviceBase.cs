@@ -96,6 +96,13 @@ namespace Ihc.App
             {
                 return;
             }
+            // Claimed BEFORE reporting, and only when there is a port to report to: the exception is rethrown
+            // unchanged, so a host catch one level up sees the same instance and would otherwise record a second
+            // row for one fault. This layer is the innermost, and the only one that can name the operation.
+            if (!InternalError.ClaimReport(failure))
+            {
+                return;
+            }
             try
             {
                 Problem problem = Problem.Unexpected(operationName, failure.Message, failure);

@@ -131,11 +131,48 @@ internal static class TaskSupervisor
     /// <param name="origin">Where it was observed, as <c>Type.Member</c> — the fault cannot say this itself.</param>
     internal static void Report(Exception fault, string origin)
     {
+        if (!ClaimFirstSighting(fault))
+        {
+            return;   // Another net already reported this exact fault; see ClaimFirstSighting.
+        }
         // The payload is built even with no port attached, and that is the price of the buffer: a report made
         // before the composition root arrives has to be KEPT, and it cannot be kept without being formed. The
         // interpolation calls Exception.ToString(), so an unattached run pays for a stack trace it may never
         // show — bounded by BufferCapacity, and cheap beside losing the start-up faults altogether.
         Report(HostProblems.Unexpected(fault), InternalErrorOrigin.Host, $"{origin}: {fault}");
+    }
+
+    /// <summary>
+    /// Answers whether this is the FIRST net to see <paramref name="fault"/>, marking it as seen.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>One exception instance is one fault, however many nets catch it.</b> A fault raised inside a
+    /// dispatcher-posted action reaches two: the dispatcher handler reports it and marks it handled, and the
+    /// <c>DispatcherOperation</c> backing the post still carries it on a task that is later collected unobserved
+    /// — so the unobserved-task layer reports the same instance again, arbitrarily later. That produced two rows
+    /// and two metric increments for one event.</para>
+    /// <para><b>The sink cannot do this.</b> <see cref="InternalErrorLog"/> folds repeats by code and captured
+    /// detail, and the detail names the observing site, so the two sightings differ in exactly the field it
+    /// compares. The identity survives only on the exception itself, which is where the question is answered.</para>
+    /// <para><b>The FIRST sighting wins</b>, because it is the prompt one and the one whose origin says where the
+    /// fault actually happened; the unobserved layer's stamp is a discovery time attributed to nothing.</para>
+    /// <para><b>Fail-open on an exception that cannot be marked.</b> <see cref="Exception.Data"/> is writable on
+    /// every BCL exception but a custom type may override it; a de-duplication that swallowed a fault it could
+    /// not mark would be worse than the duplicate it removes.</para>
+    /// </remarks>
+    private static bool ClaimFirstSighting(Exception fault)
+    {
+        // UNDER THE GATE, because the check and the mark have to be one step: the nets that reach here run on
+        // different threads — a dispatcher operation and the finalizer thread — and read separately, two of them
+        // can both see an unmarked exception and both report it, which is the duplicate this exists to remove.
+        // Exception.Data is not itself thread-safe either, so the lock is doing two jobs.
+        //
+        // The claim is the SDK's, not a second one beside it: an exception the SDK's own fault port already
+        // reported arrives here marked, and this returns false for it.
+        lock (Gate)
+        {
+            return InternalError.ClaimReport(fault);
+        }
     }
 
     /// <summary>

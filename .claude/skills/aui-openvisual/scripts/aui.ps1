@@ -4288,6 +4288,7 @@ function Invoke-Mechanism-ProblemsState {
             stateText      = $state.stateText
             bound          = $state.bound
             staleIndicator = $state.staleIndicator
+            internals      = Get-ProblemsCount $panel 'internal'
             fatals         = Get-ProblemsCount $panel 'fatal'
             errors         = Get-ProblemsCount $panel 'error'
             warnings       = Get-ProblemsCount $panel 'warning'
@@ -4296,9 +4297,11 @@ function Invoke-Mechanism-ProblemsState {
         }
 
         if (-not $wait -or $state.bound) {
-            # All FOUR tiers. `errors` is the ordinary tier alone — a refusing Error is counted under `fatals`
+            # All FIVE tiers. `errors` is the ordinary tier alone — a refusing Error is counted under `fatals`
             # and nowhere else — so reading `errors` as "every blocking finding" under-reports by the fatals.
-            $msg = "Problemer: $($state.state), $($data.fatals) fatale fejl / $($data.errors) fejl / " +
+            # `internals` is not a finding at all: it counts faults in the TOOL, and it is the worst tier.
+            $msg = "Problemer: $($state.state), $($data.internals) interne fejl / " +
+                   "$($data.fatals) fatale fejl / $($data.errors) fejl / " +
                    "$($data.warnings) advarsler / $($data.infos) oplysninger."
             return (New-Result -Ok $true -Code 'Ok' -Message $msg -Verified $true `
                 -Context (Get-Context $Window) -Data $data)
@@ -4433,8 +4436,9 @@ function Invoke-Mechanism-ProblemsToggle {
     $tier = Get-OptValue $Opts @('tier') -NamedOnly
     # Mirrors the panel's tier ids, which are lower-cased from its own tier enum. 'fatal' is an Error finding
     # whose rule also refuses an operation, and it filters independently of 'error'.
-    if ($tier -notin @('fatal', 'error', 'warning', 'info')) {
-        return (New-Result -Ok $false -Code 'InvalidInput' -Message 'Pass --tier <fatal|error|warning|info>.')
+    if ($tier -notin @('internal', 'fatal', 'error', 'warning', 'info')) {
+        return (New-Result -Ok $false -Code 'InvalidInput' `
+            -Message 'Pass --tier <internal|fatal|error|warning|info>.')
     }
 
     $panel = Get-ProblemsPanel $Window

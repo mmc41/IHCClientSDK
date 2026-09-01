@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Ihc;
 using Ihc.Vis.Problems;
@@ -49,7 +50,43 @@ internal static class FailureReport
 
         scope.SetOutcome(OperationOutcome.Failed(failure));
         Log(logger, failure, message, args);
+        // BEFORE the dialog, for this class's own documented reason: the dialog awaits a person, and a process
+        // that dies while the modal is up would otherwise leave no durable record of what broke.
+        ReportIfUnanticipated(failure, problem.Code.Value);
         return RaisedProblemDisplay.ShowAsync(dialogs, title, problem, failure);
+    }
+
+    /// <summary>
+    /// Leaves a fault row when <paramref name="failure"/> is NOT one of the conditions the operation's coded
+    /// outcome exists to describe.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>The outcome is not the whole story when the tool is what broke.</b> A workflow's broad
+    /// <c>catch (Exception)</c> words everything it catches as one coded outcome — <i>the project could not be
+    /// saved</i> — which is the right sentence for a full disk and the wrong one, alone, for a defect in this
+    /// application. Reported only through the outcome, such a fault left no <i>Intern fejl</i> row at all, so
+    /// the one surface a person can look at recorded nothing about the actual cause.</para>
+    /// <para><b>Why the split is by TYPE, and why these types.</b> The SDK already separates the two: malformed
+    /// content arrives as a <see cref="FormatException"/> (<c>ProjectFormatException</c>,
+    /// <c>CatalogFormatException</c>), a storage condition as an <see cref="IOException"/> or
+    /// <see cref="UnauthorizedAccessException"/>, and a deliberate refusal carries <see cref="IProblemCarrier"/>.
+    /// Those ARE the conditions the coded outcomes word, and a fault tier that collected them would report the
+    /// tool as broken every time somebody opened the wrong file — which is how a fault list becomes noise. What
+    /// is left over is, by construction, something nobody anticipated.</para>
+    /// <para><b>Through <see cref="TaskSupervisor"/></b>, the application's static-context fault port. This
+    /// helper is static and has no constructor a sink could be injected through, which is the exact shape that
+    /// port exists for; it lands in the same sink the SDK's fault port and the validation loop write to, is
+    /// fail-open, buffers until the composition root attaches, and reports one exception instance once.</para>
+    /// </remarks>
+    /// <param name="failure">The exception the outcome was reported for.</param>
+    /// <param name="origin">Which coded outcome carried it — the operation's own problem code.</param>
+    private static void ReportIfUnanticipated(Exception failure, string origin)
+    {
+        if (failure is IOException or UnauthorizedAccessException or FormatException or IProblemCarrier)
+        {
+            return;
+        }
+        TaskSupervisor.Report(failure, origin);
     }
 
     /// <summary>

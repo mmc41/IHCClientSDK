@@ -27,12 +27,25 @@ namespace Ihc.download_upload_example
         const string CMD_GET = "GET";
         const string CMD_STORE = "STORE";
 
-        static async Task Main(string[] args)
+        /// <summary>Everything asked for was done.</summary>
+        private const int ExitOk = 0;
+
+        /// <summary>Something the operator asked for did not happen, or could not be confirmed.</summary>
+        private const int ExitFailed = 1;
+
+        /// <summary>The command line was not usable, so nothing was attempted.</summary>
+        private const int ExitUsage = 2;
+
+        /// <summary>
+        /// Returns an EXIT CODE, for the reason its download/upload sibling does: a script driving a
+        /// controller has nothing else to read, and every path here used to exit 0 whatever happened.
+        /// </summary>
+        static async Task<int> Main(string[] args)
         {
             if (args.Length != 2)
             {
                 Console.WriteLine($"Expected arguments: '{CMD_GET} <destfile>' OR '{CMD_STORE} <sourcefile>'");
-                return;
+                return ExitUsage;
             }
 
             // Invariant: the command words are ASCII, and a Turkish locale would fold 'i' to 'İ', leaving a
@@ -42,13 +55,13 @@ namespace Ihc.download_upload_example
             if (command != CMD_GET && command != CMD_STORE)
             {
                 Console.WriteLine($"Illegal command. Expected {CMD_GET} or {CMD_STORE}");
-                return;
+                return ExitUsage;
             }
 
             if (command == CMD_STORE && !File.Exists(path))
             {
                 Console.WriteLine("Could not find source administration file  " + path);
-                return;
+                return ExitUsage;
             }
 
             // Read configuration settings
@@ -60,6 +73,7 @@ namespace Ihc.download_upload_example
 
             // Create client for IHC services that this utility use:
 
+            int exitCode = ExitOk;
             try
             {
                 // Both providers, each gated on its configured endpoint, from the one builder every IHC host
@@ -85,8 +99,25 @@ namespace Ihc.download_upload_example
                         Console.WriteLine($"Administration setup in file {path} sucessfully appplied with {changes.ChangeCount} changes to IHC controller");
                         if (changes.RebootRequired)
                         {
-                            Console.WriteLine($"Rebooting IHC controller");
-                            await adminServer.Restart();
+                            // Guarded SEPARATELY from the store above it. The changes are already applied to the
+                            // controller at this point, so a reboot that will not go through is a different fact
+                            // from a store that failed — and sharing one guard ended the run on "Failed
+                            // operation" plus a stack trace, with nothing saying what had actually landed.
+                            try
+                            {
+                                Console.WriteLine($"Rebooting IHC controller");
+                                await adminServer.Restart();
+                            }
+                            catch (Exception ex)
+                            {
+                                // It does NOT claim the controller failed to restart: a transport fault can land
+                                // after the request was accepted, so the remote state is unknown from here.
+                                Console.WriteLine(
+                                    $"The settings were applied, but the restart could not be confirmed: {ex.Message}");
+                                Console.WriteLine(
+                                    "Check the controller: if it did not restart, restart it to activate the changes.");
+                                exitCode = ExitFailed;
+                            }
                         }
                     }
                 }
@@ -94,11 +125,13 @@ namespace Ihc.download_upload_example
             catch (Exception ex)
             {
                 Console.WriteLine($"Failed operation:{ex.Message} : {ex.StackTrace}");
+                exitCode = ExitFailed;
             }
 
             // A console process exits as soon as this returns, so the flush happens here rather than in a
             // finalizer that will not run.
             TelemetryBootstrap.Shutdown();
+            return exitCode;
         }
     }
 }
