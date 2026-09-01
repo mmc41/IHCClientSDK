@@ -13,13 +13,13 @@ namespace Ihc {
         /// <summary>
         /// Get information about the scene project on the controller.
         /// </summary>
-        public Task<SceneProjectInfo> GetSceneProjectInfo();
+        public Task<SceneProjectInfo?> GetSceneProjectInfo();
 
         /// <summary>
         /// Get a scene project by name.
         /// </summary>
         /// <param name="name">The name of the scene project to retrieve</param>
-        public Task<SceneProject> GetSceneProject(string name);
+        public Task<SceneProject?> GetSceneProject(string name);
 
         /// <summary>
         /// Store a scene project on the controller.
@@ -32,7 +32,7 @@ namespace Ihc {
         /// </summary>
         /// <param name="name">The name of the scene project</param>
         /// <param name="segmentNumber">The segment number to retrieve</param>
-        public Task<SceneProject> GetSceneProjectSegment(string name, int segmentNumber);
+        public Task<SceneProject?> GetSceneProjectSegment(string name, int segmentNumber);
 
         /// <summary>
         /// Store a segment of a scene project (for large projects that need to be uploaded in parts).
@@ -114,13 +114,25 @@ namespace Ihc {
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
-        private SceneProject mapSceneProject(Ihc.Soap.Module.WSFile proj)
+        private SceneProject? mapSceneProject(Ihc.Soap.Module.WSFile? proj)
         {
+            if (proj == null)
+                return null;
+
+            if (proj.data == null)
+            {
+                // Substituting an empty array here would be indistinguishable from a genuinely empty scene
+                // project, and would travel back to the controller as an empty <data> element on the next
+                // store — WSFile.data is not IsNullable, so null omits the element and byte[0] emits it.
+                throw new InvalidOperationException(
+                    $"The controller returned a scene project entry ('{proj.filename}') carrying no data.");
+            }
+
             // TODO: Check if binary data can be converted/decompressed to something useful?
-            return new SceneProject(proj?.filename, proj?.data);
+            return new SceneProject(proj.filename, proj.data);
         }
 
-        private SceneProjectInfo mapSceneProjectInfo(Ihc.Soap.Module.WSSceneProjectInfo info)
+        private SceneProjectInfo? mapSceneProjectInfo(Ihc.Soap.Module.WSSceneProjectInfo? info)
         {
             return info != null ? new SceneProjectInfo()
             {
@@ -145,7 +157,7 @@ namespace Ihc {
             };
         }
 
-        public async Task<SceneProjectInfo> GetSceneProjectInfo()
+        public async Task<SceneProjectInfo?> GetSceneProjectInfo()
         {
             using (var activity = StartActivity(nameof(GetSceneProjectInfo)))
             {
@@ -165,7 +177,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<SceneProject> GetSceneProject(string name)
+        public async Task<SceneProject?> GetSceneProject(string name)
         {
             using (var activity = StartActivity(nameof(GetSceneProject)))
             {
@@ -207,7 +219,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<SceneProject> GetSceneProjectSegment(string name, int segmentNumber)
+        public async Task<SceneProject?> GetSceneProjectSegment(string name, int segmentNumber)
         {
             using (var activity = StartActivity(nameof(GetSceneProjectSegment)))
             {

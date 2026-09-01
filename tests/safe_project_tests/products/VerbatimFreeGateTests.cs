@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,7 +8,7 @@ namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// The verbatim-free gate (Phase 4c of the plan of record), scoped to where verbatim vendor header text could
-    /// actually hide: the three committed <c>BuiltInCatalog.*.g.cs</c> definition files and both definition builders
+    /// actually hide: the three committed <c>BuiltInCatalog.*.cs</c> definition files and both definition builders
     /// must contain <b>no</b> DTD/prolog token text at all; within <c>ihcclient/src/vis/catalog/**</c> those tokens
     /// may appear only in <c>CatalogDtdEmitter</c>/<c>CatalogDtdParser</c> (their own syntax constants). Explicitly
     /// out of scope: <c>ProjectSchemaRegistry</c>'s curated <c>.vis</c> registry blocks, <c>InlineDtd</c>/
@@ -22,7 +21,7 @@ namespace Ihc.Vis.Tests
 
         private static readonly string[] DefinitionFiles =
         {
-            "BuiltInCatalog.Grammar.g.cs", "BuiltInCatalog.Products.g.cs", "BuiltInCatalog.FunctionBlocks.g.cs",
+            "BuiltInCatalog.Grammar.cs", "BuiltInCatalog.Products.cs", "BuiltInCatalog.FunctionBlocks.cs",
         };
 
         private static string DefinitionsDir =>

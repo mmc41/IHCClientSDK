@@ -21,7 +21,7 @@ namespace Ihc.Tests
     public class CopyUtilPropertyTests
     {
         // Identity transformer: return each (deep-copied) value unchanged.
-        private static readonly Func<PropertyInfo, object, object> Identity = (prop, value) => value;
+        private static readonly Func<PropertyInfo?, object?, object?> Identity = (prop, value) => value;
 
         public record CopyLeaf
         {

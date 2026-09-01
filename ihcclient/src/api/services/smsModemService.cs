@@ -21,17 +21,17 @@ namespace Ihc
         /// <summary>
         /// Get SMS modem settings.
         /// </summary>
-        Task<SmsModemSettings> GetSmsModemSettings();
+        Task<SmsModemSettings?> GetSmsModemSettings();
 
         /// <summary>
         /// Get SMS modem status information.
         /// </summary>
-        Task<SmsModemStatus> GetSmsModemStatus();
+        Task<SmsModemStatus?> GetSmsModemStatus();
 
         /// <summary>
         /// Get SMS modem hardware and firmware information.
         /// </summary>
-        Task<SmsModemInfo> GetSmsModemInfo();
+        Task<SmsModemInfo?> GetSmsModemInfo();
 
         /// <summary>
         /// Reset the SMS modem.
@@ -88,7 +88,7 @@ namespace Ihc
 
         // Map methods for translating between SOAP models and high-level models
 
-        private SmsModemSettings MapSettings(WSSMSModemSettings ws)
+        private SmsModemSettings? MapSettings(WSSMSModemSettings? ws)
         {
             if (ws == null)
                 return null;
@@ -121,7 +121,7 @@ namespace Ihc
             };
         }
 
-        private SmsModemStatus MapStatus(WSSMSModemStatus ws)
+        private SmsModemStatus? MapStatus(WSSMSModemStatus? ws)
         {
             if (ws == null)
                 return null;
@@ -135,7 +135,7 @@ namespace Ihc
             };
         }
 
-        private SmsModemInfo MapInfo(WSSMSModemInfo ws)
+        private SmsModemInfo? MapInfo(WSSMSModemInfo? ws)
         {
             if (ws == null)
                 return null;
@@ -171,7 +171,7 @@ namespace Ihc
             }
         }
 
-        public async Task<SmsModemSettings> GetSmsModemSettings()
+        public async Task<SmsModemSettings?> GetSmsModemSettings()
         {
             using (var activity = StartActivity(nameof(GetSmsModemSettings)))
             {
@@ -191,7 +191,7 @@ namespace Ihc
             }
         }
 
-        public async Task<SmsModemStatus> GetSmsModemStatus()
+        public async Task<SmsModemStatus?> GetSmsModemStatus()
         {
             using (var activity = StartActivity(nameof(GetSmsModemStatus)))
             {
@@ -211,7 +211,7 @@ namespace Ihc
             }
         }
 
-        public async Task<SmsModemInfo> GetSmsModemInfo()
+        public async Task<SmsModemInfo?> GetSmsModemInfo()
         {
             using (var activity = StartActivity(nameof(GetSmsModemInfo)))
             {

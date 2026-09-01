@@ -1,4 +1,3 @@
-#nullable enable
 using System.Collections.Immutable;
 using static Ihc.Vis.Products.ProductDialogFragments;
 

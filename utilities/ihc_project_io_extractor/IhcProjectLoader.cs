@@ -25,7 +25,10 @@ namespace Ihc.IOExtractor {
                 Dom.Load(streamReader);
             }
 
-            XPathNavigator navigator = Dom.DocumentElement.CreateNavigator();
+            XmlElement documentElement = Dom.DocumentElement
+                ?? throw new InvalidDataException($"Project file '{projectFile}' holds no document element.");
+            XPathNavigator navigator = documentElement.CreateNavigator()
+                ?? throw new InvalidDataException($"Project file '{projectFile}' element <{documentElement.Name}> cannot be navigated.");
 
             string datalineName;
             switch (ioType) {
@@ -41,23 +44,34 @@ namespace Ihc.IOExtractor {
                 XPathNavigator parentNavigator = item.Clone();
                 parentNavigator.MoveToParent();
 
-                int productId=Convert.ToInt32(parentNavigator.SelectSingleNode("@id").Value.Substring(1), 16);
-                string productName = parentNavigator.SelectSingleNode("@name").Value;
-                string productPosition =parentNavigator.SelectSingleNode("@position").Value;
-                string productNote =parentNavigator.SelectSingleNode("@note").Value;
+                int productId=Convert.ToInt32(RequiredAttribute(parentNavigator, "id").Substring(1), 16);
+                string productName = RequiredAttribute(parentNavigator, "name");
+                string productPosition =RequiredAttribute(parentNavigator, "position");
+                string productNote =RequiredAttribute(parentNavigator, "note");
 
                 parentNavigator.MoveToParent();
-                int groupId=Convert.ToInt32(parentNavigator.SelectSingleNode("@id").Value.Substring(1), 16);
-                string groupName = parentNavigator.SelectSingleNode("@name").Value;
+                int groupId=Convert.ToInt32(RequiredAttribute(parentNavigator, "id").Substring(1), 16);
+                string groupName = RequiredAttribute(parentNavigator, "name");
 
-                int id=Convert.ToInt32(item.SelectSingleNode("@id").Value.Substring(1), 16);
-                string name=item.SelectSingleNode("@name").Value;
-                string note =item.SelectSingleNode("@note").Value;
+                int id=Convert.ToInt32(RequiredAttribute(item, "id").Substring(1), 16);
+                string name=RequiredAttribute(item, "name");
+                string note =RequiredAttribute(item, "note");
 
                 result.Add(new IOMeta() { ResourceId = id, ProductId = productId, GroupId = groupId, GroupName = groupName, DatalineName = name, ProductName = productName, ProductPosition = productPosition, ProductNote = productNote, DatalineNote = note });
             }
 
             return result.ToArray<IOMeta>();
+        }
+
+        /**
+        * Reads an attribute every IO entry must carry. A project missing one is malformed rather
+        * than empty, so it is reported by attribute and element name instead of failing later as a
+        * NullReferenceException with nothing in it to identify the offending node.
+        */
+        private static string RequiredAttribute(XPathNavigator element, string attributeName) {
+            XPathNavigator attribute = element.SelectSingleNode("@" + attributeName)
+                ?? throw new InvalidDataException($"Element <{element.Name}> has no {attributeName} attribute.");
+            return attribute.Value;
         }
     }
 }

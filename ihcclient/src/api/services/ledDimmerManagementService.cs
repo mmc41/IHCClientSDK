@@ -27,7 +27,7 @@ namespace Ihc
         /// Wait for a new LED dimmer device to be detected during configuration.
         /// </summary>
         /// <param name="timeoutSeconds">Time in seconds to wait for a device to be detected.</param>
-        Task<LedDimmerInfo> WaitForDeviceDetected(int timeoutSeconds);
+        Task<LedDimmerInfo?> WaitForDeviceDetected(int timeoutSeconds);
 
         /// <summary>
         /// Scan for already-configured LED dimmer devices.
@@ -55,7 +55,7 @@ namespace Ihc
         /// Get the current light level of the LED dimmer on the given channel.
         /// </summary>
         /// <param name="channel">Channel to read the light level from.</param>
-        Task<LedDimmerLevel> GetLightLevel(sbyte channel);
+        Task<LedDimmerLevel?> GetLightLevel(sbyte channel);
 
         /// <summary>
         /// Get the list of all detected LED dimmer devices.
@@ -71,7 +71,7 @@ namespace Ihc
         /// <summary>
         /// Get the progress of an ongoing LED dimmer firmware upgrade.
         /// </summary>
-        Task<LedDimmerProgress> GetFirmwareUpgradeProgress();
+        Task<LedDimmerProgress?> GetFirmwareUpgradeProgress();
     }
 
     public class LedDimmerManagementService : ServiceBase, ILedDimmerManagementService
@@ -148,7 +148,16 @@ namespace Ihc
 
         // Map methods for translating between SOAP models and high-level models
 
-        private LedDimmerInfo MapInfo(WSLEDDimmerInfo ws)
+        /// <summary>
+        /// Maps a device list the controller may omit entirely, dropping any entry that carried no
+        /// device. An absent list is an empty one, never null.
+        /// </summary>
+        private IReadOnlyList<LedDimmerInfo> MapInfoList(WSLEDDimmerInfo[]? devices)
+            => devices == null
+                ? Array.Empty<LedDimmerInfo>()
+                : devices.Select(MapInfo).OfType<LedDimmerInfo>().ToList();
+
+        private LedDimmerInfo? MapInfo(WSLEDDimmerInfo? ws)
         {
             if (ws == null)
                 return null;
@@ -168,7 +177,7 @@ namespace Ihc
             };
         }
 
-        private LedDimmerLevel MapLevel(WSLEDDimmerLevel ws)
+        private LedDimmerLevel? MapLevel(WSLEDDimmerLevel? ws)
         {
             if (ws == null)
                 return null;
@@ -180,7 +189,7 @@ namespace Ihc
             };
         }
 
-        private LedDimmerProgress MapProgress(WSLEDDimmerProgress ws)
+        private LedDimmerProgress? MapProgress(WSLEDDimmerProgress? ws)
         {
             if (ws == null)
                 return null;
@@ -238,7 +247,7 @@ namespace Ihc
             }
         }
 
-        public async Task<LedDimmerInfo> WaitForDeviceDetected(int timeoutSeconds)
+        public async Task<LedDimmerInfo?> WaitForDeviceDetected(int timeoutSeconds)
         {
             using (var activity = StartActivity(nameof(WaitForDeviceDetected)))
             {
@@ -269,7 +278,7 @@ namespace Ihc
                     activity?.SetParameters((nameof(scanParameter1), scanParameter1), (nameof(scanParameter2), scanParameter2));
 
                     var result = await impl.scanConfiguredDevicesAsync(new inputMessageName4(scanParameter1, scanParameter2)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    IReadOnlyList<LedDimmerInfo> retv = result.scanConfiguredDevices3 == null ? Array.Empty<LedDimmerInfo>() : result.scanConfiguredDevices3.Select(MapInfo).ToList();
+                    IReadOnlyList<LedDimmerInfo> retv = MapInfoList(result.scanConfiguredDevices3);
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -324,7 +333,7 @@ namespace Ihc
             }
         }
 
-        public async Task<LedDimmerLevel> GetLightLevel(sbyte channel)
+        public async Task<LedDimmerLevel?> GetLightLevel(sbyte channel)
         {
             using (var activity = StartActivity(nameof(GetLightLevel)))
             {
@@ -353,7 +362,7 @@ namespace Ihc
                 try
                 {
                     var result = await impl.getDeviceListAsync(new inputMessageName8()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    IReadOnlyList<LedDimmerInfo> retv = result.getDeviceList1 == null ? Array.Empty<LedDimmerInfo>() : result.getDeviceList1.Select(MapInfo).ToList();
+                    IReadOnlyList<LedDimmerInfo> retv = MapInfoList(result.getDeviceList1);
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -384,7 +393,7 @@ namespace Ihc
             }
         }
 
-        public async Task<LedDimmerProgress> GetFirmwareUpgradeProgress()
+        public async Task<LedDimmerProgress?> GetFirmwareUpgradeProgress()
         {
             using (var activity = StartActivity(nameof(GetFirmwareUpgradeProgress)))
             {

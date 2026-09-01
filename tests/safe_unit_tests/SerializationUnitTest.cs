@@ -267,7 +267,9 @@ namespace Ihc.Tests
         {
           var o = Serialization.DeserializeXml<RequestEnvelope<Ihc.Soap.Usermanager.outputMessageName2>>(getUsersResponseXml);
 
-          Assert.That(o.Body.getUsers1.Length, Is.EqualTo(1));
+          Assert.That(o, Is.Not.Null);
+
+          Assert.That(o!.Body.getUsers1.Length, Is.EqualTo(1));
 
           // This worked always but included to be sure of no regressions
           Assert.That(o.Body.getUsers1[0].username, Is.EqualTo("testusername"));

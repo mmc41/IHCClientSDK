@@ -1,4 +1,3 @@
-#nullable enable
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Session;

@@ -36,7 +36,7 @@ namespace Ihc {
         /// <summary>
         /// Get network settings including IP address, netmask, gateway, and ports.
         /// </summary>
-        public Task<NetworkSettings> GetNetworkSettings();
+        public Task<NetworkSettings?> GetNetworkSettings();
 
         /// <summary>
         /// Set network settings for the controller.
@@ -58,7 +58,7 @@ namespace Ihc {
         /// <summary>
         /// Get wireless LAN settings.
         /// </summary>
-        public Task<WLanSettings> GetWLanSettings();
+        public Task<WLanSettings?> GetWLanSettings();
 
         /// <summary>
         /// Set wireless LAN settings including SSID, security, and network configuration.
@@ -69,7 +69,7 @@ namespace Ihc {
         /// <summary>
         /// Get wireless interface information including connection status and signal quality.
         /// </summary>
-        public Task<WLanInterface> GetWLanInterface();
+        public Task<WLanInterface?> GetWLanInterface();
 
         /// <summary>
         /// Scan for available wireless networks.
@@ -79,7 +79,7 @@ namespace Ihc {
         /// <summary>
         /// Get SMTP server settings for email notifications.
         /// </summary>
-        public Task<SMTPSettings> GetSMTPSettings();
+        public Task<SMTPSettings?> GetSMTPSettings();
 
         /// <summary>
         /// Set SMTP server settings for email notifications.
@@ -114,7 +114,7 @@ namespace Ihc {
         /// <summary>
         /// Get email control settings for remote controller access via email.
         /// </summary>
-        public Task<EmailControlSettings> GetEmailControlSettings();
+        public Task<EmailControlSettings?> GetEmailControlSettings();
 
         /// <summary>
         /// Set email control settings for remote controller access via email.
@@ -125,7 +125,7 @@ namespace Ihc {
         /// <summary>
         /// Get web access control settings for different applications and access types.
         /// </summary>
-        public Task<WebAccessControl> GetWebAccessControl();
+        public Task<WebAccessControl?> GetWebAccessControl();
 
         /// <summary>
         /// Set web access control settings for different applications and access types.
@@ -285,7 +285,7 @@ namespace Ihc {
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
-        private SystemInfo mapSystemInfo(Ihc.Soap.Configuration.WSSystemInfo info)
+        private SystemInfo mapSystemInfo(Ihc.Soap.Configuration.WSSystemInfo? info)
         {
             // Return empty SystemInfo if input is null
             if (info == null)
@@ -312,7 +312,7 @@ namespace Ihc {
             };
         }
 
-        private IReadOnlyList<string> mapLogFile(Ihc.Soap.Configuration.WSFile e)
+        private IReadOnlyList<string> mapLogFile(Ihc.Soap.Configuration.WSFile? e)
         {
             if (e == null)
                 return Array.Empty<string>();
@@ -321,7 +321,7 @@ namespace Ihc {
             return logs.Split('\n', '\r');
         }
 
-        private NetworkSettings mapNetworkSettings(Ihc.Soap.Configuration.WSNetworkSettings settings)
+        private NetworkSettings? mapNetworkSettings(Ihc.Soap.Configuration.WSNetworkSettings? settings)
         {
             return settings != null ? new NetworkSettings()
             {
@@ -333,7 +333,7 @@ namespace Ihc {
             } : null;
         }
 
-        private Ihc.Soap.Configuration.WSNetworkSettings unmapNetworkSettings(NetworkSettings settings)
+        private Ihc.Soap.Configuration.WSNetworkSettings? unmapNetworkSettings(NetworkSettings? settings)
         {
             if (settings == null)
                 return null;
@@ -358,7 +358,7 @@ namespace Ihc {
             };
         }
 
-        private (Ihc.Soap.Configuration.WSInetAddress, Ihc.Soap.Configuration.WSInetAddress) unmapDNSServers(DNSServers dnsServers)
+        private (Ihc.Soap.Configuration.WSInetAddress?, Ihc.Soap.Configuration.WSInetAddress?) unmapDNSServers(DNSServers? dnsServers)
         {
             var dns1 = !string.IsNullOrEmpty(dnsServers?.PrimaryDNS)
                 ? new Ihc.Soap.Configuration.WSInetAddress() { ipAddress = NetworkHelper.ConvertIPAddressToInt(dnsServers.PrimaryDNS) }
@@ -369,7 +369,7 @@ namespace Ihc {
             return (dns1, dns2);
         }
 
-        private WLanSettings mapWLanSettings(Ihc.Soap.Configuration.WSWLanSettings settings)
+        private WLanSettings? mapWLanSettings(Ihc.Soap.Configuration.WSWLanSettings? settings)
         {
             return settings != null ? new WLanSettings()
             {
@@ -384,7 +384,7 @@ namespace Ihc {
             } : null;
         }
 
-        private Ihc.Soap.Configuration.WSWLanSettings unmapWLanSettings(WLanSettings settings)
+        private Ihc.Soap.Configuration.WSWLanSettings? unmapWLanSettings(WLanSettings? settings)
         {
             if (settings == null)
                 return null;
@@ -402,7 +402,7 @@ namespace Ihc {
             };
         }
 
-        private WLanInterface mapWLanInterface(Ihc.Soap.Configuration.WSWLanInterface iface)
+        private WLanInterface? mapWLanInterface(Ihc.Soap.Configuration.WSWLanInterface? iface)
         {
             return iface != null ? new WLanInterface()
             {
@@ -413,7 +413,7 @@ namespace Ihc {
             } : null;
         }
 
-        private WLanCell mapWLanCell(Ihc.Soap.Configuration.WSWLanCell cell)
+        private WLanCell? mapWLanCell(Ihc.Soap.Configuration.WSWLanCell? cell)
         {
             return cell != null ? new WLanCell()
             {
@@ -424,7 +424,7 @@ namespace Ihc {
             } : null;
         }
 
-        private SMTPSettings mapSMTPSettings(Ihc.Soap.Configuration.WSSMTPSettings settings)
+        private SMTPSettings? mapSMTPSettings(Ihc.Soap.Configuration.WSSMTPSettings? settings)
         {
             return settings != null ? new SMTPSettings()
             {
@@ -438,7 +438,7 @@ namespace Ihc {
             } : null;
         }
 
-        private Ihc.Soap.Configuration.WSSMTPSettings unmapSMTPSettings(SMTPSettings settings)
+        private Ihc.Soap.Configuration.WSSMTPSettings? unmapSMTPSettings(SMTPSettings? settings)
         {
             if (settings == null)
                 return null;
@@ -455,7 +455,7 @@ namespace Ihc {
             };
         }
 
-        private EmailControlSettings mapEmailControlSettings(Ihc.Soap.Configuration.WSEmailControlSettings settings)
+        private EmailControlSettings? mapEmailControlSettings(Ihc.Soap.Configuration.WSEmailControlSettings? settings)
         {
             return settings != null ? new EmailControlSettings()
             {
@@ -470,7 +470,7 @@ namespace Ihc {
             } : null;
         }
 
-        private Ihc.Soap.Configuration.WSEmailControlSettings unmapEmailControlSettings(EmailControlSettings settings)
+        private Ihc.Soap.Configuration.WSEmailControlSettings? unmapEmailControlSettings(EmailControlSettings? settings)
         {
             if (settings == null)
                 return null;
@@ -488,7 +488,7 @@ namespace Ihc {
             };
         }
 
-        private WebAccessControl mapWebAccessControl(Ihc.Soap.Configuration.WSAccessControl ac)
+        private WebAccessControl? mapWebAccessControl(Ihc.Soap.Configuration.WSAccessControl? ac)
         {
             return ac != null ? new WebAccessControl()
             {
@@ -524,7 +524,7 @@ namespace Ihc {
             } : null;
         }
 
-        private Ihc.Soap.Configuration.WSAccessControl unmapWebAccessControl(WebAccessControl ac)
+        private Ihc.Soap.Configuration.WSAccessControl? unmapWebAccessControl(WebAccessControl? ac)
         {
             if (ac == null)
                 return null;
@@ -638,7 +638,7 @@ namespace Ihc {
 
         // Network operations
 
-        public async Task<NetworkSettings> GetNetworkSettings() {
+        public async Task<NetworkSettings?> GetNetworkSettings() {
             using (var activity = StartActivity(nameof(GetNetworkSettings)))
             {
                 try
@@ -717,7 +717,7 @@ namespace Ihc {
 
         // WiFi operations
 
-        public async Task<WLanSettings> GetWLanSettings() {
+        public async Task<WLanSettings?> GetWLanSettings() {
             using (var activity = StartActivity(nameof(GetWLanSettings)))
             {
                 try
@@ -755,7 +755,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<WLanInterface> GetWLanInterface() {
+        public async Task<WLanInterface?> GetWLanInterface() {
             using (var activity = StartActivity(nameof(GetWLanInterface)))
             {
                 try
@@ -780,7 +780,9 @@ namespace Ihc {
                 try
                 {
                     var resp = await impl.getWLanScanAsync(new inputMessageName13()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getWLanScan1?.Select(cell => mapWLanCell(cell)).ToList();
+                    IReadOnlyList<WLanCell> retv = resp.getWLanScan1 is { } cells
+                        ? cells.Select(mapWLanCell).OfType<WLanCell>().ToList()
+                        : Array.Empty<WLanCell>();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -795,7 +797,7 @@ namespace Ihc {
 
         // SMTP operations
 
-        public async Task<SMTPSettings> GetSMTPSettings() {
+        public async Task<SMTPSettings?> GetSMTPSettings() {
             using (var activity = StartActivity(nameof(GetSMTPSettings)))
             {
                 try
@@ -911,7 +913,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<EmailControlSettings> GetEmailControlSettings() {
+        public async Task<EmailControlSettings?> GetEmailControlSettings() {
             using (var activity = StartActivity(nameof(GetEmailControlSettings)))
             {
                 try
@@ -951,7 +953,7 @@ namespace Ihc {
 
         // Web Access Control operations
 
-        public async Task<WebAccessControl> GetWebAccessControl() {
+        public async Task<WebAccessControl?> GetWebAccessControl() {
             using (var activity = StartActivity(nameof(GetWebAccessControl)))
             {
                 try

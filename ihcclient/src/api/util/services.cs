@@ -26,7 +26,7 @@ namespace Ihc
         /// <param name="timeout_between_waits_in_seconds">Timeout in seconds for each wait call (default 15s, should be less than 20s)</param>
         /// <returns>Async enumerable stream of ResourceValue changes</returns>
         public static async IAsyncEnumerable<ResourceValue> GetResourceValueChanges(
-            Activity activity,
+            Activity? activity,
             IReadOnlyList<int> resourceIds,
             Func<IReadOnlyList<int>, Task> enableSubscription,
             Func<int, Task<IReadOnlyList<ResourceValue>>> waitForChanges,

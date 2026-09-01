@@ -22,8 +22,8 @@ namespace Ihc {
         /// a cookie surfaced as an opaque exception thrown from inside a response callback. An absent cookie is a
         /// value the caller already handles, not an error.
         /// </remarks>
-        public static string FirstOrNull(HttpResponseMessage response) =>
-            response.Headers.TryGetValues(Name, out IEnumerable<string> values) ? values.FirstOrDefault() : null;
+        public static string? FirstOrNull(HttpResponseMessage response) =>
+            response.Headers.TryGetValues(Name, out IEnumerable<string>? values) ? values.FirstOrDefault() : null;
     }
 
     /// <summary>
@@ -35,13 +35,13 @@ namespace Ihc {
         /// Gets the current session cookie.
         /// </summary>
         /// <returns>The cookie string, or null if not set.</returns>
-        string GetCookie();
+        string? GetCookie();
 
         /// <summary>
         /// Sets the session cookie.
         /// </summary>
         /// <param name="_cookie">The cookie string to set.</param>
-        void SetCookie(string _cookie);
+        void SetCookie(string? _cookie);
     }
 
     /// <summary>
@@ -62,7 +62,7 @@ namespace Ihc {
 
         private readonly object _lock = new object();
         private readonly bool logSensitiveData;
-        private string cookie = null;
+        private string? cookie = null;
 
         /// <summary>
         /// Create a CookieHandler for managing session cookies.
@@ -81,7 +81,7 @@ namespace Ihc {
         private readonly OperationTelemetry telemetry =
             new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(CookieHandler));
 
-        public string GetCookie()
+        public string? GetCookie()
         {
             lock (_lock)
             {
@@ -96,7 +96,7 @@ namespace Ihc {
             }
         }
 
-        public void SetCookie(string _cookie)
+        public void SetCookie(string? _cookie)
         {
             lock (_lock)
             {

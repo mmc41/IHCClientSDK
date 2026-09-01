@@ -27,7 +27,7 @@ namespace Ihc.App
     {
         private readonly IUserManagerService userService;
         private readonly IConfigurationService configService;
-        private MutableAdminModel _originalSnapshot;
+        private MutableAdminModel? _originalSnapshot;
         private readonly object _snapshotLock = new object();
 
         private SimpleSecret secretMaker;
@@ -208,7 +208,7 @@ namespace Ihc.App
                 await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
                 // Load snapshot from controller if not present
-                MutableAdminModel snapshot = null;
+                MutableAdminModel? snapshot = null;
                 lock (_snapshotLock)
                 {
                     snapshot = _originalSnapshot;
@@ -259,7 +259,7 @@ namespace Ihc.App
             {
                 activity?.SetParameters((nameof(adminModel), adminModel.ToString(settings.LogSensitiveData)));
 
-                var modelCopy = (MutableAdminModel)CopyUtil.DeepCopyAndApply(adminModel, (PropertyInfo prop, object value) =>
+                var modelCopy = (MutableAdminModel)CopyUtil.DeepCopyAndApply(adminModel, (PropertyInfo? prop, object? value) =>
                 {
                     // If property has SensitiveDataAttribute, encrypt the value
                     if (prop != null && prop.GetCustomAttribute<SensitiveDataAttribute>() != null)
@@ -269,7 +269,8 @@ namespace Ihc.App
                             return null;
 
                         // Convert value to string unless already a string
-                        var stringValue = value as string ?? value.ToString();
+                        var stringValue = value as string ?? value.ToString()
+                            ?? throw new InvalidOperationException($"A {value.GetType().Name} value marked sensitive has no string form to encrypt.");
 
                         // Encrypt and return
                         return secretMaker.EncryptString(stringValue);
@@ -340,21 +341,21 @@ namespace Ihc.App
                 if (adminModel.ModelMetadata == null)
                     throw new ArgumentException("Missing model metadata");
 
-                string serializedTypeName = adminModel.ModelMetadata.TypeFullName;
-                string expectedTypeName = typeof(MutableAdminModel).FullName;
+                string? serializedTypeName = adminModel.ModelMetadata.TypeFullName;
+                string? expectedTypeName = typeof(MutableAdminModel).FullName;
                 if (serializedTypeName!=expectedTypeName)
                     throw new ArgumentException($"Type incompatiblitly. Got {serializedTypeName} but expected {expectedTypeName}");
 
-                Version streamVersion = adminModel.ModelMetadata.Version;
+                Version? streamVersion = adminModel.ModelMetadata.Version;
                 if (streamVersion == null)
                     throw new ArgumentException("Missing version metadata");
 
-                System.Version currentVersion = typeof(MutableAdminModel).Assembly.GetName().Version;
+                System.Version currentVersion = typeof(MutableAdminModel).Assembly.GetName().Version!;
                 if (streamVersion.Major!=currentVersion.Major)
                     throw new ArgumentException($"Version incompatiblitly. Got {streamVersion.Major} but expected {currentVersion.Major}");
 
                 // Decrypt sensitive properties using deep copy with transformation
-                var decryptedModel = (MutableAdminModel)CopyUtil.DeepCopyAndApply(adminModel, (PropertyInfo prop, object value) =>
+                var decryptedModel = (MutableAdminModel)CopyUtil.DeepCopyAndApply(adminModel, (PropertyInfo? prop, object? value) =>
                 {
                     // If property has SensitiveDataAttribute, decrypt the value
                     if (prop != null && prop.GetCustomAttribute<SensitiveDataAttribute>() != null)
@@ -434,8 +435,8 @@ namespace Ihc.App
                 var currentUsers = current.Users ?? new HashSet<IhcUser>();
 
                 // Build Username-based dictionaries for efficient lookup
-                var originalByUsername = originalUsers.ToDictionary(u => u.Username);
-                var currentByUsername = currentUsers.ToDictionary(u => u.Username);
+                var originalByUsername = originalUsers.ToDictionary(u => u.Username!);
+                var currentByUsername = currentUsers.ToDictionary(u => u.Username!);
 
                 // Added users (Username in current but not in original)
                 foreach (var username in currentByUsername.Keys.Except(originalByUsername.Keys))
@@ -634,49 +635,49 @@ namespace Ihc.App
                     switch (change.ChangeType)
                     {
                         case AdminChangeType.UserAdded:                  
-                            await userService.AddUser((IhcUser)change.Payload)
+                            await userService.AddUser((IhcUser)change.Payload!)
                                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                             break;
 
                         case AdminChangeType.UserUpdated:
-                            await userService.UpdateUser((IhcUser)change.Payload)
+                            await userService.UpdateUser((IhcUser)change.Payload!)
                                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                             break;
 
                         case AdminChangeType.UserDeleted:
-                            await userService.RemoveUser(((IhcUser)change.Payload).Username)
+                            await userService.RemoveUser(((IhcUser)change.Payload!).Username!)
                                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                             break;
 
                         case AdminChangeType.EmailControlChanged:
-                            await configService.SetEmailControlSettings((EmailControlSettings)change.Payload)
+                            await configService.SetEmailControlSettings((EmailControlSettings)change.Payload!)
                                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                             break;
 
                         case AdminChangeType.SmtpSettingsChanged:
-                            await configService.SetSMTPSettings((SMTPSettings)change.Payload)
+                            await configService.SetSMTPSettings((SMTPSettings)change.Payload!)
                                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                             break;
 
                         case AdminChangeType.DnsServersChanged:
-                            await configService.SetDNSServers((DNSServers)change.Payload)
+                            await configService.SetDNSServers((DNSServers)change.Payload!)
                                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                             rebootRequiredFlag = true;
                             break;
 
                         case AdminChangeType.NetworkSettingsChanged:
-                            await configService.SetNetworkSettings((NetworkSettings)change.Payload)
+                            await configService.SetNetworkSettings((NetworkSettings)change.Payload!)
                                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                             rebootRequiredFlag = true;
                             break;
 
                         case AdminChangeType.WebAccessChanged:
-                            await configService.SetWebAccessControl((WebAccessControl)change.Payload)
+                            await configService.SetWebAccessControl((WebAccessControl)change.Payload!)
                                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                             break;
 
                         case AdminChangeType.WLanSettingsChanged:
-                            await configService.SetWLanSettings((WLanSettings)change.Payload)
+                            await configService.SetWLanSettings((WLanSettings)change.Payload!)
                                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                             rebootRequiredFlag = true;
                             break;

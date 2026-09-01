@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -323,7 +322,7 @@ namespace Ihc.Vis.Tests
         // The scan must cover these by name whatever the glob returns; see the coverage assertion below.
         private static readonly string[] RequiredDigestSourceNames =
         [
-            "BuiltInCatalog.Products.g.cs", "BuiltInCatalog.FunctionBlocks.g.cs", "BuiltInCatalog.Grammar.g.cs",
+            "BuiltInCatalog.Products.cs", "BuiltInCatalog.FunctionBlocks.cs", "BuiltInCatalog.Grammar.cs",
             "BuiltInCatalog.Templates.cs",
         ];
 

@@ -29,11 +29,7 @@ namespace Ihc {
         /// Gets the version of the SDK from the assembly metadata.
         /// </summary>
         /// <returns>The SDK version, or null if the assembly carries no version.</returns>
-        // Assembly.GetName().Version is nullable, so the return type is honestly annotated nullable. The
-        // assembly is nullable-disabled, so a local annotations context is opened just for this signature.
-#nullable enable annotations
         public static System.Version? GetSdkVersion()
-#nullable restore
         {
             // Get the SDK assembly (ihcclient), not the entry assembly. typeof(...).Assembly is never null.
             Assembly assembly = typeof(VersionInfo).Assembly;
@@ -50,7 +46,7 @@ namespace Ihc {
     /// <summary>
     /// High level metadata about a field/parameter used in a high level IHC service operation type. For use by test and documentation tools.
     /// </summary>
-    public record FieldMetaData(string name, Type type, FieldMetaData[] subtypes, string description, ICustomAttributeProvider attributeProvider = null)
+    public record FieldMetaData(string name, Type type, FieldMetaData[] subtypes, string description, ICustomAttributeProvider? attributeProvider = null)
     {
         // The positional parameters are deliberately lower-cased and the public surface is re-declared here in
         // PascalCase: callers see idiomatic Name/Type/SubTypes/... while construction stays positional. The
@@ -59,7 +55,7 @@ namespace Ihc {
         public Type Type { get; init; } = type;
         public string Description { get; init; } = description;
         public FieldMetaData[] SubTypes { get; init; } = subtypes;
-        public ICustomAttributeProvider AttributeProvider { get; init; } = attributeProvider;
+        public ICustomAttributeProvider? AttributeProvider { get; init; } = attributeProvider;
         public bool IsSimple { get { return type.IsPrimitive || type == typeof(String) || type.IsEnum; } }
         public bool IsArray { get { return type.IsArray; } }
 
@@ -117,7 +113,7 @@ namespace Ihc {
         /// <returns>Task, Task&lt;T&gt;, or IAsyncEnumerable&lt;T&gt; representing the async operation</returns>
         /// <exception cref="ArgumentNullException">Thrown when serviceInstance is null</exception>
         /// <exception cref="ArgumentException">Thrown when arguments don't match expected parameter types</exception>
-        public object Invoke(object[] arguments)
+        public object? Invoke(object?[]? arguments)
         {
             // Validate arguments length matches expected parameters
             if (arguments == null && Parameters.Length > 0)
@@ -202,7 +198,7 @@ namespace Ihc {
     public static class ServiceMetadata
     {
         private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, IReadOnlyList<ServiceOperationMetadata>> _cache = new();
-        private static XDocument _xmlDoc;
+        private static XDocument? _xmlDoc;
         private static readonly object _xmlLock = new();
 
         /// <summary>
@@ -216,7 +212,7 @@ namespace Ihc {
             // could only report that the lookup happened, never that reflection over the service failed.
             return Telemetry.Run(nameof(GetOperations), scope =>
             {
-                Activity activity = scope.Activity;
+                Activity? activity = scope.Activity;
 
                 Type serviceType = ReflectionUtil.GetServiceType(service);
 
@@ -454,7 +450,7 @@ namespace Ihc {
         /// <summary>
         /// Load the XML documentation file generated for the current assembly.
         /// </summary>
-        private static XDocument LoadXmlDocumentation()
+        private static XDocument? LoadXmlDocumentation()
         {
             lock (_xmlLock)
             {
@@ -496,7 +492,7 @@ namespace Ihc {
         /// for both and only the lookup performed at each stop differs.
         /// </remarks>
         private static string FindThroughDeclaringTypeThenInterfaces(
-            MethodInfo method, Func<MethodInfo, Type, string> lookup)
+            MethodInfo method, Func<MethodInfo, Type?, string?> lookup)
         {
             // Try to find documentation from the declaring type first
             var description = lookup(method, method.DeclaringType);
@@ -552,11 +548,11 @@ namespace Ihc {
         /// method up in the generated XML doc file; shared by the summary and parameter lookups so the
         /// (namespace + method name + parameter types) encoding lives in one place.
         /// </summary>
-        private static string BuildXmlMemberName(MethodInfo method, Type type)
+        private static string BuildXmlMemberName(MethodInfo method, Type? type)
         {
             var sb = new StringBuilder();
             sb.Append("M:");
-            sb.Append(type.FullName);
+            sb.Append(type?.FullName);
             sb.Append('.');
             sb.Append(method.Name);
 
@@ -581,14 +577,14 @@ namespace Ihc {
         /// Finds the <c>&lt;member&gt;</c> element documenting <paramref name="method"/> (as declared on
         /// <paramref name="type"/>) in the XML documentation, or null if it is absent.
         /// </summary>
-        private static XElement FindMemberElement(XDocument xmlDoc, MethodInfo method, Type type)
+        private static XElement? FindMemberElement(XDocument xmlDoc, MethodInfo method, Type? type)
         {
             var memberName = BuildXmlMemberName(method, type);
             return xmlDoc.Descendants("member")
                 .FirstOrDefault(m => m.Attribute("name")?.Value == memberName);
         }
 
-        private static string TryGetDescriptionForType(XDocument xmlDoc, MethodInfo method, Type type)
+        private static string? TryGetDescriptionForType(XDocument xmlDoc, MethodInfo method, Type? type)
         {
             if (type == null)
                 return null;
@@ -627,7 +623,7 @@ namespace Ihc {
             return result.ToString();
         }
 
-        private static string TryGetParameterDescriptionForType(XDocument xmlDoc, MethodInfo method, Type type, string parameterName)
+        private static string? TryGetParameterDescriptionForType(XDocument xmlDoc, MethodInfo method, Type? type, string parameterName)
         {
             if (type == null)
                 return null;

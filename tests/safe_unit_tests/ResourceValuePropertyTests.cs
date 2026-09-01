@@ -246,9 +246,9 @@ namespace Ihc.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(rv, Is.Not.Null);
-                Assert.That(rv.Value.ValueKind, Is.EqualTo(ResourceValue.ValueKind.NONE));
-                Assert.That(rv.Value.BoolValue, Is.Null);
-                Assert.That(rv.ResourceID, Is.EqualTo(47434));
+                Assert.That(rv!.Value.ValueKind, Is.EqualTo(ResourceValue.ValueKind.NONE));
+                Assert.That(rv!.Value.BoolValue, Is.Null);
+                Assert.That(rv!.ResourceID, Is.EqualTo(47434));
             });
         }
     }

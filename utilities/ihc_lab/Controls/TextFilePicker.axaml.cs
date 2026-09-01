@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -37,8 +38,11 @@ public partial class TextFilePicker : UserControl, TextFile
     }
 
     /// <summary>
-    /// Gets the text file name (implements TextFile interface)
+    /// Gets the text file name (implements TextFile interface). The setter accepts null - a TextFile
+    /// restored from the service may carry no filename - and the getter normalises it to empty, which is
+    /// the same split BinaryFilePicker uses.
     /// </summary>
+    [AllowNull]
     public string Filename
     {
         get => fileName ?? string.Empty;

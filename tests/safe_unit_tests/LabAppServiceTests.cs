@@ -1294,13 +1294,13 @@ namespace Ihc.Tests
 
             var labService = SelectGetResourceValueChanges();
 
-            var received = new List<object>();
+            var received = new List<object?>();
             await labService.StartStream(item => received.Add(item));
 
             Assert.That(received, Has.Count.EqualTo(3));
-            Assert.That(((ResourceValue)received[0]).Value.IntValue, Is.EqualTo(0));
-            Assert.That(((ResourceValue)received[1]).Value.IntValue, Is.EqualTo(1));
-            Assert.That(((ResourceValue)received[2]).Value.IntValue, Is.EqualTo(2));
+            Assert.That(((ResourceValue)received[0]!).Value.IntValue, Is.EqualTo(0));
+            Assert.That(((ResourceValue)received[1]!).Value.IntValue, Is.EqualTo(1));
+            Assert.That(((ResourceValue)received[2]!).Value.IntValue, Is.EqualTo(2));
         }
 
         /// <summary>
@@ -1314,7 +1314,7 @@ namespace Ihc.Tests
 
             var labService = SelectGetResourceValueChanges();
 
-            var received = new List<object>();
+            var received = new List<object?>();
             // Stop after the first item; the next enumeration step sees the cancelled token and ends the stream.
             await labService.StartStream(item =>
             {

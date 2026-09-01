@@ -6,14 +6,14 @@ namespace Ihc.IOExtractor {
     */
     public record IOMeta {
         public int ResourceId { get; init; }
-        public string DatalineName { get; init; }
-        public string DatalineNote { get; init; }
+        public required string DatalineName { get; init; }
+        public required string DatalineNote { get; init; }
         public int ProductId { get; init; }
-        public string ProductName { get; init; }
-        public string ProductPosition { get; init; }
-        public string ProductNote { get; init; }
+        public required string ProductName { get; init; }
+        public required string ProductPosition { get; init; }
+        public required string ProductNote { get; init; }
         public int GroupId { get; init; }
-        public string GroupName { get; init; }
+        public required string GroupName { get; init; }
     };
 }
   

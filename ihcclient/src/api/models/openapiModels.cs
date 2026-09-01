@@ -37,7 +37,7 @@ namespace Ihc {
         /// <summary>
         /// Array of resource value change events.
         /// </summary>
-        public ResourceValue[] ResourceValueEvents { get; init; }
+        public ResourceValue[] ResourceValueEvents { get; init; } = Array.Empty<ResourceValue>();
 
         /// <summary>
         /// Indicates whether the controller execution is currently running.

@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;

@@ -1,4 +1,3 @@
-#nullable enable
 using Ihc.Vis.Problems;
 
 namespace Ihc.App

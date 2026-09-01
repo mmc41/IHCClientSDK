@@ -16,42 +16,42 @@ namespace Ihc.App
         /// <summary>
         /// Serialization metadata.
         /// </summary>
-        public ModelMetadata ModelMetadata { get; set; }
+        public ModelMetadata? ModelMetadata { get; set; }
 
         /// <summary>
         /// List of all users registered on the IHC controller.
         /// </summary>
-        public ISet<IhcUser> Users { get; set; }
+        public ISet<IhcUser>? Users { get; set; }
 
         /// <summary>
         /// Email control settings for receiving control commands via email (POP3 configuration).
         /// </summary>
-        public EmailControlSettings EmailControl { get; set; }
+        public EmailControlSettings? EmailControl { get; set; }
 
         /// <summary>
         /// SMTP settings for sending email notifications from the controller.
         /// </summary>
-        public SMTPSettings SmtpSettings { get; set; }
+        public SMTPSettings? SmtpSettings { get; set; }
 
         /// <summary>
         /// DNS server configuration for the IHC controller network.
         /// </summary>
-        public DNSServers DnsServers { get; set; }
+        public DNSServers? DnsServers { get; set; }
 
         /// <summary>
         /// Network settings including IP address, netmask, gateway, and HTTP/HTTPS ports.
         /// </summary>
-        public NetworkSettings NetworkSettings { get; set; }
+        public NetworkSettings? NetworkSettings { get; set; }
 
         /// <summary>
         /// Web access control settings defining which applications can be accessed from different network locations.
         /// </summary>
-        public WebAccessControl WebAccess { get; set; }
+        public WebAccessControl? WebAccess { get; set; }
 
         /// <summary>
         /// Wireless LAN settings for the IHC controller network connectivity.
         /// </summary>
-        public WLanSettings WLanSettings { get; set; }
+        public WLanSettings? WLanSettings { get; set; }
 
         /// <summary>
         /// This default ToString method should not be used! Use alternative with bool parameter.
@@ -162,6 +162,6 @@ namespace Ihc.App
         /// <summary>
         /// Payload containing the changed data (IhcUser, EmailControlSettings, or SMTPSettings).
         /// </summary>
-        public object Payload { get; init; }
+        public required object? Payload { get; init; }
     }
 }

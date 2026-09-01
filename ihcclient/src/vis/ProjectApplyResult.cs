@@ -1,4 +1,3 @@
-#nullable enable
 using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
 

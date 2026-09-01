@@ -1,4 +1,3 @@
-#nullable enable
 using Ihc.Tests.Shared;
 using NUnit.Framework;
 

@@ -13,26 +13,15 @@ namespace Ihc.Tests
     /// System tests against live IHC system. Requires use of user name/password and test input/outputs specified in configuration file.
     /// </summary>
     [TestFixture]
-    public class ResourceTest
-    {   
-        private AuthenticationService authService;
-        private ResourceInteractionService resourceInteractionService;
+    public class ResourceTest : AuthenticatedSystemTest
+    {
+        // Assigned by CreateServices before every test, and never observed before that;
+        // NUnit constructs the fixture itself, so there is no constructor to assign it in.
+        private ResourceInteractionService resourceInteractionService = null!;
 
-        [SetUp]
-        public async Task SetupMethod()
+        protected override void CreateServices(AuthenticationService session)
         {
-            authService = new AuthenticationService(Setup.settings);
-            resourceInteractionService = new ResourceInteractionService(authService);
-         
-            await authService.Authenticate();
-        }
-
-        [TearDown]
-        public async Task BaseTearDown()
-        {
-            await authService.Disconnect();
-            authService?.Dispose();
-            authService = null;
+            resourceInteractionService = new ResourceInteractionService(session);
         }
 
         [Test]

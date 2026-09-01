@@ -20,9 +20,9 @@ namespace Ihc.example
 
           // Read configuration settings
           var testConfig = config.GetSection("testConfig");
-          var boolOutput1 = int.Parse(testConfig["boolOutput1"]);
-          var boolInput1 = int.Parse(testConfig["boolInput1"]);
-          var boolInput2 = int.Parse(testConfig["boolInput2"]);
+          var boolOutput1 = int.Parse(RequiredSetting(testConfig, "boolOutput1"));
+          var boolInput1 = int.Parse(RequiredSetting(testConfig, "boolInput1"));
+          var boolInput2 = int.Parse(RequiredSetting(testConfig, "boolInput2"));
 
           // Create client for IHC services that this example use (see also ConfigurationService, MessageControlLogService, ModuleService, NotificationManagerService, OpenAPIService, TimeManagerService, UserManagerService).
           using var authService = new AuthenticationService(settings);
@@ -46,5 +46,11 @@ namespace Ihc.example
            // install a CTRL-C handler to make sure Disconnect is called.
            await authService.Disconnect();
         }
+
+        /// <summary>
+        /// Reads a setting the example cannot run without, so a missing entry is reported by name.
+        /// </summary>
+        static string RequiredSetting(IConfigurationSection section, string key)
+            => section[key] ?? throw new InvalidOperationException($"Configuration setting '{section.Path}:{key}' is required to run this example.");
     }
 }

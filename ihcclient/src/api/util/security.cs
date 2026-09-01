@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 
 namespace Ihc
@@ -21,7 +22,8 @@ namespace Ihc
         /// </summary>
         /// <param name="input">The XML string to redact passwords from</param>
         /// <returns>The XML string with passwords redacted, or null if input is null</returns>
-        public static string RedactPassword(string input)
+        [return: NotNullIfNotNull(nameof(input))]
+        public static string? RedactPassword(string? input)
         {
             if (input == null)
             {

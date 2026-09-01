@@ -29,7 +29,7 @@ namespace Ihc {
         /// <summary>
         /// Get firmware version information.
         /// </summary>
-        public Task<FWVersion> GetFWVersion();
+        public Task<FWVersion?> GetFWVersion();
 
         /// <summary>
         /// Get OpenAPI version number.
@@ -112,7 +112,7 @@ namespace Ihc {
         /// <summary>
         /// Get project information.
         /// </summary>
-        public Task<ProjectInfo> GetProjectInfo();
+        public Task<ProjectInfo?> GetProjectInfo();
 
         /// <summary>
         /// Get number of project segments.
@@ -135,7 +135,7 @@ namespace Ihc {
         /// <summary>
         /// Get scene project information.
         /// </summary>
-        public Task<SceneProjectInfo> GetSceneProjectInfo();
+        public Task<SceneProjectInfo?> GetSceneProjectInfo();
 
         /// <summary>
         /// Get scene project segmentation size.
@@ -155,7 +155,6 @@ namespace Ihc {
     /// </summary>
     public class OpenAPIService : ServiceBase, IOpenAPIService
     {
-        private readonly string endpoint;
         private readonly ICookieHandler cookieHandler;
 
         public ICookieHandler GetCookieHandler()
@@ -169,7 +168,7 @@ namespace Ihc {
 
             public Task<outputMessageName13> authenticateAsync(inputMessageName13 request)
             {
-                string cookie = null;
+                string? cookie = null;
 
                 var result = soapPost<outputMessageName13, inputMessageName13>("authenticate", request, resp =>
                 {
@@ -303,7 +302,7 @@ namespace Ihc {
 
         // Helper methods for converting between OpenAPI SOAP types and high-level models
 
-        private FWVersion mapFWVersion(Ihc.Soap.Openapi.WSVersionInfo version)
+        private FWVersion? mapFWVersion(Ihc.Soap.Openapi.WSVersionInfo? version)
         {
             return version != null ? new FWVersion()
             {
@@ -313,7 +312,7 @@ namespace Ihc {
             } : null;
         }
 
-        private ResourceValue mapResourceValue(Ihc.Soap.Openapi.WSResourceValue v)
+        private ResourceValue? mapResourceValue(Ihc.Soap.Openapi.WSResourceValue? v)
         {
             if (v == null)
                 return null;
@@ -393,25 +392,29 @@ namespace Ihc {
             return new ResourceValue() { Value = value };
         }
 
+        // Each case reads the union member its ValueKind selects, which the UnionValue invariant
+        // guarantees is populated but the compiler cannot see. The unwrap is left unguarded so a
+        // malformed value still throws exactly as before; ResourceValueEnvelopeMapper.ToWire is the
+        // twin of this method and does guard it, which is a difference worth closing separately.
         private Ihc.Soap.Openapi.WSResourceValue mapToWSResourceValue(ResourceValue v)
         {
             switch (v.Value.ValueKind)
             {
                 case ResourceValue.ValueKind.BOOL:
-                    return new Ihc.Soap.Openapi.WSBooleanValue() { value = (bool)v.Value.BoolValue };
+                    return new Ihc.Soap.Openapi.WSBooleanValue() { value = (bool)v.Value.BoolValue! };
                 case ResourceValue.ValueKind.INT:
-                    return new Ihc.Soap.Openapi.WSIntegerValue() { integer = (int)v.Value.IntValue };
+                    return new Ihc.Soap.Openapi.WSIntegerValue() { integer = (int)v.Value.IntValue! };
                 case ResourceValue.ValueKind.DOUBLE:
-                    return new Ihc.Soap.Openapi.WSFloatingPointValue() { floatingPointValue = (double)v.Value.DoubleValue };
+                    return new Ihc.Soap.Openapi.WSFloatingPointValue() { floatingPointValue = (double)v.Value.DoubleValue! };
                 case ResourceValue.ValueKind.ENUM:
                     return new Ihc.Soap.Openapi.WSEnumValue()
                     {
-                        definitionTypeID = v.Value.EnumValue.DefinitionTypeID,
+                        definitionTypeID = v.Value.EnumValue!.DefinitionTypeID,
                         enumValueID = v.Value.EnumValue.EnumValueID,
                         enumName = v.Value.EnumValue.EnumName
                     };
                 case ResourceValue.ValueKind.DATE:
-                    var date = (DateTimeOffset)v.Value.DateValue;
+                    var date = (DateTimeOffset)v.Value.DateValue!;
                     return new Ihc.Soap.Openapi.WSDateValue()
                     {
                         year = (short)date.Year,
@@ -419,7 +422,7 @@ namespace Ihc {
                         day = (sbyte)date.Day
                     };
                 case ResourceValue.ValueKind.TIME:
-                    var time = (TimeSpan)v.Value.TimeValue;
+                    var time = (TimeSpan)v.Value.TimeValue!;
                     return new Ihc.Soap.Openapi.WSTimeValue()
                     {
                         hours = time.Hours,
@@ -427,17 +430,17 @@ namespace Ihc {
                         seconds = time.Seconds
                     };
                 case ResourceValue.ValueKind.TIMER:
-                    return new Ihc.Soap.Openapi.WSTimerValue() { milliseconds = (long)v.Value.TimerValue };
+                    return new Ihc.Soap.Openapi.WSTimerValue() { milliseconds = (long)v.Value.TimerValue! };
                 case ResourceValue.ValueKind.WEEKDAY:
-                    return new Ihc.Soap.Openapi.WSWeekdayValue() { weekdayNumber = (int)v.Value.WeekdayValue };
+                    return new Ihc.Soap.Openapi.WSWeekdayValue() { weekdayNumber = (int)v.Value.WeekdayValue! };
                 case ResourceValue.ValueKind.PhoneNumber:
                     return new Ihc.Soap.Openapi.WSPhoneNumberValue() { number = v.Value.PhoneNumberValue };
                 case ResourceValue.ValueKind.SceneDimmer:
-                    return new Ihc.Soap.Openapi.WSSceneDimmerValue() { dimmerPercentage = (int)v.Value.DimmerPercentage, delayTime = (int)v.Value.DimmerDelayTime, rampTime = (int)v.Value.DimmerRampTime };
+                    return new Ihc.Soap.Openapi.WSSceneDimmerValue() { dimmerPercentage = (int)v.Value.DimmerPercentage!, delayTime = (int)v.Value.DimmerDelayTime!, rampTime = (int)v.Value.DimmerRampTime! };
                 case ResourceValue.ValueKind.SceneRelay:
-                    return new Ihc.Soap.Openapi.WSSceneRelayValue() { delayTime = (int)v.Value.RelayDelayTime, relayValue = (bool)v.Value.RelayValue };
+                    return new Ihc.Soap.Openapi.WSSceneRelayValue() { delayTime = (int)v.Value.RelayDelayTime!, relayValue = (bool)v.Value.RelayValue! };
                 case ResourceValue.ValueKind.SceneShutter:
-                    return new Ihc.Soap.Openapi.WSSceneShutterSimpleValue() { shutterPositionIsUp = (bool)v.Value.ShutterPositionIsUp, delayTime = (int)v.Value.ShutterDelayTime };
+                    return new Ihc.Soap.Openapi.WSSceneShutterSimpleValue() { shutterPositionIsUp = (bool)v.Value.ShutterPositionIsUp!, delayTime = (int)v.Value.ShutterDelayTime! };
                 case ResourceValue.ValueKind.NONE:
                     throw new ArgumentException($"Cannot write a ResourceValue with ValueKind.NONE — it represents a resource with no writable value (e.g. a scene). ResourceID {v.ResourceID}.");
                 default:
@@ -454,7 +457,7 @@ namespace Ihc {
             };
         }
 
-        private EventPackage mapEventPackage(Ihc.Soap.Openapi.WSEventPackage eventPackage)
+        private EventPackage mapEventPackage(Ihc.Soap.Openapi.WSEventPackage? eventPackage)
         {
             if (eventPackage == null)
             {
@@ -474,17 +477,17 @@ namespace Ihc {
                     resourceValue = resourceValue with { ResourceID = e.m_resourceID };
                 }
                 return resourceValue;
-            }).Where(rv => rv != null).ToArray();
+            }).OfType<ResourceValue>().ToArray();
 
             return new EventPackage()
             {
-                ResourceValueEvents = events,
+                ResourceValueEvents = events ?? Array.Empty<ResourceValue>(),
                 ControllerExecutionRunning = eventPackage.controllerExecutionRunning,
                 SubscriptionAmount = eventPackage.subscriptionAmount
             };
         }
 
-        private ProjectInfo mapProjectInfo(Ihc.Soap.Openapi.WSProjectInfo info)
+        private ProjectInfo? mapProjectInfo(Ihc.Soap.Openapi.WSProjectInfo? info)
         {
             return info != null ? new ProjectInfo()
             {
@@ -499,7 +502,7 @@ namespace Ihc {
             } : null;
         }
 
-        private SceneProjectInfo mapSceneProjectInfo(Ihc.Soap.Openapi.WSSceneProjectInfo info)
+        private SceneProjectInfo? mapSceneProjectInfo(Ihc.Soap.Openapi.WSSceneProjectInfo? info)
         {
             return info != null ? new SceneProjectInfo()
             {
@@ -522,7 +525,6 @@ namespace Ihc {
         public OpenAPIService(IhcSettings settings)
             : base(settings)
         {
-            this.endpoint = settings.Endpoint;
             this.cookieHandler = new CookieHandler(settings.LogSensitiveData);
             this.impl = new SoapImpl(cookieHandler, settings);
         }
@@ -603,7 +605,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<FWVersion> GetFWVersion()
+        public async Task<FWVersion?> GetFWVersion()
         {
             using (var activity = StartActivity(nameof(GetFWVersion)))
             {
@@ -770,7 +772,19 @@ namespace Ihc {
                         (nameof(resourceIds), resourceIds));
 
                     var result = await impl.getValuesAsync(new inputMessageName6() { getValues1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    IReadOnlyList<ResourceValue> retv = result.getValues2 != null ? result.getValues2.Select(v => mapResourceValue(v)).ToList() : Array.Empty<ResourceValue>();
+                    // A value on THIS wire carries no resource id of its own - unlike WSResourceValueEnvelope
+                    // and WSResourceValueEvent, which do, and which is why the mappers for those may filter
+                    // freely. Here a value is bound to its resource by POSITION in this array alone, so
+                    // dropping an entry the wire left empty would slide every later value onto the wrong
+                    // resource, silently. An empty entry is named and refused instead.
+                    IReadOnlyList<ResourceValue> retv = result.getValues2 == null
+                        ? Array.Empty<ResourceValue>()
+                        : result.getValues2.Select((v, i) => mapResourceValue(v)
+                            ?? throw new InvalidOperationException(
+                                $"The controller returned an empty value at position {i} of {result.getValues2.Length}" +
+                                (i < resourceIds.Count ? $" (resource {resourceIds[i]})" : string.Empty) +
+                                "; values are paired with the requested resources by position, so the response cannot be used."))
+                            .ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -908,7 +922,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<ProjectInfo> GetProjectInfo()
+        public async Task<ProjectInfo?> GetProjectInfo()
         {
             using (var activity = StartActivity(nameof(GetProjectInfo)))
             {
@@ -1002,7 +1016,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<SceneProjectInfo> GetSceneProjectInfo()
+        public async Task<SceneProjectInfo?> GetSceneProjectInfo()
         {
             using (var activity = StartActivity(nameof(GetSceneProjectInfo)))
             {

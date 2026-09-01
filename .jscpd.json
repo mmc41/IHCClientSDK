@@ -21,6 +21,7 @@
     "**/*.g.i.cs",
     "**/*.Designer.cs",
     "tests/testdata/**",
+    "ihcclient/src/vis/catalog/definitions/**",
     "examples/**",
     "ihcclient/src/vis/validation/ProblemCatalogEntries.*.cs"
   ],

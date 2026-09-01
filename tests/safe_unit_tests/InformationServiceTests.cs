@@ -88,8 +88,8 @@ namespace Ihc.Tests
 
             A.CallTo(() => fakeConfigService.GetSystemInfo()).Returns(Task.FromResult(testSystemInfo));
             A.CallTo(() => fakeControllerService.GetControllerState()).Returns(Task.FromResult(testControllerState));
-            A.CallTo(() => fakeControllerService.GetSDCardInfo()).Returns(Task.FromResult(testSdInfo));
-            A.CallTo(() => fakeSmsModemService.GetSmsModemInfo()).Returns(Task.FromResult(testSmsModemInfo));
+            A.CallTo(() => fakeControllerService.GetSDCardInfo()).Returns(Task.FromResult<SDInfo?>(testSdInfo));
+            A.CallTo(() => fakeSmsModemService.GetSmsModemInfo()).Returns(Task.FromResult<SmsModemInfo?>(testSmsModemInfo));
 
             var service = new InformationAppService(settings, fakeAuthService, fakeConfigService, fakeTimeService, fakeControllerService, fakeSmsModemService);
 

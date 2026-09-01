@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Ihc
 {
@@ -109,7 +110,12 @@ namespace Ihc
         /// }
         /// ]]></code>
         /// </example>
-        public static object DeepCopyAndApply(object src, Func<PropertyInfo, object, object> propertyValueTransformer)
+        /// <remarks>
+        /// The result is null only when <paramref name="src"/> is - stated as a contract so a caller with a
+        /// non-null source needs no null-forgiving operator to use what comes back.
+        /// </remarks>
+        [return: NotNullIfNotNull(nameof(src))]
+        public static object? DeepCopyAndApply(object? src, Func<PropertyInfo?, object?, object?> propertyValueTransformer)
         {
             return Telemetry.Run(nameof(DeepCopyAndApply), scope =>
             {
@@ -129,7 +135,7 @@ namespace Ihc
         private static readonly OperationTelemetry Telemetry =
             new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(CopyUtil));
 
-        private static object DoDeepCopyAndApply(object src, Func<PropertyInfo, object, object> propertyValueTransformer, int depth, PropertyInfo parentProperty, string path, Activity activity)
+        private static object? DoDeepCopyAndApply(object? src, Func<PropertyInfo?, object?, object?> propertyValueTransformer, int depth, PropertyInfo? parentProperty, string path, Activity? activity)
         {
             // Enforce max recursion depth (this also prevents stack overflow from circular references,
             // though circular references are not properly preserved - they will cause an exception)
@@ -215,7 +221,7 @@ namespace Ihc
             return DoCopyObject(src, type, propertyValueTransformer, depth, path, activity);
         }
 
-        private static object DoCopyArray(Array sourceArray, Func<PropertyInfo, object, object> propertyValueTransformer, int depth, PropertyInfo parentProperty, string path, Activity activity)
+        private static object? DoCopyArray(Array sourceArray, Func<PropertyInfo?, object?, object?> propertyValueTransformer, int depth, PropertyInfo? parentProperty, string path, Activity? activity)
         {
             var elementType = sourceArray.GetType().GetElementType();
             var rank = sourceArray.Rank;
@@ -224,7 +230,7 @@ namespace Ihc
             {
                 // Handle single-dimensional arrays
                 var length = sourceArray.Length;
-                var copiedArray = Array.CreateInstance(elementType, length);
+                var copiedArray = Array.CreateInstance(elementType!, length);
 
                 for (int i = 0; i < length; i++)
                 {
@@ -232,7 +238,7 @@ namespace Ihc
                     var elementPath = $"{path}[{i}]";
                     var copiedElement = DoDeepCopyAndApply(element, propertyValueTransformer, depth + 1, parentProperty, elementPath, activity);
 
-                    object transformedElement;
+                    object? transformedElement;
                     try
                     {
                         transformedElement = propertyValueTransformer(parentProperty, copiedElement);
@@ -258,13 +264,13 @@ namespace Ihc
             }
         }
 
-        private static object DoCopyNonGenericList(object src, Type type, Func<PropertyInfo, object, object> propertyValueTransformer, int depth, PropertyInfo parentProperty, string path, Activity activity)
+        private static object? DoCopyNonGenericList(object? src, Type type, Func<PropertyInfo?, object?, object?> propertyValueTransformer, int depth, PropertyInfo? parentProperty, string path, Activity? activity)
         {
             System.Collections.IList copiedList;
             try
             {
                 // Attempt to create an instance of the original type
-                copiedList = (System.Collections.IList)Activator.CreateInstance(type);
+                copiedList = (System.Collections.IList)Activator.CreateInstance(type)!;
             }
             catch (Exception ex)
             {
@@ -275,12 +281,12 @@ namespace Ihc
             }
 
             int index = 0;
-            foreach (var item in (System.Collections.IEnumerable)src)
+            foreach (var item in (System.Collections.IEnumerable)src!)
             {
                 var itemPath = $"{path}[{index}]";
                 var copiedItem = DoDeepCopyAndApply(item, propertyValueTransformer, depth + 1, parentProperty, itemPath, activity);
 
-                object transformedItem;
+                object? transformedItem;
                 try
                 {
                     transformedItem = propertyValueTransformer(parentProperty, copiedItem);
@@ -300,7 +306,7 @@ namespace Ihc
             return copiedList;
         }
 
-        private static object DoCopyDictionary(object src, Type sourceType, Type[] genericArgs, Func<PropertyInfo, object, object> propertyValueTransformer, int depth, PropertyInfo parentProperty, string path, Activity activity)
+        private static object? DoCopyDictionary(object? src, Type sourceType, Type[] genericArgs, Func<PropertyInfo?, object?, object?> propertyValueTransformer, int depth, PropertyInfo? parentProperty, string path, Activity? activity)
         {
             // Validate that dictionary keys are immutable types
             var keyType = genericArgs[0];
@@ -341,23 +347,23 @@ namespace Ihc
                     try
                     {
                         // Try to create with comparer
-                        copiedDict = Activator.CreateInstance(dictType, comparer);
+                        copiedDict = Activator.CreateInstance(dictType, comparer)!;
                     }
                     catch
                     {
                         // Fall back to parameterless constructor if comparer constructor fails
-                        copiedDict = Activator.CreateInstance(dictType);
+                        copiedDict = Activator.CreateInstance(dictType)!;
                         comparerFailed = true;
                     }
                 }
                 else
                 {
-                    copiedDict = Activator.CreateInstance(dictType);
+                    copiedDict = Activator.CreateInstance(dictType)!;
                 }
             }
             else
             {
-                copiedDict = Activator.CreateInstance(dictType);
+                copiedDict = Activator.CreateInstance(dictType)!;
             }
 
             if (comparerFailed)
@@ -372,17 +378,17 @@ namespace Ihc
 
             var addMethod = dictType.GetMethod("Add");
 
-            foreach (var kvp in (System.Collections.IEnumerable)src)
+            foreach (var kvp in (System.Collections.IEnumerable)src!)
             {
                 var kvpType = kvp.GetType();
-                var key = kvpType.GetProperty("Key").GetValue(kvp);
-                var value = kvpType.GetProperty("Value").GetValue(kvp);
+                var key = kvpType.GetProperty("Key")!.GetValue(kvp);
+                var value = kvpType.GetProperty("Value")!.GetValue(kvp);
 
                 // Keys are immutable (enforced by validation above), so no need to deep-copy them
                 var valuePath = $"{path}[{key}]";
                 var copiedValue = DoDeepCopyAndApply(value, propertyValueTransformer, depth + 1, parentProperty, valuePath, activity);
 
-                object transformedValue;
+                object? transformedValue;
                 try
                 {
                     transformedValue = propertyValueTransformer(parentProperty, copiedValue);
@@ -395,13 +401,13 @@ namespace Ihc
                         ex);
                 }
 
-                addMethod.Invoke(copiedDict, new[] { key, transformedValue });
+                addMethod!.Invoke(copiedDict, new[] { key, transformedValue });
             }
 
             return copiedDict;
         }
 
-        private static object DoCopyHashSet(object src, Type sourceType, Type[] genericArgs, Func<PropertyInfo, object, object> propertyValueTransformer, int depth, PropertyInfo parentProperty, string path, Activity activity)
+        private static object? DoCopyHashSet(object? src, Type sourceType, Type[] genericArgs, Func<PropertyInfo?, object?, object?> propertyValueTransformer, int depth, PropertyInfo? parentProperty, string path, Activity? activity)
         {
             // Validate that HashSet element type is safe for transformation
             var elementType = genericArgs[0];
@@ -436,23 +442,23 @@ namespace Ihc
                     try
                     {
                         // Try to create with comparer
-                        copiedSet = Activator.CreateInstance(setType, comparer);
+                        copiedSet = Activator.CreateInstance(setType, comparer)!;
                     }
                     catch
                     {
                         // Fall back to parameterless constructor if comparer constructor fails
-                        copiedSet = Activator.CreateInstance(setType);
+                        copiedSet = Activator.CreateInstance(setType)!;
                         comparerFailed = true;
                     }
                 }
                 else
                 {
-                    copiedSet = Activator.CreateInstance(setType);
+                    copiedSet = Activator.CreateInstance(setType)!;
                 }
             }
             else
             {
-                copiedSet = Activator.CreateInstance(setType);
+                copiedSet = Activator.CreateInstance(setType)!;
             }
 
             if (comparerFailed)
@@ -468,7 +474,7 @@ namespace Ihc
             var addMethod = setType.GetMethod("Add");
 
             int index = 0;
-            foreach (var item in (System.Collections.IEnumerable)src)
+            foreach (var item in (System.Collections.IEnumerable)src!)
             {
                 var itemPath = $"{path}[{index}]";
                 var copiedItem = DoDeepCopyAndApply(item, propertyValueTransformer, depth + 1, parentProperty, itemPath, activity);
@@ -488,7 +494,7 @@ namespace Ihc
                     }
                 }
 
-                object transformedItem;
+                object? transformedItem;
                 try
                 {
                     transformedItem = propertyValueTransformer(parentProperty, copiedItem);
@@ -533,14 +539,14 @@ namespace Ihc
                     }
                 }
 
-                addMethod.Invoke(copiedSet, new[] { transformedItem });
+                addMethod!.Invoke(copiedSet, new[] { transformedItem });
                 index++;
             }
 
             return copiedSet;
         }
 
-        private static object DoCopyList(object src, Type sourceType, Type[] genericArgs, Func<PropertyInfo, object, object> propertyValueTransformer, int depth, PropertyInfo parentProperty, string path, Activity activity)
+        private static object? DoCopyList(object? src, Type sourceType, Type[] genericArgs, Func<PropertyInfo?, object?, object?> propertyValueTransformer, int depth, PropertyInfo? parentProperty, string path, Activity? activity)
         {
             // Emit warning if source type is IList/ICollection/IEnumerable interface (type fidelity loss)
             if (sourceType.IsInterface && sourceType.IsGenericType)
@@ -561,16 +567,16 @@ namespace Ihc
             }
 
             var listType = typeof(List<>).MakeGenericType(genericArgs);
-            var copiedList = Activator.CreateInstance(listType);
+            var copiedList = Activator.CreateInstance(listType)!;
             var addMethod = listType.GetMethod("Add");
 
             int index = 0;
-            foreach (var item in (System.Collections.IEnumerable)src)
+            foreach (var item in (System.Collections.IEnumerable)src!)
             {
                 var itemPath = $"{path}[{index}]";
                 var copiedItem = DoDeepCopyAndApply(item, propertyValueTransformer, depth + 1, parentProperty, itemPath, activity);
 
-                object transformedItem;
+                object? transformedItem;
                 try
                 {
                     transformedItem = propertyValueTransformer(parentProperty, copiedItem);
@@ -583,14 +589,14 @@ namespace Ihc
                         ex);
                 }
 
-                addMethod.Invoke(copiedList, new[] { transformedItem });
+                addMethod!.Invoke(copiedList, new[] { transformedItem });
                 index++;
             }
 
             return copiedList;
         }
 
-        private static object DoCopyObject(object src, Type type, Func<PropertyInfo, object, object> propertyValueTransformer, int depth, string path, Activity activity)
+        private static object? DoCopyObject(object? src, Type type, Func<PropertyInfo?, object?, object?> propertyValueTransformer, int depth, string path, Activity? activity)
         {
             var allProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead)
@@ -614,7 +620,7 @@ namespace Ihc
             var properties = allProperties.Where(p => p.GetIndexParameters().Length == 0).ToArray();
 
             // Copy all property values recursively with transformation
-            var copiedPropertyValues = new Dictionary<PropertyInfo, object>();
+            var copiedPropertyValues = new Dictionary<PropertyInfo, object?>();
             foreach (var prop in properties)
             {
                 var originalValue = prop.GetValue(src);
@@ -639,7 +645,7 @@ namespace Ihc
 
                 var copiedValue = DoDeepCopyAndApply(originalValue, propertyValueTransformer, depth + 1, prop, propertyPath, activity);
 
-                object transformedValue;
+                object? transformedValue;
                 try
                 {
                     transformedValue = propertyValueTransformer(prop, copiedValue);
@@ -672,7 +678,7 @@ namespace Ihc
             {
                 // Use constructor-based initialization
                 var parameters = matchingConstructor.GetParameters();
-                var parameterValues = new object[parameters.Length];
+                var parameterValues = new object?[parameters.Length];
 
                 for (int i = 0; i < parameters.Length; i++)
                 {

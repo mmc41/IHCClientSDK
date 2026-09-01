@@ -27,10 +27,6 @@ namespace Ihc.App
         // instance's life, and minting one per operation would allocate on every traced call.
         private readonly OperationTelemetry telemetry;
 
-        // Annotated on purpose, and only here: the rest of this file predates nullable reference types and
-        // turning them on file-wide would change shipped signatures. The port is genuinely optional, so its
-        // nullability is part of what it means.
-#nullable enable
         // Where an unexpected fault is REPORTED, as opposed to where it is thrown. Null when the host supplied
         // none, which is every caller that has nowhere to put one.
         private readonly Action<InternalError>? faultPort;
@@ -113,7 +109,6 @@ namespace Ihc.App
                 // See the fail-open note above.
             }
         }
-#nullable restore
 
         /// <summary>
         /// Starts a span named <c>&lt;service&gt;.&lt;operation&gt;</c>. Kept for its shipped signature; new
@@ -125,7 +120,7 @@ namespace Ihc.App
         /// <c>using</c>, so the helper cannot be there when the operation ENDS - and an outcome, a duration
         /// and a metric can only be recorded then. That is why it delegates the naming and nothing else.
         /// </remarks>
-        protected Activity StartActivity(string operationName) => telemetry.StartSpan(operationName);
+        protected Activity? StartActivity(string operationName) => telemetry.StartSpan(operationName);
 
         // The scaffold, delegated to the instrumentation core: the core owns the span's name and timing, the
         // outcome on both signals, the normalized error.type and the fail-open guarantee, so this layer no
@@ -141,36 +136,36 @@ namespace Ihc.App
         // separate overload rather than a default argument.
 
         /// <summary>Runs a synchronous <paramref name="body"/> inside a named activity, tagging + rethrowing on error.</summary>
-        protected T RunTraced<T>(string operationName, Func<Activity, T> body) =>
+        protected T RunTraced<T>(string operationName, Func<Activity?, T> body) =>
             RunTraced(operationName, body, null);
 
         /// <summary>Runs a synchronous <paramref name="body"/>, also recording <paramref name="metrics"/>.</summary>
-        protected T RunTraced<T>(string operationName, Func<Activity, T> body, MetricBinding metrics) =>
+        protected T RunTraced<T>(string operationName, Func<Activity?, T> body, MetricBinding? metrics) =>
             telemetry.Run(operationName, scope => body(scope.Activity), metrics);
 
         /// <summary>Runs a synchronous void <paramref name="body"/> inside a named activity, tagging + rethrowing on error.</summary>
-        protected void RunTraced(string operationName, Action<Activity> body) =>
+        protected void RunTraced(string operationName, Action<Activity?> body) =>
             RunTraced(operationName, body, null);
 
         /// <summary>Runs a synchronous void <paramref name="body"/>, also recording <paramref name="metrics"/>.</summary>
-        protected void RunTraced(string operationName, Action<Activity> body, MetricBinding metrics) =>
+        protected void RunTraced(string operationName, Action<Activity?> body, MetricBinding? metrics) =>
             telemetry.Run(operationName, scope => body(scope.Activity), metrics);
 
         /// <summary>Runs an async <paramref name="body"/> inside a named activity, tagging + rethrowing on error.</summary>
-        protected Task<T> RunTracedAsync<T>(string operationName, Func<Activity, Task<T>> body) =>
+        protected Task<T> RunTracedAsync<T>(string operationName, Func<Activity?, Task<T>> body) =>
             RunTracedAsync(operationName, body, null);
 
         /// <summary>Runs an async <paramref name="body"/>, also recording <paramref name="metrics"/>.</summary>
         protected Task<T> RunTracedAsync<T>(
-            string operationName, Func<Activity, Task<T>> body, MetricBinding metrics) =>
+            string operationName, Func<Activity?, Task<T>> body, MetricBinding? metrics) =>
             telemetry.RunAsync(operationName, scope => body(scope.Activity), metrics);
 
         /// <summary>Runs an async void <paramref name="body"/> inside a named activity, tagging + rethrowing on error.</summary>
-        protected Task RunTracedAsync(string operationName, Func<Activity, Task> body) =>
+        protected Task RunTracedAsync(string operationName, Func<Activity?, Task> body) =>
             RunTracedAsync(operationName, body, null);
 
         /// <summary>Runs an async void <paramref name="body"/>, also recording <paramref name="metrics"/>.</summary>
-        protected Task RunTracedAsync(string operationName, Func<Activity, Task> body, MetricBinding metrics) =>
+        protected Task RunTracedAsync(string operationName, Func<Activity?, Task> body, MetricBinding? metrics) =>
             telemetry.RunAsync(operationName, scope => body(scope.Activity), metrics);
     }
 }

@@ -19,7 +19,7 @@ namespace Ihc {
     // Key is a combination of type and attribute overrides hash
     private static readonly ConcurrentDictionary<string, XmlSerializer> serializerCache = new ConcurrentDictionary<string, XmlSerializer>();
 
-    private static string GetSerializerKey(Type type, XmlAttributeOverrides attrs, Type[] extraTypes)
+    private static string GetSerializerKey(Type type, XmlAttributeOverrides attrs, Type[]? extraTypes)
     {
         // Create a unique key based on the type and configuration
         var key = type.FullName ?? type.Name;
@@ -35,7 +35,7 @@ namespace Ihc {
     }
 
     // Make sure XmlSerializers are reused to avoid memory leak. See also github issue #2
-    private static XmlSerializer GetOrCreateSerializer(Type type, XmlAttributeOverrides attrs, Type[] extraTypes = null)
+    private static XmlSerializer GetOrCreateSerializer(Type type, XmlAttributeOverrides attrs, Type[]? extraTypes = null)
     {
       var key = GetSerializerKey(type, attrs, extraTypes);
 
@@ -116,7 +116,7 @@ namespace Ihc {
       }
     }
 
-    public static A DeserializeXml<A>(string xml) where A : class {
+    public static A? DeserializeXml<A>(string xml) where A : class {
         try {
             var xmlSerializer = BuildSerializer<A>();
             // Read characters straight from the decoded string via a TextReader so no

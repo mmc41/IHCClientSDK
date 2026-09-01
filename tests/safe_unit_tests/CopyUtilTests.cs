@@ -37,7 +37,7 @@ namespace Ihc.Tests
         }
 
         // Identity transformer that doesn't change values
-        private static readonly Func<PropertyInfo, object, object> IdentityTransformer =
+        private static readonly Func<PropertyInfo?, object?, object?> IdentityTransformer =
             (prop, value) => value;
 
         [Test]
@@ -167,7 +167,7 @@ namespace Ihc.Tests
             };
 
             // Transformer that converts string properties to uppercase
-            Func<PropertyInfo, object, object> uppercaseTransformer = (prop, value) =>
+            Func<PropertyInfo?, object?, object?> uppercaseTransformer = (prop, value) =>
             {
                 if (prop != null && prop.PropertyType == typeof(string) && value is string str)
                 {
@@ -193,7 +193,7 @@ namespace Ihc.Tests
             };
 
             // Transformer that doubles integer values
-            Func<PropertyInfo, object, object> doubleIntTransformer = (prop, value) =>
+            Func<PropertyInfo?, object?, object?> doubleIntTransformer = (prop, value) =>
             {
                 if (prop != null && prop.PropertyType == typeof(int) && value is int intValue)
                 {
@@ -429,7 +429,7 @@ namespace Ihc.Tests
             };
 
             // Transformer that uppercases strings in properties named "Names"
-            Func<PropertyInfo, object, object> namesTransformer = (prop, value) =>
+            Func<PropertyInfo?, object?, object?> namesTransformer = (prop, value) =>
             {
                 if (prop != null && prop.Name == "Names" && value is string str)
                 {
@@ -462,7 +462,7 @@ namespace Ihc.Tests
             };
 
             // Transformer that doubles ID values when PropertyInfo is null (root-level array)
-            Func<PropertyInfo, object, object> doubleIdTransformer = (prop, value) =>
+            Func<PropertyInfo?, object?, object?> doubleIdTransformer = (prop, value) =>
             {
                 if (prop == null && value is SimpleRecord record)
                 {
@@ -489,7 +489,7 @@ namespace Ihc.Tests
             };
 
             // Transformer that doubles int values in properties named "Scores"
-            Func<PropertyInfo, object, object> scoresTransformer = (prop, value) =>
+            Func<PropertyInfo?, object?, object?> scoresTransformer = (prop, value) =>
             {
                 if (prop != null && prop.Name == "Scores" && value is int intValue)
                 {
@@ -518,7 +518,7 @@ namespace Ihc.Tests
             };
 
             // Transformer that doubles int values in properties named "UniqueIds"
-            Func<PropertyInfo, object, object> uniqueIdsTransformer = (prop, value) =>
+            Func<PropertyInfo?, object?, object?> uniqueIdsTransformer = (prop, value) =>
             {
                 if (prop != null && prop.Name == "UniqueIds" && value is int intValue)
                 {
@@ -801,7 +801,7 @@ namespace Ihc.Tests
             };
 
             // Transformer that throws for string properties
-            Func<PropertyInfo, object, object> throwingTransformer = (prop, value) =>
+            Func<PropertyInfo?, object?, object?> throwingTransformer = (prop, value) =>
             {
                 if (prop != null && prop.PropertyType == typeof(string))
                 {
@@ -826,7 +826,7 @@ namespace Ihc.Tests
             var original = new List<int> { 1, 2, 3, 4, 5 };
 
             // Transformer that throws for even numbers
-            Func<PropertyInfo, object, object> throwingTransformer = (prop, value) =>
+            Func<PropertyInfo?, object?, object?> throwingTransformer = (prop, value) =>
             {
                 if (value is int intValue && intValue % 2 == 0)
                 {
@@ -855,7 +855,7 @@ namespace Ihc.Tests
             };
 
             // Transformer that throws for value 2
-            Func<PropertyInfo, object, object> throwingTransformer = (prop, value) =>
+            Func<PropertyInfo?, object?, object?> throwingTransformer = (prop, value) =>
             {
                 if (value is int intValue && intValue == 2)
                 {
@@ -879,7 +879,7 @@ namespace Ihc.Tests
             var original = new[] { "a", "b", "c" };
 
             // Transformer that throws for "b"
-            Func<PropertyInfo, object, object> throwingTransformer = (prop, value) =>
+            Func<PropertyInfo?, object?, object?> throwingTransformer = (prop, value) =>
             {
                 if (value is string str && str == "b")
                 {
@@ -905,7 +905,7 @@ namespace Ihc.Tests
             var original = new HashSet<int> { 1, 2, 3 };
 
             // Transformer that doubles integers
-            Func<PropertyInfo, object, object> doublingTransformer = (prop, value) =>
+            Func<PropertyInfo?, object?, object?> doublingTransformer = (prop, value) =>
             {
                 if (value is int intValue)
                 {
@@ -929,7 +929,7 @@ namespace Ihc.Tests
             };
 
             // Transformer that modifies the records
-            Func<PropertyInfo, object, object> modifyingTransformer = (prop, value) =>
+            Func<PropertyInfo?, object?, object?> modifyingTransformer = (prop, value) =>
             {
                 if (value is SimpleRecord record)
                 {
@@ -977,7 +977,7 @@ namespace Ihc.Tests
             };
 
             // Transformer that mutates elements in place (same reference returned)
-            Func<PropertyInfo, object, object> mutatingTransformer = (prop, value) =>
+            Func<PropertyInfo?, object?, object?> mutatingTransformer = (prop, value) =>
             {
                 if (value is MutableWithHash obj)
                 {

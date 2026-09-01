@@ -27,7 +27,7 @@ namespace Ihc
         /// Name or address of the time server to synchronize with.
         /// </summary>
         [StringLength(20, ErrorMessage = "ServerName length can't be more than 20.")]
-        public string ServerName { get; init; }
+        public string? ServerName { get; init; }
 
         /// <summary>
         /// Interval in hours between time synchronization attempts.
@@ -47,7 +47,7 @@ namespace Ihc
         /// <summary>
         /// Country code for online calendar.
         /// </summary>
-        public string OnlineCalendarCountry { get; init; }
+        public string? OnlineCalendarCountry { get; init; }
 
         /// <summary>
         /// Timestamp indicating until when the online calendar is valid.

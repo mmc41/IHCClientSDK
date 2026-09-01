@@ -866,9 +866,11 @@ consumer appears or a reclassification actually surprises someone.
 - **Nullable is already largely enabled in the SDK** (withdrawn after review, 2026-08-14). A proposed
   "enable nullable file by file" item was based on `ihcclient.csproj` setting
   `<Nullable>disable</Nullable>`. That is only the project default: **151 files** under `ihcclient/src`
-  already carry `#nullable enable`, including essentially all of `src/vis`. The residual is the older
-  API/app-tier files and the project-level default (tracked separately as designfix P3/C4) — not a
-  greenfield migration. Do not re-raise it as one.
+  already carry `#nullable enable`, including essentially all of `src/vis`. The residual was the older
+  API/app-tier files and the project-level default, and it has since been completed: every project in
+  the repository now compiles with nullable enabled, no `<Nullable>disable</Nullable>` override remains,
+  and RS0041 is on to keep the SDK's public surface annotated. The ruling stands for what it was about —
+  this was never a greenfield migration, so do not re-raise it as one.
 - **The generated SOAP layer stays public** (ruled 2026-08-17;
   `docs/adr/ADR-003-generated-soap-layer-stays-public.md`). `dotnet-svcutil --internal` was tried end to
   end, not reasoned about: it builds warning-free and then fails at runtime. `XmlSerializer` binds only

@@ -22,7 +22,7 @@ namespace Ihc {
         /// <summary>
         /// Get time manager settings including time sync, DST, and timezone configuration.
         /// </summary>
-        public Task<TimeManagerSettings> GetSettings();
+        public Task<TimeManagerSettings?> GetSettings();
 
         /// <summary>
         /// Set time manager settings for time synchronization and timezone.
@@ -33,7 +33,7 @@ namespace Ihc {
         /// <summary>
         /// Synchronize time with configured NTP server and get connection result.
         /// </summary>
-        public Task<TimeServerConnectionResult> GetTimeFromServer();
+        public Task<TimeServerConnectionResult?> GetTimeFromServer();
     }
 
     /// <summary>
@@ -88,7 +88,7 @@ namespace Ihc {
         
         // Map methods for translating between SOAP models and high-level models
 
-        private TimeManagerSettings mapSettings(WSTimeManagerSettings ws)
+        private TimeManagerSettings? mapSettings(WSTimeManagerSettings? ws)
         {
             if (ws == null)
                 return null;
@@ -123,7 +123,7 @@ namespace Ihc {
             };
         }
 
-        private TimeServerConnectionResult mapTimeServerConnectionResult(WSTimeServerConnectionResult ws)
+        private TimeServerConnectionResult? mapTimeServerConnectionResult(WSTimeServerConnectionResult? ws)
         {
             if (ws == null)
                 return null;
@@ -139,7 +139,7 @@ namespace Ihc {
             };
         }
 
-        private WSDate mapWSDate(DateTimeOffset? dateTimeOffset)
+        private WSDate? mapWSDate(DateTimeOffset? dateTimeOffset)
         {
             if (!dateTimeOffset.HasValue)
             {
@@ -200,7 +200,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<TimeManagerSettings> GetSettings()
+        public async Task<TimeManagerSettings?> GetSettings()
         {
             using (var activity = StartActivity(nameof(GetSettings)))
             {
@@ -246,7 +246,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<TimeServerConnectionResult> GetTimeFromServer()
+        public async Task<TimeServerConnectionResult?> GetTimeFromServer()
         {
             using (var activity = StartActivity(nameof(GetTimeFromServer)))
             {

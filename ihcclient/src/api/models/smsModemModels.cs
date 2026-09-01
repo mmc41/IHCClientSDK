@@ -8,17 +8,17 @@ namespace Ihc
         /// <summary>
         /// Message to send when the system powers up.
         /// </summary>
-        public string PowerupMessage { get; init; }
+        public string? PowerupMessage { get; init; }
 
         /// <summary>
         /// Message to send when the system powers down.
         /// </summary>
-        public string PowerdownMessage { get; init; }
+        public string? PowerdownMessage { get; init; }
 
         /// <summary>
         /// Phone number to send powerdown message to.
         /// </summary>
-        public string PowerdownNumber { get; init; }
+        public string? PowerdownNumber { get; init; }
 
         /// <summary>
         /// Indicates whether SMS messages should be relayed.
@@ -59,22 +59,22 @@ namespace Ihc
         /// <summary>
         /// Firmware version of the SMS modem.
         /// </summary>
-        public string FirmwareVersion { get; init; }
+        public string? FirmwareVersion { get; init; }
 
         /// <summary>
         /// Version of the GSM chip in the modem.
         /// </summary>
-        public string GSMChipVersion { get; init; }
+        public string? GSMChipVersion { get; init; }
 
         /// <summary>
         /// Hardware revision of the modem.
         /// </summary>
-        public string HardwareRevision { get; init; }
+        public string? HardwareRevision { get; init; }
 
         /// <summary>
         /// Production date of the modem.
         /// </summary>
-        public string ProductionDate { get; init; }
+        public string? ProductionDate { get; init; }
 
         /// <summary>
         /// Indicates whether the modem has been detected by the system.
@@ -84,12 +84,12 @@ namespace Ihc
         /// <summary>
         /// Serial number of the modem.
         /// </summary>
-        public string SerialNumber { get; init; }
+        public string? SerialNumber { get; init; }
 
         /// <summary>
         /// IMEI number of the modem (International Mobile Equipment Identity).
         /// </summary>
-        public string IMEINumber { get; init; }
+        public string? IMEINumber { get; init; }
 
         public override string ToString()
         {
@@ -105,22 +105,22 @@ namespace Ihc
         /// <summary>
         /// Antenna signal coverage level.
         /// </summary>
-        public string AntennaCoverage { get; init; }
+        public string? AntennaCoverage { get; init; }
 
         /// <summary>
         /// Name of the mobile network operator.
         /// </summary>
-        public string MobileOperator { get; init; }
+        public string? MobileOperator { get; init; }
 
         /// <summary>
         /// Current status of the modem.
         /// </summary>
-        public string ModemStatus { get; init; }
+        public string? ModemStatus { get; init; }
 
         /// <summary>
         /// Mobile phone number associated with the SIM card.
         /// </summary>
-        public string MobileNumber { get; init; }
+        public string? MobileNumber { get; init; }
 
         public override string ToString()
         {

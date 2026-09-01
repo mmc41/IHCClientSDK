@@ -60,7 +60,7 @@ namespace Ihc {
 
             public Task<outputMessageName2> authenticateAsync(inputMessageName2 request)
             {
-                string cookie = null;
+                string? cookie = null;
 
                 var result = soapPost<outputMessageName2, inputMessageName2>("authenticate", request, resp =>
                 {

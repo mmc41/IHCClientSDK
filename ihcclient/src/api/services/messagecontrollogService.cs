@@ -57,7 +57,7 @@ namespace Ihc {
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
-        private LogEventEntry mapEvent(WSMessageControlLogEntry e)
+        private LogEventEntry? mapEvent(WSMessageControlLogEntry? e)
         {
             if (e == null)
                 return null;
@@ -75,7 +75,7 @@ namespace Ihc {
             };
         }
 
-        private DateTimeOffset mapDate(WSDate v)
+        private DateTimeOffset mapDate(WSDate? v)
         {
             if (v == null)
                 return DateTimeOffset.MinValue;
@@ -106,7 +106,7 @@ namespace Ihc {
                 try
                 {
                     var resp = await impl.getEventsAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getEvents1.Where((v) => v != null).Select((v) => mapEvent(v)).ToList();
+                    var retv = resp.getEvents1.Where((v) => v != null).Select((v) => mapEvent(v)).OfType<LogEventEntry>().ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;

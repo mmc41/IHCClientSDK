@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -562,7 +561,7 @@ namespace Ihc.Vis
         /// from anything else in the trace: two saves of the same project through different doors differ only
         /// here, and "was verification on?" is the first question a suspect save raises.
         /// </summary>
-        private static void RecordSaveOptions(System.Diagnostics.Activity activity, ProjectSaveOptions options)
+        private static void RecordSaveOptions(System.Diagnostics.Activity? activity, ProjectSaveOptions options)
         {
             if (activity is null)
             {
@@ -579,7 +578,7 @@ namespace Ihc.Vis
         /// value that DECREASES between two consecutive saves is allocator corruption - ids about to be reused
         /// for different elements. Nothing else in the trace would show that, and the file itself looks fine.
         /// </summary>
-        private static void RecordLastUniqueId(System.Diagnostics.Activity activity, Project project)
+        private static void RecordLastUniqueId(System.Diagnostics.Activity? activity, Project project)
         {
             if (activity is null)
             {
@@ -604,7 +603,7 @@ namespace Ihc.Vis
         /// answerable without ever transmitting the project - and precisely why it is gated. See the note
         /// beside LogSensitiveData in ARCHITECTURE.md.</para>
         /// </summary>
-        private void RecordContent(System.Diagnostics.Activity activity, byte[] bytes)
+        private void RecordContent(System.Diagnostics.Activity? activity, byte[] bytes)
         {
             if (activity is null || bytes is null)
             {
@@ -761,7 +760,7 @@ namespace Ihc.Vis
             return await RunTracedAsync(nameof(DownloadFrom), async activity =>
             {
                 await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                ProjectFile file = await controller.GetProject().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                ProjectFile? file = await controller.GetProject().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 if (file?.Data is null)
                 {
                     throw new RefusedOperationException(BridgeRefusalCodes.ControllerNoProject,

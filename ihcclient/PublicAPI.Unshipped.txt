@@ -1043,11 +1043,11 @@ static Ihc.Vis.Validation.FixLocation.operator ==(Ihc.Vis.Validation.FixLocation
 Ihc.Vis.Validation.IProjectInspection.Report(Ihc.Vis.Model.ProjectElement? element, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgument> arguments, Ihc.Vis.Validation.FixLocation? fix) -> void
 Ihc.Vis.Validation.ValidationFinding.Fix.get -> Ihc.Vis.Validation.FixLocation?
 Ihc.Vis.Validation.ValidationFinding.Fix.init -> void
-~Ihc.TelemetryConfiguration.Metrics.get -> string
-~Ihc.TelemetryConfiguration.Metrics.set -> void
-~const Ihc.Telemetry.MeterName = "ihcclient" -> string
-~Ihc.TelemetryConfiguration.Environment.get -> string
-~Ihc.TelemetryConfiguration.Environment.set -> void
+Ihc.TelemetryConfiguration.Metrics.get -> string!
+Ihc.TelemetryConfiguration.Metrics.set -> void
+const Ihc.Telemetry.MeterName = "ihcclient" -> string!
+Ihc.TelemetryConfiguration.Environment.get -> string!
+Ihc.TelemetryConfiguration.Environment.set -> void
 Ihc.MetricBinding
 Ihc.OperationOutcome
 Ihc.OperationOutcome.Equals(Ihc.OperationOutcome other) -> bool
@@ -1089,10 +1089,10 @@ static Ihc.OperationOutcome.operator !=(Ihc.OperationOutcome left, Ihc.Operation
 static Ihc.OperationOutcome.operator ==(Ihc.OperationOutcome left, Ihc.OperationOutcome right) -> bool
 static Ihc.OperationOutcome.Refused(string! problemCode) -> Ihc.OperationOutcome
 Ihc.TelemetrySurface.TelemetrySurface(System.Diagnostics.ActivitySource! activitySource, System.Diagnostics.Metrics.Meter! meter) -> void
-~Ihc.App.AppServiceBase.RunTraced(string operationName, System.Action<System.Diagnostics.Activity> body, Ihc.MetricBinding metrics) -> void
-~Ihc.App.AppServiceBase.RunTraced<T>(string operationName, System.Func<System.Diagnostics.Activity, T> body, Ihc.MetricBinding metrics) -> T
-~Ihc.App.AppServiceBase.RunTracedAsync(string operationName, System.Func<System.Diagnostics.Activity, System.Threading.Tasks.Task> body, Ihc.MetricBinding metrics) -> System.Threading.Tasks.Task
-~Ihc.App.AppServiceBase.RunTracedAsync<T>(string operationName, System.Func<System.Diagnostics.Activity, System.Threading.Tasks.Task<T>> body, Ihc.MetricBinding metrics) -> System.Threading.Tasks.Task<T>
+Ihc.App.AppServiceBase.RunTraced(string! operationName, System.Action<System.Diagnostics.Activity?>! body, Ihc.MetricBinding? metrics) -> void
+Ihc.App.AppServiceBase.RunTraced<T>(string! operationName, System.Func<System.Diagnostics.Activity?, T>! body, Ihc.MetricBinding? metrics) -> T
+Ihc.App.AppServiceBase.RunTracedAsync(string! operationName, System.Func<System.Diagnostics.Activity?, System.Threading.Tasks.Task!>! body, Ihc.MetricBinding? metrics) -> System.Threading.Tasks.Task!
+Ihc.App.AppServiceBase.RunTracedAsync<T>(string! operationName, System.Func<System.Diagnostics.Activity?, System.Threading.Tasks.Task<T>!>! body, Ihc.MetricBinding? metrics) -> System.Threading.Tasks.Task<T>!
 Ihc.TelemetryConfiguration.PerRuleValidationTiming.get -> bool
 Ihc.TelemetryConfiguration.PerRuleValidationTiming.set -> void
 Ihc.Vis.Validation.WholeProjectValidator.WholeProjectValidator(Ihc.Vis.Validation.RuleSet! rules, bool perRuleTiming) -> void
@@ -1136,11 +1136,11 @@ static Ihc.Vis.Session.PreviewOutcome.Faulted(string? reason, Ihc.Vis.Problems.I
 *REMOVED*static Ihc.Vis.Session.PreviewOutcome.Faulted(string? reason) -> Ihc.Vis.Session.PreviewOutcome!
 Ihc.App.AppServiceBase.AppServiceBase(System.Action<Ihc.Vis.Problems.InternalError!>? faultPort) -> void
 Ihc.IhcConfiguration
-~const Ihc.IhcConfiguration.SettingsFileName = "ihcsettings.json" -> string
-~static Ihc.IhcConfiguration.FromAppDirectory() -> Microsoft.Extensions.Configuration.IConfigurationRoot
+const Ihc.IhcConfiguration.SettingsFileName = "ihcsettings.json" -> string!
+static Ihc.IhcConfiguration.FromAppDirectory() -> Microsoft.Extensions.Configuration.IConfigurationRoot!
 Ihc.App.AuthenticatedAppServiceBase
-~Ihc.App.AuthenticatedAppServiceBase.AuthenticatedAppServiceBase(Ihc.IhcSettings settings, Ihc.IAuthenticationService authService, bool ownsAuthService) -> void
-~readonly Ihc.App.AuthenticatedAppServiceBase.authService -> Ihc.IAuthenticationService
+Ihc.App.AuthenticatedAppServiceBase.AuthenticatedAppServiceBase(Ihc.IhcSettings! settings, Ihc.IAuthenticationService! authService, bool ownsAuthService) -> void
+readonly Ihc.App.AuthenticatedAppServiceBase.authService -> Ihc.IAuthenticationService!
 Ihc.App.AuthenticatedAppServiceBase.Dispose() -> void
 virtual Ihc.App.AuthenticatedAppServiceBase.Dispose(bool disposing) -> void
 Ihc.App.AuthenticatedAppServiceBase.DisposeAsync() -> System.Threading.Tasks.ValueTask

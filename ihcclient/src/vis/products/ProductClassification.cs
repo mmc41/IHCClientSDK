@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 
 namespace Ihc.Vis.Products

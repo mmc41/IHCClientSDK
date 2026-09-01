@@ -26,7 +26,7 @@ namespace Ihc {
         /// <summary>
         /// Get SD card information including size and free space.
         /// </summary>
-        public Task<SDInfo> GetSDCardInfo();
+        public Task<SDInfo?> GetSDCardInfo();
 
         /// <summary>
         /// Get current controller state 
@@ -44,12 +44,12 @@ namespace Ihc {
         /// <summary>
         /// Get project information including version, customer name, and last modified date.
         /// </summary>
-        public Task<ProjectInfo> GetProjectInfo();
+        public Task<ProjectInfo?> GetProjectInfo();
 
         /// <summary>
         /// Download the complete IHC project file from the controller.
         /// </summary>
-        public Task<ProjectFile> GetProject();
+        public Task<ProjectFile?> GetProject();
 
         /// <summary>
         /// Upload and store a new project on the controller safely.
@@ -64,7 +64,7 @@ namespace Ihc {
         /// <summary>
         /// Get a backup file from the controller.
         /// </summary>
-        public Task<BackupFile> GetBackup();
+        public Task<BackupFile?> GetBackup();
 
         /// <summary>
         /// Restore controller from backup.
@@ -77,7 +77,7 @@ namespace Ihc {
         /// <param name="index">Segment index</param>
         /// <param name="major">Major version number</param>
         /// <param name="minor">Minor version number</param>
-        public Task<ProjectFile> GetIHCProjectSegment(int index, int major, int minor);
+        public Task<ProjectFile?> GetIHCProjectSegment(int index, int major, int minor);
 
         /// <summary>
         /// Store a specific segment of the IHC project.
@@ -265,7 +265,7 @@ namespace Ihc {
             this.impl = impl;
         }
 
-        private SDInfo mapSDCardData(WSSdCardData e)
+        private SDInfo? mapSDCardData(WSSdCardData? e)
         {
             if (e == null)
                 return null;
@@ -277,10 +277,19 @@ namespace Ihc {
             };
         }
 
-        private BackupFile mapBackup(Ihc.Soap.Controller.WSFile backupFile)
+        private BackupFile? mapBackup(Ihc.Soap.Controller.WSFile? backupFile)
         {
             if (backupFile == null)
                 return null;
+
+            if (backupFile.data == null)
+            {
+                // BinaryFile.Data is a non-null contract the Lab relies on when it writes the bytes out.
+                // The generated layer promises nothing, so the check has to be here - name the real problem
+                // rather than hand a null on to a caller that has been told it cannot be one.
+                throw new InvalidOperationException(
+                    $"The controller returned a backup entry ('{backupFile.filename}') carrying no data.");
+            }
 
             return new BackupFile(
                 Filename: backupFile.filename,
@@ -288,7 +297,7 @@ namespace Ihc {
             );
         }
 
-        private DateTimeOffset mapDate(WSDate v)
+        private DateTimeOffset mapDate(WSDate? v)
         {
             if (v == null)
                 return DateTimeOffset.MinValue;
@@ -296,7 +305,7 @@ namespace Ihc {
             return new DateTimeOffset(v.year, v.monthWithJanuaryAsOne, v.day, v.hours, v.minutes, v.seconds, DateHelper.GetWSTimeOffset());
         }
 
-        private ProjectInfo mapProjectInfo(Ihc.Soap.Controller.WSProjectInfo projectInfo)
+        private ProjectInfo? mapProjectInfo(Ihc.Soap.Controller.WSProjectInfo? projectInfo)
         {
             if (projectInfo == null)
                 return null;
@@ -344,10 +353,17 @@ namespace Ihc {
             }
         }
 
-        private async Task<ProjectFile> mapProjectFile(Ihc.Soap.Controller.WSFile wsFile)
+        private async Task<ProjectFile?> mapProjectFile(Ihc.Soap.Controller.WSFile? wsFile)
         {
             if (wsFile == null)
                 return null;
+
+            if (wsFile.data == null)
+            {
+                // decompress would otherwise surface this as a bare ArgumentNullException out of MemoryStream.
+                throw new InvalidOperationException(
+                    $"The controller returned a project entry ('{wsFile.filename}') carrying no data.");
+            }
 
             return new ProjectFile(
                 Filename: wsFile.filename,
@@ -364,7 +380,7 @@ namespace Ihc {
             };
         }
 
-            private ControllerState mapControllerState(Ihc.Soap.Controller.WSControllerState state)
+            private ControllerState mapControllerState(Ihc.Soap.Controller.WSControllerState? state)
         {
             if (state == null || String.IsNullOrEmpty(state.state))
                 return ControllerState.Uninitialized;
@@ -446,7 +462,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<SDInfo> GetSDCardInfo()
+        public async Task<SDInfo?> GetSDCardInfo()
         {
             using (var activity = StartActivity(nameof(GetSDCardInfo)))
             {
@@ -635,7 +651,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<BackupFile> GetBackup()
+        public async Task<BackupFile?> GetBackup()
         {
             using (var activity = StartActivity(nameof(GetBackup)))
             {
@@ -656,7 +672,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<ProjectInfo> GetProjectInfo()
+        public async Task<ProjectInfo?> GetProjectInfo()
         {
             using (var activity = StartActivity(nameof(GetProjectInfo)))
             {
@@ -676,7 +692,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<ProjectFile> GetProject()
+        public async Task<ProjectFile?> GetProject()
         {
             using (var activity = StartActivity(nameof(GetProject)))
             {
@@ -752,8 +768,8 @@ namespace Ihc {
                     ValidationHelper.ValidateDataAnnotations(project, nameof(project));
                     if (project.Data is null)
                     {
-                        // Data has no [Required] and NRT is disabled here, so a null slips past ValidateDataAnnotations
-                        // and would surface as a bare ArgumentNullException from GetBytes — name the real problem.
+                        // Data has no [Required], so a null slips past ValidateDataAnnotations and would
+                        // surface as a bare ArgumentNullException from GetBytes — name the real problem.
                         throw new InvalidOperationException(
                             $"Project '{project.Filename}' has no Data to store; nothing was sent to the controller.");
                     }
@@ -802,8 +818,8 @@ namespace Ihc {
                     if (state != ControllerState.Initialize)
                         throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
 
-                    outputMessageName4 result = null;
-                    Exception primary = null;
+                    outputMessageName4? result = null;
+                    Exception? primary = null;
                     try
                     {
                         // Call the actual store project operation
@@ -847,7 +863,7 @@ namespace Ihc {
 
                     await Task.Delay(100).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // Wait a little to let controller settle.
 
-                    var retv = result.storeIHCProject2 != null && result.storeIHCProject2.Value;
+                    var retv = result?.storeIHCProject2 == true;
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -860,7 +876,7 @@ namespace Ihc {
             }
         }
 
-        public async Task<ProjectFile> GetIHCProjectSegment(int index, int major, int minor)
+        public async Task<ProjectFile?> GetIHCProjectSegment(int index, int major, int minor)
         {
             using (var activity = StartActivity(nameof(GetIHCProjectSegment)))
             {

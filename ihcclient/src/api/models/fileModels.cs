@@ -10,7 +10,11 @@ namespace Ihc
     {
         public byte[] Data { get; }
 
-        public string Filename { get; }
+        /// <summary>
+        /// Name of the file, or null when the source supplies none - the segment models are the
+        /// case in point, and the Lab names those after the operation instead.
+        /// </summary>
+        public string? Filename { get; }
     }
 
     /// <summary>
@@ -21,7 +25,12 @@ namespace Ihc
     {
         public string Data { get; }
 
-        public string Filename { get; }
-        public static System.Text.Encoding Encoding { get; }
+        /// <summary>
+        /// Name of the file, or null when the source supplies none. The controller's WSFile carries no
+        /// required filename, so a project fetched from it may arrive without one - which is why the Lab
+        /// falls back to an operation-derived name rather than trusting this.
+        /// </summary>
+        public string? Filename { get; }
+        public static System.Text.Encoding? Encoding { get; }
     }
 }

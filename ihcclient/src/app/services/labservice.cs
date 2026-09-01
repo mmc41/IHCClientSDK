@@ -120,7 +120,7 @@ namespace Ihc.App
             /// <param name="prefixDisplayName">Prefix display name</param>
             /// <param name="substringDisplayName">Substring of display name</param>
             /// <returns>Index or -1 if not found</returns>
-            public int LookupFirstOperationIndexByDisplayName(string fullDisplayName = null, string prefixDisplayName = null, string substringDisplayName = null)
+            public int LookupFirstOperationIndexByDisplayName(string? fullDisplayName = null, string? prefixDisplayName = null, string? substringDisplayName = null)
             {
                 // If no conditions specified, return 0
                 if (fullDisplayName == null && prefixDisplayName == null && substringDisplayName == null)
@@ -186,12 +186,12 @@ namespace Ihc.App
             /// Gets the previous value of the argument before the change.
             /// May be null if the argument was previously unset or was explicitly null.
             /// </summary>
-            public object OldValue { get; }
+            public object? OldValue { get; }
 
             /// <summary>
             /// Gets the new value of the argument after the change.
             /// </summary>
-            public object NewValue { get; }
+            public object? NewValue { get; }
 
             /// <summary>
             /// Initializes a new instance of the MethodArgumentChangedEventArgs class.
@@ -199,7 +199,7 @@ namespace Ihc.App
             /// <param name="index">The zero-based index of the argument that changed.</param>
             /// <param name="oldValue">The previous value of the argument.</param>
             /// <param name="newValue">The new value of the argument.</param>
-            public MethodArgumentChangedEventArgs(int index, object oldValue, object newValue)
+            public MethodArgumentChangedEventArgs(int index, object? oldValue, object? newValue)
             {
                 Index = index;
                 OldValue = oldValue;
@@ -227,12 +227,12 @@ namespace Ihc.App
             /// Gets the previously selected service item.
             /// May be null if no service was previously selected.
             /// </summary>
-            public ServiceItem OldService { get; }
+            public ServiceItem? OldService { get; }
 
             /// <summary>
             /// Gets the newly selected service item.
             /// </summary>
-            public ServiceItem NewService { get; }
+            public ServiceItem? NewService { get; }
 
             /// <summary>
             /// Gets the zero-based index of the previously selected operation within the old service.
@@ -248,12 +248,12 @@ namespace Ihc.App
             /// Gets the previously selected operation item.
             /// May be null if no operation was previously selected.
             /// </summary>
-            public OperationItem OldOperation { get; }
+            public OperationItem? OldOperation { get; }
 
             /// <summary>
             /// Gets the newly selected operation item.
             /// </summary>
-            public OperationItem NewOperation { get; }
+            public OperationItem? NewOperation { get; }
 
             /// <summary>
             /// Initializes a new instance of the CurrentOperationChangedEventArgs class.
@@ -268,9 +268,9 @@ namespace Ihc.App
             /// <param name="newOperation">The newly selected operation item.</param>
             public CurrentOperationChangedEventArgs(
                 int oldServiceIndex, int newServiceIndex,
-                ServiceItem oldService, ServiceItem newService,
+                ServiceItem? oldService, ServiceItem? newService,
                 int oldOperationIndex, int newOperationIndex,
-                OperationItem oldOperation, OperationItem newOperation)
+                OperationItem? oldOperation, OperationItem? newOperation)
             {
                 OldServiceIndex = oldServiceIndex;
                 NewServiceIndex = newServiceIndex;
@@ -308,7 +308,7 @@ namespace Ihc.App
             /// Each element corresponds to a parameter defined in OperationMetadata.
             /// Use SetMethodArgument() method for type-safe argument modification.
             /// </summary>
-            public object[] MethodArguments { get; private set; }
+            public object?[] MethodArguments { get; private set; }
 
             /// <summary>
             /// Gets the number of parameters for this operation.
@@ -321,7 +321,7 @@ namespace Ihc.App
             /// Provides the index of the changed argument along with its old and new values.
             /// This event enables two-way synchronization between the backend and GUI layers.
             /// </summary>
-            public event EventHandler<MethodArgumentChangedEventArgs> MethodArgumentChanged;
+            public event EventHandler<MethodArgumentChangedEventArgs>? MethodArgumentChanged;
 
             /// <summary>
             /// Creates a new OperationItem instance with default arguments.
@@ -345,7 +345,7 @@ namespace Ihc.App
             /// <exception cref="ArgumentOutOfRangeException">Thrown when index is outside the valid range.</exception>
             /// <exception cref="ArgumentException">Thrown when the value type is incompatible with the expected parameter type.</exception>
             /// <exception cref="InvalidOperationException">Thrown when the operation has no parameters.</exception>
-            public void SetMethodArgument(int index, object value)
+            public void SetMethodArgument(int index, object? value)
             {
                 if (OperationMetadata.Parameters == null || OperationMetadata.Parameters.Length == 0)
                     throw new InvalidOperationException($"Operation '{DisplayName}' has no parameters");
@@ -396,7 +396,7 @@ namespace Ihc.App
                 }
 
                 // Capture old value before modification
-                object oldValue = MethodArguments[index];
+                object? oldValue = MethodArguments[index];
 
                 // Set the new value
                 MethodArguments[index] = value;
@@ -417,7 +417,7 @@ namespace Ihc.App
             /// <exception cref="ArgumentNullException">Thrown when values is null.</exception>
             /// <exception cref="ArgumentException">Thrown when array length doesn't match parameter count, or when any value has incompatible type.</exception>
             /// <exception cref="InvalidOperationException">Thrown when the operation has no parameters but a non-empty array is provided.</exception>
-            public void SetMethodArgumentsFromArray(object[] values)
+            public void SetMethodArgumentsFromArray(object?[] values)
             {
                 if (values == null)
                     throw new ArgumentNullException(nameof(values));
@@ -442,13 +442,13 @@ namespace Ihc.App
             /// Use SetMethodArgument() or SetMethodArgumentsFromArray() to modify arguments.
             /// </summary>
             /// <returns>A new array containing copies of the current argument values.</returns>
-            public object[] GetMethodArgumentsAsArray()
+            public object?[] GetMethodArgumentsAsArray()
             {
                 if (MethodArguments == null || MethodArguments.Length == 0)
-                    return Array.Empty<object>();
+                    return Array.Empty<object?>();
 
                 // Create defensive copy to prevent external mutation
-                var copy = new object[MethodArguments.Length];
+                var copy = new object?[MethodArguments.Length];
                 Array.Copy(MethodArguments, copy, MethodArguments.Length);
                 return copy;
             }
@@ -466,7 +466,7 @@ namespace Ihc.App
                 {
                     if (!AreValuesEqual(MethodArguments[i], newDefaults[i]))
                     {
-                        object oldValue = MethodArguments[i];
+                        object? oldValue = MethodArguments[i];
                         MethodArguments[i] = newDefaults[i];
                         OnMethodArgumentChanged(new MethodArgumentChangedEventArgs(i, oldValue, newDefaults[i]));
                     }
@@ -489,7 +489,7 @@ namespace Ihc.App
             /// <param name="a">First value to compare.</param>
             /// <param name="b">Second value to compare.</param>
             /// <returns>True if values are equal; otherwise, false.</returns>
-            private static bool AreValuesEqual(object a, object b)
+            private static bool AreValuesEqual(object? a, object? b)
             {
                 if (ReferenceEquals(a, b))
                     return true;
@@ -504,7 +504,7 @@ namespace Ihc.App
             /// Generates default argument values for all parameters of the operation.
             /// </summary>
             /// <returns>Array of default values matching the operation's parameter types.</returns>
-            private object[] GenerateDefaultArguments()
+            private object?[] GenerateDefaultArguments()
             {
                 if (OperationMetadata.Parameters == null || OperationMetadata.Parameters.Length == 0)
                     return Array.Empty<object>();
@@ -519,7 +519,7 @@ namespace Ihc.App
             /// otherwise the bare type default. This keeps an optional parameter the GUI does not edit (such as a
             /// streaming poll timeout) at its intended default instead of type-zero.
             /// </summary>
-            private static object GetDefaultArgument(FieldMetaData param)
+            private static object? GetDefaultArgument(FieldMetaData param)
             {
                 if (param.AttributeProvider is System.Reflection.ParameterInfo pi
                     && pi.HasDefaultValue
@@ -541,7 +541,7 @@ namespace Ihc.App
             /// default(T) for value types, and null for other reference types.</returns>
             /// <exception cref="ArgumentNullException">Thrown when type is null.</exception>
             /// <exception cref="InvalidOperationException">Thrown when a default value cannot be created (e.g., enum with no values, array with indeterminate element type, or value type instantiation fails).</exception>
-            public static object GetDefaultValue(Type type)
+            public static object? GetDefaultValue(Type type)
             {
                 if (type == null)
                     throw new ArgumentNullException(nameof(type));
@@ -602,25 +602,30 @@ namespace Ihc.App
             /// <summary>
             /// The raw result object returned from the operation (typically a Task or Task&lt;T&gt;).
             /// </summary>
-            public object Result { get; init; }
+            /// <remarks>
+            /// Always assigned by <see cref="DynCallSelectedOperation"/>, the only producer. It is not
+            /// <c>required</c>: this record shipped with a public parameterless constructor, and adding the
+            /// modifier would break every existing consumer that builds one (CS9035).
+            /// </remarks>
+            public object Result { get; init; } = null!;
 
             /// <summary>
             /// The unwrapped result value (the T of Task&lt;T&gt;), or null for void operations. Used to save the
             /// real result to a file (e.g. the actual bytes of a byte[] / BinaryFile, not the display preview).
             /// </summary>
-            public object RawResult { get; init; }
+            public object? RawResult { get; init; }
 
             /// <summary>
             /// A formatted string representation of the result suitable for display to the user.
             /// For void operations, this is "OK". For operations returning values, this contains
             /// the formatted result with special handling for DateTime, byte arrays, and collections.
             /// </summary>
-            public string DisplayResult { get; init; }
+            public string DisplayResult { get; init; } = string.Empty;
 
             /// <summary>
             /// The return type of the operation method (e.g., Task, Task&lt;string&gt;, Task&lt;int&gt;).
             /// </summary>
-            public Type ReturnType { get; init; }
+            public Type ReturnType { get; init; } = typeof(void);
         };
 
         /// <summary>
@@ -637,7 +642,7 @@ namespace Ihc.App
         /// <param name="rawResult">The unwrapped operation result (see <see cref="OperationResult.RawResult"/>).</param>
         /// <param name="displayText">The shown result text, used only for results without a file-typed payload.</param>
         /// <param name="operationName">Operation name, used to derive the default file name.</param>
-        public static ResultFileContent BuildResultFileContent(object rawResult, string displayText, string operationName)
+        public static ResultFileContent BuildResultFileContent(object? rawResult, string displayText, string operationName)
         {
             string baseName = string.IsNullOrWhiteSpace(operationName) ? "result" : operationName;
 
@@ -664,7 +669,7 @@ namespace Ihc.App
         /// Derives the project file's base name (without extension): the controller-supplied filename's stem when
         /// present, otherwise the operation-derived <paramref name="baseName"/>.
         /// </summary>
-        private static string ProjectBaseName(string filename, string baseName)
+        private static string ProjectBaseName(string? filename, string baseName)
         {
             string stem = string.IsNullOrWhiteSpace(filename) ? string.Empty : Path.GetFileNameWithoutExtension(filename);
             return string.IsNullOrWhiteSpace(stem) ? baseName : stem;
@@ -677,21 +682,21 @@ namespace Ihc.App
         // LabAppService owns the streaming CancellationTokenSource (decision D11): created by StartStream,
         // cancelled by StopStream, disposed when the stream ends. The operation's CancellationToken parameter is
         // auto-filled from this token. Access is serialised by _streamLock so StopStream cannot race StartStream.
-        private CancellationTokenSource _streamCts;
+        private CancellationTokenSource? _streamCts;
         private readonly object _streamLock = new object();
 
         /// <summary>
         /// Occurs when the services array is replaced via Configure() or Services setter.
         /// GUI should rebind service/operation dropdowns when this event fires.
         /// </summary>
-        public event EventHandler<EventArgs> ServicesChanged;
+        public event EventHandler<EventArgs>? ServicesChanged;
 
         /// <summary>
         /// Occurs when selected service or operation changes.
         /// Provides old and new service/operation indices and items for comparison.
         /// GUI should update dropdown selections and parameter controls when this event fires.
         /// </summary>
-        public event EventHandler<CurrentOperationChangedEventArgs> CurrentOperationChanged;
+        public event EventHandler<CurrentOperationChangedEventArgs>? CurrentOperationChanged;
 
         /// <summary>
         /// Gets or sets the array of available services.
@@ -731,9 +736,9 @@ namespace Ihc.App
         /// </summary>
         private void OnCurrentOperationChanged(
             int oldServiceIndex, int newServiceIndex,
-            ServiceItem oldService, ServiceItem newService,
+            ServiceItem? oldService, ServiceItem? newService,
             int oldOperationIndex, int newOperationIndex,
-            OperationItem oldOperation, OperationItem newOperation)
+            OperationItem? oldOperation, OperationItem? newOperation)
         {
             CurrentOperationChanged?.Invoke(this, new CurrentOperationChangedEventArgs(
                 oldServiceIndex, newServiceIndex,
@@ -747,7 +752,7 @@ namespace Ihc.App
         /// its change and still report both once it has left the lock.
         /// </summary>
         private readonly record struct SelectionSnapshot(
-            int ServiceIndex, ServiceItem Service, int OperationIndex, OperationItem Operation);
+            int ServiceIndex, ServiceItem? Service, int OperationIndex, OperationItem? Operation);
 
         /// <summary>
         /// Reads the current selection. The caller must already hold <c>_lock</c> — this only reads the fields the
@@ -756,9 +761,9 @@ namespace Ihc.App
         private SelectionSnapshot CaptureSelection()
         {
             int serviceIndex = _selectedServiceIndex;
-            ServiceItem service = (_services.Length > serviceIndex) ? _services[serviceIndex] : null;
+            ServiceItem? service = (_services.Length > serviceIndex) ? _services[serviceIndex] : null;
             int operationIndex = service?.SelectedOperationIndex ?? 0;
-            OperationItem operation = (service?.OperationItems != null && service.OperationItems.Length > operationIndex)
+            OperationItem? operation = (service?.OperationItems != null && service.OperationItems.Length > operationIndex)
                 ? service.OperationItems[operationIndex]
                 : null;
 
@@ -996,7 +1001,7 @@ namespace Ihc.App
         /// </summary>
         /// <param name="globalSupportedServiceFilter">Specifies which services are supported for lab application. Null (default) means all</param>
         /// <param name="globalSupportedOperationFilter">Specifies which operations are supported for lab application. Null (default) means all</param>
-        public LabAppService(Func<IIHCApiService, bool> globalSupportedServiceFilter, Func<ServiceOperationMetadata, bool> globalSupportedOperationFilter = null)
+        public LabAppService(Func<IIHCApiService, bool>? globalSupportedServiceFilter, Func<ServiceOperationMetadata, bool>? globalSupportedOperationFilter = null)
         {
             this.globalSupportedServiceFilter = globalSupportedServiceFilter ?? (s => true);
             this.globalSupportedOperationFilter = globalSupportedOperationFilter ?? (s => true);
@@ -1057,7 +1062,7 @@ namespace Ihc.App
             {
                 IIHCApiService service;
                 ServiceOperationMetadata operationMetadata;
-                object[] parameterValues;
+                object?[] parameterValues;
 
                 // Capture operation context inside lock
                 lock (_lock)
@@ -1067,15 +1072,18 @@ namespace Ihc.App
                     parameterValues = SelectedOperation.MethodArguments;
                 }
 
-                var serviceName = service?.GetType()?.Name ?? "Unknown";
-                var operationName = operationMetadata?.Name ?? "Unknown";
+                // Both locals come from non-nullable properties of the selected operation, so neither needs a
+                // conditional access - and a conditional access here is not free: it puts the local into a
+                // maybe-null state that every later dereference then has to answer for.
+                var serviceName = service.GetType().Name;
+                var operationName = operationMetadata.Name ?? "Unknown";
 
                 activity?.SetParameters(
                     ("ServiceName", serviceName),
                     ("OperationName", operationName),
                     ("ParameterCount", parameterValues?.Length.ToString() ?? "0"));
 
-                activity?.SetTag(Ihc.Telemetry.argsTagPrefix + "parameterValues", String.Join(",", parameterValues.Select(p => p?.ToString() ?? "null")));
+                activity?.SetTag(Ihc.Telemetry.argsTagPrefix + "parameterValues", String.Join(",", parameterValues?.Select(p => p?.ToString() ?? "null") ?? Array.Empty<string>()));
 
                 if (operationMetadata.Kind != ServiceOperationKind.AsyncFunction)
                     throw new NotSupportedException($"Only normal async operations currently supported (service: {serviceName}, operation: {operationName}, kind: {operationMetadata.Kind})");
@@ -1083,7 +1091,7 @@ namespace Ihc.App
                 object taskObject;
                 try
                 {
-                    taskObject = operationMetadata.Invoke(parameterValues);
+                    taskObject = operationMetadata.Invoke(parameterValues)!;
                 }
                 catch (Exception ex)
                 {
@@ -1141,7 +1149,7 @@ namespace Ihc.App
                     if (resultProperty == null)
                         throw new InvalidOperationException($"Task<T> does not have a Result property for operation '{operationName}' on service '{serviceName}'");
 
-                    object result = resultProperty.GetValue(taskObject);
+                    object? result = resultProperty.GetValue(taskObject);
 
                     // Format the result as a string
                     string strResult = FormatResult(result, operationMetadata.ReturnType);
@@ -1180,7 +1188,7 @@ namespace Ihc.App
         /// </remarks>
         /// <param name="onItem">Callback invoked once per streamed item.</param>
         /// <exception cref="NotSupportedException">Thrown when the selected operation is not AsyncEnumerable.</exception>
-        public async Task StartStream(Action<object> onItem)
+        public async Task StartStream(Action<object?> onItem)
         {
             if (onItem == null)
                 throw new ArgumentNullException(nameof(onItem));
@@ -1225,7 +1233,7 @@ namespace Ihc.App
                         args[i] = token;
                 }
 
-                object asyncEnumerable = operationMetadata.Invoke(args);
+                object? asyncEnumerable = operationMetadata.Invoke(args);
                 if (asyncEnumerable == null)
                     throw new InvalidOperationException($"Operation '{operationMetadata.Name}' returned a null stream");
 
@@ -1236,16 +1244,19 @@ namespace Ihc.App
                 Type enumerableType = typeof(IAsyncEnumerable<>).MakeGenericType(itemType);
                 Type enumeratorType = typeof(IAsyncEnumerator<>).MakeGenericType(itemType);
 
-                object enumerator = enumerableType.GetMethod("GetAsyncEnumerator").Invoke(asyncEnumerable, new object[] { token });
+                // These four members are declared by IAsyncEnumerable<T>, IAsyncEnumerator<T> and
+                // IAsyncDisposable themselves, so a null lookup here would mean a broken runtime
+                // rather than an input this method could report on.
+                object enumerator = enumerableType.GetMethod("GetAsyncEnumerator")!.Invoke(asyncEnumerable, new object[] { token })!;
                 var moveNextAsync = enumeratorType.GetMethod("MoveNextAsync");
                 var currentProperty = enumeratorType.GetProperty("Current");
                 var disposeAsync = typeof(IAsyncDisposable).GetMethod("DisposeAsync");
 
                 try
                 {
-                    while (await ((ValueTask<bool>)moveNextAsync.Invoke(enumerator, null)).ConfigureAwait(false))
+                    while (await ((ValueTask<bool>)moveNextAsync!.Invoke(enumerator, null)!).ConfigureAwait(false))
                     {
-                        onItem(currentProperty.GetValue(enumerator));
+                        onItem(currentProperty!.GetValue(enumerator));
                     }
                 }
                 catch (OperationCanceledException)
@@ -1254,7 +1265,7 @@ namespace Ihc.App
                 }
                 finally
                 {
-                    await ((ValueTask)disposeAsync.Invoke(enumerator, null)).ConfigureAwait(false);
+                    await ((ValueTask)disposeAsync!.Invoke(enumerator, null)!).ConfigureAwait(false);
                 }
             }
             finally
@@ -1292,7 +1303,7 @@ namespace Ihc.App
         /// <param name="result">The result object to format. Can be null.</param>
         /// <param name="returnType">The return type metadata (currently unused but available for future enhancements).</param>
         /// <returns>Formatted string representation suitable for user display. Returns "(null)" for null values.</returns>
-        private string FormatResult(object result, Type returnType)
+        private string FormatResult(object? result, Type returnType)
         {
             if (result == null)
                 return "(null)";

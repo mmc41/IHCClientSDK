@@ -56,7 +56,7 @@ namespace Ihc {
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
-        private NotificationMessage mapMessage(WSNotificationMessage e)
+        private NotificationMessage? mapMessage(WSNotificationMessage? e)
         {
             if (e == null)
                 return null;
@@ -73,7 +73,7 @@ namespace Ihc {
             };
         }
 
-        private DateTimeOffset mapDate(WSDate v)
+        private DateTimeOffset mapDate(WSDate? v)
         {
             if (v == null)
                 return DateTimeOffset.MinValue;
@@ -104,7 +104,7 @@ namespace Ihc {
                 try
                 {
                     var resp = await impl.getMessagesAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getMessages1.Where((v) => v != null).Select((v) => mapMessage(v)).ToList();
+                    var retv = resp.getMessages1.Where((v) => v != null).Select((v) => mapMessage(v)).OfType<NotificationMessage>().ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;

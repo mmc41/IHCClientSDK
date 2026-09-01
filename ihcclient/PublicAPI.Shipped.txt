@@ -63,7 +63,7 @@ Ihc.App.InformationModel.SoftwareDate.init -> void
 Ihc.App.InformationModel.Uptime.get -> System.TimeSpan
 Ihc.App.InformationModel.Uptime.init -> void
 Ihc.App.LabAppService
-Ihc.App.LabAppService.CurrentOperationChanged -> System.EventHandler<Ihc.App.LabAppService.CurrentOperationChangedEventArgs>
+Ihc.App.LabAppService.CurrentOperationChanged -> System.EventHandler<Ihc.App.LabAppService.CurrentOperationChangedEventArgs!>?
 Ihc.App.LabAppService.CurrentOperationChangedEventArgs
 Ihc.App.LabAppService.CurrentOperationChangedEventArgs.NewOperationIndex.get -> int
 Ihc.App.LabAppService.CurrentOperationChangedEventArgs.NewServiceIndex.get -> int
@@ -72,7 +72,7 @@ Ihc.App.LabAppService.CurrentOperationChangedEventArgs.OldServiceIndex.get -> in
 Ihc.App.LabAppService.MethodArgumentChangedEventArgs
 Ihc.App.LabAppService.MethodArgumentChangedEventArgs.Index.get -> int
 Ihc.App.LabAppService.OperationItem
-Ihc.App.LabAppService.OperationItem.MethodArgumentChanged -> System.EventHandler<Ihc.App.LabAppService.MethodArgumentChangedEventArgs>
+Ihc.App.LabAppService.OperationItem.MethodArgumentChanged -> System.EventHandler<Ihc.App.LabAppService.MethodArgumentChangedEventArgs!>?
 Ihc.App.LabAppService.OperationItem.MethodParameterCount.get -> int
 Ihc.App.LabAppService.OperationItem.ResetMethodArguments() -> void
 Ihc.App.LabAppService.OperationResult
@@ -87,7 +87,7 @@ Ihc.App.LabAppService.SelectedServiceIndex.set -> void
 Ihc.App.LabAppService.ServiceItem
 Ihc.App.LabAppService.ServiceItem.SelectedOperationIndex.get -> int
 Ihc.App.LabAppService.ServiceItem.SelectedOperationIndex.set -> void
-Ihc.App.LabAppService.ServicesChanged -> System.EventHandler<System.EventArgs>
+Ihc.App.LabAppService.ServicesChanged -> System.EventHandler<System.EventArgs!>?
 Ihc.App.LabAppService.StopStream() -> void
 Ihc.App.MutableAdminModel
 Ihc.App.MutableAdminModel.MutableAdminModel() -> void
@@ -4082,825 +4082,825 @@ virtual Ihc.WLanSettings.<Clone>$() -> Ihc.WLanSettings!
 virtual Ihc.WLanSettings.EqualityContract.get -> System.Type!
 virtual Ihc.WLanSettings.Equals(Ihc.WLanSettings? other) -> bool
 virtual Ihc.WLanSettings.PrintMembers(System.Text.StringBuilder! builder) -> bool
-~const Ihc.SimpleSecret.EncryptPassphaseEnvName = "IHC_ENCRYPT_PASSPHRASE" -> string
-~const Ihc.SpecialEndpoints.MockedPrefix = "mock://" -> string
-~const Ihc.SpecialEndpoints.Usb = "http://usb" -> string
-~const Ihc.Telemetry.ActivitySourceName = "ihcclient" -> string
-~const Ihc.Telemetry.argsTagPrefix = "input." -> string
-~const Ihc.Telemetry.returnValueTag = "retv" -> string
-~const Ihc.UserConstants.REDACTED_PASSWORD = "**REDACTED**" -> string
-~Ihc.AirlinkManagementService.AirlinkManagementService(Ihc.IAuthenticationService authService) -> void
-~Ihc.AirlinkManagementService.EnterRFConfiguration() -> System.Threading.Tasks.Task<bool>
-~Ihc.AirlinkManagementService.EnterRFTest() -> System.Threading.Tasks.Task<bool>
-~Ihc.AirlinkManagementService.ExitRFConfiguration() -> System.Threading.Tasks.Task<bool>
-~Ihc.AirlinkManagementService.ExitRFTest() -> System.Threading.Tasks.Task<bool>
-~Ihc.AirlinkManagementService.GetBatteryLevel(int resourceId) -> System.Threading.Tasks.Task<int>
-~Ihc.AirlinkManagementService.GetDetectedDeviceList() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.RFDevice>>
-~Ihc.AirlinkManagementService.GetDevicesRunningOutOfBattery() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>>
-~Ihc.AirlinkManagementService.TestRFActuatorWithSerialNumber(long serialNumber) -> System.Threading.Tasks.Task<bool>
-~Ihc.AirlinkManagementService.WaitForDeviceDetected(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice>
-~Ihc.AirlinkManagementService.WaitForDeviceTestResult(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice>
-~Ihc.App.AdminAppService.AdminAppService(Ihc.IhcSettings settings, bool fileEnryption) -> void
-~Ihc.App.AdminAppService.AdminAppService(Ihc.IhcSettings settings, bool fileEnryption, Ihc.IAuthenticationService authService, Ihc.IUserManagerService userService, Ihc.IConfigurationService configService) -> void
-~Ihc.App.AdminAppService.GetModel() -> System.Threading.Tasks.Task<Ihc.App.MutableAdminModel>
-~Ihc.App.AdminAppService.LoadFromJson(string path) -> System.Threading.Tasks.Task<Ihc.App.MutableAdminModel>
-~Ihc.App.AdminAppService.LoadFromJson(System.IO.Stream stream) -> System.Threading.Tasks.Task<Ihc.App.MutableAdminModel>
-~Ihc.App.AdminAppService.Restart() -> System.Threading.Tasks.Task
-~Ihc.App.AdminAppService.SaveAsJson(Ihc.App.MutableAdminModel adminModel, string path) -> System.Threading.Tasks.Task
-~Ihc.App.AdminAppService.SaveAsJson(Ihc.App.MutableAdminModel adminModel, System.IO.Stream stream) -> System.Threading.Tasks.Task
-~Ihc.App.AdminAppService.Store(Ihc.App.MutableAdminModel model) -> System.Threading.Tasks.Task<Ihc.App.AdminAppService.ChangeInformation>
-~Ihc.App.AppServiceBase.RunTraced(string operationName, System.Action<System.Diagnostics.Activity> body) -> void
-~Ihc.App.AppServiceBase.RunTraced<T>(string operationName, System.Func<System.Diagnostics.Activity, T> body) -> T
-~Ihc.App.AppServiceBase.RunTracedAsync(string operationName, System.Func<System.Diagnostics.Activity, System.Threading.Tasks.Task> body) -> System.Threading.Tasks.Task
-~Ihc.App.AppServiceBase.RunTracedAsync<T>(string operationName, System.Func<System.Diagnostics.Activity, System.Threading.Tasks.Task<T>> body) -> System.Threading.Tasks.Task<T>
-~Ihc.App.AppServiceBase.StartActivity(string operationName) -> System.Diagnostics.Activity
-~Ihc.App.InformationAppService.GetInformationModel() -> System.Threading.Tasks.Task<Ihc.App.InformationModel>
-~Ihc.App.InformationAppService.InformationAppService(Ihc.IhcSettings settings) -> void
-~Ihc.App.InformationAppService.InformationAppService(Ihc.IhcSettings settings, Ihc.IAuthenticationService authService, Ihc.IConfigurationService configService, Ihc.ITimeManagerService timeService, Ihc.IControllerService controllerService, Ihc.ISmsModemService smsModemService) -> void
-~Ihc.App.InformationModel.HardwareVersion.get -> string
-~Ihc.App.InformationModel.HardwareVersion.init -> void
-~Ihc.App.InformationModel.IoVersion.get -> string
-~Ihc.App.InformationModel.IoVersion.init -> void
-~Ihc.App.InformationModel.ProductionDate.get -> string
-~Ihc.App.InformationModel.ProductionDate.init -> void
-~Ihc.App.InformationModel.RfSerialNumber.get -> string
-~Ihc.App.InformationModel.RfSerialNumber.init -> void
-~Ihc.App.InformationModel.RfVersion.get -> string
-~Ihc.App.InformationModel.RfVersion.init -> void
-~Ihc.App.InformationModel.SdCard.get -> Ihc.SDInfo
-~Ihc.App.InformationModel.SdCard.init -> void
-~Ihc.App.InformationModel.SerialNumber.get -> string
-~Ihc.App.InformationModel.SerialNumber.init -> void
-~Ihc.App.InformationModel.SmsModemVersion.get -> string
-~Ihc.App.InformationModel.SmsModemVersion.init -> void
-~Ihc.App.InformationModel.SoftwareVersion.get -> string
-~Ihc.App.InformationModel.SoftwareVersion.init -> void
-~Ihc.App.LabAppService.Configure(Ihc.IhcSettings settings, Ihc.IIHCApiService[] serviceInterfaces) -> void
-~Ihc.App.LabAppService.CurrentOperationChangedEventArgs.CurrentOperationChangedEventArgs(int oldServiceIndex, int newServiceIndex, Ihc.App.LabAppService.ServiceItem oldService, Ihc.App.LabAppService.ServiceItem newService, int oldOperationIndex, int newOperationIndex, Ihc.App.LabAppService.OperationItem oldOperation, Ihc.App.LabAppService.OperationItem newOperation) -> void
-~Ihc.App.LabAppService.CurrentOperationChangedEventArgs.NewOperation.get -> Ihc.App.LabAppService.OperationItem
-~Ihc.App.LabAppService.CurrentOperationChangedEventArgs.NewService.get -> Ihc.App.LabAppService.ServiceItem
-~Ihc.App.LabAppService.CurrentOperationChangedEventArgs.OldOperation.get -> Ihc.App.LabAppService.OperationItem
-~Ihc.App.LabAppService.CurrentOperationChangedEventArgs.OldService.get -> Ihc.App.LabAppService.ServiceItem
-~Ihc.App.LabAppService.DynCallSelectedOperation() -> System.Threading.Tasks.Task<Ihc.App.LabAppService.OperationResult>
-~Ihc.App.LabAppService.LabAppService(System.Func<Ihc.IIHCApiService, bool> globalSupportedServiceFilter, System.Func<Ihc.ServiceOperationMetadata, bool> globalSupportedOperationFilter = null) -> void
-~Ihc.App.LabAppService.MethodArgumentChangedEventArgs.MethodArgumentChangedEventArgs(int index, object oldValue, object newValue) -> void
-~Ihc.App.LabAppService.MethodArgumentChangedEventArgs.NewValue.get -> object
-~Ihc.App.LabAppService.MethodArgumentChangedEventArgs.OldValue.get -> object
-~Ihc.App.LabAppService.OperationItem.DisplayName.get -> string
-~Ihc.App.LabAppService.OperationItem.GetMethodArgumentsAsArray() -> object[]
-~Ihc.App.LabAppService.OperationItem.MethodArguments.get -> object[]
-~Ihc.App.LabAppService.OperationItem.OperationItem(Ihc.App.LabAppService.ServiceItem service, Ihc.ServiceOperationMetadata operationMetadata) -> void
-~Ihc.App.LabAppService.OperationItem.OperationMetadata.get -> Ihc.ServiceOperationMetadata
-~Ihc.App.LabAppService.OperationItem.Service.get -> Ihc.App.LabAppService.ServiceItem
-~Ihc.App.LabAppService.OperationItem.Service.init -> void
-~Ihc.App.LabAppService.OperationItem.SetMethodArgument(int index, object value) -> void
-~Ihc.App.LabAppService.OperationItem.SetMethodArgumentsFromArray(object[] values) -> void
-~Ihc.App.LabAppService.OperationResult.DisplayResult.get -> string
-~Ihc.App.LabAppService.OperationResult.DisplayResult.init -> void
-~Ihc.App.LabAppService.OperationResult.RawResult.get -> object
-~Ihc.App.LabAppService.OperationResult.RawResult.init -> void
-~Ihc.App.LabAppService.OperationResult.Result.get -> object
-~Ihc.App.LabAppService.OperationResult.Result.init -> void
-~Ihc.App.LabAppService.OperationResult.ReturnType.get -> System.Type
-~Ihc.App.LabAppService.OperationResult.ReturnType.init -> void
-~Ihc.App.LabAppService.ResultFileContent.Bytes.get -> byte[]
-~Ihc.App.LabAppService.ResultFileContent.Bytes.init -> void
-~Ihc.App.LabAppService.ResultFileContent.Deconstruct(out byte[] Bytes, out string SuggestedFileName) -> void
-~Ihc.App.LabAppService.ResultFileContent.ResultFileContent(byte[] Bytes, string SuggestedFileName) -> void
-~Ihc.App.LabAppService.ResultFileContent.SuggestedFileName.get -> string
-~Ihc.App.LabAppService.ResultFileContent.SuggestedFileName.init -> void
-~Ihc.App.LabAppService.SelectedOperation.get -> Ihc.App.LabAppService.OperationItem
-~Ihc.App.LabAppService.SelectedOperation.set -> void
-~Ihc.App.LabAppService.SelectedService.get -> Ihc.App.LabAppService.ServiceItem
-~Ihc.App.LabAppService.SelectedService.set -> void
-~Ihc.App.LabAppService.ServiceItem.DisplayName.get -> string
-~Ihc.App.LabAppService.ServiceItem.DisplayName.init -> void
-~Ihc.App.LabAppService.ServiceItem.LookupFirstOperationIndexByDisplayName(string fullDisplayName = null, string prefixDisplayName = null, string substringDisplayName = null) -> int
-~Ihc.App.LabAppService.ServiceItem.OperationItems.get -> Ihc.App.LabAppService.OperationItem[]
-~Ihc.App.LabAppService.ServiceItem.OperationItems.init -> void
-~Ihc.App.LabAppService.ServiceItem.SelectOperation(Ihc.App.LabAppService.OperationItem operation) -> void
-~Ihc.App.LabAppService.ServiceItem.Service.get -> Ihc.IIHCApiService
-~Ihc.App.LabAppService.ServiceItem.Service.init -> void
-~Ihc.App.LabAppService.ServiceItem.ServiceItem(Ihc.IIHCApiService service, System.Func<Ihc.ServiceOperationMetadata, bool> operationFilter) -> void
-~Ihc.App.LabAppService.Services.get -> Ihc.App.LabAppService.ServiceItem[]
-~Ihc.App.LabAppService.Services.set -> void
-~Ihc.App.LabAppService.StartStream(System.Action<object> onItem) -> System.Threading.Tasks.Task
-~Ihc.App.MutableAdminModel.Copy() -> Ihc.App.MutableAdminModel
-~Ihc.App.MutableAdminModel.DnsServers.get -> Ihc.DNSServers
-~Ihc.App.MutableAdminModel.DnsServers.set -> void
-~Ihc.App.MutableAdminModel.EmailControl.get -> Ihc.EmailControlSettings
-~Ihc.App.MutableAdminModel.EmailControl.set -> void
-~Ihc.App.MutableAdminModel.ModelMetadata.get -> Ihc.ModelMetadata
-~Ihc.App.MutableAdminModel.ModelMetadata.set -> void
-~Ihc.App.MutableAdminModel.NetworkSettings.get -> Ihc.NetworkSettings
-~Ihc.App.MutableAdminModel.NetworkSettings.set -> void
-~Ihc.App.MutableAdminModel.SmtpSettings.get -> Ihc.SMTPSettings
-~Ihc.App.MutableAdminModel.SmtpSettings.set -> void
-~Ihc.App.MutableAdminModel.ToString(bool LogSensitiveData) -> string
-~Ihc.App.MutableAdminModel.Users.get -> System.Collections.Generic.ISet<Ihc.IhcUser>
-~Ihc.App.MutableAdminModel.Users.set -> void
-~Ihc.App.MutableAdminModel.WebAccess.get -> Ihc.WebAccessControl
-~Ihc.App.MutableAdminModel.WebAccess.set -> void
-~Ihc.App.MutableAdminModel.WLanSettings.get -> Ihc.WLanSettings
-~Ihc.App.MutableAdminModel.WLanSettings.set -> void
-~Ihc.AuthenticationService.Authenticate() -> System.Threading.Tasks.Task<Ihc.IhcUser>
-~Ihc.AuthenticationService.Authenticate(string userName, string password, Ihc.Application application = Ihc.Application.openapi) -> System.Threading.Tasks.Task<Ihc.IhcUser>
-~Ihc.AuthenticationService.AuthenticationService(Ihc.IhcSettings settings) -> void
-~Ihc.AuthenticationService.Disconnect() -> System.Threading.Tasks.Task<bool>
-~Ihc.AuthenticationService.GetCookieHandler() -> Ihc.ICookieHandler
-~Ihc.AuthenticationService.IsAuthenticated() -> System.Threading.Tasks.Task<bool>
-~Ihc.AuthenticationService.Ping() -> System.Threading.Tasks.Task<bool>
-~Ihc.BackupFile.BackupFile(Ihc.BinaryFile input) -> void
-~Ihc.BackupFile.BackupFile(string Filename, byte[] Data) -> void
-~Ihc.BackupFile.Data.get -> byte[]
-~Ihc.BackupFile.Data.init -> void
-~Ihc.BackupFile.Filename.get -> string
-~Ihc.BackupFile.Filename.init -> void
-~Ihc.BinaryFile.Data.get -> byte[]
-~Ihc.BinaryFile.Filename.get -> string
-~Ihc.ConfigurationService.ClearUserLog() -> System.Threading.Tasks.Task
-~Ihc.ConfigurationService.ConfigurationService(Ihc.IAuthenticationService authService) -> void
-~Ihc.ConfigurationService.DelayedReboot(int delay) -> System.Threading.Tasks.Task
-~Ihc.ConfigurationService.GetDNSServers() -> System.Threading.Tasks.Task<Ihc.DNSServers>
-~Ihc.ConfigurationService.GetEmailControlEnabled() -> System.Threading.Tasks.Task<bool>
-~Ihc.ConfigurationService.GetEmailControlSettings() -> System.Threading.Tasks.Task<Ihc.EmailControlSettings>
-~Ihc.ConfigurationService.GetNetworkSettings() -> System.Threading.Tasks.Task<Ihc.NetworkSettings>
-~Ihc.ConfigurationService.GetSMTPSettings() -> System.Threading.Tasks.Task<Ihc.SMTPSettings>
-~Ihc.ConfigurationService.GetSystemInfo() -> System.Threading.Tasks.Task<Ihc.SystemInfo>
-~Ihc.ConfigurationService.GetUserLog(string lang) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string>>
-~Ihc.ConfigurationService.GetWebAccessControl() -> System.Threading.Tasks.Task<Ihc.WebAccessControl>
-~Ihc.ConfigurationService.GetWLanInterface() -> System.Threading.Tasks.Task<Ihc.WLanInterface>
-~Ihc.ConfigurationService.GetWLanScan() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.WLanCell>>
-~Ihc.ConfigurationService.GetWLanSettings() -> System.Threading.Tasks.Task<Ihc.WLanSettings>
-~Ihc.ConfigurationService.SetDNSServers(Ihc.DNSServers dnsServers) -> System.Threading.Tasks.Task
-~Ihc.ConfigurationService.SetEmailControlEnabled(bool enabled) -> System.Threading.Tasks.Task
-~Ihc.ConfigurationService.SetEmailControlSettings(Ihc.EmailControlSettings settings) -> System.Threading.Tasks.Task
-~Ihc.ConfigurationService.SetNetworkSettings(Ihc.NetworkSettings settings) -> System.Threading.Tasks.Task
-~Ihc.ConfigurationService.SetServerLanguage(string language) -> System.Threading.Tasks.Task
-~Ihc.ConfigurationService.SetSMTPSettings(Ihc.SMTPSettings settings) -> System.Threading.Tasks.Task
-~Ihc.ConfigurationService.SetWebAccessControl(Ihc.WebAccessControl accessControl) -> System.Threading.Tasks.Task
-~Ihc.ConfigurationService.SetWLanSettings(Ihc.WLanSettings settings) -> System.Threading.Tasks.Task
-~Ihc.ConfigurationService.TestSendMessage(string recipient, string subject, string message) -> System.Threading.Tasks.Task<bool>
-~Ihc.ConfigurationService.TestSettingsNow() -> System.Threading.Tasks.Task
-~Ihc.ControllerService.ControllerService(Ihc.IAuthenticationService authService) -> void
-~Ihc.ControllerService.EnterProjectChangeMode() -> System.Threading.Tasks.Task<bool>
-~Ihc.ControllerService.ExitProjectChangeMode() -> System.Threading.Tasks.Task<bool>
-~Ihc.ControllerService.GetBackup() -> System.Threading.Tasks.Task<Ihc.BackupFile>
-~Ihc.ControllerService.GetControllerState() -> System.Threading.Tasks.Task<Ihc.ControllerState>
-~Ihc.ControllerService.GetIHCProjectNumberOfSegments() -> System.Threading.Tasks.Task<int>
-~Ihc.ControllerService.GetIHCProjectSegment(int index, int major, int minor) -> System.Threading.Tasks.Task<Ihc.ProjectFile>
-~Ihc.ControllerService.GetIHCProjectSegmentationSize() -> System.Threading.Tasks.Task<int>
-~Ihc.ControllerService.GetProject() -> System.Threading.Tasks.Task<Ihc.ProjectFile>
-~Ihc.ControllerService.GetProjectInfo() -> System.Threading.Tasks.Task<Ihc.ProjectInfo>
-~Ihc.ControllerService.GetS0MeterValue() -> System.Threading.Tasks.Task<float>
-~Ihc.ControllerService.GetSDCardInfo() -> System.Threading.Tasks.Task<Ihc.SDInfo>
-~Ihc.ControllerService.IsIHCProjectAvailable() -> System.Threading.Tasks.Task<bool>
-~Ihc.ControllerService.IsSDCardReady() -> System.Threading.Tasks.Task<bool>
-~Ihc.ControllerService.ResetS0Values() -> System.Threading.Tasks.Task
-~Ihc.ControllerService.Restore() -> System.Threading.Tasks.Task<int>
-~Ihc.ControllerService.SetS0Consumption(float consumption, bool flag) -> System.Threading.Tasks.Task
-~Ihc.ControllerService.SetS0FiscalYearStart(sbyte month, sbyte day) -> System.Threading.Tasks.Task
-~Ihc.ControllerService.StoreIHCProjectSegment(Ihc.ProjectFile segment, int index, int major) -> System.Threading.Tasks.Task<bool>
-~Ihc.ControllerService.StoreProject(Ihc.ProjectFile project) -> System.Threading.Tasks.Task<bool>
-~Ihc.ControllerService.WaitForControllerStateChange(Ihc.ControllerState waitState, int waitSec) -> System.Threading.Tasks.Task<Ihc.ControllerState>
-~Ihc.DNSServers.PrimaryDNS.get -> string
-~Ihc.DNSServers.PrimaryDNS.init -> void
-~Ihc.DNSServers.SecondaryDNS.get -> string
-~Ihc.DNSServers.SecondaryDNS.init -> void
-~Ihc.EmailControlSettings.EmailAddress.get -> string
-~Ihc.EmailControlSettings.EmailAddress.init -> void
-~Ihc.EmailControlSettings.Pop3Password.get -> string
-~Ihc.EmailControlSettings.Pop3Password.init -> void
-~Ihc.EmailControlSettings.Pop3Username.get -> string
-~Ihc.EmailControlSettings.Pop3Username.init -> void
-~Ihc.EmailControlSettings.ServerIpAddress.get -> string
-~Ihc.EmailControlSettings.ServerIpAddress.init -> void
-~Ihc.EmailControlSettings.ToString(bool LogSensitiveData) -> string
-~Ihc.EnumDefinition.Values.get -> Ihc.EnumValue[]
-~Ihc.EnumDefinition.Values.init -> void
-~Ihc.EnumValue.EnumName.get -> string
-~Ihc.EnumValue.EnumName.init -> void
-~Ihc.Envelope.EmptyRequestEnvelope.Body.get -> string
-~Ihc.Envelope.EmptyRequestEnvelope.Body.set -> void
-~Ihc.Envelope.EmptyRequestEnvelope.Header.get -> string
-~Ihc.Envelope.EmptyRequestEnvelope.Header.set -> void
-~Ihc.Envelope.EmptyRequestEnvelope.Xmlns.get -> System.Xml.Serialization.XmlSerializerNamespaces
-~Ihc.Envelope.EmptyRequestEnvelope.Xmlns.set -> void
-~Ihc.Envelope.RequestEnvelope<T>.Header.get -> string
-~Ihc.Envelope.RequestEnvelope<T>.Header.set -> void
-~Ihc.Envelope.RequestEnvelope<T>.Xmlns.get -> System.Xml.Serialization.XmlSerializerNamespaces
-~Ihc.Envelope.RequestEnvelope<T>.Xmlns.set -> void
-~Ihc.Envelope.ResponseEnvelope<T>.Xmlns.get -> System.Xml.Serialization.XmlSerializerNamespaces
-~Ihc.Envelope.ResponseEnvelope<T>.Xmlns.set -> void
-~Ihc.ErrorWithCodeException.ErrorWithCodeException(int errorCode, string message) -> void
-~Ihc.ErrorWithCodeException.ErrorWithCodeException(int errorCode, string message, System.Exception inner) -> void
-~Ihc.EventPackage.ResourceValueEvents.get -> Ihc.ResourceValue[]
-~Ihc.EventPackage.ResourceValueEvents.init -> void
-~Ihc.FieldMetaData.AttributeProvider.get -> System.Reflection.ICustomAttributeProvider
-~Ihc.FieldMetaData.attributeProvider.get -> System.Reflection.ICustomAttributeProvider
-~Ihc.FieldMetaData.AttributeProvider.init -> void
-~Ihc.FieldMetaData.attributeProvider.init -> void
-~Ihc.FieldMetaData.Deconstruct(out string name, out System.Type type, out Ihc.FieldMetaData[] subtypes, out string description, out System.Reflection.ICustomAttributeProvider attributeProvider) -> void
-~Ihc.FieldMetaData.Description.get -> string
-~Ihc.FieldMetaData.description.get -> string
-~Ihc.FieldMetaData.Description.init -> void
-~Ihc.FieldMetaData.description.init -> void
-~Ihc.FieldMetaData.FieldMetaData(string name, System.Type type, Ihc.FieldMetaData[] subtypes, string description, System.Reflection.ICustomAttributeProvider attributeProvider = null) -> void
-~Ihc.FieldMetaData.Name.get -> string
-~Ihc.FieldMetaData.name.get -> string
-~Ihc.FieldMetaData.Name.init -> void
-~Ihc.FieldMetaData.name.init -> void
-~Ihc.FieldMetaData.SubTypes.get -> Ihc.FieldMetaData[]
-~Ihc.FieldMetaData.subtypes.get -> Ihc.FieldMetaData[]
-~Ihc.FieldMetaData.SubTypes.init -> void
-~Ihc.FieldMetaData.subtypes.init -> void
-~Ihc.FieldMetaData.Type.get -> System.Type
-~Ihc.FieldMetaData.type.get -> System.Type
-~Ihc.FieldMetaData.Type.init -> void
-~Ihc.FieldMetaData.type.init -> void
-~Ihc.IAirlinkManagementService.EnterRFConfiguration() -> System.Threading.Tasks.Task<bool>
-~Ihc.IAirlinkManagementService.EnterRFTest() -> System.Threading.Tasks.Task<bool>
-~Ihc.IAirlinkManagementService.ExitRFConfiguration() -> System.Threading.Tasks.Task<bool>
-~Ihc.IAirlinkManagementService.ExitRFTest() -> System.Threading.Tasks.Task<bool>
-~Ihc.IAirlinkManagementService.GetBatteryLevel(int resourceId) -> System.Threading.Tasks.Task<int>
-~Ihc.IAirlinkManagementService.GetDetectedDeviceList() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.RFDevice>>
-~Ihc.IAirlinkManagementService.GetDevicesRunningOutOfBattery() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>>
-~Ihc.IAirlinkManagementService.TestRFActuatorWithSerialNumber(long serialNumber) -> System.Threading.Tasks.Task<bool>
-~Ihc.IAirlinkManagementService.WaitForDeviceDetected(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice>
-~Ihc.IAirlinkManagementService.WaitForDeviceTestResult(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice>
-~Ihc.IAuthenticationService.Authenticate() -> System.Threading.Tasks.Task<Ihc.IhcUser>
-~Ihc.IAuthenticationService.Authenticate(string userName, string password, Ihc.Application application = Ihc.Application.openapi) -> System.Threading.Tasks.Task<Ihc.IhcUser>
-~Ihc.IAuthenticationService.Disconnect() -> System.Threading.Tasks.Task<bool>
-~Ihc.IAuthenticationService.IsAuthenticated() -> System.Threading.Tasks.Task<bool>
-~Ihc.IAuthenticationService.Ping() -> System.Threading.Tasks.Task<bool>
-~Ihc.IConfigurationService.ClearUserLog() -> System.Threading.Tasks.Task
-~Ihc.IConfigurationService.DelayedReboot(int delay) -> System.Threading.Tasks.Task
-~Ihc.IConfigurationService.GetDNSServers() -> System.Threading.Tasks.Task<Ihc.DNSServers>
-~Ihc.IConfigurationService.GetEmailControlEnabled() -> System.Threading.Tasks.Task<bool>
-~Ihc.IConfigurationService.GetEmailControlSettings() -> System.Threading.Tasks.Task<Ihc.EmailControlSettings>
-~Ihc.IConfigurationService.GetNetworkSettings() -> System.Threading.Tasks.Task<Ihc.NetworkSettings>
-~Ihc.IConfigurationService.GetSMTPSettings() -> System.Threading.Tasks.Task<Ihc.SMTPSettings>
-~Ihc.IConfigurationService.GetSystemInfo() -> System.Threading.Tasks.Task<Ihc.SystemInfo>
-~Ihc.IConfigurationService.GetUserLog(string lang = "da") -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string>>
-~Ihc.IConfigurationService.GetWebAccessControl() -> System.Threading.Tasks.Task<Ihc.WebAccessControl>
-~Ihc.IConfigurationService.GetWLanInterface() -> System.Threading.Tasks.Task<Ihc.WLanInterface>
-~Ihc.IConfigurationService.GetWLanScan() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.WLanCell>>
-~Ihc.IConfigurationService.GetWLanSettings() -> System.Threading.Tasks.Task<Ihc.WLanSettings>
-~Ihc.IConfigurationService.SetDNSServers(Ihc.DNSServers dnsServers) -> System.Threading.Tasks.Task
-~Ihc.IConfigurationService.SetEmailControlEnabled(bool enabled) -> System.Threading.Tasks.Task
-~Ihc.IConfigurationService.SetEmailControlSettings(Ihc.EmailControlSettings settings) -> System.Threading.Tasks.Task
-~Ihc.IConfigurationService.SetNetworkSettings(Ihc.NetworkSettings settings) -> System.Threading.Tasks.Task
-~Ihc.IConfigurationService.SetServerLanguage(string language) -> System.Threading.Tasks.Task
-~Ihc.IConfigurationService.SetSMTPSettings(Ihc.SMTPSettings settings) -> System.Threading.Tasks.Task
-~Ihc.IConfigurationService.SetWebAccessControl(Ihc.WebAccessControl accessControl) -> System.Threading.Tasks.Task
-~Ihc.IConfigurationService.SetWLanSettings(Ihc.WLanSettings settings) -> System.Threading.Tasks.Task
-~Ihc.IConfigurationService.TestSendMessage(string recipient, string subject, string message) -> System.Threading.Tasks.Task<bool>
-~Ihc.IConfigurationService.TestSettingsNow() -> System.Threading.Tasks.Task
-~Ihc.IControllerService.EnterProjectChangeMode() -> System.Threading.Tasks.Task<bool>
-~Ihc.IControllerService.ExitProjectChangeMode() -> System.Threading.Tasks.Task<bool>
-~Ihc.IControllerService.GetBackup() -> System.Threading.Tasks.Task<Ihc.BackupFile>
-~Ihc.IControllerService.GetControllerState() -> System.Threading.Tasks.Task<Ihc.ControllerState>
-~Ihc.IControllerService.GetIHCProjectNumberOfSegments() -> System.Threading.Tasks.Task<int>
-~Ihc.IControllerService.GetIHCProjectSegment(int index, int major, int minor) -> System.Threading.Tasks.Task<Ihc.ProjectFile>
-~Ihc.IControllerService.GetIHCProjectSegmentationSize() -> System.Threading.Tasks.Task<int>
-~Ihc.IControllerService.GetProject() -> System.Threading.Tasks.Task<Ihc.ProjectFile>
-~Ihc.IControllerService.GetProjectInfo() -> System.Threading.Tasks.Task<Ihc.ProjectInfo>
-~Ihc.IControllerService.GetS0MeterValue() -> System.Threading.Tasks.Task<float>
-~Ihc.IControllerService.GetSDCardInfo() -> System.Threading.Tasks.Task<Ihc.SDInfo>
-~Ihc.IControllerService.IsIHCProjectAvailable() -> System.Threading.Tasks.Task<bool>
-~Ihc.IControllerService.IsSDCardReady() -> System.Threading.Tasks.Task<bool>
-~Ihc.IControllerService.ResetS0Values() -> System.Threading.Tasks.Task
-~Ihc.IControllerService.Restore() -> System.Threading.Tasks.Task<int>
-~Ihc.IControllerService.SetS0Consumption(float consumption, bool flag) -> System.Threading.Tasks.Task
-~Ihc.IControllerService.SetS0FiscalYearStart(sbyte month, sbyte day) -> System.Threading.Tasks.Task
-~Ihc.IControllerService.StoreIHCProjectSegment(Ihc.ProjectFile segment, int index, int major) -> System.Threading.Tasks.Task<bool>
-~Ihc.IControllerService.StoreProject(Ihc.ProjectFile project) -> System.Threading.Tasks.Task<bool>
-~Ihc.IControllerService.WaitForControllerStateChange(Ihc.ControllerState waitState, int waitSec) -> System.Threading.Tasks.Task<Ihc.ControllerState>
-~Ihc.ICookieHandler.GetCookie() -> string
-~Ihc.ICookieHandler.SetCookie(string _cookie) -> void
-~Ihc.ICookieHandlerService.GetCookieHandler() -> Ihc.ICookieHandler
-~Ihc.IhcSettings.Endpoint.get -> string
-~Ihc.IhcSettings.Endpoint.set -> void
-~Ihc.IhcSettings.IhcVisualInstallDir.get -> string
-~Ihc.IhcSettings.IhcVisualInstallDir.set -> void
-~Ihc.IhcSettings.Password.get -> string
-~Ihc.IhcSettings.Password.set -> void
-~Ihc.IhcSettings.UserName.get -> string
-~Ihc.IhcSettings.UserName.set -> void
-~Ihc.IhcUser.CompareTo(Ihc.IhcUser other) -> int
-~Ihc.IhcUser.Email.get -> string
-~Ihc.IhcUser.Email.init -> void
-~Ihc.IhcUser.EqualsChangeableProperties(Ihc.IhcUser other) -> bool
-~Ihc.IhcUser.Firstname.get -> string
-~Ihc.IhcUser.Firstname.init -> void
-~Ihc.IhcUser.Lastname.get -> string
-~Ihc.IhcUser.Lastname.init -> void
-~Ihc.IhcUser.Password.get -> string
-~Ihc.IhcUser.Password.init -> void
-~Ihc.IhcUser.Phone.get -> string
-~Ihc.IhcUser.Phone.init -> void
-~Ihc.IhcUser.Project.get -> string
-~Ihc.IhcUser.Project.init -> void
-~Ihc.IhcUser.RedactPassword() -> Ihc.IhcUser
-~Ihc.IhcUser.RedactPasword() -> Ihc.IhcUser
-~Ihc.IhcUser.ToString(bool LogSensitiveData) -> string
-~Ihc.IhcUser.Username.get -> string
-~Ihc.IhcUser.Username.init -> void
-~Ihc.IIHCApiService.IhcSettings.get -> Ihc.IhcSettings
-~Ihc.IInternalTestService.BurnIO() -> System.Threading.Tasks.Task<bool>
-~Ihc.IInternalTestService.GetAirlinkVersion() -> System.Threading.Tasks.Task<string>
-~Ihc.IInternalTestService.GetIOBoardVersion() -> System.Threading.Tasks.Task<string>
-~Ihc.IInternalTestService.GetTimeAndDate() -> System.Threading.Tasks.Task<System.DateTimeOffset>
-~Ihc.IInternalTestService.GetWiserBoardHWVersion() -> System.Threading.Tasks.Task<string>
-~Ihc.IInternalTestService.GetWiserBoardMACAddress() -> System.Threading.Tasks.Task<string>
-~Ihc.IInternalTestService.GetWiserBoardSerialNumber() -> System.Threading.Tasks.Task<string>
-~Ihc.IInternalTestService.GetWiserBoardVersion() -> System.Threading.Tasks.Task<string>
-~Ihc.IInternalTestService.ProductionTestPassed() -> System.Threading.Tasks.Task
-~Ihc.IInternalTestService.ReadRS485Data(string data) -> System.Threading.Tasks.Task<bool>
-~Ihc.IInternalTestService.ReadUsbHost() -> System.Threading.Tasks.Task<bool>
-~Ihc.IInternalTestService.SendAirlinkPacket() -> System.Threading.Tasks.Task
-~Ihc.IInternalTestService.SendRS485Data(string data) -> System.Threading.Tasks.Task<bool>
-~Ihc.IInternalTestService.SetTimeAndDate(System.DateTimeOffset dateTime) -> System.Threading.Tasks.Task
-~Ihc.IInternalTestService.TestIOBoard() -> System.Threading.Tasks.Task<bool>
-~Ihc.IInternalTestService.TestSdCard() -> System.Threading.Tasks.Task<bool>
-~Ihc.IInternalTestService.TurnOffBlueLed() -> System.Threading.Tasks.Task
-~Ihc.IInternalTestService.TurnOffGreenLed() -> System.Threading.Tasks.Task
-~Ihc.IInternalTestService.TurnOffRedLed() -> System.Threading.Tasks.Task
-~Ihc.IInternalTestService.TurnOnBlueLed() -> System.Threading.Tasks.Task
-~Ihc.IInternalTestService.TurnOnGreenLed() -> System.Threading.Tasks.Task
-~Ihc.IInternalTestService.TurnOnLeds() -> System.Threading.Tasks.Task
-~Ihc.IInternalTestService.TurnOnRedLed() -> System.Threading.Tasks.Task
-~Ihc.ILedDimmerManagementService.AssignID(string serialNumber, sbyte channel, sbyte channelID) -> System.Threading.Tasks.Task<bool>
-~Ihc.ILedDimmerManagementService.EnterConfiguration() -> System.Threading.Tasks.Task<bool>
-~Ihc.ILedDimmerManagementService.ExitConfiguration() -> System.Threading.Tasks.Task<bool>
-~Ihc.ILedDimmerManagementService.GetDeviceCount() -> System.Threading.Tasks.Task<int>
-~Ihc.ILedDimmerManagementService.GetDeviceList() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LedDimmerInfo>>
-~Ihc.ILedDimmerManagementService.GetFirmwareUpgradeProgress() -> System.Threading.Tasks.Task<Ihc.LedDimmerProgress>
-~Ihc.ILedDimmerManagementService.GetLightLevel(sbyte channel) -> System.Threading.Tasks.Task<Ihc.LedDimmerLevel>
-~Ihc.ILedDimmerManagementService.ScanConfiguredDevices(int scanParameter1, int scanParameter2) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LedDimmerInfo>>
-~Ihc.ILedDimmerManagementService.StartFirmwareUpgrade(string serialNumber) -> System.Threading.Tasks.Task
-~Ihc.ILedDimmerManagementService.WaitForDeviceDetected(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.LedDimmerInfo>
-~Ihc.IMessageControlLogService.EmptyLog() -> System.Threading.Tasks.Task
-~Ihc.IMessageControlLogService.GetEvents() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LogEventEntry>>
-~Ihc.IModuleService.ClearAll() -> System.Threading.Tasks.Task
-~Ihc.IModuleService.GetSceneProject(string name) -> System.Threading.Tasks.Task<Ihc.SceneProject>
-~Ihc.IModuleService.GetSceneProjectInfo() -> System.Threading.Tasks.Task<Ihc.SceneProjectInfo>
-~Ihc.IModuleService.GetSceneProjectSegment(string name, int segmentNumber) -> System.Threading.Tasks.Task<Ihc.SceneProject>
-~Ihc.IModuleService.GetSceneProjectSegmentationSize() -> System.Threading.Tasks.Task<int>
-~Ihc.IModuleService.StoreSceneProject(Ihc.SceneProject project) -> System.Threading.Tasks.Task
-~Ihc.IModuleService.StoreSceneProjectSegment(Ihc.SceneProject projectSegment, bool isFirstSegment, bool isLastSegment) -> System.Threading.Tasks.Task<bool>
-~Ihc.INotificationManagerService.ClearMessages() -> System.Threading.Tasks.Task
-~Ihc.INotificationManagerService.GetMessages() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.NotificationMessage>>
-~Ihc.InternalTestService.BurnIO() -> System.Threading.Tasks.Task<bool>
-~Ihc.InternalTestService.GetAirlinkVersion() -> System.Threading.Tasks.Task<string>
-~Ihc.InternalTestService.GetIOBoardVersion() -> System.Threading.Tasks.Task<string>
-~Ihc.InternalTestService.GetTimeAndDate() -> System.Threading.Tasks.Task<System.DateTimeOffset>
-~Ihc.InternalTestService.GetWiserBoardHWVersion() -> System.Threading.Tasks.Task<string>
-~Ihc.InternalTestService.GetWiserBoardMACAddress() -> System.Threading.Tasks.Task<string>
-~Ihc.InternalTestService.GetWiserBoardSerialNumber() -> System.Threading.Tasks.Task<string>
-~Ihc.InternalTestService.GetWiserBoardVersion() -> System.Threading.Tasks.Task<string>
-~Ihc.InternalTestService.InternalTestService(Ihc.IAuthenticationService authService) -> void
-~Ihc.InternalTestService.ProductionTestPassed() -> System.Threading.Tasks.Task
-~Ihc.InternalTestService.ReadRS485Data(string data) -> System.Threading.Tasks.Task<bool>
-~Ihc.InternalTestService.ReadUsbHost() -> System.Threading.Tasks.Task<bool>
-~Ihc.InternalTestService.SendAirlinkPacket() -> System.Threading.Tasks.Task
-~Ihc.InternalTestService.SendRS485Data(string data) -> System.Threading.Tasks.Task<bool>
-~Ihc.InternalTestService.SetTimeAndDate(System.DateTimeOffset dateTime) -> System.Threading.Tasks.Task
-~Ihc.InternalTestService.TestIOBoard() -> System.Threading.Tasks.Task<bool>
-~Ihc.InternalTestService.TestSdCard() -> System.Threading.Tasks.Task<bool>
-~Ihc.InternalTestService.TurnOffBlueLed() -> System.Threading.Tasks.Task
-~Ihc.InternalTestService.TurnOffGreenLed() -> System.Threading.Tasks.Task
-~Ihc.InternalTestService.TurnOffRedLed() -> System.Threading.Tasks.Task
-~Ihc.InternalTestService.TurnOnBlueLed() -> System.Threading.Tasks.Task
-~Ihc.InternalTestService.TurnOnGreenLed() -> System.Threading.Tasks.Task
-~Ihc.InternalTestService.TurnOnLeds() -> System.Threading.Tasks.Task
-~Ihc.InternalTestService.TurnOnRedLed() -> System.Threading.Tasks.Task
-~Ihc.IOpenAPIService.Authenticate() -> System.Threading.Tasks.Task
-~Ihc.IOpenAPIService.Authenticate(string userName, string password) -> System.Threading.Tasks.Task
-~Ihc.IOpenAPIService.DisableSubscription(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task
-~Ihc.IOpenAPIService.DoReboot() -> System.Threading.Tasks.Task
-~Ihc.IOpenAPIService.EnableSubscription(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task
-~Ihc.IOpenAPIService.GetAPIVersion() -> System.Threading.Tasks.Task<string>
-~Ihc.IOpenAPIService.GetDatalineInputIDs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>>
-~Ihc.IOpenAPIService.GetDatalineOutputIDs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>>
-~Ihc.IOpenAPIService.GetFWVersion() -> System.Threading.Tasks.Task<Ihc.FWVersion>
-~Ihc.IOpenAPIService.GetIHCProjectNumberOfSegments() -> System.Threading.Tasks.Task<int>
-~Ihc.IOpenAPIService.GetIHCProjectSegment(int index, int majorVersion, int minorVersion) -> System.Threading.Tasks.Task<Ihc.ProjectSegment>
-~Ihc.IOpenAPIService.GetIHCProjectSegmentationSize() -> System.Threading.Tasks.Task<int>
-~Ihc.IOpenAPIService.GetProjectInfo() -> System.Threading.Tasks.Task<Ihc.ProjectInfo>
-~Ihc.IOpenAPIService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int> resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int timeout_between_waits_in_seconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue>
-~Ihc.IOpenAPIService.GetSceneProjectInfo() -> System.Threading.Tasks.Task<Ihc.SceneProjectInfo>
-~Ihc.IOpenAPIService.GetSceneProjectSegment(int index) -> System.Threading.Tasks.Task<Ihc.SceneProjectSegment>
-~Ihc.IOpenAPIService.GetSceneProjectSegmentationSize() -> System.Threading.Tasks.Task<int>
-~Ihc.IOpenAPIService.GetTime() -> System.Threading.Tasks.Task<System.DateTimeOffset>
-~Ihc.IOpenAPIService.GetUptime() -> System.Threading.Tasks.Task<System.TimeSpan>
-~Ihc.IOpenAPIService.GetValues(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue>>
-~Ihc.IOpenAPIService.IsIHCProjectAvailable() -> System.Threading.Tasks.Task<bool>
-~Ihc.IOpenAPIService.Ping() -> System.Threading.Tasks.Task
-~Ihc.IOpenAPIService.SetValues(System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue> values) -> System.Threading.Tasks.Task<bool>
-~Ihc.IOpenAPIService.WaitForEvents(int timeout) -> System.Threading.Tasks.Task<Ihc.EventPackage>
-~Ihc.IResourceInteractionService.DisableInitialValueNotifactions(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task<bool>
-~Ihc.IResourceInteractionService.DisableRuntimeValueNotifactions(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task<bool>
-~Ihc.IResourceInteractionService.EnableInitialValueNotifications(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue>>
-~Ihc.IResourceInteractionService.EnableRuntimeValueNotifications(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue>>
-~Ihc.IResourceInteractionService.GetAllDatalineInputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource>>
-~Ihc.IResourceInteractionService.GetAllDatalineOutputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource>>
-~Ihc.IResourceInteractionService.GetEnumeratorDefinitions() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.EnumDefinition>>
-~Ihc.IResourceInteractionService.GetExtraDatalineInputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource>>
-~Ihc.IResourceInteractionService.GetExtraDatalineOutputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource>>
-~Ihc.IResourceInteractionService.GetInitialValue(int initialValue) -> System.Threading.Tasks.Task<Ihc.ResourceValue>
-~Ihc.IResourceInteractionService.GetInitialValues(System.Collections.Generic.IReadOnlyList<int> initialValues) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue>>
-~Ihc.IResourceInteractionService.GetLoggedData(int resourceId) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LoggedData>>
-~Ihc.IResourceInteractionService.GetResourceType(int resourceID) -> System.Threading.Tasks.Task<string>
-~Ihc.IResourceInteractionService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int> resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int timeout_between_waits_in_seconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue>
-~Ihc.IResourceInteractionService.GetRuntimeValue(int resourceID) -> System.Threading.Tasks.Task<Ihc.ResourceValue>
-~Ihc.IResourceInteractionService.GetRuntimeValues(System.Collections.Generic.IReadOnlyList<int> resourceIDs) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue>>
-~Ihc.IResourceInteractionService.GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.SceneResourceIdAndLocation>>
-~Ihc.IResourceInteractionService.GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource) -> System.Threading.Tasks.Task<Ihc.SceneResourceIdAndLocation>
-~Ihc.IResourceInteractionService.SetResourceValue(Ihc.ResourceValue v) -> System.Threading.Tasks.Task<bool>
-~Ihc.IResourceInteractionService.SetResourceValues(System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue> values) -> System.Threading.Tasks.Task<bool>
-~Ihc.IResourceInteractionService.WaitForResourceValueChanges(int timeout_seconds = 15) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue>>
-~Ihc.ISmsModemService.GetSmsModemInfo() -> System.Threading.Tasks.Task<Ihc.SmsModemInfo>
-~Ihc.ISmsModemService.GetSmsModemSettings() -> System.Threading.Tasks.Task<Ihc.SmsModemSettings>
-~Ihc.ISmsModemService.GetSmsModemStatus() -> System.Threading.Tasks.Task<Ihc.SmsModemStatus>
-~Ihc.ISmsModemService.ResetSmsModem() -> System.Threading.Tasks.Task
-~Ihc.ISmsModemService.SetSmsModemSettings(Ihc.SmsModemSettings settings) -> System.Threading.Tasks.Task
-~Ihc.ITimeManagerService.GetCurrentLocalTime() -> System.Threading.Tasks.Task<System.DateTimeOffset>
-~Ihc.ITimeManagerService.GetSettings() -> System.Threading.Tasks.Task<Ihc.TimeManagerSettings>
-~Ihc.ITimeManagerService.GetTimeFromServer() -> System.Threading.Tasks.Task<Ihc.TimeServerConnectionResult>
-~Ihc.ITimeManagerService.GetUptime() -> System.Threading.Tasks.Task<System.TimeSpan>
-~Ihc.ITimeManagerService.SetSettings(Ihc.TimeManagerSettings settings) -> System.Threading.Tasks.Task<bool>
-~Ihc.IUserManagerService.AddUser(Ihc.IhcUser user) -> System.Threading.Tasks.Task
-~Ihc.IUserManagerService.GetUsers(bool includePassword) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlySet<Ihc.IhcUser>>
-~Ihc.IUserManagerService.RemoveUser(string username) -> System.Threading.Tasks.Task
-~Ihc.IUserManagerService.UpdateUser(Ihc.IhcUser user) -> System.Threading.Tasks.Task
-~Ihc.LedDimmerInfo.ApplicationVersion.get -> string
-~Ihc.LedDimmerInfo.ApplicationVersion.init -> void
-~Ihc.LedDimmerInfo.BootloaderVersion.get -> string
-~Ihc.LedDimmerInfo.BootloaderVersion.init -> void
-~Ihc.LedDimmerInfo.HardwareVersion.get -> string
-~Ihc.LedDimmerInfo.HardwareVersion.init -> void
-~Ihc.LedDimmerInfo.Location.get -> string
-~Ihc.LedDimmerInfo.Location.init -> void
-~Ihc.LedDimmerInfo.SerialNumber.get -> string
-~Ihc.LedDimmerInfo.SerialNumber.init -> void
-~Ihc.LedDimmerManagementService.AssignID(string serialNumber, sbyte channel, sbyte channelID) -> System.Threading.Tasks.Task<bool>
-~Ihc.LedDimmerManagementService.EnterConfiguration() -> System.Threading.Tasks.Task<bool>
-~Ihc.LedDimmerManagementService.ExitConfiguration() -> System.Threading.Tasks.Task<bool>
-~Ihc.LedDimmerManagementService.GetDeviceCount() -> System.Threading.Tasks.Task<int>
-~Ihc.LedDimmerManagementService.GetDeviceList() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LedDimmerInfo>>
-~Ihc.LedDimmerManagementService.GetFirmwareUpgradeProgress() -> System.Threading.Tasks.Task<Ihc.LedDimmerProgress>
-~Ihc.LedDimmerManagementService.GetLightLevel(sbyte channel) -> System.Threading.Tasks.Task<Ihc.LedDimmerLevel>
-~Ihc.LedDimmerManagementService.LedDimmerManagementService(Ihc.IAuthenticationService authService) -> void
-~Ihc.LedDimmerManagementService.ScanConfiguredDevices(int scanParameter1, int scanParameter2) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LedDimmerInfo>>
-~Ihc.LedDimmerManagementService.StartFirmwareUpgrade(string serialNumber) -> System.Threading.Tasks.Task
-~Ihc.LedDimmerManagementService.WaitForDeviceDetected(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.LedDimmerInfo>
-~Ihc.LedDimmerProgress.Failed.get -> string
-~Ihc.LedDimmerProgress.Failed.init -> void
-~Ihc.LedDimmerProgress.Finished.get -> string
-~Ihc.LedDimmerProgress.Finished.init -> void
-~Ihc.LedDimmerProgress.Message.get -> string
-~Ihc.LedDimmerProgress.Message.init -> void
-~Ihc.LedDimmerProgress.Running.get -> string
-~Ihc.LedDimmerProgress.Running.init -> void
-~Ihc.LedDimmerProgress.SerialNumber.get -> string
-~Ihc.LedDimmerProgress.SerialNumber.init -> void
-~Ihc.LedDimmerProgress.Status.get -> string
-~Ihc.LedDimmerProgress.Status.init -> void
-~Ihc.LogEventEntry.ActionTypeAsString.get -> string
-~Ihc.LogEventEntry.ActionTypeAsString.init -> void
-~Ihc.LogEventEntry.AuthenticationTypeAsString.get -> string
-~Ihc.LogEventEntry.AuthenticationTypeAsString.init -> void
-~Ihc.LogEventEntry.ControlType.get -> string
-~Ihc.LogEventEntry.ControlType.init -> void
-~Ihc.LogEventEntry.SenderAddress.get -> string
-~Ihc.LogEventEntry.SenderAddress.init -> void
-~Ihc.LogEventEntry.SenderAddressDescription.get -> string
-~Ihc.LogEventEntry.SenderAddressDescription.init -> void
-~Ihc.LogEventEntry.TriggerString.get -> string
-~Ihc.LogEventEntry.TriggerString.init -> void
-~Ihc.LoggedData.Value.get -> string
-~Ihc.LoggedData.Value.init -> void
-~Ihc.MessageControlLogService.EmptyLog() -> System.Threading.Tasks.Task
-~Ihc.MessageControlLogService.GetEvents() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LogEventEntry>>
-~Ihc.MessageControlLogService.MessageControlLogService(Ihc.IAuthenticationService authService) -> void
-~Ihc.ModelMetadata.TypeFullName.get -> string
-~Ihc.ModelMetadata.TypeFullName.init -> void
-~Ihc.ModelMetadata.Version.get -> Ihc.Version
-~Ihc.ModelMetadata.Version.init -> void
-~Ihc.ModuleService.ClearAll() -> System.Threading.Tasks.Task
-~Ihc.ModuleService.GetSceneProject(string name) -> System.Threading.Tasks.Task<Ihc.SceneProject>
-~Ihc.ModuleService.GetSceneProjectInfo() -> System.Threading.Tasks.Task<Ihc.SceneProjectInfo>
-~Ihc.ModuleService.GetSceneProjectSegment(string name, int segmentNumber) -> System.Threading.Tasks.Task<Ihc.SceneProject>
-~Ihc.ModuleService.GetSceneProjectSegmentationSize() -> System.Threading.Tasks.Task<int>
-~Ihc.ModuleService.ModuleService(Ihc.IAuthenticationService authService) -> void
-~Ihc.ModuleService.StoreSceneProject(Ihc.SceneProject project) -> System.Threading.Tasks.Task
-~Ihc.ModuleService.StoreSceneProjectSegment(Ihc.SceneProject projectSegment, bool isFirstSegment, bool isLastSegment) -> System.Threading.Tasks.Task<bool>
-~Ihc.NetworkSettings.Gateway.get -> string
-~Ihc.NetworkSettings.Gateway.init -> void
-~Ihc.NetworkSettings.IpAddress.get -> string
-~Ihc.NetworkSettings.IpAddress.init -> void
-~Ihc.NetworkSettings.Netmask.get -> string
-~Ihc.NetworkSettings.Netmask.init -> void
-~Ihc.NotificationManagerService.ClearMessages() -> System.Threading.Tasks.Task
-~Ihc.NotificationManagerService.GetMessages() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.NotificationMessage>>
-~Ihc.NotificationManagerService.NotificationManagerService(Ihc.IAuthenticationService authService) -> void
-~Ihc.NotificationMessage.Body.get -> string
-~Ihc.NotificationMessage.Body.init -> void
-~Ihc.NotificationMessage.NotificationType.get -> string
-~Ihc.NotificationMessage.NotificationType.init -> void
-~Ihc.NotificationMessage.Recipient.get -> string
-~Ihc.NotificationMessage.Recipient.init -> void
-~Ihc.NotificationMessage.Sender.get -> string
-~Ihc.NotificationMessage.Sender.init -> void
-~Ihc.NotificationMessage.Subject.get -> string
-~Ihc.NotificationMessage.Subject.init -> void
-~Ihc.OpenAPIService.Authenticate() -> System.Threading.Tasks.Task
-~Ihc.OpenAPIService.Authenticate(string userName, string password) -> System.Threading.Tasks.Task
-~Ihc.OpenAPIService.DisableSubscription(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task
-~Ihc.OpenAPIService.DoReboot() -> System.Threading.Tasks.Task
-~Ihc.OpenAPIService.EnableSubscription(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task
-~Ihc.OpenAPIService.GetAPIVersion() -> System.Threading.Tasks.Task<string>
-~Ihc.OpenAPIService.GetCookieHandler() -> Ihc.ICookieHandler
-~Ihc.OpenAPIService.GetDatalineInputIDs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>>
-~Ihc.OpenAPIService.GetDatalineOutputIDs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>>
-~Ihc.OpenAPIService.GetFWVersion() -> System.Threading.Tasks.Task<Ihc.FWVersion>
-~Ihc.OpenAPIService.GetIHCProjectNumberOfSegments() -> System.Threading.Tasks.Task<int>
-~Ihc.OpenAPIService.GetIHCProjectSegment(int index, int majorVersion, int minorVersion) -> System.Threading.Tasks.Task<Ihc.ProjectSegment>
-~Ihc.OpenAPIService.GetIHCProjectSegmentationSize() -> System.Threading.Tasks.Task<int>
-~Ihc.OpenAPIService.GetProjectInfo() -> System.Threading.Tasks.Task<Ihc.ProjectInfo>
-~Ihc.OpenAPIService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int> resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int timeout_between_waits_in_seconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue>
-~Ihc.OpenAPIService.GetSceneProjectInfo() -> System.Threading.Tasks.Task<Ihc.SceneProjectInfo>
-~Ihc.OpenAPIService.GetSceneProjectSegment(int index) -> System.Threading.Tasks.Task<Ihc.SceneProjectSegment>
-~Ihc.OpenAPIService.GetSceneProjectSegmentationSize() -> System.Threading.Tasks.Task<int>
-~Ihc.OpenAPIService.GetTime() -> System.Threading.Tasks.Task<System.DateTimeOffset>
-~Ihc.OpenAPIService.GetUptime() -> System.Threading.Tasks.Task<System.TimeSpan>
-~Ihc.OpenAPIService.GetValues(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue>>
-~Ihc.OpenAPIService.IsIHCProjectAvailable() -> System.Threading.Tasks.Task<bool>
-~Ihc.OpenAPIService.OpenAPIService(Ihc.IAuthenticationService authService) -> void
-~Ihc.OpenAPIService.OpenAPIService(Ihc.IhcSettings settings) -> void
-~Ihc.OpenAPIService.Ping() -> System.Threading.Tasks.Task
-~Ihc.OpenAPIService.SetValues(System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue> values) -> System.Threading.Tasks.Task<bool>
-~Ihc.OpenAPIService.WaitForEvents(int timeout) -> System.Threading.Tasks.Task<Ihc.EventPackage>
-~Ihc.ProductionTestService.ProductionTestService(Ihc.IAuthenticationService authService) -> void
-~Ihc.ProjectFile.Data.get -> string
-~Ihc.ProjectFile.Data.init -> void
-~Ihc.ProjectFile.Filename.get -> string
-~Ihc.ProjectFile.Filename.init -> void
-~Ihc.ProjectFile.ProjectFile(Ihc.TextFile input) -> void
-~Ihc.ProjectFile.ProjectFile(string Filename, string Data) -> void
-~Ihc.ProjectInfo.CustomerName.get -> string
-~Ihc.ProjectInfo.CustomerName.init -> void
-~Ihc.ProjectInfo.InstallerName.get -> string
-~Ihc.ProjectInfo.InstallerName.init -> void
-~Ihc.ProjectInfo.ProjectNumber.get -> string
-~Ihc.ProjectInfo.ProjectNumber.init -> void
-~Ihc.ProjectSegment.Data.get -> byte[]
-~Ihc.ProjectSegment.Data.init -> void
-~Ihc.ProjectSegment.Filename.get -> string
-~Ihc.ProjectSegment.Filename.init -> void
-~Ihc.ProjectSegment.ProjectSegment(Ihc.BinaryFile input) -> void
-~Ihc.ResourceInteractionService.DisableInitialValueNotifactions(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task<bool>
-~Ihc.ResourceInteractionService.DisableRuntimeValueNotifactions(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task<bool>
-~Ihc.ResourceInteractionService.EnableInitialValueNotifications(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue>>
-~Ihc.ResourceInteractionService.EnableRuntimeValueNotifications(System.Collections.Generic.IReadOnlyList<int> resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue>>
-~Ihc.ResourceInteractionService.GetAllDatalineInputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource>>
-~Ihc.ResourceInteractionService.GetAllDatalineOutputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource>>
-~Ihc.ResourceInteractionService.GetEnumeratorDefinitions() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.EnumDefinition>>
-~Ihc.ResourceInteractionService.GetExtraDatalineInputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource>>
-~Ihc.ResourceInteractionService.GetExtraDatalineOutputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource>>
-~Ihc.ResourceInteractionService.GetInitialValue(int initialValue) -> System.Threading.Tasks.Task<Ihc.ResourceValue>
-~Ihc.ResourceInteractionService.GetInitialValues(System.Collections.Generic.IReadOnlyList<int> initialValues) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue>>
-~Ihc.ResourceInteractionService.GetLoggedData(int resourceId) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LoggedData>>
-~Ihc.ResourceInteractionService.GetResourceType(int resourceID) -> System.Threading.Tasks.Task<string>
-~Ihc.ResourceInteractionService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int> resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int timeout_between_waits_in_seconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue>
-~Ihc.ResourceInteractionService.GetRuntimeValue(int resourceID) -> System.Threading.Tasks.Task<Ihc.ResourceValue>
-~Ihc.ResourceInteractionService.GetRuntimeValues(System.Collections.Generic.IReadOnlyList<int> resourceIDs) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue>>
-~Ihc.ResourceInteractionService.GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.SceneResourceIdAndLocation>>
-~Ihc.ResourceInteractionService.GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource) -> System.Threading.Tasks.Task<Ihc.SceneResourceIdAndLocation>
-~Ihc.ResourceInteractionService.ResourceInteractionService(Ihc.IAuthenticationService authService) -> void
-~Ihc.ResourceInteractionService.SetResourceValue(Ihc.ResourceValue v) -> System.Threading.Tasks.Task<bool>
-~Ihc.ResourceInteractionService.SetResourceValues(System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue> values) -> System.Threading.Tasks.Task<bool>
-~Ihc.ResourceInteractionService.WaitForResourceValueChanges(int timeout_seconds = 15) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue>>
-~Ihc.ResourceValue.TypeString.get -> string
-~Ihc.ResourceValue.TypeString.init -> void
-~Ihc.ResourceValue.UnionValue.EnumValue.get -> Ihc.EnumValue
-~Ihc.ResourceValue.UnionValue.EnumValue.set -> void
-~Ihc.ResourceValue.UnionValue.PhoneNumberValue.get -> string
-~Ihc.ResourceValue.UnionValue.PhoneNumberValue.set -> void
-~Ihc.SceneProject.Data.get -> byte[]
-~Ihc.SceneProject.Data.init -> void
-~Ihc.SceneProject.Filename.get -> string
-~Ihc.SceneProject.Filename.init -> void
-~Ihc.SceneProject.SceneProject(Ihc.BinaryFile input) -> void
-~Ihc.SceneProject.SceneProject(string Filename, byte[] Data) -> void
-~Ihc.SceneProjectInfo.Description.get -> string
-~Ihc.SceneProjectInfo.Description.init -> void
-~Ihc.SceneProjectInfo.Filepath.get -> string
-~Ihc.SceneProjectInfo.Filepath.init -> void
-~Ihc.SceneProjectInfo.Name.get -> string
-~Ihc.SceneProjectInfo.Name.init -> void
-~Ihc.SceneProjectInfo.Version.get -> string
-~Ihc.SceneProjectInfo.Version.init -> void
-~Ihc.SceneProjectSegment.Data.get -> byte[]
-~Ihc.SceneProjectSegment.Data.init -> void
-~Ihc.SceneProjectSegment.Filename.get -> string
-~Ihc.SceneProjectSegment.Filename.init -> void
-~Ihc.SceneProjectSegment.SceneProjectSegment(Ihc.BinaryFile input) -> void
-~Ihc.SceneResourceIdAndLocation.ScenePositionSeenFromFunctionBlock.get -> string
-~Ihc.SceneResourceIdAndLocation.ScenePositionSeenFromFunctionBlock.init -> void
-~Ihc.SceneResourceIdAndLocation.ScenePositionSeenFromProduct.get -> string
-~Ihc.SceneResourceIdAndLocation.ScenePositionSeenFromProduct.init -> void
-~Ihc.ServiceBase.IhcSettings.get -> Ihc.IhcSettings
-~Ihc.ServiceBase.ServiceBase(Ihc.IhcSettings settings) -> void
-~Ihc.ServiceBase.StartActivity(string operationName) -> System.Diagnostics.Activity
-~Ihc.ServiceOperationMetadata.Description.get -> string
-~Ihc.ServiceOperationMetadata.Description.init -> void
-~Ihc.ServiceOperationMetadata.Invoke(object[] arguments) -> object
-~Ihc.ServiceOperationMetadata.MethodInfo.get -> System.Reflection.MethodInfo
-~Ihc.ServiceOperationMetadata.MethodInfo.init -> void
-~Ihc.ServiceOperationMetadata.Name.get -> string
-~Ihc.ServiceOperationMetadata.Name.init -> void
-~Ihc.ServiceOperationMetadata.Parameters.get -> Ihc.FieldMetaData[]
-~Ihc.ServiceOperationMetadata.Parameters.init -> void
-~Ihc.ServiceOperationMetadata.ReturnType.get -> System.Type
-~Ihc.ServiceOperationMetadata.ReturnType.init -> void
-~Ihc.ServiceOperationMetadata.Service.get -> Ihc.IIHCApiService
-~Ihc.ServiceOperationMetadata.Service.init -> void
-~Ihc.ServiceOperationMetadata.ServiceOperationMetadata(Ihc.IIHCApiService Service, string Name, System.Type ReturnType, Ihc.FieldMetaData[] Parameters, Ihc.ServiceOperationKind OperationKind, System.Reflection.MethodInfo OperationDetails, string Description) -> void
-~Ihc.ServiceOperationMetadata.WithService(Ihc.IIHCApiService newService) -> Ihc.ServiceOperationMetadata
-~Ihc.SimpleSecret.DecryptString(string encryptedString) -> string
-~Ihc.SimpleSecret.EncryptString(string plaintext) -> string
-~Ihc.SimpleSecret.SimpleSecret(string passphrase, bool enable = true) -> void
-~Ihc.SmsModemInfo.FirmwareVersion.get -> string
-~Ihc.SmsModemInfo.FirmwareVersion.init -> void
-~Ihc.SmsModemInfo.GSMChipVersion.get -> string
-~Ihc.SmsModemInfo.GSMChipVersion.init -> void
-~Ihc.SmsModemInfo.HardwareRevision.get -> string
-~Ihc.SmsModemInfo.HardwareRevision.init -> void
-~Ihc.SmsModemInfo.IMEINumber.get -> string
-~Ihc.SmsModemInfo.IMEINumber.init -> void
-~Ihc.SmsModemInfo.ProductionDate.get -> string
-~Ihc.SmsModemInfo.ProductionDate.init -> void
-~Ihc.SmsModemInfo.SerialNumber.get -> string
-~Ihc.SmsModemInfo.SerialNumber.init -> void
-~Ihc.SmsModemService.GetSmsModemInfo() -> System.Threading.Tasks.Task<Ihc.SmsModemInfo>
-~Ihc.SmsModemService.GetSmsModemSettings() -> System.Threading.Tasks.Task<Ihc.SmsModemSettings>
-~Ihc.SmsModemService.GetSmsModemStatus() -> System.Threading.Tasks.Task<Ihc.SmsModemStatus>
-~Ihc.SmsModemService.ResetSmsModem() -> System.Threading.Tasks.Task
-~Ihc.SmsModemService.SetSmsModemSettings(Ihc.SmsModemSettings settings) -> System.Threading.Tasks.Task
-~Ihc.SmsModemService.SmsModemService(Ihc.IAuthenticationService authService) -> void
-~Ihc.SmsModemSettings.PowerdownMessage.get -> string
-~Ihc.SmsModemSettings.PowerdownMessage.init -> void
-~Ihc.SmsModemSettings.PowerdownNumber.get -> string
-~Ihc.SmsModemSettings.PowerdownNumber.init -> void
-~Ihc.SmsModemSettings.PowerupMessage.get -> string
-~Ihc.SmsModemSettings.PowerupMessage.init -> void
-~Ihc.SmsModemStatus.AntennaCoverage.get -> string
-~Ihc.SmsModemStatus.AntennaCoverage.init -> void
-~Ihc.SmsModemStatus.MobileNumber.get -> string
-~Ihc.SmsModemStatus.MobileNumber.init -> void
-~Ihc.SmsModemStatus.MobileOperator.get -> string
-~Ihc.SmsModemStatus.MobileOperator.init -> void
-~Ihc.SmsModemStatus.ModemStatus.get -> string
-~Ihc.SmsModemStatus.ModemStatus.init -> void
-~Ihc.SMTPSettings.Hostname.get -> string
-~Ihc.SMTPSettings.Hostname.init -> void
-~Ihc.SMTPSettings.Password.get -> string
-~Ihc.SMTPSettings.Password.init -> void
-~Ihc.SMTPSettings.SendLowBatteryNotificationRecipient.get -> string
-~Ihc.SMTPSettings.SendLowBatteryNotificationRecipient.init -> void
-~Ihc.SMTPSettings.ToString(bool LogSensitiveData) -> string
-~Ihc.SMTPSettings.Username.get -> string
-~Ihc.SMTPSettings.Username.init -> void
-~Ihc.SystemInfo.Brand.get -> string
-~Ihc.SystemInfo.Brand.init -> void
-~Ihc.SystemInfo.DatalineVersion.get -> string
-~Ihc.SystemInfo.DatalineVersion.init -> void
-~Ihc.SystemInfo.HWRevision.get -> string
-~Ihc.SystemInfo.HWRevision.init -> void
-~Ihc.SystemInfo.LedDimmerSoftwareVersion.get -> string
-~Ihc.SystemInfo.LedDimmerSoftwareVersion.init -> void
-~Ihc.SystemInfo.ProductionDate.get -> string
-~Ihc.SystemInfo.ProductionDate.init -> void
-~Ihc.SystemInfo.RFModuleSerialNumber.get -> string
-~Ihc.SystemInfo.RFModuleSerialNumber.init -> void
-~Ihc.SystemInfo.RFModuleSoftwareVersion.get -> string
-~Ihc.SystemInfo.RFModuleSoftwareVersion.init -> void
-~Ihc.SystemInfo.SerialNumber.get -> string
-~Ihc.SystemInfo.SerialNumber.init -> void
-~Ihc.SystemInfo.SmsModemSoftwareVersion.get -> string
-~Ihc.SystemInfo.SmsModemSoftwareVersion.init -> void
-~Ihc.SystemInfo.Version.get -> string
-~Ihc.SystemInfo.Version.init -> void
-~Ihc.TelemetryConfiguration.Headers.get -> string
-~Ihc.TelemetryConfiguration.Headers.set -> void
-~Ihc.TelemetryConfiguration.Host.get -> string
-~Ihc.TelemetryConfiguration.Host.set -> void
-~Ihc.TelemetryConfiguration.Logs.get -> string
-~Ihc.TelemetryConfiguration.Logs.set -> void
-~Ihc.TelemetryConfiguration.SelfCheckEndpoint.get -> string
-~Ihc.TelemetryConfiguration.SelfCheckEndpoint.set -> void
-~Ihc.TelemetryConfiguration.SelfCheckExpectedStatus.get -> string
-~Ihc.TelemetryConfiguration.SelfCheckExpectedStatus.set -> void
-~Ihc.TelemetryConfiguration.Traces.get -> string
-~Ihc.TelemetryConfiguration.Traces.set -> void
-~Ihc.TelemetrySelfCheckResult.Deconstruct(out Ihc.TelemetrySelfCheckStatus Status, out string Message) -> void
-~Ihc.TelemetrySelfCheckResult.Message.get -> string
-~Ihc.TelemetrySelfCheckResult.Message.init -> void
-~Ihc.TelemetrySelfCheckResult.TelemetrySelfCheckResult(Ihc.TelemetrySelfCheckStatus Status, string Message) -> void
-~Ihc.TextFile.Data.get -> string
-~Ihc.TextFile.Encoding.get -> System.Text.Encoding
-~Ihc.TextFile.Filename.get -> string
-~Ihc.TimeManagerService.GetCurrentLocalTime() -> System.Threading.Tasks.Task<System.DateTimeOffset>
-~Ihc.TimeManagerService.GetSettings() -> System.Threading.Tasks.Task<Ihc.TimeManagerSettings>
-~Ihc.TimeManagerService.GetTimeFromServer() -> System.Threading.Tasks.Task<Ihc.TimeServerConnectionResult>
-~Ihc.TimeManagerService.GetUptime() -> System.Threading.Tasks.Task<System.TimeSpan>
-~Ihc.TimeManagerService.SetSettings(Ihc.TimeManagerSettings settings) -> System.Threading.Tasks.Task<bool>
-~Ihc.TimeManagerService.TimeManagerService(Ihc.IAuthenticationService authService) -> void
-~Ihc.TimeManagerSettings.OnlineCalendarCountry.get -> string
-~Ihc.TimeManagerSettings.OnlineCalendarCountry.init -> void
-~Ihc.TimeManagerSettings.ServerName.get -> string
-~Ihc.TimeManagerSettings.ServerName.init -> void
-~Ihc.UserLogFileText.Content.get -> string
-~Ihc.UserLogFileText.Content.init -> void
-~Ihc.UserLogFileText.FileName.get -> string
-~Ihc.UserLogFileText.FileName.init -> void
-~Ihc.UserManagerService.AddUser(Ihc.IhcUser user) -> System.Threading.Tasks.Task
-~Ihc.UserManagerService.GetUsers(bool includePassword = true) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlySet<Ihc.IhcUser>>
-~Ihc.UserManagerService.RemoveUser(string username) -> System.Threading.Tasks.Task
-~Ihc.UserManagerService.UpdateUser(Ihc.IhcUser user) -> System.Threading.Tasks.Task
-~Ihc.UserManagerService.UserManagerService(Ihc.IAuthenticationService authService) -> void
-~Ihc.Version.Version(System.Version version) -> void
-~Ihc.WLanCell.EncryptionType.get -> string
-~Ihc.WLanCell.EncryptionType.init -> void
-~Ihc.WLanCell.SecurityType.get -> string
-~Ihc.WLanCell.SecurityType.init -> void
-~Ihc.WLanCell.Ssid.get -> string
-~Ihc.WLanCell.Ssid.init -> void
-~Ihc.WLanInterface.Name.get -> string
-~Ihc.WLanInterface.Name.init -> void
-~Ihc.WLanInterface.Quality.get -> string
-~Ihc.WLanInterface.Quality.init -> void
-~Ihc.WLanInterface.Ssid.get -> string
-~Ihc.WLanInterface.Ssid.init -> void
-~Ihc.WLanSettings.EncryptionType.get -> string
-~Ihc.WLanSettings.EncryptionType.init -> void
-~Ihc.WLanSettings.Gateway.get -> string
-~Ihc.WLanSettings.Gateway.init -> void
-~Ihc.WLanSettings.IpAddress.get -> string
-~Ihc.WLanSettings.IpAddress.init -> void
-~Ihc.WLanSettings.Key.get -> string
-~Ihc.WLanSettings.Key.init -> void
-~Ihc.WLanSettings.Netmask.get -> string
-~Ihc.WLanSettings.Netmask.init -> void
-~Ihc.WLanSettings.SecurityType.get -> string
-~Ihc.WLanSettings.SecurityType.init -> void
-~Ihc.WLanSettings.Ssid.get -> string
-~Ihc.WLanSettings.Ssid.init -> void
-~Ihc.WLanSettings.ToString(bool LogSensitiveData) -> string
-~override Ihc.App.InformationModel.ToString() -> string
-~override Ihc.App.MutableAdminModel.ToString() -> string
-~override Ihc.BackupFile.ToString() -> string
-~override Ihc.DatalineResource.ToString() -> string
-~override Ihc.DNSServers.ToString() -> string
-~override Ihc.EmailControlSettings.ToString() -> string
-~override Ihc.EnumDefinition.ToString() -> string
-~override Ihc.EnumValue.ToString() -> string
-~override Ihc.ErrorWithCodeException.ToString() -> string
-~override Ihc.EventPackage.ToString() -> string
-~override Ihc.FieldMetaData.ToString() -> string
-~override Ihc.FWVersion.ToString() -> string
-~override Ihc.IhcSettings.ToString() -> string
-~override Ihc.IhcUser.ToString() -> string
-~override Ihc.InetAddress.ToString() -> string
-~override Ihc.LedDimmerInfo.ToString() -> string
-~override Ihc.LedDimmerLevel.ToString() -> string
-~override Ihc.LedDimmerProgress.ToString() -> string
-~override Ihc.LogEventEntry.ToString() -> string
-~override Ihc.LoggedData.ToString() -> string
-~override Ihc.NetworkSettings.ToString() -> string
-~override Ihc.NotificationMessage.ToString() -> string
-~override Ihc.ProjectFile.ToString() -> string
-~override Ihc.ProjectInfo.ToString() -> string
-~override Ihc.ProjectSegment.ToString() -> string
-~override Ihc.ResourceValue.ToString() -> string
-~override Ihc.ResourceValue.UnionValue.ToString() -> string
-~override Ihc.RFDevice.ToString() -> string
-~override Ihc.SceneProject.ToString() -> string
-~override Ihc.SceneProjectInfo.ToString() -> string
-~override Ihc.SceneProjectSegment.ToString() -> string
-~override Ihc.SceneResourceIdAndLocation.ToString() -> string
-~override Ihc.SDInfo.ToString() -> string
-~override Ihc.ServiceOperationMetadata.ToString() -> string
-~override Ihc.SmsModemInfo.ToString() -> string
-~override Ihc.SmsModemSettings.ToString() -> string
-~override Ihc.SmsModemStatus.ToString() -> string
-~override Ihc.SMTPSettings.ToString() -> string
-~override Ihc.SystemInfo.ToString() -> string
-~override Ihc.TimeManagerSettings.ToString() -> string
-~override Ihc.TimeServerConnectionResult.ToString() -> string
-~override Ihc.UserLogFileText.ToString() -> string
+const Ihc.SimpleSecret.EncryptPassphaseEnvName = "IHC_ENCRYPT_PASSPHRASE" -> string!
+const Ihc.SpecialEndpoints.MockedPrefix = "mock://" -> string!
+const Ihc.SpecialEndpoints.Usb = "http://usb" -> string!
+const Ihc.Telemetry.ActivitySourceName = "ihcclient" -> string!
+const Ihc.Telemetry.argsTagPrefix = "input." -> string!
+const Ihc.Telemetry.returnValueTag = "retv" -> string!
+const Ihc.UserConstants.REDACTED_PASSWORD = "**REDACTED**" -> string!
+Ihc.AirlinkManagementService.AirlinkManagementService(Ihc.IAuthenticationService! authService) -> void
+Ihc.AirlinkManagementService.EnterRFConfiguration() -> System.Threading.Tasks.Task<bool>!
+Ihc.AirlinkManagementService.EnterRFTest() -> System.Threading.Tasks.Task<bool>!
+Ihc.AirlinkManagementService.ExitRFConfiguration() -> System.Threading.Tasks.Task<bool>!
+Ihc.AirlinkManagementService.ExitRFTest() -> System.Threading.Tasks.Task<bool>!
+Ihc.AirlinkManagementService.GetBatteryLevel(int resourceId) -> System.Threading.Tasks.Task<int>!
+Ihc.AirlinkManagementService.GetDetectedDeviceList() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.RFDevice!>!>!
+Ihc.AirlinkManagementService.GetDevicesRunningOutOfBattery() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>!>!
+Ihc.AirlinkManagementService.TestRFActuatorWithSerialNumber(long serialNumber) -> System.Threading.Tasks.Task<bool>!
+Ihc.AirlinkManagementService.WaitForDeviceDetected(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice?>!
+Ihc.AirlinkManagementService.WaitForDeviceTestResult(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice?>!
+Ihc.App.AdminAppService.AdminAppService(Ihc.IhcSettings! settings, bool fileEnryption) -> void
+Ihc.App.AdminAppService.AdminAppService(Ihc.IhcSettings! settings, bool fileEnryption, Ihc.IAuthenticationService! authService, Ihc.IUserManagerService! userService, Ihc.IConfigurationService! configService) -> void
+Ihc.App.AdminAppService.GetModel() -> System.Threading.Tasks.Task<Ihc.App.MutableAdminModel!>!
+Ihc.App.AdminAppService.LoadFromJson(string! path) -> System.Threading.Tasks.Task<Ihc.App.MutableAdminModel!>!
+Ihc.App.AdminAppService.LoadFromJson(System.IO.Stream! stream) -> System.Threading.Tasks.Task<Ihc.App.MutableAdminModel!>!
+Ihc.App.AdminAppService.Restart() -> System.Threading.Tasks.Task!
+Ihc.App.AdminAppService.SaveAsJson(Ihc.App.MutableAdminModel! adminModel, string! path) -> System.Threading.Tasks.Task!
+Ihc.App.AdminAppService.SaveAsJson(Ihc.App.MutableAdminModel! adminModel, System.IO.Stream! stream) -> System.Threading.Tasks.Task!
+Ihc.App.AdminAppService.Store(Ihc.App.MutableAdminModel! model) -> System.Threading.Tasks.Task<Ihc.App.AdminAppService.ChangeInformation!>!
+Ihc.App.AppServiceBase.RunTraced(string! operationName, System.Action<System.Diagnostics.Activity?>! body) -> void
+Ihc.App.AppServiceBase.RunTraced<T>(string! operationName, System.Func<System.Diagnostics.Activity?, T>! body) -> T
+Ihc.App.AppServiceBase.RunTracedAsync(string! operationName, System.Func<System.Diagnostics.Activity?, System.Threading.Tasks.Task!>! body) -> System.Threading.Tasks.Task!
+Ihc.App.AppServiceBase.RunTracedAsync<T>(string! operationName, System.Func<System.Diagnostics.Activity?, System.Threading.Tasks.Task<T>!>! body) -> System.Threading.Tasks.Task<T>!
+Ihc.App.AppServiceBase.StartActivity(string! operationName) -> System.Diagnostics.Activity?
+Ihc.App.InformationAppService.GetInformationModel() -> System.Threading.Tasks.Task<Ihc.App.InformationModel!>!
+Ihc.App.InformationAppService.InformationAppService(Ihc.IhcSettings! settings) -> void
+Ihc.App.InformationAppService.InformationAppService(Ihc.IhcSettings! settings, Ihc.IAuthenticationService! authService, Ihc.IConfigurationService! configService, Ihc.ITimeManagerService! timeService, Ihc.IControllerService! controllerService, Ihc.ISmsModemService! smsModemService) -> void
+Ihc.App.InformationModel.HardwareVersion.get -> string?
+Ihc.App.InformationModel.HardwareVersion.init -> void
+Ihc.App.InformationModel.IoVersion.get -> string?
+Ihc.App.InformationModel.IoVersion.init -> void
+Ihc.App.InformationModel.ProductionDate.get -> string?
+Ihc.App.InformationModel.ProductionDate.init -> void
+Ihc.App.InformationModel.RfSerialNumber.get -> string?
+Ihc.App.InformationModel.RfSerialNumber.init -> void
+Ihc.App.InformationModel.RfVersion.get -> string?
+Ihc.App.InformationModel.RfVersion.init -> void
+Ihc.App.InformationModel.SdCard.get -> Ihc.SDInfo?
+Ihc.App.InformationModel.SdCard.init -> void
+Ihc.App.InformationModel.SerialNumber.get -> string?
+Ihc.App.InformationModel.SerialNumber.init -> void
+Ihc.App.InformationModel.SmsModemVersion.get -> string?
+Ihc.App.InformationModel.SmsModemVersion.init -> void
+Ihc.App.InformationModel.SoftwareVersion.get -> string?
+Ihc.App.InformationModel.SoftwareVersion.init -> void
+Ihc.App.LabAppService.Configure(Ihc.IhcSettings! settings, Ihc.IIHCApiService![]! serviceInterfaces) -> void
+Ihc.App.LabAppService.CurrentOperationChangedEventArgs.CurrentOperationChangedEventArgs(int oldServiceIndex, int newServiceIndex, Ihc.App.LabAppService.ServiceItem? oldService, Ihc.App.LabAppService.ServiceItem? newService, int oldOperationIndex, int newOperationIndex, Ihc.App.LabAppService.OperationItem? oldOperation, Ihc.App.LabAppService.OperationItem? newOperation) -> void
+Ihc.App.LabAppService.CurrentOperationChangedEventArgs.NewOperation.get -> Ihc.App.LabAppService.OperationItem?
+Ihc.App.LabAppService.CurrentOperationChangedEventArgs.NewService.get -> Ihc.App.LabAppService.ServiceItem?
+Ihc.App.LabAppService.CurrentOperationChangedEventArgs.OldOperation.get -> Ihc.App.LabAppService.OperationItem?
+Ihc.App.LabAppService.CurrentOperationChangedEventArgs.OldService.get -> Ihc.App.LabAppService.ServiceItem?
+Ihc.App.LabAppService.DynCallSelectedOperation() -> System.Threading.Tasks.Task<Ihc.App.LabAppService.OperationResult!>!
+Ihc.App.LabAppService.LabAppService(System.Func<Ihc.IIHCApiService!, bool>? globalSupportedServiceFilter, System.Func<Ihc.ServiceOperationMetadata!, bool>? globalSupportedOperationFilter = null) -> void
+Ihc.App.LabAppService.MethodArgumentChangedEventArgs.MethodArgumentChangedEventArgs(int index, object? oldValue, object? newValue) -> void
+Ihc.App.LabAppService.MethodArgumentChangedEventArgs.NewValue.get -> object?
+Ihc.App.LabAppService.MethodArgumentChangedEventArgs.OldValue.get -> object?
+Ihc.App.LabAppService.OperationItem.DisplayName.get -> string!
+Ihc.App.LabAppService.OperationItem.GetMethodArgumentsAsArray() -> object?[]!
+Ihc.App.LabAppService.OperationItem.MethodArguments.get -> object?[]!
+Ihc.App.LabAppService.OperationItem.OperationItem(Ihc.App.LabAppService.ServiceItem! service, Ihc.ServiceOperationMetadata! operationMetadata) -> void
+Ihc.App.LabAppService.OperationItem.OperationMetadata.get -> Ihc.ServiceOperationMetadata!
+Ihc.App.LabAppService.OperationItem.Service.get -> Ihc.App.LabAppService.ServiceItem!
+Ihc.App.LabAppService.OperationItem.Service.init -> void
+Ihc.App.LabAppService.OperationItem.SetMethodArgument(int index, object? value) -> void
+Ihc.App.LabAppService.OperationItem.SetMethodArgumentsFromArray(object?[]! values) -> void
+Ihc.App.LabAppService.OperationResult.DisplayResult.get -> string!
+Ihc.App.LabAppService.OperationResult.DisplayResult.init -> void
+Ihc.App.LabAppService.OperationResult.RawResult.get -> object?
+Ihc.App.LabAppService.OperationResult.RawResult.init -> void
+Ihc.App.LabAppService.OperationResult.Result.get -> object!
+Ihc.App.LabAppService.OperationResult.Result.init -> void
+Ihc.App.LabAppService.OperationResult.ReturnType.get -> System.Type!
+Ihc.App.LabAppService.OperationResult.ReturnType.init -> void
+Ihc.App.LabAppService.ResultFileContent.Bytes.get -> byte[]!
+Ihc.App.LabAppService.ResultFileContent.Bytes.init -> void
+Ihc.App.LabAppService.ResultFileContent.Deconstruct(out byte[]! Bytes, out string! SuggestedFileName) -> void
+Ihc.App.LabAppService.ResultFileContent.ResultFileContent(byte[]! Bytes, string! SuggestedFileName) -> void
+Ihc.App.LabAppService.ResultFileContent.SuggestedFileName.get -> string!
+Ihc.App.LabAppService.ResultFileContent.SuggestedFileName.init -> void
+Ihc.App.LabAppService.SelectedOperation.get -> Ihc.App.LabAppService.OperationItem!
+Ihc.App.LabAppService.SelectedOperation.set -> void
+Ihc.App.LabAppService.SelectedService.get -> Ihc.App.LabAppService.ServiceItem!
+Ihc.App.LabAppService.SelectedService.set -> void
+Ihc.App.LabAppService.ServiceItem.DisplayName.get -> string!
+Ihc.App.LabAppService.ServiceItem.DisplayName.init -> void
+Ihc.App.LabAppService.ServiceItem.LookupFirstOperationIndexByDisplayName(string? fullDisplayName = null, string? prefixDisplayName = null, string? substringDisplayName = null) -> int
+Ihc.App.LabAppService.ServiceItem.OperationItems.get -> Ihc.App.LabAppService.OperationItem![]!
+Ihc.App.LabAppService.ServiceItem.OperationItems.init -> void
+Ihc.App.LabAppService.ServiceItem.SelectOperation(Ihc.App.LabAppService.OperationItem! operation) -> void
+Ihc.App.LabAppService.ServiceItem.Service.get -> Ihc.IIHCApiService!
+Ihc.App.LabAppService.ServiceItem.Service.init -> void
+Ihc.App.LabAppService.ServiceItem.ServiceItem(Ihc.IIHCApiService! service, System.Func<Ihc.ServiceOperationMetadata!, bool>! operationFilter) -> void
+Ihc.App.LabAppService.Services.get -> Ihc.App.LabAppService.ServiceItem![]!
+Ihc.App.LabAppService.Services.set -> void
+Ihc.App.LabAppService.StartStream(System.Action<object?>! onItem) -> System.Threading.Tasks.Task!
+Ihc.App.MutableAdminModel.Copy() -> Ihc.App.MutableAdminModel!
+Ihc.App.MutableAdminModel.DnsServers.get -> Ihc.DNSServers?
+Ihc.App.MutableAdminModel.DnsServers.set -> void
+Ihc.App.MutableAdminModel.EmailControl.get -> Ihc.EmailControlSettings?
+Ihc.App.MutableAdminModel.EmailControl.set -> void
+Ihc.App.MutableAdminModel.ModelMetadata.get -> Ihc.ModelMetadata?
+Ihc.App.MutableAdminModel.ModelMetadata.set -> void
+Ihc.App.MutableAdminModel.NetworkSettings.get -> Ihc.NetworkSettings?
+Ihc.App.MutableAdminModel.NetworkSettings.set -> void
+Ihc.App.MutableAdminModel.SmtpSettings.get -> Ihc.SMTPSettings?
+Ihc.App.MutableAdminModel.SmtpSettings.set -> void
+Ihc.App.MutableAdminModel.ToString(bool LogSensitiveData) -> string!
+Ihc.App.MutableAdminModel.Users.get -> System.Collections.Generic.ISet<Ihc.IhcUser!>?
+Ihc.App.MutableAdminModel.Users.set -> void
+Ihc.App.MutableAdminModel.WebAccess.get -> Ihc.WebAccessControl?
+Ihc.App.MutableAdminModel.WebAccess.set -> void
+Ihc.App.MutableAdminModel.WLanSettings.get -> Ihc.WLanSettings?
+Ihc.App.MutableAdminModel.WLanSettings.set -> void
+Ihc.AuthenticationService.Authenticate() -> System.Threading.Tasks.Task<Ihc.IhcUser!>!
+Ihc.AuthenticationService.Authenticate(string! userName, string! password, Ihc.Application application = Ihc.Application.openapi) -> System.Threading.Tasks.Task<Ihc.IhcUser!>!
+Ihc.AuthenticationService.AuthenticationService(Ihc.IhcSettings! settings) -> void
+Ihc.AuthenticationService.Disconnect() -> System.Threading.Tasks.Task<bool>!
+Ihc.AuthenticationService.GetCookieHandler() -> Ihc.ICookieHandler!
+Ihc.AuthenticationService.IsAuthenticated() -> System.Threading.Tasks.Task<bool>!
+Ihc.AuthenticationService.Ping() -> System.Threading.Tasks.Task<bool>!
+Ihc.BackupFile.BackupFile(Ihc.BinaryFile! input) -> void
+Ihc.BackupFile.BackupFile(string? Filename, byte[]! Data) -> void
+Ihc.BackupFile.Data.get -> byte[]!
+Ihc.BackupFile.Data.init -> void
+Ihc.BackupFile.Filename.get -> string?
+Ihc.BackupFile.Filename.init -> void
+Ihc.BinaryFile.Data.get -> byte[]!
+Ihc.BinaryFile.Filename.get -> string?
+Ihc.ConfigurationService.ClearUserLog() -> System.Threading.Tasks.Task!
+Ihc.ConfigurationService.ConfigurationService(Ihc.IAuthenticationService! authService) -> void
+Ihc.ConfigurationService.DelayedReboot(int delay) -> System.Threading.Tasks.Task!
+Ihc.ConfigurationService.GetDNSServers() -> System.Threading.Tasks.Task<Ihc.DNSServers!>!
+Ihc.ConfigurationService.GetEmailControlEnabled() -> System.Threading.Tasks.Task<bool>!
+Ihc.ConfigurationService.GetEmailControlSettings() -> System.Threading.Tasks.Task<Ihc.EmailControlSettings?>!
+Ihc.ConfigurationService.GetNetworkSettings() -> System.Threading.Tasks.Task<Ihc.NetworkSettings?>!
+Ihc.ConfigurationService.GetSMTPSettings() -> System.Threading.Tasks.Task<Ihc.SMTPSettings?>!
+Ihc.ConfigurationService.GetSystemInfo() -> System.Threading.Tasks.Task<Ihc.SystemInfo!>!
+Ihc.ConfigurationService.GetUserLog(string! lang) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Ihc.ConfigurationService.GetWebAccessControl() -> System.Threading.Tasks.Task<Ihc.WebAccessControl?>!
+Ihc.ConfigurationService.GetWLanInterface() -> System.Threading.Tasks.Task<Ihc.WLanInterface?>!
+Ihc.ConfigurationService.GetWLanScan() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.WLanCell!>!>!
+Ihc.ConfigurationService.GetWLanSettings() -> System.Threading.Tasks.Task<Ihc.WLanSettings?>!
+Ihc.ConfigurationService.SetDNSServers(Ihc.DNSServers! dnsServers) -> System.Threading.Tasks.Task!
+Ihc.ConfigurationService.SetEmailControlEnabled(bool enabled) -> System.Threading.Tasks.Task!
+Ihc.ConfigurationService.SetEmailControlSettings(Ihc.EmailControlSettings! settings) -> System.Threading.Tasks.Task!
+Ihc.ConfigurationService.SetNetworkSettings(Ihc.NetworkSettings! settings) -> System.Threading.Tasks.Task!
+Ihc.ConfigurationService.SetServerLanguage(string! language) -> System.Threading.Tasks.Task!
+Ihc.ConfigurationService.SetSMTPSettings(Ihc.SMTPSettings! settings) -> System.Threading.Tasks.Task!
+Ihc.ConfigurationService.SetWebAccessControl(Ihc.WebAccessControl! accessControl) -> System.Threading.Tasks.Task!
+Ihc.ConfigurationService.SetWLanSettings(Ihc.WLanSettings! settings) -> System.Threading.Tasks.Task!
+Ihc.ConfigurationService.TestSendMessage(string! recipient, string! subject, string! message) -> System.Threading.Tasks.Task<bool>!
+Ihc.ConfigurationService.TestSettingsNow() -> System.Threading.Tasks.Task!
+Ihc.ControllerService.ControllerService(Ihc.IAuthenticationService! authService) -> void
+Ihc.ControllerService.EnterProjectChangeMode() -> System.Threading.Tasks.Task<bool>!
+Ihc.ControllerService.ExitProjectChangeMode() -> System.Threading.Tasks.Task<bool>!
+Ihc.ControllerService.GetBackup() -> System.Threading.Tasks.Task<Ihc.BackupFile?>!
+Ihc.ControllerService.GetControllerState() -> System.Threading.Tasks.Task<Ihc.ControllerState>!
+Ihc.ControllerService.GetIHCProjectNumberOfSegments() -> System.Threading.Tasks.Task<int>!
+Ihc.ControllerService.GetIHCProjectSegment(int index, int major, int minor) -> System.Threading.Tasks.Task<Ihc.ProjectFile?>!
+Ihc.ControllerService.GetIHCProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
+Ihc.ControllerService.GetProject() -> System.Threading.Tasks.Task<Ihc.ProjectFile?>!
+Ihc.ControllerService.GetProjectInfo() -> System.Threading.Tasks.Task<Ihc.ProjectInfo?>!
+Ihc.ControllerService.GetS0MeterValue() -> System.Threading.Tasks.Task<float>!
+Ihc.ControllerService.GetSDCardInfo() -> System.Threading.Tasks.Task<Ihc.SDInfo?>!
+Ihc.ControllerService.IsIHCProjectAvailable() -> System.Threading.Tasks.Task<bool>!
+Ihc.ControllerService.IsSDCardReady() -> System.Threading.Tasks.Task<bool>!
+Ihc.ControllerService.ResetS0Values() -> System.Threading.Tasks.Task!
+Ihc.ControllerService.Restore() -> System.Threading.Tasks.Task<int>!
+Ihc.ControllerService.SetS0Consumption(float consumption, bool flag) -> System.Threading.Tasks.Task!
+Ihc.ControllerService.SetS0FiscalYearStart(sbyte month, sbyte day) -> System.Threading.Tasks.Task!
+Ihc.ControllerService.StoreIHCProjectSegment(Ihc.ProjectFile! segment, int index, int major) -> System.Threading.Tasks.Task<bool>!
+Ihc.ControllerService.StoreProject(Ihc.ProjectFile! project) -> System.Threading.Tasks.Task<bool>!
+Ihc.ControllerService.WaitForControllerStateChange(Ihc.ControllerState waitState, int waitSec) -> System.Threading.Tasks.Task<Ihc.ControllerState>!
+Ihc.DNSServers.PrimaryDNS.get -> string?
+Ihc.DNSServers.PrimaryDNS.init -> void
+Ihc.DNSServers.SecondaryDNS.get -> string?
+Ihc.DNSServers.SecondaryDNS.init -> void
+Ihc.EmailControlSettings.EmailAddress.get -> string?
+Ihc.EmailControlSettings.EmailAddress.init -> void
+Ihc.EmailControlSettings.Pop3Password.get -> string?
+Ihc.EmailControlSettings.Pop3Password.init -> void
+Ihc.EmailControlSettings.Pop3Username.get -> string?
+Ihc.EmailControlSettings.Pop3Username.init -> void
+Ihc.EmailControlSettings.ServerIpAddress.get -> string?
+Ihc.EmailControlSettings.ServerIpAddress.init -> void
+Ihc.EmailControlSettings.ToString(bool LogSensitiveData) -> string!
+Ihc.EnumDefinition.Values.get -> Ihc.EnumValue![]!
+Ihc.EnumDefinition.Values.init -> void
+Ihc.EnumValue.EnumName.get -> string?
+Ihc.EnumValue.EnumName.init -> void
+Ihc.Envelope.EmptyRequestEnvelope.Body.get -> string!
+Ihc.Envelope.EmptyRequestEnvelope.Body.set -> void
+Ihc.Envelope.EmptyRequestEnvelope.Header.get -> string!
+Ihc.Envelope.EmptyRequestEnvelope.Header.set -> void
+Ihc.Envelope.EmptyRequestEnvelope.Xmlns.get -> System.Xml.Serialization.XmlSerializerNamespaces!
+Ihc.Envelope.EmptyRequestEnvelope.Xmlns.set -> void
+Ihc.Envelope.RequestEnvelope<T>.Header.get -> string?
+Ihc.Envelope.RequestEnvelope<T>.Header.set -> void
+Ihc.Envelope.RequestEnvelope<T>.Xmlns.get -> System.Xml.Serialization.XmlSerializerNamespaces!
+Ihc.Envelope.RequestEnvelope<T>.Xmlns.set -> void
+Ihc.Envelope.ResponseEnvelope<T>.Xmlns.get -> System.Xml.Serialization.XmlSerializerNamespaces!
+Ihc.Envelope.ResponseEnvelope<T>.Xmlns.set -> void
+Ihc.ErrorWithCodeException.ErrorWithCodeException(int errorCode, string! message) -> void
+Ihc.ErrorWithCodeException.ErrorWithCodeException(int errorCode, string! message, System.Exception! inner) -> void
+Ihc.EventPackage.ResourceValueEvents.get -> Ihc.ResourceValue![]!
+Ihc.EventPackage.ResourceValueEvents.init -> void
+Ihc.FieldMetaData.AttributeProvider.get -> System.Reflection.ICustomAttributeProvider?
+Ihc.FieldMetaData.attributeProvider.get -> System.Reflection.ICustomAttributeProvider?
+Ihc.FieldMetaData.AttributeProvider.init -> void
+Ihc.FieldMetaData.attributeProvider.init -> void
+Ihc.FieldMetaData.Deconstruct(out string! name, out System.Type! type, out Ihc.FieldMetaData![]! subtypes, out string! description, out System.Reflection.ICustomAttributeProvider? attributeProvider) -> void
+Ihc.FieldMetaData.Description.get -> string!
+Ihc.FieldMetaData.description.get -> string!
+Ihc.FieldMetaData.Description.init -> void
+Ihc.FieldMetaData.description.init -> void
+Ihc.FieldMetaData.FieldMetaData(string! name, System.Type! type, Ihc.FieldMetaData![]! subtypes, string! description, System.Reflection.ICustomAttributeProvider? attributeProvider = null) -> void
+Ihc.FieldMetaData.Name.get -> string!
+Ihc.FieldMetaData.name.get -> string!
+Ihc.FieldMetaData.Name.init -> void
+Ihc.FieldMetaData.name.init -> void
+Ihc.FieldMetaData.SubTypes.get -> Ihc.FieldMetaData![]!
+Ihc.FieldMetaData.subtypes.get -> Ihc.FieldMetaData![]!
+Ihc.FieldMetaData.SubTypes.init -> void
+Ihc.FieldMetaData.subtypes.init -> void
+Ihc.FieldMetaData.Type.get -> System.Type!
+Ihc.FieldMetaData.type.get -> System.Type!
+Ihc.FieldMetaData.Type.init -> void
+Ihc.FieldMetaData.type.init -> void
+Ihc.IAirlinkManagementService.EnterRFConfiguration() -> System.Threading.Tasks.Task<bool>!
+Ihc.IAirlinkManagementService.EnterRFTest() -> System.Threading.Tasks.Task<bool>!
+Ihc.IAirlinkManagementService.ExitRFConfiguration() -> System.Threading.Tasks.Task<bool>!
+Ihc.IAirlinkManagementService.ExitRFTest() -> System.Threading.Tasks.Task<bool>!
+Ihc.IAirlinkManagementService.GetBatteryLevel(int resourceId) -> System.Threading.Tasks.Task<int>!
+Ihc.IAirlinkManagementService.GetDetectedDeviceList() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.RFDevice!>!>!
+Ihc.IAirlinkManagementService.GetDevicesRunningOutOfBattery() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>!>!
+Ihc.IAirlinkManagementService.TestRFActuatorWithSerialNumber(long serialNumber) -> System.Threading.Tasks.Task<bool>!
+Ihc.IAirlinkManagementService.WaitForDeviceDetected(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice?>!
+Ihc.IAirlinkManagementService.WaitForDeviceTestResult(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice?>!
+Ihc.IAuthenticationService.Authenticate() -> System.Threading.Tasks.Task<Ihc.IhcUser!>!
+Ihc.IAuthenticationService.Authenticate(string! userName, string! password, Ihc.Application application = Ihc.Application.openapi) -> System.Threading.Tasks.Task<Ihc.IhcUser!>!
+Ihc.IAuthenticationService.Disconnect() -> System.Threading.Tasks.Task<bool>!
+Ihc.IAuthenticationService.IsAuthenticated() -> System.Threading.Tasks.Task<bool>!
+Ihc.IAuthenticationService.Ping() -> System.Threading.Tasks.Task<bool>!
+Ihc.IConfigurationService.ClearUserLog() -> System.Threading.Tasks.Task!
+Ihc.IConfigurationService.DelayedReboot(int delay) -> System.Threading.Tasks.Task!
+Ihc.IConfigurationService.GetDNSServers() -> System.Threading.Tasks.Task<Ihc.DNSServers!>!
+Ihc.IConfigurationService.GetEmailControlEnabled() -> System.Threading.Tasks.Task<bool>!
+Ihc.IConfigurationService.GetEmailControlSettings() -> System.Threading.Tasks.Task<Ihc.EmailControlSettings?>!
+Ihc.IConfigurationService.GetNetworkSettings() -> System.Threading.Tasks.Task<Ihc.NetworkSettings?>!
+Ihc.IConfigurationService.GetSMTPSettings() -> System.Threading.Tasks.Task<Ihc.SMTPSettings?>!
+Ihc.IConfigurationService.GetSystemInfo() -> System.Threading.Tasks.Task<Ihc.SystemInfo!>!
+Ihc.IConfigurationService.GetUserLog(string! lang = "da") -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+Ihc.IConfigurationService.GetWebAccessControl() -> System.Threading.Tasks.Task<Ihc.WebAccessControl?>!
+Ihc.IConfigurationService.GetWLanInterface() -> System.Threading.Tasks.Task<Ihc.WLanInterface?>!
+Ihc.IConfigurationService.GetWLanScan() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.WLanCell!>!>!
+Ihc.IConfigurationService.GetWLanSettings() -> System.Threading.Tasks.Task<Ihc.WLanSettings?>!
+Ihc.IConfigurationService.SetDNSServers(Ihc.DNSServers! dnsServers) -> System.Threading.Tasks.Task!
+Ihc.IConfigurationService.SetEmailControlEnabled(bool enabled) -> System.Threading.Tasks.Task!
+Ihc.IConfigurationService.SetEmailControlSettings(Ihc.EmailControlSettings! settings) -> System.Threading.Tasks.Task!
+Ihc.IConfigurationService.SetNetworkSettings(Ihc.NetworkSettings! settings) -> System.Threading.Tasks.Task!
+Ihc.IConfigurationService.SetServerLanguage(string! language) -> System.Threading.Tasks.Task!
+Ihc.IConfigurationService.SetSMTPSettings(Ihc.SMTPSettings! settings) -> System.Threading.Tasks.Task!
+Ihc.IConfigurationService.SetWebAccessControl(Ihc.WebAccessControl! accessControl) -> System.Threading.Tasks.Task!
+Ihc.IConfigurationService.SetWLanSettings(Ihc.WLanSettings! settings) -> System.Threading.Tasks.Task!
+Ihc.IConfigurationService.TestSendMessage(string! recipient, string! subject, string! message) -> System.Threading.Tasks.Task<bool>!
+Ihc.IConfigurationService.TestSettingsNow() -> System.Threading.Tasks.Task!
+Ihc.IControllerService.EnterProjectChangeMode() -> System.Threading.Tasks.Task<bool>!
+Ihc.IControllerService.ExitProjectChangeMode() -> System.Threading.Tasks.Task<bool>!
+Ihc.IControllerService.GetBackup() -> System.Threading.Tasks.Task<Ihc.BackupFile?>!
+Ihc.IControllerService.GetControllerState() -> System.Threading.Tasks.Task<Ihc.ControllerState>!
+Ihc.IControllerService.GetIHCProjectNumberOfSegments() -> System.Threading.Tasks.Task<int>!
+Ihc.IControllerService.GetIHCProjectSegment(int index, int major, int minor) -> System.Threading.Tasks.Task<Ihc.ProjectFile?>!
+Ihc.IControllerService.GetIHCProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
+Ihc.IControllerService.GetProject() -> System.Threading.Tasks.Task<Ihc.ProjectFile?>!
+Ihc.IControllerService.GetProjectInfo() -> System.Threading.Tasks.Task<Ihc.ProjectInfo?>!
+Ihc.IControllerService.GetS0MeterValue() -> System.Threading.Tasks.Task<float>!
+Ihc.IControllerService.GetSDCardInfo() -> System.Threading.Tasks.Task<Ihc.SDInfo?>!
+Ihc.IControllerService.IsIHCProjectAvailable() -> System.Threading.Tasks.Task<bool>!
+Ihc.IControllerService.IsSDCardReady() -> System.Threading.Tasks.Task<bool>!
+Ihc.IControllerService.ResetS0Values() -> System.Threading.Tasks.Task!
+Ihc.IControllerService.Restore() -> System.Threading.Tasks.Task<int>!
+Ihc.IControllerService.SetS0Consumption(float consumption, bool flag) -> System.Threading.Tasks.Task!
+Ihc.IControllerService.SetS0FiscalYearStart(sbyte month, sbyte day) -> System.Threading.Tasks.Task!
+Ihc.IControllerService.StoreIHCProjectSegment(Ihc.ProjectFile! segment, int index, int major) -> System.Threading.Tasks.Task<bool>!
+Ihc.IControllerService.StoreProject(Ihc.ProjectFile! project) -> System.Threading.Tasks.Task<bool>!
+Ihc.IControllerService.WaitForControllerStateChange(Ihc.ControllerState waitState, int waitSec) -> System.Threading.Tasks.Task<Ihc.ControllerState>!
+Ihc.ICookieHandler.GetCookie() -> string?
+Ihc.ICookieHandler.SetCookie(string? _cookie) -> void
+Ihc.ICookieHandlerService.GetCookieHandler() -> Ihc.ICookieHandler!
+Ihc.IhcSettings.Endpoint.get -> string!
+Ihc.IhcSettings.Endpoint.set -> void
+Ihc.IhcSettings.IhcVisualInstallDir.get -> string!
+Ihc.IhcSettings.IhcVisualInstallDir.set -> void
+Ihc.IhcSettings.Password.get -> string!
+Ihc.IhcSettings.Password.set -> void
+Ihc.IhcSettings.UserName.get -> string!
+Ihc.IhcSettings.UserName.set -> void
+Ihc.IhcUser.CompareTo(Ihc.IhcUser? other) -> int
+Ihc.IhcUser.Email.get -> string?
+Ihc.IhcUser.Email.init -> void
+Ihc.IhcUser.EqualsChangeableProperties(Ihc.IhcUser! other) -> bool
+Ihc.IhcUser.Firstname.get -> string?
+Ihc.IhcUser.Firstname.init -> void
+Ihc.IhcUser.Lastname.get -> string?
+Ihc.IhcUser.Lastname.init -> void
+Ihc.IhcUser.Password.get -> string?
+Ihc.IhcUser.Password.init -> void
+Ihc.IhcUser.Phone.get -> string?
+Ihc.IhcUser.Phone.init -> void
+Ihc.IhcUser.Project.get -> string?
+Ihc.IhcUser.Project.init -> void
+Ihc.IhcUser.RedactPassword() -> Ihc.IhcUser!
+Ihc.IhcUser.RedactPasword() -> Ihc.IhcUser!
+Ihc.IhcUser.ToString(bool LogSensitiveData) -> string!
+Ihc.IhcUser.Username.get -> string?
+Ihc.IhcUser.Username.init -> void
+Ihc.IIHCApiService.IhcSettings.get -> Ihc.IhcSettings!
+Ihc.IInternalTestService.BurnIO() -> System.Threading.Tasks.Task<bool>!
+Ihc.IInternalTestService.GetAirlinkVersion() -> System.Threading.Tasks.Task<string?>!
+Ihc.IInternalTestService.GetIOBoardVersion() -> System.Threading.Tasks.Task<string?>!
+Ihc.IInternalTestService.GetTimeAndDate() -> System.Threading.Tasks.Task<System.DateTimeOffset>!
+Ihc.IInternalTestService.GetWiserBoardHWVersion() -> System.Threading.Tasks.Task<string?>!
+Ihc.IInternalTestService.GetWiserBoardMACAddress() -> System.Threading.Tasks.Task<string?>!
+Ihc.IInternalTestService.GetWiserBoardSerialNumber() -> System.Threading.Tasks.Task<string?>!
+Ihc.IInternalTestService.GetWiserBoardVersion() -> System.Threading.Tasks.Task<string?>!
+Ihc.IInternalTestService.ProductionTestPassed() -> System.Threading.Tasks.Task!
+Ihc.IInternalTestService.ReadRS485Data(string! data) -> System.Threading.Tasks.Task<bool>!
+Ihc.IInternalTestService.ReadUsbHost() -> System.Threading.Tasks.Task<bool>!
+Ihc.IInternalTestService.SendAirlinkPacket() -> System.Threading.Tasks.Task!
+Ihc.IInternalTestService.SendRS485Data(string! data) -> System.Threading.Tasks.Task<bool>!
+Ihc.IInternalTestService.SetTimeAndDate(System.DateTimeOffset dateTime) -> System.Threading.Tasks.Task!
+Ihc.IInternalTestService.TestIOBoard() -> System.Threading.Tasks.Task<bool>!
+Ihc.IInternalTestService.TestSdCard() -> System.Threading.Tasks.Task<bool>!
+Ihc.IInternalTestService.TurnOffBlueLed() -> System.Threading.Tasks.Task!
+Ihc.IInternalTestService.TurnOffGreenLed() -> System.Threading.Tasks.Task!
+Ihc.IInternalTestService.TurnOffRedLed() -> System.Threading.Tasks.Task!
+Ihc.IInternalTestService.TurnOnBlueLed() -> System.Threading.Tasks.Task!
+Ihc.IInternalTestService.TurnOnGreenLed() -> System.Threading.Tasks.Task!
+Ihc.IInternalTestService.TurnOnLeds() -> System.Threading.Tasks.Task!
+Ihc.IInternalTestService.TurnOnRedLed() -> System.Threading.Tasks.Task!
+Ihc.ILedDimmerManagementService.AssignID(string! serialNumber, sbyte channel, sbyte channelID) -> System.Threading.Tasks.Task<bool>!
+Ihc.ILedDimmerManagementService.EnterConfiguration() -> System.Threading.Tasks.Task<bool>!
+Ihc.ILedDimmerManagementService.ExitConfiguration() -> System.Threading.Tasks.Task<bool>!
+Ihc.ILedDimmerManagementService.GetDeviceCount() -> System.Threading.Tasks.Task<int>!
+Ihc.ILedDimmerManagementService.GetDeviceList() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LedDimmerInfo!>!>!
+Ihc.ILedDimmerManagementService.GetFirmwareUpgradeProgress() -> System.Threading.Tasks.Task<Ihc.LedDimmerProgress?>!
+Ihc.ILedDimmerManagementService.GetLightLevel(sbyte channel) -> System.Threading.Tasks.Task<Ihc.LedDimmerLevel?>!
+Ihc.ILedDimmerManagementService.ScanConfiguredDevices(int scanParameter1, int scanParameter2) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LedDimmerInfo!>!>!
+Ihc.ILedDimmerManagementService.StartFirmwareUpgrade(string! serialNumber) -> System.Threading.Tasks.Task!
+Ihc.ILedDimmerManagementService.WaitForDeviceDetected(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.LedDimmerInfo?>!
+Ihc.IMessageControlLogService.EmptyLog() -> System.Threading.Tasks.Task!
+Ihc.IMessageControlLogService.GetEvents() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LogEventEntry!>!>!
+Ihc.IModuleService.ClearAll() -> System.Threading.Tasks.Task!
+Ihc.IModuleService.GetSceneProject(string! name) -> System.Threading.Tasks.Task<Ihc.SceneProject?>!
+Ihc.IModuleService.GetSceneProjectInfo() -> System.Threading.Tasks.Task<Ihc.SceneProjectInfo?>!
+Ihc.IModuleService.GetSceneProjectSegment(string! name, int segmentNumber) -> System.Threading.Tasks.Task<Ihc.SceneProject?>!
+Ihc.IModuleService.GetSceneProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
+Ihc.IModuleService.StoreSceneProject(Ihc.SceneProject! project) -> System.Threading.Tasks.Task!
+Ihc.IModuleService.StoreSceneProjectSegment(Ihc.SceneProject! projectSegment, bool isFirstSegment, bool isLastSegment) -> System.Threading.Tasks.Task<bool>!
+Ihc.INotificationManagerService.ClearMessages() -> System.Threading.Tasks.Task!
+Ihc.INotificationManagerService.GetMessages() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.NotificationMessage!>!>!
+Ihc.InternalTestService.BurnIO() -> System.Threading.Tasks.Task<bool>!
+Ihc.InternalTestService.GetAirlinkVersion() -> System.Threading.Tasks.Task<string?>!
+Ihc.InternalTestService.GetIOBoardVersion() -> System.Threading.Tasks.Task<string?>!
+Ihc.InternalTestService.GetTimeAndDate() -> System.Threading.Tasks.Task<System.DateTimeOffset>!
+Ihc.InternalTestService.GetWiserBoardHWVersion() -> System.Threading.Tasks.Task<string?>!
+Ihc.InternalTestService.GetWiserBoardMACAddress() -> System.Threading.Tasks.Task<string?>!
+Ihc.InternalTestService.GetWiserBoardSerialNumber() -> System.Threading.Tasks.Task<string?>!
+Ihc.InternalTestService.GetWiserBoardVersion() -> System.Threading.Tasks.Task<string?>!
+Ihc.InternalTestService.InternalTestService(Ihc.IAuthenticationService! authService) -> void
+Ihc.InternalTestService.ProductionTestPassed() -> System.Threading.Tasks.Task!
+Ihc.InternalTestService.ReadRS485Data(string! data) -> System.Threading.Tasks.Task<bool>!
+Ihc.InternalTestService.ReadUsbHost() -> System.Threading.Tasks.Task<bool>!
+Ihc.InternalTestService.SendAirlinkPacket() -> System.Threading.Tasks.Task!
+Ihc.InternalTestService.SendRS485Data(string! data) -> System.Threading.Tasks.Task<bool>!
+Ihc.InternalTestService.SetTimeAndDate(System.DateTimeOffset dateTime) -> System.Threading.Tasks.Task!
+Ihc.InternalTestService.TestIOBoard() -> System.Threading.Tasks.Task<bool>!
+Ihc.InternalTestService.TestSdCard() -> System.Threading.Tasks.Task<bool>!
+Ihc.InternalTestService.TurnOffBlueLed() -> System.Threading.Tasks.Task!
+Ihc.InternalTestService.TurnOffGreenLed() -> System.Threading.Tasks.Task!
+Ihc.InternalTestService.TurnOffRedLed() -> System.Threading.Tasks.Task!
+Ihc.InternalTestService.TurnOnBlueLed() -> System.Threading.Tasks.Task!
+Ihc.InternalTestService.TurnOnGreenLed() -> System.Threading.Tasks.Task!
+Ihc.InternalTestService.TurnOnLeds() -> System.Threading.Tasks.Task!
+Ihc.InternalTestService.TurnOnRedLed() -> System.Threading.Tasks.Task!
+Ihc.IOpenAPIService.Authenticate() -> System.Threading.Tasks.Task!
+Ihc.IOpenAPIService.Authenticate(string! userName, string! password) -> System.Threading.Tasks.Task!
+Ihc.IOpenAPIService.DisableSubscription(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task!
+Ihc.IOpenAPIService.DoReboot() -> System.Threading.Tasks.Task!
+Ihc.IOpenAPIService.EnableSubscription(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task!
+Ihc.IOpenAPIService.GetAPIVersion() -> System.Threading.Tasks.Task<string!>!
+Ihc.IOpenAPIService.GetDatalineInputIDs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>!>!
+Ihc.IOpenAPIService.GetDatalineOutputIDs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>!>!
+Ihc.IOpenAPIService.GetFWVersion() -> System.Threading.Tasks.Task<Ihc.FWVersion?>!
+Ihc.IOpenAPIService.GetIHCProjectNumberOfSegments() -> System.Threading.Tasks.Task<int>!
+Ihc.IOpenAPIService.GetIHCProjectSegment(int index, int majorVersion, int minorVersion) -> System.Threading.Tasks.Task<Ihc.ProjectSegment!>!
+Ihc.IOpenAPIService.GetIHCProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
+Ihc.IOpenAPIService.GetProjectInfo() -> System.Threading.Tasks.Task<Ihc.ProjectInfo?>!
+Ihc.IOpenAPIService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int>! resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int timeout_between_waits_in_seconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue!>!
+Ihc.IOpenAPIService.GetSceneProjectInfo() -> System.Threading.Tasks.Task<Ihc.SceneProjectInfo?>!
+Ihc.IOpenAPIService.GetSceneProjectSegment(int index) -> System.Threading.Tasks.Task<Ihc.SceneProjectSegment!>!
+Ihc.IOpenAPIService.GetSceneProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
+Ihc.IOpenAPIService.GetTime() -> System.Threading.Tasks.Task<System.DateTimeOffset>!
+Ihc.IOpenAPIService.GetUptime() -> System.Threading.Tasks.Task<System.TimeSpan>!
+Ihc.IOpenAPIService.GetValues(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.IOpenAPIService.IsIHCProjectAvailable() -> System.Threading.Tasks.Task<bool>!
+Ihc.IOpenAPIService.Ping() -> System.Threading.Tasks.Task!
+Ihc.IOpenAPIService.SetValues(System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>! values) -> System.Threading.Tasks.Task<bool>!
+Ihc.IOpenAPIService.WaitForEvents(int timeout) -> System.Threading.Tasks.Task<Ihc.EventPackage!>!
+Ihc.IResourceInteractionService.DisableInitialValueNotifactions(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<bool>!
+Ihc.IResourceInteractionService.DisableRuntimeValueNotifactions(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<bool>!
+Ihc.IResourceInteractionService.EnableInitialValueNotifications(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.IResourceInteractionService.EnableRuntimeValueNotifications(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.IResourceInteractionService.GetAllDatalineInputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
+Ihc.IResourceInteractionService.GetAllDatalineOutputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
+Ihc.IResourceInteractionService.GetEnumeratorDefinitions() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.EnumDefinition!>!>!
+Ihc.IResourceInteractionService.GetExtraDatalineInputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
+Ihc.IResourceInteractionService.GetExtraDatalineOutputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
+Ihc.IResourceInteractionService.GetInitialValue(int initialValue) -> System.Threading.Tasks.Task<Ihc.ResourceValue!>!
+Ihc.IResourceInteractionService.GetInitialValues(System.Collections.Generic.IReadOnlyList<int>! initialValues) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.IResourceInteractionService.GetLoggedData(int resourceId) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LoggedData!>!>!
+Ihc.IResourceInteractionService.GetResourceType(int resourceID) -> System.Threading.Tasks.Task<string?>!
+Ihc.IResourceInteractionService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int>! resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int timeout_between_waits_in_seconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue!>!
+Ihc.IResourceInteractionService.GetRuntimeValue(int resourceID) -> System.Threading.Tasks.Task<Ihc.ResourceValue!>!
+Ihc.IResourceInteractionService.GetRuntimeValues(System.Collections.Generic.IReadOnlyList<int>! resourceIDs) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.IResourceInteractionService.GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.SceneResourceIdAndLocation!>!>!
+Ihc.IResourceInteractionService.GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource) -> System.Threading.Tasks.Task<Ihc.SceneResourceIdAndLocation?>!
+Ihc.IResourceInteractionService.SetResourceValue(Ihc.ResourceValue! v) -> System.Threading.Tasks.Task<bool>!
+Ihc.IResourceInteractionService.SetResourceValues(System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>! values) -> System.Threading.Tasks.Task<bool>!
+Ihc.IResourceInteractionService.WaitForResourceValueChanges(int timeout_seconds = 15) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.ISmsModemService.GetSmsModemInfo() -> System.Threading.Tasks.Task<Ihc.SmsModemInfo?>!
+Ihc.ISmsModemService.GetSmsModemSettings() -> System.Threading.Tasks.Task<Ihc.SmsModemSettings?>!
+Ihc.ISmsModemService.GetSmsModemStatus() -> System.Threading.Tasks.Task<Ihc.SmsModemStatus?>!
+Ihc.ISmsModemService.ResetSmsModem() -> System.Threading.Tasks.Task!
+Ihc.ISmsModemService.SetSmsModemSettings(Ihc.SmsModemSettings! settings) -> System.Threading.Tasks.Task!
+Ihc.ITimeManagerService.GetCurrentLocalTime() -> System.Threading.Tasks.Task<System.DateTimeOffset>!
+Ihc.ITimeManagerService.GetSettings() -> System.Threading.Tasks.Task<Ihc.TimeManagerSettings?>!
+Ihc.ITimeManagerService.GetTimeFromServer() -> System.Threading.Tasks.Task<Ihc.TimeServerConnectionResult?>!
+Ihc.ITimeManagerService.GetUptime() -> System.Threading.Tasks.Task<System.TimeSpan>!
+Ihc.ITimeManagerService.SetSettings(Ihc.TimeManagerSettings! settings) -> System.Threading.Tasks.Task<bool>!
+Ihc.IUserManagerService.AddUser(Ihc.IhcUser! user) -> System.Threading.Tasks.Task!
+Ihc.IUserManagerService.GetUsers(bool includePassword) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlySet<Ihc.IhcUser!>!>!
+Ihc.IUserManagerService.RemoveUser(string! username) -> System.Threading.Tasks.Task!
+Ihc.IUserManagerService.UpdateUser(Ihc.IhcUser! user) -> System.Threading.Tasks.Task!
+Ihc.LedDimmerInfo.ApplicationVersion.get -> string?
+Ihc.LedDimmerInfo.ApplicationVersion.init -> void
+Ihc.LedDimmerInfo.BootloaderVersion.get -> string?
+Ihc.LedDimmerInfo.BootloaderVersion.init -> void
+Ihc.LedDimmerInfo.HardwareVersion.get -> string?
+Ihc.LedDimmerInfo.HardwareVersion.init -> void
+Ihc.LedDimmerInfo.Location.get -> string?
+Ihc.LedDimmerInfo.Location.init -> void
+Ihc.LedDimmerInfo.SerialNumber.get -> string?
+Ihc.LedDimmerInfo.SerialNumber.init -> void
+Ihc.LedDimmerManagementService.AssignID(string! serialNumber, sbyte channel, sbyte channelID) -> System.Threading.Tasks.Task<bool>!
+Ihc.LedDimmerManagementService.EnterConfiguration() -> System.Threading.Tasks.Task<bool>!
+Ihc.LedDimmerManagementService.ExitConfiguration() -> System.Threading.Tasks.Task<bool>!
+Ihc.LedDimmerManagementService.GetDeviceCount() -> System.Threading.Tasks.Task<int>!
+Ihc.LedDimmerManagementService.GetDeviceList() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LedDimmerInfo!>!>!
+Ihc.LedDimmerManagementService.GetFirmwareUpgradeProgress() -> System.Threading.Tasks.Task<Ihc.LedDimmerProgress?>!
+Ihc.LedDimmerManagementService.GetLightLevel(sbyte channel) -> System.Threading.Tasks.Task<Ihc.LedDimmerLevel?>!
+Ihc.LedDimmerManagementService.LedDimmerManagementService(Ihc.IAuthenticationService! authService) -> void
+Ihc.LedDimmerManagementService.ScanConfiguredDevices(int scanParameter1, int scanParameter2) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LedDimmerInfo!>!>!
+Ihc.LedDimmerManagementService.StartFirmwareUpgrade(string! serialNumber) -> System.Threading.Tasks.Task!
+Ihc.LedDimmerManagementService.WaitForDeviceDetected(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.LedDimmerInfo?>!
+Ihc.LedDimmerProgress.Failed.get -> string?
+Ihc.LedDimmerProgress.Failed.init -> void
+Ihc.LedDimmerProgress.Finished.get -> string?
+Ihc.LedDimmerProgress.Finished.init -> void
+Ihc.LedDimmerProgress.Message.get -> string?
+Ihc.LedDimmerProgress.Message.init -> void
+Ihc.LedDimmerProgress.Running.get -> string?
+Ihc.LedDimmerProgress.Running.init -> void
+Ihc.LedDimmerProgress.SerialNumber.get -> string?
+Ihc.LedDimmerProgress.SerialNumber.init -> void
+Ihc.LedDimmerProgress.Status.get -> string?
+Ihc.LedDimmerProgress.Status.init -> void
+Ihc.LogEventEntry.ActionTypeAsString.get -> string?
+Ihc.LogEventEntry.ActionTypeAsString.init -> void
+Ihc.LogEventEntry.AuthenticationTypeAsString.get -> string?
+Ihc.LogEventEntry.AuthenticationTypeAsString.init -> void
+Ihc.LogEventEntry.ControlType.get -> string?
+Ihc.LogEventEntry.ControlType.init -> void
+Ihc.LogEventEntry.SenderAddress.get -> string?
+Ihc.LogEventEntry.SenderAddress.init -> void
+Ihc.LogEventEntry.SenderAddressDescription.get -> string?
+Ihc.LogEventEntry.SenderAddressDescription.init -> void
+Ihc.LogEventEntry.TriggerString.get -> string?
+Ihc.LogEventEntry.TriggerString.init -> void
+Ihc.LoggedData.Value.get -> string?
+Ihc.LoggedData.Value.init -> void
+Ihc.MessageControlLogService.EmptyLog() -> System.Threading.Tasks.Task!
+Ihc.MessageControlLogService.GetEvents() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LogEventEntry!>!>!
+Ihc.MessageControlLogService.MessageControlLogService(Ihc.IAuthenticationService! authService) -> void
+Ihc.ModelMetadata.TypeFullName.get -> string?
+Ihc.ModelMetadata.TypeFullName.init -> void
+Ihc.ModelMetadata.Version.get -> Ihc.Version?
+Ihc.ModelMetadata.Version.init -> void
+Ihc.ModuleService.ClearAll() -> System.Threading.Tasks.Task!
+Ihc.ModuleService.GetSceneProject(string! name) -> System.Threading.Tasks.Task<Ihc.SceneProject?>!
+Ihc.ModuleService.GetSceneProjectInfo() -> System.Threading.Tasks.Task<Ihc.SceneProjectInfo?>!
+Ihc.ModuleService.GetSceneProjectSegment(string! name, int segmentNumber) -> System.Threading.Tasks.Task<Ihc.SceneProject?>!
+Ihc.ModuleService.GetSceneProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
+Ihc.ModuleService.ModuleService(Ihc.IAuthenticationService! authService) -> void
+Ihc.ModuleService.StoreSceneProject(Ihc.SceneProject! project) -> System.Threading.Tasks.Task!
+Ihc.ModuleService.StoreSceneProjectSegment(Ihc.SceneProject! projectSegment, bool isFirstSegment, bool isLastSegment) -> System.Threading.Tasks.Task<bool>!
+Ihc.NetworkSettings.Gateway.get -> string?
+Ihc.NetworkSettings.Gateway.init -> void
+Ihc.NetworkSettings.IpAddress.get -> string?
+Ihc.NetworkSettings.IpAddress.init -> void
+Ihc.NetworkSettings.Netmask.get -> string?
+Ihc.NetworkSettings.Netmask.init -> void
+Ihc.NotificationManagerService.ClearMessages() -> System.Threading.Tasks.Task!
+Ihc.NotificationManagerService.GetMessages() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.NotificationMessage!>!>!
+Ihc.NotificationManagerService.NotificationManagerService(Ihc.IAuthenticationService! authService) -> void
+Ihc.NotificationMessage.Body.get -> string?
+Ihc.NotificationMessage.Body.init -> void
+Ihc.NotificationMessage.NotificationType.get -> string?
+Ihc.NotificationMessage.NotificationType.init -> void
+Ihc.NotificationMessage.Recipient.get -> string?
+Ihc.NotificationMessage.Recipient.init -> void
+Ihc.NotificationMessage.Sender.get -> string?
+Ihc.NotificationMessage.Sender.init -> void
+Ihc.NotificationMessage.Subject.get -> string?
+Ihc.NotificationMessage.Subject.init -> void
+Ihc.OpenAPIService.Authenticate() -> System.Threading.Tasks.Task!
+Ihc.OpenAPIService.Authenticate(string! userName, string! password) -> System.Threading.Tasks.Task!
+Ihc.OpenAPIService.DisableSubscription(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task!
+Ihc.OpenAPIService.DoReboot() -> System.Threading.Tasks.Task!
+Ihc.OpenAPIService.EnableSubscription(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task!
+Ihc.OpenAPIService.GetAPIVersion() -> System.Threading.Tasks.Task<string!>!
+Ihc.OpenAPIService.GetCookieHandler() -> Ihc.ICookieHandler!
+Ihc.OpenAPIService.GetDatalineInputIDs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>!>!
+Ihc.OpenAPIService.GetDatalineOutputIDs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>!>!
+Ihc.OpenAPIService.GetFWVersion() -> System.Threading.Tasks.Task<Ihc.FWVersion?>!
+Ihc.OpenAPIService.GetIHCProjectNumberOfSegments() -> System.Threading.Tasks.Task<int>!
+Ihc.OpenAPIService.GetIHCProjectSegment(int index, int majorVersion, int minorVersion) -> System.Threading.Tasks.Task<Ihc.ProjectSegment!>!
+Ihc.OpenAPIService.GetIHCProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
+Ihc.OpenAPIService.GetProjectInfo() -> System.Threading.Tasks.Task<Ihc.ProjectInfo?>!
+Ihc.OpenAPIService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int>! resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int timeout_between_waits_in_seconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue!>!
+Ihc.OpenAPIService.GetSceneProjectInfo() -> System.Threading.Tasks.Task<Ihc.SceneProjectInfo?>!
+Ihc.OpenAPIService.GetSceneProjectSegment(int index) -> System.Threading.Tasks.Task<Ihc.SceneProjectSegment!>!
+Ihc.OpenAPIService.GetSceneProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
+Ihc.OpenAPIService.GetTime() -> System.Threading.Tasks.Task<System.DateTimeOffset>!
+Ihc.OpenAPIService.GetUptime() -> System.Threading.Tasks.Task<System.TimeSpan>!
+Ihc.OpenAPIService.GetValues(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.OpenAPIService.IsIHCProjectAvailable() -> System.Threading.Tasks.Task<bool>!
+Ihc.OpenAPIService.OpenAPIService(Ihc.IAuthenticationService! authService) -> void
+Ihc.OpenAPIService.OpenAPIService(Ihc.IhcSettings! settings) -> void
+Ihc.OpenAPIService.Ping() -> System.Threading.Tasks.Task!
+Ihc.OpenAPIService.SetValues(System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>! values) -> System.Threading.Tasks.Task<bool>!
+Ihc.OpenAPIService.WaitForEvents(int timeout) -> System.Threading.Tasks.Task<Ihc.EventPackage!>!
+Ihc.ProductionTestService.ProductionTestService(Ihc.IAuthenticationService! authService) -> void
+Ihc.ProjectFile.Data.get -> string!
+Ihc.ProjectFile.Data.init -> void
+Ihc.ProjectFile.Filename.get -> string?
+Ihc.ProjectFile.Filename.init -> void
+Ihc.ProjectFile.ProjectFile(Ihc.TextFile! input) -> void
+Ihc.ProjectFile.ProjectFile(string? Filename, string! Data) -> void
+Ihc.ProjectInfo.CustomerName.get -> string?
+Ihc.ProjectInfo.CustomerName.init -> void
+Ihc.ProjectInfo.InstallerName.get -> string?
+Ihc.ProjectInfo.InstallerName.init -> void
+Ihc.ProjectInfo.ProjectNumber.get -> string?
+Ihc.ProjectInfo.ProjectNumber.init -> void
+Ihc.ProjectSegment.Data.get -> byte[]!
+Ihc.ProjectSegment.Data.init -> void
+Ihc.ProjectSegment.Filename.get -> string?
+Ihc.ProjectSegment.Filename.init -> void
+Ihc.ProjectSegment.ProjectSegment(Ihc.BinaryFile! input) -> void
+Ihc.ResourceInteractionService.DisableInitialValueNotifactions(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<bool>!
+Ihc.ResourceInteractionService.DisableRuntimeValueNotifactions(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<bool>!
+Ihc.ResourceInteractionService.EnableInitialValueNotifications(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.ResourceInteractionService.EnableRuntimeValueNotifications(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.ResourceInteractionService.GetAllDatalineInputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
+Ihc.ResourceInteractionService.GetAllDatalineOutputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
+Ihc.ResourceInteractionService.GetEnumeratorDefinitions() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.EnumDefinition!>!>!
+Ihc.ResourceInteractionService.GetExtraDatalineInputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
+Ihc.ResourceInteractionService.GetExtraDatalineOutputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
+Ihc.ResourceInteractionService.GetInitialValue(int initialValue) -> System.Threading.Tasks.Task<Ihc.ResourceValue!>!
+Ihc.ResourceInteractionService.GetInitialValues(System.Collections.Generic.IReadOnlyList<int>! initialValues) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.ResourceInteractionService.GetLoggedData(int resourceId) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LoggedData!>!>!
+Ihc.ResourceInteractionService.GetResourceType(int resourceID) -> System.Threading.Tasks.Task<string?>!
+Ihc.ResourceInteractionService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int>! resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int timeout_between_waits_in_seconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue!>!
+Ihc.ResourceInteractionService.GetRuntimeValue(int resourceID) -> System.Threading.Tasks.Task<Ihc.ResourceValue!>!
+Ihc.ResourceInteractionService.GetRuntimeValues(System.Collections.Generic.IReadOnlyList<int>! resourceIDs) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.ResourceInteractionService.GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.SceneResourceIdAndLocation!>!>!
+Ihc.ResourceInteractionService.GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource) -> System.Threading.Tasks.Task<Ihc.SceneResourceIdAndLocation?>!
+Ihc.ResourceInteractionService.ResourceInteractionService(Ihc.IAuthenticationService! authService) -> void
+Ihc.ResourceInteractionService.SetResourceValue(Ihc.ResourceValue! v) -> System.Threading.Tasks.Task<bool>!
+Ihc.ResourceInteractionService.SetResourceValues(System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>! values) -> System.Threading.Tasks.Task<bool>!
+Ihc.ResourceInteractionService.WaitForResourceValueChanges(int timeout_seconds = 15) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.ResourceValue.TypeString.get -> string?
+Ihc.ResourceValue.TypeString.init -> void
+Ihc.ResourceValue.UnionValue.EnumValue.get -> Ihc.EnumValue?
+Ihc.ResourceValue.UnionValue.EnumValue.set -> void
+Ihc.ResourceValue.UnionValue.PhoneNumberValue.get -> string?
+Ihc.ResourceValue.UnionValue.PhoneNumberValue.set -> void
+Ihc.SceneProject.Data.get -> byte[]!
+Ihc.SceneProject.Data.init -> void
+Ihc.SceneProject.Filename.get -> string?
+Ihc.SceneProject.Filename.init -> void
+Ihc.SceneProject.SceneProject(Ihc.BinaryFile! input) -> void
+Ihc.SceneProject.SceneProject(string? Filename, byte[]! Data) -> void
+Ihc.SceneProjectInfo.Description.get -> string?
+Ihc.SceneProjectInfo.Description.init -> void
+Ihc.SceneProjectInfo.Filepath.get -> string?
+Ihc.SceneProjectInfo.Filepath.init -> void
+Ihc.SceneProjectInfo.Name.get -> string?
+Ihc.SceneProjectInfo.Name.init -> void
+Ihc.SceneProjectInfo.Version.get -> string?
+Ihc.SceneProjectInfo.Version.init -> void
+Ihc.SceneProjectSegment.Data.get -> byte[]!
+Ihc.SceneProjectSegment.Data.init -> void
+Ihc.SceneProjectSegment.Filename.get -> string?
+Ihc.SceneProjectSegment.Filename.init -> void
+Ihc.SceneProjectSegment.SceneProjectSegment(Ihc.BinaryFile! input) -> void
+Ihc.SceneResourceIdAndLocation.ScenePositionSeenFromFunctionBlock.get -> string?
+Ihc.SceneResourceIdAndLocation.ScenePositionSeenFromFunctionBlock.init -> void
+Ihc.SceneResourceIdAndLocation.ScenePositionSeenFromProduct.get -> string?
+Ihc.SceneResourceIdAndLocation.ScenePositionSeenFromProduct.init -> void
+Ihc.ServiceBase.IhcSettings.get -> Ihc.IhcSettings!
+Ihc.ServiceBase.ServiceBase(Ihc.IhcSettings! settings) -> void
+Ihc.ServiceBase.StartActivity(string! operationName) -> System.Diagnostics.Activity?
+Ihc.ServiceOperationMetadata.Description.get -> string!
+Ihc.ServiceOperationMetadata.Description.init -> void
+Ihc.ServiceOperationMetadata.Invoke(object?[]? arguments) -> object?
+Ihc.ServiceOperationMetadata.MethodInfo.get -> System.Reflection.MethodInfo!
+Ihc.ServiceOperationMetadata.MethodInfo.init -> void
+Ihc.ServiceOperationMetadata.Name.get -> string!
+Ihc.ServiceOperationMetadata.Name.init -> void
+Ihc.ServiceOperationMetadata.Parameters.get -> Ihc.FieldMetaData![]!
+Ihc.ServiceOperationMetadata.Parameters.init -> void
+Ihc.ServiceOperationMetadata.ReturnType.get -> System.Type!
+Ihc.ServiceOperationMetadata.ReturnType.init -> void
+Ihc.ServiceOperationMetadata.Service.get -> Ihc.IIHCApiService!
+Ihc.ServiceOperationMetadata.Service.init -> void
+Ihc.ServiceOperationMetadata.ServiceOperationMetadata(Ihc.IIHCApiService! Service, string! Name, System.Type! ReturnType, Ihc.FieldMetaData![]! Parameters, Ihc.ServiceOperationKind OperationKind, System.Reflection.MethodInfo! OperationDetails, string! Description) -> void
+Ihc.ServiceOperationMetadata.WithService(Ihc.IIHCApiService! newService) -> Ihc.ServiceOperationMetadata!
+Ihc.SimpleSecret.DecryptString(string! encryptedString) -> string!
+Ihc.SimpleSecret.EncryptString(string! plaintext) -> string!
+Ihc.SimpleSecret.SimpleSecret(string! passphrase, bool enable = true) -> void
+Ihc.SmsModemInfo.FirmwareVersion.get -> string?
+Ihc.SmsModemInfo.FirmwareVersion.init -> void
+Ihc.SmsModemInfo.GSMChipVersion.get -> string?
+Ihc.SmsModemInfo.GSMChipVersion.init -> void
+Ihc.SmsModemInfo.HardwareRevision.get -> string?
+Ihc.SmsModemInfo.HardwareRevision.init -> void
+Ihc.SmsModemInfo.IMEINumber.get -> string?
+Ihc.SmsModemInfo.IMEINumber.init -> void
+Ihc.SmsModemInfo.ProductionDate.get -> string?
+Ihc.SmsModemInfo.ProductionDate.init -> void
+Ihc.SmsModemInfo.SerialNumber.get -> string?
+Ihc.SmsModemInfo.SerialNumber.init -> void
+Ihc.SmsModemService.GetSmsModemInfo() -> System.Threading.Tasks.Task<Ihc.SmsModemInfo?>!
+Ihc.SmsModemService.GetSmsModemSettings() -> System.Threading.Tasks.Task<Ihc.SmsModemSettings?>!
+Ihc.SmsModemService.GetSmsModemStatus() -> System.Threading.Tasks.Task<Ihc.SmsModemStatus?>!
+Ihc.SmsModemService.ResetSmsModem() -> System.Threading.Tasks.Task!
+Ihc.SmsModemService.SetSmsModemSettings(Ihc.SmsModemSettings! settings) -> System.Threading.Tasks.Task!
+Ihc.SmsModemService.SmsModemService(Ihc.IAuthenticationService! authService) -> void
+Ihc.SmsModemSettings.PowerdownMessage.get -> string?
+Ihc.SmsModemSettings.PowerdownMessage.init -> void
+Ihc.SmsModemSettings.PowerdownNumber.get -> string?
+Ihc.SmsModemSettings.PowerdownNumber.init -> void
+Ihc.SmsModemSettings.PowerupMessage.get -> string?
+Ihc.SmsModemSettings.PowerupMessage.init -> void
+Ihc.SmsModemStatus.AntennaCoverage.get -> string?
+Ihc.SmsModemStatus.AntennaCoverage.init -> void
+Ihc.SmsModemStatus.MobileNumber.get -> string?
+Ihc.SmsModemStatus.MobileNumber.init -> void
+Ihc.SmsModemStatus.MobileOperator.get -> string?
+Ihc.SmsModemStatus.MobileOperator.init -> void
+Ihc.SmsModemStatus.ModemStatus.get -> string?
+Ihc.SmsModemStatus.ModemStatus.init -> void
+Ihc.SMTPSettings.Hostname.get -> string?
+Ihc.SMTPSettings.Hostname.init -> void
+Ihc.SMTPSettings.Password.get -> string?
+Ihc.SMTPSettings.Password.init -> void
+Ihc.SMTPSettings.SendLowBatteryNotificationRecipient.get -> string?
+Ihc.SMTPSettings.SendLowBatteryNotificationRecipient.init -> void
+Ihc.SMTPSettings.ToString(bool LogSensitiveData) -> string!
+Ihc.SMTPSettings.Username.get -> string?
+Ihc.SMTPSettings.Username.init -> void
+Ihc.SystemInfo.Brand.get -> string?
+Ihc.SystemInfo.Brand.init -> void
+Ihc.SystemInfo.DatalineVersion.get -> string?
+Ihc.SystemInfo.DatalineVersion.init -> void
+Ihc.SystemInfo.HWRevision.get -> string?
+Ihc.SystemInfo.HWRevision.init -> void
+Ihc.SystemInfo.LedDimmerSoftwareVersion.get -> string?
+Ihc.SystemInfo.LedDimmerSoftwareVersion.init -> void
+Ihc.SystemInfo.ProductionDate.get -> string?
+Ihc.SystemInfo.ProductionDate.init -> void
+Ihc.SystemInfo.RFModuleSerialNumber.get -> string?
+Ihc.SystemInfo.RFModuleSerialNumber.init -> void
+Ihc.SystemInfo.RFModuleSoftwareVersion.get -> string?
+Ihc.SystemInfo.RFModuleSoftwareVersion.init -> void
+Ihc.SystemInfo.SerialNumber.get -> string?
+Ihc.SystemInfo.SerialNumber.init -> void
+Ihc.SystemInfo.SmsModemSoftwareVersion.get -> string?
+Ihc.SystemInfo.SmsModemSoftwareVersion.init -> void
+Ihc.SystemInfo.Version.get -> string?
+Ihc.SystemInfo.Version.init -> void
+Ihc.TelemetryConfiguration.Headers.get -> string!
+Ihc.TelemetryConfiguration.Headers.set -> void
+Ihc.TelemetryConfiguration.Host.get -> string!
+Ihc.TelemetryConfiguration.Host.set -> void
+Ihc.TelemetryConfiguration.Logs.get -> string!
+Ihc.TelemetryConfiguration.Logs.set -> void
+Ihc.TelemetryConfiguration.SelfCheckEndpoint.get -> string!
+Ihc.TelemetryConfiguration.SelfCheckEndpoint.set -> void
+Ihc.TelemetryConfiguration.SelfCheckExpectedStatus.get -> string!
+Ihc.TelemetryConfiguration.SelfCheckExpectedStatus.set -> void
+Ihc.TelemetryConfiguration.Traces.get -> string!
+Ihc.TelemetryConfiguration.Traces.set -> void
+Ihc.TelemetrySelfCheckResult.Deconstruct(out Ihc.TelemetrySelfCheckStatus Status, out string! Message) -> void
+Ihc.TelemetrySelfCheckResult.Message.get -> string!
+Ihc.TelemetrySelfCheckResult.Message.init -> void
+Ihc.TelemetrySelfCheckResult.TelemetrySelfCheckResult(Ihc.TelemetrySelfCheckStatus Status, string! Message) -> void
+Ihc.TextFile.Data.get -> string!
+Ihc.TextFile.Encoding.get -> System.Text.Encoding?
+Ihc.TextFile.Filename.get -> string?
+Ihc.TimeManagerService.GetCurrentLocalTime() -> System.Threading.Tasks.Task<System.DateTimeOffset>!
+Ihc.TimeManagerService.GetSettings() -> System.Threading.Tasks.Task<Ihc.TimeManagerSettings?>!
+Ihc.TimeManagerService.GetTimeFromServer() -> System.Threading.Tasks.Task<Ihc.TimeServerConnectionResult?>!
+Ihc.TimeManagerService.GetUptime() -> System.Threading.Tasks.Task<System.TimeSpan>!
+Ihc.TimeManagerService.SetSettings(Ihc.TimeManagerSettings! settings) -> System.Threading.Tasks.Task<bool>!
+Ihc.TimeManagerService.TimeManagerService(Ihc.IAuthenticationService! authService) -> void
+Ihc.TimeManagerSettings.OnlineCalendarCountry.get -> string?
+Ihc.TimeManagerSettings.OnlineCalendarCountry.init -> void
+Ihc.TimeManagerSettings.ServerName.get -> string?
+Ihc.TimeManagerSettings.ServerName.init -> void
+Ihc.UserLogFileText.Content.get -> string?
+Ihc.UserLogFileText.Content.init -> void
+Ihc.UserLogFileText.FileName.get -> string?
+Ihc.UserLogFileText.FileName.init -> void
+Ihc.UserManagerService.AddUser(Ihc.IhcUser! user) -> System.Threading.Tasks.Task!
+Ihc.UserManagerService.GetUsers(bool includePassword = true) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlySet<Ihc.IhcUser!>!>!
+Ihc.UserManagerService.RemoveUser(string! username) -> System.Threading.Tasks.Task!
+Ihc.UserManagerService.UpdateUser(Ihc.IhcUser! user) -> System.Threading.Tasks.Task!
+Ihc.UserManagerService.UserManagerService(Ihc.IAuthenticationService! authService) -> void
+Ihc.Version.Version(System.Version! version) -> void
+Ihc.WLanCell.EncryptionType.get -> string?
+Ihc.WLanCell.EncryptionType.init -> void
+Ihc.WLanCell.SecurityType.get -> string?
+Ihc.WLanCell.SecurityType.init -> void
+Ihc.WLanCell.Ssid.get -> string?
+Ihc.WLanCell.Ssid.init -> void
+Ihc.WLanInterface.Name.get -> string?
+Ihc.WLanInterface.Name.init -> void
+Ihc.WLanInterface.Quality.get -> string?
+Ihc.WLanInterface.Quality.init -> void
+Ihc.WLanInterface.Ssid.get -> string?
+Ihc.WLanInterface.Ssid.init -> void
+Ihc.WLanSettings.EncryptionType.get -> string?
+Ihc.WLanSettings.EncryptionType.init -> void
+Ihc.WLanSettings.Gateway.get -> string?
+Ihc.WLanSettings.Gateway.init -> void
+Ihc.WLanSettings.IpAddress.get -> string?
+Ihc.WLanSettings.IpAddress.init -> void
+Ihc.WLanSettings.Key.get -> string?
+Ihc.WLanSettings.Key.init -> void
+Ihc.WLanSettings.Netmask.get -> string?
+Ihc.WLanSettings.Netmask.init -> void
+Ihc.WLanSettings.SecurityType.get -> string?
+Ihc.WLanSettings.SecurityType.init -> void
+Ihc.WLanSettings.Ssid.get -> string?
+Ihc.WLanSettings.Ssid.init -> void
+Ihc.WLanSettings.ToString(bool LogSensitiveData) -> string!
+override Ihc.App.InformationModel.ToString() -> string!
+override Ihc.App.MutableAdminModel.ToString() -> string!
+override Ihc.BackupFile.ToString() -> string!
+override Ihc.DatalineResource.ToString() -> string!
+override Ihc.DNSServers.ToString() -> string!
+override Ihc.EmailControlSettings.ToString() -> string!
+override Ihc.EnumDefinition.ToString() -> string!
+override Ihc.EnumValue.ToString() -> string!
+override Ihc.ErrorWithCodeException.ToString() -> string!
+override Ihc.EventPackage.ToString() -> string!
+override Ihc.FieldMetaData.ToString() -> string!
+override Ihc.FWVersion.ToString() -> string!
+override Ihc.IhcSettings.ToString() -> string!
+override Ihc.IhcUser.ToString() -> string!
+override Ihc.InetAddress.ToString() -> string!
+override Ihc.LedDimmerInfo.ToString() -> string!
+override Ihc.LedDimmerLevel.ToString() -> string!
+override Ihc.LedDimmerProgress.ToString() -> string!
+override Ihc.LogEventEntry.ToString() -> string!
+override Ihc.LoggedData.ToString() -> string!
+override Ihc.NetworkSettings.ToString() -> string!
+override Ihc.NotificationMessage.ToString() -> string!
+override Ihc.ProjectFile.ToString() -> string!
+override Ihc.ProjectInfo.ToString() -> string!
+override Ihc.ProjectSegment.ToString() -> string!
+override Ihc.ResourceValue.ToString() -> string!
+override Ihc.ResourceValue.UnionValue.ToString() -> string!
+override Ihc.RFDevice.ToString() -> string!
+override Ihc.SceneProject.ToString() -> string!
+override Ihc.SceneProjectInfo.ToString() -> string!
+override Ihc.SceneProjectSegment.ToString() -> string!
+override Ihc.SceneResourceIdAndLocation.ToString() -> string!
+override Ihc.SDInfo.ToString() -> string!
+override Ihc.ServiceOperationMetadata.ToString() -> string!
+override Ihc.SmsModemInfo.ToString() -> string!
+override Ihc.SmsModemSettings.ToString() -> string!
+override Ihc.SmsModemStatus.ToString() -> string!
+override Ihc.SMTPSettings.ToString() -> string!
+override Ihc.SystemInfo.ToString() -> string!
+override Ihc.TimeManagerSettings.ToString() -> string!
+override Ihc.TimeServerConnectionResult.ToString() -> string!
+override Ihc.UserLogFileText.ToString() -> string!
 ~override Ihc.Vis.Addressing.DatalineAddress.Equals(object obj) -> bool
 ~override Ihc.Vis.Addressing.DatalineAddress.ToString() -> string
 ~override Ihc.Vis.DeleteImpact.Equals(object obj) -> bool
@@ -4929,38 +4929,38 @@ virtual Ihc.WLanSettings.PrintMembers(System.Text.StringBuilder! builder) -> boo
 ~override Ihc.Vis.Session.ProductDialogEdit.ToString() -> string
 ~override Ihc.Vis.Session.ProductDialogWidgetAction.Equals(object obj) -> bool
 ~override Ihc.Vis.Session.ProductDialogWidgetAction.ToString() -> string
-~override Ihc.WebAccessControl.ToString() -> string
-~override Ihc.WLanCell.ToString() -> string
-~override Ihc.WLanInterface.ToString() -> string
-~override Ihc.WLanSettings.ToString() -> string
+override Ihc.WebAccessControl.ToString() -> string!
+override Ihc.WLanCell.ToString() -> string!
+override Ihc.WLanInterface.ToString() -> string!
+override Ihc.WLanSettings.ToString() -> string!
 ~readonly Ihc.App.AdminAppService.authService -> Ihc.IAuthenticationService
 ~readonly Ihc.App.InformationAppService.authService -> Ihc.IAuthenticationService
-~readonly Ihc.ServiceBase.settings -> Ihc.IhcSettings
-~static Ihc.ActivityExtensions.AddWarning(this System.Diagnostics.Activity activity, string message, params (string key, object value)[] tags) -> System.Diagnostics.Activity
-~static Ihc.ActivityExtensions.SetError(this System.Diagnostics.Activity activity, System.Exception ex) -> System.Diagnostics.Activity
-~static Ihc.ActivityExtensions.SetParameters(this System.Diagnostics.Activity activity, params (string name, object value)[] parameters) -> System.Diagnostics.Activity
-~static Ihc.ActivityExtensions.SetReturnValue<T>(this System.Diagnostics.Activity activity, T value) -> System.Diagnostics.Activity
-~static Ihc.App.LabAppService.BuildResultFileContent(object rawResult, string displayText, string operationName) -> Ihc.App.LabAppService.ResultFileContent
-~static Ihc.App.LabAppService.OperationItem.GetDefaultValue(System.Type type) -> object
-~static Ihc.CopyUtil.DeepCopyAndApply(object src, System.Func<System.Reflection.PropertyInfo, object, object> propertyValueTransformer) -> object
-~static Ihc.EncryptionConfiguration.GetFromConfiguration(Microsoft.Extensions.Configuration.IConfigurationRoot config) -> Ihc.EncryptionConfiguration
-~static Ihc.IhcSettings.GetFromConfiguration(Microsoft.Extensions.Configuration.IConfigurationRoot config) -> Ihc.IhcSettings
-~static Ihc.IhcSettings.GetFromFile() -> Ihc.IhcSettings
-~static Ihc.ProjectFile.Encoding.get -> System.Text.Encoding
-~static Ihc.ProjectFile.FileExtension.get -> string
-~static Ihc.ProjectFile.StrictEncoding.get -> System.Text.Encoding
-~static Ihc.ResourceValue.CreateBooleanRuntimeInput(int resourceId, bool value) -> Ihc.ResourceValue
-~static Ihc.ResourceValue.CreateBooleanRuntimeOutput(int resourceId, bool value) -> Ihc.ResourceValue
-~static Ihc.ResourceValue.ToogleBool(Ihc.ResourceValue src) -> Ihc.ResourceValue
-~static Ihc.SceneProject.FileExtensions.get -> string[]
-~static Ihc.ServiceMetadata.GetOperations(Ihc.IIHCApiService service) -> System.Collections.Generic.IReadOnlyList<Ihc.ServiceOperationMetadata>
-~static Ihc.Telemetry.ActivitySource.get -> System.Diagnostics.ActivitySource
-~static Ihc.TelemetryConfiguration.GetFromConfiguration(Microsoft.Extensions.Configuration.IConfigurationRoot config) -> Ihc.TelemetryConfiguration
-~static Ihc.TelemetrySelfCheck.ProbeAndReportAsync(Ihc.TelemetryConfiguration telemetry) -> System.Threading.Tasks.Task
-~static Ihc.TelemetrySelfCheck.ProbeAsync(Ihc.TelemetryConfiguration telemetry) -> System.Threading.Tasks.Task<Ihc.TelemetrySelfCheckResult>
-~static Ihc.VersionInfo.GetSdkVersionStr() -> string
-~static readonly Ihc.TelemetryConfiguration.Key -> string
-~static readonly Ihc.TypeStrings.DatalineInput -> string
-~static readonly Ihc.TypeStrings.DatalineOutput -> string
-~virtual Ihc.App.LabAppService.OperationItem.OnMethodArgumentChanged(Ihc.App.LabAppService.MethodArgumentChangedEventArgs e) -> void
-~virtual Ihc.OnOkCallBack.Invoke(System.Net.Http.HttpResponseMessage msg) -> void
+readonly Ihc.ServiceBase.settings -> Ihc.IhcSettings!
+static Ihc.ActivityExtensions.AddWarning(this System.Diagnostics.Activity? activity, string! message, params (string! key, object? value)[]! tags) -> System.Diagnostics.Activity?
+static Ihc.ActivityExtensions.SetError(this System.Diagnostics.Activity? activity, System.Exception! ex) -> System.Diagnostics.Activity?
+static Ihc.ActivityExtensions.SetParameters(this System.Diagnostics.Activity? activity, params (string! name, object? value)[]! parameters) -> System.Diagnostics.Activity?
+static Ihc.ActivityExtensions.SetReturnValue<T>(this System.Diagnostics.Activity? activity, T value) -> System.Diagnostics.Activity?
+static Ihc.App.LabAppService.BuildResultFileContent(object? rawResult, string! displayText, string! operationName) -> Ihc.App.LabAppService.ResultFileContent!
+static Ihc.App.LabAppService.OperationItem.GetDefaultValue(System.Type! type) -> object?
+static Ihc.CopyUtil.DeepCopyAndApply(object? src, System.Func<System.Reflection.PropertyInfo?, object?, object?>! propertyValueTransformer) -> object?
+static Ihc.EncryptionConfiguration.GetFromConfiguration(Microsoft.Extensions.Configuration.IConfigurationRoot! config) -> Ihc.EncryptionConfiguration!
+static Ihc.IhcSettings.GetFromConfiguration(Microsoft.Extensions.Configuration.IConfigurationRoot! config) -> Ihc.IhcSettings!
+static Ihc.IhcSettings.GetFromFile() -> Ihc.IhcSettings!
+static Ihc.ProjectFile.Encoding.get -> System.Text.Encoding!
+static Ihc.ProjectFile.FileExtension.get -> string!
+static Ihc.ProjectFile.StrictEncoding.get -> System.Text.Encoding!
+static Ihc.ResourceValue.CreateBooleanRuntimeInput(int resourceId, bool value) -> Ihc.ResourceValue!
+static Ihc.ResourceValue.CreateBooleanRuntimeOutput(int resourceId, bool value) -> Ihc.ResourceValue!
+static Ihc.ResourceValue.ToogleBool(Ihc.ResourceValue! src) -> Ihc.ResourceValue!
+static Ihc.SceneProject.FileExtensions.get -> string![]!
+static Ihc.ServiceMetadata.GetOperations(Ihc.IIHCApiService! service) -> System.Collections.Generic.IReadOnlyList<Ihc.ServiceOperationMetadata!>!
+static Ihc.Telemetry.ActivitySource.get -> System.Diagnostics.ActivitySource!
+static Ihc.TelemetryConfiguration.GetFromConfiguration(Microsoft.Extensions.Configuration.IConfigurationRoot! config) -> Ihc.TelemetryConfiguration!
+static Ihc.TelemetrySelfCheck.ProbeAndReportAsync(Ihc.TelemetryConfiguration! telemetry) -> System.Threading.Tasks.Task!
+static Ihc.TelemetrySelfCheck.ProbeAsync(Ihc.TelemetryConfiguration! telemetry) -> System.Threading.Tasks.Task<Ihc.TelemetrySelfCheckResult!>!
+static Ihc.VersionInfo.GetSdkVersionStr() -> string!
+static readonly Ihc.TelemetryConfiguration.Key -> string!
+static readonly Ihc.TypeStrings.DatalineInput -> string!
+static readonly Ihc.TypeStrings.DatalineOutput -> string!
+virtual Ihc.App.LabAppService.OperationItem.OnMethodArgumentChanged(Ihc.App.LabAppService.MethodArgumentChangedEventArgs! e) -> void
+virtual Ihc.OnOkCallBack.Invoke(System.Net.Http.HttpResponseMessage! msg) -> void

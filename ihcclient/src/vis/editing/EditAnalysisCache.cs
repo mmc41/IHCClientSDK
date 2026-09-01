@@ -1,4 +1,3 @@
-#nullable enable
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Ihc.Vis.Projects;

@@ -40,3 +40,15 @@ indent_size = 2
 # Use of a member marked [Obsolete] from XAML. (Note: the docs cite AVLN2001 for this; the shipped code defines
 # AVLN5001 and no AVLN2001 at all — the framework's own .editorconfig agrees on AVLN5001.)
 avalonia_xaml_diagnostic.AVLN5001.severity = error
+
+# ── Generated SOAP layer: oblivious nullability (RS0041) ─────────────────────────────────────────────────────
+# The generated layer is public only because XmlSerializer requires it (ADR-003) and is not part of the SDK's
+# contract, so the nullability of its members states nothing a caller should rely on. It is generated without
+# a nullable context and generate.ps1/generate.sh rewrite the directory wholesale, so annotating it is neither
+# possible to keep nor meaningful to read -- the same grounds on which generatedsrc/.editorconfig already
+# excludes it from the public-API baseline (RS0016).
+#
+# Scoped from HERE rather than from that neighbouring file on purpose: the generated directory is off limits
+# to hand edits, and a rule written inside it would be lost on the next regeneration.
+[ihcclient/generatedsrc/**.cs]
+dotnet_diagnostic.RS0041.severity = none

@@ -65,9 +65,9 @@ namespace Ihc
         /// <summary>
         /// Name of the backup file.
         /// </summary>
-        public string Filename { get; init; }
+        public string? Filename { get; init; }
 
-        public BackupFile(string Filename, byte[] Data)
+        public BackupFile(string? Filename, byte[] Data)
         {
             this.Data = Data;
             this.Filename = Filename;
@@ -81,8 +81,7 @@ namespace Ihc
 
         public override string ToString()
         {
-            string dataAsHex = Data == null ? "null" :
-                    Data.Length == 0 ? "[]" :
+            string dataAsHex = Data.Length == 0 ? "[]" :
                     string.Join(" ", Data.Select(b => b.ToString("x2")));
 
             return $"BackupFile(Filename={Filename}, Data={dataAsHex})";
@@ -122,17 +121,17 @@ namespace Ihc
         /// <summary>
         /// Project identification number.
         /// </summary>
-        public string ProjectNumber { get; init; }
+        public string? ProjectNumber { get; init; }
 
         /// <summary>
         /// Name of the customer for this project.
         /// </summary>
-        public string CustomerName { get; init; }
+        public string? CustomerName { get; init; }
 
         /// <summary>
         /// Name of the installer who created/modified the project.
         /// </summary>
-        public string InstallerName { get; init; }
+        public string? InstallerName { get; init; }
 
         public override string ToString()
         {
@@ -151,9 +150,10 @@ namespace Ihc
         public string Data { get; init; }
 
         /// <summary>
-        /// Name of the project file (*.vis)
+        /// Name of the project file (*.vis), or null when the controller supplied none. The wire's WSFile
+        /// does not require a filename, so this is genuinely optional on the download path.
         /// </summary>
-        public string Filename { get; init; }
+        public string? Filename { get; init; }
 
         /// <summary>
         /// Encoding used for the project file. Always ISO-8859-1 (Latin-1) as shown in top of xml project.
@@ -179,7 +179,7 @@ namespace Ihc
         /// </summary>
         public static string FileExtension { get; } = "vis";
 
-        public ProjectFile(string Filename, string Data)
+        public ProjectFile(string? Filename, string Data)
         {
             this.Data = Data;
             this.Filename = Filename;
@@ -207,12 +207,12 @@ namespace Ihc
       /// <summary>
       /// Raw binary data of the project segment.
       /// </summary>
-      public byte[] Data { get; init; }
+      public byte[] Data { get; init; } = Array.Empty<byte>();
 
       /// <summary>
       /// Name of the segment file. The controller supplies none, so the Lab saves it as {operation}.bin.
       /// </summary>
-      public string Filename { get; init; }
+      public string? Filename { get; init; }
 
       public ProjectSegment() { }
 
@@ -227,7 +227,7 @@ namespace Ihc
 
       public override string ToString()
       {
-        return $"ProjectSegment(Data=byte[{Data?.Length ?? 0}])";
+        return $"ProjectSegment(Data=byte[{Data.Length}])";
       }
     }
 }

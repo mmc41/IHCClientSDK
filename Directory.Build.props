@@ -9,13 +9,13 @@
     package versions fork across the test suites (see Directory.Packages.props).
 
     A project that genuinely needs a different value overrides it locally — project files are
-    evaluated after this one, so a local <Nullable>disable</Nullable> still wins. Overrides are
-    therefore visible as deliberate exceptions rather than invisible as copies.
+    evaluated after this one, so a local setting still wins. Overrides are therefore visible as
+    deliberate exceptions rather than invisible as copies. No project overrides Nullable today:
+    every one of them compiles with nullable reference types enabled.
   -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- Overridden to 'disable' by ihcclient and four of its consumers; tracked as designfix P3/C4. -->
     <Nullable>enable</Nullable>
   </PropertyGroup>
 

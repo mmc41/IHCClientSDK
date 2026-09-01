@@ -33,6 +33,9 @@ namespace Ihc.Tests
     /// </para>
     /// </summary>
     [TestFixture]
+    // MutableAdminModel's settings blocks are optional (a saved file can simply lack one), but the
+    // fakes these tests build supply every block, so the `!` on each block access asserts the
+    // fixture's invariant rather than a guess about the model.
     public class AdminStoreMetamorphicTests
     {
         // Small value domains on purpose: with a wide space, B and C would differ from A in every field on every
@@ -52,8 +55,10 @@ namespace Ihc.Tests
             public NetworkSettings Network { get; set; } = Baseline.Network;
             public WebAccessControl WebAccess { get; set; } = Baseline.WebAccess;
             public WLanSettings WLan { get; set; } = Baseline.WLan;
+            // Every user this route handles is keyed by username: the baseline set supplies one for
+            // each, and AddUser/UpdateUser below only ever store users the fixture built.
             public Dictionary<string, IhcUser> Users { get; } =
-                Baseline.Users().ToDictionary(u => u.Username);
+                Baseline.Users().ToDictionary(u => u.Username!);
 
             /// <summary>How many write calls this route issued, across EVERY settings block and not just one of
             /// them — a counter that watched a single block would report "the fakes are recording" on the strength
@@ -118,7 +123,7 @@ namespace Ihc.Tests
                 Gen.Select(Hosts, Ports, (h, p) => Baseline.Smtp with { Hostname = h, Hostport = p }),
                 Gen.Select(Hosts, Hosts, (a, b) => Baseline.Dns with { PrimaryDNS = a, SecondaryDNS = b }),
                 Hosts.Select(ip => Baseline.Network with { IpAddress = ip }),
-                Gen.Select(Gen.Bool, Gen.Bool, (u, a) => Baseline.WebAccess with { UsbLoginRequired = u, AdministratorUsb = a }),
+                Gen.Select(Gen.Bool, Gen.Bool, (u, a) => Baseline.WebAccess! with { UsbLoginRequired = u, AdministratorUsb = a }),
                 Gen.Select(Gen.Bool, Hosts, (e, s) => Baseline.WLan with { Enabled = e, Ssid = s }),
                 Gen.Select(Gen.Bool.Array[UserPool.Length], Emails.Array[UserPool.Length],
                     Gen.OneOfConst(IhcUserGroup.Administrators, IhcUserGroup.Users).Array[UserPool.Length],
@@ -168,30 +173,30 @@ namespace Ihc.Tests
             A.CallTo(() => auth.IsAuthenticated()).Returns(Task.FromResult(true));
 
             A.CallTo(() => users.GetUsers(A<bool>._))
-                .ReturnsLazily(() => Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>(controller.Users.Values)));
+                .ReturnsLazily(() => Task.FromResult<IReadOnlySet<IhcUser>>(new HashSet<IhcUser>(controller.Users!.Values)));
             A.CallTo(() => users.AddUser(A<IhcUser>._))
-                .ReturnsLazily((IhcUser u) => controller.Write(() => controller.Users[u.Username] = u));
+                .ReturnsLazily((IhcUser u) => controller.Write(() => controller.Users[u.Username!] = u));
             A.CallTo(() => users.UpdateUser(A<IhcUser>._))
-                .ReturnsLazily((IhcUser u) => controller.Write(() => controller.Users[u.Username] = u));
+                .ReturnsLazily((IhcUser u) => controller.Write(() => controller.Users[u.Username!] = u));
             A.CallTo(() => users.RemoveUser(A<string>._))
-                .ReturnsLazily((string name) => controller.Write(() => controller.Users.Remove(name)));
+                .ReturnsLazily((string name) => controller.Write(() => controller.Users!.Remove(name)));
 
-            A.CallTo(() => config.GetEmailControlSettings()).ReturnsLazily(() => Task.FromResult(controller.Email));
+            A.CallTo(() => config.GetEmailControlSettings()).ReturnsLazily(() => Task.FromResult<EmailControlSettings?>(controller.Email));
             A.CallTo(() => config.SetEmailControlSettings(A<EmailControlSettings>._))
                 .ReturnsLazily((EmailControlSettings s) => controller.Write(() => controller.Email = s));
-            A.CallTo(() => config.GetSMTPSettings()).ReturnsLazily(() => Task.FromResult(controller.Smtp));
+            A.CallTo(() => config.GetSMTPSettings()).ReturnsLazily(() => Task.FromResult<SMTPSettings?>(controller.Smtp));
             A.CallTo(() => config.SetSMTPSettings(A<SMTPSettings>._))
                 .ReturnsLazily((SMTPSettings s) => controller.Write(() => controller.Smtp = s));
             A.CallTo(() => config.GetDNSServers()).ReturnsLazily(() => Task.FromResult(controller.Dns));
             A.CallTo(() => config.SetDNSServers(A<DNSServers>._))
                 .ReturnsLazily((DNSServers s) => controller.Write(() => controller.Dns = s));
-            A.CallTo(() => config.GetNetworkSettings()).ReturnsLazily(() => Task.FromResult(controller.Network));
+            A.CallTo(() => config.GetNetworkSettings()).ReturnsLazily(() => Task.FromResult<NetworkSettings?>(controller.Network));
             A.CallTo(() => config.SetNetworkSettings(A<NetworkSettings>._))
                 .ReturnsLazily((NetworkSettings s) => controller.Write(() => controller.Network = s));
-            A.CallTo(() => config.GetWebAccessControl()).ReturnsLazily(() => Task.FromResult(controller.WebAccess));
+            A.CallTo(() => config.GetWebAccessControl()).ReturnsLazily(() => Task.FromResult<WebAccessControl?>(controller.WebAccess));
             A.CallTo(() => config.SetWebAccessControl(A<WebAccessControl>._))
                 .ReturnsLazily((WebAccessControl s) => controller.Write(() => controller.WebAccess = s));
-            A.CallTo(() => config.GetWLanSettings()).ReturnsLazily(() => Task.FromResult(controller.WLan));
+            A.CallTo(() => config.GetWLanSettings()).ReturnsLazily(() => Task.FromResult<WLanSettings?>(controller.WLan));
             A.CallTo(() => config.SetWLanSettings(A<WLanSettings>._))
                 .ReturnsLazily((WLanSettings s) => controller.Write(() => controller.WLan = s));
 
@@ -218,16 +223,16 @@ namespace Ihc.Tests
             && Equals(a.Network, b.Network)
             && Equals(a.WebAccess, b.WebAccess)
             && Equals(a.WLan, b.WLan)
-            && a.Users.Count == b.Users.Count
-            && a.Users.OrderBy(u => u.Key, StringComparer.Ordinal)
-                .SequenceEqual(b.Users.OrderBy(u => u.Key, StringComparer.Ordinal));
+            && a.Users!.Count == b.Users!.Count
+            && a.Users!.OrderBy(u => u.Key, StringComparer.Ordinal)
+                .SequenceEqual(b.Users!.OrderBy(u => u.Key, StringComparer.Ordinal));
 
         private static string Describe(Controller controller) =>
             $"email={controller.Email?.ServerIpAddress}:{controller.Email?.ServerPortNumber} "
             + $"smtp={controller.Smtp?.Hostname}:{controller.Smtp?.Hostport} "
             + $"dns={controller.Dns?.PrimaryDNS}/{controller.Dns?.SecondaryDNS} "
             + $"net={controller.Network?.IpAddress} wlan={controller.WLan?.Enabled}/{controller.WLan?.Ssid} "
-            + $"users=[{string.Join(", ", controller.Users.Values.Select(u => $"{u.Username}:{u.Email}:{u.Group}"))}]";
+            + $"users=[{string.Join(", ", controller.Users!.Values.Select(u => $"{u.Username}:{u.Email}:{u.Group}"))}]";
 
         /// <summary>
         /// <see cref="AdminAppService"/> builds a <c>SimpleSecret</c> in its constructor, and that reads this
@@ -247,7 +252,7 @@ namespace Ihc.Tests
             Controllers().SampleMetamorphic(
                 Gen.Select(Models, Models, (b, c) => (Intermediate: b, Destination: c))
                     .Metamorphic<Controller>(
-                        step => $"via {step.Intermediate.SmtpSettings.Hostname} to {step.Destination.SmtpSettings.Hostname}",
+                        step => $"via {step.Intermediate.SmtpSettings!.Hostname} to {step.Destination.SmtpSettings!.Hostname}",
                         (controller, step) => controller.Store(step.Destination),
                         (controller, step) => { controller.Store(step.Intermediate); controller.Store(step.Destination); }),
                 equal: SameControllerState,

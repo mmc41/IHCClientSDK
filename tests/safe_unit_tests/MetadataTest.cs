@@ -57,7 +57,7 @@ namespace Ihc.Tests
             A.CallTo(() => serviceA.GetSystemInfo()).Returns(Task.FromResult(new SystemInfo { Version = "AAA" }));
             var getInfoA = ServiceMetadata.GetOperations(serviceA)
                 .First(op => op.Name == nameof(IConfigurationService.GetSystemInfo));
-            var resultA = await (Task<SystemInfo>)getInfoA.Invoke(Array.Empty<object>());
+            var resultA = await (Task<SystemInfo>)getInfoA.Invoke(Array.Empty<object>())!;
             Assert.That(resultA.Version, Is.EqualTo("AAA"));
 
             // A second, distinct instance of the SAME service type, configured to report "BBB".
@@ -65,7 +65,7 @@ namespace Ihc.Tests
             A.CallTo(() => serviceB.GetSystemInfo()).Returns(Task.FromResult(new SystemInfo { Version = "BBB" }));
             var getInfoB = ServiceMetadata.GetOperations(serviceB)
                 .First(op => op.Name == nameof(IConfigurationService.GetSystemInfo));
-            var resultB = await (Task<SystemInfo>)getInfoB.Invoke(Array.Empty<object>());
+            var resultB = await (Task<SystemInfo>)getInfoB.Invoke(Array.Empty<object>())!;
 
             // Before the fix this returned "AAA" (the stale cached instance bound into the cached metadata).
             Assert.That(resultB.Version, Is.EqualTo("BBB"),
@@ -107,14 +107,14 @@ namespace Ihc.Tests
             var implA = new ProbeServiceImplA();
             var probeA = ServiceMetadata.GetOperations(implA)
                 .First(op => op.Name == nameof(ICrossConcreteTypeProbeService.Probe));
-            Assert.That(await (Task<string>)probeA.Invoke(Array.Empty<object>()), Is.EqualTo("AAA"));
+            Assert.That(await (Task<string>)probeA.Invoke(Array.Empty<object>())!, Is.EqualTo("AAA"));
 
             // A DIFFERENT concrete type implementing the SAME interface. Before the fix the cache (keyed by
             // interface) handed back implA's MethodInfo, so Invoke on an implB instance threw a TargetException.
             var implB = new ProbeServiceImplB();
             var probeB = ServiceMetadata.GetOperations(implB)
                 .First(op => op.Name == nameof(ICrossConcreteTypeProbeService.Probe));
-            Assert.That(await (Task<string>)probeB.Invoke(Array.Empty<object>()), Is.EqualTo("BBB"),
+            Assert.That(await (Task<string>)probeB.Invoke(Array.Empty<object>())!, Is.EqualTo("BBB"),
                 "metadata must key per concrete type so Invoke targets the live instance's actual type");
         }
 

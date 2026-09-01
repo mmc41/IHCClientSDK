@@ -40,10 +40,12 @@ namespace Ihc.Envelope {
    [XmlRoot(ElementName="Envelope", Namespace ="http://schemas.xmlsoap.org/soap/envelope/", IsNullable=false)]
    public class RequestEnvelope<T> {
       [XmlElement(Order = 1, IsNullable=false)]
-      public string Header { get; set; }
+      public string? Header { get; set; }
 
       [XmlElement(Order = 2, IsNullable=false)]
-      public T Body;
+      // Assigned by XmlSerializer, or by the body-taking constructor. The parameterless
+      // constructor exists only for the serializer, which sets this before anyone reads it.
+      public T Body = default!;
 
       private XmlSerializerNamespaces xmlns;
 
@@ -75,7 +77,9 @@ namespace Ihc.Envelope {
    [XmlRoot(ElementName="Envelope", Namespace ="http://schemas.xmlsoap.org/soap/envelope/", IsNullable=false)]
    public class ResponseEnvelope<T> {
       [XmlElement(Order = 1, IsNullable=false)]
-      public T Body;
+      // Assigned by XmlSerializer, or by the body-taking constructor. The parameterless
+      // constructor exists only for the serializer, which sets this before anyone reads it.
+      public T Body = default!;
 
       private XmlSerializerNamespaces xmlns;
 

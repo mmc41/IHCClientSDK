@@ -46,12 +46,12 @@ namespace Ihc
         /// <summary>
         /// Wait for a new device to be detected during configuration.
         /// </summary>
-        Task<RFDevice> WaitForDeviceDetected(int timeoutSeconds);
+        Task<RFDevice?> WaitForDeviceDetected(int timeoutSeconds);
 
         /// <summary>
         /// Wait for device test result.
         /// </summary>
-        Task<RFDevice> WaitForDeviceTestResult(int timeoutSeconds);
+        Task<RFDevice?> WaitForDeviceTestResult(int timeoutSeconds);
 
         /// <summary>
         /// Get list of all detected RF devices.
@@ -136,7 +136,7 @@ namespace Ihc
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
-        private RFDevice mapRFDevice(WSRFDevice device)
+        private RFDevice? mapRFDevice(WSRFDevice? device)
         {
             if (device == null)
                 return null;
@@ -274,7 +274,7 @@ namespace Ihc
             }
         }
 
-        public async Task<RFDevice> WaitForDeviceDetected(int timeoutSeconds)
+        public async Task<RFDevice?> WaitForDeviceDetected(int timeoutSeconds)
         {
             using (var activity = StartActivity(nameof(WaitForDeviceDetected)))
             {
@@ -296,7 +296,7 @@ namespace Ihc
             }
         }
 
-        public async Task<RFDevice> WaitForDeviceTestResult(int timeoutSeconds)
+        public async Task<RFDevice?> WaitForDeviceTestResult(int timeoutSeconds)
         {
             using (var activity = StartActivity(nameof(WaitForDeviceTestResult)))
             {
@@ -325,7 +325,8 @@ namespace Ihc
                 try
                 {
                     var result = await impl.getDetectedDeviceListAsync(new inputMessageName7()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    IReadOnlyList<RFDevice> retv = result.getDetectedDeviceList1 == null ? Array.Empty<RFDevice>() : result.getDetectedDeviceList1.Select(mapRFDevice).ToList();
+                    // OfType drops any list entry the wire left empty: mapRFDevice maps a null entry to null.
+                    IReadOnlyList<RFDevice> retv = result.getDetectedDeviceList1 == null ? Array.Empty<RFDevice>() : result.getDetectedDeviceList1.Select(mapRFDevice).OfType<RFDevice>().ToList();
 
                     activity?.SetReturnValue(retv);
                     return retv;

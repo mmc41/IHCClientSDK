@@ -21,33 +21,24 @@ namespace Ihc.Tests
     /// that manually via a dev utility instead.
     /// </summary>
     [TestFixture]
-    public class ProjectDownloadTest
+    public class ProjectDownloadTest : AuthenticatedSystemTest
     {
-        private AuthenticationService authService;
-        private ControllerService controllerService;
+        // Assigned by CreateServices before every test, and never observed before that;
+        // NUnit constructs the fixture itself, so there is no constructor to assign it in.
+        private ControllerService controllerService = null!;
 
-        [SetUp]
-        public async Task SetupMethod()
+        protected override void CreateServices(AuthenticationService session)
         {
-            authService = new AuthenticationService(Setup.settings);
-            controllerService = new ControllerService(authService);
-            await authService.Authenticate();
-        }
-
-        [TearDown]
-        public async Task BaseTearDown()
-        {
-            await authService.Disconnect();
-            authService?.Dispose();
-            authService = null;
+            controllerService = new ControllerService(session);
         }
 
         [Test]
         public async Task DownloadedProject_HasUtcsProjectV4Header_WithIdAttributes()
         {
-            ProjectFile file = await controllerService.GetProject();
+            ProjectFile? file = await controllerService.GetProject();
+            Assert.That(file, Is.Not.Null, "the controller must have a project stored for this test");
 
-            Match root = Regex.Match(file.Data, "<utcs_project\\b[^>]*>");
+            Match root = Regex.Match(file!.Data, "<utcs_project\\b[^>]*>");
             Assert.That(root.Success, Is.True, "root <utcs_project> element present in decompressed payload");
             Assert.Multiple(() =>
             {

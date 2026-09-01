@@ -1,4 +1,3 @@
-#nullable enable
 using Ihc.Vis.Problems;
 using System;
 using System.IO;

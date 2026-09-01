@@ -91,7 +91,8 @@ namespace Ihc.download_upload_example
 
                 if (command == CMD_GET)
                 {
-                    ProjectFile project = await controllerService.GetProject();
+                    ProjectFile project = await controllerService.GetProject()
+                        ?? throw new InvalidOperationException("The controller returned no project - it likely has none stored.");
                     await File.WriteAllTextAsync(path, project.Data, ProjectFile.Encoding);
                     Console.WriteLine($"Downloaded project to {path}, size {project.Data.Length} characters (Org filename was {project.Filename})");
                 }

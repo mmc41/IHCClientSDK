@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -38,6 +39,7 @@ public partial class BinaryFilePicker : UserControl, BinaryFile
     /// <summary>
     /// Gets or sets the binary file name
     /// </summary>
+    [AllowNull]
     public string Filename
     {
         get => fileName ?? string.Empty;

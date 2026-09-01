@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 
 namespace Ihc
@@ -16,7 +17,7 @@ namespace Ihc
         /// <param name="obj">Object to validate</param>
         /// <param name="parameterName">Parameter name for exception message</param>
         /// <exception cref="ArgumentException">Thrown when validation fails</exception>
-        public static void ValidateDataAnnotations(object obj, string parameterName)
+        public static void ValidateDataAnnotations([NotNull] object? obj, string parameterName)
         {
             if (obj == null)
             {

@@ -12,35 +12,38 @@ namespace Ihc
     /// </summary>
     public interface IInternalTestService : IIHCApiService
     {
+        // Each version/identity getter below returns null when the controller reports none: their
+        // wire elements are declared nillable and the generated layer is oblivious, so a non-null
+        // return type here would be a promise this tier cannot keep.
         /// <summary>
         /// Get the Airlink version string.
         /// </summary>
-        Task<string> GetAirlinkVersion();
+        Task<string?> GetAirlinkVersion();
 
         /// <summary>
         /// Get the IO board version string.
         /// </summary>
-        Task<string> GetIOBoardVersion();
+        Task<string?> GetIOBoardVersion();
 
         /// <summary>
         /// Get the Wiser board version string.
         /// </summary>
-        Task<string> GetWiserBoardVersion();
+        Task<string?> GetWiserBoardVersion();
 
         /// <summary>
         /// Get the Wiser board MAC address.
         /// </summary>
-        Task<string> GetWiserBoardMACAddress();
+        Task<string?> GetWiserBoardMACAddress();
 
         /// <summary>
         /// Get the Wiser board hardware version string.
         /// </summary>
-        Task<string> GetWiserBoardHWVersion();
+        Task<string?> GetWiserBoardHWVersion();
 
         /// <summary>
         /// Get the Wiser board serial number.
         /// </summary>
-        Task<string> GetWiserBoardSerialNumber();
+        Task<string?> GetWiserBoardSerialNumber();
 
         /// <summary>
         /// Send an Airlink packet to the controller.
@@ -292,7 +295,7 @@ namespace Ihc
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
-        public async Task<string> GetAirlinkVersion()
+        public async Task<string?> GetAirlinkVersion()
         {
             using (var activity = StartActivity(nameof(GetAirlinkVersion)))
             {
@@ -312,7 +315,7 @@ namespace Ihc
             }
         }
 
-        public async Task<string> GetIOBoardVersion()
+        public async Task<string?> GetIOBoardVersion()
         {
             using (var activity = StartActivity(nameof(GetIOBoardVersion)))
             {
@@ -332,7 +335,7 @@ namespace Ihc
             }
         }
 
-        public async Task<string> GetWiserBoardVersion()
+        public async Task<string?> GetWiserBoardVersion()
         {
             using (var activity = StartActivity(nameof(GetWiserBoardVersion)))
             {
@@ -352,7 +355,7 @@ namespace Ihc
             }
         }
 
-        public async Task<string> GetWiserBoardMACAddress()
+        public async Task<string?> GetWiserBoardMACAddress()
         {
             using (var activity = StartActivity(nameof(GetWiserBoardMACAddress)))
             {
@@ -372,7 +375,7 @@ namespace Ihc
             }
         }
 
-        public async Task<string> GetWiserBoardHWVersion()
+        public async Task<string?> GetWiserBoardHWVersion()
         {
             using (var activity = StartActivity(nameof(GetWiserBoardHWVersion)))
             {
@@ -392,7 +395,7 @@ namespace Ihc
             }
         }
 
-        public async Task<string> GetWiserBoardSerialNumber()
+        public async Task<string?> GetWiserBoardSerialNumber()
         {
             using (var activity = StartActivity(nameof(GetWiserBoardSerialNumber)))
             {

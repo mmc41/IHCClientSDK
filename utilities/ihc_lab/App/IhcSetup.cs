@@ -176,18 +176,18 @@ public class IhcFakeSetup
 
         A.CallTo(() => service.IsSDCardReady()).Returns(Task.FromResult(true));
 
-        A.CallTo(() => service.GetSDCardInfo()).Returns(Task.FromResult(new SDInfo()
+        A.CallTo(() => service.GetSDCardInfo()).Returns(Task.FromResult<SDInfo?>(new SDInfo()
         {
             Size = 8_000_000_000,
             Free = 4_500_000_000
         }));
 
-        A.CallTo(() => service.GetProjectInfo()).Returns(Task.FromResult(MockProjectInfo()));
+        A.CallTo(() => service.GetProjectInfo()).Returns(Task.FromResult<ProjectInfo?>(MockProjectInfo()));
 
         // A raw string literal keeps its SOURCE FILE's line endings, so the mock project would arrive LF from a
         // Linux checkout and CRLF from a Windows one. A .vis carries CRLF, and mock:// must hand the engine the
         // same bytes a controller would, on every machine.
-        A.CallTo(() => service.GetProject()).Returns(Task.FromResult(new Ihc.ProjectFile("project-mock.vis",
+        A.CallTo(() => service.GetProject()).Returns(Task.FromResult<Ihc.ProjectFile?>(new Ihc.ProjectFile("project-mock.vis",
             """
             <?xml version="1.0" encoding="ISO-8859-1"?>
             <utcs_project version_major="4" version_minor="0" id1="1" id2="2" last_unique_id="3">
@@ -215,7 +215,7 @@ public class IhcFakeSetup
         A.CallTo(() => service.GetIHCProjectNumberOfSegments()).Returns(Task.FromResult(1)); // Single segment project
 
         A.CallTo(() => service.GetIHCProjectSegment(A<int>._, A<int>._, A<int>._))
-            .ReturnsLazily((int index, int major, int minor) => Task.FromResult(new Ihc.ProjectFile(
+            .ReturnsLazily((int index, int major, int minor) => Task.FromResult<Ihc.ProjectFile?>(new Ihc.ProjectFile(
                 $"project-segment-{index}.vis",
                 $"""
                 <?xml version="1.0" encoding="ISO-8859-1"?>
@@ -228,7 +228,7 @@ public class IhcFakeSetup
                 return Task.FromResult(segment?.Data.StartsWith("<?xml") == true);
             });
 
-        A.CallTo(() => service.GetBackup()).Returns(Task.FromResult(new Ihc.BackupFile("backup-mock.dat",
+        A.CallTo(() => service.GetBackup()).Returns(Task.FromResult<Ihc.BackupFile?>(new Ihc.BackupFile("backup-mock.dat",
             new byte[] { 0x42, 0x61, 0x63, 0x6B, 0x75, 0x70, 0x00, 0xFF } // "Backup" + null + 0xFF
         )));
 
@@ -308,8 +308,9 @@ public class IhcFakeSetup
                     LoginDate = user.LoginDate == default ? DateTimeOffset.MinValue : user.LoginDate
                 };
 
-                // Simulate SOAP-level failure for duplicate user
-                if (!mockUsers.TryAdd(userToAdd.Username, userToAdd))
+                // Simulate SOAP-level failure for duplicate user. Username is [Required], so the
+                // validation above has already rejected a user without one.
+                if (!mockUsers.TryAdd(userToAdd.Username!, userToAdd))
                     throw new InvalidOperationException($"User '{user.Username}' already exists");
 
                 return Task.CompletedTask;
@@ -338,13 +339,14 @@ public class IhcFakeSetup
                 ValidationHelper.ValidateDataAnnotations(user, nameof(user));
 
                 // Match real service validation - check for REDACTED_PASSWORD
-                // After validation, user is guaranteed non-null, but keeping ?. for consistency with real service
-                if (user?.Password == UserConstants.REDACTED_PASSWORD)
+                if (user.Password == UserConstants.REDACTED_PASSWORD)
                     throw new ArgumentException($"Password of user should not be set to reserved value ${UserConstants.REDACTED_PASSWORD}. This is likely an error!");
 
                 // Simulate SOAP-level failure for non-existent user
-                if (!mockUsers.TryGetValue(user!.Username, out var existingUser))
-                    throw new InvalidOperationException($"User '{user!.Username}' not found");
+                // Username is [Required], so the validation above has already rejected a null one.
+                string username = user.Username!;
+                if (!mockUsers.TryGetValue(username, out var existingUser))
+                    throw new InvalidOperationException($"User '{username}' not found");
 
                 // Update user while preserving CreatedDate, update LoginDate if not set
                 var userToUpdate = user with
@@ -353,7 +355,7 @@ public class IhcFakeSetup
                     LoginDate = user.LoginDate == default ? existingUser.LoginDate : user.LoginDate
                 };
 
-                mockUsers[user!.Username] = userToUpdate;
+                mockUsers[username] = userToUpdate;
                 return Task.CompletedTask;
             });
 
@@ -417,7 +419,7 @@ public class IhcFakeSetup
         A.CallTo(() => service.GetExtraDatalineOutputs()).Returns(Task.FromResult<IReadOnlyList<DatalineResource>>(new List<DatalineResource>()));
 
         // Resource type + enumerator definitions.
-        A.CallTo(() => service.GetResourceType(A<int>._)).Returns(Task.FromResult("dataline_output"));
+        A.CallTo(() => service.GetResourceType(A<int>._)).Returns(Task.FromResult<string?>("dataline_output"));
         A.CallTo(() => service.GetEnumeratorDefinitions()).Returns(Task.FromResult<IReadOnlyList<EnumDefinition>>(new List<EnumDefinition>
         {
             new EnumDefinition { EnumeratorDefinitionID = 10, Values = new[]
@@ -439,7 +441,7 @@ public class IhcFakeSetup
         {
             new SceneResourceIdAndLocation { SceneResourceId = 2001, ScenePositionSeenFromFunctionBlock = "FB1", ScenePositionSeenFromProduct = "Living room" },
         }));
-        A.CallTo(() => service.GetScenePositionsForSceneValueResource(A<int>._)).ReturnsLazily((int id) => Task.FromResult(
+        A.CallTo(() => service.GetScenePositionsForSceneValueResource(A<int>._)).ReturnsLazily((int id) => Task.FromResult<SceneResourceIdAndLocation?>(
             new SceneResourceIdAndLocation { SceneResourceId = id, ScenePositionSeenFromFunctionBlock = "FB1", ScenePositionSeenFromProduct = "Living room" }));
 
         // Blocking poll for value changes (non-streaming).
@@ -515,17 +517,17 @@ public class IhcFakeSetup
         }));
 
         // Network / DNS / WLAN.
-        A.CallTo(() => service.GetNetworkSettings()).Returns(Task.FromResult(new NetworkSettings
+        A.CallTo(() => service.GetNetworkSettings()).Returns(Task.FromResult<NetworkSettings?>(new NetworkSettings
         {
             IpAddress = "192.168.1.10", Netmask = "255.255.255.0", Gateway = "192.168.1.1", HttpPort = 80, HttpsPort = 443
         }));
         A.CallTo(() => service.GetDNSServers()).Returns(Task.FromResult(new DNSServers { PrimaryDNS = "8.8.8.8", SecondaryDNS = "8.8.4.4" }));
-        A.CallTo(() => service.GetWLanSettings()).Returns(Task.FromResult(new WLanSettings
+        A.CallTo(() => service.GetWLanSettings()).Returns(Task.FromResult<WLanSettings?>(new WLanSettings
         {
             Enabled = true, Ssid = "HomeNetwork", Key = "secret", SecurityType = "WPA2", EncryptionType = "AES",
             IpAddress = "192.168.1.11", Netmask = "255.255.255.0", Gateway = "192.168.1.1"
         }));
-        A.CallTo(() => service.GetWLanInterface()).Returns(Task.FromResult(new WLanInterface { Connected = true, Name = "wlan0", Ssid = "HomeNetwork", Quality = "Good" }));
+        A.CallTo(() => service.GetWLanInterface()).Returns(Task.FromResult<WLanInterface?>(new WLanInterface { Connected = true, Name = "wlan0", Ssid = "HomeNetwork", Quality = "Good" }));
         A.CallTo(() => service.GetWLanScan()).Returns(Task.FromResult<IReadOnlyList<WLanCell>>(new List<WLanCell>
         {
             new WLanCell { Ssid = "HomeNetwork", HasEncryption = true, SecurityType = "WPA2", EncryptionType = "AES" },
@@ -533,14 +535,14 @@ public class IhcFakeSetup
         }));
 
         // SMTP / email.
-        A.CallTo(() => service.GetSMTPSettings()).Returns(Task.FromResult(new SMTPSettings
+        A.CallTo(() => service.GetSMTPSettings()).Returns(Task.FromResult<SMTPSettings?>(new SMTPSettings
         {
             Hostname = "smtp.mock.com", Hostport = 587, Username = "alert@mock.com", Password = "secret",
             Ssl = true, SendLowBatteryNotification = true, SendLowBatteryNotificationRecipient = "admin@mock.com"
         }));
         A.CallTo(() => service.TestSendMessage(A<string>._, A<string>._, A<string>._)).Returns(Task.FromResult(true));
         A.CallTo(() => service.GetEmailControlEnabled()).Returns(Task.FromResult(true));
-        A.CallTo(() => service.GetEmailControlSettings()).Returns(Task.FromResult(new EmailControlSettings
+        A.CallTo(() => service.GetEmailControlSettings()).Returns(Task.FromResult<EmailControlSettings?>(new EmailControlSettings
         {
             ServerIpAddress = "pop.mock.com", ServerPortNumber = 995, Pop3Username = "ctrl",
             Pop3Password = "secret", EmailAddress = "control@mock.com", PollInterval = 5,
@@ -548,7 +550,7 @@ public class IhcFakeSetup
         }));
 
         // Web access control.
-        A.CallTo(() => service.GetWebAccessControl()).Returns(Task.FromResult(new WebAccessControl
+        A.CallTo(() => service.GetWebAccessControl()).Returns(Task.FromResult<WebAccessControl?>(new WebAccessControl
         {
             UsbLoginRequired = false, AdministratorUsb = true, AdministratorInternal = true, AdministratorExternal = false,
             OpenapiInternal = true, OpenapiUsed = true
@@ -570,7 +572,7 @@ public class IhcFakeSetup
                 Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.BOOL, BoolValue = true } },
         };
 
-        A.CallTo(() => service.GetFWVersion()).Returns(Task.FromResult(new FWVersion { MajorVersion = 4, MinorVersion = 0, BuildVersion = 1284 }));
+        A.CallTo(() => service.GetFWVersion()).Returns(Task.FromResult<FWVersion?>(new FWVersion { MajorVersion = 4, MinorVersion = 0, BuildVersion = 1284 }));
         A.CallTo(() => service.GetAPIVersion()).Returns(Task.FromResult("4.0.0"));
         A.CallTo(() => service.GetUptime()).Returns(Task.FromResult(TimeSpan.FromHours(36)));
         A.CallTo(() => service.GetTime()).Returns(Task.FromResult(new DateTimeOffset(2025, 10, 4, 17, 6, 0, TimeSpan.Zero)));
@@ -585,12 +587,12 @@ public class IhcFakeSetup
             ControllerExecutionRunning = true,
             SubscriptionAmount = sampleValues.Count
         }));
-        A.CallTo(() => service.GetProjectInfo()).Returns(Task.FromResult(MockProjectInfo()));
+        A.CallTo(() => service.GetProjectInfo()).Returns(Task.FromResult<ProjectInfo?>(MockProjectInfo()));
         A.CallTo(() => service.GetIHCProjectNumberOfSegments()).Returns(Task.FromResult(1));
         A.CallTo(() => service.GetIHCProjectSegmentationSize()).Returns(Task.FromResult(1_048_576));
         A.CallTo(() => service.GetIHCProjectSegment(A<int>._, A<int>._, A<int>._)).Returns(Task.FromResult(
             new ProjectSegment { Data = System.Text.Encoding.UTF8.GetBytes("<?xml version=\"1.0\"?>") }));
-        A.CallTo(() => service.GetSceneProjectInfo()).Returns(Task.FromResult(MockSceneProjectInfo()));
+        A.CallTo(() => service.GetSceneProjectInfo()).Returns(Task.FromResult<SceneProjectInfo?>(MockSceneProjectInfo()));
         A.CallTo(() => service.GetSceneProjectSegmentationSize()).Returns(Task.FromResult(1_048_576));
         A.CallTo(() => service.GetSceneProjectSegment(A<int>._)).Returns(Task.FromResult(new SceneProjectSegment { Data = new byte[] { 0x01, 0x02, 0x03, 0x04 } }));
 
@@ -642,12 +644,12 @@ public class IhcFakeSetup
     {
         var service = A.Fake<IModuleService>();
 
-        A.CallTo(() => service.GetSceneProjectInfo()).Returns(Task.FromResult(MockSceneProjectInfo()));
+        A.CallTo(() => service.GetSceneProjectInfo()).Returns(Task.FromResult<SceneProjectInfo?>(MockSceneProjectInfo()));
         A.CallTo(() => service.GetSceneProjectSegmentationSize()).Returns(Task.FromResult(1_048_576));
         A.CallTo(() => service.GetSceneProject(A<string>._)).ReturnsLazily((string name) =>
-            Task.FromResult(new SceneProject(string.IsNullOrEmpty(name) ? "mock.icw" : name, new byte[] { 0x01, 0x02, 0x03, 0x04 })));
+            Task.FromResult<SceneProject?>(new SceneProject(string.IsNullOrEmpty(name) ? "mock.icw" : name, new byte[] { 0x01, 0x02, 0x03, 0x04 })));
         A.CallTo(() => service.GetSceneProjectSegment(A<string>._, A<int>._)).ReturnsLazily((string name, int segment) =>
-            Task.FromResult(new SceneProject(string.IsNullOrEmpty(name) ? "mock.icw" : name, new byte[] { 0x01, 0x02 })));
+            Task.FromResult<SceneProject?>(new SceneProject(string.IsNullOrEmpty(name) ? "mock.icw" : name, new byte[] { 0x01, 0x02 })));
 
         // Accept a stored scene project picked via the Lab's file picker (StoreSceneProject /
         // StoreSceneProjectSegment take a SceneProject : BinaryFile). Report success when bytes were supplied.
@@ -665,7 +667,7 @@ public class IhcFakeSetup
 
         A.CallTo(() => service.GetCurrentLocalTime()).Returns(Task.FromResult(new DateTimeOffset(2025, 10, 4, 19, 6, 0, TimeSpan.FromHours(2))));
         A.CallTo(() => service.GetUptime()).Returns(Task.FromResult(TimeSpan.FromHours(36)));
-        A.CallTo(() => service.GetSettings()).Returns(Task.FromResult(new TimeManagerSettings
+        A.CallTo(() => service.GetSettings()).Returns(Task.FromResult<TimeManagerSettings?>(new TimeManagerSettings
         {
             SynchroniseTimeAgainstServer = true, UseDST = true, GmtOffsetInHours = 1,
             ServerName = "time.nist.gov", SyncIntervalInHours = 24,
@@ -673,7 +675,7 @@ public class IhcFakeSetup
             OnlineCalendarUpdateOnline = true, OnlineCalendarCountry = "DK", OnlineCalendarValidUntil = 2026
         }));
         A.CallTo(() => service.SetSettings(A<TimeManagerSettings>._)).Returns(Task.FromResult(true));
-        A.CallTo(() => service.GetTimeFromServer()).Returns(Task.FromResult(new TimeServerConnectionResult
+        A.CallTo(() => service.GetTimeFromServer()).Returns(Task.FromResult<TimeServerConnectionResult?>(new TimeServerConnectionResult
         {
             ConnectionWasSuccessful = true,
             DateFromServer = new DateTimeOffset(2025, 10, 4, 17, 6, 0, TimeSpan.Zero),
@@ -695,8 +697,8 @@ public class IhcFakeSetup
         A.CallTo(() => service.ExitRFTest()).Returns(Task.FromResult(true));
         A.CallTo(() => service.TestRFActuatorWithSerialNumber(A<long>._)).Returns(Task.FromResult(true));
         A.CallTo(() => service.GetDevicesRunningOutOfBattery()).Returns(Task.FromResult<IReadOnlyList<int>>(new List<int> { 2001 }));
-        A.CallTo(() => service.WaitForDeviceDetected(A<int>._)).Returns(Task.FromResult(device));
-        A.CallTo(() => service.WaitForDeviceTestResult(A<int>._)).Returns(Task.FromResult(device));
+        A.CallTo(() => service.WaitForDeviceDetected(A<int>._)).Returns(Task.FromResult<RFDevice?>(device));
+        A.CallTo(() => service.WaitForDeviceTestResult(A<int>._)).Returns(Task.FromResult<RFDevice?>(device));
         A.CallTo(() => service.GetDetectedDeviceList()).Returns(Task.FromResult<IReadOnlyList<RFDevice>>(new List<RFDevice> { device }));
         A.CallTo(() => service.GetBatteryLevel(A<int>._)).Returns(Task.FromResult(85));
 
@@ -707,12 +709,12 @@ public class IhcFakeSetup
     {
         var service = A.Fake<IInternalTestService>();
 
-        A.CallTo(() => service.GetAirlinkVersion()).Returns(Task.FromResult("AL-1.2.3"));
-        A.CallTo(() => service.GetIOBoardVersion()).Returns(Task.FromResult("IO-2.0.1"));
-        A.CallTo(() => service.GetWiserBoardVersion()).Returns(Task.FromResult("WB-3.1.0"));
-        A.CallTo(() => service.GetWiserBoardMACAddress()).Returns(Task.FromResult("00:1A:2B:3C:4D:5E"));
-        A.CallTo(() => service.GetWiserBoardHWVersion()).Returns(Task.FromResult("HW-1"));
-        A.CallTo(() => service.GetWiserBoardSerialNumber()).Returns(Task.FromResult("WSN-0001"));
+        A.CallTo(() => service.GetAirlinkVersion()).Returns(Task.FromResult<string?>("AL-1.2.3"));
+        A.CallTo(() => service.GetIOBoardVersion()).Returns(Task.FromResult<string?>("IO-2.0.1"));
+        A.CallTo(() => service.GetWiserBoardVersion()).Returns(Task.FromResult<string?>("WB-3.1.0"));
+        A.CallTo(() => service.GetWiserBoardMACAddress()).Returns(Task.FromResult<string?>("00:1A:2B:3C:4D:5E"));
+        A.CallTo(() => service.GetWiserBoardHWVersion()).Returns(Task.FromResult<string?>("HW-1"));
+        A.CallTo(() => service.GetWiserBoardSerialNumber()).Returns(Task.FromResult<string?>("WSN-0001"));
         A.CallTo(() => service.GetTimeAndDate()).Returns(Task.FromResult(new DateTimeOffset(2025, 10, 4, 17, 6, 0, TimeSpan.Zero)));
         A.CallTo(() => service.BurnIO()).Returns(Task.FromResult(true));
         A.CallTo(() => service.TestSdCard()).Returns(Task.FromResult(true));
@@ -736,7 +738,7 @@ public class IhcFakeSetup
 
         // Mock GetSmsModemSettings operation
         A.CallTo(() => service.GetSmsModemSettings())
-            .Returns(Task.FromResult(new SmsModemSettings
+            .Returns(Task.FromResult<SmsModemSettings?>(new SmsModemSettings
             {
                 PowerupMessage = "",
                 PowerdownMessage = "",
@@ -748,11 +750,11 @@ public class IhcFakeSetup
                 SendLEDDimmerErrorNotification = false
             }));
 
-        A.CallTo(() => service.GetSmsModemStatus()).Returns(Task.FromResult(new SmsModemStatus
+        A.CallTo(() => service.GetSmsModemStatus()).Returns(Task.FromResult<SmsModemStatus?>(new SmsModemStatus
         {
             AntennaCoverage = "24", MobileOperator = "Telia", ModemStatus = "Ready", MobileNumber = "+4540123456"
         }));
-        A.CallTo(() => service.GetSmsModemInfo()).Returns(Task.FromResult(new SmsModemInfo
+        A.CallTo(() => service.GetSmsModemInfo()).Returns(Task.FromResult<SmsModemInfo?>(new SmsModemInfo
         {
             FirmwareVersion = "1.10.45", GSMChipVersion = "SIM800H", HardwareRevision = "v2.1",
             ProductionDate = "2024-01-15", Detected = true, SerialNumber = "SN12345678", IMEINumber = "354856070135231"
@@ -774,13 +776,13 @@ public class IhcFakeSetup
 
         A.CallTo(() => service.EnterConfiguration()).Returns(Task.FromResult(true));
         A.CallTo(() => service.ExitConfiguration()).Returns(Task.FromResult(true));
-        A.CallTo(() => service.WaitForDeviceDetected(A<int>._)).Returns(Task.FromResult(device));
+        A.CallTo(() => service.WaitForDeviceDetected(A<int>._)).Returns(Task.FromResult<LedDimmerInfo?>(device));
         A.CallTo(() => service.ScanConfiguredDevices(A<int>._, A<int>._)).Returns(Task.FromResult<IReadOnlyList<LedDimmerInfo>>(new List<LedDimmerInfo> { device }));
         A.CallTo(() => service.AssignID(A<string>._, A<sbyte>._, A<sbyte>._)).Returns(Task.FromResult(true));
         A.CallTo(() => service.GetDeviceCount()).Returns(Task.FromResult(1));
-        A.CallTo(() => service.GetLightLevel(A<sbyte>._)).Returns(Task.FromResult(new LedDimmerLevel { Level = 80, ErrorFlags = 0 }));
+        A.CallTo(() => service.GetLightLevel(A<sbyte>._)).Returns(Task.FromResult<LedDimmerLevel?>(new LedDimmerLevel { Level = 80, ErrorFlags = 0 }));
         A.CallTo(() => service.GetDeviceList()).Returns(Task.FromResult<IReadOnlyList<LedDimmerInfo>>(new List<LedDimmerInfo> { device }));
-        A.CallTo(() => service.GetFirmwareUpgradeProgress()).Returns(Task.FromResult(new LedDimmerProgress
+        A.CallTo(() => service.GetFirmwareUpgradeProgress()).Returns(Task.FromResult<LedDimmerProgress?>(new LedDimmerProgress
         {
             Message = "Upgrade finished", SerialNumber = "LD-0001", Status = "FINISHED", Progress = 100, Maximum = 100,
             Running = "RUNNING", Finished = "FINISHED", Failed = "FAILED"

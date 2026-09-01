@@ -21,42 +21,42 @@ namespace Ihc.App
         /// <summary>
         /// Controller serial number.
         /// </summary>
-        public string SerialNumber { get; init; }
+        public string? SerialNumber { get; init; }
 
         /// <summary>
         /// Production date of the controller
         /// </summary>
-        public string ProductionDate { get; init; }
+        public string? ProductionDate { get; init; }
 
         /// <summary>
         /// Controller software/firmware version
         /// </summary>
-        public string SoftwareVersion { get; init; }
+        public string? SoftwareVersion { get; init; }
 
         /// <summary>
         /// Controller hardware version
         /// </summary>
-        public string HardwareVersion { get; init; }
+        public string? HardwareVersion { get; init; }
 
         /// <summary>
         /// Input/Output module version
         /// </summary>
-        public string IoVersion { get; init; }
+        public string? IoVersion { get; init; }
 
         /// <summary>
         /// Radio Frequency module version
         /// </summary>
-        public string RfVersion { get; init; }
+        public string? RfVersion { get; init; }
 
         /// <summary>
         /// Radio Frequency serial number
         /// </summary>
-        public string RfSerialNumber { get; init; }
+        public string? RfSerialNumber { get; init; }
 
         /// <summary>
         /// SMS modem firmware version
         /// </summary>
-        public string SmsModemVersion { get; init; }
+        public string? SmsModemVersion { get; init; }
 
         /// <summary>
         /// Date of the software release
@@ -71,7 +71,7 @@ namespace Ihc.App
         /// <summary>
         /// SD card storage information including used and total space (SD kort). 
         /// </summary>
-        public SDInfo SdCard { get; init; }
+        public SDInfo? SdCard { get; init; }
 
         public override string ToString()
         {

@@ -21,7 +21,7 @@ namespace Ihc {
       /// <summary>
       /// Name of the scene project file (.icw/.icz file)
       /// </summary>
-      public string Filename { get; init; }
+      public string? Filename { get; init; }
 
       /// <summary>
       /// Canonical file extensions (without leading dot) for a scene project. Single source of truth used by the
@@ -29,7 +29,7 @@ namespace Ihc {
       /// </summary>
       public static string[] FileExtensions { get; } = { "icw", "icz" };
 
-      public SceneProject(string Filename, byte[] Data)
+      public SceneProject(string? Filename, byte[] Data)
       {
         this.Data = Data;
         this.Filename = Filename;
@@ -47,7 +47,7 @@ namespace Ihc {
 
       public override string ToString()
       {
-        return $"SceneProject(Data=byte[{Data?.Length ?? 0}], Filename={Filename})";
+        return $"SceneProject(Data=byte[{Data.Length}], Filename={Filename})";
       }
     }
     
@@ -61,12 +61,12 @@ namespace Ihc {
       /// <summary>
       /// Raw binary data of the scene project segment.
       /// </summary>
-      public byte[] Data { get; init; }
+      public byte[] Data { get; init; } = Array.Empty<byte>();
 
       /// <summary>
       /// Name of the segment file. The controller supplies none, so the Lab saves it as {operation}.bin.
       /// </summary>
-      public string Filename { get; init; }
+      public string? Filename { get; init; }
 
       public SceneProjectSegment() { }
 
@@ -81,7 +81,7 @@ namespace Ihc {
 
       public override string ToString()
       {
-        return $"SceneProjectSegment(Data=byte[{Data?.Length ?? 0}])";
+        return $"SceneProjectSegment(Data=byte[{Data.Length}])";
       }
     }
 
@@ -92,7 +92,7 @@ namespace Ihc {
             /// <summary>
             /// Name of the scene project.
             /// </summary>
-            public string Name { get; init; }
+            public string? Name { get; init; }
 
             /// <summary>
             /// Size of the scene project file in bytes.
@@ -102,7 +102,7 @@ namespace Ihc {
             /// <summary>
             /// File path to the scene project.
             /// </summary>
-            public string Filepath { get; init; }
+            public string? Filepath { get; init; }
 
             /// <summary>
             /// Indicates whether the project is stored remotely.
@@ -112,7 +112,7 @@ namespace Ihc {
             /// <summary>
             /// Version of the scene project.
             /// </summary>
-            public string Version { get; init; }
+            public string? Version { get; init; }
 
             /// <summary>
             /// Date and time when the project was created.
@@ -127,7 +127,7 @@ namespace Ihc {
             /// <summary>
             /// Description of the scene project.
             /// </summary>
-            public string Description { get; init; }
+            public string? Description { get; init; }
 
             /// <summary>
             /// CRC checksum of the project file.

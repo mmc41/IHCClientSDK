@@ -24,27 +24,27 @@ namespace Ihc {
         /// <summary>
         /// Controller serial number.
         /// </summary>
-        public string SerialNumber { get; init; }
+        public string? SerialNumber { get; init; }
 
         /// <summary>
         /// Production date of the controller.
         /// </summary>
-        public string ProductionDate { get; init; }
+        public string? ProductionDate { get; init; }
 
         /// <summary>
         /// Brand name of the controller, as reported by the controller.
         /// </summary>
-        public string Brand { get; init; }
+        public string? Brand { get; init; }
 
         /// <summary>
         /// Software version running on the controller.
         /// </summary>
-        public string Version { get; init; }
+        public string? Version { get; init; }
 
         /// <summary>
         /// Hardware revision of the controller.
         /// </summary>
-        public string HWRevision { get; init; }
+        public string? HWRevision { get; init; }
 
         /// <summary>
         /// Software build date.
@@ -54,17 +54,17 @@ namespace Ihc {
         /// <summary>
         /// Dataline protocol version.
         /// </summary>
-        public string DatalineVersion { get; init; }
+        public string? DatalineVersion { get; init; }
 
         /// <summary>
         /// RF module software version if present.
         /// </summary>
-        public string RFModuleSoftwareVersion { get; init; }
+        public string? RFModuleSoftwareVersion { get; init; }
 
         /// <summary>
         /// RF module serial number if present.
         /// </summary>
-        public string RFModuleSerialNumber { get; init; }
+        public string? RFModuleSerialNumber { get; init; }
 
         /// <summary>
         /// Indicates whether the application is running without the IHC viewer (legacy module for IHC1.x)
@@ -75,12 +75,12 @@ namespace Ihc {
         /// <summary>
         /// Get SMS Modem Software Version
         /// </summary>
-        public string SmsModemSoftwareVersion { get; init; }
+        public string? SmsModemSoftwareVersion { get; init; }
 
         /// <summary>
         /// Get LED Dimmer Software Version
         /// </summary>
-        public string LedDimmerSoftwareVersion { get; init; }
+        public string? LedDimmerSoftwareVersion { get; init; }
 
         public override string ToString()
         {
@@ -95,12 +95,12 @@ namespace Ihc {
         /// <summary>
         /// Name of the log file.
         /// </summary>
-        public string FileName { get; init; }
+        public string? FileName { get; init; }
 
         /// <summary>
         /// Text content of the log file.
         /// </summary>
-        public string Content { get; init; }
+        public string? Content { get; init; }
 
         public override string ToString()
         {
@@ -117,21 +117,21 @@ namespace Ihc {
         /// </summary>
         [StringLength(15, ErrorMessage = "IpAddress length can't be more than 15.")]
         [Required(ErrorMessage = "IpAddress is required")]
-        public string IpAddress { get; init; }
+        public string? IpAddress { get; init; }
 
         /// <summary>
         /// Network mask.
         /// </summary>
         [StringLength(15, ErrorMessage = "Netmask length can't be more than 15.")]
         [Required(ErrorMessage = "Netmask is required")]
-        public string Netmask { get; init; }
+        public string? Netmask { get; init; }
 
         /// <summary>
         /// Gateway IP address.
         /// </summary>
         [StringLength(15, ErrorMessage = "Gateway length can't be more than 15.")]
         [Required(ErrorMessage = "Gateway is required")]
-        public string Gateway { get; init; }
+        public string? Gateway { get; init; }
 
         /// <summary>
         /// HTTP port number.
@@ -164,7 +164,7 @@ namespace Ihc {
         /// SSID (network name) of the wireless network. IEEE 802.11 allows up to 32 octets.
         /// </summary>
         [StringLength(32, ErrorMessage = "Ssid length can't be more than 32.")]
-        public string Ssid { get; init; }
+        public string? Ssid { get; init; }
 
         /// <summary>
         /// Wireless network password/key. A WPA2-PSK passphrase is 8–63 characters (64 would be the raw hex PSK),
@@ -172,38 +172,38 @@ namespace Ihc {
         /// </summary>
         [StringLength(63, ErrorMessage = "Key length can't be more than 63.")]
         [SensitiveData]
-        public string Key { get; init; }
+        public string? Key { get; init; }
 
         /// <summary>
         /// Security type (e.g., WPA2, WEP).
         /// </summary>
-        public string SecurityType { get; init; }
+        public string? SecurityType { get; init; }
 
         /// <summary>
         /// Encryption type used.
         /// </summary>
-        public string EncryptionType { get; init; }
+        public string? EncryptionType { get; init; }
 
         /// <summary>
         /// IP address for WLAN interface.
         /// </summary>
         [StringLength(15, ErrorMessage = "IpAddress length can't be more than 15.")]
         [Required(ErrorMessage = "IpAddress is required")]        
-        public string IpAddress { get; init; }
+        public string? IpAddress { get; init; }
 
         /// <summary>
         /// Network mask for WLAN interface.
         /// </summary>
         [StringLength(15, ErrorMessage = "Netmask length can't be more than 15.")]
         [Required(ErrorMessage = "Netmask is required")]   
-        public string Netmask { get; init; }
+        public string? Netmask { get; init; }
 
         /// <summary>
         /// Gateway for WLAN interface.
         /// </summary>
         [StringLength(15, ErrorMessage = "Gateway length can't be more than 15.")]
         [Required(ErrorMessage = "Gateway is required")]   
-        public string Gateway { get; init; }
+        public string? Gateway { get; init; }
 
         /// <summary>
         /// This default ToString method should not be used! Use alternative with bool parameter.
@@ -231,7 +231,7 @@ namespace Ihc {
         /// <summary>
         /// SSID of the detected wireless network.
         /// </summary>
-        public string Ssid { get; init; }
+        public string? Ssid { get; init; }
 
         /// <summary>
         /// Indicates whether the network has encryption enabled.
@@ -241,12 +241,12 @@ namespace Ihc {
         /// <summary>
         /// Security type of the network.
         /// </summary>
-        public string SecurityType { get; init; }
+        public string? SecurityType { get; init; }
 
         /// <summary>
         /// Encryption type used by the network.
         /// </summary>
-        public string EncryptionType { get; init; }
+        public string? EncryptionType { get; init; }
 
         public override string ToString()
         {
@@ -267,17 +267,17 @@ namespace Ihc {
     /// <summary>
     /// Name of the WLAN interface.
     /// </summary>
-    public string Name { get; init; }
+    public string? Name { get; init; }
 
     /// <summary>
     /// SSID of the currently connected network.
     /// </summary>
-    public string Ssid { get; init; }
+    public string? Ssid { get; init; }
 
     /// <summary>
     /// Signal quality indicator.
     /// </summary>
-    public string Quality { get; init; }
+    public string? Quality { get; init; }
 
     public override string ToString()
     {
@@ -454,7 +454,7 @@ namespace Ihc {
         /// POP3 server IP address.
         /// </summary>
         [StringLength(20, ErrorMessage = "ServerIpAddress length can't be more than 20.")]
-        public string ServerIpAddress { get; init; }
+        public string? ServerIpAddress { get; init; }
 
         /// <summary>
         /// POP3 server port number.
@@ -466,20 +466,20 @@ namespace Ihc {
         /// POP3 username for authentication.
         /// </summary>
         [StringLength(10, ErrorMessage = "Pop3Username length can't be more than 10.")]
-        public string Pop3Username { get; init; }
+        public string? Pop3Username { get; init; }
 
         /// <summary>
         /// POP3 password for authentication.
         /// </summary>
         [SensitiveData]
         [StringLength(10, ErrorMessage = "Pop3Password length can't be more than 10.")]
-        public string Pop3Password { get; init; }
+        public string? Pop3Password { get; init; }
 
         /// <summary>
         /// Email address to check for control commands.
         /// </summary>
         [StringLength(20, ErrorMessage = "EmailAddress length can't be more than 20.")]
-        public string EmailAddress { get; init; }
+        public string? EmailAddress { get; init; }
 
         /// <summary>
         /// Interval in minutes between email checks.
@@ -523,7 +523,7 @@ namespace Ihc {
         /// SMTP server hostname.
         /// </summary>
         [StringLength(20, ErrorMessage = "Hostname length can't be more than 20.")]
-        public string Hostname { get; init; }
+        public string? Hostname { get; init; }
 
         /// <summary>
         /// SMTP server port number.
@@ -535,14 +535,14 @@ namespace Ihc {
         /// SMTP username for authentication.
         /// </summary>
         [StringLength(20, ErrorMessage = "Username length can't be more than 20.")]
-        public string Username { get; init; }
+        public string? Username { get; init; }
 
         /// <summary>
         /// SMTP password for authentication.
         /// </summary>
         [StringLength(20, ErrorMessage = "Password length can't be more than 20.")]
         [SensitiveData]
-        public string Password { get; init; }
+        public string? Password { get; init; }
 
         /// <summary>
         /// Indicates whether SSL should be used for SMTP connection.
@@ -558,7 +558,7 @@ namespace Ihc {
         /// Email address to receive low battery notifications.
         /// </summary>
         [StringLength(20, ErrorMessage = "SendLowBatteryNotificationRecipient length can't be more than 20.")]
-        public string SendLowBatteryNotificationRecipient { get; init; }
+        public string? SendLowBatteryNotificationRecipient { get; init; }
 
         /// <summary>
         /// This default ToString method should not be used! Use alternative with bool parameter.
@@ -602,13 +602,13 @@ namespace Ihc {
         /// Primary DNS server address.
         /// </summary>
         [StringLength(15, ErrorMessage = "PrimaryDNS length can't be more than 15.")]
-        public string PrimaryDNS { get; init; }
+        public string? PrimaryDNS { get; init; }
 
         /// <summary>
         /// Secondary DNS server address.
         /// </summary>
         [StringLength(15, ErrorMessage = "SecondaryDNS length can't be more than 15.")]
-        public string SecondaryDNS { get; init; }
+        public string? SecondaryDNS { get; init; }
 
         public override string ToString()
         {

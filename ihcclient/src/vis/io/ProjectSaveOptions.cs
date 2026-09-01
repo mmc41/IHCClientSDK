@@ -1,4 +1,3 @@
-#nullable enable
 namespace Ihc.Vis.Io
 {
     /// <summary>

@@ -2,9 +2,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <!-- TargetFramework / TreatWarningsAsErrors come from Directory.Build.props. -->
-    <!-- The SDK is the one library still compiled without nullable reference types, so its public
-         API expresses no nullability contract to the apps built on it. Tracked as designfix P3/C4. -->
-    <Nullable>disable</Nullable>
     <!-- Owns the generated SOAP layer: its private SoapImpl adapters implement the generated contracts,
          so the repo-wide ban in BannedSymbols.txt does not apply here. -->
     <UsesGeneratedSoapLayer>true</UsesGeneratedSoapLayer>

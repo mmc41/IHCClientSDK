@@ -66,12 +66,12 @@ namespace Ihc
         /// <summary>
         /// Gets the metadata version (from Assembly)
         /// </summary>
-        public Version Version { get; init; }
+        public Version? Version { get; init; }
 
         /// <summary>
         /// Gets the fully qualified type name of the serialized model
         /// </summary>
-        public string TypeFullName { get; init; }
+        public string? TypeFullName { get; init; }
 
         /// <summary>
         /// Returns metadata for the specified type using the current assembly version
@@ -80,10 +80,11 @@ namespace Ihc
         /// <returns>ModelMetadata containing the type's full name and assembly version</returns>
         internal static ModelMetadata Current(Type modelType)
         {
+            System.Version? assemblyVersion = modelType.Assembly.GetName().Version;
             return new ModelMetadata()
             {
                 TypeFullName = modelType.FullName,
-                Version = new Version(modelType.Assembly.GetName().Version)
+                Version = assemblyVersion == null ? null : new Version(assemblyVersion)
             };
         }
     }

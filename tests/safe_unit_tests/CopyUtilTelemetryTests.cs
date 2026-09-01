@@ -29,7 +29,7 @@ namespace Ihc.Tests
             using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName,
                 spanNames: new[] { "CopyUtil.DeepCopyAndApply" });
 
-            object copy = CopyUtil.DeepCopyAndApply(new Sample(), (PropertyInfo _, object value) => value);
+            object copy = CopyUtil.DeepCopyAndApply(new Sample(), (PropertyInfo? _, object? value) => value);
 
             Assert.Multiple(() =>
             {

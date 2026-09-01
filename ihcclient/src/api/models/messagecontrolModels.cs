@@ -15,7 +15,7 @@ namespace Ihc
         /// <summary>
         /// Type of control (e.g., email, SMS).
         /// </summary>
-        public string ControlType { get; init; }
+        public string? ControlType { get; init; }
 
         /// <summary>
         /// Numeric log entry type identifier.
@@ -25,27 +25,27 @@ namespace Ihc
         /// <summary>
         /// Sender's address (email or phone number).
         /// </summary>
-        public string SenderAddress { get; init; }
+        public string? SenderAddress { get; init; }
 
         /// <summary>
         /// Human-readable description of the sender address.
         /// </summary>
-        public string SenderAddressDescription { get; init; }
+        public string? SenderAddressDescription { get; init; }
 
         /// <summary>
         /// The trigger string that initiated the event.
         /// </summary>
-        public string TriggerString { get; init; }
+        public string? TriggerString { get; init; }
 
         /// <summary>
         /// Authentication type as a string.
         /// </summary>
-        public string AuthenticationTypeAsString { get; init; }
+        public string? AuthenticationTypeAsString { get; init; }
 
         /// <summary>
         /// Action type as a string describing what action was taken.
         /// </summary>
-        public string ActionTypeAsString { get; init; }
+        public string? ActionTypeAsString { get; init; }
 
         public override string ToString()
         {

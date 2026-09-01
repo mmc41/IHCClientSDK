@@ -130,12 +130,12 @@ namespace Ihc {
             /// <summary>
             /// Enum value (when ValueKind is ENUM).
             /// </summary>
-            public EnumValue EnumValue { get; set; }
+            public EnumValue? EnumValue { get; set; }
 
             /// <summary>
             /// Phone number (when ValueKind is PhoneNumber).
             /// </summary>
-            public string PhoneNumberValue { get; set; }
+            public string? PhoneNumberValue { get; set; }
 
             /// <summary>
             /// Dimmer percentage 0-100 (when ValueKind is SceneDimmer).
@@ -203,7 +203,7 @@ namespace Ihc {
 
             // Appends ", name=value" for any present value. Nullable value types box to null when empty, so this
             // one helper covers both Nullable<T> fields and reference-typed fields (e.g. PhoneNumberValue).
-            private static void AppendIfPresent(StringBuilder buf, string name, object value) {
+            private static void AppendIfPresent(StringBuilder buf, string name, object? value) {
                 if (value != null) {
                     buf.AppendFormat(", {0}={1}", name, value);
                 }
@@ -214,7 +214,7 @@ namespace Ihc {
         /// Type string identifying the resource type.
         /// See TypeStrings constants for valid values.
         /// </summary>
-        public string TypeString  { get; init; }
+        public string? TypeString  { get; init; }
 
         /// <summary>
         /// The union value containing the actual data.
@@ -302,7 +302,7 @@ namespace Ihc {
         /// <summary>
         /// The logged value as a string.
         /// </summary>
-        public string Value  { get; init; }
+        public string? Value  { get; init; }
 
         /// <summary>
         /// Unique identifier for this log entry.
@@ -332,7 +332,7 @@ namespace Ihc {
          /// <summary>
          /// Array of possible enum values for this definition.
          /// </summary>
-         public EnumValue[] Values { get; init; }
+         public EnumValue[] Values { get; init; } = Array.Empty<EnumValue>();
 
          public override string ToString()
          {
@@ -357,7 +357,7 @@ namespace Ihc {
         /// <summary>
         /// Human-readable name of this enum value.
         /// </summary>
-        public string EnumName  { get; init; }
+        public string? EnumName  { get; init; }
 
         public override string ToString()
         {
@@ -373,7 +373,7 @@ namespace Ihc {
         /// <summary>
         /// Scene position as seen from the function block perspective.
         /// </summary>
-        public string ScenePositionSeenFromFunctionBlock  { get; init; }
+        public string? ScenePositionSeenFromFunctionBlock  { get; init; }
 
         /// <summary>
         /// Unique resource ID for the scene.
@@ -383,7 +383,7 @@ namespace Ihc {
         /// <summary>
         /// Scene position as seen from the product perspective.
         /// </summary>
-        public string ScenePositionSeenFromProduct  { get; init; }
+        public string? ScenePositionSeenFromProduct  { get; init; }
 
         public override string ToString()
         {

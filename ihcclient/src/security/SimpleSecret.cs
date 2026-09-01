@@ -56,7 +56,17 @@ namespace Ihc
         private const int Pbkdf2Iterations = 400_000;   // cost factor (increased for enhanced security)
         public const string EncryptPassphaseEnvName = "IHC_ENCRYPT_PASSPHRASE";
 
-        private readonly string _passphrase;
+        private readonly string? _passphrase;
+
+        /// <summary>
+        /// The passphrase the enabled paths encrypt and decrypt with. Both constructors refuse to build an
+        /// enabled instance without one, and the disabled paths return before reaching here, so the throw
+        /// states a broken invariant rather than a missing setting - which is why it does not name the
+        /// environment variable: the passphrase may equally have come from the explicit constructor.
+        /// </summary>
+        private string Passphrase => _passphrase
+            ?? throw new InvalidOperationException(
+                "Encryption is enabled but no passphrase was retained; an enabled SimpleSecret cannot be constructed without one.");
 
         private readonly bool enable;
 
@@ -137,7 +147,7 @@ namespace Ihc
 
             byte[] salt  = RandomNumberGenerator.GetBytes(SaltSize);
             byte[] nonce = RandomNumberGenerator.GetBytes(NonceSize);
-            byte[] key   = DeriveKey(_passphrase, salt, Pbkdf2Iterations);
+            byte[] key   = DeriveKey(Passphrase, salt, Pbkdf2Iterations);
 
             byte[] pt = Encoding.UTF8.GetBytes(plaintext);
             byte[] ct = new byte[pt.Length];
@@ -228,7 +238,7 @@ namespace Ihc
             byte[] tag = new byte[TagSize];
             Buffer.BlockCopy(blob, idx, tag, 0, TagSize);
 
-            byte[] key = DeriveKey(_passphrase, salt, Pbkdf2Iterations);
+            byte[] key = DeriveKey(Passphrase, salt, Pbkdf2Iterations);
             byte[] pt  = new byte[ctLen];
 
             try

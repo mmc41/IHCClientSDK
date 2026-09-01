@@ -88,7 +88,7 @@ namespace Ihc {
         /// <returns>The IHC client settings.</returns>
         public static TelemetryConfiguration GetFromConfiguration(IConfigurationRoot config)
         {
-            TelemetryConfiguration telemetryConfig = config.GetSection("telemetry").Get<TelemetryConfiguration>();
+            TelemetryConfiguration? telemetryConfig = config.GetSection("telemetry").Get<TelemetryConfiguration>();
             if (telemetryConfig == null)
             {
                 throw new InvalidOperationException("Could not read Telemtry settings from configuration");
@@ -143,7 +143,7 @@ namespace Ihc {
         /// <param name="activity">The activity to add the tag to (can be null)</param>
         /// <param name="value">The return value to record</param>
         /// <returns>The activity for method chaining</returns>
-        public static Activity SetReturnValue<T>(this Activity activity, T value)
+        public static Activity? SetReturnValue<T>(this Activity? activity, T value)
         {
             activity?.SetTag(Telemetry.returnValueTag, value);
             return activity;
@@ -155,7 +155,7 @@ namespace Ihc {
         /// <param name="activity">The activity to add the tags to (can be null)</param>
         /// <param name="parameters">Variable number of named parameter tuples</param>
         /// <returns>The activity for method chaining</returns>
-        public static Activity SetParameters(this Activity activity, params (string name, object value)[] parameters)
+        public static Activity? SetParameters(this Activity? activity, params (string name, object? value)[] parameters)
         {
             if (activity != null)
             {
@@ -173,7 +173,7 @@ namespace Ihc {
         /// <param name="activity">The activity to add error information to (can be null)</param>
         /// <param name="ex">The exception that occurred</param>
         /// <returns>The activity for method chaining</returns>
-        public static Activity SetError(this Activity activity, Exception ex)
+        public static Activity? SetError(this Activity? activity, Exception ex)
         {
             // The normalized error.type, from the same policy the instrumentation core applies - so a span
             // marked failed through this extension and one marked failed by the core carry the same value.
@@ -211,7 +211,7 @@ namespace Ihc {
         ///     ("path", "root.MyProperty"));
         /// </code>
         /// </example>
-        public static Activity AddWarning(this Activity activity, string message, params (string key, object value)[] tags)
+        public static Activity? AddWarning(this Activity? activity, string message, params (string key, object? value)[] tags)
         {
             if (activity != null)
             {

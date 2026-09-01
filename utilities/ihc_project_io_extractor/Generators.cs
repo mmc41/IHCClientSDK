@@ -70,7 +70,10 @@ namespace Ihc.IOExtractor {
             var children = section.GetChildren();
             foreach (var child in children)
             {
-                result.Add(child.Key, child.Value);
+                // A child with no value is a nested section rather than a replacement pair, so the
+                // table is misconfigured; say which entry rather than replace with nothing.
+                result.Add(child.Key, child.Value
+                    ?? throw new InvalidOperationException($"Configuration setting '{child.Path}' must be a string to be used as a replacement."));
             }
         }
 

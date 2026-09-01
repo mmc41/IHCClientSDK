@@ -8,7 +8,7 @@ namespace Ihc
         /// <summary>
         /// Physical location/name of the device.
         /// </summary>
-        public string Location { get; init; }
+        public string? Location { get; init; }
 
         /// <summary>
         /// Dataline channel the device is connected to.
@@ -18,12 +18,12 @@ namespace Ihc
         /// <summary>
         /// Bootloader firmware version.
         /// </summary>
-        public string BootloaderVersion { get; init; }
+        public string? BootloaderVersion { get; init; }
 
         /// <summary>
         /// Application firmware version.
         /// </summary>
-        public string ApplicationVersion { get; init; }
+        public string? ApplicationVersion { get; init; }
 
         /// <summary>
         /// Application status code.
@@ -33,12 +33,12 @@ namespace Ihc
         /// <summary>
         /// Hardware version.
         /// </summary>
-        public string HardwareVersion { get; init; }
+        public string? HardwareVersion { get; init; }
 
         /// <summary>
         /// Serial number of the device.
         /// </summary>
-        public string SerialNumber { get; init; }
+        public string? SerialNumber { get; init; }
 
         /// <summary>
         /// Current light level (0-100).
@@ -90,17 +90,17 @@ namespace Ihc
         /// <summary>
         /// Human readable progress message.
         /// </summary>
-        public string Message { get; init; }
+        public string? Message { get; init; }
 
         /// <summary>
         /// Serial number of the device being upgraded.
         /// </summary>
-        public string SerialNumber { get; init; }
+        public string? SerialNumber { get; init; }
 
         /// <summary>
         /// Current upgrade status (e.g. one of the Running/Finished/Failed labels).
         /// </summary>
-        public string Status { get; init; }
+        public string? Status { get; init; }
 
         /// <summary>
         /// Current progress value (out of <see cref="Maximum"/>).
@@ -115,17 +115,17 @@ namespace Ihc
         /// <summary>
         /// Status label used for a running upgrade.
         /// </summary>
-        public string Running { get; init; }
+        public string? Running { get; init; }
 
         /// <summary>
         /// Status label used for a finished upgrade.
         /// </summary>
-        public string Finished { get; init; }
+        public string? Finished { get; init; }
 
         /// <summary>
         /// Status label used for a failed upgrade.
         /// </summary>
-        public string Failed { get; init; }
+        public string? Failed { get; init; }
 
         public override string ToString()
         {

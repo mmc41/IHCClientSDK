@@ -138,8 +138,8 @@ namespace Ihc.Tests
 
             // Assert
             Assert.That(rv!.Value.ValueKind, Is.EqualTo(ResourceValue.ValueKind.ENUM));
-            Assert.That(rv!.Value.EnumValue.DefinitionTypeID, Is.EqualTo(7));
-            Assert.That(rv!.Value.EnumValue.EnumValueID, Is.EqualTo(3));
+            Assert.That(rv!.Value.EnumValue!.DefinitionTypeID, Is.EqualTo(7));
+            Assert.That(rv!.Value.EnumValue!.EnumValueID, Is.EqualTo(3));
         }
 
         [AvaloniaTest]

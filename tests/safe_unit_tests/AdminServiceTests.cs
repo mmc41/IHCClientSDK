@@ -14,6 +14,9 @@ namespace Ihc.Tests
     /// using FakeItEasy mocked services (no actual controller connection).
     /// </summary>
     [TestFixture]
+    // MutableAdminModel's settings blocks are optional (a saved file can simply lack one), but the
+    // fakes these tests build supply every block, so the `!` on each block access asserts the
+    // fixture's invariant rather than a guess about the model.
     public class AdminServiceTests
     {
         #pragma warning disable NUnit1032 // Fakes from FakeItEasy don't need disposal
@@ -66,17 +69,17 @@ namespace Ihc.Tests
             A.CallTo(() => fakeUserService.GetUsers(true))
                 .Returns(Task.FromResult(users ?? new HashSet<IhcUser>()));
             A.CallTo(() => fakeConfigService.GetEmailControlSettings())
-                .Returns(Task.FromResult(emailControl ?? new EmailControlSettings()));
+                .Returns(Task.FromResult<EmailControlSettings?>(emailControl ?? new EmailControlSettings()));
             A.CallTo(() => fakeConfigService.GetSMTPSettings())
-                .Returns(Task.FromResult(smtp ?? new SMTPSettings()));
+                .Returns(Task.FromResult<SMTPSettings?>(smtp ?? new SMTPSettings()));
             A.CallTo(() => fakeConfigService.GetDNSServers())
                 .Returns(Task.FromResult(dns ?? new DNSServers()));
             A.CallTo(() => fakeConfigService.GetNetworkSettings())
-                .Returns(Task.FromResult(network ?? new NetworkSettings()));
+                .Returns(Task.FromResult<NetworkSettings?>(network ?? new NetworkSettings()));
             A.CallTo(() => fakeConfigService.GetWebAccessControl())
-                .Returns(Task.FromResult(webAccess ?? new WebAccessControl()));
+                .Returns(Task.FromResult<WebAccessControl?>(webAccess ?? new WebAccessControl()));
             A.CallTo(() => fakeConfigService.GetWLanSettings())
-                .Returns(Task.FromResult(wlan ?? new WLanSettings()));
+                .Returns(Task.FromResult<WLanSettings?>(wlan ?? new WLanSettings()));
         }
 
         [Test]
@@ -140,7 +143,7 @@ namespace Ihc.Tests
             // Assert
             Assert.That(model, Is.Not.Null);
             Assert.That(model.Users, Is.Not.Null);
-            Assert.That(model.Users.Count, Is.EqualTo(2));
+            Assert.That(model.Users!.Count, Is.EqualTo(2));
             Assert.That(model.EmailControl, Is.EqualTo(testEmailControl));
             Assert.That(model.SmtpSettings, Is.EqualTo(testSmtp));
             Assert.That(model.DnsServers, Is.EqualTo(testDns));
@@ -207,7 +210,7 @@ namespace Ihc.Tests
 
             // Act - add a new user
             var newUser = new IhcUser { Username = "user2", Email = "user2@test.com", Group = IhcUserGroup.Users };
-            model.Users.Add(newUser);
+            model.Users!.Add(newUser);
             var changeInfo = await service.Store(model);
 
             // Assert - verify change information
@@ -236,8 +239,8 @@ namespace Ihc.Tests
             var model = await service.GetModel();
 
             // Act - remove a user
-            var userToRemove = model.Users.First(u => u.Username == "user2");
-            model.Users.Remove(userToRemove);
+            var userToRemove = model.Users!.First(u => u.Username == "user2");
+            model.Users!.Remove(userToRemove);
             var changeInfo = await service.Store(model);
 
             // Assert - verify change information
@@ -276,10 +279,10 @@ namespace Ihc.Tests
             var model = await service.GetModel();
 
             // Act - update user with new properties (using HashSet operations)
-            var oldUser = model.Users.First(u => u.Username == "user1");
-            model.Users.Remove(oldUser);
+            var oldUser = model.Users!.First(u => u.Username == "user1");
+            model.Users!.Remove(oldUser);
             var updatedUser = oldUser with { Email = "new@test.com", Firstname = "New" };
-            model.Users.Add(updatedUser);
+            model.Users!.Add(updatedUser);
             var changeInfo = await service.Store(model);
 
             // Assert - verify change information
@@ -315,7 +318,7 @@ namespace Ihc.Tests
             var model = await service.GetModel();
 
             // Act - change email control settings (using record 'with' expression)
-            model.EmailControl = model.EmailControl with { ServerIpAddress = "new.mail.com", ServerPortNumber = 995 };
+            model.EmailControl = model.EmailControl! with { ServerIpAddress = "new.mail.com", ServerPortNumber = 995 };
             var changeInfo = await service.Store(model);
 
             // Assert - verify change information
@@ -349,7 +352,7 @@ namespace Ihc.Tests
             var model = await service.GetModel();
 
             // Act - change SMTP settings (using record 'with' expression)
-            model.SmtpSettings = model.SmtpSettings with { Hostname = "new.smtp.com", Hostport = 587 };
+            model.SmtpSettings = model.SmtpSettings! with { Hostname = "new.smtp.com", Hostport = 587 };
             var changeInfo = await service.Store(model);
 
             // Assert - verify change information
@@ -378,7 +381,7 @@ namespace Ihc.Tests
             var model = await service.GetModel();
 
             // Act - change DNS servers (using record 'with' expression)
-            model.DnsServers = model.DnsServers with { PrimaryDNS = "1.1.1.1", SecondaryDNS = "1.0.0.1" };
+            model.DnsServers = model.DnsServers! with { PrimaryDNS = "1.1.1.1", SecondaryDNS = "1.0.0.1" };
             var changeInfo = await service.Store(model);
 
             // Assert - verify change information and reboot required
@@ -410,7 +413,7 @@ namespace Ihc.Tests
             var model = await service.GetModel();
 
             // Act - change network settings (using record 'with' expression)
-            model.NetworkSettings = model.NetworkSettings with { IpAddress = "192.168.1.200", Gateway = "192.168.1.254" };
+            model.NetworkSettings = model.NetworkSettings! with { IpAddress = "192.168.1.200", Gateway = "192.168.1.254" };
             var changeInfo = await service.Store(model);
 
             // Assert - verify change information and reboot required
@@ -442,7 +445,7 @@ namespace Ihc.Tests
             var model = await service.GetModel();
 
             // Act - change WLAN settings (using record 'with' expression)
-            model.WLanSettings = model.WLanSettings with { Enabled = true, Ssid = "NewNetwork", Key = "newkey456" };
+            model.WLanSettings = model.WLanSettings! with { Enabled = true, Ssid = "NewNetwork", Key = "newkey456" };
             var changeInfo = await service.Store(model);
 
             // Assert - verify change information and reboot required
@@ -541,7 +544,7 @@ namespace Ihc.Tests
             var model = await service.GetModel();
 
             // Act - make multiple changes
-            model.Users.Add(new IhcUser
+            model.Users!.Add(new IhcUser
             {
                 Username = "user2",
                 Email = "user2@test.com",
@@ -554,8 +557,8 @@ namespace Ihc.Tests
                 CreatedDate = DateTimeOffset.Now,
                 LoginDate = DateTimeOffset.Now
             });
-            model.EmailControl = model.EmailControl with { ServerIpAddress = "new.mail.com" };
-            model.SmtpSettings = model.SmtpSettings with { Hostname = "new.smtp.com" };
+            model.EmailControl = model.EmailControl! with { ServerIpAddress = "new.mail.com" };
+            model.SmtpSettings = model.SmtpSettings! with { Hostname = "new.smtp.com" };
             var changeInfo = await service.Store(model);
 
             // Assert - verify change information (3 changes: user added, email control, smtp)
@@ -785,8 +788,8 @@ namespace Ihc.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(model.SmtpSettings.Password, Has.Length.EqualTo(40), "the over-long password is kept");
-                Assert.That(model.NetworkSettings.Netmask, Is.Null, "the missing [Required] netmask is kept");
+                Assert.That(model.SmtpSettings!.Password, Has.Length.EqualTo(40), "the over-long password is kept");
+                Assert.That(model.NetworkSettings!.Netmask, Is.Null, "the missing [Required] netmask is kept");
             });
         }
 
@@ -830,8 +833,8 @@ namespace Ihc.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(loaded.SmtpSettings.Password, Has.Length.EqualTo(40));
-                Assert.That(loaded.NetworkSettings.Netmask, Is.Null);
+                Assert.That(loaded.SmtpSettings!.Password, Has.Length.EqualTo(40));
+                Assert.That(loaded.NetworkSettings!.Netmask, Is.Null);
             });
         }
 
@@ -852,27 +855,27 @@ namespace Ihc.Tests
                     Is.Not.Null, "a dropped user must be noticed");
                 Assert.That(Mismatch(model, model.Copy() with
                 {
-                    EmailControl = model.EmailControl with { Pop3Password = "changed" },
+                    EmailControl = model.EmailControl! with { Pop3Password = "changed" },
                 }), Is.Not.Null, "EmailControl");
                 Assert.That(Mismatch(model, model.Copy() with
                 {
-                    SmtpSettings = model.SmtpSettings with { Hostport = model.SmtpSettings.Hostport + 1 },
+                    SmtpSettings = model.SmtpSettings! with { Hostport = model.SmtpSettings!.Hostport + 1 },
                 }), Is.Not.Null, "SmtpSettings");
                 Assert.That(Mismatch(model, model.Copy() with
                 {
-                    DnsServers = model.DnsServers with { SecondaryDNS = "changed" },
+                    DnsServers = model.DnsServers! with { SecondaryDNS = "changed" },
                 }), Is.Not.Null, "DnsServers");
                 Assert.That(Mismatch(model, model.Copy() with
                 {
-                    NetworkSettings = model.NetworkSettings with { HttpsPort = 1 },
+                    NetworkSettings = model.NetworkSettings! with { HttpsPort = 1 },
                 }), Is.Not.Null, "NetworkSettings");
                 Assert.That(Mismatch(model, model.Copy() with
                 {
-                    WebAccess = model.WebAccess with { OpenapiUsed = !model.WebAccess.OpenapiUsed },
+                    WebAccess = model.WebAccess! with { OpenapiUsed = !model.WebAccess!.OpenapiUsed },
                 }), Is.Not.Null, "WebAccess — a single flag out of 29");
                 Assert.That(Mismatch(model, model.Copy() with
                 {
-                    WLanSettings = model.WLanSettings with { Key = "changed" },
+                    WLanSettings = model.WLanSettings! with { Key = "changed" },
                 }), Is.Not.Null, "WLanSettings");
                 Assert.That(Mismatch(model, model.Copy() with { ModelMetadata = null }),
                     Is.Not.Null, "missing metadata");
@@ -894,7 +897,7 @@ namespace Ihc.Tests
             }
             if (original.Users is not null && !loaded.Users!.SetEquals(original.Users))
             {
-                return $"Users differ: {original.Users.Count} saved, {loaded.Users!.Count} reloaded";
+                return $"Users differ: {original.Users!.Count} saved, {loaded.Users!.Count} reloaded";
             }
             if (!Equals(original.EmailControl, loaded.EmailControl))
             {
@@ -1106,20 +1109,20 @@ namespace Ihc.Tests
             var stream = new System.IO.MemoryStream();
 
             // Capture original sensitive values
-            var originalUserPassword = model.Users.First(u => u.Username == "admin").Password;
-            var originalPop3Password = model.EmailControl.Pop3Password;
-            var originalSmtpPassword = model.SmtpSettings.Password;
-            var originalWifiKey = model.WLanSettings.Key;
+            var originalUserPassword = model.Users!.First(u => u.Username == "admin").Password;
+            var originalPop3Password = model.EmailControl!.Pop3Password;
+            var originalSmtpPassword = model.SmtpSettings!.Password;
+            var originalWifiKey = model.WLanSettings!.Key;
 
             // Act - Save to stream (which encrypts internally)
             await service.SaveAsJson(model, stream);
 
             // Assert - Original model should remain unchanged
-            var adminUser = model.Users.First(u => u.Username == "admin");
+            var adminUser = model.Users!.First(u => u.Username == "admin");
             Assert.That(adminUser.Password, Is.EqualTo(originalUserPassword), "Original user password should not be modified");
-            Assert.That(model.EmailControl.Pop3Password, Is.EqualTo(originalPop3Password), "Original POP3 password should not be modified");
-            Assert.That(model.SmtpSettings.Password, Is.EqualTo(originalSmtpPassword), "Original SMTP password should not be modified");
-            Assert.That(model.WLanSettings.Key, Is.EqualTo(originalWifiKey), "Original WiFi key should not be modified");
+            Assert.That(model.EmailControl!.Pop3Password, Is.EqualTo(originalPop3Password), "Original POP3 password should not be modified");
+            Assert.That(model.SmtpSettings!.Password, Is.EqualTo(originalSmtpPassword), "Original SMTP password should not be modified");
+            Assert.That(model.WLanSettings!.Key, Is.EqualTo(originalWifiKey), "Original WiFi key should not be modified");
         }
 
         #endregion

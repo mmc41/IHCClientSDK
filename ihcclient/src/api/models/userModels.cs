@@ -36,30 +36,30 @@ namespace Ihc {
   {
       [StringLength(20, MinimumLength = 1, ErrorMessage = "Username length can't be more than 20.")]
       [Required(ErrorMessage = "Username is required")]
-      public string Username { get; init; }
+      public string? Username { get; init; }
 
       [StringLength(20, ErrorMessage = "Password length can't be more than 20.")]
       [Required(ErrorMessage = "Password is required")]
       [DeniedValues(UserConstants.REDACTED_PASSWORD, ErrorMessage = "Password cannot be set to reserved redacted value.")]
       [SensitiveData]
-      public string Password { get; init; }
+      public string? Password { get; init; }
 
       [StringLength(25, ErrorMessage = "Email length can't be more than 25.")]
-      public string Email { get; init; }
+      public string? Email { get; init; }
 
       [StringLength(15, ErrorMessage = "Firstname length can't be more than 15.")]
-      public string Firstname { get; init; }
+      public string? Firstname { get; init; }
 
       [StringLength(15, ErrorMessage = "Lastname length can't be more than 15.")]
-      public string Lastname { get; init; }
+      public string? Lastname { get; init; }
 
       [StringLength(15, ErrorMessage = "Phone length can't be more than 15.")]
-      public string Phone { get; init; }
+      public string? Phone { get; init; }
 
       [AllowedValues(IhcUserGroup.Administrators, IhcUserGroup.Users, ErrorMessage = "Group must be either 'Administrators' or 'Users'.")]
       [Required(ErrorMessage = "Group is required")]
       public IhcUserGroup Group { get; init; }
-      public string Project { get; init; }
+      public string? Project { get; init; }
 
       /// <summary>
       /// Creation date of user.
@@ -144,7 +144,7 @@ namespace Ihc {
       /// </summary>
       /// <param name="other">The other IhcUser to compare with</param>
       /// <returns>Comparison result for ordering</returns>
-      public int CompareTo(IhcUser other)
+      public int CompareTo(IhcUser? other)
       {
         return string.Compare(this.Username, other?.Username);
       }

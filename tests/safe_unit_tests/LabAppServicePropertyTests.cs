@@ -144,7 +144,7 @@ namespace Ihc.Tests
                     .ToArray();
 
                 testCase.Operation.SetMethodArgumentsFromArray(arguments);
-                object[] read = testCase.Operation.GetMethodArgumentsAsArray();
+                object?[] read = testCase.Operation.GetMethodArgumentsAsArray();
 
                 Assert.That(read, Is.EqualTo(arguments), testCase.Operation.DisplayName);
             }, threads: 1);
@@ -280,8 +280,8 @@ namespace Ihc.Tests
                     .ToArray();
                 testCase.Operation.SetMethodArgumentsFromArray(arguments);
 
-                object[] first = testCase.Operation.GetMethodArgumentsAsArray();
-                object[] second = testCase.Operation.GetMethodArgumentsAsArray();
+                object?[] first = testCase.Operation.GetMethodArgumentsAsArray();
+                object?[] second = testCase.Operation.GetMethodArgumentsAsArray();
                 string what = testCase.Operation.DisplayName;
 
                 Assert.That(first, Is.Not.SameAs(testCase.Operation.MethodArguments), what + ": not the internal array");

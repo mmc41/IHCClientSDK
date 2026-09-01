@@ -70,7 +70,7 @@ namespace Ihc
         /// <para>The error-type policy reaches this tier's call sites without any of them changing, because
         /// they all report failure through <see cref="ActivityExtensions.SetError"/>.</para>
         /// </remarks>
-        protected Activity StartActivity(string operationName) => telemetry.StartSpan(operationName);
+        protected Activity? StartActivity(string operationName) => telemetry.StartSpan(operationName);
     }
 
     /// <summary>
@@ -109,7 +109,7 @@ namespace Ihc
         /// Transport to use instead of the process-wide singleton HttpClient. Null in production; the seam
         /// unit tests substitute a stub transport through (they own it and dispose it).
         /// </param>
-        protected ServiceBaseImpl(ICookieHandler cookieHandler, IhcSettings settings, string serviceName, HttpClient transport = null)
+        protected ServiceBaseImpl(ICookieHandler cookieHandler, IhcSettings settings, string serviceName, HttpClient? transport = null)
         {
             this.settings = settings;
             this.serviceName = serviceName;
@@ -132,7 +132,7 @@ namespace Ihc
         /// <param name="request">Request object.</param>
         /// <param name="onOkSideEffect">Optional callback for side effects on success.</param>
         /// <returns>The response object.</returns>
-        protected Task<RESP> soapPost<RESP, REQ>(string soapAction, REQ request, OnOkCallBack onOkSideEffect = null) =>
+        protected Task<RESP> soapPost<RESP, REQ>(string soapAction, REQ request, OnOkCallBack? onOkSideEffect = null) =>
             // The execute-around EVERY controller SOAP call passes through, which is why the duration
             // histogram lives here rather than on the StartActivity helper: that helper hands back a bare
             // Activity and its caller owns the using, so it is never present when the call ends.
@@ -144,7 +144,7 @@ namespace Ihc
                     .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             }, ControllerCallMetrics);
 
-        private async Task<RESP> SoapPostBody<RESP, REQ>(Activity activity, string soapAction, REQ request, OnOkCallBack onOkSideEffect)
+        private async Task<RESP> SoapPostBody<RESP, REQ>(Activity? activity, string soapAction, REQ request, OnOkCallBack? onOkSideEffect)
         {
             var req = Serialization.SerializeXml<RequestEnvelope<REQ>>(new RequestEnvelope<REQ>(request));
 
@@ -182,7 +182,9 @@ namespace Ihc
                 activity?.SetReturnValue(escapeXMl(SecurityHelper.RedactPassword(respStr)));
             }
 
-            var respObj = Serialization.DeserializeXml<ResponseEnvelope<RESP>>(respStr);
+            var respObj = Serialization.DeserializeXml<ResponseEnvelope<RESP>>(respStr)
+                ?? throw new ErrorWithCodeException(Errors.XML_DESERIALIZE_ERROR,
+                    $"The {soapAction} response did not deserialize to a SOAP envelope.");
             return respObj.Body;
         }
     }

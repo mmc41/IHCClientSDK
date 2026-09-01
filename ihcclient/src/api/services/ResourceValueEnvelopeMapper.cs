@@ -16,7 +16,7 @@ namespace Ihc
     /// </summary>
     internal static class ResourceValueEnvelopeMapper
     {
-        internal static ResourceValue ToDomain(WSResourceValueEnvelope v)
+        internal static ResourceValue? ToDomain(WSResourceValueEnvelope? v)
         {
             if (v == null)
                 return null;
@@ -26,53 +26,53 @@ namespace Ihc
             // Confirmed live: scene resources (type 'resource_scene') return a null <value> here.
             var value = new ResourceValue.UnionValue() { ValueKind = ResourceValue.ValueKind.NONE };
 
-            if (v.value is WSBooleanValue)
+            if (v.value is WSBooleanValue boolVal)
             {
-                value.BoolValue = (v.value as WSBooleanValue).value;
+                value.BoolValue = boolVal.value;
                 value.ValueKind = ResourceValue.ValueKind.BOOL;
             }
 
-            if (v.value is WSDateValue)
+            if (v.value is WSDateValue dateVal)
             {
-                value.DateValue = MapDate(v.value as WSDateValue);
+                value.DateValue = MapDate(dateVal);
                 value.ValueKind = ResourceValue.ValueKind.DATE;
             }
 
-            if (v.value is WSIntegerValue)
+            if (v.value is WSIntegerValue intVal)
             {
-                value.IntValue = (v.value as WSIntegerValue).integer;
+                value.IntValue = intVal.integer;
                 // TODO: What about min, max values ?
                 value.ValueKind = ResourceValue.ValueKind.INT;
             }
 
-            if (v.value is WSFloatingPointValue)
+            if (v.value is WSFloatingPointValue floatVal)
             {
-                value.DoubleValue = (v.value as WSFloatingPointValue).floatingPointValue;
+                value.DoubleValue = floatVal.floatingPointValue;
                 // TODO: What about min, max values?
                 value.ValueKind = ResourceValue.ValueKind.DOUBLE;
             }
 
-            if (v.value is WSEnumValue)
+            if (v.value is WSEnumValue enumVal)
             {
-                value.EnumValue = MapEnumValue(v.value as WSEnumValue);
+                value.EnumValue = MapEnumValue(enumVal);
                 value.ValueKind = ResourceValue.ValueKind.ENUM;
             }
 
-            if (v.value is WSTimeValue)
+            if (v.value is WSTimeValue timeVal)
             {
-                value.TimeValue = MapTime(v.value as WSTimeValue);
+                value.TimeValue = MapTime(timeVal);
                 value.ValueKind = ResourceValue.ValueKind.TIME;
             }
 
-            if (v.value is WSTimerValue)
+            if (v.value is WSTimerValue timerVal)
             {
-                value.TimerValue = MapTimer(v.value as WSTimerValue);
+                value.TimerValue = MapTimer(timerVal);
                 value.ValueKind = ResourceValue.ValueKind.TIMER;
             }
 
-            if (v.value is WSWeekdayValue)
+            if (v.value is WSWeekdayValue weekdayVal)
             {
-                value.WeekdayValue = MapWeekday(v.value as WSWeekdayValue);
+                value.WeekdayValue = MapWeekday(weekdayVal);
                 value.ValueKind = ResourceValue.ValueKind.WEEKDAY;
             }
 
@@ -107,12 +107,12 @@ namespace Ihc
             return new ResourceValue() { ResourceID = v.resourceID, IsValueRuntime = v.isValueRuntime, TypeString = v.typeString, Value = value };
         }
 
-        internal static WSResourceValueEnvelope ToWire(ResourceValue v)
+        internal static WSResourceValueEnvelope? ToWire(ResourceValue? v)
         {
             if (v == null)
                 return null;
 
-            WSResourceValue val;
+            WSResourceValue? val;
 
             var kind = v.Value.ValueKind;
 
@@ -156,7 +156,7 @@ namespace Ihc
             return payload.Value;
         }
 
-        internal static EnumValue MapEnumValue(WSEnumValue v)
+        internal static EnumValue? MapEnumValue(WSEnumValue? v)
         {
             if (v == null)
                 return null;
@@ -164,7 +164,7 @@ namespace Ihc
             return new EnumValue() { DefinitionTypeID = v.definitionTypeID, EnumValueID = v.enumValueID, EnumName = v.enumName };
         }
 
-        internal static WSEnumValue MapEnumValue(EnumValue v)
+        internal static WSEnumValue? MapEnumValue(EnumValue? v)
         {
             if (v == null)
                 return null;
@@ -172,7 +172,7 @@ namespace Ihc
             return new WSEnumValue() { definitionTypeID = v.DefinitionTypeID, enumValueID = v.EnumValueID, enumName = v.EnumName };
         }
 
-        private static DateTimeOffset MapDate(WSDateValue v)
+        private static DateTimeOffset MapDate(WSDateValue? v)
         {
             if (v == null)
                 return DateTimeOffset.MinValue;
@@ -190,7 +190,7 @@ namespace Ihc
             return new WSTimeValue() { hours = v.Hours, minutes = v.Minutes, seconds = v.Seconds };
         }
 
-        private static TimeSpan MapTime(WSTimeValue v)
+        private static TimeSpan MapTime(WSTimeValue? v)
         {
             if (v == null)
                 return TimeSpan.Zero;
@@ -198,7 +198,7 @@ namespace Ihc
             return new TimeSpan(v.hours, v.minutes, v.seconds);
         }
 
-        private static long MapTimer(WSTimerValue v)
+        private static long MapTimer(WSTimerValue? v)
         {
             if (v == null)
                 return 0;
@@ -211,7 +211,7 @@ namespace Ihc
             return new WSTimerValue() { milliseconds = v };
         }
 
-        private static int MapWeekday(WSWeekdayValue v)
+        private static int MapWeekday(WSWeekdayValue? v)
         {
             if (v == null)
                 return 0;

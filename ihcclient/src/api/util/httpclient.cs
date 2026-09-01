@@ -64,7 +64,7 @@ namespace Ihc {
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 using OperationScope scope = Telemetry.Start(request.Method.Method, ActivityKind.Client);
-                Activity activity = scope.Activity;
+                Activity? activity = scope.Activity;
                 activity?.SetTag("http.request.method", request.Method.Method);
                 activity?.SetTag("url.full", request.RequestUri?.ToString()); // http.url in older conventions.
                 if (activity is not null)
@@ -131,7 +131,7 @@ namespace Ihc {
 
         // Shared httpClient across all instances.
         static private readonly object _lock = new object();
-        static private HttpClient _httpClientSingleton = null;
+        static private HttpClient? _httpClientSingleton = null;
 
         /// <summary>
         /// The primary handler the SDK talks to IHC through. Configuration is fixed rather than settings-derived,
@@ -190,7 +190,7 @@ namespace Ihc {
 
         private readonly string url;
         private readonly ICookieHandler cookieHandler;
-        private readonly HttpClient httpClient;
+        private readonly HttpClient? httpClient;
         private readonly IhcSettings settings;
 
         /// <summary>
@@ -203,7 +203,7 @@ namespace Ihc {
         /// Transport to use instead of the process-wide singleton. Null in production; the seam unit tests
         /// substitute a stub transport through (they own it and dispose it).
         /// </param>
-        public Client(ICookieHandler cookieHandler, string url, IhcSettings settings, HttpClient httpClient = null) {
+        public Client(ICookieHandler cookieHandler, string url, IhcSettings settings, HttpClient? httpClient = null) {
             this.url = url;
             this.cookieHandler = cookieHandler;
             this.settings = settings;
@@ -236,7 +236,7 @@ namespace Ihc {
             request.Headers.Add("SOAPAction", action);
             request.Headers.UserAgent.ParseAdd("ihcclient");
             // Manually apply our global cookie if set:
-            string cookie = cookieHandler.GetCookie();
+            string? cookie = cookieHandler.GetCookie();
             if (cookie != null) {
                 request.Headers.Add(CookieHeaderName, cookie);
             }

@@ -73,7 +73,7 @@ namespace Ihc {
 
         private readonly Ihc.Soap.Usermanager.UserManagerService impl;
 
-        private IhcUserGroup mapUserGroup(WSUserGroup group)
+        private IhcUserGroup mapUserGroup(WSUserGroup? group)
         {
             if (group == null)
                 return IhcUserGroup.None;
@@ -81,7 +81,7 @@ namespace Ihc {
             return mapUserGroup(group.type);
         }
 
-        internal static IhcUserGroup mapUserGroup(string wsGroupType)
+        internal static IhcUserGroup mapUserGroup(string? wsGroupType)
         {
             if (string.IsNullOrEmpty(wsGroupType))
                 return IhcUserGroup.None;
@@ -96,7 +96,7 @@ namespace Ihc {
 
         private WSUserGroup mapUserGroup(IhcUserGroup group)
         {
-            string strType;
+            string? strType;
             switch (group)
             {
                 case IhcUserGroup.Administrators: strType = "text.usermanager.group_administrators"; break;
@@ -271,7 +271,7 @@ namespace Ihc {
 
                     ValidationHelper.ValidateDataAnnotations(user, nameof(user));
 
-                    if (user?.Password == UserConstants.REDACTED_PASSWORD)
+                    if (user.Password == UserConstants.REDACTED_PASSWORD)
                         throw new ArgumentException($"Password of user should not be set to reserved value ${UserConstants.REDACTED_PASSWORD}. This is likely an error!");
 
 
