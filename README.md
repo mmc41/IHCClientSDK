@@ -82,6 +82,42 @@ dotnet run --project examples/ihcclient_example1/example1.csproj
 dotnet test tests/safe_unit_tests/safe_unit_tests.csproj
 ```
 
+#### End-to-end GUI tests
+
+`tests/safe_visual_e2e_tests` drives the OpenVisual application through whole scenarios, and it runs in one of
+two modes. It is not part of ordinary verification in either: the other suites are what a change is checked
+against.
+
+```bash
+# Real GUI (the default). Windows only.
+dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj
+
+# Headless, in-process — what CI runs.
+dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj \
+  --filter "TestCategory!=DesktopOnly" \
+  -- TestRunParameters.Parameter\(name=\"headless\",value=\"true\"\)
+```
+
+**The default mode launches the real `ihc_openvisual.exe`** and drives it over Windows UI Automation through the
+`aui` driver. It takes over the foreground for several minutes and force-kills any OpenVisual already running,
+including one you are using. It is the only mode that proves the Avalonia-to-Windows-UIA bridge, real keyboard
+focus and the desktop's modal stack actually work — which is what the suite exists for.
+
+**The headless mode** hosts the same `MainWindow` in the test process on Avalonia's headless backend and answers
+the same verbs, in seconds rather than minutes, on any machine. It is a reduced mode on purpose, and a green
+result means less than it looks like it does:
+
+- It is a **second implementation** of the verb vocabulary, so it does not exercise `aui.ps1` at all. If that
+  driver's output drifts, the headless run stays green and the real run breaks.
+- It reads Avalonia's **automation peers**, not Windows UIA, so it cannot see a defect in the bridge between
+  them.
+- Scenarios needing a dialog's controls, the menu bar, a tree node by path or the project-information window
+  carry `[Category(E2E.DesktopOnly)]`. The headless driver **refuses** those verbs rather than approximating
+  them, so exclude the category (as above) or they fail.
+
+Read a headless pass as *"the scenario paths still work"*, never as *"the application is driveable"*. Only the
+real mode says the second thing.
+
 Static checks. The script pins the ruleset to the same commit CI uses, so a local run and the
 CI run are the same scan; a bare `opengrep scan` is not, because it falls back to a mutable
 ruleset fetched from semgrep.dev. Findings are reported, not fatal — add `--error` to gate.
@@ -178,6 +214,7 @@ This project is hosted in a mono-repo containing the following sub-projects:
   * [Safe Lab tests](tests/safe_lab_tests/README.md) contains headless gui tests for Ihc Lab utility. Does not access a controller.
   * [Safe integration tests](tests/safe_integration_tests/README.md) contains system integration tests written in C# that can be safely run against a controller in use.
   * [Safe visual tests](tests/safe_visual_tests/) contains incubating headless smoke tests for the ihc_openvisual application (in the solution and CI). Does not access a controller.
+  * [Safe visual E2E tests](tests/safe_visual_e2e_tests/) contains whole-scenario end-to-end tests for the ihc_openvisual application. Runs either against the real desktop app or through an in-process headless driver; CI gates only the headless mode. See End-to-end GUI tests above. Does not access a controller.
 
 For a whole-repo overview of layers, invariants and boundaries, see [ARCHITECTURE.md](ARCHITECTURE.md).
 

@@ -1,32 +1,19 @@
-using Avalonia;
 using Avalonia.Headless;
 using NUnit.Framework;
 
-[assembly: AvaloniaTestApplication(typeof(safe_visual_tests.TestAppBuilder))]
+[assembly: AvaloniaTestApplication(typeof(Ihc.Tests.Shared.OpenVisualHeadlessApp))]
 
-// Run sequentially: screenshot capture shares the static AvaloniaTestBase.CurrentTestWindow across tests.
+// Run sequentially. The reason is NOT the shared AvaloniaTestBase.CurrentTestWindow static, obvious suspect
+// though it is: every write to it happens inside an [AvaloniaTest], and Avalonia starts ONE headless dispatcher
+// thread per assembly and queues every such test onto it. Those writers cannot race each other whatever NUnit
+// is told, and the UI tests carry the run's serial floor with or without this attribute.
+//
+// What parallelism would really break is the process-global state fixtures read back afterwards:
+// TelemetryCapture listens by instrumentation SCOPE rather than by owner, so a concurrent test's spans land in
+// another's capture (TraceProbe is how a fixture claims its own, and not every telemetry fixture uses it);
+// TaskSupervisor's fault port is a single static that one SupervisedFaults detaches from under another; and
+// NoLeakedHarnessAttribute is an assembly-level ITestAction, so the count it takes before a test is shared with
+// every test running beside it and the leak is charged to whichever one finishes first.
 [assembly: NonParallelizable]
 
 namespace safe_visual_tests;
-
-/// <summary>
-/// Configures the headless Avalonia application every <c>[AvaloniaTest]</c> in this assembly runs against — the
-/// real <see cref="ihc_openvisual.App"/> (so App.axaml, its styles and the ViewLocator are exercised), rendered
-/// headlessly so it needs no native window or GPU on the CI runner. Rendering uses the real Skia renderer
-/// (not the no-op headless drawing) so <c>Window.CaptureRenderedFrame()</c> works and
-/// <see cref="CaptureScreenshotOnFailureAttribute"/> can attach failure screenshots — same setup as
-/// tests/safe_lab_tests.
-/// <para>Fonts come from <c>Program.WithAppFonts</c>, the same call the shipped executable makes, so text here is
-/// laid out in the font the app actually renders in rather than the runner's platform default — which is what makes
-/// <see cref="AppFontTests"/> a test of the application's configuration and not of this file.</para>
-/// </summary>
-public sealed class TestAppBuilder
-{
-    public static AppBuilder BuildAvaloniaApp() =>
-        ihc_openvisual.Program.WithAppFonts(AppBuilder.Configure<ihc_openvisual.App>())
-            .UseSkia()
-            .UseHeadless(new AvaloniaHeadlessPlatformOptions
-            {
-                UseHeadlessDrawing = false  // real Skia renderer, enables CaptureRenderedFrame() for failure screenshots
-            });
-}

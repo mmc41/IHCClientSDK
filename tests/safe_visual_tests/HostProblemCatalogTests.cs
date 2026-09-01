@@ -8,6 +8,7 @@ using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
+using Ihc.Tests.Shared;
 using Ihc.Vis.Validation;
 
 namespace safe_visual_tests;
@@ -250,7 +251,7 @@ public class HostProblemCatalogTests
     [Test]
     public void TheCatchAllSentenceIsWrittenOnceInTheApplication()
     {
-        string root = Path.Combine(ProblemsTestData.RepositoryRoot(), "applications", "ihc_openvisual");
+        string root = Path.Combine(TestRepository.RequireRoot(), "applications", "ihc_openvisual");
         string[] carrying =
         [
             .. Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)

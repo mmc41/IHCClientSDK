@@ -51,6 +51,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "safe_architecture_tests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihc_telemetrybootstrap", "shared\ihc_telemetrybootstrap\ihc_telemetrybootstrap.csproj", "{B8275FB3-D6F2-4D9C-9178-8D7AC8C328FD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "safe_visual_e2e_tests", "tests\safe_visual_e2e_tests\safe_visual_e2e_tests.csproj", "{4396DA02-5806-42CB-8708-5501B8E6EA8B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -289,6 +291,18 @@ Global
 		{B8275FB3-D6F2-4D9C-9178-8D7AC8C328FD}.Release|x64.Build.0 = Release|Any CPU
 		{B8275FB3-D6F2-4D9C-9178-8D7AC8C328FD}.Release|x86.ActiveCfg = Release|Any CPU
 		{B8275FB3-D6F2-4D9C-9178-8D7AC8C328FD}.Release|x86.Build.0 = Release|Any CPU
+		{4396DA02-5806-42CB-8708-5501B8E6EA8B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4396DA02-5806-42CB-8708-5501B8E6EA8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4396DA02-5806-42CB-8708-5501B8E6EA8B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4396DA02-5806-42CB-8708-5501B8E6EA8B}.Debug|x64.Build.0 = Debug|Any CPU
+		{4396DA02-5806-42CB-8708-5501B8E6EA8B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4396DA02-5806-42CB-8708-5501B8E6EA8B}.Debug|x86.Build.0 = Debug|Any CPU
+		{4396DA02-5806-42CB-8708-5501B8E6EA8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4396DA02-5806-42CB-8708-5501B8E6EA8B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4396DA02-5806-42CB-8708-5501B8E6EA8B}.Release|x64.ActiveCfg = Release|Any CPU
+		{4396DA02-5806-42CB-8708-5501B8E6EA8B}.Release|x64.Build.0 = Release|Any CPU
+		{4396DA02-5806-42CB-8708-5501B8E6EA8B}.Release|x86.ActiveCfg = Release|Any CPU
+		{4396DA02-5806-42CB-8708-5501B8E6EA8B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -312,5 +326,6 @@ Global
 		{E17459E9-204F-4191-ADA3-157D01A151FE} = {4F52FD11-658E-A102-6CD3-7D7C16FFA15B}
 		{1BBEC7CB-72C8-420A-8D6D-EEB311BA09D2} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{B8275FB3-D6F2-4D9C-9178-8D7AC8C328FD} = {4F52FD11-658E-A102-6CD3-7D7C16FFA15B}
+		{4396DA02-5806-42CB-8708-5501B8E6EA8B} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

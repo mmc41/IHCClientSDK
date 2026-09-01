@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using NUnit.Framework;
 
-namespace safe_visual_tests;
+namespace safe_visual_e2e_tests;
 
 /// <summary>
 /// The two things about Error findings that only a live run can show: that a project carrying them reaches the
@@ -19,14 +19,12 @@ namespace safe_visual_tests;
 /// properties dialog commits an address, the workflow raises its change, the background worker debounces and
 /// revalidates, and a new Error row reaches the panel — none of which a headless test exercises together.</para>
 /// </summary>
-[Explicit("Launches the real desktop app; run deliberately with --filter \"TestCategory=E2E\".")]
-[Category(E2E.Category)]
 public class ProblemsSendGateE2ETests
 {
-    /// <summary>Three duplicate data-line address groups — the corpus' Error fixture (pinned by T003).</summary>
+    /// <summary>The corpus' Error fixture: it carries duplicate data-line address groups.</summary>
     private static string ErrorFixture() => E2E.Fixture("Synthetic", "DuplicatedAdressErrors.vis");
 
-    /// <summary>30 findings, every one a Warning and none about a duplicate address — a clean slate for Errors.</summary>
+    /// <summary>Findings, but no Errors and none about a duplicate address — a clean slate for Errors.</summary>
     private static string CleanFixture() => E2E.Fixture("Project1-SimpelWired.vis");
 
     private const string DuplicateAddressCode = "dataline-address-duplicate";
@@ -35,6 +33,7 @@ public class ProblemsSendGateE2ETests
     public void CloseApp() => E2E.KillApp();
 
     [Test]
+    [Category(E2E.DesktopOnly)]
     public void AProjectCarryingErrorsReachesThePanelWithTheTransferWithheld()
     {
         E2E.Launch(ErrorFixture());
@@ -77,6 +76,7 @@ public class ProblemsSendGateE2ETests
     /// this scenario reachable at all.
     /// </remarks>
     [Test]
+    [Category(E2E.DesktopOnly)]
     public void AnAddressDuplicateAuthoredInTheGuiAppearsAsAnErrorAndUndoRemovesIt()
     {
         E2E.Launch(CleanFixture());

@@ -61,15 +61,23 @@ dotnet test tests/safe_visual_tests/safe_visual_tests.csproj
 # Controller-backed suite; may toggle only the configured test resources
 dotnet test tests/safe_integration_tests/safe_integration_tests.csproj
 
+# Desktop-bound suite; DO NOT run it by default -- see the bullets below
+dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj
+# ...and the same scenarios headless, which is what CI runs
+dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj --filter "TestCategory!=DesktopOnly" -- TestRunParameters.Parameter(name="headless",value="true")
+
 # Single test
 dotnet test <test-project.csproj> --filter "FullyQualifiedName~TestName"
 ```
 
 - NUnit is the test framework. Controller-free suites need neither a live controller nor controller credentials.
+- `safe_visual_e2e_tests` is DESKTOP-BOUND and is not part of any default verification. It launches the real `ihc_openvisual.exe`, drives it through Windows UI Automation, holds the foreground for minutes, and force-kills any OpenVisual already running -- including one a person is using. Run it only when asked to, and say first that it will take over the screen. It skips itself off Windows; on Windows with no session it fails, deliberately, because a suite that ignored its way past a broken application would be worse than no suite.
+- `safe_visual_e2e_tests` runs in two modes. The DEFAULT drives the real application and is the desktop-bound one described above. `headless=true` swaps in an in-process driver over the same window, which is what CI gates -- but it is a second implementation of the verb vocabulary, so it exercises neither `aui.ps1` nor the Avalonia-to-UIA bridge. Read a headless pass as "the scenario paths still work", never as "the application is driveable". Scenarios only the real desktop can run carry `[Category(E2E.DesktopOnly)]` and are excluded by filter; the headless driver refuses those verbs rather than approximating them.
+- It is a project of its own so that the DESKTOP mode is never reached by accident: every suite is run by project path, and Verification names this one nowhere. CI does name it, but only for the headless leg and only with `TestCategory!=DesktopOnly`, so nothing on a push takes a screen. What reaches the desktop mode is an explicit run of the command above, or a bare `dotnet test` at the repository root, which runs every project in the solution -- the controller-backed suite included. Prefer the per-project commands above.
 - Run `safe_unit_tests` for SDK and view-model logic, `safe_project_tests` for `.vis` engine/session behavior, and the matching Avalonia suite for Lab or OpenVisual UI construction and interaction.
 - Only mock low-level `IIHCApiService` controller services. Exercise application-service business logic through real `IIHCAppService` instances; read the Safe Lab test documentation before changing its fakes.
 - Keep default coverage focused on observable product behavior. Add null-guard, expected-exception, or multithreading tests only when the user requests that risk area.
-- Code coverage is measured on every `dotnet test` with no extra flag, and it reports rather than gates -- no percentage can fail a build, so the bullet above still decides what is worth testing. Each suite refreshes only its own slice under `artifacts/coverage/raw/<suite>/`; every run re-merges whatever slices are present into `artifacts/coverage/report/` and prints one line. A repo-wide number is therefore only current once all five controller-free suites have run, and `Summary.txt` names any slice older than the build it was merged with.
+- Code coverage is measured on every `dotnet test` with no extra flag, and it reports rather than gates -- no percentage can fail a build, so the bullet above still decides what is worth testing. Each suite refreshes only its own slice under `artifacts/coverage/raw/<suite>/`; every run re-merges whatever slices are present into `artifacts/coverage/report/` and prints one line. A repo-wide number is therefore only current once every controller-free suite listed above has run, and `Summary.txt` names any slice older than the build it was merged with. `safe_visual_e2e_tests` contributes nothing and is not missing from the number: it opts out of collection entirely, because the only leg CI runs there is filtered, so its slice would describe a subset while reading as a statement about the whole suite.
 - Opt a run out with `-p:CollectCoverage=false`. Passing an empty `--settings` does not work -- the `dotnet test` CLI fails with "The path is empty" before the settings are read.
 - `artifacts/coverage/report/html/` holds a browsable one-page version of the same report. Add `-p:CoverageHtmlDetail=true` for the per-file drill-down that shows which lines are uncovered; it is opt-in because it writes hundreds of files. Quote `Summary.txt` for a number -- the HTML headline is computed by a different tool and differs from it slightly.
 - A new or changed validation rule moves two committed oracles, and BOTH are regenerated by their `[Explicit]` test and then diffed -- never hand-edited: `tests/testdata/validation/` (one XML file per corpus case, holding every finding that case produces in production order) and, for a DOCUMENTATION-category rule, the `full-*` report oracles under `tests/testdata/reports/`, because the Fuld report renders that category as its appendix. Adopting a diff means explaining every changed line by a rule that changed in the same edit.
@@ -78,7 +86,7 @@ dotnet test <test-project.csproj> --filter "FullyQualifiedName~TestName"
 
 - After code changes, build the affected project and run the suite mapped to that layer in Testing.
 - After changes that cross SDK/GUI boundaries, also run `safe_architecture_tests`.
-- After OpenVisual or Lab UI changes, also run the corresponding headless UI suite.
+- After OpenVisual or Lab UI changes, also run the corresponding headless UI suite. That is `safe_visual_tests`, never `safe_visual_e2e_tests` -- the headless suite is the one that verifies a change; the desktop-bound one is run deliberately, on request.
 - After changing shared build/package configuration, public SDK contracts, or shared bootstrap code, run `dotnet build IHCClientSDK.sln` and every controller-free suite listed above.
 - For documentation-only changes, verify links, paths, commands, and terminology against the repository; a .NET build is unnecessary.
 - Do not run `safe_integration_tests` as a substitute for controller-free verification.
@@ -86,6 +94,7 @@ dotnet test <test-project.csproj> --filter "FullyQualifiedName~TestName"
 ## Project Structure
 
 - `ihcclient/src/vis/` is the controller-free `.vis` engine behind `ProjectAppService`.
+- `tests/shared/` holds the test helpers more than one suite compiles, linked in by `<Compile Include>` rather than referenced -- the oracle harnesses, the telemetry capture, the screenshot machinery. Put a helper here when a second suite needs it; a copy is how the two drift.
 - `shared/ihc_appbootstrap/` contains application bootstrap infrastructure shared by the Avalonia apps.
 - `tests/testdata/` contains byte-exact vendor and generated oracles consumed through `tests/TestData.props`.
 
@@ -156,6 +165,7 @@ When refactoring always ensure:
 - Require explicit authorization before enabling `AllowDangerousInternTestCalls` or invoking manufacturing/internal-test operations.
 - Require explicit authorization before enabling `LogSensitiveData`; credentials and other sensitive values can then appear in traces.
 - Ask before changing any committed oracle bytes; use the documented capture or regeneration procedure rather than editing by hand.
+- Ask before running `safe_visual_e2e_tests`, and before a bare `dotnet test` at the repository root, which runs it. It seizes the desktop for minutes and force-kills a running OpenVisual; the same root command also reaches the controller-backed suite.
 
 ### Never Do
 

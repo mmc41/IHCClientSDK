@@ -122,6 +122,27 @@ jobs:
       if: matrix.os != 'macOS-latest'
       run: dotnet test tests/safe_visual_tests/safe_visual_tests.csproj --no-build --logger "trx;LogFileName=safe_visual_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash
 
+    - name: Test (end-to-end scenarios, headless)
+      # The E2E scenarios driven through the in-process headless window instead of the real desktop. The DEFAULT
+      # mode of this suite launches ihc_openvisual.exe and drives it over Windows UI Automation, which needs a
+      # session to draw on and takes minutes; `headless=true` swaps the driver for one that hosts the same
+      # MainWindow in this process, and the same scenarios then run in seconds on a runner.
+      #
+      # READ THIS BEFORE TRUSTING A GREEN RESULT HERE. The headless driver is a SECOND implementation of the verb
+      # vocabulary. It does not exercise aui.ps1, and it reads Avalonia's automation peers rather than Windows
+      # UIA — so it cannot see a defect in the bridge between them, which is the class of defect this suite was
+      # written for. A pass here means "the scenario paths still work", never "the driver still works". The real
+      # mode remains the only thing that proves the latter, and it is run deliberately on a desktop.
+      #
+      # TestCategory!=DesktopOnly drops the scenarios that reach a dialog's controls, the menu bar, a tree node by
+      # path or the project-information window: the headless driver refuses those verbs rather than approximating
+      # them, and the category makes that gap greppable in the source instead of a runtime surprise.
+      #
+      # Windows only, not because the driver needs it — it is Avalonia headless and cross-platform — but because
+      # this leg already installs what Skia needs and the suite has only been measured here.
+      if: matrix.os == 'windows-latest'
+      run: dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj --no-build --filter "TestCategory!=DesktopOnly" --logger "trx;LogFileName=safe_visual_e2e_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash -- TestRunParameters.Parameter(name="headless",value="true")
+
     - name: Upload test results
       # always(), because the run that most needs its artifact is the one that just failed — and a green
       # run's TRX is what a later flake gets compared against.

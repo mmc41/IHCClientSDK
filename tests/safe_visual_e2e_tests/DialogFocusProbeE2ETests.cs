@@ -2,7 +2,7 @@ using System.Linq;
 using System.Text.Json;
 using NUnit.Framework;
 
-namespace safe_visual_tests;
+namespace safe_visual_e2e_tests;
 
 /// <summary>
 /// The driver can read which control holds KEYBOARD FOCUS — the one observable difference between a dialog that
@@ -16,8 +16,6 @@ namespace safe_visual_tests;
 /// render can be asked which control a view-model wanted focused, but only a live run can say what UI Automation
 /// actually publishes, and publishing it is the whole point of the probe.</para>
 /// </summary>
-[Explicit("Launches the real desktop app; run deliberately with --filter \"TestCategory=E2E\".")]
-[Category(E2E.Category)]
 public class DialogFocusProbeE2ETests
 {
     private const string FixtureFile = "Project6-Errors.vis";
@@ -32,6 +30,7 @@ public class DialogFocusProbeE2ETests
     public void CloseApp() => E2E.KillApp();
 
     [Test]
+    [Category(E2E.DesktopOnly)]
     public void TheProjectInfoDialogReportsItsPreFocusedFieldThroughTheProbe()
     {
         E2E.RunOk("projectInfo", "get");

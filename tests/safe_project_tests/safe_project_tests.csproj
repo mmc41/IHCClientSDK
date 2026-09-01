@@ -19,6 +19,8 @@
 
   <ItemGroup>
     <Using Include="NUnit.Framework" />
+    <!-- The shared test helpers are one namespace; safe_project_tests reaches TestRepository through it. -->
+    <Using Include="Ihc.Tests.Shared" />
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
   </ItemGroup>
 
@@ -26,6 +28,9 @@
     <!-- The report-oracle matrix, naming convention, pinned clock and byte assert, shared with
          safe_unit_tests (which owns the .html half of the same 24-oracle contract). -->
     <Compile Include="..\shared\ReportOracleHarness.cs" Link="shared\ReportOracleHarness.cs" />
+    <!-- The repository-root walk, shared with the two GUI suites. It used to be a private helper here, and
+         a second copy grew in safe_visual_tests; jscpd named the pair as soon as a third suite wanted one. -->
+    <Compile Include="..\shared\TestRepository.cs" Link="shared\TestRepository.cs" />
     <Compile Include="..\shared\FindingOracleHarness.cs" Link="shared\FindingOracleHarness.cs" />
     <Compile Include="..\shared\TelemetryCapture.cs" Link="shared\TelemetryCapture.cs" />
     <!-- One reader of {slot} syntax, shared with safe_visual_tests: both suites gate a catalogue's templates

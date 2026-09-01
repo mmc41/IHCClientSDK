@@ -25,8 +25,15 @@ public class CaptureScreenshotOnFailureAttribute : Attribute, IWrapSetUpTearDown
 /// <summary>
 /// Base class for Avalonia UI tests wanting automatic failure screenshots: set <see cref="CurrentTestWindow"/>
 /// to the (shown) window under test and mark the test with <see cref="CaptureScreenshotOnFailureAttribute"/>.
-/// The whole assembly runs sequentially (<c>[assembly: NonParallelizable]</c>) because this registration is a
-/// shared static.
+///
+/// <para>The registration is a shared static, and what keeps it honest is not <c>[assembly: NonParallelizable]</c>
+/// — see TestSetup.cs for what that attribute is actually holding — but Avalonia's own dispatcher: every write
+/// happens inside an <c>[AvaloniaTest]</c>, and the assembly has one headless dispatcher thread those tests are
+/// queued onto. The CAPTURE is the half that would not be safe, because
+/// <see cref="CaptureScreenshotOnFailureAttribute"/> is an <c>IWrapSetUpTearDown</c> and so wraps the OUTSIDE of
+/// that dispatch, running on the NUnit worker thread once the test body has returned. Run in parallel it could
+/// read a window a later test has since registered — which costs a wrong or missing screenshot on an
+/// already-failing test, never a verdict.</para>
 /// </summary>
 public abstract class AvaloniaTestBase
 {

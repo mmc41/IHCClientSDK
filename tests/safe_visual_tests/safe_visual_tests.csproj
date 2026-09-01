@@ -34,6 +34,15 @@
          what keeps the findings oracles and the report oracles on one clock instead of two. -->
     <Compile Include="..\shared\ReportOracleHarness.cs" Link="shared\ReportOracleHarness.cs" />
     <Compile Include="..\shared\FindingOracleHarness.cs" Link="shared\FindingOracleHarness.cs" />
+    <!-- The headless Avalonia app builder, shared with safe_visual_e2e_tests: it is what decides font
+         metrics, and the two suites have to agree about layout to agree about what is on screen. -->
+    <Compile Include="..\shared\OpenVisualHeadlessApp.cs" Link="shared\OpenVisualHeadlessApp.cs" />
+    <!-- The row projection the end-to-end suite compares a live panel against. Linked HERE, where nothing drives
+         a GUI, because FindingOracleLinkTests is the guard that it still finds rows at all: every consumer builds
+         its assertions ON the list, so a reader returning nothing would pass rather than fail over there. -->
+    <Compile Include="..\shared\FindingOracleRows.cs" Link="shared\FindingOracleRows.cs" />
+    <!-- Reaching the source checkout, for the test that reads a checked-in document as its SUBJECT. -->
+    <Compile Include="..\shared\TestRepository.cs" Link="shared\TestRepository.cs" />
     <Compile Include="..\shared\TelemetryRegistryContract.cs" Link="shared\TelemetryRegistryContract.cs" />
     <Compile Include="..\shared\TelemetryCapture.cs" Link="shared\TelemetryCapture.cs" />
     <!-- One reader of {slot} syntax, shared with safe_project_tests: both suites gate a catalogue's templates

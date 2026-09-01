@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
-namespace safe_visual_tests;
+using Ihc.Tests.Shared;
+
+namespace safe_visual_e2e_tests;
 
 /// <summary>
 /// Activating a finding and arriving at the element it is about — driven end to end, with real pointer input.
@@ -22,8 +24,6 @@ namespace safe_visual_tests;
 /// with every sort and filter, and a test pinned to "row 3" silently starts asserting about a different finding.
 /// Each test below asks the oracle for a finding of the right SHAPE and then finds that row in the panel.</para>
 /// </summary>
-[Explicit("Launches the real desktop app; run deliberately with --filter \"TestCategory=E2E\".")]
-[Category(E2E.Category)]
 public class ProblemsNavigationE2ETests
 {
     private const string FixtureFile = "Project6-Errors.vis";
@@ -105,7 +105,7 @@ public class ProblemsNavigationE2ETests
     {
         E2E.WaitForBoundProblems();
 
-        Assert.That(E2E.OracleCodes(OracleCase), Does.Contain(code),
+        Assert.That(FindingOracleRows.Codes(OracleCase), Does.Contain(code),
             $"the oracle must actually record '{code}' for this fixture, or the test is asserting about nothing");
 
         return ClickRow(code);
@@ -200,12 +200,13 @@ public class ProblemsNavigationE2ETests
     /// which names the terminal it was opened for.</para>
     /// </summary>
     [Test]
+    [Category(E2E.DesktopOnly)]
     public void ActivatingACableColourRowLandsInTheTerminalsLedningsfarveField()
     {
         foreach (bool byKeyboard in new[] { false, true })
         {
             E2E.WaitForBoundProblems();
-            Assert.That(E2E.OracleCodes(OracleCase), Does.Contain(CableColourCode),
+            Assert.That(FindingOracleRows.Codes(OracleCase), Does.Contain(CableColourCode),
                 "the oracle must record this code for the fixture, or the scenario asserts about nothing");
 
             // Select first, then activate — the same two-tier gesture the panel offers. The keyboard run
@@ -264,10 +265,11 @@ public class ProblemsNavigationE2ETests
     /// dialog, with no stacking — which is why both exist rather than one standing for the other.</para>
     /// </summary>
     [Test]
+    [Category(E2E.DesktopOnly)]
     public void ActivatingAProductFieldRowOpensTheDialogOnThatField()
     {
         E2E.WaitForBoundProblems();
-        Assert.That(E2E.OracleCodes(OracleCase), Does.Contain(ProductFieldCode),
+        Assert.That(FindingOracleRows.Codes(OracleCase), Does.Contain(ProductFieldCode),
             "the oracle must record this code for the fixture, or the scenario asserts about nothing");
 
         E2E.Row row = ClickRow(ProductFieldCode);
@@ -319,6 +321,7 @@ public class ProblemsNavigationE2ETests
     /// rather than cached.</para>
     /// </summary>
     [Test]
+    [Category(E2E.DesktopOnly)]
     public void DeletingARowsElementDropsTheRowAndUndoBringsItBack()
     {
         E2E.Row target = ActivateFinding(ProductFieldCode);
@@ -356,15 +359,14 @@ public class ProblemsNavigationE2ETests
         }
 
         E2E.WaitForBoundProblems();
-        E2E.Envelope byCode = E2E.Run("problems", "click", "--row", ProductFieldCode);
-        Assert.That(byCode.Ok, Is.True,
-            "and undoing the delete brings the finding back — the list is derived from the document, not "
-            + "cached beside it");
         // Asked by CODE rather than by the deleted row's occurrence. The selector addresses the FIRST matching
         // row, this code fires on several products, and the panel's order depends on whatever sort the run left
         // behind — so an identity comparison here would be measuring the sort, not the undo. What the scenario
         // claims is that the finding came back, and that is what is asserted.
-        Assert.That(byCode.Ok, Is.True);
+        E2E.Envelope byCode = E2E.Run("problems", "click", "--row", ProductFieldCode);
+        Assert.That(byCode.Ok, Is.True,
+            "and undoing the delete brings the finding back — the list is derived from the document, not "
+            + "cached beside it");
     }
 
     /// <summary>
@@ -468,6 +470,7 @@ public class ProblemsNavigationE2ETests
     /// the visit wrote nothing.</para>
     /// </summary>
     [Test]
+    [Category(E2E.DesktopOnly)]
     public void ActivatingAnInputNoteRowLandsInTheVariablesNoteField()
     {
         E2E.Row row = ClickFinding(InputNoteCode);

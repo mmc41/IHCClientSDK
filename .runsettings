@@ -74,14 +74,13 @@
             </Attributes>
 
             <!--
-              The visual suite drives the real OpenVisual process out of the test host, through pwsh and the
-              aui driver. Without this that whole E2E path contributes nothing at all.
-
-              If an instrumented child outlives its test it extends the window in which a running
-              ihc_openvisual.exe holds its bin DLLs locked, which shows up as a build that cannot overwrite
-              them. Setting this False is the escape hatch, at the cost of the E2E path's coverage.
+              Deliberately absent: CollectFromChildProcesses. The only suite that ever launched a process out of
+              the test host is the end-to-end one, and it is now its own project which opts out of coverage
+              entirely (see safe_visual_e2e_tests.csproj for why). Every suite measured here runs wholly
+              in-process, so turning it on would instrument nothing and would reintroduce the failure it used to
+              carry: an instrumented child outliving its test keeps a running ihc_openvisual.exe holding its bin
+              DLLs, which surfaces as a later build that cannot overwrite them.
             -->
-            <CollectFromChildProcesses>True</CollectFromChildProcesses>
             <UseVerifiableInstrumentation>True</UseVerifiableInstrumentation>
 
             <!--

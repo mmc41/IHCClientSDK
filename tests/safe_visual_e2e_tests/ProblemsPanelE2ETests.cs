@@ -4,7 +4,9 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 
-namespace safe_visual_tests;
+using Ihc.Tests.Shared;
+
+namespace safe_visual_e2e_tests;
 
 /// <summary>
 /// The Problemer panel driven end to end: the real application, on a real fixture, read and operated through the
@@ -15,18 +17,18 @@ namespace safe_visual_tests;
 /// is what a screen reader, a driver, and any other assistive client see. A panel that binds correctly but
 /// publishes nothing readable passes every headless test in this suite and is unusable.</para>
 ///
-/// <para><b>Fixture:</b> <c>Project6-Errors.vis</c> — 160 findings: 150 Warnings and 10 Information rows. Its
-/// expected values are read from the committed oracle at run time rather than typed here, so this file cannot
-/// drift from the corpus it is asserting about — the counts in this sentence are the only numbers in the file,
-/// and they are prose rather than assertions.</para>
+/// <para><b>Fixture:</b> <c>Project6-Errors.vis</c>, which carries Warnings and Information rows and no Errors.
+/// Every expected value is read from the committed oracle at run time rather than typed here, so this file
+/// cannot drift from the corpus it asserts about. It states no counts on purpose: the prose that used to carry
+/// them went stale by dozens of rows across two rule-deletion campaigns, unnoticed for as long as this file was
+/// <c>[Explicit]</c> and nothing read it. The numbers live in <c>FindingOracleLinkTests</c>, where they are
+/// assertions.</para>
 ///
 /// <para><b>Read the oracle PER TIER, never as one population.</b> The panel counts each tier separately, so a
 /// comparison against every recorded row is right only while the fixture carries exactly one tier — which it no
-/// longer does. This file is <c>[Explicit]</c> and therefore invisible to <c>GATE-VIS</c>, so nothing here fails
-/// on a normal build: <c>FindingOracleLinkTests</c> pins the split for that reason.</para>
+/// longer does. Nothing here runs in CI, so that mistake would fail nothing on a gated build;
+/// <c>FindingOracleLinkTests</c>, which does run there, pins the split for that reason.</para>
 /// </summary>
-[Explicit("Launches the real desktop app; run deliberately with --filter \"TestCategory=E2E\".")]
-[Category(E2E.Category)]
 public class ProblemsPanelE2ETests
 {
     /// <summary>The file the app opens.</summary>
@@ -86,11 +88,11 @@ public class ProblemsPanelE2ETests
     /// The rows the panel shows, against the oracle's rows RE-SORTED the way the panel orders them.
     ///
     /// <para>The transform is stated explicitly rather than left implicit. On this fixture it is ALMOST the
-    /// identity: 150 of the 151 rows are Warnings and one is an Information row, so severity-first-then-scan-order
-    /// equals scan order for everything except that last row, which sorts to the end. Comparing against raw
-    /// oracle order would pass anyway at the panel's default height — no Info row realizes that far down — so the
-    /// transform is applied rather than assumed, and the assertion stays right for the right reason. The severity
-    /// sort itself is proved on mixed severities in <c>ProblemsListTests</c>.</para>
+    /// identity — the Warnings far outnumber the Information rows, so severity-first-then-scan-order equals scan
+    /// order for everything except that tail, which sorts to the end. Comparing against raw oracle order would
+    /// pass anyway at the panel's default height, since no Info row realizes that far down, so the transform is
+    /// applied rather than assumed and the assertion stays right for the right reason. The severity sort itself
+    /// is proved on mixed severities in <c>ProblemsListTests</c>.</para>
     /// </summary>
     [Test]
     public void TheFirstRowsMatchTheOracleInThePanelsOwnOrder()
@@ -115,8 +117,8 @@ public class ProblemsPanelE2ETests
 
     /// <summary>The fixture's recorded rows of one tier, in the oracle's own production order.</summary>
     /// <param name="severity">The oracle's severity word — <c>Warning</c>, <c>Info</c> or <c>Error</c>.</param>
-    private static IReadOnlyList<E2E.OracleRow> TierRows(string severity) =>
-        [.. E2E.OracleRows(OracleCase).Where(r => r.Severity == severity)];
+    private static IReadOnlyList<OracleRow> TierRows(string severity) =>
+        [.. FindingOracleRows.Rows(OracleCase).Where(r => r.Severity == severity)];
 
     [Test]
     public void TheFirstRowIsTheWholeProjectFindingShowingItsRawLocator()
@@ -180,7 +182,7 @@ public class ProblemsPanelE2ETests
         // Ascending by code: the realized rows must be the alphabetically first codes the fixture produces.
         IReadOnlyList<string> expected =
         [
-            .. E2E.OracleCodes(OracleCase).OrderBy(c => c, StringComparer.Ordinal).Take(rows.Count),
+            .. FindingOracleRows.Codes(OracleCase).OrderBy(c => c, StringComparer.Ordinal).Take(rows.Count),
         ];
 
         Assert.Multiple(() =>

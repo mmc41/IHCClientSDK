@@ -80,24 +80,6 @@ internal static class ProblemsTestData
         Fault(message: $"Valideringsreglen '{rule}' fejlede. Listen kan mangle fejl.",
               diagnostic: $"Rule '{rule}' threw");
 
-    /// <summary>
-    /// The checkout root, found by walking up from the test assembly to the solution file. Needed by anything
-    /// that reaches SOURCE rather than build output — a driver script, a checked-in document to regenerate.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">No <c>IHCClientSDK.sln</c> above the test directory.</exception>
-    public static string RepositoryRoot()
-    {
-        for (DirectoryInfo? dir = new(TestContext.CurrentContext.TestDirectory); dir is not null; dir = dir.Parent)
-        {
-            if (File.Exists(Path.Combine(dir.FullName, "IHCClientSDK.sln")))
-            {
-                return dir.FullName;
-            }
-        }
-
-        throw new InvalidOperationException("repo root (IHCClientSDK.sln) not found above the test directory");
-    }
-
     /// <summary>A fixture under <c>tests/testdata/projects</c>, beside the built test assembly.</summary>
     public static string FixturePath(string name) =>
         Path.Combine(TestContext.CurrentContext.TestDirectory, "testdata", "projects", name);

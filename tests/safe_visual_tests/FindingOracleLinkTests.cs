@@ -8,13 +8,16 @@ namespace safe_visual_tests;
 /// <summary>
 /// The shared oracle harness, as THIS suite depends on it.
 ///
-/// <para><b>Every test here is deliberately non-<c>[Explicit]</c>, and that is the whole point.</b> The two
-/// classes that actually consume the recorded rows — <c>ProblemsPanelE2ETests</c> and
-/// <c>ProblemsNavigationE2ETests</c> — are <c>[Explicit]</c>, because they drive the real GUI through UI
-/// Automation on Windows. So nothing in a default run exercises the reader they depend on, and a reader that
-/// silently returned NOTHING would break neither: their assertions are built on the list, so an empty list
-/// makes "the panel shows every recorded code" trivially true. These tests are the only thing standing
-/// between that reader and a silent zero.</para>
+/// <para><b>Every test here asserts on the reader DIRECTLY, and that is the whole point.</b> The two classes
+/// that actually consume the recorded rows — <c>ProblemsPanelE2ETests</c> and
+/// <c>ProblemsNavigationE2ETests</c>, both in <c>safe_visual_e2e_tests</c> — build their assertions ON the
+/// list, so a reader that silently returned NOTHING would not break them: an empty list makes "the panel shows
+/// every recorded code" trivially true. Only a test that asserts about the list itself can tell the two apart,
+/// and these are those tests.</para>
+///
+/// <para>CI does run some of those consumers — the headless leg covers every scenario not marked desktop-only —
+/// but the desktop-only scenarios and the whole real-GUI mode are reached deliberately, not on every push. A
+/// silent zero would read as a pass in all of them.</para>
 /// </summary>
 public class FindingOracleLinkTests
 {
@@ -36,7 +39,8 @@ public class FindingOracleLinkTests
     }
 
     /// <summary>
-    /// THE guard: the recorded rows for the E2E fixture are actually found, and there are 160 of them.
+    /// THE guard: the recorded rows for the end-to-end fixture are actually found, and there are as many of
+    /// them as the assertions below name.
     ///
     /// <para><b>Why a count and not merely "not empty".</b> The number is what the E2E assertions compare
     /// against — how many rows the panel must show, and which codes — so a reader that found SOME rows but not
@@ -65,16 +69,16 @@ public class FindingOracleLinkTests
     {
         Assert.Multiple(() =>
         {
-            Assert.That(E2E.OracleRows(OracleCase), Has.Count.EqualTo(126));
-            Assert.That(E2E.OracleCodes(OracleCase), Has.Count.EqualTo(126), "and the code projection agrees");
+            Assert.That(FindingOracleRows.Rows(OracleCase), Has.Count.EqualTo(126));
+            Assert.That(FindingOracleRows.Codes(OracleCase), Has.Count.EqualTo(126), "and the code projection agrees");
             Assert.That(
-                E2E.OracleRows(OracleCase).Count(r => r.Severity == "Warning"), Is.EqualTo(116),
+                FindingOracleRows.Rows(OracleCase).Count(r => r.Severity == "Warning"), Is.EqualTo(116),
                 "the advisory rows the panel's Advarsel count must equal");
             Assert.That(
-                E2E.OracleRows(OracleCase).Count(r => r.Severity == "Info"), Is.EqualTo(10),
+                FindingOracleRows.Rows(OracleCase).Count(r => r.Severity == "Info"), Is.EqualTo(10),
                 "and the Information rows, counted under their own tier and not with the warnings");
             Assert.That(
-                E2E.OracleRows(OracleCase).Select(r => r.Severity).Distinct(),
+                FindingOracleRows.Rows(OracleCase).Select(r => r.Severity).Distinct(),
                 Is.EquivalentTo(new[] { "Warning", "Info" }),
                 "no Error row: nothing this fixture carries blocks a save, which the panel's tier counts assume");
         });
@@ -90,9 +94,9 @@ public class FindingOracleLinkTests
     {
         Assert.Multiple(() =>
         {
-            Assert.That(E2E.OracleRows("fixture/Project6-Errors"), Is.Empty, "the prefixed form is not the key");
-            Assert.That(E2E.OracleRows("Project6-Errors.vis"), Is.Empty, "and neither is the file name");
-            Assert.That(E2E.OracleRows("Project6-Errors"), Is.Not.Empty, "this one is");
+            Assert.That(FindingOracleRows.Rows("fixture/Project6-Errors"), Is.Empty, "the prefixed form is not the key");
+            Assert.That(FindingOracleRows.Rows("Project6-Errors.vis"), Is.Empty, "and neither is the file name");
+            Assert.That(FindingOracleRows.Rows("Project6-Errors"), Is.Not.Empty, "this one is");
         });
     }
 
@@ -103,7 +107,7 @@ public class FindingOracleLinkTests
     [Test]
     public void ARowCarriesTheRecordedCells()
     {
-        E2E.OracleRow row = E2E.OracleRows(OracleCase)[0];
+        OracleRow row = FindingOracleRows.Rows(OracleCase)[0];
 
         Assert.Multiple(() =>
         {
@@ -112,7 +116,7 @@ public class FindingOracleLinkTests
             Assert.That(row.Category, Is.Not.Empty);
             Assert.That(row.Message, Is.Not.Empty);
             Assert.That(
-                E2E.OracleRows(OracleCase).Select(r => r.Locator), Is.All.Not.Null,
+                FindingOracleRows.Rows(OracleCase).Select(r => r.Locator), Is.All.Not.Null,
                 "never null: these rows keep the shape their consumers expect");
         });
     }

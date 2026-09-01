@@ -1,0 +1,84 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <!--
+      No coverage from this suite, and the decision belongs here rather than in .runsettings: .runsettings
+      declares what is measured, a project declares whether it participates.
+
+      CI runs only this suite's HEADLESS leg, with the desktop-bound scenarios filtered out, so a slice from
+      here would cover whichever subset that filter happened to select — merged into a repo-wide report it would
+      read as a statement about the whole suite. The default mode is worse: it measures a CHILD process, and
+      collecting from one leaves the running ihc_openvisual.exe instrumented for as long as the collector holds
+      it, which is how a later build fails to overwrite the very binaries this suite just exercised. What these
+      tests prove is that whole scenarios still work, which is not a claim about line coverage.
+    -->
+    <CollectCoverage>false</CollectCoverage>
+
+    <!--
+      Results still go to the shared artifacts tree, because CollectCoverage=false would otherwise take
+      VSTestResultsDirectory with it: Directory.Build.targets assigns that inside the same coverage-conditioned
+      group, so opting out of instrumentation also opted out of the results-directory convention, and this
+      suite's TRX and its blame hang dumps landed in a project-local TestResults/ that CI never uploads. This
+      is the suite most likely to hang, so its blame artifact is the one worth keeping.
+    -->
+    <VSTestResultsDirectory>$(MSBuildThisFileDirectory)..\..\artifacts\coverage\raw\$(MSBuildProjectName)</VSTestResultsDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
+    <PackageReference Include="NUnit.Analyzers" />
+    <!-- The shared oracle harnesses pin their clock to one instant with a FakeTimeProvider. -->
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <!-- The headless driver hosts the real MainWindow in-process; see Drivers/HeadlessDriver.cs. -->
+    <PackageReference Include="Avalonia.Headless" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="NUnit.Framework" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      ihc_openvisual is referenced for BOTH modes, and for different reasons.
+
+      The headless driver hosts the application's own types in this process — MainWindow, its view-models and
+      the workflow behind them — which is also why ihc_openvisual grants this assembly InternalsVisibleTo: the
+      app is built here the way Program builds it, WithAppFonts included.
+
+      The real mode never touches a product type; it drives a separate process through the aui driver. It needs
+      the reference anyway, because without it that driver would find whatever exe happened to be left under
+      applications/ihc_openvisual/bin from an earlier build, and the suite would silently report on a stale
+      application.
+
+      ihcclient comes along because the shared oracle harness below reads Ihc.Vis types.
+    -->
+    <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
+    <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The findings-oracle reader, and the row projection these tests compare the live panel against. Shared
+         with safe_visual_tests, whose FindingOracleLinkTests is the guard that the reader still finds rows —
+         this suite does not run in CI, so a reader that silently returned nothing would break nothing here.
+         ReportOracleHarness comes along because it owns the pinned instant the finding harness reads its clock
+         from. -->
+    <Compile Include="..\shared\ReportOracleHarness.cs" Link="shared\ReportOracleHarness.cs" />
+    <Compile Include="..\shared\FindingOracleHarness.cs" Link="shared\FindingOracleHarness.cs" />
+    <Compile Include="..\shared\FindingOracleRows.cs" Link="shared\FindingOracleRows.cs" />
+    <!-- The driver script lives under .claude/ and the projects the app opens are read as real paths, so this
+         suite is one of the few that legitimately reaches the source checkout. -->
+    <Compile Include="..\shared\TestRepository.cs" Link="shared\TestRepository.cs" />
+    <!-- The headless Avalonia app builder, shared with safe_visual_tests: it is what decides font metrics,
+         and the two suites have to agree about layout to agree about which rows are on screen. -->
+    <Compile Include="..\shared\OpenVisualHeadlessApp.cs" Link="shared\OpenVisualHeadlessApp.cs" />
+
+  </ItemGroup>
+
+  <Import Project="..\TestData.props" />
+
+</Project>

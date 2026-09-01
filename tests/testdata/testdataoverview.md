@@ -1025,8 +1025,8 @@ error rather than six silent breaks: `ValidationCharacterizationTests` (the byte
 tripwire), `MigrationParity` (per-rule parity for the Phase-5 migrations), `SchemaRuleParityTests`,
 `CatalogCompletenessTests` (checks each catalogue entry's disposition against the severity the recording
 shows), `DatalineAddressRemapTests` (asserts the three `dataline-address-*` successors appear and the retired
-`dataline-address` id does not), and `safe_visual_tests`' `E2ESupport.OracleRows`, which feeds the
-`[Explicit]` GUI end-to-end assertions.
+`dataline-address` id does not), and `tests/shared`' `FindingOracleRows`, which feeds the GUI end-to-end
+assertions in `safe_visual_e2e_tests` and is itself guarded by `FindingOracleLinkTests` in `safe_visual_tests`.
 
 ### Encoding and layout
 
