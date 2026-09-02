@@ -107,12 +107,13 @@ dotnet test tests/safe_integration_tests/safe_integration_tests.csproj
 # End-to-end, headless and in-process — what CI runs. Drop the arguments for the real desktop app.
 dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj \
   --filter "TestCategory!=DesktopOnly" \
-  -- TestRunParameters.Parameter\(name=\"headless\",value=\"true\"\)
+  -- 'TestRunParameters.Parameter(name="headless",value="true")'
 ```
 
 Avoid a bare `dotnet test` at the repository root: it runs every project in the solution, including both of
 those. What each suite is for, which one a new test belongs in, and how far to trust a headless end-to-end
-pass are in [TESTSTRATEGY.md](TESTSTRATEGY.md).
+pass are in [TESTSTRATEGY.md](TESTSTRATEGY.md) — along with what is at stake per subject, the risk tiers that
+decide how much testing each part of the system earns.
 
 Static checks. The script pins the ruleset to the same commit CI uses, so a local run and the
 CI run are the same scan; a bare `opengrep scan` is not, because it falls back to a mutable
@@ -213,7 +214,8 @@ This project is hosted in a mono-repo containing the following sub-projects:
   * [Safe integration tests](tests/safe_integration_tests/README.md) — system tests that can be safely run against a controller in use.
 
 For a whole-repo overview of layers, invariants and boundaries, see [ARCHITECTURE.md](ARCHITECTURE.md); for
-what each test suite is for and which one a new test belongs in, [TESTSTRATEGY.md](TESTSTRATEGY.md).
+what each test suite is for, which one a new test belongs in, and how much testing a given subject earns,
+[TESTSTRATEGY.md](TESTSTRATEGY.md).
 
 ## Configuration
 

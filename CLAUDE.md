@@ -64,7 +64,7 @@ dotnet test tests/safe_integration_tests/safe_integration_tests.csproj
 # Desktop-bound suite; DO NOT run it by default -- see the bullets below
 dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj
 # ...and the same scenarios headless, which is what CI runs
-dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj --filter "TestCategory!=DesktopOnly" -- TestRunParameters.Parameter(name="headless",value="true")
+dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj --filter "TestCategory!=DesktopOnly" -- 'TestRunParameters.Parameter(name="headless",value="true")'
 
 # Single test
 dotnet test <test-project.csproj> --filter "FullyQualifiedName~TestName"
@@ -85,6 +85,7 @@ dotnet test <test-project.csproj> --filter "FullyQualifiedName~TestName"
 ## Verification
 
 - After code changes, build the affected project and run the suite mapped to that layer in Testing.
+- HOW MUCH verification a change earns scales with what is at stake in the subject it touches, and the tiers are in [TESTSTRATEGY.md](TESTSTRATEGY.md). A change to `.vis` I/O or to controller I/O sits at the top tier and earns more than one independent kind of check; a passing suite alone is not the bar there.
 - After changes that cross SDK/GUI boundaries, also run `safe_architecture_tests`.
 - After OpenVisual or Lab UI changes, also run the corresponding headless UI suite. That is `safe_visual_tests`, never `safe_visual_e2e_tests` -- the headless suite is the one that verifies a change; the desktop-bound one is run deliberately, on request.
 - After changing shared build/package configuration, public SDK contracts, or shared bootstrap code, run `dotnet build IHCClientSDK.sln` and every controller-free suite listed above.
@@ -130,6 +131,7 @@ default: throw new ArgumentOutOfRangeException(nameof(ioType), ioType, "Unknown 
 
 - Every project is nullable-enabled; RS0041 guards the SDK's public surface, with the generated SOAP layer scoped out from the ROOT `.editorconfig` — a rule written inside it would be lost on regeneration.
 - Prefer an attribute over `!`: `[NotNull]`, `[return: NotNullIfNotNull(...)]` and `[AllowNull]` bind a contract at every call site, where `!` silences one. Keep `!` for a real but inexpressible invariant, and name it in a comment.
+- CA1062 is on for every project except the test suites, so an externally visible member that dereferences a parameter needs `ArgumentNullException.ThrowIfNull` as its first statement. An expression-bodied member has nowhere to put one and must be widened to a block body; where a base initializer runs first, guard inside the helper it calls, which the rule follows. Why it is on there and off in `tests/` is in `.globalconfig` and `tests/.editorconfig`.
 - A property fed from the generated `Ihc.Soap.*` layer takes `?`, never `required`: that layer is oblivious, so a null wire value assigned to a non-nullable property compiles SILENTLY. `required` is for what the SDK guarantees, and never for a reflectively built type.
 - A `[Required]` DataAnnotation states the OUTBOUND contract, not the inbound mapping truth — `NetworkSettings.IpAddress` carries `[Required]` and is `string?`.
 
@@ -198,7 +200,7 @@ When refactoring always ensure:
 Markdown links are not auto-loaded. Explicitly open the relevant target before working in that area.
 
 - [README.md](README.md) -- read before environment setup, controller configuration, or executable-specific prerequisites.
-- [TESTSTRATEGY.md](TESTSTRATEGY.md) -- read before ADDING, MOVING or deleting a test: it defines the test levels, what each suite is for, and the routing rules that decide which suite a test belongs in. It also carries the standing action items where the current layout disagrees with those rules.
+- [TESTSTRATEGY.md](TESTSTRATEGY.md) -- read before ADDING, MOVING or deleting a test: it defines the test levels, what each suite is for, and the routing rules that decide which suite a test belongs in. Read it also before judging a change adequately tested, because it names what is AT STAKE per subject: the risk tiers that decide how much testing a subject earns, with `.vis` I/O and controller I/O in BOTH directions at the top. It carries the standing action items where the current layout disagrees with those rules.
 - [ARCHITECTURE.md](ARCHITECTURE.md) -- read before architectural changes; it defines layers, invariants, and enforced boundaries. Challenge 5 is also the record for the validation engine: its faces, its rule bodies, and the dependency direction among the problem, catalogue, session, IO and definition layers that the architecture tests enforce.
 - [ihcclient/README.md](ihcclient/README.md) -- read when changing public SDK usage, service coverage, or generated SOAP integration.
 - [Architecture decisions](docs/adr/) -- read the relevant ADR before changing UI-thread behavior, moving work off the UI thread, service layering, where validation or other business logic sits relative to a frontend, generated SOAP visibility, or compile-time enforcement. ADR-001 covers threading and concurrency: single-UI-thread ownership, and the contract for background work (the SDK stays synchronous and thread-agnostic; the host offloads). ADR-002 covers both halves of the SDK/app seam: the service tiers and the thin applications above them, validation placement included.

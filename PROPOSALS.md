@@ -22,12 +22,17 @@ Ordered by priority within each group.
 | ---- | ------ | ------ | -------- | -------- |
 | **T1** | `UserManagerService.GetUsers` applies its redaction conditional in the **opposite direction** from its own comment | Defect | Verify | [§T1](#t1--usermanagerservicegetusers-redaction-is-inverted) |
 | **T2** | Configuration services attach **raw** WLAN/SMTP/email-control models to activity tags; their `ToString()` reveals secrets | Defect | Todo | [§T2](#t2--raw-secret-bearing-models-on-activity-tags) |
+| **T4** | Most of `InternalTestService`'s state-changing operations carry **no** `AllowDangerousInternTestCalls` check, and the Lab GUI lists the service | Defect | Todo | [§T4](#t4--most-dangerous-operations-are-ungated) |
 | **G2a** | Numeric `Minimum`/`Maximum` **are** enforced on write-back now — but nothing tests it, for any family | Task | Todo | [§G2a](#g2a--numeric-range-is-enforced-but-untested) |
 | **G2c** | A **non-numeric** value in a bounded numeric field still commits — the surviving half of the old G2a | Decision | **Needs decision** | [§G2c](#g2c--a-non-numeric-value-in-a-bounded-field) |
 | **G1** | The vendor app can edit a `.vis` while OpenVisual has it open; the save silently overwrites it | Defect | Todo | [§G1](#g1--external-modification-of-the-open-file) |
 | **A1** | Catalog import blocks the UI thread for ~2.4 s with no cancel; `LoadPersisted` blocks startup the same way | Defect | Todo | [§A1](#a1--catalog-import-blocks-the-ui-thread) |
 | **A1b** | No HTTP timeout on the controller path — a caller blocks until `HttpClient`'s 100 s default | Defect | Todo | [§A1b](#a1b--http-timeout-on-the-controller-path) |
 | **A2** | No behavioural test for the controller half — no wire fixtures, and `safe_integration_tests` never runs | Task | Todo | [§A2](#a2--soap-fixture-corpus--replay-harness) |
+| **A2b** | The gzip/Latin-1 project codec sits **below** the fake seam — no controller-free test reaches it, and the read side has none at all | Defect | Todo | [§A2b](#a2b--the-project-codec-sits-below-the-seam) |
+| **A3** | The failure-reporting channel is **fail-open** in five places, including the one that writes the span outcome | Defect | Todo | [§A3](#a3--the-reporting-channel-is-fail-open) |
+| **A4** | Eleven of fifteen SDK services are never constructed in any test — only faked away | Task | Todo | [§A4](#a4--eleven-services-are-never-constructed) |
+| **A5** | The long-poll recovery loop swallows ten consecutive failures, and the auth continuation rewraps a transport fault — neither boundary is tested | Task | Todo | [§A5](#a5--two-untested-swallow-boundaries) |
 | **B1** | Tracing but no metrics — needs a `Meter` **and** an export pipeline that does not exist | Task | Todo | [§B1](#b1--metrics-instrument-and-export-pipeline) |
 | **B4** | Refusals carry a bare Danish string while validation findings carry a `RuleId` | Task | Todo | [§B4](#b4--refusal-codes) |
 | **C1** | The Linux CI legs cannot be run locally, and their native-dep list exists only in the workflow YAML | Task | Todo | [§C1](#c1--local-linux-ci-legs-on-a-windows-workstation) |
@@ -40,6 +45,7 @@ Ordered by priority within each group.
 | **V6** | The `edit.*` family — the largest — sits **outside** the reflective refusal drift gate | Defect | Todo | [§V6](#v6--the-edit-family-is-outside-the-drift-gate) |
 | **V9** | `ProblemConsoleFormat` drops **every finding** of a validation failure | Defect | Todo | [§V9](#v9--the-utility-loses-a-validation-failures-findings) |
 | **V8** | Two shell sites render `Problem.Message` raw, bypassing `ProblemPresenter` | Defect | Todo | [§V8](#v8--two-shell-sites-bypass-the-presenter) |
+| **V14** | The shell's widest catch renders an unexpected exception as a bare problem, so an escaping aggregate loses all but one finding | Defect | Todo | [§V14](#v14--the-widest-catch-flattens-an-aggregate) |
 | **V1** | ~190 catalogue entries hand-spell the same positional constructor; the host already has the fix | Task | Todo | [§V1](#v1--catalogue-entry-factories) |
 | **V2** | Most finding rows leave `Target` at `default`, so the fact lives in parallel maps instead | Task | **Partly done** | [§V2](#v2--the-entry-target-is-undeclared) |
 | **V5** | The first-holder-wins duplicate scan is written out **eight times** | Task | Todo | [§V5](#v5--the-duplicate-scan-written-eight-times) |
@@ -292,9 +298,13 @@ data** — so an envelope, cookie-session or adapter regression is unguarded.
 
 **Prerequisites the proposal previously assumed and does not have** (raised in review):
 
-- [ ] **An injectable transport seam.** `GetOrCreateHttpClient` is `static private` and process-wide
-      (`src/api/util/httpclient.cs`) — there is currently no way to substitute a handler for a test. This
-      is the gating item; without it the rest cannot be built.
+- [x] ~~**An injectable transport seam.**~~ **Stale — this landed.** `httpclient.cs` now exposes an
+      `internal static CreateHttpClient(HttpMessageHandler)` whose own comment names it as the seam unit
+      tests substitute a stub transport through, and both `Client` and `ServiceBaseImpl` take an optional
+      `HttpClient`. Several `safe_unit_tests` fixtures already drive the real handler chain over a stub
+      socket. What remains is small and mechanical: **no shipped service forwards the transport** — every
+      `SoapImpl` constructor drops the argument — so the seam is reachable today only from a test-declared
+      subclass. Forward it, and the gating item is gone.
 - [ ] **A cassette schema.** `utilities/ihc_httpproxyrecorder` writes an append-only timestamped log, not
       canonical replay fixtures. Define the on-disk format, request-matching key, and how ordered
       request/response pairs are addressed.
@@ -313,6 +323,70 @@ data** — so an envelope, cookie-session or adapter regression is unguarded.
 - [ ] Run the existing `safe_integration_tests` assertions against the replay seam in a controller-free
       suite — a CI gate that touches no controller and keeps Invariant 5.
 - [ ] Handle vendor-response drift the way the `.vis` oracles do: re-record deliberately, never edit.
+
+### A2b · The project codec sits below the seam
+
+The whole-project transfer is gzip'd and text-encoded on the wire: `controllerService.cs` compresses on the
+way out and decompresses on the way in. That translation is the **largest Critical-tier payload in the
+product**, and it sits *below* the `IIHCApiService` seam every fake replaces — so no controller-free test
+executes it, and no recorded corpus attached at that seam ever would. The only thing that runs it is a
+`safe_integration_tests` system test, which never runs.
+
+The asymmetry is the wrong way round, too. The write side has partial cover (a non-Latin-1 rejection test);
+the read side has none — and TESTSTRATEGY.md's tier table puts reads in the top tier precisely because a
+wrong read is upstream of a wrong write.
+
+- [ ] Test the codec directly, below the service: compress → decompress round-trip, a Latin-1 boundary
+      character, a truncated or non-gzip payload, and an encoding the vendor would not have written.
+- [ ] Note for [§A2](#a2--soap-fixture-corpus--replay-harness): replay at the `IIHCApiService` seam does
+      **not** cover this. If the corpus is meant to reach the codec it has to attach at the SOAP or
+      transport seam instead.
+
+### A3 · The reporting channel is fail-open
+
+Five sites swallow exceptions raised *inside* the machinery that reports failures — `TaskSupervisor`,
+`InternalErrorLog`, `ProjectWorkflow`, `ValidationMonitor`, and the important one: `OperationScope.Dispose`
+wraps the call that applies the outcome to the span in a bare `catch (Exception) { }`.
+
+Each is individually defensible — a reporter that throws while reporting is worse than one that gives up.
+Together they mean the failure mode TESTSTRATEGY.md's *Errors that do not surface* names as row two
+("observed and shown, but not traced") can arise **inside the mechanism that row nominates as the fix**, and
+nothing asserts otherwise. A throw in `ApplyOutcomeToSpan` silently drops a `Failed` outcome.
+
+- [ ] Decide what a fail-open reporter should leave behind. `Trace.WriteLine` costs nothing and is not
+      nothing; a counter is better. Silence is the one option that cannot be distinguished from success.
+- [ ] Test at least the span-outcome site: force `ApplyOutcomeToSpan` to throw and assert the process
+      survives *and* leaves a trace.
+
+### A4 · Eleven services are never constructed
+
+`AirlinkManagement`, `Configuration`, `InternalTest`, `LedDimmerManagement`, `MessageControlLog`, `Module`,
+`NotificationManager`, `OpenAPI`, `ProductionTest`, `SmsModem` and `TimeManager` are faked in every suite and
+instantiated in none, so their SOAP↔domain adapters — the `WS*` mappers, the date conversions — are never
+executed. Most of them also lack the `internal` SOAP-contract constructor that the three tested services have,
+so they are not currently testable without adding one.
+
+`ConfigurationService` is the one to start with: it is the source of the network, DNS and email settings a
+user reads and acts on, and it is faked even in the tests that exercise the information view above it.
+
+- [ ] Add the SOAP-contract constructor where it is missing, and one adapter test per service — the mapping,
+      not the operation.
+
+### A5 · Two untested swallow boundaries
+
+**The long-poll recovery loop.** `services.cs` catches every `waitForChanges` failure, substitutes an empty
+result, and rethrows only after ten consecutive failures. Untested: the tenth-versus-eleventh boundary, that
+the counter resets on success, the backoff, and the `finally` that catches a failing `disableSubscription`
+and never rethrows — which leaves the controller subscribed while the caller is told nothing.
+
+**The authentication continuation.** `authenticationService` reads its cookie inside a `ContinueWith` that
+touches `r.Result` with no continuation options and no scheduler, so a faulted transport surfaces wrapped in
+an `AggregateException` rather than as itself, on whatever scheduler happens to be ambient. No test covers a
+failed authentication.
+
+- [ ] Both are Critical-tier read paths whose failure mode is silence. They are also the clearest candidates
+      in the SDK for the span-outcome assertion TESTSTRATEGY.md asks for, since the SDK has no dialog and no
+      internal error log — the span is the only channel there is.
 
 ### B1 · Metrics instrument and export pipeline
 
@@ -449,6 +523,26 @@ The client plumbing accepts every HTTPS server certificate through
 Documented as the controller trust boundary in `ARCHITECTURE.md`.
 
 - [ ] Decide whether it stays deliberate (self-signed controller certs) or becomes opt-in.
+
+### T4 · Most dangerous operations are ungated
+
+`AllowDangerousInternTestCalls` guards six of `InternalTestService`'s operations. The rest are not guarded,
+and several change state on live hardware: `SendAirlinkPacket`, `SetTimeAndDate`, the six LED on/off calls,
+`TurnOnLeds`, `ReadUsbHost`. The flag reads like a gate on the service; it is a gate on part of it.
+
+Two things make that worse rather than academic:
+
+- **`ihc_lab` lists the service in its GUI.** Its operation filter says of itself that it is "a crash guard
+  rail, not an everyday selector" — it hides operations whose parameters cannot be rendered, not operations
+  that are dangerous. So the ungated ones are visible and invocable against whatever endpoint is configured.
+- **The gate that does exist is untested.** No test asserts any of the six refuse when the flag is false.
+  Deleting all six checks would break nothing.
+
+- [ ] Decide the rule: gate every state-changing operation on the service, or rename the flag so it stops
+      implying it covers them. Gating is the smaller change and the safer default.
+- [ ] Test the refusal — one parameterised test over the guarded operations, asserting the throw. This is
+      the cheapest part and it is what stops the guard being deleted by accident later.
+- [ ] Decide whether the Lab should list a service whose operations can misconfigure a building.
 
 ### D1 · US-068 residuals
 
@@ -589,6 +683,21 @@ refusal is identified on one surface and anonymous on another.
 
 ⚠️ This **changes user-visible text** (the bracketed identity appears where it did not). Check
 `RefusalIdentitySurfacesTests` and the message-site register before assuming it is free.
+
+### V14 · The widest catch flattens an aggregate
+
+`RaisedProblemDisplay` is the intended single decider of whether a raised exception is shown as a chain or an
+aggregate, and it is the only caller of the aggregate overload. The shell's outermost command catch does not
+go through it: it renders `HostProblems.Unexpected(ex)` as a bare `Problem`. So an exception carrying a
+`ProblemAggregate` that escapes that far is shown as **one** finding, and the rest are lost — which is the
+defect the helper exists to prevent, at the one site that sees every command.
+
+Sibling of [§V9](#v9--the-utility-loses-a-validation-failures-findings), which is the same flattening in the
+utility rather than the shell.
+
+- [ ] Route the outermost catch through `RaisedProblemDisplay` like the eight sites that already do.
+- [ ] This is the site [TESTSTRATEGY.md](TESTSTRATEGY.md)'s A7 scan would have to reach, so fixing it and
+      building the scan are the same piece of work.
 
 ### V1 · Catalogue entry factories
 
