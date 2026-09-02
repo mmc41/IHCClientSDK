@@ -41,7 +41,7 @@ public class ProblemsSendGateE2ETests
 
         Assert.Multiple(() =>
         {
-            Assert.That(state.Int("errors"), Is.GreaterThanOrEqualTo(1),
+            Assert.That(state.Number("errors"), Is.GreaterThanOrEqualTo(1),
                 "the fixture's duplicate data-line addresses are an ACTIVE Error row");
             Assert.That(E2E.SendProjectEnabled(), Is.False, "and the transfer is withheld");
         });
@@ -81,8 +81,8 @@ public class ProblemsSendGateE2ETests
     {
         E2E.Launch(CleanFixture());
         E2E.Envelope before = E2E.WaitForBoundProblems();
-        Assert.That(before.Int("errors"), Is.Zero, "precondition: the clean fixture carries no Errors");
-        int warnings = before.Int("warnings");
+        Assert.That(before.Number("errors"), Is.Zero, "precondition: the clean fixture carries no Errors");
+        int warnings = before.Number("warnings");
 
         const string Pin = "Lokaliteter/Stue/LK FUGA Tryk 2 tast (Ved dør) /Tryk (højre)";
         E2E.RunOk("node", "select", "--path", Pin);
@@ -94,9 +94,9 @@ public class ProblemsSendGateE2ETests
         E2E.Envelope after = E2E.WaitForBoundProblems();
         Assert.Multiple(() =>
         {
-            Assert.That(after.Int("errors"), Is.EqualTo(1),
+            Assert.That(after.Number("errors"), Is.EqualTo(1),
                 "one duplicate group, one Error — reaching the panel with no gesture but the edit itself");
-            Assert.That(after.Int("warnings"), Is.LessThanOrEqualTo(warnings),
+            Assert.That(after.Number("warnings"), Is.LessThanOrEqualTo(warnings),
                 "and the warning tally moves with the project rather than growing alongside a stale copy");
         });
 
@@ -105,8 +105,8 @@ public class ProblemsSendGateE2ETests
 
         Assert.Multiple(() =>
         {
-            Assert.That(undone.Int("errors"), Is.Zero, "undo takes the Error away again");
-            Assert.That(undone.Int("warnings"), Is.EqualTo(warnings), "and the counts return to where they were");
+            Assert.That(undone.Number("errors"), Is.Zero, "undo takes the Error away again");
+            Assert.That(undone.Number("warnings"), Is.EqualTo(warnings), "and the counts return to where they were");
         });
     }
 
@@ -124,16 +124,16 @@ public class ProblemsSendGateE2ETests
     {
         E2E.Launch(ErrorFixture());
         E2E.Envelope errors = E2E.WaitForBoundProblems();
-        Assert.That(errors.Int("errors"), Is.GreaterThanOrEqualTo(1), "precondition: the old document has Errors");
+        Assert.That(errors.Number("errors"), Is.GreaterThanOrEqualTo(1), "precondition: the old document has Errors");
 
         E2E.RunOk("project", "new");
         E2E.Envelope fresh = E2E.WaitForBoundProblems();
 
         Assert.Multiple(() =>
         {
-            Assert.That(fresh.Int("errors"), Is.Zero,
+            Assert.That(fresh.Number("errors"), Is.Zero,
                 "a fresh project has no Errors, and the closed file's must not survive into it");
-            Assert.That(fresh.Int("warnings"), Is.Not.EqualTo(errors.Int("warnings")),
+            Assert.That(fresh.Number("warnings"), Is.Not.EqualTo(errors.Number("warnings")),
                 "the whole result is the new document's, not the old one's still on screen");
         });
     }

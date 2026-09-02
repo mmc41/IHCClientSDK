@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Xml;
@@ -42,8 +43,8 @@ namespace Ihc.Vis.Tests
                 Assert.That(project.Id1, Is.EqualTo(root.GetAttribute("id1")));
                 Assert.That(project.LastUniqueId, Is.EqualTo(root.GetAttribute("last_unique_id")));
                 Assert.That(project.Groups.Select(g => g.GetAttribute("name")), Is.EqualTo(rawGroupNames));
-                Assert.That(project.Modified!.Value.Year.ToString(), Is.EqualTo(rawModified.GetAttribute("year")));
-                Assert.That(project.Modified!.Value.Minute.ToString(), Is.EqualTo(rawModified.GetAttribute("minute")));
+                Assert.That(project.Modified!.Value.Year.ToString(CultureInfo.InvariantCulture), Is.EqualTo(rawModified.GetAttribute("year")));
+                Assert.That(project.Modified!.Value.Minute.ToString(CultureInfo.InvariantCulture), Is.EqualTo(rawModified.GetAttribute("minute")));
                 Assert.That(ElementId.TryParse(rawFirstProduct.GetAttribute("id"), out ElementId productId), Is.True);
                 Assert.That(project.FindById(productId)!.GetAttribute("name"),
                     Is.EqualTo(rawFirstProduct.GetAttribute("name")),

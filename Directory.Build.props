@@ -37,17 +37,19 @@
     CA2007 demands the opposite of what the GUI's architecture rules forbid (ADR-001). CA2007 is enabled for
     the SDK alone, in ihcclient/analyser.config.
 
-    AnalysisMode is raised here for every project the repository ships or runs — the SDK, the two Avalonia
-    applications, the shared bootstrap libraries, the examples and the utilities. Recommended is the middle of
-    the ladder (None < Default < Minimum < Recommended < All) and a strict superset of Minimum; it is the level
-    at which a latent culture, allocation, disposal or contract defect is reported at build time rather than
-    found in a run. The rules a project declines out of that mode are turned off one at a time, each with its
-    reason, in .globalconfig for the decisions that hold repo-wide and in ihcclient/analyser.config for the ones
-    that are the SDK's alone — which also names the one rule scoped by path outside it.
+    AnalysisMode is raised here for EVERY project in the repository — the SDK, the two Avalonia applications,
+    the shared bootstrap libraries, the examples, the utilities and the test suites alike. Recommended is the
+    middle of the ladder (None < Default < Minimum < Recommended < All) and a strict superset of Minimum; it is
+    the level at which a latent culture, allocation, disposal or contract defect is reported at build time
+    rather than found in a run. The rules a project declines out of that mode are turned off one at a time,
+    each with its reason, in .globalconfig for the decisions that hold repo-wide and in ihcclient/analyser.config
+    for the ones that are the SDK's alone — which also names the one rule scoped by path outside it.
 
-    The TEST suites stay at Default, in tests/Directory.Build.props. That is not an exemption on principle: what
-    the mode adds over Default is performance and API-shape rules aimed at code that ships, and a test assembly
-    ships nowhere. The correctness rules opted into in .globalconfig apply to the test suites unchanged.
+    Because tests/Directory.Build.props imports this file rather than replacing it, the suites inherit that
+    value; the declines that are theirs alone are path-scoped in tests/.editorconfig. Holding the suites at a
+    lower mode was tried and reverted: what it saved was performance and API-shape rules aimed at code that
+    ships, but it also switched off the culture rules, which nothing opts into by name and which were finding
+    real locale-dependent defects in test code.
   -->
   <PropertyGroup>
     <AnalysisLevel>10.0</AnalysisLevel>

@@ -196,7 +196,7 @@ public class ProductDialogShowOptionsTests : AvaloniaTestBase
 
         Assert.Multiple(() =>
         {
-            Assert.That(FocusedIds(window).Where(id => id.StartsWith("dlg.")), Is.Empty,
+            Assert.That(FocusedIds(window).Where(id => id.StartsWith("dlg.", StringComparison.Ordinal)), Is.Empty,
                 "the ordinary open lands on no field in particular");
             Assert.That(closed, Is.Zero, "and steps into nothing");
         });

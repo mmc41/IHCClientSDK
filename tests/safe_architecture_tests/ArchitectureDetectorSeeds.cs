@@ -59,6 +59,7 @@ namespace Ihc.Vis.Seeded
 namespace Ihc.Telemetry.Seeded
 {
     using System.Diagnostics;
+    using System.Diagnostics.CodeAnalysis;
     using System.Diagnostics.Metrics;
     using System.Threading.Tasks;
 
@@ -72,6 +73,8 @@ namespace Ihc.Telemetry.Seeded
     // "enforced" from "broken" here is that these seeds are flagged.
 
     /// <summary>Positive control: starts a span from a raw source instead of the core. Must be flagged.</summary>
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "The bypass must be emitted from an INSTANCE method: the detector reads the authored origin member of "
+        + "each call edge, and a static seed changes the shape the production rule is being proved against.")]
     internal sealed class SeededDirectSpanStarter
     {
         private static readonly ActivitySource Source = new("Seeded.Bypass");
@@ -88,6 +91,8 @@ namespace Ihc.Telemetry.Seeded
     /// authored types would miss it, which is precisely how a bypass would be introduced in real code — every
     /// workflow method that would want one is async.
     /// </summary>
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "The bypass must be emitted from an INSTANCE method: the detector reads the authored origin member of "
+        + "each call edge, and a static seed changes the shape the production rule is being proved against.")]
     internal sealed class SeededAsyncDirectSpanStarter
     {
         private static readonly ActivitySource Source = new("Seeded.Bypass");

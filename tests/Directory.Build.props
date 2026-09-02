@@ -4,32 +4,45 @@
   <!--
     Build policy for the test suites, layered over the repository-wide file.
 
-    The explicit Import is what makes this file a LAYER rather than a replacement: MSBuild stops at the
-    nearest Directory.Build.props on the way up, so without it the root file's TargetFramework, Nullable and
-    TreatWarningsAsErrors would silently stop applying to every project under tests/.
+    The explicit Import is what makes this file a LAYER rather than a replacement, and it is now the file's
+    ONLY job. MSBuild stops at the nearest Directory.Build.props on the way up, so without this line the root
+    file's TargetFramework, Nullable, TreatWarningsAsErrors, AnalysisLevel and AnalysisMode would all silently
+    stop applying to every project under tests/. The file looks redundant and is not; do not delete it.
 
-    The one property this layer changes is AnalysisMode, held at the SDK default while the rest of the
-    repository runs at Recommended. What Recommended adds over Default is performance and API-shape rules —
-    LoggerMessage delegates, concrete return types, sealed internal types, field-versus-property — aimed at
-    an assembly that ships to someone. A test assembly ships nowhere: it is compiled, run once by the runner,
-    and thrown away. Enforcing those rules here would rewrite test code to suit a shape it does not have.
+    This layer used to hold AnalysisMode down at the SDK default while the rest of the repository ran at
+    Recommended. It no longer does: the suites inherit Recommended like everything else, and the property is
+    stated once, at the root, so the two cannot drift apart.
 
-    It is the mode alone that is lowered. The rules opted into by name in /.globalconfig — disposal,
-    cancellation, dead conditions, structured logging — apply here exactly as they do everywhere else, and the
-    ones that genuinely do not fit test code are turned off individually, with their reasons, in
-    tests/.editorconfig.
+    What that changed is mostly the CULTURE rules, which the previous version of this comment named as the
+    real gap the lowered mode left open. CA1304/CA1305/CA1310/CA1311 arrive with the mode and are opted into
+    by name nowhere, so while the suites ran at Default a locale-dependent assertion was caught by review or
+    not at all. Their findings were fixed rather than declined. Matching and lookup took
+    StringComparison.Ordinal, machine formats took CultureInfo.InvariantCulture, and case folding took the
+    invariant overloads.
 
-    Be precise about what this DOES give up, because the list above does not include it: the CULTURE rules
-    (CA1304/CA1305/CA1307/CA1309/CA1310/CA1311) are not opted into by name anywhere — they arrive with
-    AnalysisMode, so lowering the mode switches them off for the suites. That is a real gap, not a covered
-    one. The suites hand-manage culture instead (SetCulture attributes, explicit CultureInfo arguments), which
-    is why a locale-dependent assertion is caught by review rather than by the compiler here. Opting the
-    culture rules in by name is the way to close it, and it is a change with its own findings to fix first.
+    Be honest about the yield, because it is what a later reader will want to re-check before deciding the
+    mode is worth its noise. MOST of those fixes are inert: an ordinal StartsWith over an ASCII element tag
+    matches exactly what the culture-sensitive one matched, and an interpolated int carries no group
+    separator in ANY culture — the default format is G, and NumberGroupSeparator is reached only by a format
+    string none of these call sites uses. So the counts CatalogTableRenderingTests renders, and the digest
+    tables BuiltInCatalogDigestTests regenerates, were already culture-proof and their oracles do not move.
+
+    TWO findings were real, and they are the argument for the mode rather than for opting the four rules in
+    by name — neither is the kind of thing review reliably catches, and each was green on every machine this
+    repository has ever run on:
+
+      - CopyUtilTests uppercases "alice" and asserts "ALICE". Turkish maps i to the DOTTED capital I (U+0130),
+        so ToUpper() there yields ALICE with a dot over the I and the assertion fails. A red test waiting for
+        a Turkish machine.
+      - SecurityUnitTest parsed "2024-01-01T00:00:00Z" with no provider. DateTimeOffset.Parse resolves a year
+        against the CALENDAR of the current culture, so under th-TH (Buddhist) or ar-SA (UmAlQura) the same
+        literal is a different date — and the test stays green while asserting the wrong instant.
+
+    The rules the suites DECLINE out of the mode are turned off one at a time, each with its reason, in
+    tests/.editorconfig — which is also where the /.globalconfig rules that do not fit test code are turned
+    back off. Both halves live there because both are path-scoped decisions about test code; this file is
+    about the build, and has no rule opinions of its own.
   -->
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
-
-  <PropertyGroup>
-    <AnalysisMode>Default</AnalysisMode>
-  </PropertyGroup>
 
 </Project>

@@ -75,11 +75,11 @@ public class ProblemsPanelE2ETests
             Assert.That(state.Flag("visible"), Is.True, "the panel is shown by default — no gesture needed");
             Assert.That(state.Text("state"), Is.EqualTo("findings"));
             Assert.That(expectedWarnings, Is.GreaterThan(0), "sanity: the oracle must actually describe this fixture");
-            Assert.That(state.Int("warnings"), Is.EqualTo(expectedWarnings),
+            Assert.That(state.Number("warnings"), Is.EqualTo(expectedWarnings),
                 "the Advarsel count equals the fixture's WARNING count in its own findings oracle, read at run "
                 + "time rather than typed here twice");
-            Assert.That(state.Int("errors"), Is.Zero, "this fixture carries no Error rows");
-            Assert.That(state.Int("infos"), Is.EqualTo(expectedInfos),
+            Assert.That(state.Number("errors"), Is.Zero, "this fixture carries no Error rows");
+            Assert.That(state.Number("infos"), Is.EqualTo(expectedInfos),
                 "and the Information count equals its Info rows — the S0 meter's datasheet row");
         });
     }
@@ -144,7 +144,7 @@ public class ProblemsPanelE2ETests
     public void HidingTheWarningTierHidesItsOwnRowsWithoutChangingItsCount()
     {
         E2E.Envelope before = E2E.WaitForBoundProblems();
-        int warnings = before.Int("warnings");
+        int warnings = before.Number("warnings");
         Assert.That(E2E.Rows().Select(r => r.Severity), Has.Some.EqualTo(WarningLabel),
             "precondition: warning rows are showing, or hiding them proves nothing");
 
@@ -157,7 +157,7 @@ public class ProblemsPanelE2ETests
             {
                 Assert.That(E2E.Rows().Select(r => r.Severity), Has.None.EqualTo(WarningLabel),
                     "not one row of the hidden tier is left on screen");
-                Assert.That(hidden.Int("warnings"), Is.EqualTo(warnings),
+                Assert.That(hidden.Number("warnings"), Is.EqualTo(warnings),
                     "the COUNT is unmoved: hiding a tier is not fixing its findings, and a count that fell would "
                     + "say it was");
             });

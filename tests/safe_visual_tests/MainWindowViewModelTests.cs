@@ -261,7 +261,7 @@ public class MainWindowViewModelTests
         await vm.InitializeAsync();
 
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         var localityId = vm.InstallationNodes[0].Children[0].ElementId!.Value;   // "Living room"
 
         var newId = await harness.Session.AddProductAsync(localityId, product.ProductIdentifier);
@@ -369,7 +369,7 @@ public class MainWindowViewModelTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Any(r => r.Tag == "dataline_input"));
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
@@ -428,7 +428,7 @@ public class MainWindowViewModelTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Any(r => r.Tag == "dataline_input"));
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         var locality = vm.InstallationNodes[0].Children[0];
         var productNode = locality.Children[0];
@@ -458,7 +458,7 @@ public class MainWindowViewModelTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Any(r => r.Tag == "dataline_input"));
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
 
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
@@ -485,8 +485,8 @@ public class MainWindowViewModelTests
         var sensor = harness.ProjectService.GetAvailableProducts().First(p => p.DisplayName.Contains("Temperatur sensor med logning"));
         await harness.Session.AddProductAsync(loc, sensor.ProductIdentifier);
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
-        var logPin = productNode.Children.First(c => c.DisplayName.StartsWith("Log "));
-        var otherPin = productNode.Children.First(c => c.IsPin && !c.DisplayName.StartsWith("Log "));
+        var logPin = productNode.Children.First(c => c.DisplayName.StartsWith("Log ", StringComparison.Ordinal));
+        var otherPin = productNode.Children.First(c => c.IsPin && !c.DisplayName.StartsWith("Log ", StringComparison.Ordinal));
 
         Assert.That(logPin.IsLogMarkPin, Is.True, "a Log row offers the log-mark toggle");
         Assert.That(otherPin.IsLogMarkPin, Is.False, "an ordinary pin does not");
@@ -494,7 +494,7 @@ public class MainWindowViewModelTests
 
         await vm.ToggleLogMarkCommand.ExecuteAsync(logPin);
 
-        var logPinAfter = vm.InstallationNodes[0].Children[0].Children[0].Children.First(c => c.DisplayName.StartsWith("Log "));
+        var logPinAfter = vm.InstallationNodes[0].Children[0].Children[0].Children.First(c => c.DisplayName.StartsWith("Log ", StringComparison.Ordinal));
         Assert.That(logPinAfter.DisplayName, Does.Not.EndWith("= Off"),
             "the Log row's rendered state follows the toggle");
     }
@@ -511,7 +511,7 @@ public class MainWindowViewModelTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Any(r => r.Tag == "dataline_input"));
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
@@ -549,7 +549,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         var localityId = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         // _0x2701 rather than the first wired product: its name is editable (it omits `locked`), and since T031
         // the write-back refuses an edit to a field the dialog offered read-only.
@@ -585,7 +585,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         var livingRoomId = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var pid = (await harness.Session.AddProductAsync(livingRoomId, product.ProductIdentifier))!.Value;
 
@@ -651,7 +651,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Any(r => r.Tag == "dataline_input"));
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
@@ -680,7 +680,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
 
@@ -745,7 +745,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         ElementId pid = (await harness.Session.AddProductAsync(
             vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier))!.Value;
         var productNode = vm.InstallationNodes[0].Children[0].Children[0];
@@ -800,7 +800,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
         var pinId = vm.InstallationNodes[0].Children[0].Children[0].Children[0].ElementId!.Value;   // product's first pin
 
@@ -847,7 +847,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 1);
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 1);
         await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
 
         // Address the first pin to 1.1.
@@ -1097,7 +1097,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var wireless = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("LK IHC Wireless"));
+        var wireless = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("LK IHC Wireless", StringComparison.Ordinal));
         var loc = vm.InstallationNodes[0].Children[3].ElementId!.Value;   // Bedroom
 
         var pid = await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier);
@@ -1119,7 +1119,7 @@ public class MainWindowViewModelTests
         using var harness = ShellHarness.Create();
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
-        var wireless = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("LK IHC Wireless"));
+        var wireless = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("LK IHC Wireless", StringComparison.Ordinal));
         var loc = vm.InstallationNodes[0].Children[3].ElementId!.Value;
         var pid = (await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier))!.Value;
 
@@ -1191,7 +1191,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var dimmer = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("LK IHC Wireless") && p.CategoryPath.Contains("Dimmer"));
+            .First(p => p.CategoryPath.StartsWith("LK IHC Wireless", StringComparison.Ordinal) && p.CategoryPath.Contains("Dimmer"));
         var pid = (await harness.Session.AddProductAsync(vm.InstallationNodes[0].Children[3].ElementId!.Value, dimmer.ProductIdentifier))!.Value;
         var node = vm.InstallationNodes[0].Children[3].Children[0];
 
@@ -1300,7 +1300,7 @@ public class MainWindowViewModelTests
 
         static string Row(TreeNodeViewModel fb, string rowNamePrefix) =>
             fb.Children.First(s => s.NodeKind == "section:settings")
-              .Children.First(r => r.DisplayName.StartsWith(rowNamePrefix)).DisplayName;
+              .Children.First(r => r.DisplayName.StartsWith(rowNamePrefix, StringComparison.Ordinal)).DisplayName;
 
         var timeRow = Row(vm.FunctionNodes[0].Children[0].Children[0], "Indstilling af variabel tryktid");
         var enumRow = Row(vm.FunctionNodes[0].Children[1].Children[0], "Kort reguleringstryk tænder");
@@ -1625,7 +1625,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;   // Living room
-        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
@@ -1664,7 +1664,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
@@ -1691,7 +1691,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
@@ -1809,7 +1809,7 @@ public class MainWindowViewModelTests
         Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty),
             language: LocalityLanguage.English);
         var product = service.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Any(r => r.Tag == "dataline_input"));
         var fbDef = service.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
 
         ProjectEditor editor = project.Edit();
@@ -1924,7 +1924,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
@@ -1960,7 +1960,7 @@ public class MainWindowViewModelTests
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 1);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
@@ -2110,9 +2110,9 @@ public class MainWindowViewModelTests
 
         vm.EnterProgrammingModeCommand.Execute(fbNode);
 
-        int inputsBefore = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.Children.Count();
+        int inputsBefore = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.Children.Count;
         await vm.InsertInputCommand.ExecuteAsync(null);   // Ctrl+I — must be refused on a locked block
-        int inputsAfter = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.Children.Count();
+        int inputsAfter = harness.Session.Current!.FindById(fbId)!.FindChild("inputs")!.Children.Count;
 
         vm.SelectNode(vm.InstallationNodes[0].Children.First(s => s.NodeKind == "section:inputs"));
 
@@ -2799,10 +2799,10 @@ public class MainWindowViewModelTests
 
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => TreeNodes.NameOf(c) == "FltTarget"));
         vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
-        var add = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget +"));
-        var sub = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget -"));
-        var div = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget /"));
-        var mul = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget *"));
+        var add = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget +", StringComparison.Ordinal));
+        var sub = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget -", StringComparison.Ordinal));
+        var div = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget /", StringComparison.Ordinal));
+        var mul = vm.ProgramArithmeticMenu.FirstOrDefault(m => m.Header.StartsWith("FltTarget *", StringComparison.Ordinal));
 
         Assert.Multiple(() =>
         {
@@ -3216,7 +3216,7 @@ public class MainWindowViewModelTests
         // Arm it and insert a Case (Mode) on the Commands container.
         vm.UseInProgramCommand.Execute(FindNodeById(vm.InstallationNodes, enumVarId));
         vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
-        await ((IAsyncRelayCommand)vm.ProgramCaseMenu.First(m => m.Header.StartsWith("Case (")).Command!).ExecuteAsync(null);
+        await ((IAsyncRelayCommand)vm.ProgramCaseMenu.First(m => m.Header.StartsWith("Case (", StringComparison.Ordinal)).Command!).ExecuteAsync(null);
         var caseNode = FindByFlag(vm.FunctionNodes, n => n.IsCaseNode)!;
 
         // Add a value on the enum case: the entered criterion is a state name.
@@ -3457,7 +3457,7 @@ public class MainWindowViewModelTests
 
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => TreeNodes.NameOf(c) == "F1"));
         vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
-        var addCategory = vm.ProgramArithmeticMenu.First(m => m.Header.StartsWith("F1 +"));
+        var addCategory = vm.ProgramArithmeticMenu.First(m => m.Header.StartsWith("F1 +", StringComparison.Ordinal));
         await ((IAsyncRelayCommand)addCategory.Children.First(c => c.Header == "F2").Command!).ExecuteAsync(null);
 
         var commandsId = FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!.ElementId!.Value;
@@ -3491,7 +3491,7 @@ public class MainWindowViewModelTests
 
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => TreeNodes.NameOf(c) == "F1"));
         vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
-        var subCategory = vm.ProgramArithmeticMenu.First(m => m.Header.Contains("-"));
+        var subCategory = vm.ProgramArithmeticMenu.First(m => m.Header.Contains('-'));
         await ((IAsyncRelayCommand)subCategory.Children.First(c => c.Header == "F2").Command!).ExecuteAsync(null);
 
         var commandsId = FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!.ElementId!.Value;
@@ -3514,7 +3514,7 @@ public class MainWindowViewModelTests
 
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => TreeNodes.NameOf(c) == "Nummer"));
         vm.SelectNode(FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!);
-        var addCategory = vm.ProgramArithmeticMenu.First(m => m.Header.StartsWith("Nummer +"));
+        var addCategory = vm.ProgramArithmeticMenu.First(m => m.Header.StartsWith("Nummer +", StringComparison.Ordinal));
         await ((IAsyncRelayCommand)addCategory.Children.First(c => c.Header == "F1").Command!).ExecuteAsync(null);
 
         var commandsId = FindByFlag(vm.FunctionNodes, n => n.IsCommandsContainer)!.ElementId!.Value;

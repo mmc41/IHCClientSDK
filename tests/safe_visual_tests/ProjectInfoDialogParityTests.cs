@@ -53,7 +53,7 @@ public class ProjectInfoDialogParityTests
     {
         var window = new ProjectInfoWindow();
 
-        Assert.That(EditableFieldNames(window).Where(n => n.StartsWith("Proj")), Is.EquivalentTo(new[]
+        Assert.That(EditableFieldNames(window).Where(n => n.StartsWith("Proj", StringComparison.Ordinal)), Is.EquivalentTo(new[]
         {
             "ProjNumberBox", "ProjTypeBox", "ProjProgrammerBox", "ProjDrawingBox", "ProjDescriptionBox",
         }));

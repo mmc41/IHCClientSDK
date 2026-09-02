@@ -61,7 +61,7 @@ public class TooltipTests
         {
             Assert.That(tooltip, Does.Contain("Presence from the PIR sensor."), "the tooltip carries the note");
             Assert.That(tooltip, Does.Contain($"Resource ID: {pinId.Value}"), "and the resource id");
-            Assert.That(tooltip!.IndexOf("Presence"), Is.LessThan(tooltip.IndexOf("Resource ID:")), "note before the id line");
+            Assert.That(tooltip!.IndexOf("Presence", StringComparison.Ordinal), Is.LessThan(tooltip.IndexOf("Resource ID:", StringComparison.Ordinal)), "note before the id line");
         });
     }
 

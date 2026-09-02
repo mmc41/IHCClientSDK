@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -34,7 +35,7 @@ namespace Ihc.Vis.Tests
             Gen.OneOfConst("_0x01", "_0x4409", "_0x4410", "_0x9f05", "_0x9f15", "_0xa000", "_0xffff", "_0x21000007");
 
         /// <summary>Where a descendant carrying its own identifier sits, and what it says.</summary>
-        private record Nested(int Depth, string? Value);
+        private sealed record Nested(int Depth, string? Value);
 
         private static readonly Gen<Nested> NestedGen =
             Gen.Select(Gen.Int[1, 3], Gen.OneOf(Identifier.Select(v => (string?)v), Gen.Const((string?)null)))
@@ -63,7 +64,7 @@ namespace Ihc.Vis.Tests
             sb.Append("                  product_identifier CDATA \"\"\n");
             sb.Append("                  name CDATA \"\">\n");
             sb.Append("]>\n");
-            sb.Append($"<product_dataline id=\"_0x01\" product_identifier=\"{root}\" name=\"Generated\">\n");
+            sb.Append(CultureInfo.InvariantCulture, $"<product_dataline id=\"_0x01\" product_identifier=\"{root}\" name=\"Generated\">\n");
 
             int id = 2;
             foreach (Nested d in descendants)
@@ -76,7 +77,7 @@ namespace Ihc.Vis.Tests
                     string attr = level == d.Depth && d.Value is not null
                         ? $" product_identifier=\"{d.Value}\""
                         : string.Empty;
-                    sb.Append($"  <dataline_input id=\"_0x{id:x2}\"{attr} name=\"L{level}\">\n");
+                    sb.Append(CultureInfo.InvariantCulture, $"  <dataline_input id=\"_0x{id:x2}\"{attr} name=\"L{level}\">\n");
                     open.Add("dataline_input");
                     id++;
                 }

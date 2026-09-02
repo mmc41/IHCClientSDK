@@ -17,7 +17,7 @@ public class ControllerTransferTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var wireless = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith(CatalogMenu.WirelessProductsCategory));
+            .First(p => p.CategoryPath.StartsWith(CatalogMenu.WirelessProductsCategory, StringComparison.Ordinal));
         await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier);
 
         var unlinked = harness.Session.GetUnlinkedWirelessProducts();
@@ -34,7 +34,7 @@ public class ControllerTransferTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var wireless = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith(CatalogMenu.WirelessProductsCategory));
+            .First(p => p.CategoryPath.StartsWith(CatalogMenu.WirelessProductsCategory, StringComparison.Ordinal));
         await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier);
         harness.Dialogs.ConfirmResult = false;   // decline the "send anyway?" warning
 
@@ -52,7 +52,7 @@ public class ControllerTransferTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var wireless = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith(CatalogMenu.WirelessProductsCategory));
+            .First(p => p.CategoryPath.StartsWith(CatalogMenu.WirelessProductsCategory, StringComparison.Ordinal));
         await harness.Session.AddProductAsync(loc, wireless.ProductIdentifier);
         harness.Dialogs.ConfirmResult = true;
 

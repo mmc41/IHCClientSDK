@@ -49,7 +49,7 @@ public class ProductInsertRollbackTests
         {
             Assert.That(vm.StatusText, Does.Not.Contain("annulleret"),
                 "a roll-back that did not happen may not be announced as a completed cancellation");
-            Assert.That(logs.Messages.Any(m => m.StartsWith("Error:")), Is.True,
+            Assert.That(logs.Messages.Any(m => m.StartsWith("Error:", StringComparison.Ordinal)), Is.True,
                 "and it reaches the log, where a fault the installer cannot act on belongs");
         });
     }

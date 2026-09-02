@@ -115,7 +115,7 @@ namespace Ihc.Tests
         /// <summary>
         /// Every operation across the configured services whose parameters are all generatable.
         /// </summary>
-        private List<LabAppService.OperationItem> UsableOperations(LabAppService labService) =>
+        private static List<LabAppService.OperationItem> UsableOperations(LabAppService labService) =>
             labService.Services
                 .SelectMany(service => service.OperationItems)
                 .Where(operation => operation.OperationMetadata.Parameters.All(p => IsGeneratable(p.Type)))

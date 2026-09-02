@@ -13,7 +13,7 @@ namespace safe_visual_tests;
 public class CopyPasteTests
 {
     private static IEnumerable<ProjectElement> ProductsUnder(ProjectElement group) =>
-        group.Children.Where(c => c.Tag.StartsWith("product_"));
+        group.Children.Where(c => c.Tag.StartsWith("product_", StringComparison.Ordinal));
 
     // US-056: the Copy/Paste route duplicates, the copy is not consumed (paste again for a second), and it is undoable.
     [Test]

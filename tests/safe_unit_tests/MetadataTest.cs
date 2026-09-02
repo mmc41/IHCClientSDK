@@ -176,7 +176,7 @@ namespace Ihc.Tests
             Assert.That(authenticateOperation.Description, Is.Not.Empty, "Description should not be empty");
 
             // Verify description contains expected content
-            Assert.That(authenticateOperation.Description.ToLower(), Does.Contain("login"),
+            Assert.That(authenticateOperation.Description.ToLowerInvariant(), Does.Contain("login"),
                 "Description should contain 'login' - actual: " + authenticateOperation.Description);
         }
 

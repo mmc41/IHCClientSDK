@@ -79,7 +79,7 @@ public class AcceleratorPortabilityTests
             + string.Join("\n", offenders));
 
         // Armed: the scan must actually be looking at accelerators, or an empty result would prove nothing.
-        Assert.That(Regex.Matches(xaml, @"(Gesture|InputGesture)=""[^""]*Cmd\+[^""]*""").Count,
+        Assert.That(Regex.Count(xaml, @"(Gesture|InputGesture)=""[^""]*Cmd\+[^""]*"""),
             Is.GreaterThan(10), "the shell really does declare mac branches (the scan is not vacuous)");
     }
 }

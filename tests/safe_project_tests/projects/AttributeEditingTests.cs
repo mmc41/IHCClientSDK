@@ -156,7 +156,7 @@ namespace Ihc.Vis.Tests
             ProjectEditor editor = project.Edit();
             editor.Group(room).AddProduct(sensor);
             ProjectElement logRow = editor.ToProject().Root.DescendantsAndSelf()
-                .First(e => e.Tag == "resource_enum" && (e.GetAttribute("name") ?? string.Empty).StartsWith("Log"));
+                .First(e => e.Tag == "resource_enum" && (e.GetAttribute("name") ?? string.Empty).StartsWith("Log", StringComparison.Ordinal));
             ElementId logId = logRow.Id!.Value;
             string offToken = logRow.GetAttribute("inivalue")!;
 

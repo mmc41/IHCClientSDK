@@ -210,7 +210,7 @@ namespace Ihc.Vis.Tests
         private static string Kb(double bytes) => bytes >= 1024 ? $"{bytes / 1024:F1} KB" : $"{bytes:F0} B";
 
         private static string Describe(Project project) =>
-            $"{project.Groups.Count} localities, {project.Root.DescendantsAndSelf().Count()} elements";
+            $"{project.Groups.Count} localities, {project.Root.DescendantsAndSelf().Count} elements";
 
         private static string BuildConfig() =>
 #if DEBUG

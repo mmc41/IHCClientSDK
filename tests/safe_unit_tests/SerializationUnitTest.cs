@@ -107,7 +107,7 @@ namespace Ihc.Tests
           </SOAP-ENV:Envelope>
         """;
 
-        private string normalize(string str) {
+        private static string normalize(string str) {
           return Regex.Replace(str, @"\s", "");
         }
 
@@ -245,7 +245,7 @@ namespace Ihc.Tests
             }
         }
 
-    private System.Xml.Serialization.XmlSerializer GetOrCreateSerializerAccessor(Type type, System.Xml.Serialization.XmlAttributeOverrides attrs, Type[] extraTypes)
+    private static System.Xml.Serialization.XmlSerializer GetOrCreateSerializerAccessor(Type type, System.Xml.Serialization.XmlAttributeOverrides attrs, Type[] extraTypes)
     {
       var method = typeof(Serialization).GetMethod("GetOrCreateSerializer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
       var result = method!.Invoke(null, new object?[] { type, attrs, extraTypes });

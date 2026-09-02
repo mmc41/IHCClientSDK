@@ -113,7 +113,7 @@ namespace Ihc.Tests
         /// <summary>
         /// Wrapper class that simplifies working with strategy pattern controls.
         /// </summary>
-        private class ParameterControlWrapper
+        private sealed class ParameterControlWrapper
         {
             private readonly Control _control;
 

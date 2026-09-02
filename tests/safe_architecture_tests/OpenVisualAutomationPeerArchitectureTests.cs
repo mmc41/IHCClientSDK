@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Avalonia.Automation.Peers;
 using Avalonia.Automation.Provider;
@@ -68,6 +69,8 @@ namespace Ihc.Tests
 
         // Seeded violator: adds Invoke over a base that overrides GetProviderCore, without overriding it — the exact
         // shape that compiles, reads correctly, and reaches no automation client.
+        [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "The seed exists to hide a base virtual with an INSTANCE member. Static is a different construct, so a "
+            + "static seed would stop reproducing the defect the rule detects.")]
         private sealed class SeededSwallowedProviderPeer : MenuItemAutomationPeer, IInvokeProvider
         {
             public SeededSwallowedProviderPeer(MenuItem owner) : base(owner)

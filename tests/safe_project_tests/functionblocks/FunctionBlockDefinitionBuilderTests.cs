@@ -16,7 +16,7 @@ namespace Ihc.Vis.Tests
     /// </summary>
     public class FunctionBlockDefinitionBuilderTests
     {
-        private IhcSettings settings => TestSetup.Settings;
+        private static IhcSettings settings => TestSetup.Settings;
 
         // review F1: From(existing).Build() must CARRY ExplicitCloseIds (the save-to-library two-tag close set),
         // not silently reset it to Empty — which would re-emit self-closing pins where the vendor keeps the two-tag

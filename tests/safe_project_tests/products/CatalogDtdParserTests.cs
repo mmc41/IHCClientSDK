@@ -76,7 +76,7 @@ namespace Ihc.Vis.Tests
             {
                 fullText = reader.ReadToEnd();
             }
-            string spliced = emitted + fullText.Substring(head.Length);
+            string spliced = string.Concat(emitted, fullText.AsSpan(head.Length));
             byte[] document = kind.Preamble().Concat(kind.TextEncoding().GetBytes(spliced)).ToArray();
 
             Assert.That(CatalogWellFormedness.Check(document), Is.Null,

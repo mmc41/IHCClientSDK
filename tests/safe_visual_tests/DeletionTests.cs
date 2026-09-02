@@ -31,7 +31,7 @@ public class DeletionTests
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var product = harness.ProjectService.GetAvailableProducts().First(p => p.Resources.Any(r => r.Tag == "dataline_input"));
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
-        var productId = harness.Session.Current!.FindById(loc)!.Children.First(c => c.Tag.StartsWith("product_")).Id!.Value;
+        var productId = harness.Session.Current!.FindById(loc)!.Children.First(c => c.Tag.StartsWith("product_", StringComparison.Ordinal)).Id!.Value;
         harness.Dialogs.ConfirmResult = false;   // must NOT be consulted for an unreferenced node
 
         var ok = await harness.Session.DeleteNodeAsync(productId);
@@ -61,7 +61,7 @@ public class DeletionTests
         var productPin = vm.InstallationNodes[0].Children[0].Children[0].Children[0];
         var blockPin = vm.FunctionNodes[0].Children[0].Children[0].Children[0].Children[0];
         await harness.Session.LinkPinsAsync(productPin.ElementId!.Value, blockPin.ElementId!.Value);
-        var productId = harness.Session.Current!.FindById(loc)!.Children.First(c => c.Tag.StartsWith("product_")).Id!.Value;
+        var productId = harness.Session.Current!.FindById(loc)!.Children.First(c => c.Tag.StartsWith("product_", StringComparison.Ordinal)).Id!.Value;
 
         // No prompt: the product and the reciprocal link half on the block pin go together straight away.
         await vm.DeleteCommand.ExecuteAsync(TreeNodes.FindById(vm.InstallationNodes, productId));

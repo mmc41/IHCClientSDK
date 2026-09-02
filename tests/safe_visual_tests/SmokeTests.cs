@@ -107,7 +107,7 @@ public class SmokeTests : AvaloniaTestBase
         var viewModel = harness.CreateViewModel();
         await viewModel.InitializeAsync();
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         await harness.Session.AddProductAsync(viewModel.InstallationNodes[0].Children[0].ElementId!.Value, product.ProductIdentifier);
 
         var window = new MainWindow { DataContext = viewModel };
@@ -127,7 +127,7 @@ public class SmokeTests : AvaloniaTestBase
         using var harness = ShellHarness.Create();
         var viewModel = harness.CreateViewModel();
         await viewModel.InitializeAsync();
-        var wireless = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("LK IHC Wireless"));
+        var wireless = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("LK IHC Wireless", StringComparison.Ordinal));
         await harness.Session.AddProductAsync(viewModel.InstallationNodes[0].Children[0].ElementId!.Value, wireless.ProductIdentifier);
 
         var window = new MainWindow { DataContext = viewModel };
@@ -223,7 +223,7 @@ public class SmokeTests : AvaloniaTestBase
         var vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
-        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+        var product = harness.ProjectService.GetAvailableProducts().First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);
@@ -246,7 +246,7 @@ public class SmokeTests : AvaloniaTestBase
 
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
         // A link row is the only row labelled with a locality-rooted path, so the prefix identifies them.
-        var linkRows = labels.Where(t => t?.StartsWith("Stue / ") == true).ToList();
+        var linkRows = labels.Where(t => t?.StartsWith("Stue / ", StringComparison.Ordinal) == true).ToList();
         Assert.Multiple(() =>
         {
             Assert.That(linkRows, Has.Count.EqualTo(2), "both panes render a reciprocal link row");
@@ -328,7 +328,7 @@ public class SmokeTests : AvaloniaTestBase
         Assert.Multiple(() =>
         {
             Assert.That(labels, Does.Contain("Under program"), "the sub-program renders");
-            Assert.That(labels.Any(t => t?.StartsWith("Betingelser") == true && t.Contains(">=1")), Is.True, "the OR-toggled Conditions group renders");
+            Assert.That(labels.Any(t => t?.StartsWith("Betingelser", StringComparison.Ordinal) == true && t.Contains(">=1")), Is.True, "the OR-toggled Conditions group renders");
             Assert.That(labels, Does.Contain("Kommandoer ved betingelser sande"));
             Assert.That(labels, Does.Contain("Kommandoer ved betingelser falske"));
         });
@@ -423,7 +423,7 @@ public class SmokeTests : AvaloniaTestBase
         await harness.Session.AddVariableAsync(settingsId, "resource_integer", "F2");
         vm.UseInProgramCommand.Execute(vm.InstallationNodes[0].Children[2].Children.First(c => TreeNodes.NameOf(c) == "F1"));
         vm.SelectNode(TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsCommandsContainer)!);
-        var addCategory = vm.ProgramArithmeticMenu.First(m => m.Header.StartsWith("F1 +"));
+        var addCategory = vm.ProgramArithmeticMenu.First(m => m.Header.StartsWith("F1 +", StringComparison.Ordinal));
         await ((IAsyncRelayCommand)addCategory.Children.First(c => c.Header == "F2").Command!).ExecuteAsync(null);
 
         var window = new MainWindow { DataContext = vm };
@@ -517,7 +517,7 @@ public class SmokeTests : AvaloniaTestBase
 
         var labels = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();
         // A link row is the only row labelled with a locality-rooted path, so the prefix identifies them.
-        var linkRows = labels.Where(t => t?.StartsWith("Stue / ") == true).ToList();
+        var linkRows = labels.Where(t => t?.StartsWith("Stue / ", StringComparison.Ordinal) == true).ToList();
         Assert.Multiple(() =>
         {
             Assert.That(linkRows, Has.Count.EqualTo(2), "both linked pins render a reciprocal link row");
@@ -779,7 +779,7 @@ public class SmokeTests : AvaloniaTestBase
             Assert.That(captions, Does.Contain("Navn"));
             Assert.That(captions, Does.Contain("Pin Kode"), "the PIN field is present (the vendor's own spacing)");
             Assert.That(captions, Does.Contain("Ledningsfarve 0V"), "the cabling fields are present");
-            Assert.That(captions.Count(c => c.StartsWith("Nummer")), Is.EqualTo(30),
+            Assert.That(captions.Count(c => c.StartsWith("Nummer", StringComparison.Ordinal)), Is.EqualTo(30),
                 "one editable field per declared slot — 30, not 4 (F-52)");
             Assert.That(window.GetVisualDescendants().OfType<TextBox>().Count(), Is.GreaterThanOrEqualTo(30),
                 "and they are realized, not merely composed");

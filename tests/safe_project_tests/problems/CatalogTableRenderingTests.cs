@@ -610,12 +610,12 @@ namespace Ihc.Vis.Tests
                 warning += warnings;
                 information += infos;
 
-                page.Append($"| **{category.ShortCode}** | {refusals} | {errors} | {warnings} | {infos} ");
-                page.Append($"| {refusals + errors + warnings + infos} |\n");
+                page.Append(CultureInfo.InvariantCulture, $"| **{category.ShortCode}** | {refusals} | {errors} | {warnings} | {infos} ");
+                page.Append(CultureInfo.InvariantCulture, $"| {refusals + errors + warnings + infos} |\n");
             }
 
-            page.Append($"| **Total** | **{fatal}** | **{error}** | **{warning}** | **{information}** ");
-            page.Append($"| **{fatal + error + warning + information}** |\n");
+            page.Append(CultureInfo.InvariantCulture, $"| **Total** | **{fatal}** | **{error}** | **{warning}** | **{information}** ");
+            page.Append(CultureInfo.InvariantCulture, $"| **{fatal + error + warning + information}** |\n");
             return page.ToString().Trim('\n');
         }
 
@@ -638,21 +638,21 @@ namespace Ihc.Vis.Tests
                     continue;
                 }
 
-                page.Append($"\n### {Title(section)} ({rows.Count})\n\n");
+                page.Append(CultureInfo.InvariantCulture, $"\n### {Title(section)} ({rows.Count})\n\n");
                 page.Append("| Id | Cat | Costs | Kind | Status | Danish label |\n");
                 page.Append("| --- | --- | --- | --- | --- | --- |\n");
                 foreach (ProblemCatalogEntry row in rows)
                 {
-                    page.Append($"| `{row.Code.Value}` | {(row.Category?.ShortCode is { Length: > 0 } c ? c : "—")} ");
-                    page.Append($"| {row.Disposition} | {row.Kind} | {row.Status} ");
-                    page.Append($"| {(row.MessageTemplate.Length == 0 ? "*(to author)*" : row.MessageTemplate)} |\n");
+                    page.Append(CultureInfo.InvariantCulture, $"| `{row.Code.Value}` | {(row.Category?.ShortCode is { Length: > 0 } c ? c : "—")} ");
+                    page.Append(CultureInfo.InvariantCulture, $"| {row.Disposition} | {row.Kind} | {row.Status} ");
+                    page.Append(CultureInfo.InvariantCulture, $"| {(row.MessageTemplate.Length == 0 ? "*(to author)*" : row.MessageTemplate)} |\n");
                 }
             }
 
-            page.Append($"\n**Total: {catalog.Total} entries.** ");
-            page.Append($"{catalog.Entries.Count(e => e.Status == ProblemCodeStatus.Active)} active, ");
-            page.Append($"{catalog.Entries.Count(e => e.Status == ProblemCodeStatus.Retired)} retired, ");
-            page.Append($"{catalog.Entries.Count(e => e.Status == ProblemCodeStatus.RuledOut)} ruled out.\n");
+            page.Append(CultureInfo.InvariantCulture, $"\n**Total: {catalog.Total} entries.** ");
+            page.Append(CultureInfo.InvariantCulture, $"{catalog.Entries.Count(e => e.Status == ProblemCodeStatus.Active)} active, ");
+            page.Append(CultureInfo.InvariantCulture, $"{catalog.Entries.Count(e => e.Status == ProblemCodeStatus.Retired)} retired, ");
+            page.Append(CultureInfo.InvariantCulture, $"{catalog.Entries.Count(e => e.Status == ProblemCodeStatus.RuledOut)} ruled out.\n");
             return page.ToString().Trim('\n');
         }
 

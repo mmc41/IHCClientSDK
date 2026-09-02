@@ -58,7 +58,7 @@ public class LastResortStartupReportTests
         Assert.Multiple(() =>
         {
             Assert.That(exitCode, Is.Not.Zero, "the exit code does not depend on whether a logger was up");
-            Assert.That(logs.Messages.Any(m => m.StartsWith("Critical:")), Is.True,
+            Assert.That(logs.Messages.Any(m => m.StartsWith("Critical:", StringComparison.Ordinal)), Is.True,
                 "a fatal start-up is Critical, not Error");
             Assert.That(File.Exists(path), Is.False, "the last-resort write is for the case with no pipeline");
         });

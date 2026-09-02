@@ -61,7 +61,7 @@ public class ProductDialogStepSeamTests : AvaloniaTestBase
     {
         Button configure = window.GetVisualDescendants().OfType<Button>()
             .First(b => Avalonia.Automation.AutomationProperties.GetAutomationId(b)
-                ?.StartsWith("dlg.terminaler.konfigurer") == true);
+                ?.StartsWith("dlg.terminaler.konfigurer", StringComparison.Ordinal) == true);
         configure.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
         Dispatcher.UIThread.RunJobs();
     }

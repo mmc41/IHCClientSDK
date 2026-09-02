@@ -14,7 +14,7 @@ namespace Ihc.Vis.Tests
     /// </summary>
     public class ProductDefinitionBuilderTests
     {
-        private IhcSettings settings => TestSetup.Settings;
+        private static IhcSettings settings => TestSetup.Settings;
 
         [Test]
         public void AuthorPushButtonProduct_FromCode_ShowsProductBuilder()

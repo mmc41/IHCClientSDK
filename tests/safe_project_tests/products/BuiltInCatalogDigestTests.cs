@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -509,9 +510,9 @@ namespace Ihc.Vis.Tests
             text.AppendLine();
             AppendTable(text, nameof(FunctionBlockDigests), FunctionBlockRows(catalog), withLookupKey: false);
             text.AppendLine();
-            text.AppendLine(
+            text.AppendLine(CultureInfo.InvariantCulture,
                 $"        private const string NewProjectSkeletonDigest = \"{Digest(catalog.NewProjectSkeleton)}\";");
-            text.AppendLine(
+            text.AppendLine(CultureInfo.InvariantCulture,
                 $"        private const string BuiltInEnumeratorsDigest = \"{Digest(catalog.BuiltInEnumerators)}\";");
             text.AppendLine("        private const string EmptyFunctionBlockTemplateDigest = "
                 + $"\"{DigestTemplate(catalog.EmptyFunctionBlockTemplate)}\";");
@@ -530,7 +531,7 @@ namespace Ihc.Vis.Tests
         /// </summary>
         private static void AppendTable(StringBuilder text, string field, DigestRow[] rows, bool withLookupKey)
         {
-            text.AppendLine($"        private static readonly DigestRow[] {field} =");
+            text.AppendLine(CultureInfo.InvariantCulture, $"        private static readonly DigestRow[] {field} =");
             text.AppendLine("        [");
             for (int start = 0; start < rows.Length;)
             {
@@ -546,13 +547,13 @@ namespace Ihc.Vis.Tests
                 // the annotation is lost the first time someone pastes a rebaseline over it.
                 string note = section[0].CategoryPath.Length == 0
                     ? "   // the keyless user-saved block — no catalog folder" : string.Empty;
-                text.AppendLine($"            .. Section({Literal(section[0].CategoryPath)},{note}");
+                text.AppendLine(CultureInfo.InvariantCulture, $"            .. Section({Literal(section[0].CategoryPath)},{note}");
                 for (int i = 0; i < section.Length; i++)
                 {
                     DigestRow row = section[i];
                     string key = withLookupKey ? (Literal(row.LookupKey) + ",").PadRight(14) + " " : string.Empty;
                     string close = i == section.Length - 1 ? ")," : ",";   // the last row closes Section( too
-                    text.AppendLine(
+                    text.AppendLine(CultureInfo.InvariantCulture,
                         $"                ({(Literal(row.Name) + ",").PadRight(width)} {key}\"{row.Digest}\"){close}");
                 }
 

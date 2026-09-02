@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using Avalonia.Controls;
 using Ihc.App;
@@ -88,7 +89,7 @@ namespace Ihc.Tests
                     return true;
                 case NumericUpDown numeric:
                     if (value != null)
-                        numeric.Value = Convert.ToDecimal(value);
+                        numeric.Value = Convert.ToDecimal(value, CultureInfo.InvariantCulture);
                     return true;
                 case ComboBox combo:
                     combo.SelectedItem = value;

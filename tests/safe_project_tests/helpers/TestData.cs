@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Text;
 
@@ -75,12 +76,12 @@ namespace Ihc.Vis.Tests
                 }
             }
             var sb = new StringBuilder();
-            sb.AppendLine($"{label}: serialized bytes differ from the original.");
-            sb.AppendLine($"  expected length: {expected.Length}, actual length: {actual.Length}");
-            sb.AppendLine($"  first difference at byte 0x{offset:x} ({offset}), line {line}, column {col}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"{label}: serialized bytes differ from the original.");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  expected length: {expected.Length}, actual length: {actual.Length}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  first difference at byte 0x{offset:x} ({offset}), line {line}, column {col}");
             int start = Math.Max(0, offset - 16);
-            sb.AppendLine($"  expected: {HexWindow(expected, start, 32)}");
-            sb.AppendLine($"  actual:   {HexWindow(actual, start, 32)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  expected: {HexWindow(expected, start, 32)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  actual:   {HexWindow(actual, start, 32)}");
             return sb.ToString();
         }
 
@@ -90,7 +91,7 @@ namespace Ihc.Vis.Tests
             var ascii = new StringBuilder();
             for (int i = start; i < start + count && i < data.Length; i++)
             {
-                hex.Append(data[i].ToString("x2")).Append(' ');
+                hex.Append(data[i].ToString("x2", CultureInfo.InvariantCulture)).Append(' ');
                 byte b = data[i];
                 ascii.Append(b is >= 0x20 and < 0x7f ? (char)b : '.');
             }

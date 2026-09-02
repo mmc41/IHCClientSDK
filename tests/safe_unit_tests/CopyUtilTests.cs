@@ -171,7 +171,7 @@ namespace Ihc.Tests
             {
                 if (prop != null && prop.PropertyType == typeof(string) && value is string str)
                 {
-                    return str.ToUpper();
+                    return str.ToUpperInvariant();
                 }
                 return value;
             };
@@ -433,7 +433,7 @@ namespace Ihc.Tests
             {
                 if (prop != null && prop.Name == "Names" && value is string str)
                 {
-                    return str.ToUpper();
+                    return str.ToUpperInvariant();
                 }
                 return value;
             };
@@ -933,7 +933,7 @@ namespace Ihc.Tests
             {
                 if (value is SimpleRecord record)
                 {
-                    return record with { Name = record.Name?.ToUpper() };
+                    return record with { Name = record.Name?.ToUpperInvariant() };
                 }
                 return value;
             };
@@ -981,7 +981,7 @@ namespace Ihc.Tests
             {
                 if (value is MutableWithHash obj)
                 {
-                    obj.Value = obj.Value?.ToUpper(); // Mutate in place
+                    obj.Value = obj.Value?.ToUpperInvariant(); // Mutate in place
                     return obj; // Return same reference
                 }
                 return value;

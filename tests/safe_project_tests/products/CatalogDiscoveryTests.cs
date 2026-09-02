@@ -22,7 +22,7 @@ namespace Ihc.Vis.Tests
             {
                 Assert.That(catalog.Products.Count, Is.GreaterThanOrEqualTo(100), "≈100 product .def files");
                 Assert.That(catalog.FunctionBlocks.Count, Is.GreaterThanOrEqualTo(72), "≈72 function-block .ifb files");
-                Assert.That(catalog.Products.All(p => p.Body.Tag.StartsWith("product") || p.Body.Tag.Contains("device")),
+                Assert.That(catalog.Products.All(p => p.Body.Tag.StartsWith("product", StringComparison.Ordinal) || p.Body.Tag.Contains("device")),
                     Is.True, "every product body is a product/device root");
                 Assert.That(catalog.FunctionBlocks.All(f => f.Body.Tag == "functionblock"), Is.True);
             });

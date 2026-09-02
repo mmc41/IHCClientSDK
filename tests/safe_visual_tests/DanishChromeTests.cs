@@ -87,7 +87,7 @@ public class DanishChromeTests : AvaloniaTestBase
         {
             Assert.That(sub.DisplayName, Is.EqualTo("Under program"),
                 "the sub-program label matches what the file itself stores");
-            Assert.That(childLabels.Any(l => l.StartsWith("Betingelser")), Is.True,
+            Assert.That(childLabels.Any(l => l.StartsWith("Betingelser", StringComparison.Ordinal)), Is.True,
                 $"the conditions group is 'Betingelser (…)' — got [{string.Join(" | ", childLabels)}]");
             Assert.That(childLabels, Does.Contain("Kommandoer ved betingelser sande"));
             Assert.That(childLabels, Does.Contain("Kommandoer ved betingelser falske"));

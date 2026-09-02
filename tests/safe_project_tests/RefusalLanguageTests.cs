@@ -432,7 +432,7 @@ namespace Ihc.Vis.Tests
             Project project = await new ProjectAppService(TestSetup.Settings).Load("testdata/projects/project2-CustomBlock.vis");
             ProjectElement locked = project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("locked") == "yes");
-            ProjectElement inside = locked.Descendants().First(e => e.Id is not null && e.Tag.StartsWith("resource_"));
+            ProjectElement inside = locked.Descendants().First(e => e.Id is not null && e.Tag.StartsWith("resource_", StringComparison.Ordinal));
             var session = new ProjectDocumentSession();
             session.Open(project);
 

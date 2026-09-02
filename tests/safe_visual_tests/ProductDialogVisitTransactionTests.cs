@@ -29,7 +29,7 @@ public class ProductDialogVisitTransactionTests
         MainWindowViewModel vm = harness.CreateViewModel();
         await vm.InitializeAsync();
         ProductDefinition definition = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Count > 0);
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Count > 0);
         ElementId product = (await harness.Session.AddProductAsync(
             vm.InstallationNodes[0].Children[0].ElementId!.Value, definition.ProductIdentifier))!.Value;
         ProjectElement pin = harness.Session.Current!.FindById(product)!.DescendantsAndSelf()

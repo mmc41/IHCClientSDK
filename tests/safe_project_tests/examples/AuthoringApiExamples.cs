@@ -18,7 +18,7 @@ namespace Ihc.Vis.Tests
     [Category("Example")]
     public class AuthoringApiExamples
     {
-        private IhcSettings settings => TestSetup.Settings;
+        private static IhcSettings settings => TestSetup.Settings;
 
         [Test, Explicit("Stage 1: authoring-API preview against stubs; reconstructs Project1-SimpelWired.vis — not run")]
         public void BuildProject1_FromCode_ShowsAuthoringApi()

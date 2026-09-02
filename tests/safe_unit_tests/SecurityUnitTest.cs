@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using NUnit.Framework;
 using Ihc;
 
@@ -24,8 +25,8 @@ namespace Ihc.Tests
                 Phone = "123-456-7890",
                 Group = IhcUserGroup.Administrators,
                 Project = "testproject",
-                CreatedDate = DateTimeOffset.Parse("2024-01-01T00:00:00Z"),
-                LoginDate = DateTimeOffset.Parse("2024-01-02T00:00:00Z")
+                CreatedDate = DateTimeOffset.Parse("2024-01-01T00:00:00Z", CultureInfo.InvariantCulture),
+                LoginDate = DateTimeOffset.Parse("2024-01-02T00:00:00Z", CultureInfo.InvariantCulture)
             };
 
             // Act
@@ -52,8 +53,8 @@ namespace Ihc.Tests
                 Phone = "123-456-7890",
                 Group = IhcUserGroup.Administrators,
                 Project = "testproject",
-                CreatedDate = DateTimeOffset.Parse("2024-01-01T00:00:00Z"),
-                LoginDate = DateTimeOffset.Parse("2024-01-02T00:00:00Z")
+                CreatedDate = DateTimeOffset.Parse("2024-01-01T00:00:00Z", CultureInfo.InvariantCulture),
+                LoginDate = DateTimeOffset.Parse("2024-01-02T00:00:00Z", CultureInfo.InvariantCulture)
             };
 
             // Act
@@ -80,8 +81,8 @@ namespace Ihc.Tests
                 Phone = "123-456-7890",
                 Group = IhcUserGroup.Users,
                 Project = "testproject",
-                CreatedDate = DateTimeOffset.Parse("2024-01-01T00:00:00Z"),
-                LoginDate = DateTimeOffset.Parse("2024-01-02T00:00:00Z")
+                CreatedDate = DateTimeOffset.Parse("2024-01-01T00:00:00Z", CultureInfo.InvariantCulture),
+                LoginDate = DateTimeOffset.Parse("2024-01-02T00:00:00Z", CultureInfo.InvariantCulture)
             };
 
             // Act

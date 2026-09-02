@@ -312,7 +312,7 @@ public class CommandAvailabilitySpecTests : AvaloniaTestBase
         using var _1 = harness;
         var product = harness.ProjectService.GetAvailableProducts().First(p => p.Resources.Any(r => r.Tag == "dataline_input"));
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
-        ProjectElement placed = harness.Session.Current!.FindById(loc)!.Children.First(c => c.Tag.StartsWith("product_"));
+        ProjectElement placed = harness.Session.Current!.FindById(loc)!.Children.First(c => c.Tag.StartsWith("product_", StringComparison.Ordinal));
         ElementId catalogPin = placed.Children.First(c => c.Tag == "dataline_input").Id!.Value;
         ElementId deletableProduct = placed.Id!.Value;
 

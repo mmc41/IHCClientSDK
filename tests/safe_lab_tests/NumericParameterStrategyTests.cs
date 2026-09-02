@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Headless.NUnit;
 using NUnit.Framework;
@@ -126,7 +127,7 @@ namespace Ihc.Tests
             {
                 // Arrange
                 var field = new FieldMetaData("testParam", numericType, [], "Test description");
-                var numericUpDown = new NumericUpDown { Value = Convert.ToDecimal(expectedValue) };
+                var numericUpDown = new NumericUpDown { Value = Convert.ToDecimal(expectedValue, CultureInfo.InvariantCulture) };
 
                 // Act
                 var value = strategy.ExtractValue(numericUpDown, field);

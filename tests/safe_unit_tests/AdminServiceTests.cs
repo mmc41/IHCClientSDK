@@ -577,7 +577,7 @@ namespace Ihc.Tests
         /// <summary>
         /// Helper method to create a test AdminModel with all properties populated.
         /// </summary>
-        private MutableAdminModel CreateTestAdminModel()
+        private static MutableAdminModel CreateTestAdminModel()
         {
             return new MutableAdminModel
             {

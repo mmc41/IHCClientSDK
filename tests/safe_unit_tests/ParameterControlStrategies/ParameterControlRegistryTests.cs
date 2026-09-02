@@ -182,7 +182,7 @@ namespace Ihc.Tests
         }
 
         // Helper strategy for testing registration order
-        private class TestCatchAllStrategy : IParameterControlStrategy
+        private sealed class TestCatchAllStrategy : IParameterControlStrategy
         {
             public bool CanHandle(FieldMetaData field) => true;
 

@@ -114,9 +114,9 @@ namespace Ihc.Vis.Tests
         public async Task Undo_CascadingDelete_ReversesAsOneStep()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectElement group = project.Groups.First(g => g.Children.Any());
+            ProjectElement group = project.Groups.First(g => g.Children.Count > 0);
             ElementId loc = group.Id!.Value;
-            int contentBefore = group.Children.Count();
+            int contentBefore = group.Children.Count;
             ProjectDocumentSession session = Session(project);
 
             session.Apply(new DeleteLocality(loc));
@@ -128,7 +128,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(restored, Is.Not.Null, "one undo restores the locality");
-                Assert.That(restored!.Children.Count(), Is.EqualTo(contentBefore),
+                Assert.That(restored!.Children.Count, Is.EqualTo(contentBefore),
                     "and its contents — the cascade is reversed as a unit");
             });
         }

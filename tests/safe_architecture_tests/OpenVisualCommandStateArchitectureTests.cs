@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using static Ihc.Tests.ArchRuleHelpers;
@@ -73,6 +74,7 @@ namespace Ihc.Tests
             public string CommandName { get; } = commandName;
         }
 
+        [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "The attributes the detector scans for sit on INSTANCE members; a static seed is not the shape under test.")]
         private sealed class SeededEnablementAttributeUser
         {
             [NotifyCanExecuteChangedFor("SaveCommand")]
@@ -82,6 +84,7 @@ namespace Ihc.Tests
             public void Save() { }
         }
 
+        [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "The attributes the detector scans for sit on INSTANCE members; a static seed is not the shape under test.")]
         private sealed class SeededPlainRelayCommandUser
         {
             [RelayCommand]

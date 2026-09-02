@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -34,6 +35,15 @@ namespace Ihc.Tests
         // ...). Both the SDK's app tier and the GUI must stay off this layer, so the anchor is shared here.
         public static readonly string SoapNs =
             ParentNamespace(typeof(global::Ihc.Soap.Authentication.AuthenticationService).Namespace!);
+
+        // ArchUnitNET renders a nested type as "Outer+Inner", and the CLR's own metadata uses '/' for the same
+        // join, so both split a rendered name back to its authored owner. Hoisted into SearchValues because the
+        // splits below run once per type AND once per call edge of every scanned assembly, where a fresh
+        // char[] per call is the allocation the scan spends most of its time on.
+        private static readonly SearchValues<char> NestedTypeSeparators = SearchValues.Create("+/");
+
+        // The signature and generic-arity suffixes an ArchUnitNET member name carries: "Apply(Ihc…)", "Apply`1(…)".
+        private static readonly SearchValues<char> MemberNameSuffixStarts = SearchValues.Create("(`");
 
         // Namespaces the first-party assemblies must never pull in. These stay string literals on purpose: nothing
         // (and nothing that should) references these by design, so there is no type to anchor a typeof to — their
@@ -327,7 +337,7 @@ namespace Ihc.Tests
         // display class, so the raw origin of a ProjectWorkflow call can read "…ProjectWorkflow+<StartAsync>d__12".
         public static string OutermostTypeName(string fullName)
         {
-            int cut = fullName.IndexOfAny(new[] { '+', '/' });
+            int cut = fullName.AsSpan().IndexOfAny(NestedTypeSeparators);
             return cut < 0 ? fullName : fullName.Substring(0, cut);
         }
 
@@ -379,8 +389,8 @@ namespace Ihc.Tests
 
         private static string AuthoredMemberName(string originTypeFullName, string emittedMemberName)
         {
-            string nestedName = originTypeFullName.Substring(originTypeFullName.LastIndexOfAny(new[] { '+', '/' }) + 1);
-            if (nestedName.StartsWith("<", StringComparison.Ordinal))
+            string nestedName = originTypeFullName.Substring(originTypeFullName.AsSpan().LastIndexOfAny(NestedTypeSeparators) + 1);
+            if (nestedName.StartsWith('<'))
             {
                 int nameStart = nestedName.StartsWith("<<", StringComparison.Ordinal) ? 2 : 1;
                 int close = nestedName.IndexOf('>', nameStart);
@@ -393,7 +403,7 @@ namespace Ihc.Tests
 
         private static string BareMemberName(string memberName)
         {
-            int cut = memberName.IndexOfAny(new[] { '(', '`' });
+            int cut = memberName.AsSpan().IndexOfAny(MemberNameSuffixStarts);
             return cut < 0 ? memberName : memberName.Substring(0, cut);
         }
 

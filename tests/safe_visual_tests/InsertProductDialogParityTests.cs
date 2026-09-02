@@ -20,7 +20,7 @@ public class InsertProductDialogParityTests
         await vm.InitializeAsync();
         vm.SelectNode(vm.InstallationNodes[0].Children[2]);   // an empty room
         return (harness, vm, harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie")).DisplayName);
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal)).DisplayName);
     }
 
     private static ProductMenuItemViewModel FirstWiredLeaf(MainWindowViewModel vm)
@@ -40,7 +40,7 @@ public class InsertProductDialogParityTests
     }
 
     private static int ProductCount(Project project) =>
-        project.Groups.Sum(g => g.Children.Count(c => c.Tag.StartsWith("product_")));
+        project.Groups.Sum(g => g.Children.Count(c => c.Tag.StartsWith("product_", StringComparison.Ordinal)));
 
     [Test]
     public async Task InsertProduct_OpensTheProductDialog()

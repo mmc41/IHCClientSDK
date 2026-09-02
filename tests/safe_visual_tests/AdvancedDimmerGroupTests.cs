@@ -28,7 +28,7 @@ public class AdvancedDimmerGroupTests : AvaloniaTestBase
         Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
         ElementId locality = project.Groups.First().Id!.Value;
         ProductDefinition definition = app.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("LK IHC Wireless") && p.CategoryPath.Contains("Dimmer"));
+            .First(p => p.CategoryPath.StartsWith("LK IHC Wireless", StringComparison.Ordinal) && p.CategoryPath.Contains("Dimmer"));
         var session = new ProjectDocumentSession();
         session.Open(project);
         ElementId id = session.Apply(new AddProduct(locality, definition)).Value;

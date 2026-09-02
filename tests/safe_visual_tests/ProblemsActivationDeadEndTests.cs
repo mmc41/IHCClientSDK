@@ -63,7 +63,7 @@ public class ProblemsActivationDeadEndTests
         await rig.Harness.Session.OpenAsync(ProblemsTestData.FixturePath("project3-KompleksWired.vis"));
         Project project = rig.Harness.Session.Current!;
         ProjectElement container = project.Root.DescendantsAndSelf()
-            .First(e => e.Tag.EndsWith("_settings") && e.Children.Count > 0);
+            .First(e => e.Tag.EndsWith("_settings", StringComparison.Ordinal) && e.Children.Count > 0);
         ProjectElement setting = container.Children[0];
         ProjectElement product = project.FindParent(container.Id!.Value)!;
         Assert.That(ProjectTreeProjector.HasRow(project, setting.Id!.Value), Is.False,

@@ -27,7 +27,7 @@ public class LinkNavigationParityTests
         await vm.InitializeAsync();
         var loc = vm.InstallationNodes[0].Children[0].ElementId!.Value;
         var product = harness.ProjectService.GetAvailableProducts()
-            .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+            .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Any(r => r.Tag == "dataline_input"));
         var block = harness.ProjectService.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0);
         await harness.Session.AddProductAsync(loc, product.ProductIdentifier);
         await harness.Session.AddFunctionBlockAsync(loc, block.MasterType);

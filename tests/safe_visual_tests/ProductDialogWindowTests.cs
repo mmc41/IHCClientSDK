@@ -62,7 +62,7 @@ public class ProductDialogWindowTests : AvaloniaTestBase
         ProductDialogViewModel vm = await DialogFor("_0x3103");
         ProductDialogWindow window = Shown(vm);
 
-        var phoneFields = vm.AllFields.Where(f => f.Caption.StartsWith("Nummer")).ToList();
+        var phoneFields = vm.AllFields.Where(f => f.Caption.StartsWith("Nummer", StringComparison.Ordinal)).ToList();
         UniformGrid[] grids = [.. window.GetVisualDescendants().OfType<UniformGrid>()];
 
         Assert.Multiple(() =>
@@ -351,7 +351,7 @@ public class ProductDialogWindowTests : AvaloniaTestBase
             Assert.That(disclosure, Is.Not.Null, "the wireless dimmer offers its advanced settings in place");
             Assert.That(disclosure!.Header, Is.EqualTo("Avancerede Dimmer egenskaber"));
             Assert.That(window.GetVisualDescendants().OfType<Button>()
-                    .Where(b => (b.Content as string)?.StartsWith("Avanceret") == true),
+                    .Where(b => (b.Content as string)?.StartsWith("Avanceret", StringComparison.Ordinal) == true),
                 Is.Empty,
                 "and no button remains that would open a window instead");
         });

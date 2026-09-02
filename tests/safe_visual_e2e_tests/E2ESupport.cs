@@ -115,7 +115,7 @@ public static class E2E
                 ? value
                 : throw new InvalidOperationException($"envelope for '{Command}' has no data.{name}: {Raw}");
 
-        public int Int(string name) => Field(name).GetInt32();
+        public int Number(string name) => Field(name).GetInt32();
 
         public string Text(string name) => Field(name).GetString() ?? string.Empty;
 

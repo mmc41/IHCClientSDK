@@ -150,7 +150,7 @@ namespace Ihc.Vis.Tests
             var service = new ProjectAppService(TestSetup.Settings);
             Project project = service.CreateNew(new ProjectDetails(string.Empty, string.Empty, string.Empty));
             ProductDefinition product = service.GetAvailableProducts()
-                .First(p => p.CategoryPath.StartsWith("Datalinie") && p.Resources.Any(r => r.Tag == "dataline_input"));
+                .First(p => p.CategoryPath.StartsWith("Datalinie", StringComparison.Ordinal) && p.Resources.Any(r => r.Tag == "dataline_input"));
             string room = project.Groups.First().GetAttribute("name")!;
 
             ProjectEditor editor = project.Edit();

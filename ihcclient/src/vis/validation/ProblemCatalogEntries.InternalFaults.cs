@@ -22,8 +22,7 @@ namespace Ihc.Vis.Validation
     /// other user-facing sentence in this catalogue names things in the installer's world — a locality, a
     /// terminal, a file. These name a rule and an operation, which are parts of the tool. That is admissible here
     /// for one reason only: the sentence is ABOUT the tool, and a reader who is being told the tool failed can
-    /// act on which part failed. A finding about a project must never name the rule that found it, and nothing
-    /// here licenses that.</para>
+    /// act on which part failed. A finding about a project must never name the rule that found it.</para>
     /// </summary>
     internal static partial class ProblemCatalogEntries
     {

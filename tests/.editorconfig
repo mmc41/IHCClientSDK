@@ -1,16 +1,24 @@
 # Analyzer severity for the test suites only.
 #
-# Four of the rules enabled repo-wide in /.globalconfig are about the lifetime and blocking behaviour of
-# objects inside a long-running process. A test method is not one: it runs once, on a fixture the runner
-# tears down, in a host process that exits. Enforcing them here was measured at 414 findings against 39 in
-# the code that ships — the ratio alone says the rules are matching the shape of test code rather than a
-# defect in it.
+# The file has two halves, split by the separator below because they answer different questions. Above it
+# are rules enabled repo-wide in /.globalconfig that the suites turn back OFF. Below it are rules that
+# arrive with AnalysisMode=Recommended — the mode the suites run at, the same as the rest of the repository
+# — that the suites DECLINE. /.globalconfig is divided the same way for the same reason.
 #
-# Each is turned off for a stated reason, not as a blanket "tests are exempt". The remaining ~20 rules from
-# /.globalconfig stay in force here, and this file is a path-scoped .editorconfig precisely so that turning
-# one back on is a one-line change.
+# Neither half is a blanket "tests are exempt". Every entry is turned off on its own, with its own reason,
+# and this file is a path-scoped .editorconfig precisely so that turning one back on is a one-line change.
 
 [*.cs]
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════════
+# Rules from /.globalconfig turned back off for the suites.
+#
+# All four are about the lifetime and blocking behaviour of objects inside a long-running process. A test
+# method is not one: it runs once, on a fixture the runner tears down, in a host process that exits.
+# Enforcing them here was measured at 414 findings against 39 in the code that ships — the ratio alone says
+# the rules are matching the shape of test code rather than a defect in it. The remaining ~20 rules from
+# /.globalconfig stay in force here.
+# ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
 # 328 of 335 findings. The objects are per-test harnesses, view-models and headless windows whose scope IS
 # the test method; the runner disposes the fixture and the process exits after the run.
@@ -27,3 +35,87 @@ dotnet_diagnostic.CA1849.severity = none
 # Fires on `using` + a task in the same scope, which in these fixtures is awaited before the scope ends.
 # The rule cannot see that, and the alternative is restructuring tests to satisfy a flow analysis.
 dotnet_diagnostic.CA2025.severity = none
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════════
+# Rules DECLINED out of AnalysisMode=Recommended, for the suites.
+#
+# A rule belongs here only if its findings across the suites are either not defects, or not fixable without
+# a change bigger than the rule is worth. A rule whose findings are merely INCONVENIENT gets fixed instead,
+# and most of what the mode brought in was fixed on exactly that ground. The culture rules it adds
+# (CA1304/CA1305/CA1310/CA1311) are the clearest case: they closed a gap the suites had no cover for at all,
+# so every one of their findings was fixed and none of them appears below.
+# ═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+# CA1707 (identifiers should not contain underscores) is off. It is the largest finding count the mode
+# brings in by a wide margin — several times the next rule down, and more than every other rule here
+# put together.
+#
+# Almost all of it is one thing: the test method name. These suites name a test
+# `Verb_Condition_Expectation` (AddProgram_IsRefused_InsideALockedBlock), which is not a stylistic accident
+# but the reason a failing test is readable in a runner's flat list of names, where the underscores are the
+# only structure a reader gets. NUnit's own documentation, and every convention this repository already
+# follows, spell them this way. Renaming them into Pascal case would remove the separation and change
+# nothing about what the test does.
+#
+# The remainder is the assembly and namespace names — `safe_project_tests` and its peers. Those names are
+# what CLAUDE.md, README and CI name in their `dotnet test` lines, and what the coverage slices are keyed
+# by under artifacts/coverage/raw/<suite>/. This is the same finding, on the same ground, that
+# applications/, utilities/ and shared/ each already decline: the repository's assembly names carry
+# underscores deliberately, and renaming one to satisfy a spelling rule would leave the name disagreeing
+# with everything that invokes it.
+dotnet_diagnostic.CA1707.severity = none
+
+# CA1861 (prefer a 'static readonly' field over a constant array argument) is off. It is the second-largest
+# count the mode brings in, and the shape it fires on is the assertion itself: more than half the findings
+# are the expected value inside `Assert.That(x, Is.EqualTo(new[] { ... }))`, and most of the rest are the
+# input literal a test writes one line above the call it is testing.
+#
+# Satisfying it would hoist each of those literals into a field at the top of the fixture, away from the
+# assertion that reads it. That is a worse test: the value a case is about stops being visible at the case,
+# and a reader has to resolve a name to see what is being compared. The rule is aimed at a hot call site
+# re-allocating an array per call; a test method runs once.
+#
+# Three findings were NOT test data — the `IndexOfAny(new[] { '+', '/' })` calls in ArchRuleHelpers, which
+# really are called per type across a whole assembly scan. Turning this rule off does not release them:
+# CA1870 fires on the same three lines, stays on, and asks for the better fix (a cached SearchValues) than
+# the one CA1861 would have asked for.
+dotnet_diagnostic.CA1861.severity = none
+
+# CA1826 (do not use Enumerable methods on indexable collections) is off. Read this entry together with the
+# rules it does NOT cover: CA1829, CA1845, CA1847, CA1860, CA1865 and CA1870 are the same performance family,
+# they all fire here too, and every one of them was FIXED rather than listed. So this is not "the suites
+# decline performance rules" — it is one rule, declined on what it asks for.
+#
+# What it asks for is `.First()` → `[0]` and `.Last()` → `[^1]` across arrange-and-assert code: the receiver
+# is `project.Groups`, `element.Children`, a catalogue list — collections a test builds, reads once, and
+# discards. The enumerator allocation the rule removes is charged against a method the runner calls once.
+#
+# The part that decides it is the four `LastOrDefault()` sites, where the rewrite is not neutral but worse.
+# Each one hands a possibly-null Activity to an assertion helper (AssertRefusedScope, AssertAllChannels)
+# whose job is to report "no span was recorded" as a named failure. `[^1]` turns that into an
+# ArgumentOutOfRangeException from inside the arrange step, which says nothing about what the test was
+# checking. A rule that trades a diagnostic for an allocation is measuring the wrong thing here.
+dotnet_diagnostic.CA1826.severity = none
+
+# CA1859 (use concrete types for improved performance) is off. Note first what it is NOT: every project that
+# ships satisfies this rule with no suppression anywhere, so this is a statement about the shape of test code
+# and not a rule the repository has quietly given up on.
+#
+# What it asks for here is the reverse of what each site says on purpose. Two shapes cover all of it:
+#
+#   - A private fixture helper that returns `IReadOnlyList<string>` / `IReadOnlyCollection<string>` — a list
+#     of offences an assertion then reads. CA1859 wants `List<string>` / `HashSet<string>`. That hands the
+#     caller a mutable collection where the signature currently promises a snapshot, which is a weaker
+#     contract bought with an interface dispatch that a helper called once per test cannot notice.
+#
+#   - A local typed as the abstraction the production code sees: `IValueConstraint required =
+#     RequiredFieldConstraint.For(…)`, `ICatalog RequireCatalog() => new BuiltInCatalog()`,
+#     `ILibraryBlockSource library = …`. Here the interface IS the assertion. RequiredFieldExemplarTests
+#     proves the constraint behaves correctly when reached through IValueConstraint; retyping the local to
+#     the concrete class does not speed the test up, it deletes what the test was checking.
+#
+# The arch suite adds a third reason of its own. Its findings would put ArchUnitNET's fluent-builder
+# conjunction types (GivenTypesConjunctionWithDescription, TypesShouldConjunction) into helper signatures,
+# pinning the fixtures to that library's internal builder shape — in a suite whose entire job is to assert
+# that everything else depends on abstractions rather than implementations.
+dotnet_diagnostic.CA1859.severity = none

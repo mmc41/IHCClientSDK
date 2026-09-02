@@ -165,7 +165,7 @@ namespace Ihc.Vis.Tests
             Project placed = editor.ToProject();
 
             logId = placed.Root.DescendantsAndSelf()
-                .First(e => e.Tag == "resource_enum" && (e.GetAttribute("name") ?? string.Empty).StartsWith("Log"))
+                .First(e => e.Tag == "resource_enum" && (e.GetAttribute("name") ?? string.Empty).StartsWith("Log", StringComparison.Ordinal))
                 .Id!.Value;
             return placed;
         }

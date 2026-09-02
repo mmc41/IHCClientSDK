@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -73,7 +74,7 @@ namespace Ihc.Vis.Tests
                 int? expected = TypeCode.ForTag(e.Tag);
                 if (expected != id.TypeCode)
                 {
-                    offenders.Add($"{e.Tag}: id type-code 0x{id.TypeCode:x2} but registry says {(expected is null ? "none" : "0x" + expected.Value.ToString("x2"))}");
+                    offenders.Add($"{e.Tag}: id type-code 0x{id.TypeCode:x2} but registry says {(expected is null ? "none" : "0x" + expected.Value.ToString("x2", CultureInfo.InvariantCulture))}");
                 }
             }
 

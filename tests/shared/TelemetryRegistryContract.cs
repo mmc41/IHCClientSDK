@@ -104,7 +104,7 @@ namespace Ihc.Tests.Shared
             for (int i = 0; i < segments.Length - 1; i++)
             {
                 string segment = segments[i];
-                bool looksPlural = segment.EndsWith("s", StringComparison.Ordinal)
+                bool looksPlural = segment.EndsWith('s')
                                    && !segment.EndsWith("ss", StringComparison.Ordinal)
                                    && !segment.EndsWith("is", StringComparison.Ordinal)
                                    && !segment.EndsWith("us", StringComparison.Ordinal);

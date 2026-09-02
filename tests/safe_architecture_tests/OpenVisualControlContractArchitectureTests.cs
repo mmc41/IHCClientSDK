@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using Avalonia.Controls;
@@ -47,6 +48,8 @@ namespace Ihc.Tests
             });
 
         // Seeded violator: genuinely overrides the factory but offers only a wrong-signature rule overload.
+        [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "Deliberately the right name with the wrong signature. Making it static changes the signature further and "
+            + "stops it seeding the override contract the rule checks.")]
         private sealed class SeededContainerFactory : Menu
         {
             protected override Control CreateContainerForItemOverride(object? item, int index, object? recycleKey) =>
@@ -104,6 +107,7 @@ namespace Ihc.Tests
             });
 
         // Seeded violator: a themed framework control extended without restating its style key.
+        [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "A `new` instance member is what shadows the style key; `static new` is a different construct entirely.")]
         private sealed class SeededUnthemedControl : Menu
         {
             public new Type StyleKeyOverride(int ignored) => typeof(Menu);

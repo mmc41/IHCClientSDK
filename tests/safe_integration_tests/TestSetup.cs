@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -45,12 +46,12 @@ namespace Ihc.Tests
       settings = IhcSettings.GetFromConfiguration(config);
 
       var testConfig = config.GetSection("testConfig");
-      boolOutput1 = int.Parse(RequiredSetting(testConfig, "boolOutput1"));
-      boolInput1 = int.Parse(RequiredSetting(testConfig, "boolInput1"));
-      boolInput2 = int.Parse(RequiredSetting(testConfig, "boolInput2"));
+      boolOutput1 = int.Parse(RequiredSetting(testConfig, "boolOutput1"), CultureInfo.InvariantCulture);
+      boolInput1 = int.Parse(RequiredSetting(testConfig, "boolInput1"), CultureInfo.InvariantCulture);
+      boolInput2 = int.Parse(RequiredSetting(testConfig, "boolInput2"), CultureInfo.InvariantCulture);
 
       // Skip all integration tests if endpoint is not configured for real IHC controller
-      if (string.IsNullOrEmpty(settings.Endpoint) || settings.Endpoint.StartsWith("mock://"))
+      if (string.IsNullOrEmpty(settings.Endpoint) || settings.Endpoint.StartsWith("mock://", StringComparison.Ordinal))
       {
         Assert.Ignore("Integration tests skipped: Endpoint is null, empty, or starts with 'mock://'");
       }

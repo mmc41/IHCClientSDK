@@ -64,7 +64,7 @@ public class LibraryMenuParityTests
     }
 
     private static int CatalogBindingsIn(string automationId, string nextAutomationId) =>
-        Regex.Matches(Region(automationId, nextAutomationId), @"ItemsSource=""\{Binding FunctionBlocksMenu\}""").Count;
+        Regex.Count(Region(automationId, nextAutomationId), @"ItemsSource=""\{Binding FunctionBlocksMenu\}""");
 
     private static string Xaml() =>
         File.ReadAllText(Path.Combine(TestContext.CurrentContext.TestDirectory, "appxaml", "MainWindow.axaml"));
