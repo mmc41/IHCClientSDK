@@ -285,7 +285,7 @@ namespace Ihc {
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
-        private SystemInfo mapSystemInfo(Ihc.Soap.Configuration.WSSystemInfo? info)
+        private static SystemInfo mapSystemInfo(Ihc.Soap.Configuration.WSSystemInfo? info)
         {
             // Return empty SystemInfo if input is null
             if (info == null)
@@ -312,7 +312,7 @@ namespace Ihc {
             };
         }
 
-        private IReadOnlyList<string> mapLogFile(Ihc.Soap.Configuration.WSFile? e)
+        private static string[] mapLogFile(Ihc.Soap.Configuration.WSFile? e)
         {
             if (e == null)
                 return Array.Empty<string>();
@@ -321,7 +321,7 @@ namespace Ihc {
             return logs.Split('\n', '\r');
         }
 
-        private NetworkSettings? mapNetworkSettings(Ihc.Soap.Configuration.WSNetworkSettings? settings)
+        private static NetworkSettings? mapNetworkSettings(Ihc.Soap.Configuration.WSNetworkSettings? settings)
         {
             return settings != null ? new NetworkSettings()
             {
@@ -333,7 +333,7 @@ namespace Ihc {
             } : null;
         }
 
-        private Ihc.Soap.Configuration.WSNetworkSettings? unmapNetworkSettings(NetworkSettings? settings)
+        private static Ihc.Soap.Configuration.WSNetworkSettings? unmapNetworkSettings(NetworkSettings? settings)
         {
             if (settings == null)
                 return null;
@@ -348,7 +348,7 @@ namespace Ihc {
             };
         }
 
-        private DNSServers mapDNSServers(Ihc.Soap.Configuration.WSInetAddress[] dnsAddresses)
+        private static DNSServers mapDNSServers(Ihc.Soap.Configuration.WSInetAddress[] dnsAddresses)
         {
             // Assume max length is 2 (primary and secondary DNS)
             return new DNSServers()
@@ -358,7 +358,7 @@ namespace Ihc {
             };
         }
 
-        private (Ihc.Soap.Configuration.WSInetAddress?, Ihc.Soap.Configuration.WSInetAddress?) unmapDNSServers(DNSServers? dnsServers)
+        private static (Ihc.Soap.Configuration.WSInetAddress?, Ihc.Soap.Configuration.WSInetAddress?) unmapDNSServers(DNSServers? dnsServers)
         {
             var dns1 = !string.IsNullOrEmpty(dnsServers?.PrimaryDNS)
                 ? new Ihc.Soap.Configuration.WSInetAddress() { ipAddress = NetworkHelper.ConvertIPAddressToInt(dnsServers.PrimaryDNS) }
@@ -369,7 +369,7 @@ namespace Ihc {
             return (dns1, dns2);
         }
 
-        private WLanSettings? mapWLanSettings(Ihc.Soap.Configuration.WSWLanSettings? settings)
+        private static WLanSettings? mapWLanSettings(Ihc.Soap.Configuration.WSWLanSettings? settings)
         {
             return settings != null ? new WLanSettings()
             {
@@ -384,7 +384,7 @@ namespace Ihc {
             } : null;
         }
 
-        private Ihc.Soap.Configuration.WSWLanSettings? unmapWLanSettings(WLanSettings? settings)
+        private static Ihc.Soap.Configuration.WSWLanSettings? unmapWLanSettings(WLanSettings? settings)
         {
             if (settings == null)
                 return null;
@@ -402,7 +402,7 @@ namespace Ihc {
             };
         }
 
-        private WLanInterface? mapWLanInterface(Ihc.Soap.Configuration.WSWLanInterface? iface)
+        private static WLanInterface? mapWLanInterface(Ihc.Soap.Configuration.WSWLanInterface? iface)
         {
             return iface != null ? new WLanInterface()
             {
@@ -424,7 +424,7 @@ namespace Ihc {
             } : null;
         }
 
-        private SMTPSettings? mapSMTPSettings(Ihc.Soap.Configuration.WSSMTPSettings? settings)
+        private static SMTPSettings? mapSMTPSettings(Ihc.Soap.Configuration.WSSMTPSettings? settings)
         {
             return settings != null ? new SMTPSettings()
             {
@@ -438,7 +438,7 @@ namespace Ihc {
             } : null;
         }
 
-        private Ihc.Soap.Configuration.WSSMTPSettings? unmapSMTPSettings(SMTPSettings? settings)
+        private static Ihc.Soap.Configuration.WSSMTPSettings? unmapSMTPSettings(SMTPSettings? settings)
         {
             if (settings == null)
                 return null;
@@ -455,7 +455,7 @@ namespace Ihc {
             };
         }
 
-        private EmailControlSettings? mapEmailControlSettings(Ihc.Soap.Configuration.WSEmailControlSettings? settings)
+        private static EmailControlSettings? mapEmailControlSettings(Ihc.Soap.Configuration.WSEmailControlSettings? settings)
         {
             return settings != null ? new EmailControlSettings()
             {
@@ -470,7 +470,7 @@ namespace Ihc {
             } : null;
         }
 
-        private Ihc.Soap.Configuration.WSEmailControlSettings? unmapEmailControlSettings(EmailControlSettings? settings)
+        private static Ihc.Soap.Configuration.WSEmailControlSettings? unmapEmailControlSettings(EmailControlSettings? settings)
         {
             if (settings == null)
                 return null;
@@ -488,7 +488,7 @@ namespace Ihc {
             };
         }
 
-        private WebAccessControl? mapWebAccessControl(Ihc.Soap.Configuration.WSAccessControl? ac)
+        private static WebAccessControl? mapWebAccessControl(Ihc.Soap.Configuration.WSAccessControl? ac)
         {
             return ac != null ? new WebAccessControl()
             {
@@ -524,7 +524,7 @@ namespace Ihc {
             } : null;
         }
 
-        private Ihc.Soap.Configuration.WSAccessControl? unmapWebAccessControl(WebAccessControl? ac)
+        private static Ihc.Soap.Configuration.WSAccessControl? unmapWebAccessControl(WebAccessControl? ac)
         {
             if (ac == null)
                 return null;

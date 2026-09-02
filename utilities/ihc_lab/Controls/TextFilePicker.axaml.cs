@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Avalonia;
@@ -158,7 +157,7 @@ public partial class TextFilePicker : UserControl, TextFile
                 return;
             }
 
-            var file = files.First();
+            var file = files[0];
 
             // Read file content as text using configured encoding
             await using var stream = await file.OpenReadAsync();

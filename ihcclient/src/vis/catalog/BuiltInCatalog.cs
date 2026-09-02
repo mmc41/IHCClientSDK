@@ -76,10 +76,10 @@ namespace Ihc.Vis.Catalog
         }
 
         /// <summary>Generated product factories (Phase B) append here — the plan's <c>AllProducts()</c> hook.</summary>
-        partial void RegisterProducts(ImmutableArray<ProductDefinition>.Builder products);
+        static partial void RegisterProducts(ImmutableArray<ProductDefinition>.Builder products);
 
         /// <summary>Generated function-block factories (FB plan) append here — the plan's <c>AllFunctionBlocks()</c> hook.</summary>
-        partial void RegisterFunctionBlocks(ImmutableArray<FunctionBlockDefinition>.Builder functionBlocks);
+        static partial void RegisterFunctionBlocks(ImmutableArray<FunctionBlockDefinition>.Builder functionBlocks);
 
         /// <summary>Phase C assigns <c>newProjectSkeleton</c>, <c>builtInEnumerators</c>, <c>emptyFunctionBlockTemplate</c>.</summary>
         partial void AuthorTemplates();

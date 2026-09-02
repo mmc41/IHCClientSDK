@@ -265,7 +265,7 @@ namespace Ihc {
             this.impl = impl;
         }
 
-        private SDInfo? mapSDCardData(WSSdCardData? e)
+        private static SDInfo? mapSDCardData(WSSdCardData? e)
         {
             if (e == null)
                 return null;
@@ -277,7 +277,7 @@ namespace Ihc {
             };
         }
 
-        private BackupFile? mapBackup(Ihc.Soap.Controller.WSFile? backupFile)
+        private static BackupFile? mapBackup(Ihc.Soap.Controller.WSFile? backupFile)
         {
             if (backupFile == null)
                 return null;
@@ -297,7 +297,7 @@ namespace Ihc {
             );
         }
 
-        private DateTimeOffset mapDate(WSDate? v)
+        private static DateTimeOffset mapDate(WSDate? v)
         {
             if (v == null)
                 return DateTimeOffset.MinValue;
@@ -305,7 +305,7 @@ namespace Ihc {
             return new DateTimeOffset(v.year, v.monthWithJanuaryAsOne, v.day, v.hours, v.minutes, v.seconds, DateHelper.GetWSTimeOffset());
         }
 
-        private ProjectInfo? mapProjectInfo(Ihc.Soap.Controller.WSProjectInfo? projectInfo)
+        private static ProjectInfo? mapProjectInfo(Ihc.Soap.Controller.WSProjectInfo? projectInfo)
         {
             if (projectInfo == null)
                 return null;
@@ -380,7 +380,7 @@ namespace Ihc {
             };
         }
 
-            private ControllerState mapControllerState(Ihc.Soap.Controller.WSControllerState? state)
+            private static ControllerState mapControllerState(Ihc.Soap.Controller.WSControllerState? state)
         {
             if (state == null || String.IsNullOrEmpty(state.state))
                 return ControllerState.Uninitialized;
@@ -405,7 +405,7 @@ namespace Ihc {
         }
 
 
-        private Ihc.Soap.Controller.WSControllerState mapControllerState(ControllerState state)
+        private static Ihc.Soap.Controller.WSControllerState mapControllerState(ControllerState state)
         {
             string stateStr;
             switch (state)

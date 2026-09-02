@@ -12,6 +12,10 @@
     <InformationalVersion>This is a beta package</InformationalVersion>
     <Copyright>Apache License 2.0</Copyright>
     <Authors>mmc41</Authors>
+    <!-- AnalysisMode comes from Directory.Build.props, which holds the whole repository at Recommended. The
+         rules this project declines out of that mode are turned off one at a time, each with its reason, in
+         analyser.config (which also names the one rule scoped by path outside it), so raising the mode again
+         means reading that file rather than guessing. -->
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="safe_integration_tests" />

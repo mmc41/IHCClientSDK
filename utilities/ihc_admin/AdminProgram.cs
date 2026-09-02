@@ -16,7 +16,7 @@ namespace Ihc.download_upload_example
     /// <summary>
     /// Download or upload an IHC administration file.
     /// </summary>
-    class Program
+    sealed class Program
     {
         public const string AppServiceName = "IhcAdminConsole";
         public const string AppServiceNamespace = "Ihc";

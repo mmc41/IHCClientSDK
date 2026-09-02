@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 
@@ -74,7 +75,7 @@ namespace Ihc.Vis.Reporting
             html.Append("<!doctype html>\n<html lang=\"da\">\n<head>\n");
             html.Append("<meta charset=\"utf-8\">\n");
             html.Append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n");
-            html.Append($"<title>{title} &mdash; {ProductName}</title>\n");
+            html.Append(CultureInfo.InvariantCulture, $"<title>{title} &mdash; {ProductName}</title>\n");
             html.Append("<style>\n").Append(Stylesheet).Append("\n</style>\n</head>\n<body>\n");
 
             // The provider's once-per-document definitions block sits directly after <body> (R11); the
@@ -89,7 +90,7 @@ namespace Ihc.Vis.Reporting
             html.Append("  <svg class=\"banner-logo\" aria-hidden=\"true\"><use href=\"#icon-logo\"/></svg>\n");
             html.Append($"  <strong>{ProductName}</strong>\n");
             html.Append("</header>\n");
-            html.Append($"<h1>{title}</h1>\n");
+            html.Append(CultureInfo.InvariantCulture, $"<h1>{title}</h1>\n");
 
             // Run function-block sections render as ONE source line per run: blobs concatenate with no
             // separator, the run is closed by the next shape (or the tail), and it takes the generic blank
@@ -142,7 +143,7 @@ namespace Ihc.Vis.Reporting
         // first-use order (the provider owns the sprite's canonical ordering).
         // Distinct yields first occurrences in source order, which IS the sprite's emission order — so the hand-synced
         // List-plus-HashSet pair this replaced was spelling out one LINQ operator.
-        private static IReadOnlyCollection<string> UsedIconKeys(ReportShapeDocument document) =>
+        private static List<string> UsedIconKeys(ReportShapeDocument document) =>
             document.Shapes.OfType<FbBlockShape>().SelectMany(b => b.Rows).OfType<IconTreeRow>()
                 .Select(row => row.IconKey)
                 .Prepend(LogoKey)
@@ -157,7 +158,7 @@ namespace Ihc.Vis.Reporting
         private static void AppendFbSection(StringBuilder html, FbBlockShape block, IReportIconProvider? iconProvider)
         {
             html.Append("<section><hr class=\"divider\">");
-            html.Append($"<h2>{EscapeFb(block.Heading)}{Chip(block.IdToken)}</h2>");
+            html.Append(CultureInfo.InvariantCulture, $"<h2>{EscapeFb(block.Heading)}{Chip(block.IdToken)}</h2>");
             if (!block.Identity.IsEmpty)
             {
                 // The Full identity grid: an untitled meta table on its own lines inside the blob,
@@ -166,7 +167,7 @@ namespace Ihc.Vis.Reporting
                 html.Append("  <colgroup><col style=\"width:25%\"><col></colgroup>\n");
                 foreach (KeyValueRow row in block.Identity)
                 {
-                    html.Append($"  <tr><th>{Escape(row.Key)}</th><td>{Escape(row.Value)}</td></tr>\n");
+                    html.Append(CultureInfo.InvariantCulture, $"  <tr><th>{Escape(row.Key)}</th><td>{Escape(row.Value)}</td></tr>\n");
                 }
                 html.Append("</table>\n");
             }
@@ -188,22 +189,22 @@ namespace Ihc.Vis.Reporting
 
         private static void AppendFbList(StringBuilder html, List<TreeNode> nodes, string cssClass, IReportIconProvider? iconProvider)
         {
-            html.Append($"<ul class=\"{cssClass}\">");
+            html.Append(CultureInfo.InvariantCulture, $"<ul class=\"{cssClass}\">");
             foreach (TreeNode node in nodes)
             {
                 var row = (IconTreeRow)node.Row;
                 string icon = DefaultReportIcons.Resolve(iconProvider, ReportMimeTypes.Html, row.IconKey, out bool isRawFragment);
                 html.Append("<li><div class=\"row\">")
                     .Append(isRawFragment ? icon : EscapeFb(icon))
-                    .Append($"<span class=\"name\">{EscapeFb(row.Name)}</span>")
+                    .Append(CultureInfo.InvariantCulture, $"<span class=\"name\">{EscapeFb(row.Name)}</span>")
                     .Append(Chip(row.IdToken));
                 if (row.Value is { } value)
                 {
-                    html.Append($" <span class=\"eq\">=</span> <span class=\"value\">{EscapeFb(value)}</span>");
+                    html.Append(CultureInfo.InvariantCulture, $" <span class=\"eq\">=</span> <span class=\"value\">{EscapeFb(value)}</span>");
                 }
                 if (row.Note is { } note)
                 {
-                    html.Append($" <span class=\"note\">{EscapeFb(note)}</span>");
+                    html.Append(CultureInfo.InvariantCulture, $" <span class=\"note\">{EscapeFb(note)}</span>");
                 }
                 html.Append("</div>");
                 if (node.Children.Count > 0)
@@ -225,26 +226,26 @@ namespace Ihc.Vis.Reporting
             switch (shape)
             {
                 case MetaLineShape meta:
-                    html.Append($"<p class=\"report-meta\">Fuld rapport &mdash; Genereret: {Escape(meta.GeneratedAt)}"
+                    html.Append(CultureInfo.InvariantCulture, $"<p class=\"report-meta\">Fuld rapport &mdash; Genereret: {Escape(meta.GeneratedAt)}"
                         + $" &mdash; Programmør: {Escape(meta.Programmer)}</p>\n");
                     break;
                 case KeyValueBlockShape { Style: KeyValueStyle.Meta } block:
                     html.Append("<table class=\"meta\">\n");
                     html.Append("  <colgroup><col style=\"width:25%\"><col></colgroup>\n");
-                    html.Append($"  <tr class=\"title-row\"><th colspan=\"2\">{Escape(block.Heading)}</th></tr>\n");
+                    html.Append(CultureInfo.InvariantCulture, $"  <tr class=\"title-row\"><th colspan=\"2\">{Escape(block.Heading)}</th></tr>\n");
                     foreach (KeyValueRow row in block.Rows)
                     {
-                        html.Append($"  <tr><th>{Escape(row.Key)}</th><td>{Escape(row.Value)}{Chip(row.IdToken)}</td></tr>\n");
+                        html.Append(CultureInfo.InvariantCulture, $"  <tr><th>{Escape(row.Key)}</th><td>{Escape(row.Value)}{Chip(row.IdToken)}</td></tr>\n");
                     }
                     html.Append("</table>\n");
                     break;
                 case KeyValueBlockShape { Style: KeyValueStyle.People } block:
                     html.Append("  <table class=\"people\">\n");
                     html.Append("    <colgroup><col style=\"width:25%\"><col></colgroup>\n");
-                    html.Append($"    <tr><td></td><th class=\"party-heading\">{Escape(block.Heading)}</th></tr>\n");
+                    html.Append(CultureInfo.InvariantCulture, $"    <tr><td></td><th class=\"party-heading\">{Escape(block.Heading)}</th></tr>\n");
                     foreach (KeyValueRow row in block.Rows)
                     {
-                        html.Append($"    <tr><th>{Escape(row.Key)}</th><td>{Escape(row.Value)}{Chip(row.IdToken)}</td></tr>\n");
+                        html.Append(CultureInfo.InvariantCulture, $"    <tr><th>{Escape(row.Key)}</th><td>{Escape(row.Value)}{Chip(row.IdToken)}</td></tr>\n");
                     }
                     html.Append("  </table>\n");
                     break;
@@ -257,7 +258,7 @@ namespace Ihc.Vis.Reporting
                 case SectionBreakShape sectionBreak:
                     string breakIndent = sectionBreak.Style == SectionBreakStyle.Indented ? "  " : string.Empty;
                     html.Append(breakIndent).Append("<hr class=\"divider\">\n");
-                    html.Append(breakIndent).Append($"<h2>{Escape(sectionBreak.Heading)}</h2>\n");
+                    html.Append(breakIndent).Append(CultureInfo.InvariantCulture, $"<h2>{Escape(sectionBreak.Heading)}</h2>\n");
                     break;
                 case TableShape table:
                     AppendTable(html, table);
@@ -291,7 +292,7 @@ namespace Ihc.Vis.Reporting
                     break;
                 case TableStyle.Module:
                     html.Append("  <table>\n    <thead>\n");
-                    html.Append($"    <tr class=\"title-row\"><th colspan=\"{table.Columns.Length}\">{Escape(table.Heading!)}</th></tr>\n");
+                    html.Append(CultureInfo.InvariantCulture, $"    <tr class=\"title-row\"><th colspan=\"{table.Columns.Length}\">{Escape(table.Heading!)}</th></tr>\n");
                     AppendRow(html, "    ", HeaderCells(table.Columns));
                     html.Append("    </thead>\n");
                     if (!table.Rows.IsEmpty)
@@ -330,7 +331,7 @@ namespace Ihc.Vis.Reporting
                 html.Append("      </colgroup>\n");
             }
             html.Append("      <thead>\n");
-            html.Append($"      <tr class=\"title-row\"><th colspan=\"{table.Columns.Length}\">{Escape(table.Heading!)}</th></tr>\n");
+            html.Append(CultureInfo.InvariantCulture, $"      <tr class=\"title-row\"><th colspan=\"{table.Columns.Length}\">{Escape(table.Heading!)}</th></tr>\n");
             html.Append("      <tr>\n");
             AppendCellChunks(html, HeaderCells(table.Columns), firstChunk);
             html.Append("      </tr>\n      </thead>\n");
@@ -376,7 +377,7 @@ namespace Ihc.Vis.Reporting
             html.Append("    <colgroup><col style=\"width:25%\"><col><col></colgroup>\n");
             foreach (KeyValueRow field in component.Fields)
             {
-                html.Append($"    <tr><th>{Escape(field.Key)}</th><td colspan=\"2\">{Escape(field.Value)}{Chip(field.IdToken)}</td></tr>\n");
+                html.Append(CultureInfo.InvariantCulture, $"    <tr><th>{Escape(field.Key)}</th><td colspan=\"2\">{Escape(field.Value)}{Chip(field.IdToken)}</td></tr>\n");
             }
             if (component.Terminals is { } terminals)
             {
@@ -429,7 +430,7 @@ namespace Ihc.Vis.Reporting
         private static void AppendList(StringBuilder html, List<TreeNode> nodes, int indent, string cssClass)
         {
             string pad = new(' ', indent);
-            html.Append(pad).Append($"<ul class=\"{cssClass}\">\n");
+            html.Append(pad).Append(CultureInfo.InvariantCulture, $"<ul class=\"{cssClass}\">\n");
             foreach (TreeNode node in nodes)
             {
                 html.Append(pad).Append("  ").Append(LiOpen(node.Row)).Append(RowContent(node.Row));

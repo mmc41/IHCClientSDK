@@ -27,6 +27,9 @@ public partial class LoginDialog : Window
     /// Friendly display names for the <see cref="Application"/> login identifiers. The enum values are the SOAP
     /// wire identifiers and must not be renamed, so the human-readable text lives here instead.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance",
+        Justification = "Read-only is what this table IS: a fixed enum-to-label lookup built once and only " +
+                        "indexed. The concrete type would add a mutation surface for no gain here.")]
     private static readonly IReadOnlyDictionary<Application, string> ApplicationDisplayNames = new Dictionary<Application, string>
     {
         [Application.openapi] = "Open API",
@@ -49,10 +52,7 @@ public partial class LoginDialog : Window
 
     public LoginDialog(IhcSettings ihcSettings)
     {
-        if (ihcSettings == null)
-        {
-            throw new ArgumentNullException(nameof(ihcSettings));
-        }
+        ArgumentNullException.ThrowIfNull(ihcSettings);
 
         _ihcSettings = ihcSettings;
 

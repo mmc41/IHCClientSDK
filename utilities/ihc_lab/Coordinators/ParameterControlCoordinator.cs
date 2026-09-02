@@ -35,10 +35,8 @@ public class ParameterControlCoordinator
     {
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(ParameterControlCoordinator) + "." + nameof(SetupControlsAsync), ActivityKind.Internal);
 
-        if (parametersPanel == null)
-            throw new ArgumentNullException(nameof(parametersPanel));
-        if (operation == null)
-            throw new ArgumentNullException(nameof(operation));
+        ArgumentNullException.ThrowIfNull(parametersPanel);
+        ArgumentNullException.ThrowIfNull(operation);
 
         var operationMetadata = operation.OperationMetadata;
         activity?.SetTag("operation.name", operationMetadata.Name);
@@ -69,10 +67,8 @@ public class ParameterControlCoordinator
     {
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(ParameterControlCoordinator) + "." + nameof(SubscribeToValueChanges), ActivityKind.Internal);
 
-        if (parent == null)
-            throw new ArgumentNullException(nameof(parent));
-        if (handler == null)
-            throw new ArgumentNullException(nameof(handler));
+        ArgumentNullException.ThrowIfNull(parent);
+        ArgumentNullException.ThrowIfNull(handler);
 
         SubscribeRecursive(parent, handler);
     }
@@ -80,7 +76,7 @@ public class ParameterControlCoordinator
     /// <summary>
     /// Recursively subscribes to control-specific events in nested panels.
     /// </summary>
-    private void SubscribeRecursive(Panel parent, EventHandler handler)
+    private static void SubscribeRecursive(Panel parent, EventHandler handler)
     {
         foreach (var child in parent.Children)
         {

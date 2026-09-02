@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using System;
+using System.Globalization;
 using System.Linq;
 using Ihc.Soap.Openapi;
 using System.Collections.Generic;
@@ -302,7 +303,7 @@ namespace Ihc {
 
         // Helper methods for converting between OpenAPI SOAP types and high-level models
 
-        private FWVersion? mapFWVersion(Ihc.Soap.Openapi.WSVersionInfo? version)
+        private static FWVersion? mapFWVersion(Ihc.Soap.Openapi.WSVersionInfo? version)
         {
             return version != null ? new FWVersion()
             {
@@ -312,7 +313,7 @@ namespace Ihc {
             } : null;
         }
 
-        private ResourceValue? mapResourceValue(Ihc.Soap.Openapi.WSResourceValue? v)
+        private static ResourceValue? mapResourceValue(Ihc.Soap.Openapi.WSResourceValue? v)
         {
             if (v == null)
                 return null;
@@ -396,7 +397,7 @@ namespace Ihc {
         // guarantees is populated but the compiler cannot see. The unwrap is left unguarded so a
         // malformed value still throws exactly as before; ResourceValueEnvelopeMapper.ToWire is the
         // twin of this method and does guard it, which is a difference worth closing separately.
-        private Ihc.Soap.Openapi.WSResourceValue mapToWSResourceValue(ResourceValue v)
+        private static Ihc.Soap.Openapi.WSResourceValue mapToWSResourceValue(ResourceValue v)
         {
             switch (v.Value.ValueKind)
             {
@@ -448,7 +449,7 @@ namespace Ihc {
             }
         }
 
-        private Ihc.Soap.Openapi.WSResourceValueEvent mapToWSResourceValueEvent(ResourceValue v)
+        private static Ihc.Soap.Openapi.WSResourceValueEvent mapToWSResourceValueEvent(ResourceValue v)
         {
             return new Ihc.Soap.Openapi.WSResourceValueEvent()
             {
@@ -457,7 +458,7 @@ namespace Ihc {
             };
         }
 
-        private EventPackage mapEventPackage(Ihc.Soap.Openapi.WSEventPackage? eventPackage)
+        private static EventPackage mapEventPackage(Ihc.Soap.Openapi.WSEventPackage? eventPackage)
         {
             if (eventPackage == null)
             {
@@ -487,7 +488,7 @@ namespace Ihc {
             };
         }
 
-        private ProjectInfo? mapProjectInfo(Ihc.Soap.Openapi.WSProjectInfo? info)
+        private static ProjectInfo? mapProjectInfo(Ihc.Soap.Openapi.WSProjectInfo? info)
         {
             return info != null ? new ProjectInfo()
             {
@@ -502,7 +503,7 @@ namespace Ihc {
             } : null;
         }
 
-        private SceneProjectInfo? mapSceneProjectInfo(Ihc.Soap.Openapi.WSSceneProjectInfo? info)
+        private static SceneProjectInfo? mapSceneProjectInfo(Ihc.Soap.Openapi.WSSceneProjectInfo? info)
         {
             return info != null ? new SceneProjectInfo()
             {
@@ -632,7 +633,7 @@ namespace Ihc {
                 try
                 {
                     var result = await impl.getAPIVersionAsync(new inputMessageName12()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = result.getAPIVersion1.HasValue ? result.getAPIVersion1.Value.ToString() : "0";
+                    var retv = result.getAPIVersion1.HasValue ? result.getAPIVersion1.Value.ToString(CultureInfo.InvariantCulture) : "0";
 
                     activity?.SetReturnValue(retv);
                     return retv;

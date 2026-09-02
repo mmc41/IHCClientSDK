@@ -5,6 +5,7 @@ using Ihc.Soap.Authentication;
 using System.Text;
 using System.Runtime.Serialization;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 
 namespace Ihc {
     public static class UserConstants {
@@ -139,14 +140,54 @@ namespace Ihc {
                Project == other.Project;
       }
 
+      /// <summary>How a user list is ordered — alphabetically, the way a reader expects to read it. Danish
+      /// collation, because the controller this SDK talks to is a Danish product and da-DK sorts Æ/Ø/Å
+      /// after Z where neither the invariant comparer nor an English one would. NAMED rather than taken from
+      /// the ambient culture: the ordering is a property of the SDK, so a user list must not come out in a
+      /// different order on an English machine than on a Danish one. Ihc.Vis.EnumTypeDisplayOrder names the
+      /// same culture for the same reason; it compares case-INSENSITIVELY because a display label's casing is
+      /// incidental, where a username's is part of the credential.</summary>
+      private static readonly StringComparer UsernameOrder = CreateUsernameOrder(DanishCulture);
+
+      private const string DanishCulture = "da-DK";
+
       /// <summary>
-      /// Order users by username.
+      /// The ordering comparer, degrading rather than throwing when <paramref name="cultureName"/> cannot be
+      /// resolved.
+      /// <para>A host published with <c>InvariantGlobalization=true</c> has no named cultures at all — that
+      /// switch defaults <c>PredefinedCulturesOnly</c> to true, and <see cref="CultureInfo.GetCultureInfo(string)"/>
+      /// then throws for every name but the invariant one. Left to throw inside a static field initializer that
+      /// would take out the whole type: <c>TypeInitializationException</c> on any <see cref="CompareTo(IhcUser)"/>, not
+      /// merely the loss of Danish collation. Ordering by the invariant culture is the closest such a host can
+      /// get, and it is what the SDK did before this comparer existed.</para>
+      /// </summary>
+      internal static StringComparer CreateUsernameOrder(string cultureName)
+      {
+        try
+        {
+          return StringComparer.Create(CultureInfo.GetCultureInfo(cultureName), ignoreCase: false);
+        }
+        catch (CultureNotFoundException)
+        {
+          return StringComparer.InvariantCulture;
+        }
+      }
+
+      /// <summary>
+      /// Order users by username, the way a reader expects to see a user list. The comparison is linguistic
+      /// rather than ordinal on purpose: ordinal would group every capitalised name ahead of every lower-case
+      /// one, and would order the Danish letters by code point instead of by the alphabet.
       /// </summary>
       /// <param name="other">The other IhcUser to compare with</param>
       /// <returns>Comparison result for ordering</returns>
       public int CompareTo(IhcUser? other)
       {
-        return string.Compare(this.Username, other?.Username);
+        // IComparable: every instance sorts after null. Username is nullable, so comparing the two names
+        // straight through would call a user with no username yet EQUAL to null rather than greater.
+        if (other is null)
+          return 1;
+
+        return UsernameOrder.Compare(this.Username, other.Username);
       }
     }
 }

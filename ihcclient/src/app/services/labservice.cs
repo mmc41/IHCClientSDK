@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -96,7 +97,7 @@ namespace Ihc.App
                 if (serviceInterfaces.Count > 0)
                 {
                     var interfaceName = serviceInterfaces[0].Name;
-                    DisplayName = interfaceName.StartsWith("I") ? interfaceName.Substring(1) : interfaceName;
+                    DisplayName = interfaceName.StartsWith('I') ? interfaceName.Substring(1) : interfaceName;
                 }
                 else
                 {
@@ -419,8 +420,7 @@ namespace Ihc.App
             /// <exception cref="InvalidOperationException">Thrown when the operation has no parameters but a non-empty array is provided.</exception>
             public void SetMethodArgumentsFromArray(object?[] values)
             {
-                if (values == null)
-                    throw new ArgumentNullException(nameof(values));
+                ArgumentNullException.ThrowIfNull(values);
 
                 var expectedCount = MethodParameterCount;
 
@@ -543,8 +543,7 @@ namespace Ihc.App
             /// <exception cref="InvalidOperationException">Thrown when a default value cannot be created (e.g., enum with no values, array with indeterminate element type, or value type instantiation fails).</exception>
             public static object? GetDefaultValue(Type type)
             {
-                if (type == null)
-                    throw new ArgumentNullException(nameof(type));
+                ArgumentNullException.ThrowIfNull(type);
 
                 // Handle string explicitly
                 if (type == typeof(string))
@@ -1028,7 +1027,7 @@ namespace Ihc.App
 
                 activity?.SetParameters(
                     (nameof(settings), settings?.ToString() ?? "null"),
-                    (nameof(serviceInterfaces), serviceInterfaces.Length.ToString()));
+                    (nameof(serviceInterfaces), serviceInterfaces.Length.ToString(CultureInfo.InvariantCulture)));
 
                 lock (_lock)
                 {
@@ -1081,7 +1080,7 @@ namespace Ihc.App
                 activity?.SetParameters(
                     ("ServiceName", serviceName),
                     ("OperationName", operationName),
-                    ("ParameterCount", parameterValues?.Length.ToString() ?? "0"));
+                    ("ParameterCount", parameterValues?.Length.ToString(CultureInfo.InvariantCulture) ?? "0"));
 
                 activity?.SetTag(Ihc.Telemetry.argsTagPrefix + "parameterValues", String.Join(",", parameterValues?.Select(p => p?.ToString() ?? "null") ?? Array.Empty<string>()));
 
@@ -1190,8 +1189,7 @@ namespace Ihc.App
         /// <exception cref="NotSupportedException">Thrown when the selected operation is not AsyncEnumerable.</exception>
         public async Task StartStream(Action<object?> onItem)
         {
-            if (onItem == null)
-                throw new ArgumentNullException(nameof(onItem));
+            ArgumentNullException.ThrowIfNull(onItem);
 
             ServiceOperationMetadata operationMetadata;
             object[] args;
@@ -1303,17 +1301,17 @@ namespace Ihc.App
         /// <param name="result">The result object to format. Can be null.</param>
         /// <param name="returnType">The return type metadata (currently unused but available for future enhancements).</param>
         /// <returns>Formatted string representation suitable for user display. Returns "(null)" for null values.</returns>
-        private string FormatResult(object? result, Type returnType)
+        internal static string FormatResult(object? result, Type returnType)
         {
             if (result == null)
                 return "(null)";
 
             // Handle DateTime types
             if (result is DateTime dt)
-                return dt.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                return dt.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
 
             if (result is DateTimeOffset dto)
-                return dto.ToString("yyyy-MM-dd HH:mm:ss.fff zzz");
+                return dto.ToString("yyyy-MM-dd HH:mm:ss.fff zzz", CultureInfo.InvariantCulture);
 
             // Handle TimeSpan
             if (result is TimeSpan ts)
@@ -1328,31 +1326,30 @@ namespace Ihc.App
                 if (byteArray.Length <= 16)
                 {
                     // For small arrays, show hex values
-                    return $"byte[{byteArray.Length}] [{BitConverter.ToString(byteArray).Replace("-", " ")}]";
+                    return string.Create(CultureInfo.InvariantCulture, $"byte[{byteArray.Length}] [{BitConverter.ToString(byteArray).Replace("-", " ")}]");
                 }
                 else
                 {
                     // For large arrays, show length and first 16 bytes
                     var preview = BitConverter.ToString(byteArray, 0, 16).Replace("-", " ");
-                    return $"byte[{byteArray.Length}] [{preview} ...]";
+                    return string.Create(CultureInfo.InvariantCulture, $"byte[{byteArray.Length}] [{preview} ...]");
                 }
             }
 
-            // Handle primitive numeric types with their type names
-            if (result is int || result is long || result is short || result is byte)
-                return $"{result}";
-
-            if (result is uint || result is ulong || result is ushort || result is sbyte)
-                return $"{result}";
+            // Integers, invariantly. An interpolation would use the AMBIENT culture, and a culture's negative
+            // sign is not always the ASCII hyphen - sv-SE spells it U+2212 MINUS - so -1 came out as two
+            // different strings depending on the host, and as something no parser downstream would accept.
+            if (result is int or long or short or byte or uint or ulong or ushort or sbyte)
+                return ((IFormattable)result).ToString(null, CultureInfo.InvariantCulture);
 
             if (result is float f)
-                return f.ToString("G9");
+                return f.ToString("G9", CultureInfo.InvariantCulture);
 
             if (result is double d)
-                return d.ToString("G17");
+                return d.ToString("G17", CultureInfo.InvariantCulture);
 
             if (result is decimal dec)
-                return dec.ToString("G");
+                return dec.ToString("G", CultureInfo.InvariantCulture);
 
             // Handle boolean
             if (result is bool b)
@@ -1374,18 +1371,34 @@ namespace Ihc.App
                 {
                     if (item == null) return "null";
                     if (item is string s) return $"\"{s}\"";
-                    if (item is DateTime itemDt) return itemDt.ToString("yyyy-MM-dd HH:mm:ss");
-                    if (item is byte[] itemBytes) return $"byte[{itemBytes.Length}]";
+                    if (item is DateTime itemDt) return itemDt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                    // Spelled out rather than left to the IFormattable branch below: a DateTimeOffset's
+                    // invariant GENERAL format is US month/day order, so 2 September would reach a Danish
+                    // installer as 9 February - and disagree with the scalar rendering of the same value.
+                    if (item is DateTimeOffset itemDto) return itemDto.ToString("yyyy-MM-dd HH:mm:ss zzz", CultureInfo.InvariantCulture);
+                    if (item is byte[] itemBytes) return string.Create(CultureInfo.InvariantCulture, $"byte[{itemBytes.Length}]");
+                    // bool is NOT IFormattable, so without this it would reach ToString() and render "True"
+                    // where the scalar case renders "true" - the spelling the wire and .vis format use.
+                    if (item is bool itemB) return itemB.ToString().ToLowerInvariant();
+                    // Same invariant formatting the scalar cases above use. The elements are joined with ", ",
+                    // so a culture that writes a decimal comma would also make the list ambiguous.
+                    if (item is IFormattable formattable) return formattable.ToString(null, CultureInfo.InvariantCulture);
                     return item.ToString() ?? "null";
                 });
 
                 var result_str = $"[{string.Join(", ", formattedItems)}";
                 if (items.Length > maxItems)
-                    result_str += $", ... ({items.Length - maxItems} more)";
+                    result_str += string.Create(CultureInfo.InvariantCulture, $", ... ({items.Length - maxItems} more)");
                 result_str += "]";
 
                 return result_str;
             }
+
+            // A type the cases above do not name (Half, BigInteger, a domain value type) still must not be
+            // spelled by the host's locale: the same value reaches the element path invariantly, so an
+            // ambient-culture scalar would disagree with its own list rendering.
+            if (result is IFormattable formattableResult)
+                return formattableResult.ToString(null, CultureInfo.InvariantCulture);
 
             return result.ToString() ?? "(empty)";
         }

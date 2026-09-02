@@ -89,19 +89,19 @@ namespace IhcLab
         private string _operationDescription = string.Empty;
         private string _outputText = string.Empty;
         private string _outputHeading = "Output";
-        private bool _isOutputVisible = false;
+        private bool _isOutputVisible;
         private string _errorWarningText = string.Empty;
-        private bool _isErrorVisible = false;
-        private bool _isWarningVisible = false;
-        private int _selectedServiceIndex = 0;
-        private int _selectedOperationIndex = 0;
+        private bool _isErrorVisible;
+        private bool _isWarningVisible;
+        private int _selectedServiceIndex;
+        private int _selectedOperationIndex;
 
         /// <summary>
         /// Flag to prevent circular updates between ViewModel and LabAppService.
         /// When true, property setters will NOT propagate changes back to LabAppService,
         /// breaking potential infinite event loops when synchronizing state.
         /// </summary>
-        private bool _isUpdatingFromEvent = false;
+        private bool _isUpdatingFromEvent;
 
         /// <summary>
         /// Observable collection of IHC services available for selection.

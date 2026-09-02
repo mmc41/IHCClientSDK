@@ -160,7 +160,7 @@ namespace Ihc.Vis.Validation
                 _ => null,
             };
 
-        private static IEnumerable<ProjectElement> Definitions(IProjectAnalyses analyses) =>
+        private static EquatableArray<ProjectElement> Definitions(IProjectAnalyses analyses) =>
             analyses.WithTag(DefinitionTag);
 
         private static IEnumerable<ProjectElement> Values(ProjectElement definition) =>

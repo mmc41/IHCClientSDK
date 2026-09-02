@@ -114,7 +114,7 @@ namespace Ihc {
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
-        private SceneProject? mapSceneProject(Ihc.Soap.Module.WSFile? proj)
+        private static SceneProject? mapSceneProject(Ihc.Soap.Module.WSFile? proj)
         {
             if (proj == null)
                 return null;
@@ -132,7 +132,7 @@ namespace Ihc {
             return new SceneProject(proj.filename, proj.data);
         }
 
-        private SceneProjectInfo? mapSceneProjectInfo(Ihc.Soap.Module.WSSceneProjectInfo? info)
+        private static SceneProjectInfo? mapSceneProjectInfo(Ihc.Soap.Module.WSSceneProjectInfo? info)
         {
             return info != null ? new SceneProjectInfo()
             {
@@ -148,7 +148,7 @@ namespace Ihc {
             } : null;
         }
 
-        private Ihc.Soap.Module.WSFile unmapSceneProject(SceneProject proj)
+        private static Ihc.Soap.Module.WSFile unmapSceneProject(SceneProject proj)
         {
             return new Ihc.Soap.Module.WSFile()
             {

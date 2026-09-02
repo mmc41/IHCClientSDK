@@ -9,7 +9,7 @@ namespace Ihc.Vis.Catalog
     {
         // Registers every code-authored product, in the same document order catalog discovery scans the
         // install dir, so last-wins lookup over duplicate product_identifiers matches the install-dir path.
-        partial void RegisterProducts(ImmutableArray<ProductDefinition>.Builder products)
+        static partial void RegisterProducts(ImmutableArray<ProductDefinition>.Builder products)
         {
             products.Add(Product_0x3103());
             products.Add(Product_0x4409());

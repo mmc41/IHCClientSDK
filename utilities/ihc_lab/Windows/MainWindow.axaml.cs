@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -72,6 +73,11 @@ namespace IhcLab;
                     "is the only point at which the window is actually finished with it.")]
 public partial class MainWindow : Window
 {
+    // Built once: JsonSerializerOptions caches the reflection metadata it derives on first use, and a fresh
+    // instance per call throws that cache away. Shared safely because it is never mutated after construction,
+    // which is what makes the type thread-safe.
+    private static readonly JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
+
     private IhcSetup? ihcDomain;
     private IClipboard? clipboard;
 
@@ -298,7 +304,7 @@ public partial class MainWindow : Window
         }
 
         // Do this last so Warning is not cleared unless we are testing.
-        if (string.IsNullOrEmpty(Program.config?.telemetryConfig?.Host) && (Program.config?.ihcSettings?.Endpoint?.StartsWith(SpecialEndpoints.MockedPrefix) == false))
+        if (string.IsNullOrEmpty(Program.config?.telemetryConfig?.Host) && (Program.config?.ihcSettings?.Endpoint?.StartsWith(SpecialEndpoints.MockedPrefix, StringComparison.Ordinal) == false))
         {
             OpenTelemetryMenuItem.IsEnabled = false;
             viewModel?.SetWarning("OpenTelemetry not configured. It is recommended (but not required) to setup telemetry to view logs/traces. See guide in README for details.");
@@ -596,12 +602,7 @@ public partial class MainWindow : Window
                 LoggingConfig = loggingConfigDict
             };
 
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true
-            };
-
-            string json = JsonSerializer.Serialize(settings, options);
+            string json = JsonSerializer.Serialize(settings, IndentedJsonOptions);
             await SetOutput(json, settings.GetType());
         }
         catch (Exception ex)
@@ -783,7 +784,7 @@ public partial class MainWindow : Window
         isSyncingFromService = true;
         try
         {
-            parameterSyncCoordinator.UpdateGuiFromParameter(ParametersPanel, e.NewValue, e.Index.ToString());
+            parameterSyncCoordinator.UpdateGuiFromParameter(ParametersPanel, e.NewValue, e.Index.ToString(CultureInfo.InvariantCulture));
         }
         finally
         {
@@ -828,7 +829,7 @@ public partial class MainWindow : Window
             // strategy from its ControlMetadata tag (falling back to the registry), and for complex types
             // reconstructs the entire object from all sub-controls - so simple, file and complex parameters
             // are all handled uniformly here, matching the service->GUI direction in ParameterSyncCoordinator.
-            var value = OperationSupport.GetFieldValue(ParametersPanel, parameter, parameterIndex.ToString());
+            var value = OperationSupport.GetFieldValue(ParametersPanel, parameter, parameterIndex.ToString(CultureInfo.InvariantCulture));
             labAppService.SelectedOperation.SetMethodArgument(parameterIndex, value);
         }
         catch (Exception ex)

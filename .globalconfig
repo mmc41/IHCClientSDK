@@ -61,3 +61,73 @@ dotnet_diagnostic.CA2254.severity = warning
 dotnet_diagnostic.CA1854.severity = warning  # double dictionary lookup instead of TryGetValue
 dotnet_diagnostic.CA2249.severity = warning  # IndexOf compared against -1 instead of Contains
 dotnet_diagnostic.CA2263.severity = warning  # Type-taking overload where a generic one exists
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════════
+# Rules DECLINED out of AnalysisMode=Recommended, repo-wide.
+#
+# Everything above this line is a rule opted INTO on top of the SDK default. Everything below is the
+# opposite: a rule the mode turns on that this repository turns back off. The two halves are kept apart
+# because they answer different questions — above is "what does a violation mean here", below is "why is
+# this rule not measuring anything here".
+#
+# A rule belongs below only if its findings are, across the whole repository, either not defects or not
+# fixable without a change bigger than the rule is worth. A rule whose findings are merely INCONVENIENT
+# gets fixed instead. Rules the SDK alone declines live in ihcclient/analyser.config, not here.
+# ═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+# The declines here are the ones that hold for EVERY project. A rule declined for one part of the tree is
+# scoped by path instead, in an .editorconfig beside the code it covers — applications/, utilities/ and
+# shared/ each carry one. Rules the SDK alone declines live in ihcclient/analyser.config.
+
+# CA1848 (use the LoggerMessage delegates) is off. It is a rule about the COST of a log call, and none of
+# the call sites it reaches here is on a path where that cost is measurable.
+#
+# All of them sit in the Avalonia applications and the bootstrap libraries beneath them, and what they log is
+# lifecycle: a window opening, a project loading, a dialog answered, a telemetry exporter starting, an
+# unhandled exception on the way to a crash dialog. These fire once per user gesture or once per process.
+# The allocation CA1848 removes — the boxed argument array on a call the framework may discard — is worth
+# removing in a request loop; against a keystroke it is not.
+#
+# The SDK is not exempted from this, it is unreachable by it: Ihc has no logging dependency at all (the
+# architecture invariant in CLAUDE.md), so a LoggerMessage delegate has nowhere to live there. That is why
+# the entry is repo-wide rather than scoped: there is no path it could be narrowed to.
+#
+# What CA1848 would cost is the part that argues it down. Satisfying it means a partial method and a
+# distinct EventId per site, which is a mechanical rewrite of every log statement in both GUIs — and the
+# property this repository actually depends on is not allocation but that the TEMPLATE stays constant, so a
+# message shape can be queried in OpenObserve. That property is enforced separately and unconditionally by
+# CA2254 above, which is on repo-wide and stays on.
+dotnet_diagnostic.CA1848.severity = none
+
+# CA1873 (evaluation of this argument may be expensive if logging is disabled) is off. The rule is a
+# syntactic heuristic: it flags any log argument that is not a constant, a local or a plain field, because it
+# cannot tell a cheap expression from an expensive one.
+#
+# Every finding here is cheap in fact. Most are a property read on an object already in hand — ex.Message on
+# an exception already caught, parameters[i].Name on an array already indexed, source?.GetType().Name. Two
+# are a call rather than a read (MapFromAvaloniaLogToILogLevel), and that is still a switch over an enum
+# argument the caller already has. None of them allocates, queries, formats or serializes.
+#
+# Some are worse than merely pointless: they are in the unhandled-exception and dispatcher-exception
+# handlers, on the way to a crash. A log call there must not be conditional on the logger's level, and the
+# repository asserts that real output reaches a real ILogger from exactly those handlers — see
+# safe_visual_tests/UnhandledExceptionTests.cs and GlobalExceptionHandlerTests.cs.
+#
+# The rule would earn its place against a ToString() over a collection, or a serialization, in an argument.
+# Nothing enforces that promise mechanically, so it is a reason to re-measure if the logging in these hosts
+# grows — not a guarantee that it stays true on its own.
+dotnet_diagnostic.CA1873.severity = none
+
+# CA1822 (mark members as static) is SCOPED rather than switched off: it stays in force on private and
+# internal members, where adding `static` costs nothing and states something true, and is lifted from the
+# public surface, where it is not a performance question at all.
+#
+# In the applications the reason is data binding. A view-model property is reached by name from XAML, and a
+# binding resolves against the DataContext INSTANCE — promoting one to static does not fail to compile, it
+# silently binds to nothing at runtime. ProductDialogSettingsGridViewModel.Name and .AutomationId are exactly
+# that: the accessible name and the automation id the headless UI suite locates the grid by.
+#
+# In the SDK the reason is different — C# forbids calling a static member through an instance reference, so
+# promoting a public one is source- and binary-breaking for consumers — and ihcclient/analyser.config states
+# it there against the facades it fires on. The setting is the same either way, so it is written once here.
+dotnet_code_quality.CA1822.api_surface = private, internal

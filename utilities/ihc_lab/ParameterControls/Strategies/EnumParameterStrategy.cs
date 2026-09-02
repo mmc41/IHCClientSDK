@@ -119,7 +119,7 @@ public class EnumParameterStrategy : ParameterControlStrategyBase
     /// <summary>
     /// Helper class to wrap enum values with display names for ComboBox binding.
     /// </summary>
-    private class EnumItem
+    private sealed class EnumItem
     {
         public object Value { get; }
         public string DisplayName { get; }

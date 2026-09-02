@@ -1,0 +1,28 @@
+# Analyzer severity for the OpenVisual application only.
+#
+# Scoped here rather than in /.globalconfig because both entries below are justified by something true of
+# THIS project and not of the repository. A global config applies to a whole compilation, so either would
+# have silenced the rule for the SDK, the utilities and the examples as a side effect.
+
+[*.cs]
+
+# CA1707 (identifiers should not contain underscores) fires on the `ihc_openvisual` namespace, which follows
+# the assembly name — and that name is what the E2E harness launches (ihc_openvisual.exe, force-killing a
+# process it finds under it), what CLAUDE.md and README name in their `dotnet run --project` lines, and what
+# the aui tooling drives. Renaming the namespace to satisfy a spelling rule while the assembly keeps the
+# underscore would leave the two disagreeing, which is worse than either.
+#
+# Note the assembly-name finding itself does NOT appear for this project: its first Compile item comes from a
+# NuGet contentFiles package and analysis treats that as generated, so the diagnostic is swallowed. That is
+# compile-order luck, not a decision — which is another reason the entry is written rather than relied upon.
+dotnet_diagnostic.CA1707.severity = none
+
+# CA1716 (do not name a virtual/interface member or its parameter after a reserved language keyword) fires on
+# IDialogService.ShowInternalErrorAsync(InternalError error), where `error` is both the parameter's meaning
+# and the name every call site reads. `Error` is reserved in Visual Basic; the rule exists so a consumer in
+# another language can implement the member, and this interface is internal to one application that nothing
+# outside it implements.
+#
+# The rule stays ON everywhere else. It is NOT a general statement that its keyword set is VB-only — it also
+# reports C#'s own keywords — so a future finding elsewhere is worth reading rather than assuming exempt.
+dotnet_diagnostic.CA1716.severity = none

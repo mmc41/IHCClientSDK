@@ -1,0 +1,22 @@
+# Analyzer severity for the utilities only.
+#
+# Scoped here rather than in /.globalconfig because the reason is a property of THESE projects, not of the
+# repository: every executable under utilities/ has an underscore in its assembly name. A global config
+# applies to a whole compilation and cannot express that, so it would have turned the rule off for the SDK
+# and the examples too, which do not need it off and are the projects most worth keeping it on for.
+
+[*.cs]
+
+# CA1707 (identifiers should not contain underscores). The findings are the assembly names themselves —
+# ihc_lab, ihc_admin, ihc_info, ihc_settings_encrypt, ihc_httpproxyrecorder, ihc_projectextractor,
+# ihc_ProjectDownloadUpload — and an assembly name here is a FILE name other things already depend on: the
+# `dotnet run --project` lines in CLAUDE.md and README, and the aui and openobserve tooling. Renaming them
+# renames the executables to satisfy a spelling rule.
+#
+# The rule is reported against file(1,1) of the first source in the project, so the symbol it is really about
+# has no declaration to suppress it at — a path scope like this one is the narrowest form available.
+#
+# It also covers what follows from those names: the Ihc.download_upload_example namespace shared by ihc_admin
+# and ihc_project_download_upload, and the SCREAMING_CASE constants in ihc_lab's Constants. Those ARE
+# renameable, and they are the reason to revisit this entry rather than treat it as permanent.
+dotnet_diagnostic.CA1707.severity = none

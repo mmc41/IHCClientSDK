@@ -1,6 +1,6 @@
 
 using System;
-using System.Collections.Generic;
+using System.Collections.Frozen;
 
 namespace Ihc.Vis.Schema
 {
@@ -33,20 +33,16 @@ namespace Ihc.Vis.Schema
         /// Pins that never own a <c>link_from_resource</c> half: an FB input is a trigger the block consumes,
         /// so it cannot feed anything. (Vendor cells 7/8/T2/T4; 0 of 314 corpus halves.)
         /// </summary>
-        private static readonly IReadOnlySet<string> NeverASource = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "resource_input",
-        };
+        private static readonly FrozenSet<string> NeverASource =
+            FrozenSet.Create(StringComparer.Ordinal, "resource_input");
 
         /// <summary>
         /// Pins that never own a <c>link_to_resource</c> half. A product input is a physical button — the world
         /// drives it, software cannot (vendor cell 4; 0 of 160 corpus halves). An FB output is the block's own
         /// result, computed rather than driven (cells 5/6/T3; 0 of 237).
         /// </summary>
-        internal static readonly IReadOnlySet<string> NeverASink = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "dataline_input", "airlink_input", "resource_output",
-        };
+        internal static readonly FrozenSet<string> NeverASink =
+            FrozenSet.Create(StringComparer.Ordinal, "dataline_input", "airlink_input", "resource_output");
 
         /// <summary>A function block's own pin — the <c>resource_*</c> family (input, output, flag, …).</summary>
         internal static bool IsFunctionBlockPin(string tag) => tag.StartsWith("resource_", StringComparison.Ordinal);

@@ -33,6 +33,10 @@ namespace Ihc.Vis.Catalog
         // specific first: em dash and en dash (the syn_en convention), then a spaced ASCII hyphen (a lenient fallback).
         private static readonly string[] Separators = { " — ", " – ", " - " };
 
+        // Every line ending a markdown document can arrive with: the reader is handed text from disk as well as from
+        // an embedded resource, so it must not assume the checkout's line endings.
+        private static readonly string[] LineSeparators = { "\r\n", "\r", "\n" };
+
         /// <summary>Parses help-document <paramref name="markdown"/> into a <see cref="HelpDocument"/>:
         /// the leading paragraph becomes the definition summary, and each <c>- **name** — text</c> bullet under any
         /// <c>**section**</c> heading becomes a per-resource entry keyed by <c>name</c>. Missing sections are tolerated
@@ -40,7 +44,7 @@ namespace Ihc.Vis.Catalog
         public static HelpDocument Parse(string markdown)
         {
             ArgumentNullException.ThrowIfNull(markdown);
-            string[] lines = markdown.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            string[] lines = markdown.Split(LineSeparators, StringSplitOptions.None);
 
             var summary = new StringBuilder();
             var resources = ImmutableDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
@@ -116,17 +120,17 @@ namespace Ihc.Vis.Catalog
             }
         }
 
-        private static bool IsHeading(string line) => line.StartsWith("#", StringComparison.Ordinal);
+        private static bool IsHeading(string line) => line.StartsWith('#');
 
         // A section header is a stand-alone bold run: "**Inputs**", "**Outputs**", "**Settings**", ... (an optional
         // trailing colon tolerated). It only marks that the following bullets are resource entries; its text is unused.
         private static bool IsSectionHeader(string line)
         {
-            string trimmed = line.EndsWith(":", StringComparison.Ordinal) ? line[..^1].TrimEnd() : line;
+            string trimmed = line.EndsWith(':') ? line[..^1].TrimEnd() : line;
             return trimmed.Length >= 4
                 && trimmed.StartsWith("**", StringComparison.Ordinal)
                 && trimmed.EndsWith("**", StringComparison.Ordinal)
-                && !trimmed.StartsWith("-", StringComparison.Ordinal);
+                && !trimmed.StartsWith('-');
         }
 
         // Parses "- **resource name** — help text" into (name, text). The bullet marker (- or *) and a bold name are

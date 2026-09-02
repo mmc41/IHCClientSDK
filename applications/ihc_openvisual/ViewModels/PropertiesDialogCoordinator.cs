@@ -444,7 +444,7 @@ internal sealed class PropertiesDialogCoordinator(
     /// therefore focuses nothing, which is the same honest answer the planner gives when it degrades such a
     /// route to dialog-level — the two cannot disagree, because both ask the descriptor.
     /// </remarks>
-    private ProductDialogShowOptions ArrivalFor(
+    private static ProductDialogShowOptions ArrivalFor(
         Project project, ProductDialogDescriptor descriptor, DialogHop hop)
     {
         // A FIELD OF THIS DIALOG, wherever its value lives. Asked first, and asked about the pair rather than
@@ -655,7 +655,7 @@ internal sealed class PropertiesDialogCoordinator(
     /// <para>Text that names no number is DROPPED rather than written as zero — the row keeps the value it had,
     /// which is what the installer sees when they come back out of the editor.</para>
     /// </summary>
-    private IEnumerable<ProductDialogSettingEdit> SettingEdits(
+    private static IEnumerable<ProductDialogSettingEdit> SettingEdits(
         Project project, IReadOnlyDictionary<ElementId, string> pending)
     {
         foreach ((ElementId id, string text) in pending)
@@ -878,7 +878,7 @@ internal sealed class PropertiesDialogCoordinator(
     // The addresses already used by other pins of the same direction (US-012 in-use indication). Handed over as
     // DatalineAddress values, not as formatted keys: the dialog matches them by the record's own equality, so
     // neither side has to agree with the other about how a line and a terminal are spelled into one string.
-    private IReadOnlyList<DatalineAddress> InUseTerminals(bool isOutput, ElementId except)
+    private List<DatalineAddress> InUseTerminals(bool isOutput, ElementId except)
     {
         var used = new List<DatalineAddress>();
         if (session.Current is not { } project)
@@ -898,7 +898,7 @@ internal sealed class PropertiesDialogCoordinator(
     // The product's input/output terminals for the addressing grids (US-012): each terminal's name, its
     // vendor-formatted "Datalinie N.PP" address (blank when unassigned), cable colour and note. The typed PinView
     // owns the reads + address decode — the coordinator only formats the row.
-    private static IReadOnlyList<ProductTerminal> BuildTerminals(
+    private static List<ProductTerminal> BuildTerminals(
         ProductView product, IReadOnlyDictionary<ElementId, PinPropertiesResult>? pending = null)
     {
         var terminals = new List<ProductTerminal>();

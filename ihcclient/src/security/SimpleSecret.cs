@@ -143,7 +143,7 @@ namespace Ihc
             if (!enable)
                 return plaintext;
 
-            if (plaintext is null) throw new ArgumentNullException(nameof(plaintext));
+            ArgumentNullException.ThrowIfNull(plaintext);
 
             byte[] salt  = RandomNumberGenerator.GetBytes(SaltSize);
             byte[] nonce = RandomNumberGenerator.GetBytes(NonceSize);
@@ -198,7 +198,7 @@ namespace Ihc
             if (!enable)
                 return encryptedString;
                 
-            if (encryptedString is null) throw new ArgumentNullException(nameof(encryptedString));
+            ArgumentNullException.ThrowIfNull(encryptedString);
 
             byte[] blob;
             try

@@ -1,0 +1,26 @@
+# Analyzer severity for the transcribed catalogue declaration tables only.
+#
+# These files are not authored code in the sense the quality rules assume. Each is a transcription: one
+# `private static` factory per product, function block or grammar, carrying one vendor definition as builder
+# calls, and each factory is called exactly once from the lookup that materialises the built-in catalogue.
+# What each file evaluates to is pinned byte-for-byte by BuiltInCatalogDigestTests, so a shape here is kept
+# honest by that oracle rather than by refactoring. This is the same ground on which .jscpd.json excludes the
+# folder -- and note it is a DIFFERENT ground from the no-control-flow test that justifies the
+# ProblemCatalogEntries.*.cs exclusion: these files do carry locals, and a little shared plumbing besides
+# (BuiltInCatalog.Products.cs ends with an ElRaw helper that loops over an attribute list).
+#
+# The exclusion is honest only while the folder stays transcription under a byte oracle. The day a definition
+# file gains behaviour of its own -- something the digest does not pin, or logic that a reader would need to
+# reason about rather than compare against a vendor artifact -- it stops being a declaration table, and this
+# file stops being safe.
+
+[*.cs]
+
+# CA1861 (prefer 'static readonly' fields over constant array arguments) -- every finding here is a
+# per-definition document-order array or enumeration token list handed inline to a builder call.
+#
+# The rule's own precondition is "if the called method is called repeatedly": here it is not. Each array is
+# distinct data belonging to one definition, passed once, to a factory that runs once and copies it.
+# Satisfying the rule would hoist every one-shot literal into a named field, separating each definition's
+# data from the definition it describes, for no allocation that is ever repeated.
+dotnet_diagnostic.CA1861.severity = none

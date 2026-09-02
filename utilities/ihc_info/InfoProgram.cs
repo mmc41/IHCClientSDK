@@ -11,8 +11,17 @@ namespace Ihc.example
     /// <summary>
     /// Read IHC system information such as system version, license info, number of users, modules and resources.
     /// </summary>
-    class Program
+    sealed class Program
     {
+        // Built once: JsonSerializerOptions caches the reflection metadata it derives on first use, and a
+        // fresh instance per call throws that cache away. Shared safely because it is never mutated after
+        // construction, which is what makes the type thread-safe.
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            WriteIndented = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
         public const string AppServiceName = "IhcInfoConsole";
         public const string AppServiceNamespace = "Ihc";
         // Equal to AppServiceName, as in every other host. They were "IhcInfoConsole" and "IhcInfo",
@@ -43,13 +52,7 @@ namespace Ihc.example
                 {
                     var info = await infoService.GetInformationModel();
 
-                    var jsonOptions = new JsonSerializerOptions
-                    {
-                        WriteIndented = true,
-                        Converters = { new JsonStringEnumConverter() }
-                    };
-
-                    string json = JsonSerializer.Serialize(info, jsonOptions);
+                    string json = JsonSerializer.Serialize(info, JsonOptions);
 
                     Console.WriteLine($"IHC information: {json}");
                 }

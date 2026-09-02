@@ -150,7 +150,7 @@ namespace Ihc.Vis.Io
                 "A project may only contain element types declared by its inline DTD or the SDK registry.");
 
         /// <summary>The element types present in the tree, in preorder first-occurrence order (root first).</summary>
-        private static IEnumerable<string> FirstOccurrenceOrder(ProjectElement root)
+        private static List<string> FirstOccurrenceOrder(ProjectElement root)
         {
             var seen = new HashSet<string>(StringComparer.Ordinal);
             var order = new List<string>();

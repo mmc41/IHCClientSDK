@@ -16,14 +16,14 @@ public class Program
     /// IMPORTANT: Initialized once in Main() and should be treated as immutable thereafter.
     /// Do not modify after initialization to avoid race conditions and unpredictable behavior.
     /// </summary>
-    public static Configuration? config { get; set; } = null;
+    public static Configuration? config { get; set; }
 
     /// <summary>
     /// Logger factory for the application, configured with OpenTelemetry.
     /// IMPORTANT: Initialized once in Main() and should be treated as immutable thereafter.
     /// Do not modify after initialization to avoid race conditions and unpredictable behavior.
     /// </summary>
-    public static ILoggerFactory? loggerFactory { get; set; } = null;
+    public static ILoggerFactory? loggerFactory { get; set; }
 
     // Initialization code. Don't use any Avalonia, third-party APIs or any
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized

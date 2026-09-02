@@ -55,7 +55,7 @@ namespace Ihc.Vis.Model
             string excerpt = reader.Value.Trim();
             if (excerpt.Length > 40)
             {
-                excerpt = excerpt.Substring(0, 40) + "...";
+                excerpt = string.Concat(excerpt.AsSpan(0, 40), "...");
             }
 
             string at = reader is IXmlLineInfo info && info.HasLineInfo()

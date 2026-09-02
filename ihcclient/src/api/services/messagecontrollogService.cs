@@ -57,7 +57,7 @@ namespace Ihc {
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
-        private LogEventEntry? mapEvent(WSMessageControlLogEntry? e)
+        private static LogEventEntry? mapEvent(WSMessageControlLogEntry? e)
         {
             if (e == null)
                 return null;
@@ -75,7 +75,7 @@ namespace Ihc {
             };
         }
 
-        private DateTimeOffset mapDate(WSDate? v)
+        private static DateTimeOffset mapDate(WSDate? v)
         {
             if (v == null)
                 return DateTimeOffset.MinValue;

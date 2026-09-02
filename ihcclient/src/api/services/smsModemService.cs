@@ -88,7 +88,7 @@ namespace Ihc
 
         // Map methods for translating between SOAP models and high-level models
 
-        private SmsModemSettings? MapSettings(WSSMSModemSettings? ws)
+        private static SmsModemSettings? MapSettings(WSSMSModemSettings? ws)
         {
             if (ws == null)
                 return null;
@@ -106,7 +106,7 @@ namespace Ihc
             };
         }
 
-        private WSSMSModemSettings MapSettings(SmsModemSettings settings)
+        private static WSSMSModemSettings MapSettings(SmsModemSettings settings)
         {
             return new WSSMSModemSettings
             {
@@ -121,7 +121,7 @@ namespace Ihc
             };
         }
 
-        private SmsModemStatus? MapStatus(WSSMSModemStatus? ws)
+        private static SmsModemStatus? MapStatus(WSSMSModemStatus? ws)
         {
             if (ws == null)
                 return null;
@@ -135,7 +135,7 @@ namespace Ihc
             };
         }
 
-        private SmsModemInfo? MapInfo(WSSMSModemInfo? ws)
+        private static SmsModemInfo? MapInfo(WSSMSModemInfo? ws)
         {
             if (ws == null)
                 return null;

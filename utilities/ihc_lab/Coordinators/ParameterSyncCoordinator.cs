@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using Avalonia.Controls;
 using IhcLab;
 using Microsoft.Extensions.Logging;
@@ -41,10 +42,8 @@ public class ParameterSyncCoordinator
     {
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(ParameterSyncCoordinator) + "." + nameof(InitializeUninitializedArguments), ActivityKind.Internal);
 
-        if (parametersPanel == null)
-            throw new ArgumentNullException(nameof(parametersPanel));
-        if (operation == null)
-            throw new ArgumentNullException(nameof(operation));
+        ArgumentNullException.ThrowIfNull(parametersPanel);
+        ArgumentNullException.ThrowIfNull(operation);
 
         var parameters = operation.OperationMetadata.Parameters;
         var currentArguments = operation.GetMethodArgumentsAsArray();
@@ -59,7 +58,7 @@ public class ParameterSyncCoordinator
 
             try
             {
-                object? value = OperationSupport.GetFieldValue(parametersPanel, parameters[i], i.ToString());
+                object? value = OperationSupport.GetFieldValue(parametersPanel, parameters[i], i.ToString(CultureInfo.InvariantCulture));
                 if (value != null)
                 {
                     operation.SetMethodArgument(i, value);
@@ -88,10 +87,8 @@ public class ParameterSyncCoordinator
     {
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(ParameterSyncCoordinator) + "." + nameof(SyncFromService), ActivityKind.Internal);
 
-        if (parametersPanel == null)
-            throw new ArgumentNullException(nameof(parametersPanel));
-        if (operation == null)
-            throw new ArgumentNullException(nameof(operation));
+        ArgumentNullException.ThrowIfNull(parametersPanel);
+        ArgumentNullException.ThrowIfNull(operation);
 
         var operationMetadata = operation.OperationMetadata;
         var savedArguments = operation.GetMethodArgumentsAsArray();
@@ -107,7 +104,7 @@ public class ParameterSyncCoordinator
 
             try
             {
-                RestoreValue(parametersPanel, savedValue, i.ToString());
+                RestoreValue(parametersPanel, savedValue, i.ToString(CultureInfo.InvariantCulture));
                 restoredCount++;
             }
             catch (Exception ex)
@@ -116,7 +113,7 @@ public class ParameterSyncCoordinator
                 activity?.AddEvent(new ActivityEvent("argument_restore_failed", tags: new ActivityTagsCollection
                 {
                     { "parameter.name", parameter.Name },
-                    { "parameter.index", i.ToString() },
+                    { "parameter.index", i.ToString(CultureInfo.InvariantCulture) },
                     { "parameter.value", savedValue?.ToString() ?? "null" },
                     { "exception.type", ex.GetType().Name },
                     { "exception.message", ex.Message }

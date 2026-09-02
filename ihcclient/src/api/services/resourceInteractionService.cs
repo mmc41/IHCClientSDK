@@ -262,7 +262,7 @@ namespace Ihc {
 
         private readonly Ihc.Soap.Resourceinteraction.ResourceInteractionService impl;
 
-        private DatalineResource? mapDatalineResource(WSDatalineResource? r)
+        private static DatalineResource? mapDatalineResource(WSDatalineResource? r)
         {
             if (r == null)
                 return null;
@@ -270,7 +270,7 @@ namespace Ihc {
             return new DatalineResource() { ResourceID = r.resourceID, DatalineNumber = r.datalineNumber };
         }
 
-        private EnumDefinition? mapMapEnumeratorDefinitions(WSEnumDefinition? e)
+        private static EnumDefinition? mapMapEnumeratorDefinitions(WSEnumDefinition? e)
         {
             if (e == null)
                 return null;
@@ -283,7 +283,7 @@ namespace Ihc {
             };
         }
 
-        private SceneResourceIdAndLocation? mapSceneResourceIdAndLocation(Ihc.Soap.Resourceinteraction.WSSceneResourceIdAndLocationURLs? arg) {
+        private static SceneResourceIdAndLocation? mapSceneResourceIdAndLocation(Ihc.Soap.Resourceinteraction.WSSceneResourceIdAndLocationURLs? arg) {
             if (arg == null)
                 return null;
 

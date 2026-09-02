@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using System;
+using System.Globalization;
 using System.Linq;
 using Ihc.Soap.Authentication;
 using System.Text;
@@ -176,7 +177,7 @@ namespace Ihc {
                 StringBuilder buf = new StringBuilder();
 
                 buf.Append("UnionValue {");
-                buf.AppendFormat("ValueKind={0}", ValueKind);
+                buf.AppendFormat(CultureInfo.InvariantCulture, "ValueKind={0}", ValueKind);
 
                 // Raw print out of any values, regardless of kind
                 // so even invalid combinations show up:
@@ -196,7 +197,7 @@ namespace Ihc {
                 AppendIfPresent(buf, nameof(RelayValue), RelayValue);
                 AppendIfPresent(buf, nameof(ShutterPositionIsUp), ShutterPositionIsUp);
                 AppendIfPresent(buf, nameof(ShutterDelayTime), ShutterDelayTime);
-                buf.Append("}");
+                buf.Append('}');
 
                 return buf.ToString();
             }
@@ -205,7 +206,7 @@ namespace Ihc {
             // one helper covers both Nullable<T> fields and reference-typed fields (e.g. PhoneNumberValue).
             private static void AppendIfPresent(StringBuilder buf, string name, object? value) {
                 if (value != null) {
-                    buf.AppendFormat(", {0}={1}", name, value);
+                    buf.AppendFormat(CultureInfo.InvariantCulture, ", {0}={1}", name, value);
                 }
             }
         };

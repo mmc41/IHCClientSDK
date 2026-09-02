@@ -48,7 +48,12 @@ avalonia_xaml_diagnostic.AVLN5001.severity = error
 # possible to keep nor meaningful to read -- the same grounds on which generatedsrc/.editorconfig already
 # excludes it from the public-API baseline (RS0016).
 #
-# Scoped from HERE rather than from that neighbouring file on purpose: the generated directory is off limits
-# to hand edits, and a rule written inside it would be lost on the next regeneration.
+# Scoped from HERE rather than from generatedsrc/.editorconfig, but NOT because a file there would not last:
+# generate.ps1/generate.sh remove only generatedsrc/*.cs and *.json, so that file survives regeneration -- which
+# is exactly what its own note says, and it is the reason RS0016 can live inside the folder and cover generated
+# files that do not exist yet. The two placements are technically interchangeable; this one keeps the rule
+# visible from the root, beside the other repo-wide severities, rather than inside a directory that is off
+# limits to hand edits. Move it only deliberately -- ihcclient/analyser.config names both placements, and a
+# reader who finds one and assumes it is the whole answer is the failure this note exists to prevent.
 [ihcclient/generatedsrc/**.cs]
 dotnet_diagnostic.RS0041.severity = none

@@ -93,7 +93,7 @@ namespace Ihc.Vis.FunctionBlocks
         /// <summary>A decoded, read-only view of the block's <c>internalsettings</c> (private value variables) children.</summary>
         public IReadOnlyList<ResourceSummary> InternalVariables => Container("internalsettings");
 
-        private IReadOnlyList<ResourceSummary> Container(string container) =>
+        private ResourceSummary[] Container(string container) =>
             Body.FindChild(container) is { } holder
                 ? holder.Children
                         .Select((c, index) => new ResourceSummary(c.Tag, c.GetAttribute("name") ?? string.Empty, c.Id,

@@ -36,8 +36,7 @@ public class ParameterControlRegistry
     /// <exception cref="ArgumentNullException">Thrown if strategy is null</exception>
     public void Register(IParameterControlStrategy strategy)
     {
-        if (strategy == null)
-            throw new ArgumentNullException(nameof(strategy));
+        ArgumentNullException.ThrowIfNull(strategy);
 
         _strategies.Add(strategy);
     }
@@ -52,8 +51,7 @@ public class ParameterControlRegistry
     /// <exception cref="NotSupportedException">Thrown if no strategy can handle the field type</exception>
     public IParameterControlStrategy GetStrategy(FieldMetaData field)
     {
-        if (field == null)
-            throw new ArgumentNullException(nameof(field));
+        ArgumentNullException.ThrowIfNull(field);
 
         foreach (var strategy in _strategies)
         {

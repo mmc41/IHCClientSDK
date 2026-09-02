@@ -413,7 +413,14 @@ off-thread `PropertyChanged` throws.
   `ihcclient/analyser.config`, because a library genuinely must not resume on its caller's context. Enabling it
   repo-wide would therefore bind 24 further sites and collide with 1,631. The same reasoning rules out the category
   mode that would pull CA2007 in — `AnalysisModeReliability=All` — so the repo-wide file opts into rules
-  individually. A future proposal to raise either meets this ADR first.
+  individually. A future proposal to raise either meets this ADR first. Re-checked 2026-09-02, when
+  `AnalysisMode` was raised to `Recommended` for every non-test project: that mode does **not** include CA2007
+  (it arrives only at `All`, measured), so this bullet's constraint is unaffected — the two Avalonia
+  *applications* build clean under Recommended, while the two headless Avalonia *test* suites named above stay
+  at `Default` and were not measured under it. What the raise changes is that `/.globalconfig` now also records
+  the rules declined back OUT of the mode, alongside the ones opted into, and that
+  `ihcclient/analyser.config` states an explicit `global_level` — without it the repo-wide file silently
+  outranks the SDK's own, which is exactly how the CA2007 opt-in this bullet rests on would disappear.
 - Parallel mutation of document/UI state is off the table while this ADR stands (long-term; costly to reverse once
   session APIs and tests assume affinity).
 

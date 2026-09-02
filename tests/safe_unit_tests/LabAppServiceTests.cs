@@ -1184,6 +1184,82 @@ namespace Ihc.Tests
         }
 
         /// <summary>
+        /// Floating-point rendering is CULTURE-STABLE in both positions: the elements are joined with ", ",
+        /// so a culture that writes a decimal comma would render 1.5 as "1,5" and make the list ambiguous.
+        ///
+        /// <para>Culture-stability is the guarantee, NOT byte-for-byte parity with the scalar rendering. A
+        /// scalar double uses round-trip precision (G17) while an element uses the general format, so
+        /// 1E-07 renders "9.9999999999999995E-08" on its own and "1E-07" in a list. That abbreviation is
+        /// deliberate — a list is for scanning — and 1.5/2.25 below simply coincide under both.</para>
+        /// </summary>
+        [Test]
+        [SetCulture("da-DK")]
+        public void FormatResult_FloatingPointElements_AreCultureStable()
+        {
+            string scalar = LabAppService.FormatResult(1.5d, typeof(double));
+            string list = LabAppService.FormatResult(new[] { 1.5d, 2.25d }, typeof(double[]));
+
+            Assert.That(scalar, Is.EqualTo("1.5"));
+            Assert.That(list, Is.EqualTo("[1.5, 2.25]"));
+        }
+
+        /// <summary>
+        /// The element path special-cases DateTime but not DateTimeOffset or decimal, so those reach the
+        /// general fallback — which must still be culture-stable.
+        /// </summary>
+        [Test]
+        [SetCulture("da-DK")]
+        public void FormatResult_DecimalElements_AreCultureStable()
+        {
+            Assert.That(LabAppService.FormatResult(new[] { 1.5m }, typeof(decimal[])), Is.EqualTo("[1.5]"));
+        }
+
+        /// <summary>
+        /// A DateTimeOffset must render the same way whether it is the whole result or one element of a
+        /// list. Without an element case it reaches the general IFormattable fallback, whose invariant
+        /// "general" format is US month/day order — so a Danish installer reads 2 September as 9 February.
+        /// </summary>
+        [Test]
+        [SetCulture("da-DK")]
+        public void FormatResult_DateTimeOffsetElement_UsesTheSameOrderAsAScalar()
+        {
+            var value = new DateTimeOffset(2026, 9, 2, 14, 30, 0, TimeSpan.FromHours(2));
+
+            string scalar = LabAppService.FormatResult(value, typeof(DateTimeOffset));
+            string list = LabAppService.FormatResult(new[] { value }, typeof(DateTimeOffset[]));
+
+            Assert.That(scalar, Does.StartWith("2026-09-02 14:30:00"));
+            Assert.That(list, Does.StartWith("[2026-09-02 14:30:00"),
+                "an element must not fall back to the US-ordered general format");
+            Assert.That(list, Does.Contain("+02:00"), "the offset is the point of the type");
+        }
+
+        /// <summary>
+        /// A bool renders lowercase as a scalar (matching the .vis and wire spelling). An element reaches
+        /// object.ToString() because bool is not IFormattable, which would spell it "True".
+        /// </summary>
+        [Test]
+        public void FormatResult_BoolElement_IsSpelledLikeAScalar()
+        {
+            Assert.That(LabAppService.FormatResult(true, typeof(bool)), Is.EqualTo("true"));
+            Assert.That(LabAppService.FormatResult(new[] { true, false }, typeof(bool[])),
+                Is.EqualTo("[true, false]"));
+        }
+
+        /// <summary>
+        /// A formattable type the scalar path does not special-case (Half, BigInteger) reaches the final
+        /// fallback. That fallback must not use the ambient culture, or the same value renders "1,5" as a
+        /// scalar on a Danish host and "1.5" as a list element.
+        /// </summary>
+        [Test]
+        [SetCulture("da-DK")]
+        public void FormatResult_UnhandledFormattableScalar_IsCultureStable()
+        {
+            Assert.That(LabAppService.FormatResult((Half)1.5, typeof(Half)), Is.EqualTo("1.5"));
+            Assert.That(LabAppService.FormatResult(new[] { (Half)1.5 }, typeof(Half[])), Is.EqualTo("[1.5]"));
+        }
+
+        /// <summary>
         /// US-C1C2 MAY / C5: a ResourceValue result renders its populated UnionValue field legibly
         /// (kind + value) via UnionValue.ToString(), rather than an opaque type name.
         /// </summary>

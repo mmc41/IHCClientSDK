@@ -375,7 +375,7 @@ namespace Ihc.Vis.Editing
             {
                 i++;
             }
-            return "_0x" + token.Substring(i);
+            return string.Concat("_0x", token.AsSpan(i));
         }
 
         private static bool TryNormalizeToDefaultPrecision(ElementSchema schema, string attrName, string value, out string reformatted)

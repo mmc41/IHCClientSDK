@@ -19,6 +19,10 @@ public static class VariablePalette
     // App presentation: the display label for each variable type, in the wording IHC Visual's Indsæt ▸ Variable
     // menu uses. Every registry tag must appear here (the completeness test enforces it); the Entries projection
     // reads the label by tag.
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance",
+        Justification = "Read-only is what this table IS: a fixed lookup built once at type init and only ever " +
+                        "indexed. The concrete type would publish an Add/Remove surface to every reader in " +
+                        "this class, to elide an interface dispatch over a handful of entries.")]
     private static readonly IReadOnlyDictionary<string, string> Labels = new Dictionary<string, string>(StringComparer.Ordinal)
     {
         ["resource_input"] = "Indgang",

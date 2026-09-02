@@ -84,7 +84,7 @@ namespace Ihc.Vis.Validation
         {
             foreach (ProjectElement program in Programs(inspection.Analyses, SimpleProgramTag))
             {
-                if (!Container(program, "events").Any() && CarriesWork(program))
+                if (Container(program, "events").IsEmpty && CarriesWork(program))
                 {
                     inspection.Report(program, Arguments(("program", Name(program))));
                 }
@@ -101,7 +101,7 @@ namespace Ihc.Vis.Validation
         {
             foreach (ProjectElement program in Programs(inspection.Analyses, SimpleProgramTag))
             {
-                if (Container(program, "events").Any() && !Container(program, "actions").Any())
+                if (!Container(program, "events").IsEmpty && Container(program, "actions").IsEmpty)
                 {
                     inspection.Report(program, Arguments(("program", Name(program))));
                 }
@@ -117,7 +117,7 @@ namespace Ihc.Vis.Validation
         {
             foreach (ProjectElement program in Programs(inspection.Analyses, SubProgramTag))
             {
-                if (!Container(program, "conditions").Any())
+                if (Container(program, "conditions").IsEmpty)
                 {
                     inspection.Report(program, Arguments(("program", Name(program))));
                 }
@@ -209,15 +209,15 @@ namespace Ihc.Vis.Validation
 
         // ---- the shared reads ------------------------------------------------------------------------------
 
-        private static IEnumerable<ProjectElement> Programs(IProjectAnalyses analyses, string tag) =>
+        private static EquatableArray<ProjectElement> Programs(IProjectAnalyses analyses, string tag) =>
             analyses.WithTag(tag);
 
-        private static IEnumerable<ProjectElement> Container(ProjectElement program, string container) =>
+        private static EquatableArray<ProjectElement> Container(ProjectElement program, string container) =>
             program.FindChild(container) is { } section ? section.Children : [];
 
         /// <summary>Whether the program holds anything a trigger could have run: a command, or a branch holding one.</summary>
         private static bool CarriesWork(ProjectElement program) =>
-            Container(program, "actions").Any()
+            !Container(program, "actions").IsEmpty
             || program.Children.Any(c => c.Tag is SubProgramTag or CaseProgramTag);
 
         private static IEnumerable<ProjectElement> Branches(ProjectElement caseProgram) =>

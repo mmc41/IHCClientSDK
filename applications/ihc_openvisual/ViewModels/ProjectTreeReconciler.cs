@@ -210,7 +210,7 @@ public sealed class ProjectTreeReconciler
         return MergeChildren(oldParent, freshParent);
     }
 
-    private bool MergeChildren(TreeNodeViewModel oldParent, TreeNodeViewModel freshParent)
+    private static bool MergeChildren(TreeNodeViewModel oldParent, TreeNodeViewModel freshParent)
     {
         bool wasEmpty = oldParent.Children.Count == 0;
         var oldByKey = new Dictionary<NodeKey, TreeNodeViewModel>();

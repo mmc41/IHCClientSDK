@@ -62,7 +62,7 @@ namespace Ihc {
 
         private readonly object _lock = new object();
         private readonly bool logSensitiveData;
-        private string? cookie = null;
+        private string? cookie;
 
         /// <summary>
         /// Create a CookieHandler for managing session cookies.

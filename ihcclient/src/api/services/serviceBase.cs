@@ -47,7 +47,7 @@ namespace Ihc
                 throw new ArgumentException("IhcSettings field Endpoint must be supplied");
             }
 
-            if (this.settings.Endpoint.StartsWith(SpecialEndpoints.MockedPrefix))
+            if (this.settings.Endpoint.StartsWith(SpecialEndpoints.MockedPrefix, StringComparison.Ordinal))
             {
                 throw new ArgumentException("IhcSettings specifies a mocked implmentation which does not correspond to this real implemenentation");
             }
@@ -118,7 +118,7 @@ namespace Ihc
             this.ihcClient = new Client(cookieHandler, Url, settings, transport);
         }
 
-        private string escapeXMl(string xmlString)
+        private static string escapeXMl(string xmlString)
         {
             return System.Security.SecurityElement.Escape(xmlString);
         }

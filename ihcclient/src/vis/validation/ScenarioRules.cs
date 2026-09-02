@@ -203,7 +203,7 @@ namespace Ihc.Vis.Validation
         /// </summary>
         private static void Unreferenced(IProjectInspection inspection)
         {
-            IReadOnlySet<string> fired = ProgramOperands(inspection);
+            HashSet<string> fired = ProgramOperands(inspection);
             foreach (ProjectElement scene in Scenes(inspection))
             {
                 if (scene.GetAttribute("id") is { } id && !fired.Contains(id))
@@ -273,10 +273,10 @@ namespace Ihc.Vis.Validation
 
         // ---- the shared reads ------------------------------------------------------------------------------
 
-        private static IEnumerable<ProjectElement> Scenes(IProjectInspection inspection) =>
+        private static EquatableArray<ProjectElement> Scenes(IProjectInspection inspection) =>
             inspection.Analyses.WithTag(ScenePinTag);
 
-        private static IEnumerable<ProjectElement> Containers(IProjectInspection inspection) =>
+        private static EquatableArray<ProjectElement> Containers(IProjectInspection inspection) =>
             inspection.Analyses.WithTag(ReciprocalTags.SceneContainerTag);
 
         /// <summary>The scene's own member halves — the <c>scene_link</c> rows it holds.</summary>
@@ -310,7 +310,7 @@ namespace Ihc.Vis.Validation
         };
 
         /// <summary>Every id token a program row names as an operand — what can FIRE a scene.</summary>
-        private static IReadOnlySet<string> ProgramOperands(IProjectInspection inspection)
+        private static HashSet<string> ProgramOperands(IProjectInspection inspection)
         {
             HashSet<string> operands = new(StringComparer.Ordinal);
             foreach (ProjectElement row in inspection.Analyses.Elements)

@@ -73,7 +73,7 @@ namespace Ihc {
 
         private readonly Ihc.Soap.Usermanager.UserManagerService impl;
 
-        private IhcUserGroup mapUserGroup(WSUserGroup? group)
+        private static IhcUserGroup mapUserGroup(WSUserGroup? group)
         {
             if (group == null)
                 return IhcUserGroup.None;
@@ -94,7 +94,7 @@ namespace Ihc {
             }
         }
 
-        private WSUserGroup mapUserGroup(IhcUserGroup group)
+        private static WSUserGroup mapUserGroup(IhcUserGroup group)
         {
             string? strType;
             switch (group)
@@ -107,7 +107,7 @@ namespace Ihc {
             return new WSUserGroup() { type = strType };
         }
 
-        private IhcUser mapUser(Ihc.Soap.Usermanager.WSUser u, bool includePassword)
+        private static IhcUser mapUser(Ihc.Soap.Usermanager.WSUser u, bool includePassword)
         {
             return new IhcUser()
             {
@@ -124,7 +124,7 @@ namespace Ihc {
             };
         }
 
-        private Ihc.Soap.Usermanager.WSUser mapUser(IhcUser u)
+        private static Ihc.Soap.Usermanager.WSUser mapUser(IhcUser u)
         {
             return new Ihc.Soap.Usermanager.WSUser()
             {

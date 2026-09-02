@@ -88,7 +88,7 @@ namespace Ihc {
         
         // Map methods for translating between SOAP models and high-level models
 
-        private TimeManagerSettings? mapSettings(WSTimeManagerSettings? ws)
+        private static TimeManagerSettings? mapSettings(WSTimeManagerSettings? ws)
         {
             if (ws == null)
                 return null;
@@ -107,7 +107,7 @@ namespace Ihc {
             };
         }
 
-        private WSTimeManagerSettings mapSettings(TimeManagerSettings settings)
+        private static WSTimeManagerSettings mapSettings(TimeManagerSettings settings)
         {
             return new WSTimeManagerSettings
             {
@@ -123,7 +123,7 @@ namespace Ihc {
             };
         }
 
-        private TimeServerConnectionResult? mapTimeServerConnectionResult(WSTimeServerConnectionResult? ws)
+        private static TimeServerConnectionResult? mapTimeServerConnectionResult(WSTimeServerConnectionResult? ws)
         {
             if (ws == null)
                 return null;
@@ -139,7 +139,7 @@ namespace Ihc {
             };
         }
 
-        private WSDate? mapWSDate(DateTimeOffset? dateTimeOffset)
+        private static WSDate? mapWSDate(DateTimeOffset? dateTimeOffset)
         {
             if (!dateTimeOffset.HasValue)
             {

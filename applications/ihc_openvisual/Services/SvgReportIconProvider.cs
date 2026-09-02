@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -106,7 +107,11 @@ public sealed class SvgReportIconProvider : IReportIconProvider
             string name = attribute.Groups[1].Value;
             if (!DroppedAttributes.IsMatch(name))
             {
-                symbol.Append($" {name}=\"{attribute.Groups[2].Value}\"");
+                // Invariant: this is SVG markup for the report, not display text. Both holes are strings
+                // taken straight off the regex match, so the provider changes nothing TODAY — it is stated so
+                // that a value formatted here later cannot pick up a locale's decimal separator and write an
+                // attribute no SVG parser accepts.
+                symbol.Append(CultureInfo.InvariantCulture, $" {name}=\"{attribute.Groups[2].Value}\"");
             }
         }
         return symbol.Append('>').Append(inner).Append("</symbol>").ToString();

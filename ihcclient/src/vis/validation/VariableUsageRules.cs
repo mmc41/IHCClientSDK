@@ -61,7 +61,7 @@ namespace Ihc.Vis.Validation
         /// </summary>
         private static void HolidayScheduleFirmware(IProjectInspection inspection)
         {
-            if (inspection.Analyses.WithTag("resource_holiday").Any())
+            if (!inspection.Analyses.WithTag("resource_holiday").IsEmpty)
             {
                 inspection.Report(null, default);
             }

@@ -284,7 +284,7 @@ public sealed class ProductDialogGroupViewModel
     /// one-column group, which is how the modem's identity block stays one field per row while using the
     /// same <c>Note</c> as the wired dialog.</para>
     /// </summary>
-    private static IReadOnlyList<ProductDialogRow> PackIntoRows(
+    private static List<ProductDialogRow> PackIntoRows(
         IReadOnlyList<ProductDialogFieldViewModel> fields, int columns)
     {
         var rows = new List<ProductDialogRow>();
@@ -325,6 +325,10 @@ public sealed class ProductDialogGroupViewModel
     /// skipped — the resulting short tail is what the vendor shows too, since it fills complete columns
     /// first.</para>
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance",
+        Justification = "The parameter states what this helper does with the collection - reads it. " +
+                        "Naming ObservableCollection would force every caller to own one and let this " +
+                        "method mutate a bound collection, to elide one dispatch over a dialog's fields.")]
     private static IReadOnlyList<ProductDialogFieldViewModel> Transposed(
         IReadOnlyList<ProductDialogFieldViewModel> fields, int columns)
     {

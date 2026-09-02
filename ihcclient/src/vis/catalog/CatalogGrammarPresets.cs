@@ -22,15 +22,22 @@ namespace Ihc.Vis.Catalog
     {
         // ---- shared attribute shorthands (vendor-standard shapes) ----
 
+        // Enumeration token sets shared by the shorthands below. Hoisted because each shorthand is called once per
+        // declared attribute across every preset, and GrammarAttr.Enumerated copies the tokens into an
+        // ImmutableArray rather than retaining what it is handed.
+        private static readonly string[] YesNoTokens = { "yes", "no" };
+        private static readonly string[] OnOffTokens = { "on", "off" };
+        private static readonly string[] AccessibilityTokens = { "read", "write", "read-write" };
+
         private static GrammarAttr Id() => GrammarAttr.Id("id");
         private static GrammarAttr Name(string @default = "") => GrammarAttr.Cdata("name", @default);
         private static GrammarAttr Note() => GrammarAttr.Cdata("note", "");
         private static GrammarAttr Udf() => GrammarAttr.Cdata("udf", "");
         private static GrammarAttr Icon(string @default) => GrammarAttr.Cdata("icon", @default);
         private static GrammarAttr YesNo(string name, string @default) =>
-            GrammarAttr.Enumerated(name, new[] { "yes", "no" }, @default);
+            GrammarAttr.Enumerated(name, YesNoTokens, @default);
         private static GrammarAttr OnOff(string name, string @default) =>
-            GrammarAttr.Enumerated(name, new[] { "on", "off" }, @default);
+            GrammarAttr.Enumerated(name, OnOffTokens, @default);
 
         private static GrammarDeclaration Scenes() => GrammarDeclaration.Element("scenes",
             Id(), Name(), GrammarAttr.IdRefRequired("scene_resource"), Note());
@@ -144,10 +151,10 @@ namespace Ihc.Vis.Catalog
                 GrammarAttr.Cdata("cable_colour_plus", ""), GrammarAttr.Cdata("cable_colour_minus", "")),
             GrammarDeclaration.Element("kWh",
                 Id(), Name("kWh"), Note(), YesNo("backup", "no"), GrammarAttr.Cdata("inivalue", "0"),
-                GrammarAttr.Enumerated("accessibility", new[] { "read", "write", "read-write" }, "read")),
+                GrammarAttr.Enumerated("accessibility", AccessibilityTokens, "read")),
             GrammarDeclaration.Element("W",
                 Id(), Name("W"), Note(), YesNo("backup", "no"), GrammarAttr.Cdata("inivalue", "0"),
-                GrammarAttr.Enumerated("accessibility", new[] { "read", "write", "read-write" }, "read")),
+                GrammarAttr.Enumerated("accessibility", AccessibilityTokens, "read")),
             GrammarDeclaration.Element("resource_date",
                 Id(), Name("Date"), YesNo("backup", "no"), Icon("_0x29"), Note(),
                 GrammarAttr.CdataRequired("year"), GrammarAttr.CdataRequired("month"),
@@ -170,7 +177,7 @@ namespace Ihc.Vis.Catalog
         private static GrammarDeclaration Pin(string tag) =>
             GrammarDeclaration.Element(tag,
                 Id(), Name(), YesNo("backup", "no"), Icon("_0x0"), Note(), OnOff("inivalue", "off"),
-                GrammarAttr.Enumerated("accessibility", new[] { "read", "write", "read-write" }, "read-write"),
+                GrammarAttr.Enumerated("accessibility", AccessibilityTokens, "read-write"),
                 GrammarAttr.Cdata("note-2", ""), Udf());
 
         /// <summary>The function-block standard grammar — every container, pin, program-graph node and enum-stub
@@ -218,7 +225,7 @@ namespace Ihc.Vis.Catalog
             GrammarDeclaration.Element("resource_enum",
                 Id(), Name(), GrammarAttr.IdRefRequired("typedef"), GrammarAttr.IdRefRequired("inivalue"),
                 YesNo("backup", "no"), Icon("_0x0"), Note(),
-                GrammarAttr.Enumerated("accessibility", new[] { "read", "write", "read-write" }, "read-write"),
+                GrammarAttr.Enumerated("accessibility", AccessibilityTokens, "read-write"),
                 GrammarAttr.Cdata("note-2", ""), Udf()),
         });
     }

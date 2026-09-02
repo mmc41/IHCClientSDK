@@ -806,7 +806,7 @@ namespace Ihc.Vis.FunctionBlocks
                 values.Select(v => FbGrammar.Leaf("enum_value", v.Id, ValueAttrs(v))));
         }
 
-        private static IEnumerable<(string, string)> ValueAttrs((string Name, ElementId Id, int Index, string? Typeid) value)
+        private static List<(string, string)> ValueAttrs((string Name, ElementId Id, int Index, string? Typeid) value)
         {
             var attrs = new List<(string, string)>();
             if (value.Typeid is not null)

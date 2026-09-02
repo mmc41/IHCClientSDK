@@ -119,8 +119,7 @@ namespace Ihc
         {
             return Telemetry.Run(nameof(DeepCopyAndApply), scope =>
             {
-                if (propertyValueTransformer == null)
-                    throw new ArgumentNullException(nameof(propertyValueTransformer));
+                ArgumentNullException.ThrowIfNull(propertyValueTransformer);
 
                 if (src == null)
                     return null;
@@ -221,7 +220,7 @@ namespace Ihc
             return DoCopyObject(src, type, propertyValueTransformer, depth, path, activity);
         }
 
-        private static object? DoCopyArray(Array sourceArray, Func<PropertyInfo?, object?, object?> propertyValueTransformer, int depth, PropertyInfo? parentProperty, string path, Activity? activity)
+        private static Array? DoCopyArray(Array sourceArray, Func<PropertyInfo?, object?, object?> propertyValueTransformer, int depth, PropertyInfo? parentProperty, string path, Activity? activity)
         {
             var elementType = sourceArray.GetType().GetElementType();
             var rank = sourceArray.Rank;

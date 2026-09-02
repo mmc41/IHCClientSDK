@@ -381,7 +381,7 @@ namespace Ihc.Vis.Schema
         private static string Excerpt(string block)
         {
             string trimmed = block.TrimStart();
-            return trimmed.Length <= 60 ? trimmed : trimmed.Substring(0, 60) + "...";
+            return trimmed.Length <= 60 ? trimmed : string.Concat(trimmed.AsSpan(0, 60), "...");
         }
     }
 }

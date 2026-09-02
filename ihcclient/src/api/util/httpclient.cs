@@ -131,13 +131,13 @@ namespace Ihc {
 
         // Shared httpClient across all instances.
         static private readonly object _lock = new object();
-        static private HttpClient? _httpClientSingleton = null;
+        static private HttpClient? _httpClientSingleton;
 
         /// <summary>
         /// The primary handler the SDK talks to IHC through. Configuration is fixed rather than settings-derived,
         /// which is what lets a single instance be shared by every service in the process.
         /// </summary>
-        static private HttpMessageHandler CreatePrimaryHandler() {
+        static private SocketsHttpHandler CreatePrimaryHandler() {
             return new SocketsHttpHandler {
                 AllowAutoRedirect = false,
                 // Disable build-in cookie container as it does not

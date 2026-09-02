@@ -425,7 +425,7 @@ namespace Ihc.Vis.Validation
             pin.GetAttribute("id") is { } id && sceneTargets.Contains(id);
 
         /// <summary>The output resources every <c>scenes</c> container names — a scenario's own targets.</summary>
-        private static IReadOnlySet<string> SceneTargetIds(IProjectInspection inspection)
+        private static HashSet<string> SceneTargetIds(IProjectInspection inspection)
         {
             HashSet<string> targets = new(StringComparer.Ordinal);
             foreach (ProjectElement scenes in inspection.Analyses.WithTag(ReciprocalTags.SceneContainerTag))

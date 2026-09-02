@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 
 namespace Ihc
@@ -82,7 +83,7 @@ namespace Ihc
         public override string ToString()
         {
             string dataAsHex = Data.Length == 0 ? "[]" :
-                    string.Join(" ", Data.Select(b => b.ToString("x2")));
+                    string.Join(" ", Data.Select(b => b.ToString("x2", CultureInfo.InvariantCulture)));
 
             return $"BackupFile(Filename={Filename}, Data={dataAsHex})";
         }

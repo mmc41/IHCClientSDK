@@ -415,7 +415,7 @@ public sealed class ProjectTreeProjector(Project project)
             if (!programmingMode && container == "internalsettings")
                 continue;   // Internal variables is programming-mode-only (A-17)
             ProjectElement? holder = fb.FindChild(container);
-            if (!programmingMode && (holder is null || !holder.Children.Any()))
+            if (!programmingMode && (holder is null || holder.Children.IsEmpty))
                 continue;   // configuration mode hides an empty/childless container (A-18)
             // The caption is the container's own stored name when it has one (the standard blocks name their
             // settings section "Indstillinger"); the table's label is the fallback for a container that leaves it

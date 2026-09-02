@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -2050,6 +2051,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Home: selects the FIRST row of the pane (uxparity S-29 — the vendor lands on the tree root).</summary>
     [RelayCommand]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance",
+        Justification = "The local deliberately holds a BOUND ObservableCollection behind a read-only " +
+                        "interface. Naming the concrete type here would hand this method a mutation " +
+                        "surface on a collection the view is bound to, which ADR-001 exists to prevent.")]
     private void SelectFirstRow(bool functionsPane)
     {
         IReadOnlyList<TreeNodeViewModel> pane = functionsPane ? FunctionNodes : InstallationNodes;
@@ -2060,6 +2065,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>End: selects the LAST row currently VISIBLE in the pane — the deepest last descendant reachable
     /// through expanded nodes only, which is what a tree walk with the caret would reach (uxparity S-29).</summary>
     [RelayCommand]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance",
+        Justification = "The local deliberately holds a BOUND ObservableCollection behind a read-only " +
+                        "interface. Naming the concrete type here would hand this method a mutation " +
+                        "surface on a collection the view is bound to, which ADR-001 exists to prevent.")]
     private void SelectLastVisibleRow(bool functionsPane)
     {
         IReadOnlyList<TreeNodeViewModel> pane = functionsPane ? FunctionNodes : InstallationNodes;
@@ -2532,11 +2541,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             RecentProjects.Add(new RecentProjectViewModel(path, OpenRecentCommand));
     }
 
+    // The app's own culture, matching VariableValueFormat.Danish and PropertiesDialogCoordinator.DanishCulture.
+    private static readonly CultureInfo Danish = CultureInfo.GetCultureInfo("da-DK");
+
+    // Danish, not the ambient culture: this app does not localize, it IS Danish, and every other value the
+    // installer reads is formatted through an explicit da-DK culture (VariableValueFormat, DisplayOrder,
+    // PropertiesDialogCoordinator). Following the machine's culture here would spell a number one way in
+    // this dialog and another way in the rest of the app, on the same install.
     private string BuildSettingsText()
     {
         var sb = new StringBuilder();
-        sb.AppendLine($"Program: {Constants.AppName} {Ihc.Bootstrap.TelemetryBootstrap.GetAppVersionStr()}");
-        sb.AppendLine($"SDK: {Ihc.VersionInfo.GetSdkVersionStr()}");
+        sb.AppendLine(Danish, $"Program: {Constants.AppName} {Ihc.Bootstrap.TelemetryBootstrap.GetAppVersionStr()}");
+        sb.AppendLine(Danish, $"SDK: {Ihc.VersionInfo.GetSdkVersionStr()}");
         sb.AppendLine();
         if (_config is null)
         {
@@ -2544,17 +2560,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return sb.ToString();
         }
 
-        sb.AppendLine($"Indstillingsfil: {(_config.SettingsFileFound ? _config.SettingsFilePath : "(ingen — bruger standardværdier)")}");
+        sb.AppendLine(Danish, $"Indstillingsfil: {(_config.SettingsFileFound ? _config.SettingsFilePath : "(ingen — bruger standardværdier)")}");
         sb.AppendLine();
         sb.AppendLine("Controller:");
-        sb.AppendLine($"  Slutpunkt: {OrNone(_config.IhcSettings.Endpoint)}");
-        sb.AppendLine($"  Bruger: {OrNone(_config.IhcSettings.UserName)}");
+        sb.AppendLine(Danish, $"  Slutpunkt: {OrNone(_config.IhcSettings.Endpoint)}");
+        sb.AppendLine(Danish, $"  Bruger: {OrNone(_config.IhcSettings.UserName)}");
         sb.AppendLine();
         sb.AppendLine("Telemetri:");
-        sb.AppendLine($"  Log: {OrNone(_config.TelemetryConfig.Logs)}");
-        sb.AppendLine($"  Spor: {OrNone(_config.TelemetryConfig.Traces)}");
-        sb.AppendLine($"  Metrikker: {OrNone(_config.TelemetryConfig.Metrics)}");
-        sb.AppendLine($"  Selvtjek: {OrNone(_config.TelemetryConfig.SelfCheckEndpoint)}");
+        sb.AppendLine(Danish, $"  Log: {OrNone(_config.TelemetryConfig.Logs)}");
+        sb.AppendLine(Danish, $"  Spor: {OrNone(_config.TelemetryConfig.Traces)}");
+        sb.AppendLine(Danish, $"  Metrikker: {OrNone(_config.TelemetryConfig.Metrics)}");
+        sb.AppendLine(Danish, $"  Selvtjek: {OrNone(_config.TelemetryConfig.SelfCheckEndpoint)}");
         return sb.ToString();
 
         static string OrNone(string? value) => string.IsNullOrWhiteSpace(value) ? "(ikke angivet)" : value;

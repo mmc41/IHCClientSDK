@@ -218,7 +218,7 @@ namespace Ihc.Vis.Validation
             });
         }
 
-        private static void RunConstraints(IProjectAnalyses analyses, RuleDefinition rule, Collector collector)
+        private static void RunConstraints(ProjectAnalyses analyses, RuleDefinition rule, Collector collector)
         {
             RuleTarget target = rule.Entry.Target;
             if (rule.Constraints is not { } sequence)
@@ -376,7 +376,7 @@ namespace Ihc.Vis.Validation
         /// position. Identity is what document order is about.
         /// </para>
         /// </summary>
-        private static Dictionary<ProjectElement, int> ScanOrder(IProjectAnalyses analyses)
+        private static Dictionary<ProjectElement, int> ScanOrder(ProjectAnalyses analyses)
         {
             Dictionary<ProjectElement, int> order = new(ReferenceEqualityComparer.Instance);
             int index = 0;

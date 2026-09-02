@@ -1,0 +1,13 @@
+# Analyzer severity for the shared bootstrap libraries only.
+#
+# Scoped here rather than in /.globalconfig for the same reason as utilities/.editorconfig: the fact that
+# justifies it is a property of these projects, and a global config would have applied it to the SDK and
+# the examples, which do not need it.
+
+[*.cs]
+
+# CA1707 (identifiers should not contain underscores). The findings are assembly names — ihc_appbootstrap
+# and ihc_telemetrybootstrap — which the Avalonia applications and every test suite reference by name.
+# The rule is reported against file(1,1) of the first source in the project, so a path scope like this one is
+# the narrowest form available; there is no declaration to suppress it at.
+dotnet_diagnostic.CA1707.severity = none

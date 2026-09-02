@@ -36,10 +36,23 @@
     category mode would bring in (CA1707 on test names, CA2007 on ConfigureAwait) do not apply repo-wide — and
     CA2007 demands the opposite of what the GUI's architecture rules forbid (ADR-001). CA2007 is enabled for
     the SDK alone, in ihcclient/analyser.config.
+
+    AnalysisMode is raised here for every project the repository ships or runs — the SDK, the two Avalonia
+    applications, the shared bootstrap libraries, the examples and the utilities. Recommended is the middle of
+    the ladder (None < Default < Minimum < Recommended < All) and a strict superset of Minimum; it is the level
+    at which a latent culture, allocation, disposal or contract defect is reported at build time rather than
+    found in a run. The rules a project declines out of that mode are turned off one at a time, each with its
+    reason, in .globalconfig for the decisions that hold repo-wide and in ihcclient/analyser.config for the ones
+    that are the SDK's alone — which also names the one rule scoped by path outside it.
+
+    The TEST suites stay at Default, in tests/Directory.Build.props. That is not an exemption on principle: what
+    the mode adds over Default is performance and API-shape rules aimed at code that ships, and a test assembly
+    ships nowhere. The correctness rules opted into in .globalconfig apply to the test suites unchanged.
   -->
   <PropertyGroup>
     <AnalysisLevel>10.0</AnalysisLevel>
     <AnalysisModeSecurity>All</AnalysisModeSecurity>
+    <AnalysisMode>Recommended</AnalysisMode>
   </PropertyGroup>
 
 </Project>

@@ -10,7 +10,7 @@ namespace Ihc.Vis.Catalog
     {
         // Registers every code-authored function block, in the same document order catalog discovery scans
         // the install dir, so last-wins lookup over the four master_type-duplicating favorites matches it.
-        partial void RegisterFunctionBlocks(ImmutableArray<FunctionBlockDefinition>.Builder functionBlocks)
+        static partial void RegisterFunctionBlocks(ImmutableArray<FunctionBlockDefinition>.Builder functionBlocks)
         {
             functionBlocks.Add(FunctionBlock_1_1_01());
             functionBlocks.Add(FunctionBlock_1_1_02());

@@ -247,12 +247,12 @@ public sealed class ValidationWorker : IDisposable
         // TaskScheduler.UnobservedTaskException and no run can wedge the loop — and the supervisor observes the
         // task itself, so a fault that escaped that catch still reaches the sink instead of the finalizer.
         TaskSupervisor.Fire(
-            RunAsync(request, token, link),
+            RunAsync(request, link, token),
             $"{nameof(ValidationWorker)}.{nameof(OnQuietPeriodElapsed)}");
     }
 
-    private async Task RunAsync(ValidationRequest request, CancellationToken token,
-        System.Diagnostics.ActivityContext link)
+    private async Task RunAsync(ValidationRequest request, System.Diagnostics.ActivityContext link,
+        CancellationToken token)
     {
         System.Collections.Generic.IEnumerable<System.Diagnostics.ActivityLink>? links =
             link == default ? null : new[] { new System.Diagnostics.ActivityLink(link) };
@@ -352,7 +352,7 @@ public sealed class ValidationWorker : IDisposable
         }
 
         TaskSupervisor.Fire(
-            RunAsync(follow, token, link),
+            RunAsync(follow, link, token),
             $"{nameof(ValidationWorker)}.{nameof(StartFollowUpOrGoIdle)}");
     }
 

@@ -279,7 +279,7 @@ internal sealed class Program
             FontFallbacks = SymbolFontFallbacks(),
         });
 
-    private static IReadOnlyList<FontFallback> SymbolFontFallbacks()
+    private static FontFallback[] SymbolFontFallbacks()
     {
         string[] families =
             OperatingSystem.IsWindows() ? ["Segoe UI Emoji", "Segoe UI Symbol"]

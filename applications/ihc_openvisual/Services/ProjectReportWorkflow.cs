@@ -121,6 +121,10 @@ internal sealed class ProjectReportWorkflow(
         $"{kind}-{mode}.{ReportMimeTypes.FileExtensionFor(MimeTypeOf(format))}".ToLowerInvariant();
 
     /// <summary>The app's SVG icon mapping for HTML output; the SDK's default unicode stand-ins for text.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance",
+        Justification = "The declared type IS the seam. IReportIconProvider is the SDK contract the report " +
+                        "writer consumes; returning the application's own SvgReportIconProvider would point " +
+                        "the dependency at the concrete implementation, which ARCHITECTURE.md forbids.")]
     private static IReportIconProvider? IconsFor(ReportFormat format) =>
         format == ReportFormat.Text ? null : new SvgReportIconProvider();
 

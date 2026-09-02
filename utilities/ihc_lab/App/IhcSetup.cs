@@ -76,7 +76,7 @@ public class IhcSetup
         if (IhcSettings.Endpoint == null)
             throw new InvalidOperationException("IhcSettings.Endpoint is null in IhcDomain UpdateSetup");
 
-        if (!IhcSettings.Endpoint.StartsWith(SpecialEndpoints.MockedPrefix))
+        if (!IhcSettings.Endpoint.StartsWith(SpecialEndpoints.MockedPrefix, StringComparison.Ordinal))
         {
             // Real services by default:
             this.AuthenticationService = new AuthenticationService(IhcSettings);
@@ -201,7 +201,7 @@ public class IhcFakeSetup
 
         A.CallTo(() => service.StoreProject(A<ProjectFile>._)).ReturnsLazily((ProjectFile prj) =>
         {
-            return Task.FromResult(prj?.Data.StartsWith("<?xml") == true);
+            return Task.FromResult(prj?.Data.StartsWith("<?xml", StringComparison.Ordinal) == true);
         });
 
         A.CallTo(() => service.EnterProjectChangeMode()).Returns(Task.FromResult(true));
@@ -225,7 +225,7 @@ public class IhcFakeSetup
         A.CallTo(() => service.StoreIHCProjectSegment(A<ProjectFile>._, A<int>._, A<int>._))
             .ReturnsLazily((ProjectFile segment, int index, int major) =>
             {
-                return Task.FromResult(segment?.Data.StartsWith("<?xml") == true);
+                return Task.FromResult(segment?.Data.StartsWith("<?xml", StringComparison.Ordinal) == true);
             });
 
         A.CallTo(() => service.GetBackup()).Returns(Task.FromResult<Ihc.BackupFile?>(new Ihc.BackupFile("backup-mock.dat",
@@ -562,6 +562,11 @@ public class IhcFakeSetup
         return service;
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance",
+        Justification = "The interface is load-bearing for TYPE INFERENCE, not style. sampleValues feeds " +
+                        "Task.FromResult(...) for a faked member returning Task<IReadOnlyList<ResourceValue>>; " +
+                        "declaring the local concrete infers Task<List<...>> and FakeItEasy's Returns no " +
+                        "longer binds (CS1929). Taking the rule's advice here does not compile.")]
     public static IOpenAPIService SetupOpenAPIService(IhcSettings settings)
     {
         var service = A.Fake<IOpenAPIService>();

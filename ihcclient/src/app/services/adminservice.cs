@@ -25,6 +25,16 @@ namespace Ihc.App
     /// </remarks>
     public class AdminAppService : AuthenticatedAppServiceBase
     {
+        // One instance for both directions of the admin-model JSON file. JsonSerializerOptions builds and caches
+        // its per-type serialization metadata on first use, so a fresh instance per call throws that cache away
+        // and re-reflects the whole model every time; the options are also the file's format, and the reader
+        // must not be able to drift from the writer.
+        private static readonly JsonSerializerOptions AdminModelJsonOptions = new()
+        {
+            WriteIndented = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
+
         private readonly IUserManagerService userService;
         private readonly IConfigurationService configService;
         private MutableAdminModel? _originalSnapshot;
@@ -280,13 +290,7 @@ namespace Ihc.App
                     return value;
                 });
 
-                var jsonOptions = new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    Converters = { new JsonStringEnumConverter() }
-                };
-
-                await JsonSerializer.SerializeAsync(stream, modelCopy, jsonOptions).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                await JsonSerializer.SerializeAsync(stream, modelCopy, AdminModelJsonOptions).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 await stream.FlushAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
@@ -324,13 +328,7 @@ namespace Ihc.App
             {
                 activity?.SetParameters((nameof(stream), $"Steam with length={stream.Length}"));
 
-                var jsonOptions = new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    Converters = { new JsonStringEnumConverter() }
-                };
-
-                var adminModel = await JsonSerializer.DeserializeAsync<MutableAdminModel>(stream, jsonOptions).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                var adminModel = await JsonSerializer.DeserializeAsync<MutableAdminModel>(stream, AdminModelJsonOptions).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
                 if (adminModel == null)
                     throw new ArgumentException("Failed to deserialize AdminModel from JSON stream");

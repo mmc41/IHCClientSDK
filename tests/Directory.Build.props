@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+
+  <!--
+    Build policy for the test suites, layered over the repository-wide file.
+
+    The explicit Import is what makes this file a LAYER rather than a replacement: MSBuild stops at the
+    nearest Directory.Build.props on the way up, so without it the root file's TargetFramework, Nullable and
+    TreatWarningsAsErrors would silently stop applying to every project under tests/.
+
+    The one property this layer changes is AnalysisMode, held at the SDK default while the rest of the
+    repository runs at Recommended. What Recommended adds over Default is performance and API-shape rules —
+    LoggerMessage delegates, concrete return types, sealed internal types, field-versus-property — aimed at
+    an assembly that ships to someone. A test assembly ships nowhere: it is compiled, run once by the runner,
+    and thrown away. Enforcing those rules here would rewrite test code to suit a shape it does not have.
+
+    It is the mode alone that is lowered. The rules opted into by name in /.globalconfig — disposal,
+    cancellation, dead conditions, structured logging — apply here exactly as they do everywhere else, and the
+    ones that genuinely do not fit test code are turned off individually, with their reasons, in
+    tests/.editorconfig.
+
+    Be precise about what this DOES give up, because the list above does not include it: the CULTURE rules
+    (CA1304/CA1305/CA1307/CA1309/CA1310/CA1311) are not opted into by name anywhere — they arrive with
+    AnalysisMode, so lowering the mode switches them off for the suites. That is a real gap, not a covered
+    one. The suites hand-manage culture instead (SetCulture attributes, explicit CultureInfo arguments), which
+    is why a locale-dependent assertion is caught by review rather than by the compiler here. Opting the
+    culture rules in by name is the way to close it, and it is a change with its own findings to fix first.
+  -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <AnalysisMode>Default</AnalysisMode>
+  </PropertyGroup>
+
+</Project>

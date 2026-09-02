@@ -177,7 +177,7 @@ namespace Ihc
             };
         }
 
-        private LedDimmerLevel? MapLevel(WSLEDDimmerLevel? ws)
+        private static LedDimmerLevel? MapLevel(WSLEDDimmerLevel? ws)
         {
             if (ws == null)
                 return null;
@@ -189,7 +189,7 @@ namespace Ihc
             };
         }
 
-        private LedDimmerProgress? MapProgress(WSLEDDimmerProgress? ws)
+        private static LedDimmerProgress? MapProgress(WSLEDDimmerProgress? ws)
         {
             if (ws == null)
                 return null;

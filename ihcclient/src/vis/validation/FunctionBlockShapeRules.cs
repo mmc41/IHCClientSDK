@@ -554,7 +554,7 @@ namespace Ihc.Vis.Validation
         {
             foreach (ProjectElement block in Blocks(inspection.Analyses))
             {
-                if (!Section(block, "inputs").Any() && !Section(block, "outputs").Any())
+                if (Section(block, "inputs").IsEmpty && Section(block, "outputs").IsEmpty)
                 {
                     inspection.Report(block, Arguments(("block", Name(block))));
                 }
@@ -745,7 +745,7 @@ namespace Ihc.Vis.Validation
         private static IEnumerable<ProjectElement> Programs(ProjectElement block) =>
             Section(block, ProgramsContainer).Where(c => c.Tag == ProgramTag);
 
-        private static IEnumerable<ProjectElement> Section(ProjectElement block, string container) =>
+        private static EquatableArray<ProjectElement> Section(ProjectElement block, string container) =>
             block.FindChild(container) is { } section ? section.Children : [];
     }
 }

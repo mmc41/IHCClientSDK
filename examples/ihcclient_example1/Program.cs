@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Threading.Tasks;
 using Ihc;
 using Microsoft.Extensions.Configuration;
@@ -8,7 +9,7 @@ namespace Ihc.example
     /// <summary>
     /// Basic example of how to manipulate inputs and output resources. Requires use of test name/password and test resource IDs specified in configuration file.
     /// </summary>
-    class Program
+    sealed class Program
     {
         static async Task Main(string[] args)
         {
@@ -20,9 +21,11 @@ namespace Ihc.example
 
             // Read additional configuration settings
             var testConfig = config.GetSection("testConfig");
-            var boolOutput1 = int.Parse(RequiredSetting(testConfig, "boolOutput1"));
-            var boolInput1 = int.Parse(RequiredSetting(testConfig, "boolInput1"));
-            var boolInput2 = int.Parse(RequiredSetting(testConfig, "boolInput2"));
+            // Invariant: these are resource ids read from ihcsettings.json, so they are machine-readable
+            // configuration text rather than anything the operator's locale should reinterpret.
+            var boolOutput1 = int.Parse(RequiredSetting(testConfig, "boolOutput1"), CultureInfo.InvariantCulture);
+            var boolInput1 = int.Parse(RequiredSetting(testConfig, "boolInput1"), CultureInfo.InvariantCulture);
+            var boolInput2 = int.Parse(RequiredSetting(testConfig, "boolInput2"), CultureInfo.InvariantCulture);
 
             // Create client for IHC services that this example use (see also ConfigurationService, MessageControlLogService, ModuleService, NotificationManagerService, OpenAPIService, TimeManagerService, UserManagerService).
             using var authService = new AuthenticationService(settings);

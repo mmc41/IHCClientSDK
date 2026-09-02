@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -42,7 +43,7 @@ public static class OperationSupport
             if (operationMetadata.Parameters[i].Type == typeof(System.Threading.CancellationToken))
                 continue;
 
-            AddFieldControls(parametersPanel, operationMetadata.Parameters[i], i.ToString());
+            AddFieldControls(parametersPanel, operationMetadata.Parameters[i], i.ToString(CultureInfo.InvariantCulture));
         }
 
         // Show an explicit note for parameter-less operations so the panel does not look empty/broken.

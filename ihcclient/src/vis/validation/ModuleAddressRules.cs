@@ -224,7 +224,7 @@ namespace Ihc.Vis.Validation
             return order.Select(key => new Module(key.IsOutput, key.Line, byModule[key].ToImmutable()));
         }
 
-        private static IEnumerable<ProjectElement> Channels(IProjectAnalyses analyses) =>
+        private static EquatableArray<ProjectElement> Channels(IProjectAnalyses analyses) =>
             analyses.WithTag(DimmerChannelTag);
     }
 }

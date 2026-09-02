@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -134,7 +133,7 @@ public partial class BinaryFilePicker : UserControl, BinaryFile
                 return;
             }
 
-            var file = files.First();
+            var file = files[0];
 
             // Read file content as binary
             await using var stream = await file.OpenReadAsync();
