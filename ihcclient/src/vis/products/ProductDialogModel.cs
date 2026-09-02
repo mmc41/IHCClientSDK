@@ -236,8 +236,11 @@ namespace Ihc.Vis.Products
         {
             /// <summary>Whether ONE element carries the marker — the same question per element, for a caller that
             /// needs the matching elements themselves rather than whether any exist.</summary>
-            public bool Matches(ProjectElement element) =>
-                string.Equals(element.GetAttribute(Attribute), Value, StringComparison.Ordinal);
+            public bool Matches(ProjectElement element)
+            {
+                ArgumentNullException.ThrowIfNull(element);
+                return string.Equals(element.GetAttribute(Attribute), Value, StringComparison.Ordinal);
+            }
 
             public override bool IsPresentIn(IReadOnlyList<ProjectElement> subtree) => subtree.Any(Matches);
         }

@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -22,6 +23,8 @@ public partial class SceneContainerWindow : ResultDialog<SceneContainerResult>
     /// <summary>Shows the dialog modally over <paramref name="owner"/>; resolves to the edited note or null.</summary>
     public static Task<SceneContainerResult?> ShowAsync(Window owner, SceneContainerInput input)
     {
+        ArgumentNullException.ThrowIfNull(input);
+
         var window = new SceneContainerWindow { Title = input.Name };
         window.NameBox.Text = input.Name;
         window.NoteBox.Text = input.Note;

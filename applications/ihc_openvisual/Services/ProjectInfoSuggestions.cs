@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -27,16 +28,21 @@ public sealed record ProjectInfoSuggestions(
     public static ProjectInfoSuggestions Empty { get; } =
         new([], [], [], [], [], [], [], [], []);
 
-    public static ProjectInfoSuggestions From(DataTableStore store) => new(
-        store.TextsFor("company"),
-        store.TextsFor("customer"),
-        store.TextsFor("street"),
-        store.TextsFor("phone"),
-        store.TextsFor("zip"),
-        store.TextsFor("mobilphone"),
-        store.TextsFor("city"),
-        store.TextsFor("email"),
-        store.TextsFor("country"));
+    public static ProjectInfoSuggestions From(DataTableStore store)
+    {
+        ArgumentNullException.ThrowIfNull(store);
+
+        return new(
+            store.TextsFor("company"),
+            store.TextsFor("customer"),
+            store.TextsFor("street"),
+            store.TextsFor("phone"),
+            store.TextsFor("zip"),
+            store.TextsFor("mobilphone"),
+            store.TextsFor("city"),
+            store.TextsFor("email"),
+            store.TextsFor("country"));
+    }
 
     /// <summary>The table key each contact field feeds, so a value typed into the dialog joins the same list it
     /// would have been offered from next time. This is how the vendor's tables fill up: every one of its
@@ -58,6 +64,9 @@ public sealed record ProjectInfoSuggestions(
     public static Dictionary<string, IReadOnlyList<string>> Absorb(
         DataTableStore store, Ihc.Vis.ProjectInfoData info)
     {
+        ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(info);
+
         var tables = DataTableStore.Definitions.ToDictionary(
             d => d.Key, d => (IReadOnlyList<string>)store.TextsFor(d.Key).ToList(), System.StringComparer.Ordinal);
 

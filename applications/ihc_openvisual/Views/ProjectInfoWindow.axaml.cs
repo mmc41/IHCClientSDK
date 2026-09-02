@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -21,6 +22,9 @@ public partial class ProjectInfoWindow : ResultDialog<ProjectInfoData>
     public static Task<ProjectInfoData?> ShowAsync(Window owner, ProjectInfoData current,
         ProjectInfoSuggestions suggestions)
     {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(suggestions);
+
         var window = new ProjectInfoWindow();
         window.Offer(suggestions);
         window.Populate(current);

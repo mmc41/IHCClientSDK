@@ -57,6 +57,35 @@ dotnet_diagnostic.CA2211.severity = warning  # mutable static field visible outs
 # message shape, so the field cannot be queried in OpenObserve — which is where this repo diagnoses runs.
 dotnet_diagnostic.CA2254.severity = warning
 
+# ── Argument contracts ───────────────────────────────────────────────────────────────────────────────
+# CA1062 asks every externally visible entry point to refuse a null it is about to dereference. Like a few of
+# the rules above it, the test suites turn it back off; tests/.editorconfig says why, and the reason is its
+# own rather than the one those share.
+#
+# It was the SDK's rule first, in ihcclient/analyser.config, on a ground only ihcclient has. That is the
+# project which PACKS — the csproj carries the version, the copyright and the schema's PackagePath — so its
+# consumers compile under settings this repository does not choose. Nullable reference types are on
+# everywhere here, so a caller built in this solution already cannot pass null to a non-nullable parameter
+# without a warning of its own; a null arriving from a nullable-OBLIVIOUS assembly is invisible to the
+# compiler on both sides, and without a guard it surfaces as a NullReferenceException raised somewhere inside
+# the SDK, naming no parameter and pointing at no call site.
+#
+# No other project in this repository has such a consumer, so extending the rule to all of them is a decision
+# about the CONVENTION rather than about the consumer: one shape for refusing a bad argument, at the door,
+# everywhere that ships. What the applications and utilities get out of it is not protection from a caller
+# that cannot exist — it is that a wrong argument is named where it was passed instead of dereferenced three
+# frames later. The convention was already theirs; the rule is what makes it mechanical.
+#
+# What extending it cost was measured, not assumed: 103 findings, all in five projects — the two Avalonia
+# applications, the project IO extractor and the two bootstrap libraries. Every one was fixed with
+# ArgumentNullException.ThrowIfNull as the member's first statement, and the remaining non-test projects were
+# already clean. Two findings were not a missing guard at all, and they are the argument for the rule over the
+# convention: DialogFieldTemplate.Build reached its `object?` parameter through the null-forgiving operator,
+# which the guard let it drop, and the Avalonia-to-ILogger sink read a `params` array the framework is free to
+# pass as null. The rest of the churn is syntax: an expression-bodied member has nowhere to put a first
+# statement, so the ones that were flagged were widened to block bodies.
+dotnet_diagnostic.CA1062.severity = warning
+
 # ── Correct API selection ────────────────────────────────────────────────────────────────────────────
 dotnet_diagnostic.CA1854.severity = warning  # double dictionary lookup instead of TryGetValue
 dotnet_diagnostic.CA2249.severity = warning  # IndexOf compared against -1 instead of Contains

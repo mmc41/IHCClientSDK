@@ -129,29 +129,38 @@ namespace Ihc.Vis
 
         /// <summary>Command to add a typed variable to a function-block variable section (US-027), or null when the
         /// section is not a function-block variable section.</summary>
-        public Session.AddVariable? AddVariable(Project project, ElementId sectionId, string resourceTag, string name) =>
-            BlockSection(project, sectionId) is { } target
+        public Session.AddVariable? AddVariable(Project project, ElementId sectionId, string resourceTag, string name)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return BlockSection(project, sectionId) is { } target
                 ? new Session.AddVariable(target.Block, target.Section, resourceTag, name)
                 : null;
+        }
 
         /// <summary>Command to create a project-global enum type and add a variable of it to a function-block section
         /// (US-030), or null when the section is not a function-block variable section.</summary>
         public Session.AddEnumVariable? AddEnumVariable(
-            Project project, ElementId sectionId, string variableName, string typeName, IReadOnlyList<string> states) =>
-            BlockSection(project, sectionId) is { } target
+            Project project, ElementId sectionId, string variableName, string typeName, IReadOnlyList<string> states)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return BlockSection(project, sectionId) is { } target
                 // Snapshot at the gateway: `states` is caller-owned and mutable, and a command must not change
                 // after it is minted (its history entry would silently rewrite itself).
                 ? new Session.AddEnumVariable(target.Block, target.Section, variableName, typeName, EquatableArray.CreateRange(states))
                 : null;
+        }
 
         /// <summary>Command to add a variable of an EXISTING project-global enumerator type to a function-block section
         /// (US-030 enum-type picker, PG-4) — authors no new type; null when the section is not a function-block variable
         /// section.</summary>
         public Session.AddEnumVariableOfExistingType? AddEnumVariableOfType(
-            Project project, ElementId sectionId, string variableName, string typeName) =>
-            BlockSection(project, sectionId) is { } target
+            Project project, ElementId sectionId, string variableName, string typeName)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return BlockSection(project, sectionId) is { } target
                 ? new Session.AddEnumVariableOfExistingType(target.Block, target.Section, variableName, typeName)
                 : null;
+        }
 
         // Resolves the function block owning a variable SECTION, together with that section's own tag, or null when
         // the target is not a function-block variable section. It is the shared precondition of the three AddVariable
@@ -257,11 +266,14 @@ namespace Ihc.Vis
         /// </summary>
         /// <param name="project">The project the product would be inserted into.</param>
         /// <param name="productIdentifier">The product's <c>product_identifier</c>.</param>
-        public Problem? ModemLimitRefusal(Project project, string productIdentifier) =>
-            ProductCatalogLookup.Resolve(_catalog.Value.Products, productIdentifier) is { } definition
-            && ProductClassifier.IsModem(definition.Body.Tag) && HasModem(project)
+        public Problem? ModemLimitRefusal(Project project, string productIdentifier)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return ProductCatalogLookup.Resolve(_catalog.Value.Products, productIdentifier) is { } definition
+                && ProductClassifier.IsModem(definition.Body.Tag) && HasModem(project)
                 ? Session.EditRefusalProblems.ModemLimit()
                 : null;
+        }
 
         // Whether the project already contains a modem device root (the at-most-one-modem rule, US-013).
         private static bool HasModem(Project project) =>
@@ -286,10 +298,13 @@ namespace Ihc.Vis
         /// <summary>Command to reorder a node <paramref name="delta"/> positions among its same-tag siblings (US-055),
         /// or null at the list ends / for a rootless node. One rule, two entry points (review F02): this
         /// Project-walking factory and the index-backed overload below share <see cref="ResolveReorderTarget"/>.</summary>
-        public Session.ReorderNode? ReorderNode(Project project, ElementId id, int delta) =>
-            ResolveReorderTarget(project.FindById(id), project.FindParent(id), id, delta) is { } there
+        public Session.ReorderNode? ReorderNode(Project project, ElementId id, int delta)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return ResolveReorderTarget(project.FindById(id), project.FindParent(id), id, delta) is { } there
                 ? new Session.ReorderNode(id, there)
                 : null;
+        }
 
         // The index-backed entry point of the delta move (review F02): the same US-055 boundary rule answered from a
         // per-commit ProjectIndex, for the per-selection MENU gate — IProjectDocument.CanReorder forwards here, so
@@ -331,6 +346,7 @@ namespace Ihc.Vis
         /// their shared same-tag siblings (US-055, the drag drop), or null when they are not a reorderable pair.</summary>
         public Session.ReorderNode? ReorderNodeToSibling(Project project, ElementId dragged, ElementId targetSibling)
         {
+            ArgumentNullException.ThrowIfNull(project);
             if (project.FindParent(dragged) is not { Id: { } parentId } parent
                 || project.FindById(dragged) is not { } node
                 || project.FindParent(targetSibling)?.Id != parentId)
@@ -345,10 +361,13 @@ namespace Ihc.Vis
         /// same-tag siblings</b> — a reorder drop (US-055), the drag-over hint peer of
         /// <see cref="ReorderNodeToSibling"/>. One rule, two entry points (review F5): this Project-walking query
         /// and the index-backed overload below share <see cref="IsReorderablePair"/>.</summary>
-        public bool CanReorderNode(Project project, ElementId dragged, ElementId target) =>
-            dragged != target && IsReorderablePair(
+        public bool CanReorderNode(Project project, ElementId dragged, ElementId target)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return dragged != target && IsReorderablePair(
                 project.FindById(dragged), project.FindById(target),
                 project.FindParent(dragged), project.FindParent(target));
+        }
 
         // The index-backed entry point (review F5): the same US-055 rule answered from a per-commit ProjectIndex,
         // for the drag-over pointer path — IProjectDocument.CanReorderNode forwards here, so the probe stops
@@ -397,7 +416,11 @@ namespace Ihc.Vis
         /// <summary>Whether <paramref name="id"/> can be deleted at all (US-053) — the SDK verdict the GUI's Delete gate
         /// (context menu / Edit ▸ Delete / Delete key) reads. Unlike <see cref="PreviewDelete"/> this skips the strict
         /// cascade simulation, so it stays cheap to re-evaluate on every selection, menu-open and post-edit refresh.</summary>
-        public bool CanDelete(Project project, ElementId id) => ClassifyDelete(project, id).Kind != DeleteKind.NotDeletable;
+        public bool CanDelete(Project project, ElementId id)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return ClassifyDelete(project, id).Kind != DeleteKind.NotDeletable;
+        }
 
         /// <summary>
         /// The non-mutating impact and dispatch of deleting <paramref name="id"/> (US-009/US-053, sliver #9 relocated
@@ -410,6 +433,7 @@ namespace Ihc.Vis
         /// </summary>
         public DeleteImpact PreviewDelete(Project project, ElementId id)
         {
+            ArgumentNullException.ThrowIfNull(project);
             (DeleteKind kind, ProjectElement? element) = ClassifyDelete(project, id);
             bool needsConfirm = kind switch
             {
@@ -477,10 +501,13 @@ namespace Ihc.Vis
         /// wireless-dimming output takes dimmer values (light level %); otherwise relay/socket ON/OFF. Inferred from
         /// the bound output family (the element's <c>IsWirelessDimming</c> read predicate). The GUI uses this to
         /// shape the scene-value dialog; <see cref="LinkScene"/> uses it to stamp the command.</summary>
-        public bool IsSceneWirelessDimming(Project project, ElementId scenesId) =>
-            project.FindById(scenesId) is { } scenes
-            && ElementId.TryParse(project.View(scenes).Effective("scene_resource"), out ElementId boundId)
-            && project.FindById(boundId)?.IsWirelessDimming == true;
+        public bool IsSceneWirelessDimming(Project project, ElementId scenesId)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return project.FindById(scenesId) is { } scenes
+                && ElementId.TryParse(project.View(scenes).Effective("scene_resource"), out ElementId boundId)
+                && project.FindById(boundId)?.IsWirelessDimming == true;
+        }
 
         /// <summary>Command to create a scenario link from a function-block scene output pin to a product's scenes
         /// container with the given value (US-024). The relay/dimmer variant is inferred from the bound output family
@@ -500,14 +527,20 @@ namespace Ihc.Vis
 
         /// <summary>Command to add a resource-triggered program event to an <c>events</c> container (US-028), or null
         /// when the target is not a program's events container (the owning program is resolved here).</summary>
-        public Session.AddProgramEvent? AddProgramEvent(Project project, ElementId containerId, ElementId variableId, string method, string name, string? note, ElementId? operandId = null) =>
-            ProgramOfEventsContainer(project, containerId) is { } programId
+        public Session.AddProgramEvent? AddProgramEvent(Project project, ElementId containerId, ElementId variableId, string method, string name, string? note, ElementId? operandId = null)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return ProgramOfEventsContainer(project, containerId) is { } programId
                 ? new Session.AddProgramEvent(programId, variableId, method, name, note, operandId) : null;
+        }
 
         /// <summary>Command to add a Powerup system event to an <c>events</c> container (US-033), or null for a
         /// non-events target.</summary>
-        public Session.AddPowerEvent? AddPowerEvent(Project project, ElementId eventsContainerId) =>
-            ProgramOfEventsContainer(project, eventsContainerId) is { } programId ? new Session.AddPowerEvent(programId) : null;
+        public Session.AddPowerEvent? AddPowerEvent(Project project, ElementId eventsContainerId)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return ProgramOfEventsContainer(project, eventsContainerId) is { } programId ? new Session.AddPowerEvent(programId) : null;
+        }
 
         /// <summary>Command to author a program action command into a command container (US-028).</summary>
         public Session.AddProgramCommand AddProgramCommand(Project project, ElementId containerId, ElementId variableId, string method, string name, string? note) =>
@@ -555,6 +588,7 @@ namespace Ihc.Vis
         /// routes to the enum overload (typedef + the state's inivalue). The switch is resolved here from the case's link.</summary>
         public Session.AddCaseValue? AddCaseValue(Project project, ElementId caseId, string criterion)
         {
+            ArgumentNullException.ThrowIfNull(project);
             if (project.FindById(caseId) is not { } kase || !kase.IsProgramCase
                 || !ElementId.TryParse(project.View(kase).Effective("link"), out ElementId switchId)
                 || project.FindById(switchId) is not { } switchVar)
@@ -589,6 +623,7 @@ namespace Ihc.Vis
             [NotNullWhen(true)] out Session.AddCaseValue? command,
             [NotNullWhen(false)] out Problem? refusal)
         {
+            ArgumentNullException.ThrowIfNull(project);
             command = AddCaseValue(project, caseId, criterion);
             if (command is not null)
             {
@@ -637,9 +672,12 @@ namespace Ihc.Vis
 
         /// <summary>Command to append a user-defined text (US-049), reporting whether the user-texts table already
         /// exists so the command creates it on first use.</summary>
-        public Session.AddUserText AddUserText(Project project, string text) =>
-            new Session.AddUserText(text, project.Child("enum_definitions")?.Children
+        public Session.AddUserText AddUserText(Project project, string text)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return new Session.AddUserText(text, project.Child("enum_definitions")?.Children
                 .Any(c => c.IsEnumDefinition && project.View(c).Name == ProjectProjections.UserTextsTableName) == true);
+        }
 
         /// <summary>Command to rename a user-defined text by id (US-049 Edit).</summary>
         public Session.UpdateUserText UpdateUserText(Project project, ElementId textId, string text) =>
@@ -656,6 +694,8 @@ namespace Ihc.Vis
         /// are out of scope, D05, so the list is an in-order prefix of existing values plus appends.)</summary>
         public Session.UpdateEnumStates? UpdateEnumStates(Project project, ElementId enumVariableId, IReadOnlyList<string> states)
         {
+            ArgumentNullException.ThrowIfNull(project);
+            ArgumentNullException.ThrowIfNull(states);
             if (project.FindById(enumVariableId) is not { } variable
                 || variable.Kind != ElementKind.EnumResource
                 // T004: withdraw the enum-state edit when its entry-point variable is inside a locked block (the enum

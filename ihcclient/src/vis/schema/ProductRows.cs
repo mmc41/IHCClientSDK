@@ -31,9 +31,12 @@ namespace Ihc.Vis.Schema
         /// pins — is deliberately NOT structural: it is a resource in its own right and surfaces as one entry; the
         /// shallow direct-children preview simply does not descend into it.</para>
         /// </summary>
-        public static bool IsStructuralChild(string tag) =>
-            tag is "scenes" or "enum_definition" or "settings"
-            || tag.EndsWith("_settings", StringComparison.Ordinal);
+        public static bool IsStructuralChild(string tag)
+        {
+            ArgumentNullException.ThrowIfNull(tag);
+            return tag is "scenes" or "enum_definition" or "settings"
+                || tag.EndsWith("_settings", StringComparison.Ordinal);
+        }
 
         /// <summary>
         /// Whether IHC Visual suppresses this resource row from its project tree. Two disjoint criteria that share

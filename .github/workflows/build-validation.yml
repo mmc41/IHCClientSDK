@@ -140,8 +140,15 @@ jobs:
       #
       # Windows only, not because the driver needs it — it is Avalonia headless and cross-platform — but because
       # this leg already installs what Skia needs and the suite has only been measured here.
+      #
+      # The run parameter is SINGLE-QUOTED, and it is what makes this leg run at all. This step's shell is
+      # PowerShell, where a bare `(` opens an argument list and the `name=` inside it is a parse error before
+      # dotnet is ever launched — the step failed with "Missing argument in parameter list". Single quotes are
+      # literal in PowerShell and in bash alike, so this is the one spelling every shell agrees on; the
+      # backslash-escaped form the docs used works only in bash. Keep the inner double quotes: vstest's
+      # runsettings-argument parser requires them around the name.
       if: matrix.os == 'windows-latest'
-      run: dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj --no-build --filter "TestCategory!=DesktopOnly" --logger "trx;LogFileName=safe_visual_e2e_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash -- TestRunParameters.Parameter(name="headless",value="true")
+      run: dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj --no-build --filter "TestCategory!=DesktopOnly" --logger "trx;LogFileName=safe_visual_e2e_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash -- 'TestRunParameters.Parameter(name="headless",value="true")'
 
     - name: Upload test results
       # always(), because the run that most needs its artifact is the one that just failed — and a green

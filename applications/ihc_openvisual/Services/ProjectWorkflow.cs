@@ -495,6 +495,8 @@ public sealed class ProjectWorkflow : IDisposable
     /// <returns>The file written, or null when the export, the library commit or the registration failed.</returns>
     public async Task<string?> SaveFunctionBlockToLibraryAsync(ElementId functionBlockId, string name, string note)
     {
+        ArgumentNullException.ThrowIfNull(name);
+
         Directory.CreateDirectory(_catalogDir);
         string path = Path.Combine(_catalogDir, LibraryFileName(name));
         if (!await SaveFunctionBlockAsync(functionBlockId, path, name, note))
@@ -568,12 +570,20 @@ public sealed class ProjectWorkflow : IDisposable
     /// matches <see cref="Version"/>, the document refuses the edit as stale (a dialog prepared against an older
     /// project).
     /// </summary>
-    public Task<EditOutcome> ApplyAsync(ProjectCommand command, int? baseVersion = null) =>
-        Task.FromResult(Publish(_document is { } document ? document.Apply(command, baseVersion) : NoDocument(command)));
+    public Task<EditOutcome> ApplyAsync(ProjectCommand command, int? baseVersion = null)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        return Task.FromResult(Publish(_document is { } document ? document.Apply(command, baseVersion) : NoDocument(command)));
+    }
 
     /// <summary>The value-producing overload of <see cref="ApplyAsync(ProjectCommand,int?)"/> (e.g. a new element's id).</summary>
-    public Task<EditOutcome<T>> ApplyAsync<T>(ProjectCommand<T> command, int? baseVersion = null) =>
-        Task.FromResult(Publish(_document is { } document ? document.Apply(command, baseVersion) : NoDocument(command)));
+    public Task<EditOutcome<T>> ApplyAsync<T>(ProjectCommand<T> command, int? baseVersion = null)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        return Task.FromResult(Publish(_document is { } document ? document.Apply(command, baseVersion) : NoDocument(command)));
+    }
 
     // The ONE publish-on-commit rule both Apply overloads obey, written once: an outcome the document COMMITTED is
     // the only one that changed the project, so it is the only one whose delta reaches the reconciler. Generic over

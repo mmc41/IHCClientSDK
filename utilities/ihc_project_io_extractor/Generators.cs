@@ -21,6 +21,8 @@ namespace Ihc.IOExtractor {
         }
 
         protected string GetIdentifierName(IOMeta meta) {
+            ArgumentNullException.ThrowIfNull(meta);
+
             StringBuilder sb = new StringBuilder();
 
             var source = meta.GroupName +"_"+ meta.ProductPosition + "_" + meta.ProductName+"_"+meta.DatalineName;
@@ -63,6 +65,8 @@ namespace Ihc.IOExtractor {
 
         protected static IDictionary<string, string> GetReplacementStrings(IConfiguration config)
         {
+            ArgumentNullException.ThrowIfNull(config);
+
             Dictionary<string, string> result = new Dictionary<string, string>();
             DoAddReplacements(config, "identifiers:stringReplacements", result);
             DoAddReplacements(config, "identifiers:stringReplacements2", result);
@@ -100,6 +104,10 @@ namespace Ihc.IOExtractor {
         */
         protected static void AppendCommaSeparatedLines<T>(T[] entries, StringBuilder buf, Action<T, StringBuilder> appendEntry)
         {
+            ArgumentNullException.ThrowIfNull(entries);
+            ArgumentNullException.ThrowIfNull(buf);
+            ArgumentNullException.ThrowIfNull(appendEntry);
+
             for (int i = 0; i < entries.Length; ++i)
             {
                 appendEntry(entries[i], buf);
@@ -137,6 +145,8 @@ namespace Ihc.IOExtractor {
 
         public override String Generate(IhcProjectLoader project)
         {
+            ArgumentNullException.ThrowIfNull(project);
+
             StringBuilder buf = new StringBuilder();
 
             buf.AppendFormat(CultureInfo.InvariantCulture, "// {0}" + Environment.NewLine, header);
@@ -186,6 +196,8 @@ namespace Ihc.IOExtractor {
 
         protected override void AppendIoBlock(IOMeta[] ioAry, string blockName, StringBuilder buf)
         {
+            ArgumentNullException.ThrowIfNull(buf);
+
             buf.AppendFormat(CultureInfo.InvariantCulture, blockOpenFormat + Environment.NewLine, blockName);
 
             AppendCommaSeparatedLines(ioAry, buf, (io, b) =>
@@ -204,6 +216,8 @@ namespace Ihc.IOExtractor {
 
         public override String Generate(IhcProjectLoader project)
         {
+            ArgumentNullException.ThrowIfNull(project);
+
             var inputs = project.GetIO(IOType.Input);
             var outputs = project.GetIO(IOType.Output);
 
@@ -256,8 +270,12 @@ namespace Ihc.IOExtractor {
                 : base(config, "cs", Prologue(config), "}" + Environment.NewLine) {
         }
 
+        // Guards the constructor's argument: the base initializer runs before any statement the constructor
+        // could hold a guard in, and this call is one of its arguments.
         private static string Prologue(IConfiguration config)
         {
+            ArgumentNullException.ThrowIfNull(config);
+
             return "namespace " + config.GetSection("CSharpGenerator")["namespace"] + " {" + Environment.NewLine;
         }
 
@@ -265,6 +283,9 @@ namespace Ihc.IOExtractor {
         // AppendCommaSeparatedLines.
         protected override void AppendIoBlock(IOMeta[] ioAry, string blockName, StringBuilder buf)
         {
+            ArgumentNullException.ThrowIfNull(ioAry);
+            ArgumentNullException.ThrowIfNull(buf);
+
             buf.Append("  public sealed class " + blockName + " { " + Environment.NewLine);
 
             foreach (var io in ioAry)

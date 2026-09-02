@@ -161,6 +161,7 @@ namespace Ihc.Vis.Session
         /// <summary>Applies a command through the full pipeline. See the class remarks for the outcome typing.</summary>
         public EditOutcome Apply(ProjectCommand command, int? baseVersion = null)
         {
+            ArgumentNullException.ThrowIfNull(command);
             EditOutcome outcome;
             lock (_sync)
             {
@@ -173,6 +174,7 @@ namespace Ihc.Vis.Session
         /// <summary>Applies a value-producing command, surfacing the produced value on a committed outcome.</summary>
         public EditOutcome<T> Apply<T>(ProjectCommand<T> command, int? baseVersion = null)
         {
+            ArgumentNullException.ThrowIfNull(command);
             T? produced = default;
             EditOutcome outcome;
             lock (_sync)
@@ -452,6 +454,7 @@ namespace Ihc.Vis.Session
         /// "nothing to preview". Drives the Preview→confirm→Apply flow (W2-13).</summary>
         public PreviewOutcome Preview(ProjectCommand command)
         {
+            ArgumentNullException.ThrowIfNull(command);
             lock (_sync)
             {
                 if (_current is not { } current)
@@ -500,6 +503,7 @@ namespace Ihc.Vis.Session
         /// click cannot leave the document in different states.</para></summary>
         public EditVerdict CanApply(ProjectCommand command)
         {
+            ArgumentNullException.ThrowIfNull(command);
             lock (_sync)
             {
                 return _current is { } current

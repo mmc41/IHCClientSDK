@@ -251,7 +251,7 @@ namespace Ihc {
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public ControllerService(IAuthenticationService authService)
-            : base(authService.IhcSettings)
+            : base(SettingsOf(authService))
         {
             this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
@@ -259,7 +259,7 @@ namespace Ihc {
 
         /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
         internal ControllerService(IAuthenticationService authService, Ihc.Soap.Controller.ControllerService impl)
-            : base(authService.IhcSettings)
+            : base(SettingsOf(authService))
         {
             this.authService = authService;
             this.impl = impl;

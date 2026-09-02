@@ -521,6 +521,9 @@ namespace Ihc
         public T Run<T>(string operation, Func<OperationScope, T> body,
             MetricBinding? metrics = null, Func<T, OperationOutcome>? classify = null)
         {
+            // Before the span opens: a missing body is an argument error, and running it through the scope would
+            // report it as a FAILED operation instead — a fault attributed to work that never started.
+            ArgumentNullException.ThrowIfNull(body);
             using OperationScope scope = Start(operation, ActivityKind.Internal, metrics);
             try
             {
@@ -539,6 +542,7 @@ namespace Ihc
         /// <summary>Runs a void <paramref name="body"/> inside an instrumented operation (Shape A).</summary>
         public void Run(string operation, Action<OperationScope> body, MetricBinding? metrics = null)
         {
+            ArgumentNullException.ThrowIfNull(body);
             using OperationScope scope = Start(operation, ActivityKind.Internal, metrics);
             try
             {
@@ -556,6 +560,7 @@ namespace Ihc
         public async Task<T> RunAsync<T>(string operation, Func<OperationScope, Task<T>> body,
             MetricBinding? metrics = null, Func<T, OperationOutcome>? classify = null)
         {
+            ArgumentNullException.ThrowIfNull(body);
             using OperationScope scope = Start(operation, ActivityKind.Internal, metrics);
             try
             {
@@ -574,6 +579,7 @@ namespace Ihc
         /// <summary>The asynchronous void <see cref="Run(string, Action{OperationScope}, MetricBinding)"/>.</summary>
         public async Task RunAsync(string operation, Func<OperationScope, Task> body, MetricBinding? metrics = null)
         {
+            ArgumentNullException.ThrowIfNull(body);
             using OperationScope scope = Start(operation, ActivityKind.Internal, metrics);
             try
             {

@@ -22,6 +22,8 @@ public class ComplexTypeParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override bool CanHandle(FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         // Handle any type with sub-types (except files which are handled separately)
         return field.SubTypes.Length > 0 && !field.IsFile;
     }
@@ -30,7 +32,12 @@ public class ComplexTypeParameterStrategy : ParameterControlStrategyBase
     /// A complex record is rendered by building a control for each of its properties via the registry, so the
     /// filter recurses into all of them.
     /// </summary>
-    public override FieldMetaData[] GetRenderedSubFields(FieldMetaData field) => field.SubTypes;
+    public override FieldMetaData[] GetRenderedSubFields(FieldMetaData field)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+
+        return field.SubTypes;
+    }
 
     /// <summary>
     /// Creates a StackPanel with nested controls for each property.
@@ -90,6 +97,8 @@ public class ComplexTypeParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override object? ExtractValue(Control control, FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         var stackPanel = RequireControl<StackPanel>(control);
 
         // Extract values from each sub-control
@@ -158,6 +167,8 @@ public class ComplexTypeParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override void SetValue(Control control, object? value, FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         var stackPanel = RequireControl<StackPanel>(control);
 
         if (value == null)

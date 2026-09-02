@@ -23,6 +23,8 @@ public sealed class ProjectTreeProjector(Project project)
     /// <summary>The function block's Programs subtree (US-028/029): block → Programs → Program → Events/Commands.</summary>
     public TreeNodeViewModel BuildBlockProgramsNode(ProjectElement block, string name)
     {
+        ArgumentNullException.ThrowIfNull(block);
+
         bool locked = project.View(block).Locked;
         var blockNode = new TreeNodeViewModel(name, NodeIcons.FunctionBlock(locked),
             isExpanded: true, elementId: block.Id) { Kind = TreeNodeKind.ProgramBlockRoot };
@@ -299,6 +301,9 @@ public sealed class ProjectTreeProjector(Project project)
     /// </summary>
     public static bool HasRow(Project project, ProjectElement element)
     {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(element);
+
         for (ProjectElement node = element; !ReferenceEquals(node, project.Root);)
         {
             if (node.Id is not { } id || project.FindParent(id) is not { } parent)
@@ -324,8 +329,12 @@ public sealed class ProjectTreeProjector(Project project)
     }
 
     /// <inheritdoc cref="HasRow(Project, ProjectElement)"/>
-    public static bool HasRow(Project project, ElementId id) =>
-        project.FindById(id) is { } element && HasRow(project, element);
+    public static bool HasRow(Project project, ElementId id)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+
+        return project.FindById(id) is { } element && HasRow(project, element);
+    }
 
     /// <summary>
     /// The nearest STRICT ancestor of this element that has a row, or null when none has — the destination a
@@ -335,6 +344,8 @@ public sealed class ProjectTreeProjector(Project project)
     /// </summary>
     public static ElementId? NearestRowBearingAncestor(Project project, ElementId id)
     {
+        ArgumentNullException.ThrowIfNull(project);
+
         if (project.FindById(id) is not { } element)
             return null;
         for (ProjectElement node = element; !ReferenceEquals(node, project.Root);)
@@ -399,6 +410,8 @@ public sealed class ProjectTreeProjector(Project project)
     // adds Internal variables and keeps every section (US-018/US-026, A-17/A-18).
     public TreeNodeViewModel BuildFunctionBlockNode(ProjectElement fb, string name, bool programmingMode)
     {
+        ArgumentNullException.ThrowIfNull(fb);
+
         bool locked = project.View(fb).Locked;
         // W7/F6: in PROGRAMMING mode this node is the pane's root, and the installer is here to work on the block's
         // data — so it opens with the root and every section expanded, matching the reference application. In

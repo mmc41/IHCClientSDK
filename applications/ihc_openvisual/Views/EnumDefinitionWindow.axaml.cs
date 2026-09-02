@@ -23,6 +23,8 @@ public partial class EnumDefinitionWindow : ResultDialog<EnumDefinitionResult>
 
     public static Task<EnumDefinitionResult?> ShowAsync(Window owner, EnumDefinitionInput input)
     {
+        ArgumentNullException.ThrowIfNull(input);
+
         var window = new EnumDefinitionWindow { Title = input.Title };
         window.TypeNameBox.Text = input.TypeName;
         window.TypeNameBox.IsReadOnly = !input.IsNew;   // an existing type keeps its name; its states stay editable (relabel/append)

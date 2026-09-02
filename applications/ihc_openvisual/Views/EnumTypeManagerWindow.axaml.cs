@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -34,6 +35,8 @@ public partial class EnumTypeManagerWindow : Window
 
     public static async Task ShowAsync(Window owner, EnumTypeManagerInput input)
     {
+        ArgumentNullException.ThrowIfNull(input);
+
         var window = new EnumTypeManagerWindow { Title = input.Title, _input = input };
         window.Reload(selectType: null);
         await window.ShowDialog(owner);

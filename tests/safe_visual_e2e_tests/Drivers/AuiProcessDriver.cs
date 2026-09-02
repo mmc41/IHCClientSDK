@@ -29,7 +29,9 @@ internal sealed class AuiProcessDriver : IE2EDriver
         ? null
         : "the real GUI is driven through Windows UI Automation, and this is "
           + $"{System.Runtime.InteropServices.RuntimeInformation.OSDescription}. Re-run with "
-          + $"TestRunParameters.Parameter(name=\"{E2E.HeadlessParameter}\",value=\"true\") for the headless mode.";
+          // Quoted and prefixed with the argument separator so the sentence is a command line that runs as
+          // pasted; single quotes are literal in every shell this message can be read in.
+          + $"-- 'TestRunParameters.Parameter(name=\"{E2E.HeadlessParameter}\",value=\"true\")' for the headless mode.";
 
     private static string DriverPath() => Path.Combine(
         TestRepository.RequireRoot(), ".claude", "skills", "aui-openvisual", "scripts", "aui.ps1");

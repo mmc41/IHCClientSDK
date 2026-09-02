@@ -80,7 +80,7 @@ namespace Ihc
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public SmsModemService(IAuthenticationService authService)
-            : base(authService.IhcSettings)
+            : base(SettingsOf(authService))
         {
             this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
@@ -154,6 +154,7 @@ namespace Ihc
 
         public async Task SetSmsModemSettings(SmsModemSettings settings)
         {
+            ArgumentNullException.ThrowIfNull(settings);
             using (var activity = StartActivity(nameof(SetSmsModemSettings)))
             {
                 try

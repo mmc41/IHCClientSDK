@@ -17,6 +17,8 @@ public class EnumParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override bool CanHandle(FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         return field.Type.IsEnum;
     }
 
@@ -67,6 +69,8 @@ public class EnumParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override object? ExtractValue(Control control, FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         var comboBox = RequireControl<ComboBox>(control);
 
         if (comboBox.SelectedItem is EnumItem enumItem)

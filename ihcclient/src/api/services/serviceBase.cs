@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Net.Http;
@@ -32,15 +33,28 @@ namespace Ihc
         // structurally cannot delegate.
         private readonly OperationTelemetry telemetry;
 
+        /// <summary>
+        /// The settings carried by <paramref name="authService"/>, refusing a null session first.
+        /// </summary>
+        /// <remarks>
+        /// Every authenticated service reaches this base through this helper rather than through
+        /// <c>authService.IhcSettings</c> directly, because a base initializer runs before any statement the
+        /// deriving constructor could hold a guard in. Without it a null session dereferences there, and a
+        /// caller compiled without nullable reference types — the caller CA1062 exists for — gets a
+        /// NullReferenceException raised inside the SDK instead of an argument refusal naming the parameter.
+        /// </remarks>
+        private protected static IhcSettings SettingsOf([NotNull] IAuthenticationService? authService)
+        {
+            ArgumentNullException.ThrowIfNull(authService);
+            return authService.IhcSettings;
+        }
+
         protected ServiceBase(IhcSettings settings)
         {
+            ArgumentNullException.ThrowIfNull(settings);
+
             this.telemetry = new OperationTelemetry(SdkTelemetryRegistry.Surface, this.GetType().Name);
             this.settings = settings;
-
-            if (this.settings == null)
-            {
-                throw new ArgumentException("IhcSettings must be supplied");
-            }
 
             if (this.settings.Endpoint == null)
             {

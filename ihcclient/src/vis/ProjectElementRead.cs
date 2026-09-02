@@ -131,10 +131,13 @@ namespace Ihc.Vis
             /// type (<see cref="LogEnumTypeId"/>), resolved against <paramref name="project"/>. The signal a GUI uses
             /// to offer the log-mark toggle only where the vendor does (A-22/US-068). Unlike the context-free
             /// predicates above, this one needs the project to resolve the row's enum-type reference.</summary>
-            public bool IsLogRow(Project project) =>
-                element.Tag == "resource_enum"
-                && ElementId.TryParse(element.GetAttribute("typedef"), out ElementId defId)
-                && project.FindById(defId)?.GetAttribute("typeid") == LogEnumTypeId;
+            public bool IsLogRow(Project project)
+            {
+                ArgumentNullException.ThrowIfNull(project);
+                return element.Tag == "resource_enum"
+                    && ElementId.TryParse(element.GetAttribute("typedef"), out ElementId defId)
+                    && project.FindById(defId)?.GetAttribute("typeid") == LogEnumTypeId;
+            }
         }
 
         /// <summary>

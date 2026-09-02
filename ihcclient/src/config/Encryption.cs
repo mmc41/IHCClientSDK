@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Extensions.Configuration;
 
 namespace Ihc
@@ -17,7 +18,8 @@ namespace Ihc
         /// </summary>
         public static EncryptionConfiguration GetFromConfiguration(IConfigurationRoot config)
         {
-            return config.GetSection("encryption").Get<EncryptionConfiguration>() 
+            ArgumentNullException.ThrowIfNull(config);
+            return config.GetSection("encryption").Get<EncryptionConfiguration>()
                     ?? new EncryptionConfiguration { IsEncrypted = false }; 
         }
     }

@@ -51,7 +51,7 @@ namespace Ihc {
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public MessageControlLogService(IAuthenticationService authService)
-            : base(authService.IhcSettings)
+            : base(SettingsOf(authService))
         {
             this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);

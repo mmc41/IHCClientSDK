@@ -16,6 +16,8 @@ public class TimeSpanParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override bool CanHandle(FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         return UnwrapNullable(field.Type) == typeof(TimeSpan);
     }
 
@@ -48,6 +50,8 @@ public class TimeSpanParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override object? ExtractValue(Control control, FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         var input = RequireControl<DurationInput>(control);
         TimeSpan? value = input.GetValueOrThrow() ?? (IsNullableValueType(field.Type) ? (TimeSpan?)null : TimeSpan.Zero);
         return value;
@@ -58,6 +62,8 @@ public class TimeSpanParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override void SetValue(Control control, object? value, FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         var input = RequireControl<DurationInput>(control);
         TimeSpan? toSet = value as TimeSpan? ?? (IsNullableValueType(field.Type) ? (TimeSpan?)null : TimeSpan.Zero);
         input.SetValue(toSet);

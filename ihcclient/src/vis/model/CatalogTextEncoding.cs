@@ -33,9 +33,12 @@ namespace Ihc.Vis.Model
         /// <summary>T027: whether the raw file bytes begin with the UTF-8 byte-order mark (<c>EF BB BF</c>) — the one
         /// shared BOM test, co-located with the preamble bytes it checks for, used by the catalog and project readers
         /// and by <see cref="Classify"/> below.</summary>
-        public static bool HasUtf8Bom(byte[] bytes) =>
-            bytes.Length >= Utf8Preamble.Length
-            && bytes[0] == Utf8Preamble[0] && bytes[1] == Utf8Preamble[1] && bytes[2] == Utf8Preamble[2];
+        public static bool HasUtf8Bom(byte[] bytes)
+        {
+            ArgumentNullException.ThrowIfNull(bytes);
+            return bytes.Length >= Utf8Preamble.Length
+                && bytes[0] == Utf8Preamble[0] && bytes[1] == Utf8Preamble[1] && bytes[2] == Utf8Preamble[2];
+        }
 
         /// <summary>The BOM bytes to emit before the text for this encoding (empty when none).</summary>
         public static byte[] Preamble(this CatalogTextEncoding encoding) =>

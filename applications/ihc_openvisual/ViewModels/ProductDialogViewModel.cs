@@ -21,6 +21,8 @@ public sealed partial class ProductDialogFieldViewModel : ObservableObject
 
     public ProductDialogFieldViewModel(DialogDescriptorField field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         _field = field;
         _value = field.Value ?? string.Empty;
         // The wrapper already normalizes default to empty, so the old SuggestionsOrEmpty accessor is gone.
@@ -252,6 +254,8 @@ public sealed class ProductDialogGroupViewModel
         IReadOnlyList<ProductTerminal> terminals,
         IReadOnlyList<ProductSetting> settings)
     {
+        ArgumentNullException.ThrowIfNull(group);
+
         Caption = group.Caption;
         Id = group.Id;
         IsCollapsible = group.Collapsible;
@@ -482,6 +486,11 @@ public sealed partial class ProductDialogViewModel : ObservableObject
     /// </remarks>
     public void Refresh(IReadOnlyList<ProductTerminal> terminals, IReadOnlyList<ProductSetting> settings)
     {
+        // Both lists, before the first grid is touched: Replace clears its rows and only then enumerates, so a
+        // refusal raised part-way through would leave the dialog showing emptied grids.
+        ArgumentNullException.ThrowIfNull(terminals);
+        ArgumentNullException.ThrowIfNull(settings);
+
         foreach (ProductDialogGroupViewModel group in Groups)
         {
             foreach (ProductDialogTerminalGridViewModel grid in group.TerminalGrids)

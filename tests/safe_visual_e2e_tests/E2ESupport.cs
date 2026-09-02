@@ -49,7 +49,7 @@ public static class E2E
     /// the real driver is what this suite is for, and headless is the reduced mode CI settles for.
     /// </summary>
     /// <example>
-    /// <code>dotnet test … -- TestRunParameters.Parameter(name="headless",value="true")</code>
+    /// <code>dotnet test … -- 'TestRunParameters.Parameter(name="headless",value="true")'</code>
     /// </example>
     public const string HeadlessParameter = "headless";
 

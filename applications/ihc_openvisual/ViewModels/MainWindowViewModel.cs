@@ -802,6 +802,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         ILoggerFactory? loggerFactory = null,
         InternalErrorLog? internalErrors = null)
     {
+        ArgumentNullException.ThrowIfNull(theme);
+
         _internalErrors = internalErrors;
         _session = session;
         _dialogs = dialogs;

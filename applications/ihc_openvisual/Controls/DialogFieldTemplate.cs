@@ -65,7 +65,13 @@ public sealed class DialogFieldTemplate : IDataTemplate
 
     public Control? Build(object? param)
     {
-        var field = (ProductDialogFieldViewModel)param!;
+        // Not Match: this template is ASSIGNED to a template property in ProductDialogWindow.axaml, and a
+        // presenter handed a template that way builds from it without consulting Match at all. What keeps null
+        // out is that a presenter realizes a child only for content it has, so the refusal answers a caller
+        // reaching Build outside that path.
+        ArgumentNullException.ThrowIfNull(param);
+
+        var field = (ProductDialogFieldViewModel)param;
         IDataTemplate template = ForKind(field.Control)
             ?? throw new UnknownControlKindException(field.Control, field.AutomationId);
         return template.Build(field);

@@ -94,6 +94,8 @@ public sealed class ProjectTreeReconciler
     /// initial build and the fallback for any change the incremental path can't confidently apply in place.</summary>
     public TreeNodeViewModel Rebuild(Project project)
     {
+        ArgumentNullException.ThrowIfNull(project);
+
         Func<Project, TreeNodeViewModel> build = RequireBuilder();
         _root = build(project);
         RebuildIndex(project);
@@ -105,6 +107,9 @@ public sealed class ProjectTreeReconciler
     /// <see cref="Rebuild"/> on <see cref="ProjectChangeSet.FullReload"/> or any inconsistency.</summary>
     public TreeNodeViewModel Reconcile(Project project, ProjectChangeSet changes)
     {
+        ArgumentNullException.ThrowIfNull(project);
+        ArgumentNullException.ThrowIfNull(changes);
+
         if (_root is null || changes.FullReload)
         {
             return Rebuild(project);

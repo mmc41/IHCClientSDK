@@ -68,18 +68,27 @@ namespace Ihc.Vis.Products
 
         /// <summary>Whether a tag is any product device root: the <c>product_</c> prefix, or one of the known
         /// unprefixed catalog roots (see <see cref="UnprefixedProductRoots"/>).</summary>
-        public static bool IsProduct(string tag) =>
-            tag.StartsWith("product_", StringComparison.Ordinal) || UnprefixedProductRoots.Contains(tag);
+        public static bool IsProduct(string tag)
+        {
+            ArgumentNullException.ThrowIfNull(tag);
+            return tag.StartsWith("product_", StringComparison.Ordinal) || UnprefixedProductRoots.Contains(tag);
+        }
 
         /// <summary>Whether a device-root tag is a modem product (e.g. <c>product_rs485_sms_modem</c>) — the family
         /// the at-most-one-modem rule and the modem properties dialog apply to.</summary>
-        public static bool IsModem(string tag) =>
-            IsProduct(tag) && tag.Contains("modem", StringComparison.Ordinal);
+        public static bool IsModem(string tag)
+        {
+            ArgumentNullException.ThrowIfNull(tag);
+            return IsProduct(tag) && tag.Contains("modem", StringComparison.Ordinal);
+        }
 
         /// <summary>Whether a device-root tag is an IHC Wireless (airlink) product — the family with no cable/terminal
         /// addressing and an unlinked marker until commissioned (US-014).</summary>
-        public static bool IsWireless(string tag) =>
-            IsProduct(tag) && tag.Contains("airlink", StringComparison.Ordinal);
+        public static bool IsWireless(string tag)
+        {
+            ArgumentNullException.ThrowIfNull(tag);
+            return IsProduct(tag) && tag.Contains("airlink", StringComparison.Ordinal);
+        }
 
         /// <summary>Whether a wireless product is not yet linked to the controller — its <c>serialnumber</c> is blank
         /// or the null token. (Linking is a controller operation; an inserted wireless product stays unlinked and

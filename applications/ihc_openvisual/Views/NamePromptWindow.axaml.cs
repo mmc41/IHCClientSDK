@@ -42,6 +42,8 @@ public partial class NamePromptWindow : ResultDialog<string>
 
     public static Task<string?> ShowAsync(Window owner, NamePromptInput input)
     {
+        ArgumentNullException.ThrowIfNull(input);
+
         NamePromptWindow window = Create(input);
         window.FocusOnOpen(window.NameBox);
         return window.ShowDialogForResult(owner);

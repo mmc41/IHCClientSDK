@@ -732,6 +732,8 @@ public partial class MainWindow : Window
 
     public async Task SetOutput(string text, Type type)
     {
+        ArgumentNullException.ThrowIfNull(text);
+
         // Update ViewModel (this updates bindings)
         viewModel?.SetOutput(text, type);
 

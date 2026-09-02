@@ -53,6 +53,13 @@ namespace Ihc.Bootstrap
 
             public void Log(LogEventLevel level, string area, object? source, string messageTemplate, params object?[] propertyValues)
             {
+                // Avalonia calls this, so the array arrives from a framework this repository does not compile.
+                // Absent arguments are treated as none rather than refused: a sink that threw would turn a log
+                // call inside Avalonia's own pipeline into a second failure on top of whatever it was reporting.
+                // Normalising the PARAMETER rather than a local is deliberate — the chained sink below is handed
+                // the same value, so the next sink in the chain is spared the null this one just absorbed.
+                propertyValues ??= [];
+
                 string combinedTemplate = "[{Area}] {Source}: " + messageTemplate;
                 var combinedValues = new object?[propertyValues.Length + 2];
                 combinedValues[0] = area;
@@ -208,6 +215,8 @@ namespace Ihc.Bootstrap
         // The handler body, callable directly so a test can assert against real logged output (ILogger is never mocked).
         public static void LogDispatcherException(ILogger logger, Exception ex)
         {
+            ArgumentNullException.ThrowIfNull(ex);
+
             logger.LogCritical(ex, "Unhandled dispatcher exception: {Message}", ex.Message);
             Activity.Current?.AddException(ex);
         }

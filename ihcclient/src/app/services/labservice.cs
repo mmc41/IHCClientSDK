@@ -86,6 +86,7 @@ namespace Ihc.App
             /// <param name="operationFilter">Filter function to determine which operations should be included. Returns true to include an operation.</param>
             public ServiceItem(IIHCApiService service, Func<ServiceOperationMetadata, bool> operationFilter)
             {
+                ArgumentNullException.ThrowIfNull(service);
                 Service = service;
 
                 // Find the IHC service interface (works for both real services and fakes)
@@ -156,6 +157,7 @@ namespace Ihc.App
             /// <exception cref="ArgumentException"></exception>
             public void SelectOperation(OperationItem operation)
             {
+                ArgumentNullException.ThrowIfNull(operation);
                 if (operation.Service != this)
                     throw new ArgumentException("Operation does not belong to service instance");
 
@@ -331,6 +333,7 @@ namespace Ihc.App
             /// <param name="operationMetadata">Metadata describing the operation.</param>
             public OperationItem(ServiceItem service, ServiceOperationMetadata operationMetadata)
             {
+                ArgumentNullException.ThrowIfNull(operationMetadata);
                 Service = service;
                 OperationMetadata = operationMetadata;
                 DisplayName = operationMetadata.Name;

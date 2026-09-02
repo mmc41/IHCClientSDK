@@ -13,11 +13,11 @@
 # ═══════════════════════════════════════════════════════════════════════════════════════════════════
 # Rules from /.globalconfig turned back off for the suites.
 #
-# All four are about the lifetime and blocking behaviour of objects inside a long-running process. A test
-# method is not one: it runs once, on a fixture the runner tears down, in a host process that exits.
+# The first group is about the lifetime and blocking behaviour of objects inside a long-running process. A
+# test method is not one: it runs once, on a fixture the runner tears down, in a host process that exits.
 # Enforcing them here was measured at 414 findings against 39 in the code that ships — the ratio alone says
-# the rules are matching the shape of test code rather than a defect in it. The remaining ~20 rules from
-# /.globalconfig stay in force here.
+# the rules are matching the shape of test code rather than a defect in it. CA1062, below them, is off for a
+# different reason and reads on its own. Most of /.globalconfig stays in force here.
 # ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
 # 328 of 335 findings. The objects are per-test harnesses, view-models and headless windows whose scope IS
@@ -35,6 +35,22 @@ dotnet_diagnostic.CA1849.severity = none
 # Fires on `using` + a task in the same scope, which in these fixtures is awaited before the scope ends.
 # The rule cannot see that, and the alternative is restructuring tests to satisfy a flow analysis.
 dotnet_diagnostic.CA2025.severity = none
+
+# CA1062 (validate arguments of externally visible methods) is off. It is on for every project that ships,
+# and BOTH reasons it is on there stop at the door of a test method. The SDK's reason is a consumer this
+# repository does not compile; a test assembly has no consumer at all. The reason the applications and
+# utilities took it is that a wrong argument should be named where it was passed rather than dereferenced
+# further in; a test's argument was passed by NUnit, out of the [TestCase] / [TestCaseSource] attributes a few
+# lines above the method — same file, same build, and already the thing the failure would point at.
+#
+# So a guard here would refuse an argument the fixture itself wrote, and the findings are exactly that shape:
+# a parameterised test's own case data, plus the ILogger test double whose `formatter` delegate ILogger.Log is
+# contractually never called without. None of them is a defect, and a test method is `public` because the
+# runner needs it to be, not because anything consumes it.
+#
+# This one does NOT follow from the group above — those are about object lifetime in a short-lived process,
+# this is about who the caller is — which is why it carries its own entry rather than joining them.
+dotnet_diagnostic.CA1062.severity = none
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════════════
 # Rules DECLINED out of AnalysisMode=Recommended, for the suites.

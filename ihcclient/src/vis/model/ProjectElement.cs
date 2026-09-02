@@ -137,6 +137,7 @@ namespace Ihc.Vis.Model
         /// </summary>
         public ProjectElement? FindDescendantOrSelf(Func<ProjectElement, bool> match)
         {
+            ArgumentNullException.ThrowIfNull(match);
             if (match(this))
             {
                 return this;

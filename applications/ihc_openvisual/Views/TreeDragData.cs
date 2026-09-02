@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Input;
 using ihc_openvisual.ViewModels;
 using Ihc.Vis.Model;
@@ -28,6 +29,8 @@ public static class TreeDragData
     /// drag — e.g. the synthetic <c>Localities</c> root).</summary>
     public static DataTransfer? BuildDragData(TreeNodeViewModel node)
     {
+        ArgumentNullException.ThrowIfNull(node);
+
         if (node.ElementId is not { } id)
             return null;
         var data = new DataTransfer();

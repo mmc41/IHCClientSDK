@@ -537,7 +537,7 @@ namespace Ihc {
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public OpenAPIService(IAuthenticationService authService)
-            : base(authService.IhcSettings)
+            : base(SettingsOf(authService))
         {
             this.cookieHandler = authService.GetCookieHandler();
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);

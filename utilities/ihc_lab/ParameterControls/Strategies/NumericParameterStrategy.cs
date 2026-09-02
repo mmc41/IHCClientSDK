@@ -38,6 +38,8 @@ public class NumericParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override bool CanHandle(FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         return NumericTypeInfos.ContainsKey(UnwrapNullable(field.Type));
     }
 
@@ -76,6 +78,8 @@ public class NumericParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override object? ExtractValue(Control control, FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         var numericUpDown = RequireControl<NumericUpDown>(control);
 
         // Empty control: a nullable numeric extracts as null (D3); a non-nullable one falls back to the typed zero.
@@ -109,6 +113,8 @@ public class NumericParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override void SetValue(Control control, object? value, FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         var numericUpDown = RequireControl<NumericUpDown>(control);
 
         if (value == null)

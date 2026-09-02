@@ -599,18 +599,23 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     /// Information, which is the one tier a user is least likely to look at. Better a loud failure at the
     /// classifier than a finding that silently disappears into the bottom of the list.
     /// </remarks>
-    public static ProblemsTier TierOf(ValidationFinding finding) => finding.Severity switch
+    public static ProblemsTier TierOf(ValidationFinding finding)
     {
-        // The PAIR is the definition, and neither half alone: an Error that refuses nothing is ordinary, and a
-        // Warning that refused something would not be blocking. The fact travels ON the finding — the panel may
-        // not read the SDK catalogue — so this asks the row it was given and nothing else.
-        ValidationSeverity.Error when finding.RefusedOperations.Length > 0 => ProblemsTier.Fatal,
-        ValidationSeverity.Error => ProblemsTier.Error,
-        ValidationSeverity.Warning => ProblemsTier.Warning,
-        ValidationSeverity.Info => ProblemsTier.Info,
-        _ => throw new ArgumentOutOfRangeException(
-            nameof(finding), finding.Severity, "Unknown validation severity"),
-    };
+        ArgumentNullException.ThrowIfNull(finding);
+
+        return finding.Severity switch
+        {
+            // The PAIR is the definition, and neither half alone: an Error that refuses nothing is ordinary, and a
+            // Warning that refused something would not be blocking. The fact travels ON the finding — the panel may
+            // not read the SDK catalogue — so this asks the row it was given and nothing else.
+            ValidationSeverity.Error when finding.RefusedOperations.Length > 0 => ProblemsTier.Fatal,
+            ValidationSeverity.Error => ProblemsTier.Error,
+            ValidationSeverity.Warning => ProblemsTier.Warning,
+            ValidationSeverity.Info => ProblemsTier.Info,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(finding), finding.Severity, "Unknown validation severity"),
+        };
+    }
 
     /// <summary>
     /// The severity a tier reports as — the value the findings export records, since the file format speaks the

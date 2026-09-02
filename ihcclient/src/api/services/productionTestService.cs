@@ -22,7 +22,7 @@ namespace Ihc
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public ProductionTestService(IAuthenticationService authService)
-            : base(authService.IhcSettings)
+            : base(SettingsOf(authService))
         {
             // No operations yet. When the controller WSDL gains operations, add a private nested
             //   SoapImpl : ServiceBaseImpl, Ihc.Soap.Productiontest.ProductionTestService

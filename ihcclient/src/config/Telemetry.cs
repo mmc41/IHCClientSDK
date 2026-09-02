@@ -88,6 +88,7 @@ namespace Ihc {
         /// <returns>The IHC client settings.</returns>
         public static TelemetryConfiguration GetFromConfiguration(IConfigurationRoot config)
         {
+            ArgumentNullException.ThrowIfNull(config);
             TelemetryConfiguration? telemetryConfig = config.GetSection("telemetry").Get<TelemetryConfiguration>();
             if (telemetryConfig == null)
             {
@@ -157,6 +158,7 @@ namespace Ihc {
         /// <returns>The activity for method chaining</returns>
         public static Activity? SetParameters(this Activity? activity, params (string name, object? value)[] parameters)
         {
+            ArgumentNullException.ThrowIfNull(parameters);
             if (activity != null)
             {
                 foreach (var (name, value) in parameters)
@@ -175,6 +177,7 @@ namespace Ihc {
         /// <returns>The activity for method chaining</returns>
         public static Activity? SetError(this Activity? activity, Exception ex)
         {
+            ArgumentNullException.ThrowIfNull(ex);
             // The normalized error.type, from the same policy the instrumentation core applies - so a span
             // marked failed through this extension and one marked failed by the core carry the same value.
             // This is also the ONLY way the policy reaches the api tier: its call sites all report failure
@@ -213,6 +216,7 @@ namespace Ihc {
         /// </example>
         public static Activity? AddWarning(this Activity? activity, string message, params (string key, object? value)[] tags)
         {
+            ArgumentNullException.ThrowIfNull(tags);
             if (activity != null)
             {
                 var eventTags = new ActivityTagsCollection
@@ -288,10 +292,13 @@ namespace Ihc {
         /// Probes <see cref="TelemetryConfiguration.SelfCheckEndpoint"/> once (5s timeout) and returns the outcome.
         /// <see cref="TelemetrySelfCheckStatus.Disabled"/> when no endpoint is set; a
         /// <see cref="TelemetrySelfCheckStatus.ConfigError"/> when the endpoint is set without a valid
-        /// <see cref="TelemetryConfiguration.SelfCheckExpectedStatus"/> regex. Never throws.
+        /// <see cref="TelemetryConfiguration.SelfCheckExpectedStatus"/> regex. No probe outcome is raised as an
+        /// exception — a failure to reach the endpoint is a returned status, not a throw.
         /// </summary>
+        /// <exception cref="ArgumentNullException"><paramref name="telemetry"/> is null.</exception>
         public static async Task<TelemetrySelfCheckResult> ProbeAsync(TelemetryConfiguration telemetry)
         {
+            ArgumentNullException.ThrowIfNull(telemetry);
             if (string.IsNullOrWhiteSpace(telemetry.SelfCheckEndpoint))
                 return new TelemetrySelfCheckResult(TelemetrySelfCheckStatus.Disabled,
                     "Telemetry self-check disabled (no telemetry.SelfCheckEndpoint configured); skipping.");

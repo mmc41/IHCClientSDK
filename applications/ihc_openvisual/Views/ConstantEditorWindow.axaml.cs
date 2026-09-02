@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -25,6 +26,8 @@ public partial class ConstantEditorWindow : ResultDialog<string>
 
     public static Task<string?> ShowAsync(Window owner, ConstantEditorInput input)
     {
+        ArgumentNullException.ThrowIfNull(input);
+
         ConstantEditorWindow window = Create(input);
         window.FocusOnOpen(window.ValueBox);
         return window.ShowDialogForResult(owner);

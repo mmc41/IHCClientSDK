@@ -279,6 +279,7 @@ namespace Ihc {
         /// <returns>A new ResourceValue with the boolean value toggled.</returns>
         /// <exception cref="ArgumentException">Thrown if source is not a boolean type.</exception>
         public static ResourceValue ToogleBool(ResourceValue src) {
+            ArgumentNullException.ThrowIfNull(src);
             if (src.Value.ValueKind != ValueKind.BOOL)
                 throw new ArgumentException("Source resource should be of boolean type");
 

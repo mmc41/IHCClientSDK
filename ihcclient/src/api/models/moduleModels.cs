@@ -41,6 +41,7 @@ namespace Ihc {
       /// </summary>
       public SceneProject(BinaryFile input)
       {
+        ArgumentNullException.ThrowIfNull(input);
         this.Data = input.Data;
         this.Filename = input.Filename;
       }
@@ -75,6 +76,7 @@ namespace Ihc {
       /// </summary>
       public SceneProjectSegment(BinaryFile input)
       {
+        ArgumentNullException.ThrowIfNull(input);
         this.Data = input.Data;
         this.Filename = input.Filename;
       }

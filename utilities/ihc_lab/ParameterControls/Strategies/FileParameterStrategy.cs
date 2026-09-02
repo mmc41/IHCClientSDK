@@ -17,6 +17,8 @@ public class FileParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override bool CanHandle(FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         return field.IsFile;
     }
 
@@ -103,6 +105,9 @@ public class FileParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override object? ExtractValue(Control control, FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(control);
+        ArgumentNullException.ThrowIfNull(field);
+
         // The picker implements BinaryFile/TextFile, so build the concrete parameter type from it via the
         // copy constructor every file model is required to expose (see the BinaryFile/TextFile remarks).
         if (control is BinaryFile binaryFile)
@@ -143,6 +148,8 @@ public class FileParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override void SetValue(Control control, object? value, FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(control);
+
         if (value == null)
             return;
 

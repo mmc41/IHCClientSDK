@@ -228,8 +228,11 @@ namespace Ihc.Vis.Problems
         /// <param name="problem">The problem to record, already bound to its Danish sentence.</param>
         /// <param name="origin">Which layer observed it.</param>
         /// <param name="detail">The captured technical text, including where it was observed.</param>
-        public static InternalError From(Problem problem, InternalErrorOrigin origin, string detail) =>
-            new(problem.Code, problem.Message, problem.Diagnostic, origin, detail, DateTimeOffset.UtcNow);
+        public static InternalError From(Problem problem, InternalErrorOrigin origin, string detail)
+        {
+            ArgumentNullException.ThrowIfNull(problem);
+            return new(problem.Code, problem.Message, problem.Diagnostic, origin, detail, DateTimeOffset.UtcNow);
+        }
 
         /// <summary>
         /// The key a layer stamps into <see cref="Exception.Data"/> once it has reported that exception as an

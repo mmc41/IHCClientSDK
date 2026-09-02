@@ -37,6 +37,8 @@ public partial class VariablePropertiesWindow : ResultDialog<VariablePropertiesR
 
     public static Task<VariablePropertiesResult?> ShowAsync(Window owner, VariablePropertiesInput input)
     {
+        ArgumentNullException.ThrowIfNull(input);
+
         var window = new VariablePropertiesWindow { Title = input.Title };
         window.Populate(input);
         return window.ShowDialogForResult(owner);

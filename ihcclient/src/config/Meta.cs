@@ -51,6 +51,7 @@ namespace Ihc
         /// <param name="version">The System.Version to convert from</param>
         public Version(System.Version version)
         {
+            ArgumentNullException.ThrowIfNull(version);
             this.Major = version.Major;
             this.Minor = version.Minor;
             this.Build = version.Build;

@@ -25,10 +25,14 @@ public sealed class DatalineModuleSummaryConverter : IValueConverter
         value is DatalineModule module ? Summarize(module) : string.Empty;
 
     /// <summary>The spoken form of one row. Public so the accessibility tests read the same wording the bindings do.</summary>
-    public static string Summarize(DatalineModule module) =>
-        module.InUse
+    public static string Summarize(DatalineModule module)
+    {
+        ArgumentNullException.ThrowIfNull(module);
+
+        return module.InUse
             ? $"Datalinie {module.DataLine}, {module.ModuleType}, {module.Location}, {module.Description}"
             : $"Datalinie {module.DataLine}, ikke i brug";
+    }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         Avalonia.Data.BindingOperations.DoNothing;

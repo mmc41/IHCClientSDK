@@ -76,6 +76,7 @@ namespace Ihc
         
         public BackupFile(BinaryFile input)
         {
+            ArgumentNullException.ThrowIfNull(input);
             this.Data = input.Data;
             this.Filename = input.Filename;
         }
@@ -188,6 +189,7 @@ namespace Ihc
 
         public ProjectFile(TextFile input)
         {
+            ArgumentNullException.ThrowIfNull(input);
             this.Data = input.Data;
             this.Filename = input.Filename;
         }
@@ -222,6 +224,7 @@ namespace Ihc
       /// </summary>
       public ProjectSegment(BinaryFile input)
       {
+        ArgumentNullException.ThrowIfNull(input);
         this.Data = input.Data;
         this.Filename = input.Filename;
       }

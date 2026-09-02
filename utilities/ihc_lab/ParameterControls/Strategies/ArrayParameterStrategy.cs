@@ -35,6 +35,8 @@ public class ArrayParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override bool CanHandle(FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         // Require the element-type metadata (SubTypes) too: without it CreateControl cannot build the list and
         // would throw. A collection/array field the one-level metadata expansion left with no element sub-field
         // (e.g. a collection PROPERTY of a complex record) is therefore NOT claimed here, so the operation is
@@ -46,7 +48,12 @@ public class ArrayParameterStrategy : ParameterControlStrategyBase
     /// A collection is rendered by building a control for its element via the registry, so the filter recurses
     /// into the element type (carried as the single sub-field).
     /// </summary>
-    public override FieldMetaData[] GetRenderedSubFields(FieldMetaData field) => field.SubTypes;
+    public override FieldMetaData[] GetRenderedSubFields(FieldMetaData field)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+
+        return field.SubTypes;
+    }
 
     /// <summary>
     /// Creates a vertical StackPanel with array item controls and add/remove buttons.
@@ -125,17 +132,31 @@ public class ArrayParameterStrategy : ParameterControlStrategyBase
         => RegisterContainerSubscription(control, handler);
 
     /// <summary>
-    /// Extracts array values from all item controls.
+    /// The two things both value directions start from: the panel this strategy built, and the element field
+    /// carried as the collection's single sub-type. A collection whose element metadata the one-level
+    /// expansion dropped cannot be read OR written, so the refusal belongs to the pair rather than to either
+    /// direction — which is why CanHandle above declines such a field in the first place.
     /// </summary>
-    public override object? ExtractValue(Control control, FieldMetaData field)
+    private static (StackPanel MainPanel, FieldMetaData ElementField) RequireCollectionParts(
+        Control control, FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         var mainPanel = RequireControl<StackPanel>(control);
 
         if (field.SubTypes.Length == 0)
             throw new InvalidOperationException(
                 $"Collection field '{field.Name}' has no SubTypes. Cannot determine element type.");
 
-        var elementField = field.SubTypes[0];
+        return (mainPanel, field.SubTypes[0]);
+    }
+
+    /// <summary>
+    /// Extracts array values from all item controls.
+    /// </summary>
+    public override object? ExtractValue(Control control, FieldMetaData field)
+    {
+        (StackPanel mainPanel, FieldMetaData elementField) = RequireCollectionParts(control, field);
         var elementType = elementField.Type;
 
         // Find the items panel
@@ -175,13 +196,7 @@ public class ArrayParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override void SetValue(Control control, object? value, FieldMetaData field)
     {
-        var mainPanel = RequireControl<StackPanel>(control);
-
-        if (field.SubTypes.Length == 0)
-            throw new InvalidOperationException(
-                $"Collection field '{field.Name}' has no SubTypes. Cannot determine element type.");
-
-        var elementField = field.SubTypes[0];
+        (StackPanel mainPanel, FieldMetaData elementField) = RequireCollectionParts(control, field);
 
         var itemsPanel = FindItemsPanel(mainPanel);
         var label = HeaderLabel(mainPanel);

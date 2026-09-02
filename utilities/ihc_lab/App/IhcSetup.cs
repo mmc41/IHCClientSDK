@@ -134,6 +134,8 @@ public class IhcFakeSetup
 {
     public static IAuthenticationService SetupAuthenticationService(IhcSettings settings)
     {
+        ArgumentNullException.ThrowIfNull(settings);
+
         var service = A.Fake<IAuthenticationService>();
 
         A.CallTo(() => service.Authenticate()).Returns(Task.FromResult(new IhcUser

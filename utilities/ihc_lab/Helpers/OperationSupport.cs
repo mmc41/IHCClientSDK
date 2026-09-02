@@ -26,6 +26,9 @@ public static class OperationSupport
     /// <param name="operationMetadata">The operation metadata containing parameter information.</param>
     public static void SetUpParameterControls(Panel parametersPanel, ServiceOperationMetadata operationMetadata)
     {
+        ArgumentNullException.ThrowIfNull(parametersPanel);
+        ArgumentNullException.ThrowIfNull(operationMetadata);
+
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OperationSupport) + "." + nameof(SetUpParameterControls), ActivityKind.Internal);
         activity?.SetParameters(
             (nameof(parametersPanel), parametersPanel.Name ?? ""),
@@ -67,6 +70,9 @@ public static class OperationSupport
     /// <param name="prefix">The prefix for the control name (used for nested fields).</param>
     public static void AddFieldControls(Panel parent, FieldMetaData field, string prefix)
     {
+        ArgumentNullException.ThrowIfNull(parent);
+        ArgumentNullException.ThrowIfNull(field);
+
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OperationSupport) + "." + nameof(AddFieldControls), ActivityKind.Internal);
         activity?.SetParameters(
             (nameof(parent), parent.Name ?? ""),
@@ -142,6 +148,9 @@ public static class OperationSupport
     /// <returns>The field value, or null if not found.</returns>
     public static object? GetFieldValue(Panel parent, FieldMetaData field, string prefix)
     {
+        ArgumentNullException.ThrowIfNull(parent);
+        ArgumentNullException.ThrowIfNull(field);
+
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(OperationSupport) + "." + nameof(GetFieldValue), ActivityKind.Internal);
         activity?.SetParameters(
             (nameof(parent), parent.Name ?? ""),
@@ -176,6 +185,8 @@ public static class OperationSupport
     /// <returns>The control if found, otherwise null.</returns>
     public static Control? FindControlByName(Control parent, string name)
     {
+        ArgumentNullException.ThrowIfNull(parent);
+
         if (parent.Name == name)
         {
             return parent;

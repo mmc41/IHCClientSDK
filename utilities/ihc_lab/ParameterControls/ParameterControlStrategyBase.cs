@@ -103,6 +103,8 @@ public abstract class ParameterControlStrategyBase : IParameterControlStrategy
     /// </summary>
     protected void EnsureCanHandle(FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         if (!CanHandle(field))
             throw new NotSupportedException(
                 $"{GetType().Name} cannot handle type '{field.Type.FullName}'");
@@ -113,6 +115,9 @@ public abstract class ParameterControlStrategyBase : IParameterControlStrategy
     /// </summary>
     protected static void ApplyDescriptionTooltip(Control control, FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(control);
+        ArgumentNullException.ThrowIfNull(field);
+
         if (!string.IsNullOrWhiteSpace(field.Description))
             ToolTip.SetTip(control, field.Description);
     }

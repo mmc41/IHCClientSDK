@@ -104,6 +104,8 @@ public partial class PinPropertiesWindow : ResultDialog<PinPropertiesResult>
     public static Task<PinPropertiesResult?> ShowAsync(Window owner, PinPropertiesInput input,
         Func<PinPropertiesResult, Task>? onApply = null)
     {
+        ArgumentNullException.ThrowIfNull(input);
+
         var window = new PinPropertiesWindow { Title = input.Title, _onApply = onApply };
         window.Populate(input);
         window.ApplyButton.IsVisible = onApply is not null;

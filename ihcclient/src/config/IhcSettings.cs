@@ -107,6 +107,7 @@ namespace Ihc
         /// <returns>The IHC client settings.</returns>
         public static IhcSettings GetFromConfiguration(IConfigurationRoot config)
         {
+            ArgumentNullException.ThrowIfNull(config);
             var settings = config.GetSection("ihcclient").Get<IhcSettings>();
             if (settings == null)
             {

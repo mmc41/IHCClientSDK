@@ -15,6 +15,8 @@ public class StringParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override bool CanHandle(FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         return field.Type == typeof(string);
     }
 

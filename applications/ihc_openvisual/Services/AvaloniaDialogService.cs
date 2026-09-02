@@ -108,18 +108,30 @@ public sealed class AvaloniaDialogService : IDialogService
     // tidier-looking home, but call sites reach a dialog without going through it - so counting there would
     // under-report by exactly the paths nobody remembered. These three overloads are what a problem must pass
     // through to become something an installer actually sees.
-    public Task ShowProblemAsync(string title, Problem problem) =>
-        PresentAsync(problem.Code, title, ProblemPresenter.Text(problem));
+    public Task ShowProblemAsync(string title, Problem problem)
+    {
+        ArgumentNullException.ThrowIfNull(problem);
 
-    public Task ShowProblemAsync(string title, ProblemChain chain) =>
+        return PresentAsync(problem.Code, title, ProblemPresenter.Text(problem));
+    }
+
+    public Task ShowProblemAsync(string title, ProblemChain chain)
+    {
+        ArgumentNullException.ThrowIfNull(chain);
+
         // The CAUSE, not the operation: the operation names what was being attempted, the cause names what
         // was wrong, and the second is the one worth counting.
-        PresentAsync(chain.Cause.Code, title, ProblemPresenter.Text(chain));
+        return PresentAsync(chain.Cause.Code, title, ProblemPresenter.Text(chain));
+    }
 
-    public Task ShowProblemAsync(string title, ProblemAggregate aggregate) =>
+    public Task ShowProblemAsync(string title, ProblemAggregate aggregate)
+    {
+        ArgumentNullException.ThrowIfNull(aggregate);
+
         // The HEAD, once - not once per item. An aggregate is ONE thing shown to the user, and counting its
         // items would make a single dialog about a many-findings validation look like many dialogs.
-        PresentAsync(aggregate.Head.Code, title, ProblemPresenter.Text(aggregate));
+        return PresentAsync(aggregate.Head.Code, title, ProblemPresenter.Text(aggregate));
+    }
 
     /// <summary>
     /// Presents one problem and counts it — in that order, which is the whole content of this method.
@@ -465,6 +477,8 @@ public sealed class AvaloniaDialogService : IDialogService
     /// then resolves it to its safe default. Public so a headless test can verify the wiring on a real window.</summary>
     public static void WireKeyboardDismissal(Window dialog, Control? focusOnOpen)
     {
+        ArgumentNullException.ThrowIfNull(dialog);
+
         dialog.Opened += (_, _) => focusOnOpen?.Focus();
         dialog.KeyDown += (_, e) =>
         {

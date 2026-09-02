@@ -18,6 +18,8 @@ public class BoolParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override bool CanHandle(FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         return UnwrapNullable(field.Type) == typeof(bool);
     }
 

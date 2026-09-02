@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -33,6 +34,8 @@ public partial class ProductDialogWindow : ResultDialog<ProductDialogEdits>
         Window owner, ProductDialogViewModel viewModel, ProductDialogShowOptions? options = null,
         ProductDialogStep? onStep = null)
     {
+        ArgumentNullException.ThrowIfNull(viewModel);
+
         var window = new ProductDialogWindow();
         window.Populate(viewModel, options, onStep);
         return window.ShowDialogForResult(owner);

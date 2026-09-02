@@ -458,6 +458,9 @@ namespace IhcLab
         /// <param name="type">The return type of the operation.</param>
         public void SetOutput(string text, Type type)
         {
+            ArgumentNullException.ThrowIfNull(text);
+            ArgumentNullException.ThrowIfNull(type);
+
             OutputText = text;
             OutputHeading = $"Output (Size={text.Length}, Type={type.Name}):";
             IsOutputVisible = true;

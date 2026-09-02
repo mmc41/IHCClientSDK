@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -19,6 +20,8 @@ public sealed class BulkObservableCollection<T> : ObservableCollection<T>
     /// (plus the two count/indexer property changes a Reset carries) however many items are involved.</summary>
     public void ReplaceAll(IEnumerable<T> items)
     {
+        ArgumentNullException.ThrowIfNull(items);
+
         CheckReentrancy();
         Items.Clear();
         foreach (T item in items)

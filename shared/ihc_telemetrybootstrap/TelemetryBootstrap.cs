@@ -66,6 +66,8 @@ namespace Ihc.Bootstrap
             string serviceName, string serviceNamespace, string appScopeName,
             TelemetryConfiguration telemetry, IConfiguration loggingConfig)
         {
+            ArgumentNullException.ThrowIfNull(telemetry);
+
             ApplyDefaultAttributeLimits();
             // ONE resource for all three signals: CreateDefault re-runs the default detectors on every
             // call, and three resources that merely happen to agree are three things to keep in step.
@@ -256,6 +258,10 @@ namespace Ihc.Bootstrap
         // The handler body, callable directly so a test can assert against real logged output (ILogger is never mocked).
         public static void LogUnhandledException(ILogger logger, Exception ex)
         {
+            // AppDomain.UnhandledExceptionEventArgs.ExceptionObject is typed `object`, so the cast at the
+            // registration site above succeeds on a null and only fails here.
+            ArgumentNullException.ThrowIfNull(ex);
+
             logger.LogCritical(ex, "Unhandled exception: {Message}", ex.Message);
 
             Activity? activity = Activity.Current;
@@ -280,6 +286,8 @@ namespace Ihc.Bootstrap
         /// re-surfacing as a process-killing finalizer throw.</summary>
         public static void LogUnobservedTaskException(ILogger logger, UnobservedTaskExceptionEventArgs args)
         {
+            ArgumentNullException.ThrowIfNull(args);
+
             logger.LogWarning(args.Exception, "Unobserved task exception: {Message}", args.Exception?.Message);
             args.SetObserved();
         }

@@ -162,7 +162,7 @@ namespace Ihc {
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public UserManagerService(IAuthenticationService authService)
-            : base(authService.IhcSettings)
+            : base(SettingsOf(authService))
         {
             this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
@@ -170,7 +170,7 @@ namespace Ihc {
 
         /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
         internal UserManagerService(IAuthenticationService authService, Ihc.Soap.Usermanager.UserManagerService impl)
-            : base(authService.IhcSettings)
+            : base(SettingsOf(authService))
         {
             this.authService = authService;
             this.impl = impl;
@@ -212,7 +212,8 @@ namespace Ihc {
         /// </summary>
         /// <param name="user">User information to add</param>
         public async Task AddUser(IhcUser user)
-        {              
+        {
+            ArgumentNullException.ThrowIfNull(user);
             using (var activity = StartActivity(nameof(AddUser)))
             {
                 try
@@ -263,6 +264,7 @@ namespace Ihc {
         /// <param name="user">Updated user information</param>
         public async Task UpdateUser(IhcUser user)
         {
+            ArgumentNullException.ThrowIfNull(user);
             using (var activity = StartActivity(nameof(UpdateUser)))
             {
                 try

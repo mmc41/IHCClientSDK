@@ -88,13 +88,19 @@ public sealed class CommandRegistry : ObservableObject
     /// if it speaks for this surface, else <see cref="Availability.Allow"/>. The policy runs only AFTER the gate
     /// passed, so it can restrict but structurally never widen.
     /// </summary>
-    public static Availability For(CommandSpec row, ShellContext context, Surface surface) =>
-        For(row, context, row.Gate(context), surface);
+    public static Availability For(CommandSpec row, ShellContext context, Surface surface)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return For(row, context, row.Gate(context), surface);
+    }
 
     /// <summary>The same evaluator over an ALREADY-computed gate verdict — the surface only decides hide-vs-grey,
     /// so the three per-surface answers of one row share one gate run instead of re-asking the SDK three times.</summary>
     public static Availability For(CommandSpec row, ShellContext context, EditVerdict gate, Surface surface)
     {
+        ArgumentNullException.ThrowIfNull(row);
+
         if (!row.Placement.Contains(surface))
         {
             return Availability.Hidden;
@@ -147,6 +153,8 @@ public sealed class CommandRegistry : ObservableObject
     /// beforeExecute bridge, then Execute reads the context). Throws on a duplicate id — one row per command.</summary>
     public IAsyncRelayCommand Register(CommandSpec row)
     {
+        ArgumentNullException.ThrowIfNull(row);
+
         _rows.Add(row.Id, row);
         Task Execute(object? parameter)
         {

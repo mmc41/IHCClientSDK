@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -29,6 +30,8 @@ public partial class SceneValueWindow : ResultDialog<SceneValueResult>
 
     public static Task<SceneValueResult?> ShowAsync(Window owner, SceneValueInput input)
     {
+        ArgumentNullException.ThrowIfNull(input);
+
         var window = new SceneValueWindow { Title = input.Title };
         window.Populate(input);
         return window.ShowDialogForResult(owner);

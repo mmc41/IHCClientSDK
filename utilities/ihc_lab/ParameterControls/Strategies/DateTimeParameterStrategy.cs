@@ -18,6 +18,8 @@ public class DateTimeParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override bool CanHandle(FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         var underlying = UnwrapNullable(field.Type);
         return underlying == typeof(DateTime) || underlying == typeof(DateTimeOffset);
     }
@@ -77,6 +79,8 @@ public class DateTimeParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override object? ExtractValue(Control control, FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         var panel = RequireControl<StackPanel>(control);
         var underlying = UnwrapNullable(field.Type);
         var datePicker = DatePickerOf(panel);
@@ -106,6 +110,8 @@ public class DateTimeParameterStrategy : ParameterControlStrategyBase
     /// </summary>
     public override void SetValue(Control control, object? value, FieldMetaData field)
     {
+        ArgumentNullException.ThrowIfNull(field);
+
         var panel = RequireControl<StackPanel>(control);
         var datePicker = DatePickerOf(panel);
         var timePicker = TimePickerOf(panel);
