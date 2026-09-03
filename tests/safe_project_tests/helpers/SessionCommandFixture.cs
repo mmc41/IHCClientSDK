@@ -1,4 +1,7 @@
+using System.IO;
 using System.Threading.Tasks;
+
+using Microsoft.Extensions.Time.Testing;
 
 using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
@@ -19,9 +22,27 @@ namespace Ihc.Vis.Tests
     /// </remarks>
     public abstract class SessionCommandFixture
     {
-        protected static ProjectAppService App => new(TestSetup.Settings);
+        /// <summary>
+        /// The clock every service in this family is built on. PINNED rather than <see cref="TimeProvider.System"/>,
+        /// because a default save re-stamps the root <c>id2</c> and <c>&lt;modified&gt;</c> from it: on the system
+        /// clock two saves either side of a second boundary write different bytes, so a byte-fidelity assertion over
+        /// them fails at a rate set by how fast the machine is rather than by the code under test. Pinning also
+        /// removes the agent's time zone from the stamp, which <c>GetLocalNow</c> would otherwise fold in.
+        /// </summary>
+        protected static DateTimeOffset SaveClock { get; } = new(2026, 6, 27, 16, 5, 51, TimeSpan.Zero);
+
+        protected static ProjectAppService App =>
+            new(TestSetup.Settings, new BuiltInCatalog(), new FakeTimeProvider(SaveClock));
 
         protected static Task<Project> Load(string file) => App.Load("testdata/projects/" + file);
+
+        /// <summary>Serializes <paramref name="project"/> through <see cref="App"/> — the family's save-to-bytes.</summary>
+        protected static async Task<byte[]> Bytes(Project project)
+        {
+            using var ms = new MemoryStream();
+            await App.Save(project, ms);
+            return ms.ToArray();
+        }
 
         /// <summary>
         /// Opens a session on <paramref name="project"/>. The opened snapshot is the session's save point, so a

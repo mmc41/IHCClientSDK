@@ -158,7 +158,7 @@ namespace Ihc.Vis.Tests
             {
                 Assert.That(app.Commands.UpdatePin(project, anyId, pin), Is.EqualTo(new UpdatePin(anyId, pin)));
                 Assert.That(app.Commands.UnlockFunctionBlock(project, anyId, "Bob"),
-                    Is.EqualTo(new UnlockFunctionBlock(anyId, "Bob", DateOnly.FromDateTime(DateTime.Now))),
+                    Is.EqualTo(new UnlockFunctionBlock(anyId, "Bob", DateOnly.FromDateTime(SaveClock.DateTime))),
                     "the factory stamps the owner and the service clock's date");
             });
         }

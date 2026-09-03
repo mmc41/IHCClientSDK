@@ -24,13 +24,6 @@ namespace Ihc.Vis.Tests
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("name") == blockName)
                 .Descendants().First(e => e.GetAttribute("name") == variableName).Id!.Value;
 
-        private static async Task<byte[]> Bytes(Project project)
-        {
-            using var ms = new MemoryStream();
-            await App.Save(project, ms);
-            return ms.ToArray();
-        }
-
         // Both fields survive a save→reload, independently of each other.
         [Test]
         public async Task BothDocumentationFields_RoundTripIndependently()
