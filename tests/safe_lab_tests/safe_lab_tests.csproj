@@ -1,15 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <LangVersion>latest</LangVersion>
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="NUnit" />
-    <PackageReference Include="NUnit3TestAdapter" />
-    <PackageReference Include="NUnit.Analyzers" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="CompareNETObjects" />
     <PackageReference Include="CsCheck" />
     <PackageReference Include="System.Configuration.ConfigurationManager" />
@@ -21,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="NUnit.Framework" />
     <!-- Statically, so fixtures keep calling SetupMainWindowAsync() unqualified now that it is no longer
          an inherited member of the shared AvaloniaTestBase. -->
     <Using Include="Ihc.Tests.LabWindows" Static="true" />

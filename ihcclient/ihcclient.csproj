@@ -1,17 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- TargetFramework / TreatWarningsAsErrors come from Directory.Build.props. -->
+    <!-- TargetFramework comes from Directory.Build.props; TreatWarningsAsErrors from
+         Directory.Build.targets, which is imported late so that no project can override the gate. -->
     <!-- Owns the generated SOAP layer: its private SoapImpl adapters implement the generated contracts,
          so the repo-wide ban in BannedSymbols.txt does not apply here. -->
     <UsesGeneratedSoapLayer>true</UsesGeneratedSoapLayer>
+    <!-- The one project here that is a package. The root holds everything at IsPackable=false, and this is
+         the only project with packaging actually configured — the findings-export schema below is staged
+         into it under schemas/. Nothing is published yet (README.md tells a consumer to reference the
+         project), so what this really buys is that `dotnet pack` at the root produces this one package
+         instead of a dozen incidental ones. -->
+    <IsPackable>true</IsPackable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>CS1591,CS1587</NoWarn>
+    <!-- Appended, never assigned: the SDK puts its own codes in NoWarn, and overwriting the property
+         silently un-suppresses those instead of adding to them. -->
+    <NoWarn>$(NoWarn);CS1591;CS1587</NoWarn>
     <Version>0.8.1</Version>
-    <AssemblyVersion>$(Version)</AssemblyVersion>
     <InformationalVersion>This is a beta package</InformationalVersion>
-    <Copyright>Apache License 2.0</Copyright>
-    <Authors>mmc41</Authors>
     <!-- AnalysisMode comes from Directory.Build.props, which holds the whole repository at Recommended. The
          rules this project declines out of that mode are turned off one at a time, each with its reason, in
          analyser.config (which also names the one rule scoped by path outside it), so raising the mode again

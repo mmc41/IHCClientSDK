@@ -1,9 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <LangVersion>latest</LangVersion>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <IsPackable>false</IsPackable>
     <!-- White-boxes the generated SOAP layer on purpose: the serialization tests round-trip the generated
          message wrappers, and the service tests fake the generated contracts. Exempt from the repo-wide
          ban in BannedSymbols.txt. -->
@@ -11,10 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NUnit" />
-    <PackageReference Include="NUnit3TestAdapter" />
-    <PackageReference Include="NUnit.Analyzers" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="CompareNETObjects" />
     <PackageReference Include="CsCheck" />
     <PackageReference Include="FakeItEasy" />
@@ -27,7 +20,6 @@
   </ItemGroup>
 
     <ItemGroup>
-    <Using Include="NUnit.Framework" />
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
     <!-- The IL decode and the member population every structural rule reads. Shared because the
          controller-reach guard runs INSIDE each suite it polices, and a suite cannot be scanned from

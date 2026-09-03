@@ -54,7 +54,7 @@ See [ihcclient](ihcclient/README.md#status) for more details on IHC API implemen
 
 ### Prerequisites
 
-* [.NET SDK](https://dotnet.microsoft.com/download) 9.0 or later.
+* [.NET SDK](https://dotnet.microsoft.com/download) 10.0.100 or later. `global.json` at the repository root enforces that floor, so an older SDK refuses the build with a clear message instead of failing further in; a newer 10.x feature band or patch is accepted. If several SDKs are installed side by side, that file is also what decides which one is used, rather than simply the newest.
 * [Opengrep](https://github.com/opengrep/opengrep) for static security analysis (optional)
 * [jscpd](https://github.com/kucherenko/jscpd) for code duplication analysis (optional)
 * An LK IHC v3.0 controller (only needed for controller access — the `.vis` project-file engine works entirely offline).

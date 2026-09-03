@@ -1,12 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <IsPackable>false</IsPackable>
+    <!-- The only suite that talks to a real controller, so the only one that needs its credentials. -->
+    <CopyIhcSettingsToOutput>true</CopyIhcSettingsToOutput>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NUnit" />
-    <PackageReference Include="NUnit3TestAdapter" />
-    <PackageReference Include="NUnit.Analyzers" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="CompareNETObjects" />
     <PackageReference Include="System.Configuration.ConfigurationManager" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
@@ -15,12 +12,4 @@
   <ItemGroup>
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
   </ItemGroup>
-  <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">
-    <!-- NB: Settings file is required for running/testing but allow build without the file to support compilation in a DevOps pipeline -->
-    <Copy SourceFiles="..\..\ihcsettings.json" DestinationFolder="$(OutDir)" Condition="Exists('..\..\ihcsettings.json')" />
-  </Target>
-  <Target Name="DeleteConfigFiles" AfterTargets="Clean">
-    <!-- Delete ihcsettings.json from output directory during clean -->
-    <Delete Files="$(OutDir)ihcsettings.json" Condition="Exists('$(OutDir)ihcsettings.json')" />
-  </Target>
 </Project>

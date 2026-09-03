@@ -2,6 +2,24 @@
 <Project>
 
   <!--
+    The warning gate. It sits in this file for the OPPOSITE reason the bans below do: the late import is
+    what stops a project overriding it. Stated in Directory.Build.props, a project could set
+    TreatWarningsAsErrors=false and compile with warnings while every other project was held to zero —
+    invisible in a green build, and exactly the kind of exception nobody goes back to re-examine. Nothing
+    overrides it today; this is what keeps that from resting on trust.
+
+    Tolerating a SPECIFIC warning is still possible, and is the reviewable form of the same escape hatch:
+    NoWarn, one code at a time, in the project that needs it and naming what it accepts. ihcclient is the
+    only one, and it APPENDS to NoWarn rather than assigning it — assigning drops the SDK's own entries.
+
+    Note the limit, because a target further down this file depends on it: this is handed to the COMPILER,
+    so it does not promote MSBuild's own warnings to errors.
+  -->
+  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
     Repo-wide compile-time bans. Imported automatically into every project *after* its own body, which is
     what lets a project opt out with a property it sets itself — Directory.Build.props is imported before
     the project body and could not see such a property, so this belongs here rather than there.
@@ -18,6 +36,33 @@
     <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" PrivateAssets="all" />
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
   </ItemGroup>
+
+  <!--
+    Stage the repository's ihcsettings.json beside a runnable output, and take it away again on Clean.
+    This pair was copy-pasted verbatim into ten project files — every application, every utility that
+    reads settings, both examples and the two suites that need credentials — so the logic is stated here
+    and each project says only whether it wants it, the same shape as UsesGeneratedSoapLayer above.
+
+    Opt IN rather than out: most projects here are libraries or controller-free suites that must not
+    acquire a settings file just by existing, and a project that never reads settings getting one is the
+    kind of thing nothing would notice.
+
+    The file is optional at build time on purpose. It is gitignored (it holds a controller password), so a
+    fresh clone and every CI runner build without it; the Condition is what keeps that a normal build
+    rather than a missing-file error. Sourced from $(MSBuildThisFileDirectory) — the repository root by
+    definition — instead of the '..\..\' each copy used, which was correct only for a project exactly two
+    directories deep.
+  -->
+  <Target Name="CopyIhcSettingsToOutput" AfterTargets="AfterBuild"
+          Condition="'$(CopyIhcSettingsToOutput)' == 'true'">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)ihcsettings.json" DestinationFolder="$(OutDir)"
+          Condition="Exists('$(MSBuildThisFileDirectory)ihcsettings.json')" />
+  </Target>
+
+  <Target Name="DeleteIhcSettingsFromOutput" AfterTargets="Clean"
+          Condition="'$(CopyIhcSettingsToOutput)' == 'true'">
+    <Delete Files="$(OutDir)ihcsettings.json" Condition="Exists('$(OutDir)ihcsettings.json')" />
+  </Target>
 
   <!--
     Code coverage, on by default for every test project.

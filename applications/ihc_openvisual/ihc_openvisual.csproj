@@ -6,12 +6,11 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <Version>0.1.0</Version>
     <InformationalVersion>Incubating</InformationalVersion>
-    <AssemblyVersion>$(Version)</AssemblyVersion>
-    <FileVersion>$(Version)</FileVersion>
-    <Copyright>Apache License 2.0</Copyright>
-    <Authors>mmc41</Authors>
     <AssemblyTitle>IHC OpenVisual</AssemblyTitle>
     <Product>IHC OpenVisual</Product>
+    <!-- The app starts without a settings file; staging it when present is what makes a configured
+         telemetry/logging setup apply to local runs. -->
+    <CopyIhcSettingsToOutput>true</CopyIhcSettingsToOutput>
   </PropertyGroup>
 
   <ItemGroup>
@@ -72,12 +71,4 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
   </ItemGroup>
 
-  <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">
-    <!-- Settings file is optional at runtime (the app starts without it); copy when present so a
-         configured telemetry/logging setup is picked up during local runs and tests. -->
-    <Copy SourceFiles="..\..\ihcsettings.json" DestinationFolder="$(OutDir)" Condition="Exists('..\..\ihcsettings.json')" />
-  </Target>
-  <Target Name="DeleteConfigFiles" AfterTargets="Clean">
-    <Delete Files="$(OutDir)ihcsettings.json" Condition="Exists('$(OutDir)ihcsettings.json')" />
-  </Target>
 </Project>

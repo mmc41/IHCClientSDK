@@ -1,0 +1,21 @@
+{
+  // A FLOOR, deliberately not the SDK this was written against. Four SDKs sit side by side on a typical
+  // machine here (8.0.x, 9.0.x and two net10 feature bands, 10.0.1xx and 10.0.3xx), and without this file
+  // `dotnet` simply takes the highest one it finds -- so a developer box and a CI runner could compile the
+  // same source with different SDKs. AnalysisLevel is pinned in Directory.Build.props for the analyzer
+  // rule set, but that says nothing about the SDK's own behaviour.
+  //
+  // 10.0.100 with rollForward=latestFeature accepts any later net10 feature band or patch, so a clone that
+  // has only 10.0.1xx still builds while every machine resolves deterministically. Pinning the installed
+  // 10.0.303 instead would refuse the older band outright, and omitting rollForward would fall back to its
+  // 'patch' default, which refuses a newer feature band -- the failure a floating CI image walks into.
+  // CI installs '10.x', which satisfies this.
+  //
+  // allowPrerelease is stated because its default is true outside Visual Studio: a preview SDK on any
+  // machine would otherwise be picked up silently.
+  "sdk": {
+    "version": "10.0.100",
+    "rollForward": "latestFeature",
+    "allowPrerelease": false
+  }
+}

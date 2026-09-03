@@ -4,19 +4,63 @@
   <!--
     Repo-wide build policy, imported automatically into every project under the repository root.
 
-    Before this file existed, each of these properties was copy-pasted into all 17 project files.
+    Before this file existed, these properties were copy-pasted into the individual project files.
     Nothing compared the copies, so they drifted silently: the same divergence is what let six
     package versions fork across the test suites (see Directory.Packages.props).
+
+    Drift is not only two projects disagreeing about a value — it is also half of them not stating it
+    at all, which is how ImplicitUsings arrived here. It was enabled in ten of the twenty projects and
+    absent from the other ten, so whether a file needed `using System;` depended on which project it
+    was compiled into, and a new project inherited whichever neighbour it was copied from.
 
     A project that genuinely needs a different value overrides it locally — project files are
     evaluated after this one, so a local setting still wins. Overrides are therefore visible as
     deliberate exceptions rather than invisible as copies. No project overrides Nullable today:
     every one of them compiles with nullable reference types enabled.
+
+    That overridability is precisely why the warning gate is NOT here. TreatWarningsAsErrors lives in
+    Directory.Build.targets, which is imported AFTER a project's own body and therefore cannot be
+    overridden by one: a project quietly setting it false would not be a visible exception, it would be
+    a hole in the gate every other project is held to. The split is the rule for adding a property here
+    — this file for a value a project may legitimately differ on, the targets file for one it may not.
+
+    LangVersion is deliberately ABSENT. It tracks the target framework, so net10.0 already selects
+    C# 14; the five test suites that used to name it spelled it `latest`, which resolves to whatever
+    the compiler on the machine happens to support and so differs between a developer box and a CI
+    runner with a newer SDK.
   -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!--
+    Nothing here is a NuGet package unless it says so. The SDK's default is the opposite, which made every
+    application, example, utility and shared library packable by accident: a `dotnet pack` at the root
+    produced a dozen packages nobody publishes, each with no id, description or licence beyond what the
+    SDK could infer from the project name.
+
+    ihcclient overrides this, and is the only project that should: it is the one with packaging actually
+    configured, staging its findings-export schema into the package. The seven suites used to state this
+    for themselves and now inherit it from here.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!--
+    Assembly identity shared by everything here. Version is NOT among these: it is the one piece of
+    identity that genuinely differs per project, so a project that has one states it for itself.
+
+    It states ONLY Version. AssemblyVersion and FileVersion used to be spelled out beside it as
+    $(Version), which reads like a load-bearing line and is not one — the SDK's GetAssemblyVersion target
+    already derives both from $(Version) (measured: ihcclient 0.8.1 -> 0.8.1.0). They are gone, and adding
+    them back to a new project would restate the default rather than pin anything.
+  -->
+  <PropertyGroup>
+    <Authors>mmc41</Authors>
+    <Copyright>Apache License 2.0</Copyright>
   </PropertyGroup>
 
   <!--

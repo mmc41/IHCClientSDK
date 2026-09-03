@@ -4,10 +4,15 @@
   <!--
     Build policy for the test suites, layered over the repository-wide file.
 
-    The explicit Import is what makes this file a LAYER rather than a replacement, and it is now the file's
-    ONLY job. MSBuild stops at the nearest Directory.Build.props on the way up, so without this line the root
-    file's TargetFramework, Nullable, TreatWarningsAsErrors, AnalysisLevel and AnalysisMode would all silently
-    stop applying to every project under tests/. The file looks redundant and is not; do not delete it.
+    The explicit Import is what makes this file a LAYER rather than a replacement. MSBuild stops at the
+    nearest Directory.Build.props on the way up, so without that line the root file's TargetFramework,
+    Nullable, ImplicitUsings, IsPackable, AnalysisLevel and AnalysisMode would all silently stop applying
+    to every project under tests/. Everything below the Import must stay below it, or the root's value
+    would win over the layer's rather than the other way round.
+
+    TreatWarningsAsErrors is deliberately not in that list. It is set in the root Directory.Build.targets,
+    which every project imports automatically at the END of its own evaluation, so this Import has no
+    bearing on it — and no suite can drop the warning gate, whether by accident or on purpose.
 
     This layer used to hold AnalysisMode down at the SDK default while the rest of the repository ran at
     Recommended. It no longer does: the suites inherit Recommended like everything else, and the property is
@@ -44,5 +49,36 @@
     about the build, and has no rule opinions of its own.
   -->
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!--
+    What makes a directory under tests/ a SUITE. Every suite named these four identically before they moved
+    here; they are here so a new suite is a working suite by existing, and versions still come from
+    Directory.Packages.props.
+
+    Microsoft.NET.Test.Sdk is the one whose absence is dangerous rather than obvious. It sets IsTestProject,
+    and the root Directory.Build.targets gates BOTH the coverage slice and the shared results directory on
+    that property — so a suite that merely forgot this package would run green while contributing no
+    coverage and writing its TRX and blame dumps to a project-local TestResults/ that CI never uploads.
+    NUnit.Analyzers is a matched pair with NUnit; the version pairing is explained where both are pinned.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit.Analyzers" />
+    <PackageReference Include="NUnit3TestAdapter" />
+  </ItemGroup>
+
+  <!--
+    Every suite but safe_integration_tests declared this, so that one's files each opened with an explicit
+    `using NUnit.Framework;` instead — the same half-and-half split that put ImplicitUsings in the root
+    file. Those explicit usings are now redundant, and harmless: they are left in place because nothing in
+    this build reports an unnecessary using, and rewriting test sources is not a build-config change.
+
+    Only NUnit.Framework is global. The per-suite `Using` items that name a suite's own helper namespaces
+    stay in the suite, because they differ between suites and are part of what that suite is.
+  -->
+  <ItemGroup>
+    <Using Include="NUnit.Framework" />
+  </ItemGroup>
 
 </Project>

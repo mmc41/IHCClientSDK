@@ -1,16 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <LangVersion>latest</LangVersion>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="NUnit" />
-    <PackageReference Include="NUnit3TestAdapter" />
-    <PackageReference Include="NUnit.Analyzers" />
     <PackageReference Include="CsCheck" />
     <PackageReference Include="Avalonia.Headless" />
     <PackageReference Include="Avalonia.Headless.NUnit" />
@@ -18,7 +8,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="NUnit.Framework" />
     <!-- Where the shared Avalonia fixture base and its capture attribute live; every fixture here names
          the base, and this suite's own namespace is not the one they are declared in. -->
     <Using Include="Ihc.Tests" />

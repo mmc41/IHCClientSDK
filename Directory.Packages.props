@@ -9,40 +9,61 @@
     three versions and coverlet at three, and FakeItEasy differed by a MAJOR version between the two
     suites that use it. A version stated once cannot drift.
 
-    Adding a version here is the only supported way to introduce one. A project that must pin a
-    different version uses VersionOverride, which makes the exception greppable rather than silent.
-    There are currently none, and that is the intended steady state.
+    Adding a version here is the only supported way to introduce one, and
+    CentralPackageVersionOverrideEnabled=false is what makes that a rule rather than a convention: a
+    VersionOverride on any PackageReference is now a restore-time ERROR. The escape hatch is relocated
+    rather than removed — a project that genuinely must diverge is unblocked by turning that flag off
+    here, which is an edit to this file and so gets reviewed, instead of one line in one project file
+    that only a grep would ever surface. No project overrode a version when this was turned on.
 
-    NUnit and NUnit.Analyzers are a matched pair: bump them together. Framework 4.6.1 against
-    analyzer 4.10.0 raises a spurious NUnit2021 ("EqualTo always fails") on a correct assertion.
+    Every entry is referenced by at least one project. An entry nothing references restores nothing and
+    is checked by nothing, so it reads as a supported dependency while being neither — which is what
+    Microsoft.CodeAnalysis.CSharp had become before it was removed.
+
+    Packages that ship together are grouped and bumped together, and where a group is NOT uniform the
+    reason is stated on the entry that breaks the pattern. Two pairs are matched for a harder reason
+    than tidiness:
+
+      - NUnit and NUnit.Analyzers. Framework 4.6.1 against analyzer 4.10.0 raises a spurious NUnit2021
+        ("EqualTo always fails") on a correct assertion.
+      - The two Microsoft.CodeAnalysis analyzers, which are one Roslyn release train.
   -->
 
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageVersionOverrideEnabled>false</CentralPackageVersionOverrideEnabled>
   </PropertyGroup>
 
-  <ItemGroup Label="Microsoft.Extensions / BCL">
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.9" />
-    <PackageVersion Include="System.Configuration.ConfigurationManager" Version="10.0.9" />
+  <ItemGroup Label="Microsoft.Extensions">
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup Label="WCF / SOAP (consumed by ihcclient's generated proxies)">
+    <!-- Duplex and Security look like drift beside the 8.1.2 trio and are not: 6.0.0 is the LAST version
+         either package was ever published at, so there is nothing to raise them to. Do not "fix" the gap. -->
     <PackageVersion Include="System.ServiceModel.Duplex" Version="6.0.0" />
+    <PackageVersion Include="System.ServiceModel.Security" Version="6.0.0" />
     <PackageVersion Include="System.ServiceModel.Http" Version="8.1.2" />
     <PackageVersion Include="System.ServiceModel.NetTcp" Version="8.1.2" />
     <!-- Was a floating '8.*' in ihcclient.csproj, resolving to 8.1.2. Pinned: a floating version is
          a restore-time drift source of exactly the kind this file exists to remove. -->
     <PackageVersion Include="System.ServiceModel.Primitives" Version="8.1.2" />
-    <PackageVersion Include="System.ServiceModel.Security" Version="6.0.0" />
-    <!-- Overrides the vulnerable 8.0.2 pulled in transitively by System.ServiceModel.Primitives
-         (advisories GHSA-37gx-xxp4-5rgx and GHSA-w3x6-4m5h-cxqf). 8.0.3 is the patched 8.x release. -->
-    <PackageVersion Include="System.Security.Cryptography.Xml" Version="8.0.4" />
+  </ItemGroup>
+
+  <!-- Out-of-band BCL packages. Same release train as Microsoft.Extensions above, hence the same version. -->
+  <ItemGroup Label="BCL">
+    <PackageVersion Include="System.Configuration.ConfigurationManager" Version="10.0.11" />
+    <!-- Referenced top-level by ihcclient to override the vulnerable 8.0.2 that
+         System.ServiceModel.Primitives pulls in transitively (advisories GHSA-37gx-xxp4-5rgx and
+         GHSA-w3x6-4m5h-cxqf). Any 8.0.3+ clears those; it rides the runtime's own release train, so it
+         tracks ConfigurationManager above rather than the WCF versions it is overriding. -->
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup Label="Avalonia / GUI">
@@ -79,7 +100,11 @@
     <PackageVersion Include="CompareNETObjects" Version="4.84.0" />
     <PackageVersion Include="CsCheck" Version="4.7.0" />
     <PackageVersion Include="FakeItEasy" Version="9.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="9.0.0" />
+    <!-- Ships from dotnet/extensions, whose versions run ahead of the runtime's — so this is the one
+         Microsoft.Extensions.* entry that does NOT track the 10.0.x above, and matching it to those would
+         be a downgrade to a version that does not exist. It was left behind on 9.0.0 while the rest of the
+         family moved to 10.x. -->
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.9.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
     <PackageVersion Include="NUnit" Version="4.6.1" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.14.0" />
@@ -92,7 +117,6 @@
 
   <ItemGroup Label="Tooling">
     <PackageVersion Include="AspNetCore.Proxy" Version="4.5.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
     <!-- Pins the SDK's public API surface as a reviewable text file (ihcclient only). Analyzer-only:
          PrivateAssets="all" keeps it out of any consumer's dependency graph. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="5.6.0" />

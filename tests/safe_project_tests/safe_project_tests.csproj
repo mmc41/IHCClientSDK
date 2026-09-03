@@ -1,16 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <LangVersion>latest</LangVersion>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <IsPackable>false</IsPackable>
+    <!-- Controller-free, but its telemetry fixtures read the same settings file the applications do. -->
+    <CopyIhcSettingsToOutput>true</CopyIhcSettingsToOutput>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NUnit" />
-    <PackageReference Include="NUnit3TestAdapter" />
-    <PackageReference Include="NUnit.Analyzers" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="FakeItEasy" />
     <PackageReference Include="CompareNETObjects" />
     <PackageReference Include="CsCheck" />
@@ -18,7 +13,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="NUnit.Framework" />
     <!-- The shared test helpers are one namespace; safe_project_tests reaches TestRepository through it. -->
     <Using Include="Ihc.Tests.Shared" />
     <!-- Where the shared harness and its collaborators are declared; this suite's own namespace is not it. -->
@@ -85,16 +79,6 @@
        — it owns the oracles' byte contract, and importing it into all five would validate one corpus five
        times per solution build. -->
   <Import Project="..\ValidateFindingsOracles.targets" />
-
-  <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">
-    <!-- NB: Settings file is required for running/testing but allow build without the file to support compilation in a DevOps pipeline -->
-    <Copy SourceFiles="..\..\ihcsettings.json" DestinationFolder="$(OutDir)" Condition="Exists('..\..\ihcsettings.json')" />
-  </Target>
-  <Target Name="DeleteConfigFiles" AfterTargets="Clean">
-    <!-- Delete ihcsettings.json from output directory during clean -->
-    <Delete Files="$(OutDir)ihcsettings.json" Condition="Exists('$(OutDir)ihcsettings.json')" />
-  </Target>
-
 
   <!-- The GUI's own markup, docs and sources, copied beside these binaries because the scanners here read
        them as the SUBJECT under test rather than as an oracle. A scan whose files did not arrive reads

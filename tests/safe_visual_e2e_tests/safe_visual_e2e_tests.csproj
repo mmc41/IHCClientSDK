@@ -1,9 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <LangVersion>latest</LangVersion>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <IsPackable>false</IsPackable>
     <!--
       No coverage from this suite, and the decision belongs here rather than in .runsettings: .runsettings
       declares what is measured, a project declares whether it participates.
@@ -28,18 +25,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="NUnit" />
-    <PackageReference Include="NUnit3TestAdapter" />
-    <PackageReference Include="NUnit.Analyzers" />
     <!-- The shared oracle harnesses pin their clock to one instant with a FakeTimeProvider. -->
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <!-- The headless driver hosts the real MainWindow in-process; see Drivers/HeadlessDriver.cs. -->
     <PackageReference Include="Avalonia.Headless" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Using Include="NUnit.Framework" />
   </ItemGroup>
 
   <ItemGroup>

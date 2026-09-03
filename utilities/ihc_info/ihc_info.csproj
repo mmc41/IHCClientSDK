@@ -2,9 +2,8 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <ImplicitUsings>enable</ImplicitUsings>
     <Version>0.8.0</Version>
-    <AssemblyVersion>$(Version)</AssemblyVersion>
+    <CopyIhcSettingsToOutput>true</CopyIhcSettingsToOutput>
   </PropertyGroup>
   
   <ItemGroup>
@@ -18,12 +17,4 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder"/>
     <PackageReference Include="Microsoft.Extensions.Configuration.Json"/>
   </ItemGroup>
-  <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">
-    <!-- NB: Settings file is required for running/testing but allow build without the file to support compilation in a DevOps pipeline -->
-    <Copy SourceFiles="..\..\ihcsettings.json" DestinationFolder="$(OutDir)" Condition="Exists('..\..\ihcsettings.json')"/>
-  </Target>
-  <Target Name="DeleteConfigFiles" AfterTargets="Clean">
-    <!-- Delete ihcsettings.json from output directory during clean -->
-    <Delete Files="$(OutDir)ihcsettings.json" Condition="Exists('$(OutDir)ihcsettings.json')" />
-  </Target>
 </Project>

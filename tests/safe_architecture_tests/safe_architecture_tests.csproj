@@ -1,19 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <LangVersion>latest</LangVersion>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <IsPackable>false</IsPackable>
     <!-- Anchors the SOAP-layer rules on a generated type so a rename breaks this fixture's compile rather
          than leaving a rule that silently matches nothing. Exempt from the repo-wide ban it enforces. -->
     <UsesGeneratedSoapLayer>true</UsesGeneratedSoapLayer>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NUnit" />
-    <PackageReference Include="NUnit3TestAdapter" />
-    <PackageReference Include="NUnit.Analyzers" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <!-- Reads IL to enforce the SDK's directional layering rules that prose comments cannot.
          .NUnit adds the Check() adapter that turns a violated rule into a failing NUnit assertion. -->
     <PackageReference Include="TngTech.ArchUnitNET" />
@@ -21,7 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="NUnit.Framework" />
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
     <!-- The IL decode and the member population every structural rule reads. Shared because the
          controller-reach guard runs INSIDE each suite it polices, and a suite cannot be scanned from

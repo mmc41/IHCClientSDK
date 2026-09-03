@@ -1,17 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <!-- Stages the .pdb files that ship in the referenced packages, so a break in Lab can be stepped into
+         Avalonia rather than stopping at the assembly boundary. This is the GUI the SDK is explored from,
+         so that matters more here than in an application. Local diagnosis only: symbols are not shipped. -->
+    <CopyDebugSymbolFilesFromPackages>true</CopyDebugSymbolFilesFromPackages>
+    <!-- Writes System.Runtime.InteropServices.BuiltInComInterop.IsSupported=true into runtimeconfig.json.
+         Redundant for an ordinary build, where that is already the default, and not for a trimmed or AOT
+         publish, which turns the switch off unless a project asks for it — and Avalonia's Win32 backend
+         reaches the shell through built-in COM. Stated rather than inherited for that reason. -->
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-    <CopyDebugSymbolFilesFromPackages>true</CopyDebugSymbolFilesFromPackages>
     <Version>0.9.0</Version>
     <InformationalVersion>This is a beta version</InformationalVersion>
-    <AssemblyVersion>$(Version)</AssemblyVersion>
-    <Copyright>Apache License 2.0</Copyright>
-    <Authors>mmc41</Authors>
     <AssemblyTitle>IHC Lab</AssemblyTitle>
     <Product>IHC Lab</Product>
+    <CopyIhcSettingsToOutput>true</CopyIhcSettingsToOutput>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,12 +34,4 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
-  <Target Name="CopyConfigFiles" AfterTargets="AfterBuild">
-    <!-- NB: Settings file is required for running/testing but allow build without the file to support compilation in a DevOps pipeline -->
-    <Copy SourceFiles="..\..\ihcsettings.json" DestinationFolder="$(OutDir)" Condition="Exists('..\..\ihcsettings.json')" />
-  </Target>
-  <Target Name="DeleteConfigFiles" AfterTargets="Clean">
-    <!-- Delete ihcsettings.json from output directory during clean -->
-    <Delete Files="$(OutDir)ihcsettings.json" Condition="Exists('$(OutDir)ihcsettings.json')" />
-  </Target>
 </Project>
