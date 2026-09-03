@@ -26,7 +26,7 @@ namespace Ihc.Tests
     /// and NUnit hands threads back to a pool that later tests run on.</para>
     /// </summary>
     [TestFixture]
-    [NonParallelizable]
+    [NonParallelizable]   // CurrentCulture is per-thread and NUnit hands threads back to a pool
     public class CultureInvariancePropertyTests
     {
         private static readonly CultureInfo[] Cultures =

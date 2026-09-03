@@ -21,7 +21,7 @@ namespace ihc_openvisual.ViewModels;
 /// to a refusal do not mention it, which is what keeps the override an exception rather than a habit.
 /// </summary>
 /// <param name="refusalOverride">The caller's own wording for a refusal, or null for the SDK's.</param>
-internal delegate Task ApplyAndReport(ProjectCommand command, string successStatus, string? refusalOverride = null);
+internal delegate Task ApplyAndReport(Ihc.OperationScope scope, ProjectCommand command, string successStatus, string? refusalOverride = null);
 
 /// <summary>
 /// fablerefac W3-8: the per-node-type <i>Properties</i> dialog flows, extracted from
@@ -49,12 +49,12 @@ internal sealed class PropertiesDialogCoordinator(
     IDialogService dialogs,
     ApplyAndReport applyAndReport,
     Action<string> setStatus,
-    Func<string, Func<Task>, Task> guarded)
+    Func<string, Func<Ihc.OperationScope, Task>, Task> guarded)
 {
     /// <summary>Opens the properties dialog appropriate to the element's type (the node dispatch, US-044). A modem, a
     /// product, a data-line pin, a scenes container, a scene value, an enum variable, and a locality/function block
     /// each route to their own flow.</summary>
-    public Task OpenAsync(ElementId id) => OpenAsync(id, null);
+    public Task OpenAsync(Ihc.OperationScope scope, ElementId id) => OpenAsync(scope, id, null);
 
     /// <summary>
     /// THE node dispatch — one ladder, whether the installer arrived by gesture or by a route's dialog leg.
@@ -63,7 +63,7 @@ internal sealed class PropertiesDialogCoordinator(
     /// them classified. A hop adds a focus and a product arrival to the same ladder; it does not re-walk it.</para>
     /// </summary>
     /// <param name="hop">The route leg being carried out, or null for the plain gesture.</param>
-    private async Task OpenAsync(ElementId id, DialogHop? hop)
+    private async Task OpenAsync(Ihc.OperationScope scope, ElementId id, DialogHop? hop)
     {
         if (session.Current is not { } project || project.FindById(id) is not { } element)
             return;
@@ -73,28 +73,28 @@ internal sealed class PropertiesDialogCoordinator(
         // EVERY product family — wired, wireless, modem, LED dimmer, S0 — opens the same dialog on its own
         // composed descriptor (T030). There is no per-family branch left to get wrong.
         if (ProductClassifier.IsProduct(element.Tag))
-            await OpenComposedDialogAsync(id, hop);
+            await OpenComposedDialogAsync(scope, id, hop);
         else if (element.Kind == ElementKind.DatalinePin)
-            await OpenPinAsync(id, element, focus);
+            await OpenPinAsync(scope, id, element, focus);
         else if (element.IsScenesContainer)
             // The product's Scenarier dialog (US-024). No focus: its one editable field is the note, and the
             // dialog already opens on it.
-            await OpenSceneContainerAsync(id, element);
+            await OpenSceneContainerAsync(scope, id, element);
         else if (element.IsSceneMember && !element.IsSceneShutter)
-            await OpenSceneValueAsync(id, element, focus);   // edit a scenario link's value (US-058)
+            await OpenSceneValueAsync(scope, id, element, focus);   // edit a scenario link's value (US-058)
         else if (element.Kind is ElementKind.Resource or ElementKind.EnumResource)
             // An ordinary FB resource variable edits Name/Note plus its typed initial value (US-026/US-027,
             // T015/T016), and F-50: an enum VARIABLE opens that same dialog rather than the type editor, with an
             // Initial værdi combo of its TYPE's states. Opening the type editor from the row (which is what this
             // used to do) both hid the variable's own fields and put a project-global edit behind the ordinary
             // gesture on one variable.
-            await OpenVariableAsync(id, element, focus);
+            await OpenVariableAsync(scope, id, element, focus);
         else if (element.Tag == "conditions")
             // A Betingelser group edits Name/Note AND the operator its conditions combine with (F-48).
-            await OpenConditionsAsync(id, element, focus);
+            await OpenConditionsAsync(scope, id, element, focus);
         else if (element.IsLocalityGroup || element.Kind is ElementKind.FunctionBlock)
             // A function block renames through the same Name/Note dialog as a locality (US-007/US-019).
-            await OpenNameNoteAsync(id, project.View(element).Name ?? string.Empty, focus);
+            await OpenNameNoteAsync(scope, id, project.View(element).Name ?? string.Empty, focus);
     }
 
     /// <summary>
@@ -104,7 +104,7 @@ internal sealed class PropertiesDialogCoordinator(
     /// <para>OpenVisual reached the operator from the flyout already; it had no dialog at all here, so
     /// <i>Egenskaber…</i> on this row did nothing and the group's Name and Note were unreachable.</para>
     /// </summary>
-    private async Task OpenConditionsAsync(
+    private async Task OpenConditionsAsync(Ihc.OperationScope scope,
         ElementId id, ProjectElement element, string? focusAttribute = null)
     {
         if (session.Current is not { } project)
@@ -122,13 +122,13 @@ internal sealed class PropertiesDialogCoordinator(
         if (result is null)
             return;   // cancelled
 
-        await applyAndReport(session.Commands.RenameLocality(project, id, result.Name, result.Note),
+        await applyAndReport(scope, session.Commands.RenameLocality(project, id, result.Name, result.Note),
             $"'{result.Name}' blev opdateret.");
         // A separate command because it is a separate attribute, and applied only when it actually CHANGED, so an
         // untouched dialog leaves no second entry in the undo history — the same rule the variable dialog's
         // power-loss flag follows.
         if (result.ConditionsOr is { } chosen && chosen != or && session.Current is { } updated)
-            await applyAndReport(session.Commands.SetConditionsLogic(updated, id, chosen),
+            await applyAndReport(scope, session.Commands.SetConditionsLogic(updated, id, chosen),
                 chosen ? "Betingelser kombineret med OR (>=1)." : "Betingelser kombineret med AND (&).");
     }
 
@@ -151,16 +151,16 @@ internal sealed class PropertiesDialogCoordinator(
     /// null dialog result — is false. Pinned by
     /// <c>MainWindowViewModelTests.InsertThenOkWithoutEditing_KeepsTheProduct</c>.</para>
     /// </summary>
-    public async Task<bool> OpenForInsertAsync(ElementId id)
+    public async Task<bool> OpenForInsertAsync(Ihc.OperationScope scope, ElementId id)
     {
         if (session.Current is not { } project || project.FindById(id) is null)
             return false;
-        return await OpenComposedDialogAsync(id);
+        return await OpenComposedDialogAsync(scope, id);
     }
 
     /// <summary>Edits a locality's or function block's Name and Note through the shared dialog and generic rename
     /// command (US-007/US-019) — refused inside a locked block by T003.</summary>
-    public async Task OpenNameNoteAsync(ElementId id, string currentName, string? focusAttribute = null)
+    public async Task OpenNameNoteAsync(Ihc.OperationScope scope, ElementId id, string currentName, string? focusAttribute = null)
     {
         if (session.Current is not { } project)
             return;
@@ -183,7 +183,7 @@ internal sealed class PropertiesDialogCoordinator(
             userGroupCaption: userGroup, focus: ElementFieldFor(focusAttribute));
         if (result is null)
             return;   // cancelled — the locality keeps its original name and note
-        await applyAndReport(session.Commands.RenameLocality(project, id, result.Name, result.Note),
+        await applyAndReport(scope, session.Commands.RenameLocality(project, id, result.Name, result.Note),
             $"Omdøbt til {result.Name}.");
     }
 
@@ -209,7 +209,7 @@ internal sealed class PropertiesDialogCoordinator(
     /// through the variable dialog, applying all three as one undoable step (refused inside a locked block by T003).
     /// The value control shown depends on the variable's type; a type with no editable initial value edits Name/Note
     /// only.</summary>
-    public async Task OpenVariableAsync(
+    public async Task OpenVariableAsync(Ihc.OperationScope scope,
         ElementId id, ProjectElement variable, string? focusAttribute = null)
     {
         if (session.Current is not { } project)
@@ -249,7 +249,7 @@ internal sealed class PropertiesDialogCoordinator(
         // The name/note/help edit goes through as usual with the value suppressed, and the state follows below as
         // its own command (F-50).
         ResourceInitialValue applied = enumInfo is null ? result.Value : ResourceInitialValue.None;
-        await applyAndReport(
+        await applyAndReport(scope,
             session.Commands.SetVariableProperties(project, id, result.Name, result.Note, applied, result.HelpNote),
             $"'{result.Name}' blev opdateret.");
         // Applied only when the state actually CHANGED, so an untouched dialog leaves one undo entry, not two.
@@ -258,18 +258,18 @@ internal sealed class PropertiesDialogCoordinator(
             && chosen != info.States.IndexOf(currentEnumState ?? string.Empty)
             && session.Current is { } withEnum)
         {
-            await applyAndReport(session.Commands.SetEnumInitialState(withEnum, id, info.Name, chosen),
+            await applyAndReport(scope, session.Commands.SetEnumInitialState(withEnum, id, info.Name, chosen),
                 $"Starttilstanden blev sat til {result.Value.Token}.");
         }
         // "Rediger" beside the state list: the variable's own edits are applied above, and THEN the shared type
         // editor opens — the original's second dialog, reached by a deliberate button rather than by the row's
         // ordinary gesture (F-50).
         if (result.EditEnumType && enumInfo is not null)
-            await OpenEnumAsync(id);
+            await OpenEnumAsync(scope, id);
         // A separate command because it is a separate attribute; applied only when it actually changed, so an
         // untouched dialog leaves no second entry in the undo history.
         if (result.SaveOnPowerLoss != backupBefore && session.Current is { } updated)
-            await applyAndReport(session.Commands.SetOutputBackup(updated, id, result.SaveOnPowerLoss),
+            await applyAndReport(scope, session.Commands.SetOutputBackup(updated, id, result.SaveOnPowerLoss),
                 result.SaveOnPowerLoss
                     ? "Værdien gemmes ved strømsvigt."
                     : "Værdien gemmes ikke længere ved strømsvigt.");
@@ -361,7 +361,7 @@ internal sealed class PropertiesDialogCoordinator(
     // The product's scene container (US-024): its fixed name, its note, and a row per membership naming the
     // scenario, the function block driving it and that block's locality — the same triple the membership's link row
     // shows as a path, split into columns.
-    public async Task OpenSceneContainerAsync(ElementId scenesId, ProjectElement scenes)
+    public async Task OpenSceneContainerAsync(Ihc.OperationScope scope, ElementId scenesId, ProjectElement scenes)
     {
         var rows = new List<SceneContainerRow>();
         foreach (ProjectElement member in scenes.Children)
@@ -382,11 +382,11 @@ internal sealed class PropertiesDialogCoordinator(
             new SceneContainerInput(name, scenesView.Note ?? string.Empty, rows));
         if (result is null)
             return;
-        await applyAndReport(session.Commands.UpdateSceneContainer(session.Current!, scenesId, result.Note),
+        await applyAndReport(scope, session.Commands.UpdateSceneContainer(session.Current!, scenesId, result.Note),
             $"'{name}' blev opdateret.");
     }
 
-    public async Task OpenSceneValueAsync(
+    public async Task OpenSceneValueAsync(Ihc.OperationScope scope,
         ElementId memberId, ProjectElement member, string? focusAttribute = null)
     {
         if (!SceneValue.TryParse(member, out SceneValue sv))
@@ -404,11 +404,11 @@ internal sealed class PropertiesDialogCoordinator(
         SceneValueResult? result = await dialogs.EditSceneValueAsync(input);
         if (result is null)
             return;
-        await applyAndReport(session.Commands.UpdateSceneValue(session.Current!, memberId, result),
+        await applyAndReport(scope, session.Commands.UpdateSceneValue(session.Current!, memberId, result),
             "Scenarieværdien blev opdateret.");
     }
 
-    public async Task OpenEnumAsync(ElementId enumVariableId)
+    public async Task OpenEnumAsync(Ihc.OperationScope scope, ElementId enumVariableId)
     {
         if (ReadEnumInfo(enumVariableId) is not { } info)
             return;
@@ -417,7 +417,7 @@ internal sealed class PropertiesDialogCoordinator(
         if (result is null)
             return;
         if (session.Commands.UpdateEnumStates(session.Current!, enumVariableId, result.States) is { } command)
-            await applyAndReport(command, $"Enumeratoren '{info.Name}' blev opdateret.");
+            await applyAndReport(scope, command, $"Enumeratoren '{info.Name}' blev opdateret.");
     }
 
     // Reads an enum variable's type name and ordered state names for the Edit dialog (US-030); null if not an enum.
@@ -433,7 +433,7 @@ internal sealed class PropertiesDialogCoordinator(
     /// one thing the planner exists to prevent. This turns an answer into an arrival and decides nothing.</para>
     /// </summary>
     /// <param name="hop">Whose dialog opens, which element carries the value, and which field to land on.</param>
-    public Task ExecuteAsync(DialogHop hop) => OpenAsync(hop.Owner, hop);
+    public Task ExecuteAsync(Ihc.OperationScope scope, DialogHop hop) => OpenAsync(scope, hop.Owner, hop);
 
     /// <summary>
     /// Where the product dialog should open for this hop — §5.4's four combinations, read off the pair the plan
@@ -500,7 +500,7 @@ internal sealed class PropertiesDialogCoordinator(
     /// </summary>
     /// <param name="hop">The route leg that opened it, or null for the plain gesture: it decides where the
     /// dialog arrives and which field a step into a sub-item lands on.</param>
-    private async Task<bool> OpenComposedDialogAsync(ElementId productId, DialogHop? hop = null)
+    private async Task<bool> OpenComposedDialogAsync(Ihc.OperationScope scope, ElementId productId, DialogHop? hop = null)
     {
         if (session.Current is not { } project)
             return false;
@@ -558,7 +558,7 @@ internal sealed class PropertiesDialogCoordinator(
                 ProductDialogRefresh? refresh = null;
                 await guarded(
                     KonfigurerOperation,
-                    async () => refresh = await StepIntoAsync(
+                    async scope => refresh = await StepIntoAsync(scope,
                         productId, action, pendingTerminals, pendingSettings, focus));
                 return refresh;
             });
@@ -578,7 +578,7 @@ internal sealed class PropertiesDialogCoordinator(
         // ONE command for the whole visit: the product's fields, every terminal addressed inside it, and every
         // constant edited in it. One undo entry, so Fortryd afterwards takes back the act the installer
         // actually performed.
-        await applyAndReport(
+        await applyAndReport(scope,
             session.Commands.ApplyProductDialogVisit(
                 project, productId, result.Edits,
                 [.. pendingTerminals.Select(e => new ProductDialogTerminalEdit(e.Key, e.Value))],
@@ -599,7 +599,7 @@ internal sealed class PropertiesDialogCoordinator(
     /// A composite the installer stepped into WHILE the product dialog is open. It runs over that dialog and
     /// returns to it — the window is never closed, so nothing it holds is lost on the way in or out.
     /// </summary>
-    private async Task<ProductDialogRefresh?> StepIntoAsync(
+    private async Task<ProductDialogRefresh?> StepIntoAsync(Ihc.OperationScope scope,
         ElementId productId, ProductDialogWidgetAction action,
         Dictionary<ElementId, PinPropertiesResult> pendingTerminals,
         Dictionary<ElementId, string> pendingSettings, string? focusAttribute = null)
@@ -610,7 +610,7 @@ internal sealed class PropertiesDialogCoordinator(
                 when session.Current?.FindById(pinId) is { Kind: ElementKind.DatalinePin } pin:
                 // Into the VISIT, not into the document. The last answer for a terminal wins, which is what
                 // re-opening the same row and changing your mind means.
-                await OpenPinAsync(pinId, pin, focusAttribute,
+                await OpenPinAsync(scope, pinId, pin, focusAttribute,
                     collect: values => pendingTerminals[pinId] = values);
                 return Project(productId, pendingTerminals, pendingSettings);
             case { Kind: DialogWidgetKind.SettingsGrid, Target: { } settingId }
@@ -825,7 +825,7 @@ internal sealed class PropertiesDialogCoordinator(
     /// <para>Same window, two commit semantics. It is stated here because the difference is invisible from
     /// inside the dialog, and a reader meeting only one of the two routes would take it for the rule.</para>
     /// </param>
-    private async Task OpenPinAsync(
+    private async Task OpenPinAsync(Ihc.OperationScope scope,
         ElementId pinId, ProjectElement pin, string? focusAttribute = null,
         Action<PinPropertiesResult>? collect = null)
     {
@@ -845,7 +845,11 @@ internal sealed class PropertiesDialogCoordinator(
 
         // Apply commits and leaves the dialog open, so several terminals can be addressed in one visit
         // (the vendor's Anvend); OK commits the same way and closes.
-        async Task Commit(PinPropertiesResult r)
+        //
+        // The scope is a PARAMETER rather than a capture because the two routes report to different operations:
+        // OK reports to the one that opened the dialog, Anvend to the boundary the dialog raised for itself.
+        // Captured, every Anvend refusal marked the opening operation instead and left its own span reading ok.
+        async Task Commit(Ihc.OperationScope reportScope, PinPropertiesResult r)
         {
             if (collect is not null)
             {
@@ -859,7 +863,7 @@ internal sealed class PropertiesDialogCoordinator(
             // The address sentence names the values the installer just typed, which the SDK's own refusal cannot,
             // so it is handed in as the REFUSAL OVERRIDE rather than written over whatever came back. Reading the
             // outcome here as a bool is what made a no-op and an engine failure both read as an invalid address.
-            await applyAndReport(
+            await applyAndReport(reportScope,
                 session.Commands.UpdatePin(session.Current!, pinId, r),
                 $"{view.Name} blev adresseret til datalinie {r.DataLine}, klemme {r.Terminal}.",
                 $"Datalinie {r.DataLine}, klemme {r.Terminal} er ikke en gyldig adresse.");
@@ -869,10 +873,10 @@ internal sealed class PropertiesDialogCoordinator(
         // this flow's boundary has been left behind; the call below is still inside it, and wrapping that one
         // too would nest one boundary in another for no gain.
         PinPropertiesResult? result = await dialogs.EditPinPropertiesAsync(
-            input, r => guarded(AnvendOperation, () => Commit(r)));
+            input, r => guarded(AnvendOperation, anvend => Commit(anvend, r)));
         if (result is null)
             return;   // cancelled — the pin keeps its addressing
-        await Commit(result);
+        await Commit(scope, result);
     }
 
     // The addresses already used by other pins of the same direction (US-012 in-use indication). Handed over as

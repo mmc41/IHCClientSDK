@@ -22,7 +22,7 @@ namespace Ihc.Tests
     /// reflection over the provider's internals it is a supported API.
     /// </summary>
     [TestFixture]
-    [NonParallelizable]
+    [NonParallelizable]   // Instrument.Enabled answers for ANY listener, so a concurrent provider decides it
     public class TelemetryCompositionTests
     {
         private const string AppScopeName = "IhcCompositionTestApp";

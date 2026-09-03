@@ -24,10 +24,10 @@ public sealed class TreeDragDropController(
     ProjectWorkflow session,
     Func<ElementId, TreeNodeViewModel?> findNode,
     Func<bool> isProgrammingBlockLocked,
-    Func<ProjectCommand, string, Task> applyAndReport,
+    Func<Ihc.OperationScope, ProjectCommand, string, Task> applyAndReport,
     Action<TreeNodeViewModel, TreeNodeViewModel> useVariableInProgram,
     Action<string> setStatus,
-    Func<string, Func<Task>, Task> runAsync)
+    Func<string, Func<Ihc.OperationScope, Task>, Task> runAsync)
 {
     private TreeNodeViewModel? _dropTargetNode;
 
@@ -94,7 +94,7 @@ public sealed class TreeDragDropController(
 
     /// <summary>Performs a drop using a verdict the view already obtained while routing the gesture. This overload
     /// lets the UI present route-specific feedback without asking the SDK's legality probes a second time.</summary>
-    public Task PerformDropAsync(ElementId dragged, ElementId target, DropVerdict verdict) => runAsync(nameof(PerformDropAsync), async () =>
+    public Task PerformDropAsync(ElementId dragged, ElementId target, DropVerdict verdict) => runAsync(nameof(PerformDropAsync), async scope =>
     {
         if (!verdict.Ok)
         {
@@ -110,14 +110,14 @@ public sealed class TreeDragDropController(
                     useVariableInProgram(variable, container);
                 break;
             case DropRoute.PinLink:
-                await applyAndReport(session.Commands.LinkPins(session.Current!, dragged, target), "Linket.");
+                await applyAndReport(scope, session.Commands.LinkPins(session.Current!, dragged, target), "Linket.");
                 break;
             case DropRoute.Reorder:
                 if (session.Commands.ReorderNodeToSibling(session.Current!, dragged, target) is { } command)
-                    await applyAndReport(command, "Omarrangeret.");
+                    await applyAndReport(scope, command, "Omarrangeret.");
                 break;
             case DropRoute.Reparent:
-                await applyAndReport(session.Commands.MoveNode(session.Current!, dragged, target), MovedStatus);
+                await applyAndReport(scope, session.Commands.MoveNode(session.Current!, dragged, target), MovedStatus);
                 break;
         }
         // The row that was dropped ONTO opens, with everything under it, and stays open — measured against IHC

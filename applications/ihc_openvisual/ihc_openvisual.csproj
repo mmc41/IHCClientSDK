@@ -23,6 +23,9 @@
     <InternalsVisibleTo Include="safe_visual_tests" />
     <!-- The headless E2E driver builds the app the way Program does, so it needs WithAppFonts. -->
     <InternalsVisibleTo Include="safe_visual_e2e_tests" />
+    <!-- The non-GUI view-models and their collaborators are internal, and this is the suite that owns them
+         once they no longer sit behind a toolkit-bound one. -->
+    <InternalsVisibleTo Include="safe_project_tests" />
   </ItemGroup>
 
   <ItemGroup>

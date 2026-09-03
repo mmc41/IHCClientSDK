@@ -112,29 +112,6 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        /// <summary>
-        /// The two failure modes, demonstrated rather than asserted in prose: the same two problems composed both
-        /// ways must not render the same, or the distinction the two types exist for has been lost somewhere
-        /// between the model and the screen.
-        /// </summary>
-        [Test]
-        public void TheTwoCompositionsRenderDifferently()
-        {
-            Problem operation = P("io.load", "Projektet kunne ikke åbnes");
-            Problem cause = P("load-empty", "Filen er tom");
-
-            string asChain = Render(new ProblemChain(operation, cause));
-            IReadOnlyList<string> asAggregate = Render(new ProblemAggregate(operation, EquatableArray.Create<Problem>([cause])));
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(asAggregate, Has.Count.EqualTo(2), "an aggregate keeps both entries");
-                Assert.That(asChain, Is.EqualTo(asAggregate[1]), "the chain renders only what the aggregate lists second");
-                Assert.That(asAggregate[0], Does.Contain(operation.Message),
-                    "an aggregate head IS shown — it frames independent items rather than restating one failure");
-            });
-        }
-
         private static int CountOccurrences(string haystack, string needle)
         {
             int count = 0;

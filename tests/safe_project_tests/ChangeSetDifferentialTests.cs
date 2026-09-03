@@ -163,16 +163,16 @@ namespace Ihc.Vis.Tests
         private sealed record RedoOp : Op;
         private sealed record RollbackOp : Op;
 
-        private static readonly Gen<string> TextGen =
-            Gen.OneOfConst("abcæø 09".ToCharArray()).Array[1, 5].Select(cs => new string(cs));
-
+        // This law's own operation set: it needs the two content edits (project info and a text node) that
+        // make two change sets differ in a way structure alone would not show. Sharing one model across the
+        // laws would force those on every other law's state space.
         private static readonly Gen<Op> AnyOp = Gen.OneOf(
-            TextGen.Select(n => (Op)new AddOp(n)),
-            Gen.Select(Gen.Int[0, 20], TextGen, (p, n) => (Op)new RenameOp(p, n)),
-            Gen.Int[0, 20].Select(p => (Op)new DeleteOp(p)),
-            Gen.Select(Gen.Int[0, 20], Gen.Int[0, 20], (p, pos) => (Op)new ReorderOp(p, pos)),
-            TextGen.Select(t => (Op)new ProjectInfoOp(t)),
-            TextGen.Select(t => (Op)new AddTextOp(t)),
+            CsCheckValues.Name.Select(n => (Op)new AddOp(n)),
+            Gen.Select(CsCheckValues.Pick, CsCheckValues.Name, (p, n) => (Op)new RenameOp(p, n)),
+            CsCheckValues.Pick.Select(p => (Op)new DeleteOp(p)),
+            Gen.Select(CsCheckValues.Pick, CsCheckValues.Pick, (p, pos) => (Op)new ReorderOp(p, pos)),
+            CsCheckValues.Name.Select(t => (Op)new ProjectInfoOp(t)),
+            CsCheckValues.Name.Select(t => (Op)new AddTextOp(t)),
             Gen.Const((Op)new UndoOp()),
             Gen.Const((Op)new RedoOp()),
             Gen.Const((Op)new RollbackOp()));

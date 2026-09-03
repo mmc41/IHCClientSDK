@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using NUnit.Framework;
 
 namespace Ihc.Tests
 {
@@ -19,7 +22,7 @@ namespace Ihc.Tests
             string name = method.Name;
             if (!name.StartsWith('<'))
             {
-                return name;
+                return CarrierMethodName(method.DeclaringType) ?? name;
             }
             // A local function written inside a lambda emits the doubled form "<<Outer>b__0>g__Inner|1_0", so the
             // authored name starts after BOTH angles. Reading from offset 1 there yields "<Outer" — a site name
@@ -27,6 +30,26 @@ namespace Ihc.Tests
             int start = name.StartsWith("<<", StringComparison.Ordinal) ? 2 : 1;
             int close = name.IndexOf('>', start);
             return close > start ? name[start..close] + " (lambda)" : name;
+        }
+
+        /// <summary>The authored method an async or iterator body came from. Such a body is emitted as MoveNext
+        /// on a carrier type named for its method -- "&lt;SendProject&gt;d__42" -- so reading the method name
+        /// alone collapses every async body in a type onto one site called MoveNext, which no list entry can
+        /// distinguish and no reader can navigate to. A lambda's carrier ("&lt;&gt;c") names no method and is
+        /// left to the method-name path above, which is where a lambda's own name lives.</summary>
+        private static string? CarrierMethodName(Type? declaring)
+        {
+            string? simple = declaring?.Name;
+            if (simple is null || simple.Length == 0 || simple[0] != '<')
+            {
+                return null;
+            }
+            // The SAME doubled form the method-name path above documents: a lambda written inside an async
+            // method carries both, as "<<Delete>b__0>d". Reading from offset 1 there yields "<Delete".
+            bool lambda = simple.StartsWith("<<", StringComparison.Ordinal);
+            int start = lambda ? 2 : 1;
+            int close = simple.IndexOf('>', start);
+            return close > start ? simple[start..close] + (lambda ? " (lambda)" : string.Empty) : null;
         }
     }
 
@@ -72,5 +95,19 @@ namespace Ihc.Tests
 
         /// <summary>Why this site is outside the rule for good.</summary>
         internal string Reason { get; }
+    }
+    /// <summary>
+    /// The honesty rule every containment gate carries, stated once. An entry naming a site the scan no longer
+    /// finds is the list rotting: nobody removed the row after the site went, and the next reader trusts a list
+    /// that has stopped describing the code. Shared because two gates asked it in identical words, and a third
+    /// list kind will want the same question.
+    /// </summary>
+    internal static class ContainmentListHonesty
+    {
+        /// <summary>Asserts no exemption names a site the scan no longer reports.</summary>
+        internal static void EveryExemptionStillNamesASite(
+            IEnumerable<ContainmentExemption> exemptions, IReadOnlySet<ContainmentSite> sites) =>
+            Assert.That(exemptions.Where(x => !sites.Contains(x.Site)).Select(x => x.Site.ToString()), Is.Empty,
+                "an exemption for a site that no longer exists is noise that teaches the reader to skip the list");
     }
 }

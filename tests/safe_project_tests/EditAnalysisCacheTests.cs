@@ -11,7 +11,6 @@ namespace Ihc.Vis.Tests
     /// fresh <see cref="IdAllocator.ForProject"/> scan returns — the byte-fidelity-critical invariant (reuse must never
     /// allocate a different id than a from-scratch analysis would).
     /// </summary>
-    [NonParallelizable]   // the reuse assertion reads a process-global full-analysis counter
     public class EditAnalysisCacheTests
     {
         private static ProjectAppService App => new(TestSetup.Settings);

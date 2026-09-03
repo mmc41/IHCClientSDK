@@ -22,25 +22,27 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The report-oracle matrix, naming convention, pinned clock and byte assert, shared with
-         safe_project_tests (which owns the .txt half of the same 24-oracle contract). -->
-    <Compile Include="..\shared\ReportOracleHarness.cs" Link="shared\ReportOracleHarness.cs" />
     <Compile Include="..\shared\TelemetryRegistryContract.cs" Link="shared\TelemetryRegistryContract.cs" />
     <Compile Include="..\shared\TelemetryCapture.cs" Link="shared\TelemetryCapture.cs" />
-    <!-- The ReflectionUtil contract, shared with safe_integration_tests, which runs the same assertions over a
-         real service instance. -->
-    <Compile Include="..\shared\ReflectionUtilContract.cs" Link="shared\ReflectionUtilContract.cs" />
   </ItemGroup>
 
     <ItemGroup>
     <Using Include="NUnit.Framework" />
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
-    <ProjectReference Include="..\..\utilities\ihc_lab\ihc_lab.csproj" />
-    <!-- The catalog→insert-menu projection (CatalogMenu) is Avalonia-free VM logic in the OpenVisual app; unit-test
-         it here (H2/T004). Referencing the app assembly for its testable logic matches the existing ihc_lab ref. -->
-    <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
-    <!-- The credentials-file rewrite in ihc_settings_encrypt, for the same reason as the ihc_lab ref: its
-         testable logic is in the utility, not in the SDK. -->
+    <!-- The IL decode and the member population every structural rule reads. Shared because the
+         controller-reach guard runs INSIDE each suite it polices, and a suite cannot be scanned from
+         outside by an assembly that does not reference it. -->
+    <Compile Include="..\shared\IlBody.cs" Link="shared\IlBody.cs" />
+    <Compile Include="..\shared\AuthoredMembers.cs" Link="shared\AuthoredMembers.cs" />
+    <Compile Include="..\shared\ControllerReachScan.cs" Link="shared\ControllerReachScan.cs" />
+    <!-- The safety rule, as a gate rather than a convention: this suite may reach no controller. -->
+    <Compile Include="..\shared\ControllerReachGuard.cs" Link="shared\ControllerReachGuard.cs" />
+    <!-- The telemetry bootstrap two fixtures here compose against. It used to arrive transitively through the
+         app references this suite no longer has, and it is the AVALONIA-FREE half of the bootstrap pair, so
+         naming it directly is what keeps a toolkit out of the SDK suite rather than merely out of its usings. -->
+    <ProjectReference Include="..\..\shared\ihc_telemetrybootstrap\ihc_telemetrybootstrap.csproj" />
+    <!-- The credentials-file rewrite in ihc_settings_encrypt: its testable logic is in the utility rather
+         than in the SDK, and no suite of its own exists to hold it. -->
     <ProjectReference Include="..\..\utilities\ihc_settings_encrypt\ihc_settings_encrypt.csproj" />
   </ItemGroup>
 

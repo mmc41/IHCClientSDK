@@ -14,7 +14,7 @@ namespace Ihc.Tests
     /// Unit test for metadata handling.
     /// </summary>
     [TestFixture]
-    [NonParallelizable]
+    [NonParallelizable]   // ServiceMetadata caches operation metadata per service type in a static cache
     public class ServiceAPIMetaDataTest
     {
         [Test]

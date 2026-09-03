@@ -43,6 +43,23 @@ internal static class FailureReport
     public static Task FailedAsync(
         OperationScope scope, ILogger logger, IDialogService dialogs,
         string title, Problem problem, Exception failure,
+        string message, params object?[] args) =>
+        FailedAsync(scope, logger, dialogs, title, problem, failure, faultRowFiled: false, message, args);
+
+    /// <summary>
+    /// The same report, for the one caller that has already filed the fault row itself.
+    /// </summary>
+    /// <remarks>
+    /// The shell's general command boundary knows the OPERATION an exception escaped from, which this helper
+    /// cannot see, and files a row naming it. Letting <see cref="ReportIfUnanticipated"/> run as well would file
+    /// the same fault twice, because the port it reports through and the boundary's own log are the one sink the
+    /// composition root attaches. Passing <c>true</c> is a claim that the caller owns that channel for this
+    /// failure -- not that the failure does not deserve a row.
+    /// </remarks>
+    /// <param name="faultRowFiled">True when the caller has already left the durable row for this failure.</param>
+    public static Task FailedAsync(
+        OperationScope scope, ILogger logger, IDialogService dialogs,
+        string title, Problem problem, Exception failure, bool faultRowFiled,
         string message, params object?[] args)
     {
         ArgumentNullException.ThrowIfNull(scope);
@@ -52,7 +69,10 @@ internal static class FailureReport
         Log(logger, failure, message, args);
         // BEFORE the dialog, for this class's own documented reason: the dialog awaits a person, and a process
         // that dies while the modal is up would otherwise leave no durable record of what broke.
-        ReportIfUnanticipated(failure, problem.Code.Value);
+        if (!faultRowFiled)
+        {
+            ReportIfUnanticipated(failure, problem.Code.Value);
+        }
         return RaisedProblemDisplay.ShowAsync(dialogs, title, problem, failure);
     }
 
@@ -94,9 +114,18 @@ internal static class FailureReport
     /// exception.
     /// </summary>
     /// <remarks>
-    /// <c>FailedWith</c> rather than <c>Refused</c>: a refusal in this app's vocabulary is a rule declining an
-    /// edit, and these are not that — the folder really is missing, the viewer really did not open. A support
-    /// query counting operations that did not do what they were asked wants them counted.
+    /// <para><b>What reaches this today.</b> Two kinds, and they arrived together because they share a surface.
+    /// One is a condition in the world with no exception to carry it — the folder really is missing, the viewer
+    /// really did not open. The other is a rule declining an edit that is shown in a DIALOG rather than on the
+    /// status line: a delete the engine forbids, an insert past the modem limit, a controller operation this
+    /// build cannot perform.</para>
+    /// <para><b>Both are recorded as <c>FailedWith</c>, and for the second kind that is a live question rather
+    /// than a settled rule.</b> <c>OperationOutcome</c> has a third member, <c>Refused</c>, which is NOT an error
+    /// — and one level down <c>ProjectDocumentSession.ClassifyEdit</c> uses exactly that for a declined edit, on
+    /// the stated grounds that "a refusal is the rules working". So the shell currently calls an error what the
+    /// engine calls the rules working, for events of the same kind. Nothing is lost either way — the code is on
+    /// the span in both — but an error RATE computed over these operations counts refusals today. Recorded here
+    /// because it is the sort of difference that becomes invisible once a dashboard is built on it.</para>
     /// </remarks>
     /// <param name="scope">The operation that failed; told first.</param>
     /// <param name="logger">Where the English diagnostic goes.</param>

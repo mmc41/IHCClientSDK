@@ -20,10 +20,10 @@ namespace ihc_openvisual.ViewModels;
 internal sealed class LinkingCoordinator(
     ProjectWorkflow session,
     IDialogService dialogs,
-    Func<string, Func<Task>, Task> runAsync,
+    Func<string, Func<Ihc.OperationScope, Task>, Task> runAsync,
     // Reports whether the command COMMITTED — the two-step gesture needs the answer: a source pin that was armed
     // and then refused must stay armed, or the installer has to re-run "Link from here" before every retry.
-    Func<ProjectCommand, string, Task<bool>> applyAndReport,
+    Func<Ihc.OperationScope, ProjectCommand, string, Task<bool>> applyAndReport,
     Action<string> setStatus,
     Func<TreeNodeViewModel?> getPendingSource,
     Action<TreeNodeViewModel?> setPendingSource,
@@ -32,17 +32,17 @@ internal sealed class LinkingCoordinator(
     /// <summary>Links two pins (US-022/US-023): the <paramref name="source"/> pin is linked onto the
     /// <paramref name="target"/> pin (the target gets the "link from" half). Both must be pins.</summary>
     public Task LinkPinsAsync(TreeNodeViewModel? source, TreeNodeViewModel? target) =>
-        runAsync("LinkPins", () => TryLinkPinsAsync(source, target));
+        runAsync("LinkPins", scope => TryLinkPinsAsync(scope, source, target));
 
     // The same link, reporting whether it was actually created. Not wrapped in runAsync: LinkToHereAsync already
     // runs inside one, and the two-step gesture needs this answer to decide whether the armed source is consumed.
-    private async Task<bool> TryLinkPinsAsync(TreeNodeViewModel? source, TreeNodeViewModel? target)
+    private async Task<bool> TryLinkPinsAsync(Ihc.OperationScope scope, TreeNodeViewModel? source, TreeNodeViewModel? target)
     {
         bool linked = false;
         if (source?.ElementId is { } fromId && target?.ElementId is { } toId
             && source.IsPin && target.IsPin && session.Current is { } project)
         {
-            linked = await applyAndReport(session.Commands.LinkPins(project, fromId, toId),
+            linked = await applyAndReport(scope, session.Commands.LinkPins(project, fromId, toId),
                 $"Linkede {source.DisplayName} til {target.DisplayName}.");
         }
         return linked;
@@ -62,7 +62,7 @@ internal sealed class LinkingCoordinator(
     /// pending source. A scene output onto a scenes container makes a scenario link (opens the value dialog);
     /// otherwise a follow-link between two pins.</summary>
     public Task LinkToHereAsync(TreeNodeViewModel? node) =>
-        runAsync("LinkToHere", async () =>
+        runAsync("LinkToHere", async scope =>
         {
             if (node is not { } || (!node.IsPin && !node.IsSceneTarget))
                 return;
@@ -76,8 +76,8 @@ internal sealed class LinkingCoordinator(
             // the installer had to walk back to the source pin and re-arm before every retry.
             bool linked = node.IsSceneTarget && source.ElementId is { } srcId && node.ElementId is { } scenesId
                           && session.Current?.FindById(srcId)?.IsSceneResource == true
-                ? await CompleteSceneLinkAsync(srcId, scenesId)
-                : await TryLinkPinsAsync(source, node);
+                ? await CompleteSceneLinkAsync(scope, srcId, scenesId)
+                : await TryLinkPinsAsync(scope, source, node);
             if (linked)
             {
                 setPendingSource(null);
@@ -101,7 +101,7 @@ internal sealed class LinkingCoordinator(
     }
 
     // Returns whether the scenario link was created (a cancelled value dialog leaves the source armed to retry).
-    private async Task<bool> CompleteSceneLinkAsync(ElementId sceneOutputId, ElementId scenesId)
+    private async Task<bool> CompleteSceneLinkAsync(Ihc.OperationScope scope, ElementId sceneOutputId, ElementId scenesId)
     {
         if (session.Current is not { } project || project.FindById(scenesId) is null)
             return false;
@@ -117,6 +117,6 @@ internal sealed class LinkingCoordinator(
 
         SceneValueResult? result = await dialogs.EditSceneValueAsync(input);
         return result is not null
-            && await applyAndReport(session.Commands.LinkScene(project, sceneOutputId, scenesId, result), "Scenarie link oprettet.");
+            && await applyAndReport(scope, session.Commands.LinkScene(project, sceneOutputId, scenesId, result), "Scenarie link oprettet.");
     }
 }

@@ -62,9 +62,6 @@ namespace Ihc.Vis.Tests
 
         private enum PartKind { Add, Rename, Delete }
 
-        private static readonly Gen<string> NameGen =
-            Gen.OneOfConst("abcæø 09".ToCharArray()).Array[1, 5].Select(cs => new string(cs));
-
         /// <summary>The mutable carrier (pattern choice 1): a fresh session opened on the shared, immutable base
         /// project. One is built per path per iteration.</summary>
         private static Gen<ProjectDocumentSession> Sessions(Project baseProject) =>
@@ -96,7 +93,7 @@ namespace Ihc.Vis.Tests
                 Gen.Select(
                     Gen.Shuffle(localities, count),
                     Gen.OneOfConst(PartKind.Add, PartKind.Rename, PartKind.Delete).Array[count],
-                    NameGen.Array[count],
+                    CsCheckValues.Name.Array[count],
                     (targets, kinds, names) => Compose(targets, kinds, names)));
         }
 

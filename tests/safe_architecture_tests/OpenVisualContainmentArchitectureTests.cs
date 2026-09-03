@@ -126,10 +126,8 @@ namespace Ihc.Tests
         [Test]
         public void EveryExemption_StillNamesARealSite()
         {
-            var sites = AsyncVoidScan.Sites(Gui).Select(s => s.Site).ToHashSet();
-
-            Assert.That(Exemptions.Where(x => !sites.Contains(x.Site)).Select(x => x.Site.ToString()), Is.Empty,
-                "an exemption for a site that no longer exists is noise that teaches the reader to skip the list");
+            ContainmentListHonesty.EveryExemptionStillNamesASite(
+                Exemptions, AsyncVoidScan.Sites(Gui).Select(s => s.Site).ToHashSet());
         }
 
         // ── Positive and negative controls ──────────────────────────────────────────────────────────────────────

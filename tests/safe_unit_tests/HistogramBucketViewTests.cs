@@ -17,7 +17,7 @@ namespace Ihc.Tests
     /// back off the exported metric.
     /// </summary>
     [TestFixture]
-    [NonParallelizable]
+    [NonParallelizable]   // builds a real MeterProvider and reads buckets back off the exported metric
     public class HistogramBucketViewTests
     {
         /// <summary>

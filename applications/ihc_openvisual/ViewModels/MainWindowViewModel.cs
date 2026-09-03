@@ -460,10 +460,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // variable types insert directly (US-027).
         tag == "resource_enum"
             ? InsertEnumAsync(sectionId, sectionLabel)
-            : RunAsync(nameof(InsertVariableAsync), async () =>
+            : RunAsync(nameof(InsertVariableAsync), async scope =>
             {
                 if (_session.Current is { } project && _session.Commands.AddVariable(project, sectionId, tag, label) is { } command)
-                    await ApplyAsync(command, $"{label} blev indsat under {sectionLabel}");
+                    await ApplyAsync(scope, command, $"{label} blev indsat under {sectionLabel}");
             });
 
     // T030: the program-authoring menus + engine (US-028/029/031/032) live in ProgramAuthoringCoordinator. The
@@ -498,7 +498,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Edit ▸ Undo (US-052, Ctrl+Z): reverses the last project-mutating edit; a no-op when there is nothing
     /// to undo. Refreshes both panes via the session's StateChanged.</summary>
-    private Task Undo() => RunAsync(nameof(Undo), async () =>
+    private Task Undo() => RunAsync(nameof(Undo), async _ =>
     {
         string? label = _session.UndoLabel;   // capture before the stack pops — names the action (E14)
         StatusText = await _session.UndoAsync()
@@ -507,7 +507,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     });
 
     /// <summary>Edit ▸ Redo (US-052, Ctrl+Y): re-applies the last undone edit; a no-op when the redo history is empty.</summary>
-    private Task Redo() => RunAsync(nameof(Redo), async () =>
+    private Task Redo() => RunAsync(nameof(Redo), async _ =>
     {
         string? label = _session.RedoLabel;
         StatusText = await _session.RedoAsync()
@@ -594,7 +594,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// </summary>
     /// <param name="refusalOverride">The caller's own refusal wording — see <see cref="UserFacingRefusal"/>.</param>
     private async Task<EditOutcome> ReportOutcomeAsync(
-        EditOutcome outcome, string? successStatus, string? refusalOverride = null)
+        Ihc.OperationScope scope, EditOutcome outcome, string? successStatus, string? refusalOverride = null)
     {
         switch (outcome.Status)
         {
@@ -609,19 +609,34 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // so it is logged and one fixed Danish sentence is shown instead. A refusal is a rule the installer
             // can act on; a failure is a defect they can only report, and the log is where the detail belongs.
             case EditStatus.Failed:
-                _logger.LogError("Edit failed: {Label} — {Reason}", outcome.Label, outcome.Reason);
                 // The SDK words its own fault (T023/T025): the outcome carries an InternalError whose Danish
                 // sentence is already bound, so this renders it WHOLE and adds only a title. The shell used to
                 // mint a second code saying the same thing in its own voice, which is one condition with two
                 // sentences and two ids.
                 //
                 // A Failed outcome with no fault is an SDK contract violation, not a case to paper over with an
-                // invented sentence: it is logged above, and the shell says nothing it cannot attribute.
+                // invented sentence: the shell says nothing it cannot attribute. Both arms log the Reason —
+                // the engine's English diagnostic, and the one thing the dialog deliberately never shows — and
+                // both tell the scope, because an edit that failed is not an operation that succeeded whether or
+                // not there was a sentence to show for it.
                 if (outcome.Fault is { } fault)
                 {
-                    await _dialogs.ShowProblemAsync(EditFailedTitle,
+                    // Through the report, so the operation that produced this failed edit is recorded as having
+                    // failed. Reported by CODE rather than by exception: the SDK words its own fault as a bound
+                    // problem and there is no exception here to derive an error type from.
+                    await FailureReport.RefusedAsync(scope, _logger, _dialogs, EditFailedTitle,
                         new Problem(fault.Code, fault.Message, EquatableArray<ProblemArgument>.Empty,
-                            fault.Diagnostic));
+                            fault.Diagnostic),
+                        "Edit failed: {Label} — {Reason}", outcome.Label, outcome.Reason);
+                }
+                else
+                {
+                    // Not through the report: there is no problem to show, and a report that showed nothing
+                    // would be a dialog-less call to a helper whose whole subject is the dialog. The outcome's
+                    // own code still identifies the failure, so the span says the same thing the other arm's
+                    // does — silence here would leave a broken edit reading as a successful operation.
+                    scope.SetOutcome(Ihc.OperationOutcome.FailedWith(outcome.Code.Value));
+                    _logger.LogError("Edit failed: {Label} — {Reason}", outcome.Label, outcome.Reason);
                 }
                 break;
         }
@@ -629,23 +644,24 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Applies a command through the session and maps its outcome (W2-14); returns whether it committed.</summary>
-    private async Task<bool> ApplyAsync(
+    private async Task<bool> ApplyAsync(Ihc.OperationScope scope,
         ProjectCommand command, string? successStatus = null, string? refusalOverride = null) =>
-        (await ReportOutcomeAsync(await _session.ApplyAsync(command), successStatus, refusalOverride))
+        (await ReportOutcomeAsync(scope, await _session.ApplyAsync(command), successStatus, refusalOverride))
             .Status == EditStatus.Committed;
 
     /// <summary>Applies a value-producing command and maps its outcome; returns the produced id, or null when it did
     /// not commit.</summary>
-    private async Task<ElementId?> ApplyAsync(ProjectCommand<ElementId> command, string? successStatus = null)
+    private async Task<ElementId?> ApplyAsync(Ihc.OperationScope scope,
+        ProjectCommand<ElementId> command, string? successStatus = null)
     {
         EditOutcome<ElementId> outcome = await _session.ApplyAsync(command);
-        await ReportOutcomeAsync(outcome, successStatus);
+        await ReportOutcomeAsync(scope, outcome, successStatus);
         return outcome.Status == EditStatus.Committed ? outcome.Value : null;
     }
 
     /// <summary>Shows help text for the selected element (US-044/US-045, F1) — the element's note, or a generic
     /// message when it has none.</summary>
-    private Task Help(TreeNodeViewModel? node) => RunAsync(nameof(Help), async () =>
+    private Task Help(TreeNodeViewModel? node) => RunAsync(nameof(Help), async _ =>
     {
         string name = node?.DisplayName ?? Constants.AppName;
         string help = node?.ElementId is { } id && _session.Current?.FindById(id) is { } element
@@ -661,7 +677,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Inserts an output variable into the programming block's Output section (US-045, Ctrl+U).</summary>
     private Task InsertOutput() => InsertBlockPinAsync("outputs", "resource_output", "Output");
 
-    private Task InsertBlockPinAsync(string container, string tag, string label) => RunAsync(nameof(InsertBlockPinAsync), async () =>
+    private Task InsertBlockPinAsync(string container, string tag, string label) => RunAsync(nameof(InsertBlockPinAsync), async scope =>
     {
         if (IsProgrammingBlockLocked || _programmingBlockId is not { } blockId
             || _session.Current?.FindById(blockId)?.FindChild(container) is not { Id: { } sectionId })
@@ -672,17 +688,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         }
         if (_session.Current is { } project && _session.Commands.AddVariable(project, sectionId, tag, label) is { } command)
-            await ApplyAsync(command, $"{label} indsat i blokken.");
+            await ApplyAsync(scope, command, $"{label} indsat i blokken.");
     });
 
     /// <summary>Opens the Project information dialog (US-039) prefilled from the project, and applies edits.</summary>
-    private Task ProjectInfo() => RunAsync(nameof(ProjectInfo), async () =>
+    private Task ProjectInfo() => RunAsync(nameof(ProjectInfo), async scope =>
     {
         ProjectInfoData? result = await _dialogs.EditProjectInfoAsync(
             _session.GetProjectInfo(), ProjectInfoSuggestions.From(_session.DataTables));
         if (result is null || _session.Current is not { } project)
             return;
-        if (await ApplyAsync(_session.Commands.UpdateProjectInfo(project, result), "Projekt oplysninger opdateret."))
+        if (await ApplyAsync(scope, _session.Commands.UpdateProjectInfo(project, result), "Projekt oplysninger opdateret."))
         {
             // What was typed here joins the data tables, so the next project's dialog offers it — this is how the
             // vendor's tables fill up (every one of its Kunder rows was typed into this dialog, not into the
@@ -711,7 +727,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     };
 
     /// <summary>Documentation ▸ Data line modules (US-050): opens the read-only input/output data-line module map.</summary>
-    private Task ModuleMap() => RunAsync(nameof(ModuleMap), async () =>
+    private Task ModuleMap() => RunAsync(nameof(ModuleMap), async _ =>
     {
         await _dialogs.ShowModuleMapAsync(_session.GetDatalineModuleMap());
     });
@@ -729,7 +745,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Controller ▸ Send project (US-042, F5): runs the offline pre-flight — warns about unlinked wireless
     /// products (they can be linked later) — then reports that the actual transfer needs a connected controller (the
     /// controller send/retrieve itself is deferred per E10; this build never contacts a controller).</summary>
-    private Task SendProject() => RunAsync(nameof(SendProject), async () =>
+    private Task SendProject() => RunAsync(nameof(SendProject), async scope =>
     {
         IReadOnlyList<string> unlinked = _session.GetUnlinkedWirelessProducts();
         if (unlinked.Count > 0 &&
@@ -740,22 +756,24 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             StatusText = "Afsendelse annulleret.";
             return;
         }
-        await _dialogs.ShowProblemAsync(ControllerRequiredTitle, HostProblems.ControllerRequiredSend());
+        await FailureReport.RefusedAsync(scope, _logger, _dialogs, ControllerRequiredTitle,
+            HostProblems.ControllerRequiredSend(), "Send needs a connected controller");
         StatusText = ControllerRequiredStatus;
     });
 
     /// <summary>Controller ▸ Retrieve project (US-043): reports that retrieving needs a connected controller — the
     /// transfer is deferred per E10 and this build never contacts a controller.</summary>
-    private Task RetrieveProject() => RunAsync(nameof(RetrieveProject), async () =>
+    private Task RetrieveProject() => RunAsync(nameof(RetrieveProject), async scope =>
     {
-        await _dialogs.ShowProblemAsync(ControllerRequiredTitle, HostProblems.ControllerRequiredRetrieve());
+        await FailureReport.RefusedAsync(scope, _logger, _dialogs, ControllerRequiredTitle,
+            HostProblems.ControllerRequiredRetrieve(), "Retrieve needs a connected controller");
         StatusText = ControllerRequiredStatus;
     });
 
     /// <summary>Documentation ▸ the three report entries (T015, R12/D4/D01): each opens the ONE shared
     /// picker dialog with its report pre-selected in the type dropdown; [Vis] generates via the facade
     /// (SVG icons for HTML) to a temp file and opens it in the OS default application (US-063).</summary>
-    private Task OpenReportPicker(ReportKind preselected) => RunAsync(nameof(OpenReportPicker), async () =>
+    private Task OpenReportPicker(ReportKind preselected) => RunAsync(nameof(OpenReportPicker), async _ =>
     {
         var viewModel = new ReportPickerViewModel(preselected,
             _session.ViewReportInBrowserAsync, _session.SaveReportAsAsync);
@@ -814,10 +832,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         CurrentTheme = theme.Current;
         CurrentTextScale = theme.TextScale;
         _properties = new PropertiesDialogCoordinator(
-            _session, _dialogs, (command, status, refusal) => ApplyAsync(command, status, refusal),
+            _session, _dialogs, (scope, command, status, refusal) => ApplyAsync(scope, command, status, refusal),
             status => StatusText = status, RunAsync);
         _programAuthoring = new ProgramAuthoringCoordinator(
-            _session, _dialogs, RunAsync, (command, status) => ApplyAsync(command, status), SelectNode,
+            _session, _dialogs, RunAsync, (scope, command, status) => ApplyAsync(scope, command, status), SelectNode,
             status => StatusText = status, () => SelectedNode, () => _programmingBlockId, NotifyProgramMenuGates);
         _treePanes = new TreePaneCoordinator(
             InstallationNodes, FunctionNodes, () => _session.Current, () => _session.LastChange,
@@ -826,12 +844,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             _session,
             FindInEitherPane,
             () => IsProgrammingBlockLocked,
-            (command, status) => ApplyAsync(command, status),
+            (scope, command, status) => ApplyAsync(scope, command, status),
             _programAuthoring.ArmAndSelect,
             status => StatusText = status,
             RunAsync);
         _linking = new LinkingCoordinator(
-            _session, _dialogs, RunAsync, (command, status) => ApplyAsync(command, status), status => StatusText = status,
+            _session, _dialogs, RunAsync, (scope, command, status) => ApplyAsync(scope, command, status), status => StatusText = status,
             () => PendingLinkSource, node => PendingLinkSource = node, RevealAndSelectOpposite);
 
         Registry = new CommandRegistry(() => Context,
@@ -969,7 +987,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Library ▸ Import catalog file (US-059): imports a single <c>.def</c>/<c>.ifb</c> so its component
     /// becomes insertable; persisted by default (US-061) so it survives a restart.</summary>
-    private Task ImportCatalogFile() => RunAsync(nameof(ImportCatalogFile), async () =>
+    private Task ImportCatalogFile() => RunAsync(nameof(ImportCatalogFile), async _ =>
     {
         if (await _dialogs.PickCatalogFileAsync() is not { } path)
             return;
@@ -979,7 +997,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Library ▸ Import catalog folder (US-060): imports every <c>.def</c>/<c>.ifb</c> in a folder and its
     /// subfolders, reporting how many components were imported; persisted by default (US-061).</summary>
-    private Task ImportCatalogFolder() => RunAsync(nameof(ImportCatalogFolder), async () =>
+    private Task ImportCatalogFolder() => RunAsync(nameof(ImportCatalogFolder), async _ =>
     {
         if (await _dialogs.PickCatalogFolderAsync() is not { } dir)
             return;
@@ -996,7 +1014,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Inserts an empty function block under the selected locality (US-019). Invoked from the right-click
     /// <i>Empty function block</i> item and Ctrl+Shift+B.</summary>
-    private Task InsertEmptyFunctionBlock() => RunAsync(nameof(InsertEmptyFunctionBlock), async () =>
+    private Task InsertEmptyFunctionBlock() => RunAsync(nameof(InsertEmptyFunctionBlock), async scope =>
     {
         if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
         {
@@ -1004,7 +1022,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         }
         string localityName = SelectedNode.DisplayName;
-        if (await ApplyAsync(_session.Commands.AddEmptyFunctionBlock(project, localityId, ProjectWorkflow.EmptyBlockName),
+        if (await ApplyAsync(scope, _session.Commands.AddEmptyFunctionBlock(project, localityId, ProjectWorkflow.EmptyBlockName),
                 $"{ProjectWorkflow.EmptyBlockName} blev indsat under {localityName}") is not { } blockId)
             return;
         // A blank block exists only to be authored, so creating one opens it: both panes re-root at the new block
@@ -1015,7 +1033,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Inserts a preprogrammed library function block (US-018) under the selected locality — shown in the
     /// Functions pane. Invoked by the leaf commands in <see cref="FunctionBlocksMenu"/>.</summary>
     private Task InsertFunctionBlockAsync(string masterType, string blockName) =>
-        RunAsync(nameof(InsertFunctionBlockAsync), async () =>
+        RunAsync(nameof(InsertFunctionBlockAsync), async scope =>
         {
             if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
             {
@@ -1029,14 +1047,15 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             if (!_session.Commands.TryAddFunctionBlock(project, localityId, masterType,
                     out AddFunctionBlock? command, out Problem? refusal))
             {
-                await _dialogs.ShowProblemAsync(InsertFailedTitle, refusal);
+                await FailureReport.RefusedAsync(scope, _logger, _dialogs, InsertFailedTitle, refusal,
+                    "No function block of type {MasterType} can be added here", masterType);
                 return;
             }
             // The placed block opens, showing the sections and pins it brought — the reference application reveals
             // it all the way down (measured 2026-08-11: the block AND both sections expanded, every other locality
             // left collapsed), and the installer's next action is almost always to wire one of those pins. The same
             // reveal the product path already performed; it was simply never wired here (alignment F-19).
-            if (await ApplyAsync(command, $"Funktionsblokken '{blockName}' er indsat under {localityName}") is { } newId)
+            if (await ApplyAsync(scope, command, $"Funktionsblokken '{blockName}' er indsat under {localityName}") is { } newId)
                 RevealSubtree(newId);
         });
 
@@ -1053,7 +1072,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // Through the same wrapper every command uses. Start-up was the one path that produced NO span at all,
         // so the work between launch and a usable window - the load, the first validation, the catalog - hung
         // off nothing and could not be seen as one operation, nor its failure reported like any other.
-        RunAsync(nameof(InitializeAsync), () => _session.StartAsync(startupProjectPath));
+        RunAsync(nameof(InitializeAsync), _ => _session.StartAsync(startupProjectPath));
 
     /// <summary>Runs the window-close save prompt (US-064); returns false to cancel the quit.
     /// <para>Routed through <see cref="RunAsync"/> — the view-model's one error boundary — because the caller is
@@ -1063,42 +1082,42 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     public async Task<bool> CanCloseAsync()
     {
         bool canClose = false;
-        await RunAsync(nameof(CanCloseAsync), async () => canClose = await _session.CanQuitAsync());
+        await RunAsync(nameof(CanCloseAsync), async _ => canClose = await _session.CanQuitAsync());
         return canClose;
     }
 
-    private Task NewAsync() => RunAsync(nameof(NewAsync), async () =>
+    private Task NewAsync() => RunAsync(nameof(NewAsync), async _ =>
     {
         if (await _session.NewAsync())
             StatusText = "Startede et nyt projekt.";
     });
 
-    private Task OpenAsync() => RunAsync(nameof(OpenAsync), async () =>
+    private Task OpenAsync() => RunAsync(nameof(OpenAsync), async _ =>
     {
         if (await _session.OpenWithPickerAsync())
             StatusText = $"Åbnede {_session.DocumentName}.";
     });
 
     [RelayCommand]
-    private Task OpenRecentAsync(string path) => RunAsync(nameof(OpenRecentAsync), async () =>
+    private Task OpenRecentAsync(string path) => RunAsync(nameof(OpenRecentAsync), async _ =>
     {
         if (await _session.OpenAsync(path))
             StatusText = $"Åbnede {_session.DocumentName}.";
     });
 
-    private Task SaveAsync() => RunAsync(nameof(SaveAsync), async () =>
+    private Task SaveAsync() => RunAsync(nameof(SaveAsync), async _ =>
     {
         if (await _session.SaveAsync())
             StatusText = $"Gemte {_session.DocumentName}.";
     });
 
-    private Task SaveAsAsync() => RunAsync(nameof(SaveAsAsync), async () =>
+    private Task SaveAsAsync() => RunAsync(nameof(SaveAsAsync), async _ =>
     {
         if (await _session.SaveAsAsync())
             StatusText = $"Gemte {_session.DocumentName}.";
     });
 
-    private Task CloseAsync() => RunAsync(nameof(CloseAsync), async () =>
+    private Task CloseAsync() => RunAsync(nameof(CloseAsync), async _ =>
     {
         if (await _session.CloseAsync())
             StatusText = "Lukkede projektet.";
@@ -1137,7 +1156,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Inserts a new locality under <i>Localities</i> (US-008), then selects it in the Installation pane.
     /// Invoked from the right-click <i>Insert locality</i> item on the Localities root.</summary>
-    private Task InsertLocality() => RunAsync(nameof(InsertLocality), async () =>
+    private Task InsertLocality() => RunAsync(nameof(InsertLocality), async scope =>
     {
         if (_session.Current is not { } project)
             return;
@@ -1148,7 +1167,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         string container = project.Child("groups") is { } groups
             ? project.NameOr(groups, ProjectTreeProjector.LocalitiesRootName)
             : ProjectTreeProjector.LocalitiesRootName;
-        if (await ApplyAsync(_session.Commands.AddLocality(project, ProjectWorkflow.NewLocalityName),
+        if (await ApplyAsync(scope, _session.Commands.AddLocality(project, ProjectWorkflow.NewLocalityName),
                 $"{ProjectWorkflow.NewLocalityName} blev indsat under {container}") is not { } id)
             return;
         // Refresh already rebuilt the trees (StateChanged); highlight the new locality in the Installation pane
@@ -1168,7 +1187,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// library is for.
     /// </para>
     /// </summary>
-    private Task SaveFunctionBlock(TreeNodeViewModel? node) => RunAsync(nameof(SaveFunctionBlock), async () =>
+    private Task SaveFunctionBlock(TreeNodeViewModel? node) => RunAsync(nameof(SaveFunctionBlock), async _ =>
     {
         ElementId? id = node?.Kind == TreeNodeKind.FunctionBlock ? node.ElementId : _programmingBlockId;
         if (id is not { } blockId || _session.Current?.FindById(blockId) is not { } fb || fb.Kind != ElementKind.FunctionBlock)
@@ -1185,13 +1204,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Unlocks a locked library function block (US-020) so its internals become editable; the tree rebuild
     /// then shows the editable icon. Invoked from the right-click <i>Unlock</i> item.</summary>
-    private Task Unlock(TreeNodeViewModel? node) => RunAsync(nameof(Unlock), async () =>
+    private Task Unlock(TreeNodeViewModel? node) => RunAsync(nameof(Unlock), async scope =>
     {
         if (node?.ElementId is not { } id || _session.Current is not { } project)
             return;
         string name = node.DisplayName;
         // Unlocking takes ownership of the block (uxparity S-20), so it is stamped with whoever did it.
-        await ApplyAsync(_session.Commands.UnlockFunctionBlock(project, id, Environment.UserName), $"Låste {name} op.");
+        await ApplyAsync(scope, _session.Commands.UnlockFunctionBlock(project, id, Environment.UserName), $"Låste {name} op.");
     });
 
     /// <summary>Deletes the selected node (US-053), dispatching by type: a link row removes its reciprocal pair
@@ -1199,7 +1218,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// uses the general confirm-and-cascade delete. Reachable from the right-click item, Edit ▸ Delete, and the
     /// Delete key (US-044) — all three routes run the registry's "edit.delete" command, gated by the row's ONE
     /// SDK-backed gate (the engine's <c>CanDelete</c>), so none can bypass the guard.</summary>
-    private Task Delete(TreeNodeViewModel? node) => RunAsync(nameof(Delete), async () =>
+    private Task Delete(TreeNodeViewModel? node) => RunAsync(nameof(Delete), async scope =>
     {
         // The localities root is structure, not content: it holds the localities but is not itself a node the
         // installer can remove. It carries no element id (see the projector), so the ElementId guard below already
@@ -1215,13 +1234,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // own choosing. It names WHICH rule refused (a catalog-declared pin, a locked library block, project
             // structure, or a node that is already gone), which the GUI cannot know; before D5 all four arrived
             // under one code and the identity was lost here.
-            await _dialogs.ShowProblemAsync(CannotDeleteTitle, impact.Refusal!);
+            await FailureReport.RefusedAsync(scope, _logger, _dialogs, CannotDeleteTitle, impact.Refusal!,
+                "Delete refused for {Element}", id);
             return;
         }
         if (impact.Kind == DeleteKind.Link)
         {
             // Removing a link deletes its reciprocal pair, not a subtree (US-057).
-            await ApplyAsync(_session.Commands.RemoveLink(project, id), "Link fjernet.");
+            await ApplyAsync(scope, _session.Commands.RemoveLink(project, id), "Link fjernet.");
             return;
         }
         string name = node.DisplayName;
@@ -1239,10 +1259,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             }
         }
         if (impact.Kind == DeleteKind.Locality)
-            await ApplyAsync(_session.Commands.DeleteLocality(project, id), $"Slettede {name}.");   // the US-009 locality worked example
+            await ApplyAsync(scope, _session.Commands.DeleteLocality(project, id), $"Slettede {name}.");   // the US-009 locality worked example
         else
             // impact.NeedsConfirm is the reference-cascade flag PreviewDelete computed for this node.
-            await ApplyAsync(_session.Commands.DeleteNode(project, id, impact.NeedsConfirm), $"Slettede {name}.");   // US-053
+            await ApplyAsync(scope, _session.Commands.DeleteNode(project, id, impact.NeedsConfirm), $"Slettede {name}.");   // US-053
     });
 
     // The structural-editing clipboard (US-054/US-056): the id of the cut/copied node and whether it is a cut
@@ -1277,7 +1297,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Paste the clipboard node onto the selected target (US-054 move / US-056 duplicate, Ctrl+V).</summary>
-    private Task Paste(TreeNodeViewModel? node) => RunAsync(nameof(Paste), async () =>
+    private Task Paste(TreeNodeViewModel? node) => RunAsync(nameof(Paste), async scope =>
     {
         if (_clipboardId is not { } sourceId || node is null || _session.Current is not { } project)
             return;
@@ -1289,12 +1309,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         if (_clipboardIsCut)
         {
-            if (await ApplyAsync(_session.Commands.MoveNode(project, sourceId, targetId), TreeDragDropController.MovedStatus))
+            if (await ApplyAsync(scope, _session.Commands.MoveNode(project, sourceId, targetId), TreeDragDropController.MovedStatus))
             {
                 SetClipboard(null, isCut: false);   // a cut is consumed by its paste
             }
         }
-        else if (await ApplyAsync(_session.Commands.CopyNode(project, sourceId, targetId), "Indsatte en kopi.") is { } pastedId)
+        else if (await ApplyAsync(scope, _session.Commands.CopyNode(project, sourceId, targetId), "Indsatte en kopi.") is { } pastedId)
         {
             // A copy is not consumed by its paste, so the clipboard stays. Open the arrival all the way down:
             // a pasted subtree lands already populated, so the "reveal on first child" rule never fires for it,
@@ -1319,16 +1339,16 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Moves the selected node one position down among its siblings (US-055).</summary>
     private Task MoveDown(TreeNodeViewModel? node) => ReorderAsync(node, +1);
 
-    private Task ReorderAsync(TreeNodeViewModel? node, int delta) => RunAsync(nameof(ReorderAsync), async () =>
+    private Task ReorderAsync(TreeNodeViewModel? node, int delta) => RunAsync(nameof(ReorderAsync), async scope =>
     {
         if (node?.ElementId is { } id && _session.Current is { } project
             && _session.Commands.ReorderNode(project, id, delta) is { } command)
-            await ApplyAsync(command, delta < 0 ? "Flyttet op." : "Flyttet ned.");
+            await ApplyAsync(scope, command, delta < 0 ? "Flyttet op." : "Flyttet ned.");
     });
 
     /// <summary>Opens the Properties dialog for a tree node to rename a locality (US-007). Invoked from the
     /// right-click <i>Properties</i> item (node passed in) and from F2 (the selected node passed in).</summary>
-    private Task Properties(TreeNodeViewModel? node) => RunAsync(nameof(Properties), () => OpenPropertiesAsync(node));
+    private Task Properties(TreeNodeViewModel? node) => RunAsync(nameof(Properties), scope => OpenPropertiesAsync(scope, node));
 
     /// <summary>
     /// Activates a tree node — the double-click route (US-044). IHC Visual opens a per-node-type properties dialog
@@ -1340,9 +1360,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// installation root and a link row open <b>nothing</b>.</para>
     /// </summary>
     [RelayCommand]
-    private Task ActivateNode(TreeNodeViewModel? node) => RunAsync(nameof(ActivateNode), () => ActivateNodeAsync(node));
+    private Task ActivateNode(TreeNodeViewModel? node) => RunAsync(nameof(ActivateNode), scope => ActivateNodeAsync(scope, node));
 
-    private Task ActivateNodeAsync(TreeNodeViewModel? node)
+    private Task ActivateNodeAsync(Ihc.OperationScope scope, TreeNodeViewModel? node)
     {
         if (node is null || node.IsLocalitiesRoot || node.IsLinkRow || node.ElementId is not { } id
             || _session.Current is not { } project || project.FindById(id) is not { } element)
@@ -1352,7 +1372,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // A pin is configured through its owner, so activation walks up to the product it belongs to. Only a pin
         // redirects: the scenes container is a product child too, but it has its own dialog.
         ElementId target = node.IsPin && IsPinOfProduct(project, element, out ElementId productId) ? productId : id;
-        return _properties.OpenAsync(target);
+        return _properties.OpenAsync(scope, target);
     }
 
     // True when the element is a resource child of a product (so activating it should open that product's dialog).
@@ -1390,7 +1410,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Inserts a catalog product (US-010) under the currently selected locality; the leaf menu commands in
     /// <see cref="ProductsMenu"/> call this. Routed through <see cref="RunAsync"/> for tracing and error surfacing.</summary>
     private Task InsertProductAsync(string productIdentifier, string productName) =>
-        RunAsync(nameof(InsertProductAsync), async () =>
+        RunAsync(nameof(InsertProductAsync), async scope =>
         {
             if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
             {
@@ -1405,7 +1425,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             if (!_session.TryResolveCatalogProduct(productIdentifier, productName,
                     out ProductDefinition? definition, out Problem? unresolved))
             {
-                await _dialogs.ShowProblemAsync(InsertFailedTitle, unresolved);
+                await FailureReport.RefusedAsync(scope, _logger, _dialogs, InsertFailedTitle, unresolved,
+                    "No catalog product matches {Identifier} named {Name}", productIdentifier, productName);
                 return;
             }
             AddProduct command = _session.Commands.AddProduct(project, localityId, definition);
@@ -1413,7 +1434,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // title is the shell's, because the box is titled for the rule rather than for the failure (S-28).
             if (_session.Commands.ModemLimitRefusal(project, productIdentifier) is { } modemLimit)
             {
-                await _dialogs.ShowProblemAsync(ModemLimitTitle, modemLimit);
+                await FailureReport.RefusedAsync(scope, _logger, _dialogs, ModemLimitTitle, modemLimit,
+                    "Modem limit refused {Identifier}", productIdentifier);
                 return;
             }
             // Placing a product ASKS for its documentation as part of placing it, and cancelling places nothing —
@@ -1427,9 +1449,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             // past tense, on the status line of an application that was still asking whether to do it (measured
             // live 2026-08-11, alignment F-14). A refusal is still reported: ApplyAsync only withholds the SUCCESS
             // line. The announcement moves below, after the dialog commits.
-            if (await ApplyAsync(command) is not { } newId)
+            if (await ApplyAsync(scope, command) is not { } newId)
                 return;
-            if (!await _properties.OpenForInsertAsync(newId))
+            if (!await _properties.OpenForInsertAsync(scope, newId))
             {
                 // Cancelled: roll the insert back — NOT Undo. Rollback restores the snapshot verbatim (the vendor
                 // burns no ids on Annuller — S-12) and leaves no redo entry, where Undo deliberately keeps the
@@ -1463,10 +1485,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Toggles a "Log …" row's log mark (US-068, the vendor's &amp;Logmærke): the SDK flips its Logning state
     /// between Off and the first logging mode, and the tree re-renders the row's new state.</summary>
-    private Task ToggleLogMark(TreeNodeViewModel? node) => RunAsync(nameof(ToggleLogMark), async () =>
+    private Task ToggleLogMark(TreeNodeViewModel? node) => RunAsync(nameof(ToggleLogMark), async scope =>
     {
         if (node is { IsLogMarkPin: true, ElementId: { } id } && _session.Current is { } project)
-            await ApplyAsync(_session.Commands.ToggleLogMark(project, id), $"Skiftede logmærket på {node.DisplayName}.");
+            await ApplyAsync(scope, _session.Commands.ToggleLogMark(project, id), $"Skiftede logmærket på {node.DisplayName}.");
     });
 
     /// <summary>Enters programming mode for the selected function block (US-026, F3): the panes switch to the block's
@@ -1533,7 +1555,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// the task this returns, so without one a fault on the way to the fix reached nobody: no dialog, no log
     /// record, no span, and a double-click that looked ignored.</para>
     /// </remarks>
-    private Task ActivateProblemAsync(NavigationPlan plan) => RunAsync(nameof(ActivateProblemAsync), async () =>
+    private Task ActivateProblemAsync(NavigationPlan plan) => RunAsync(nameof(ActivateProblemAsync), async scope =>
     {
         // A HOST window first: a whole-project finding has no element, so there is no tree leg to walk and the
         // reveal below would have nothing to aim at.
@@ -1549,7 +1571,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
         if (plan.Dialog is { } hop)
         {
-            await _properties.ExecuteAsync(hop);
+            await _properties.ExecuteAsync(scope, hop);
         }
     });
 
@@ -2200,10 +2222,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // The Properties route (right-click / F2) dispatches by element type: a modem opens the modem dialog (US-013),
     // any other product the documentation dialog (US-011), an I/O pin the addressing dialog (US-012), a locality the
     // rename dialog (US-007).
-    private Task OpenPropertiesAsync(TreeNodeViewModel? node) =>
-        node?.ElementId is { } id ? _properties.OpenAsync(id) : Task.CompletedTask;
+    private Task OpenPropertiesAsync(Ihc.OperationScope scope, TreeNodeViewModel? node) =>
+        node?.ElementId is { } id ? _properties.OpenAsync(scope, id) : Task.CompletedTask;
 
-    private Task InsertEnumAsync(ElementId sectionId, string sectionLabel) => RunAsync(nameof(InsertEnumAsync), async () =>
+    private Task InsertEnumAsync(ElementId sectionId, string sectionLabel) => RunAsync(nameof(InsertEnumAsync), async scope =>
     {
         EnumDefinitionResult? result = await _dialogs.EditEnumDefinitionAsync(
             new EnumDefinitionInput("Ny enumerator", string.Empty, System.Array.Empty<string>(), IsNew: true));
@@ -2219,12 +2241,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
         if (_session.Current is { } project
             && _session.Commands.AddEnumVariable(project, sectionId, result.TypeName, result.TypeName, result.States) is { } command)
-            await ApplyAsync(command, $"Enumeratoren '{result.TypeName}' blev indsat under {sectionLabel}");
+            await ApplyAsync(scope, command, $"Enumeratoren '{result.TypeName}' blev indsat under {sectionLabel}");
     });
 
     // PG-7/D02: authors a standalone (0-state, unreferenced) enumerator TYPE — no variable is inserted, decoupled from
     // any section. The enumerator dialog supplies the name (and any states); an empty type is authored when none given.
-    private Task AddStandaloneEnumTypeAsync() => RunAsync(nameof(AddStandaloneEnumTypeAsync), async () =>
+    private Task AddStandaloneEnumTypeAsync() => RunAsync(nameof(AddStandaloneEnumTypeAsync), async scope =>
     {
         EnumDefinitionResult? result = await _dialogs.EditEnumDefinitionAsync(
             new EnumDefinitionInput("Ny selvstændig enumerator type", string.Empty, System.Array.Empty<string>(), IsNew: true));
@@ -2236,7 +2258,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             return;
         }
         if (_session.Current is { } project)
-            await ApplyAsync(_session.Commands.AddStandaloneEnumType(project, result.TypeName, result.States),
+            await ApplyAsync(scope, _session.Commands.AddStandaloneEnumType(project, result.TypeName, result.States),
                 $"Enumerator typen '{result.TypeName}' blev oprettet");
     });
 
@@ -2250,11 +2272,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <see cref="ProjectProjections.GetEnumeratorTypeViews"/> after each operation rather than holding a copy.
     /// </para>
     /// </summary>
-    private Task ManageEnumTypesAsync() => RunAsync(nameof(ManageEnumTypesAsync), () =>
+    private Task ManageEnumTypesAsync() => RunAsync(nameof(ManageEnumTypesAsync), scope =>
         _dialogs.ManageEnumTypesAsync(new EnumTypeManagerInput(
             "Enumerator typer og værdier",
             () => _session.Current?.GetEnumeratorTypeViews() ?? System.Array.Empty<EnumTypeView>(),
-            ApplyEnumTypeOperationAsync,
+            operation => ApplyEnumTypeOperationAsync(scope, operation),
             // The manager builds its own name prompts, and it is a View: the blank decision has to travel to it.
             _session.MissingRequiredField)));
 
@@ -2262,7 +2284,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// committed, otherwise the refusal sentence — the dialog cannot show a reason it is not handed. An outcome
     /// that did not merely refuse hands over the generic instead: its reason is an engine diagnostic that
     /// <see cref="ReportOutcomeAsync"/> has already logged and answered with its own Danish sentence.</summary>
-    private async Task<string?> ApplyEnumTypeOperationAsync(EnumTypeManagerOperation operation)
+    private async Task<string?> ApplyEnumTypeOperationAsync(Ihc.OperationScope scope, EnumTypeManagerOperation operation)
     {
         if (_session.Current is not { } project)
             return EditRefusals.NoProjectOpenRefusal;
@@ -2291,35 +2313,55 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         };
 
         EditOutcome outcome = await _session.ApplyAsync(command);
-        await ReportOutcomeAsync(outcome, status);
+        await ReportOutcomeAsync(scope, outcome, status);
         return outcome.Status == EditStatus.Committed ? null : UserFacingRefusal(outcome) ?? EditRejectedMessage;
     }
 
     // PG-4: inserts a variable of an EXISTING enumerator type — references its def-id, authoring NO new type (the "Ny…"
     // option above authors a new one).
     private Task InsertEnumOfExistingTypeAsync(ElementId sectionId, string typeName, string sectionLabel) =>
-        RunAsync(nameof(InsertEnumOfExistingTypeAsync), async () =>
+        RunAsync(nameof(InsertEnumOfExistingTypeAsync), async scope =>
         {
             if (_session.Current is { } project
                 && _session.Commands.AddEnumVariableOfType(project, sectionId, typeName, typeName) is { } command)
-                await ApplyAsync(command, $"Enumeratoren '{typeName}' blev indsat under {sectionLabel}");
+                await ApplyAsync(scope, command, $"Enumeratoren '{typeName}' blev indsat under {sectionLabel}");
         });
 
 
-    private Task AboutAsync() => RunAsync(nameof(AboutAsync), () => _dialogs.ShowAboutAsync());
+    private Task AboutAsync() => RunAsync(nameof(AboutAsync), _ => _dialogs.ShowAboutAsync());
 
-    private Task ShowSettingsAsync() => RunAsync(nameof(ShowSettingsAsync), () => _dialogs.ShowSettingsAsync(BuildSettingsText()));
+    private Task ShowSettingsAsync() => RunAsync(nameof(ShowSettingsAsync), _ => _dialogs.ShowSettingsAsync(BuildSettingsText()));
 
-    private Task TelemetryDiagnosticsAsync() => RunAsync(nameof(TelemetryDiagnosticsAsync), async () =>
+    private Task TelemetryDiagnosticsAsync() => RunAsync(nameof(TelemetryDiagnosticsAsync), async scope =>
     {
         string? host = _config?.TelemetryConfig.Host;
         if (string.IsNullOrWhiteSpace(host))
-            await _dialogs.ShowProblemAsync(TelemetryTitle, HostProblems.TelemetryHostMissing());
+            await FailureReport.RefusedAsync(scope, _logger, _dialogs, TelemetryTitle,
+                HostProblems.TelemetryHostMissing(), "No telemetry host is configured");
         else if (!await _dialogs.OpenExternalUrlAsync(host))
-            await _dialogs.ShowProblemAsync(TelemetryTitle, HostProblems.TelemetryHostUnreachable(host));
+            await FailureReport.RefusedAsync(scope, _logger, _dialogs, TelemetryTitle,
+                HostProblems.TelemetryHostUnreachable(host), "Telemetry host {Host} would not open", host);
     });
 
-    private async Task RunAsync(string operation, Func<Task> action)
+    /// <summary>
+    /// The same boundary, handing the operation's scope to the work. A command that refuses something on its
+    /// own terms — no controller, a rule that says no — has to tell this scope, and it cannot do that through a
+    /// delegate that never receives it. Without the scope the refusal was shown to the installer while the span
+    /// ended <c>ok</c> by default, which is the one shape a reader of the telemetry cannot recover.
+    /// </summary>
+    /// <remarks>
+    /// <b>Which refusals report, and which do not.</b> A refusal raised to a DIALOG reports; one written to the
+    /// status bar does not. The line is drawn at the surface, not at the outcome, because the surfaces mean
+    /// different things: a dialog stops the installer and is how the shell says an operation did not do what it
+    /// was asked, while the status line is where an ordinary gesture — a drop the tree declined, a case value
+    /// that is not a state — narrates itself in passing. Under today's mapping the first kind is recorded as a
+    /// FAILURE, so counting the second the same way would turn the error rate into a measure of how much the
+    /// installer explores; the status-bar sites therefore hand the scope nothing. Note what that argument rests
+    /// on: <c>FailureReport.RefusedAsync</c> chooses <c>FailedWith</c> over the <c>Refused</c> outcome the SDK
+    /// uses for the same kind of event. If that choice is revisited, this line moves with it — a refusal that is
+    /// not an error could be recorded everywhere at no cost to the rate.
+    /// </remarks>
+    private async Task RunAsync(string operation, Func<Ihc.OperationScope, Task> action)
     {
         // Shape B rather than the delegate form: the outcome has to be recorded BEFORE the dialog below, which
         // awaits a person, and the contract is unchanged - the exception is still swallowed and still becomes
@@ -2327,27 +2369,37 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         using Ihc.OperationScope scope = _telemetry.Start(operation);
         try
         {
-            await action();
+            await action(scope);
         }
         catch (Exception ex)
         {
-            scope.SetOutcome(Ihc.OperationOutcome.Failed(ex));
-            _logger.LogError(ex, "Command {Operation} failed", operation);
             // Same rule as a Failed edit outcome (D01): the exception message is an English developer diagnostic
             // naming element tags, attribute names and _0x ids, so it goes to the log and the installer gets one
             // fixed Danish sentence. This is the widest instance of that channel — every command routes through
             // here — and it is the one place that cannot name what failed, since it catches for all of them.
             StatusText = UnexpectedErrorMessage;
-            // ONE Problem for both channels, so the row and the dialog cannot come to say different things about
-            // the same fault.
+            // ONE Problem frames both channels, so the row and the dialog cannot come to say different things
+            // about the same fault. They are not the same SENTENCE, and deliberately: the dialog narrates this
+            // framing over whatever coded cause the exception carries, while the row files the framing plus the
+            // exception's full text as its detail. The row therefore holds strictly more than the dialog shows,
+            // which is the direction a durable record should differ in.
             Ihc.Vis.Problems.Problem problem = HostProblems.Unexpected(ex);
             // BEFORE the dialog, which awaits a person. Two reasons, and the second is the one that matters: a
             // dialog is dismissed and gone, so without this the fault flashed once and left nothing behind — and
             // a process that dies while the modal is up would otherwise have recorded nothing at all here.
+            //
+            // Filed HERE rather than left to the report, and the report is told so: this boundary knows the
+            // OPERATION the exception escaped from, which the report cannot see, so the row it writes names
+            // something the generic one could not.
             _internalErrors?.Append(Ihc.Vis.Problems.InternalError.From(
                 problem, Ihc.Vis.Problems.InternalErrorOrigin.Host,
                 $"{nameof(MainWindowViewModel)}.{operation}: {ex}"));
-            await _dialogs.ShowProblemAsync(UnexpectedErrorTitle, problem);
+            // The span outcome, the log record and the dialog, in that order, from one call — the ordering this
+            // site used to have to remember for itself. The claim about the row is read off the SINK, not
+            // asserted: it is optional, and claiming a row that no sink took would suppress the report's own
+            // fallback and lose the fault on both channels.
+            await FailureReport.FailedAsync(scope, _logger, _dialogs, UnexpectedErrorTitle, problem, ex,
+                faultRowFiled: _internalErrors is not null, "Command {Operation} failed", operation);
         }
     }
 

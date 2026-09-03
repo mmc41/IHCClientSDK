@@ -1,19 +1,13 @@
 using System;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using NUnit.Framework;
-using NUnit.Framework.Interfaces;
-using NUnit.Framework.Internal;
-using NUnit.Framework.Internal.Commands;
 using Ihc;
 using Ihc.Bootstrap;
-using Ihc.Tests.Shared;
 using IhcLab;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
-using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using Avalonia.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -26,57 +20,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Ihc.Tests
 {
-    /// <summary>
-    /// Attribute that automatically captures screenshots when tests fail.
-    ///
-    /// <para>
-    /// This attribute implements NUnit's <see cref="IWrapSetUpTearDown"/> interface to hook into
-    /// the test execution pipeline. It works alongside the <c>[AvaloniaTest]</c> attribute by
-    /// wrapping the test command and capturing screenshots on failure.
-    /// </para>
-    ///
-    /// <para><strong>Usage:</strong></para>
-    /// <code>
-    /// [AvaloniaTest]
-    /// [CaptureScreenshotOnFailure]
-    /// public async Task MyTest()
-    /// {
-    ///     var window = await new MainWindow().Start();
-    ///     CurrentTestWindow = window;  // Register window for capture
-    ///
-    ///     // Test code - screenshot captured automatically on failure
-    /// }
-    /// </code>
-    ///
-    /// <para><strong>Important Limitations:</strong></para>
-    /// <list type="bullet">
-    /// <item>Must be applied to <strong>each test method individually</strong> - cannot be applied at class/fixture level
-    /// (NUnit framework limitation: <see href="https://github.com/nunit/nunit/issues/2220"/>)</item>
-    /// <item>Requires <c>[AvaloniaTest]</c> attribute to be present on the same test method</item>
-    /// <item>Test must set <c>CurrentTestWindow</c> property for screenshot capture to work</item>
-    /// </list>
-    ///
-    /// <para><strong>Technical Details:</strong></para>
-    /// <para>
-    /// Screenshot capture executes through Avalonia's headless session dispatcher to ensure
-    /// the platform render interface is available. The capture is synchronous and waits up to
-    /// 5 seconds for completion.
-    /// </para>
-    ///
-    /// <para>
-    /// Screenshots are saved to: <c>tests/safe_lab_tests/bin/Debug/net10.0/TestFailureScreenshots/</c>
-    /// with format: <c>{TestName}_{Timestamp}.png</c>
-    /// </para>
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
-    public class CaptureScreenshotOnFailureAttribute : Attribute, NUnit.Framework.Interfaces.IWrapSetUpTearDown
-    {
-        public NUnit.Framework.Internal.Commands.TestCommand Wrap(NUnit.Framework.Internal.Commands.TestCommand command)
-        {
-            return new ScreenshotCaptureCommand(command, () => AvaloniaTestBase.CaptureScreenshotOnFailure());
-        }
-    }
-
     /// <summary>
     /// Avalonia test application builder for headless NUnit tests.
     /// This configures the Avalonia application instance used by all [AvaloniaTest] tests.
@@ -228,86 +171,6 @@ namespace Ihc.Tests
         public void Dispose()
         {
             IhcLab.Program.loggerFactory = _originalLoggerFactory;
-        }
-    }
-
-    /// <summary>
-    /// Base test class for Avalonia UI tests with automatic screenshot capture support.
-    /// 
-    /// All tests run sequentially due to shared use of static CurrentTestWindow property (setup for entire assembly).
-    ///
-    /// <para>
-    /// This class provides infrastructure for capturing screenshots when tests fail.
-    /// Tests inherit from this class and use the <see cref="CaptureScreenshotOnFailureAttribute"/>
-    /// to enable automatic screenshot capture.
-    /// </para>
-    ///
-    /// <para><strong>Usage Pattern:</strong></para>
-    /// <code>
-    /// [AvaloniaTest]
-    /// [CaptureScreenshotOnFailure]  // Enables automatic screenshots
-    /// public async Task MyTest()
-    /// {
-    ///     var window = await new MainWindow().Start();
-    ///     CurrentTestWindow = window;  // Register window for capture
-    ///
-    ///     // Test code here - screenshot captured automatically on failure
-    /// }
-    /// </code>
-    ///
-    /// <para><strong>Requirements:</strong></para>
-    /// <list type="bullet">
-    /// <item>Test must set <see cref="CurrentTestWindow"/> property after creating the window</item>
-    /// <item><c>[CaptureScreenshotOnFailure]</c> attribute must be applied to each test method</item>
-    /// <item>Cannot be applied at class level due to NUnit framework limitation (<see href="https://github.com/nunit/nunit/issues/2220"/>)</item>
-    /// </list>
-    ///
-    /// <para><strong>Screenshot Details:</strong></para>
-    /// <para>
-    /// Screenshots are captured using Avalonia's <c>CaptureRenderedFrame()</c> method through
-    /// the headless session dispatcher. Files are saved to <c>TestFailureScreenshots/</c> directory
-    /// in the test output folder with format <c>{TestName}_{Timestamp}.png</c>.
-    /// </para>
-    /// </summary>
-    public abstract class AvaloniaTestBase
-    {
-        /// <summary>
-        /// The window currently being tested. Set this property when creating a window in tests.
-        /// Used by automatic screenshot capture on failure.
-        /// </summary>
-        protected static Window? CurrentTestWindow { get; set; }
-
-        /// <summary>
-        /// Common setup method for tests that creates, initializes, shows, and returns a MainWindow.
-        /// This method sets <see cref="CurrentTestWindow"/> for automatic screenshot capture on failure.
-        /// </summary>
-        /// <returns>The initialized and shown MainWindow instance.</returns>
-        protected static async Task<MainWindow> SetupMainWindowAsync()
-        {
-            CurrentTestWindow = await new MainWindow().Start();
-            CurrentTestWindow.Show();
-            Dispatcher.UIThread.RunJobs();
-            return (MainWindow)CurrentTestWindow;
-        }
-
-        /// <summary>
-        /// Called by <see cref="CaptureScreenshotOnFailureAttribute"/> on failure; not to be called from test
-        /// code. Delegates to <see cref="HeadlessScreenshot.CaptureOnFailure"/>, which owns the capture
-        /// contract, and clears <see cref="CurrentTestWindow"/> so no window leaks into the next test.
-        /// </summary>
-        /// <param name="customDescription">Optional custom description for the screenshot attachment in test results.</param>
-        internal static void CaptureScreenshotOnFailure(string? customDescription = null)
-        {
-            try
-            {
-                HeadlessScreenshot.CaptureOnFailure(
-                    CurrentTestWindow, typeof(AvaloniaTestBase).Assembly, customDescription);
-            }
-            finally
-            {
-                // Clear the window reference for next test
-                CurrentTestWindow = null;
-            }
         }
     }
 

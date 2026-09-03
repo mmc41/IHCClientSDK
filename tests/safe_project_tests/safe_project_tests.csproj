@@ -21,21 +21,60 @@
     <Using Include="NUnit.Framework" />
     <!-- The shared test helpers are one namespace; safe_project_tests reaches TestRepository through it. -->
     <Using Include="Ihc.Tests.Shared" />
+    <!-- Where the shared harness and its collaborators are declared; this suite's own namespace is not it. -->
+    <Using Include="Ihc.Tests" />
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
+    <!-- The IL decode and the member population every structural rule reads. Shared because the
+         controller-reach guard runs INSIDE each suite it polices, and a suite cannot be scanned from
+         outside by an assembly that does not reference it. -->
+    <Compile Include="..\shared\IlBody.cs" Link="shared\IlBody.cs" />
+    <Compile Include="..\shared\AuthoredMembers.cs" Link="shared\AuthoredMembers.cs" />
+    <Compile Include="..\shared\ControllerReachScan.cs" Link="shared\ControllerReachScan.cs" />
+    <!-- The safety rule, as a gate rather than a convention: this suite may reach no controller. -->
+    <Compile Include="..\shared\ControllerReachGuard.cs" Link="shared\ControllerReachGuard.cs" />
+    <!-- OpenVisual's NON-GUI code is tested here: its view-models, command registry, menu forest and
+         projector need no Avalonia toolkit, and this is the suite whose subject they are. A test project may
+         reference an application; the architecture rules constrain what the PRODUCT assemblies depend on,
+         not who is allowed to test them. -->
+    <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The report-oracle matrix, naming convention, pinned clock and byte assert, shared with
-         safe_unit_tests (which owns the .html half of the same 24-oracle contract). -->
+    <!-- The report-oracle matrix, naming convention, pinned clock and byte assert. Both halves of the
+         oracle contract, .txt and .html, are asserted from this suite. -->
     <Compile Include="..\shared\ReportOracleHarness.cs" Link="shared\ReportOracleHarness.cs" />
-    <!-- The repository-root walk, shared with the two GUI suites. It used to be a private helper here, and
+    <!-- The repository-root walk, shared with the end-to-end suite. It used to be a private helper here, and
          a second copy grew in safe_visual_tests; jscpd named the pair as soon as a third suite wanted one. -->
     <Compile Include="..\shared\TestRepository.cs" Link="shared\TestRepository.cs" />
     <Compile Include="..\shared\FindingOracleHarness.cs" Link="shared\FindingOracleHarness.cs" />
+    <Compile Include="..\shared\FindingOracleRows.cs" Link="shared\FindingOracleRows.cs" />
     <Compile Include="..\shared\TelemetryCapture.cs" Link="shared\TelemetryCapture.cs" />
-    <!-- One reader of {slot} syntax, shared with safe_visual_tests: both suites gate a catalogue's templates
-         against its declared slots, so they must agree on what a placeholder is. -->
+    <!-- The registry contract the app's telemetry registration is asserted against, shared with the suites
+         that hold such a registration. -->
+    <Compile Include="..\shared\TelemetryRegistryContract.cs" Link="shared\TelemetryRegistryContract.cs" />
+    <!-- One reader of {slot} syntax. Both catalogues' template gates live in this suite now, so it is the only
+         linker; kept in tests/shared because what a placeholder IS answers to the catalogues, not to a suite,
+         and the host catalogue's gate arriving here is what merged the two readers in the first place. -->
     <Compile Include="..\shared\MessageTemplate.cs" Link="shared\MessageTemplate.cs" />
+    <!-- The value generators the randomized operation models share. The models themselves stay per-law; only
+         the values are common. -->
+    <Compile Include="..\shared\CsCheckValues.cs" Link="shared\CsCheckValues.cs" />
+    <!-- The shell harness, the scriptable dialog port, the capturing logger and the scratch directory.
+         Shared because the toolkit-free half of the GUI suite is moving here and most of it opens with one
+         of these; a copy is how the two would drift. -->
+    <Compile Include="..\shared\TestSupport.cs" Link="shared\TestSupport.cs" />
+    <!-- The session-editing shorthands the harness itself calls, so it travels with it. -->
+    <Compile Include="..\shared\SessionEditingTestExtensions.cs" Link="shared\SessionEditingTestExtensions.cs" />
+    <!-- The leak detector is an ASSEMBLY-level ITestAction, so it has to be compiled into each hosting
+         assembly to act there; a project reference would leave the second suite unguarded. Its
+         companions travel with it because the same fixtures use them. -->
+    <Compile Include="..\shared\NoLeakedHarness.cs" Link="shared\NoLeakedHarness.cs" />
+    <Compile Include="..\shared\TraceProbe.cs" Link="shared\TraceProbe.cs" />
+    <Compile Include="..\shared\InsertGesture.cs" Link="shared\InsertGesture.cs" />
+    <!-- The recursive tree-node lookup both suites' fixtures reach for. -->
+    <Compile Include="..\shared\TreeNodes.cs" Link="shared\TreeNodes.cs" />
+    <!-- The Problemer corpus and the two window-free rigs over it. -->
+    <Compile Include="..\shared\ProblemsTestSupport.cs" Link="shared\ProblemsTestSupport.cs" />
   </ItemGroup>
 
   <!-- Oracle fixtures live in tests\testdata\ and are shared with safe_unit_tests and
@@ -55,5 +94,21 @@
     <!-- Delete ihcsettings.json from output directory during clean -->
     <Delete Files="$(OutDir)ihcsettings.json" Condition="Exists('$(OutDir)ihcsettings.json')" />
   </Target>
+
+
+  <!-- The GUI's own markup, docs and sources, copied beside these binaries because the scanners here read
+       them as the SUBJECT under test rather than as an oracle. A scan whose files did not arrive reads
+       nothing and passes every assertion, so the copy has to follow the test that needs it. -->
+  <ItemGroup>
+    <None Include="..\..\applications\ihc_openvisual\Views\MainWindow.axaml"
+          Link="appxaml\MainWindow.axaml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\applications\ihc_openvisual\docs\icon_codes.md"
+          Link="appdocs\icon_codes.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\applications\ihc_openvisual\docs\product.md"
+          Link="appdocs\product.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\applications\ihc_openvisual\**\*.cs"
+          Exclude="..\..\applications\ihc_openvisual\bin\**\*.cs;..\..\applications\ihc_openvisual\obj\**\*.cs"
+          Link="appsrc\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
 </Project>

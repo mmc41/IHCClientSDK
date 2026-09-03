@@ -19,41 +19,56 @@
 
   <ItemGroup>
     <Using Include="NUnit.Framework" />
+    <!-- Where the shared Avalonia fixture base and its capture attribute live; every fixture here names
+         the base, and this suite's own namespace is not the one they are declared in. -->
+    <Using Include="Ihc.Tests" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
+    <!-- The IL decode and the member population every structural rule reads. Shared because the
+         controller-reach guard runs INSIDE each suite it polices, and a suite cannot be scanned from
+         outside by an assembly that does not reference it. -->
+    <Compile Include="..\shared\IlBody.cs" Link="shared\IlBody.cs" />
+    <Compile Include="..\shared\AuthoredMembers.cs" Link="shared\AuthoredMembers.cs" />
+    <Compile Include="..\shared\ControllerReachScan.cs" Link="shared\ControllerReachScan.cs" />
+    <!-- The safety rule, as a gate rather than a convention: this suite may reach no controller. -->
+    <Compile Include="..\shared\ControllerReachGuard.cs" Link="shared\ControllerReachGuard.cs" />
     <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
   </ItemGroup>
 
   <!-- Catalog-import tests read the synthetic .def/.ifb oracles; this copies them to
        $(OutDir)\testdata\... so they are reached the same way as in the other suites. -->
   <ItemGroup>
-    <!-- The shared oracle harnesses, linked in the same way safe_project_tests and safe_unit_tests link them.
-         ReportOracleHarness comes along because it owns the PINNED INSTANT both oracle families use: borrowing it is
-         what keeps the findings oracles and the report oracles on one clock instead of two. -->
-    <Compile Include="..\shared\ReportOracleHarness.cs" Link="shared\ReportOracleHarness.cs" />
-    <Compile Include="..\shared\FindingOracleHarness.cs" Link="shared\FindingOracleHarness.cs" />
     <!-- The headless Avalonia app builder, shared with safe_visual_e2e_tests: it is what decides font
          metrics, and the two suites have to agree about layout to agree about what is on screen. -->
     <Compile Include="..\shared\OpenVisualHeadlessApp.cs" Link="shared\OpenVisualHeadlessApp.cs" />
-    <!-- The row projection the end-to-end suite compares a live panel against. Linked HERE, where nothing drives
-         a GUI, because FindingOracleLinkTests is the guard that it still finds rows at all: every consumer builds
-         its assertions ON the list, so a reader returning nothing would pass rather than fail over there. -->
-    <Compile Include="..\shared\FindingOracleRows.cs" Link="shared\FindingOracleRows.cs" />
-    <!-- Reaching the source checkout, for the test that reads a checked-in document as its SUBJECT. -->
-    <Compile Include="..\shared\TestRepository.cs" Link="shared\TestRepository.cs" />
-    <Compile Include="..\shared\TelemetryRegistryContract.cs" Link="shared\TelemetryRegistryContract.cs" />
     <Compile Include="..\shared\TelemetryCapture.cs" Link="shared\TelemetryCapture.cs" />
-    <!-- One reader of {slot} syntax, shared with safe_project_tests: both suites gate a catalogue's templates
-         against its declared slots, so they must agree on what a placeholder is. -->
-    <Compile Include="..\shared\MessageTemplate.cs" Link="shared\MessageTemplate.cs" />
     <!-- The headless failure-screenshot capture and the NUnit command that decides when to run it, shared with
          safe_lab_tests: cross-thread dispatch onto the session, a timeout and exception marshalling, and an
          outcome test that cannot be read off the test result alone. A bug in either is a deadlock or a silently
          missing screenshot rather than a red test. -->
     <Compile Include="..\shared\HeadlessScreenshot.cs" Link="shared\HeadlessScreenshot.cs" />
     <Compile Include="..\shared\ScreenshotCaptureCommand.cs" Link="shared\ScreenshotCaptureCommand.cs" />
+    <!-- The attribute those two are driven by, and the base class holding the window they capture. One
+         declaration for both Avalonia suites; it names no application's types, so each suite supplies its own
+         window opener beside it (safe_lab_tests has LabWindows.cs). -->
+    <Compile Include="..\shared\AvaloniaTestBase.cs" Link="shared\AvaloniaTestBase.cs" />
+    <!-- The shell harness, the scriptable dialog port, the capturing logger and the scratch directory.
+         Shared because the toolkit-free half of the GUI suite is moving here and most of it opens with one
+         of these; a copy is how the two would drift. -->
+    <Compile Include="..\shared\TestSupport.cs" Link="shared\TestSupport.cs" />
+    <!-- The session-editing shorthands the harness itself calls, so it travels with it. -->
+    <Compile Include="..\shared\SessionEditingTestExtensions.cs" Link="shared\SessionEditingTestExtensions.cs" />
+    <!-- The leak detector is an ASSEMBLY-level ITestAction, so it has to be compiled into each hosting
+         assembly to act there; a project reference would leave the second suite unguarded. Its
+         companions travel with it because the same fixtures use them. -->
+    <Compile Include="..\shared\NoLeakedHarness.cs" Link="shared\NoLeakedHarness.cs" />
+    <Compile Include="..\shared\TraceProbe.cs" Link="shared\TraceProbe.cs" />
+    <!-- The recursive tree-node lookup both suites' fixtures reach for. -->
+    <Compile Include="..\shared\TreeNodes.cs" Link="shared\TreeNodes.cs" />
+    <!-- The Problemer corpus and the two window-free rigs over it. -->
+    <Compile Include="..\shared\ProblemsTestSupport.cs" Link="shared\ProblemsTestSupport.cs" />
   </ItemGroup>
 
   <Import Project="..\TestData.props" />
@@ -67,13 +82,9 @@
     <!-- Same rule for the icon-mapping doc: the icon-registration tests read it as the SUBJECT under test. -->
     <None Include="..\..\applications\ihc_openvisual\docs\icon_codes.md"
           Link="appdocs\icon_codes.md" CopyToOutputDirectory="PreserveNewest" />
-    <!-- And for the product spec: RegisterPinTests reads the Differences register as the SUBJECT under test —
-         every registered difference must name the test that would fail if it drifted back. -->
-    <None Include="..\..\applications\ihc_openvisual\docs\product.md"
-          Link="appdocs\product.md" CopyToOutputDirectory="PreserveNewest" />
-    <!-- T042: the GUI's own sources are the SUBJECT of the message-site fitness check — it must see EVERY file,
-         not a list someone remembers to extend, so this is a glob with bin/obj excluded. Copied beside the
-         binaries like the markup and docs above; no test walks into the checkout. -->
+    <!-- The GUI's own sources are the SUBJECT of DialogBoundsFromMetadataTests — it must see EVERY file, not a
+         list someone remembers to extend, so this is a glob with bin/obj excluded. Copied beside the binaries
+         like the markup and doc above; no test walks into the checkout. -->
     <None Include="..\..\applications\ihc_openvisual\**\*.cs"
           Exclude="..\..\applications\ihc_openvisual\bin\**\*.cs;..\..\applications\ihc_openvisual\obj\**\*.cs"
           Link="appsrc\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

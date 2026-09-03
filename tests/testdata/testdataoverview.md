@@ -524,7 +524,7 @@ and `Tryk (nederst højre)` must stay address-less (the vendor silently auto-ass
 addresses). Nested localities are **not** covered — IHC Visual offers no route to nest a `group` in a `group`.
 
 Registered in `ProjectByteFidelityTests` (both batteries); also drives `CategorizedValidationTests`,
-`ReportContractTests`, `FunctionBlockShapeTests`, `ReportIconStructureTests` and the `safe_visual_tests`
+`ReportContractTests`, `FunctionBlockShapeTests`, `ReportIconStructureTests` and the `safe_project_tests`
 module-map parity tests. Its companion **`project5-Dokumentation.md`** (in the same folder) is the full
 authoring record — per-element design rationale, the C-id → witness coverage table, the measured
 impossibilities, the seven open questions answered while authoring, and the maintenance rules. Read it
@@ -809,8 +809,9 @@ test row.
 **Who owns which format.** The `.txt` oracles pin the SDK's **default unicode icon stand-ins** and are gated by
 `ReportOracleTests` in `safe_project_tests`. The `.html` oracles embed OpenVisual's real
 `SvgReportIconProvider` output — the inline `<symbol>` sprite and the `#icon-logo` banner — so their gate,
-`ReportHtmlOracleTests`, lives in `safe_unit_tests`, the suite that references the app assembly. Both drive
-the same shared `tests/shared/ReportOracleHarness.cs` harness (matrix, naming rule, clock, byte assert).
+`ReportHtmlOracleTests`, needs the app assembly; it lives in `safe_project_tests` too, which references it.
+Both drive the same shared `tests/shared/ReportOracleHarness.cs` harness (matrix, naming rule, clock, byte
+assert), and one suite now owns both halves of the contract.
 
 **What `full-` adds** over `std-`: a meta line (`Fuld rapport — Genereret: … — Programmør: …`), the project
 metadata block, `(ID _0xNN)` stamps on every element, the differing-locality suffix on links, and the
@@ -1026,7 +1027,8 @@ tripwire), `MigrationParity` (per-rule parity for the Phase-5 migrations), `Sche
 `CatalogCompletenessTests` (checks each catalogue entry's disposition against the severity the recording
 shows), `DatalineAddressRemapTests` (asserts the three `dataline-address-*` successors appear and the retired
 `dataline-address` id does not), and `tests/shared`' `FindingOracleRows`, which feeds the GUI end-to-end
-assertions in `safe_visual_e2e_tests` and is itself guarded by `FindingOracleLinkTests` in `safe_visual_tests`.
+assertions in `safe_visual_e2e_tests` and is itself guarded by `FindingOracleLinkTests` in
+`safe_project_tests`.
 
 ### Encoding and layout
 

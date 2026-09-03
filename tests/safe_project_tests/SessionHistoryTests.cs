@@ -7,7 +7,7 @@ namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// fablerefac W2-16: the multi-level undo/redo history semantics (US-052) migrated from the app-level
-    /// <c>safe_visual_tests.EditHistoryTests</c> down onto <see cref="ProjectDocumentSession"/> — empty-history
+    /// app-level <c>EditHistoryTests</c> down onto <see cref="ProjectDocumentSession"/> — empty-history
     /// no-op, redo invalidated by a new edit, a fresh Open resets history, a cascading delete reverses as one step,
     /// an authoring edit round-trips, and the ⭐ unlock→undo standing regression (re-lock + session stays alive).
     /// Controller-free, no ShellHarness. The app-level file keeps only its UI concerns (pane refresh, E14 labels/menu).

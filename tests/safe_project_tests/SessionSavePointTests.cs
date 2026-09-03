@@ -5,7 +5,7 @@ namespace Ihc.Vis.Tests
 {
     /// <summary>
     /// fablerefac W2-16: the dirty-flag / save-point semantics (US-052 + US-004) migrated from the app-level
-    /// <c>safe_visual_tests.SavePointTests</c> down onto <see cref="ProjectDocumentSession"/> — dirtiness is a
+    /// app-level <c>SavePointTests</c> down onto <see cref="ProjectDocumentSession"/> — dirtiness is a
     /// comparison against the last saved snapshot (<c>MarkSaved</c>), so undoing back onto the save point reads clean
     /// and redoing away reads dirty. Controller-free, no ShellHarness. The app-level test keeps only its UI concern
     /// (no close-prompt when clean).

@@ -132,3 +132,113 @@ namespace Ihc.Telemetry.Seeded
         }
     }
 }
+
+namespace ihc_openvisual.Seeded
+{
+    using System;
+    using System.Threading.Tasks;
+
+    // Controls for the problem-surfacing detector (OpenVisualProblemSurfacingArchitectureTests). They live in
+    // the TEST assembly, so they can never reach the production scan -- which is anchored to the GUI assembly's
+    // own port and helpers -- while being run through the exact same predicate, with the anchors pointed here.
+
+    /// <summary>A stand-in for the dialog port, carrying the two member NAMES the production rule guards.</summary>
+    internal interface ISeededDialogPort
+    {
+        Task ShowProblemAsync(string title, string problem);
+
+        Task ShowInternalErrorAsync(string error);
+
+        /// <summary>An ordinary dialog, on the same port. It must NOT be guarded: the whole point of scoping the
+        /// rule by member is that the rest of the port is the ordinary interactive UI.</summary>
+        Task ConfirmAsync(string question);
+    }
+
+    /// <summary>Negative control: the admitted helper. It reaches the port deliberately, after telling the span,
+    /// and must never be flagged -- it is what every other site is supposed to go through.</summary>
+    internal static class SeededFailureReport
+    {
+        internal static Task FailedAsync(ISeededDialogPort dialogs, string title, string problem) =>
+            dialogs.ShowProblemAsync(title, problem);
+    }
+
+    /// <summary>Negative control: a workflow that routes through the helper. It never names a guarded member, so
+    /// the scan must not see it at all.</summary>
+    internal sealed class SeededConformingWorkflow(ISeededDialogPort dialogs)
+    {
+        internal Task ReportAsync() => SeededFailureReport.FailedAsync(dialogs, "title", "problem");
+    }
+
+    /// <summary>Negative control: a workflow using the ordinary dialog surface. Flagging this is the failure mode
+    /// that made a port-scoped rule useless, so it is pinned as a control rather than assumed.</summary>
+    internal sealed class SeededOrdinaryDialogUser(ISeededDialogPort dialogs)
+    {
+        internal Task AskAsync() => dialogs.ConfirmAsync("question");
+    }
+
+    /// <summary>Positive control: shows a problem straight off the port. Must be flagged.</summary>
+    internal sealed class SeededBypassingWorkflow(ISeededDialogPort dialogs)
+    {
+        internal Task ReportAsync() => dialogs.ShowProblemAsync("title", "problem");
+    }
+
+    /// <summary>
+    /// Positive control for the reason the rule matches a REFERENCE rather than a call: this site never invokes
+    /// the member. It hands it over as a method group, and whoever holds the delegate calls it later, from
+    /// somewhere no scan would associate with a workflow. A call-matching rule sees nothing here, which is
+    /// exactly how the real hand-off went unnoticed.
+    /// </summary>
+    internal sealed class SeededMethodGroupHandOff(ISeededDialogPort dialogs)
+    {
+        internal Func<string, Task> Hand() => dialogs.ShowInternalErrorAsync;
+    }
+}
+
+namespace Ihc.Safety.Seeded
+{
+    using System.Threading.Tasks;
+
+    // Controls for the controller-reach guard (ControllerReachArchitectureTests). They live HERE rather than in a
+    // controller-free suite for the obvious reason: the guard runs in those suites, so a seeded violator planted
+    // in one would fail the very rule it exists to arm. This assembly compiles the scan but not the guard.
+
+    /// <summary>Positive control: builds a real service through the constructor that makes its OWN transport
+    /// from settings. Nothing stands between it and the network. Must be flagged.</summary>
+    internal static class SeededControllerReacher
+    {
+        internal static AuthenticationService Build() => new(new IhcSettings { Endpoint = "http://seeded.invalid" });
+    }
+
+    /// <summary>Negative control: a stub this assembly declares itself. It carries the marker interface and
+    /// answers from fields, so flagging it would indict every test that writes its own double.</summary>
+    internal sealed class SeededLocalStubService : IIHCApiService
+    {
+        public IhcSettings IhcSettings => new();
+    }
+
+    /// <summary>Negative control: constructing that stub is not reaching a controller.</summary>
+    internal static class SeededLocalStubUser
+    {
+        internal static SeededLocalStubService Build() => new();
+    }
+
+    /// <summary>
+    /// The scan's KNOWN LIMIT, pinned rather than left to prose: a service the test never constructs itself,
+    /// because a product-side factory constructed it.
+    /// </summary>
+    /// <remarks>
+    /// <para>This is NOT an exclusion the rule wants — unlike the two above, nothing about this shape is safe by
+    /// construction. It is what "the scan reads DIRECT construction" costs, and the assertion over it exists so
+    /// the cost is a measured fact with a name rather than a discovery someone makes later while reading IL.
+    /// The day the scan derives the factory set from the product assembly, this control flips from
+    /// <c>Does.Not.Contain</c> to <c>Does.Contain</c> and the change is visible in the diff.</para>
+    /// <para>Nothing here reaches a wire: the endpoint is under the reserved <c>.invalid</c> TLD and no operation
+    /// is called — the same three-fold reason the admitted bridge-wiring sites carry.</para>
+    /// </remarks>
+    internal static class SeededFactoryReacher
+    {
+        internal static Ihc.Vis.ProjectAppService Build() =>
+            Ihc.Vis.ProjectAppService.CreateWithControllerBridge(
+                new IhcSettings { Endpoint = "https://seeded.invalid" });
+    }
+}

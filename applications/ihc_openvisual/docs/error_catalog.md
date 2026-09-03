@@ -485,10 +485,10 @@ bound as a `Problem`, then **two outside it** — a declared code with no site i
 
 ## 10. Gates a new item must pass
 
-Run `dotnet test tests/safe_project_tests/safe_project_tests.csproj` for an SDK item,
-`tests/safe_visual_tests/safe_visual_tests.csproj` for a host item,
-`tests/safe_architecture_tests/safe_architecture_tests.csproj` for either, and
-`tests/safe_unit_tests/safe_unit_tests.csproj` as well for a **DOC**-category row.
+Run `dotnet test tests/safe_project_tests/safe_project_tests.csproj` for an SDK item and for a host item
+alike — both catalogues' gates live there, including both halves of the report oracles a **DOC**-category row
+moves — and `tests/safe_architecture_tests/safe_architecture_tests.csproj` for either. Add
+`tests/safe_visual_tests/safe_visual_tests.csproj` only when the row changes something a window renders.
 
 | Requirement | Where it is enforced |
 | --- | --- |
@@ -533,7 +533,7 @@ hand-edited**:
 | Oracle | Regenerate with | Note |
 | --- | --- | --- |
 | [`tests/testdata/validation/`](../../../tests/testdata/validation/) — one XML file per corpus case, holding every finding that case produces in production order | `[Explicit] ValidationCharacterizationTests.Regenerate_TheFindingsOracles`, then copy over the directory | A code newly witnessed by the corpus also moves `BaselineRuleIdCount` |
-| [`tests/testdata/reports/`](../../../tests/testdata/reports/) `full-*` — **DOC-category rows only** | `[Explicit] ReportOracleTests.Regenerate_TheTxtOracles` (`safe_project_tests`, the `*.txt` oracles) and `[Explicit] ReportHtmlOracleTests.Regenerate_TheHtmlOracles` (`safe_unit_tests`, the `*.html` ones) | The Fuld reports render the DOCUMENTATION category as their appendix, so a DOC row moves both formats |
+| [`tests/testdata/reports/`](../../../tests/testdata/reports/) `full-*` — **DOC-category rows only** | `[Explicit] ReportOracleTests.Regenerate_TheTxtOracles` (the `*.txt` oracles) and `[Explicit] ReportHtmlOracleTests.Regenerate_TheHtmlOracles` (the `*.html` ones) — both in `safe_project_tests`, the suite that owns the reports | The Fuld reports render the DOCUMENTATION category as their appendix, so a DOC row moves both formats |
 
 The generated parts of `problem-catalogue.md` are rewritten by three `[Explicit]` regenerators, all in
 `CatalogTableRenderingTests`: `Regenerate_TheCatalogueIndex` (the appendix), `Regenerate_TheCategoryTable`

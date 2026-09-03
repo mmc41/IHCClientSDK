@@ -22,7 +22,18 @@
 
   <ItemGroup>
     <Using Include="NUnit.Framework" />
+    <!-- Statically, so fixtures keep calling SetupMainWindowAsync() unqualified now that it is no longer
+         an inherited member of the shared AvaloniaTestBase. -->
+    <Using Include="Ihc.Tests.LabWindows" Static="true" />
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
+    <!-- The IL decode and the member population every structural rule reads. Shared because the
+         controller-reach guard runs INSIDE each suite it polices, and a suite cannot be scanned from
+         outside by an assembly that does not reference it. -->
+    <Compile Include="..\shared\IlBody.cs" Link="shared\IlBody.cs" />
+    <Compile Include="..\shared\AuthoredMembers.cs" Link="shared\AuthoredMembers.cs" />
+    <Compile Include="..\shared\ControllerReachScan.cs" Link="shared\ControllerReachScan.cs" />
+    <!-- The safety rule, as a gate rather than a convention: this suite may reach no controller. -->
+    <Compile Include="..\shared\ControllerReachGuard.cs" Link="shared\ControllerReachGuard.cs" />
     <ProjectReference Include="..\..\utilities\ihc_lab\ihc_lab.csproj" />
   </ItemGroup>
 
@@ -33,5 +44,9 @@
   <ItemGroup>
     <Compile Include="..\shared\HeadlessScreenshot.cs" Link="shared\HeadlessScreenshot.cs" />
     <Compile Include="..\shared\ScreenshotCaptureCommand.cs" Link="shared\ScreenshotCaptureCommand.cs" />
+    <!-- The attribute those two are driven by, and the base class holding the window they capture. One
+         declaration for both Avalonia suites; it names no application's types, so this suite adds LabWindows.cs
+         beside it for the window opener and imports it statically. -->
+    <Compile Include="..\shared\AvaloniaTestBase.cs" Link="shared\AvaloniaTestBase.cs" />
   </ItemGroup>
 </Project>

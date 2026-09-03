@@ -376,8 +376,9 @@ plus an arm in `DialogFieldTemplate.ForKind`.
 
 | Layer | Suite |
 | --- | --- |
-| Dispatch, activate route, insert/rollback | `tests/safe_visual_tests/MainWindowViewModelTests.cs` |
-| Window shape, fields, titles, parity | `tests/safe_visual_tests/` — `ProductDialogWindowTests`, `DialogTitleParityTests`, `VariableDialogFieldParityTests`, `ConditionsPropertiesParityTests`, `FunctionBlockPropertiesParityTests`, `EnumVariablePropertiesParityTests`, `InsertProductDialogParityTests`, `DialogFillDirectionTests`, `DialogBoundsFromMetadataTests` |
+| Dispatch, activate route, insert/rollback | `tests/safe_project_tests/MainWindowViewModelTests.cs` |
+| Dialog titles, prefill and route parity — no toolkit needed | `tests/safe_project_tests/` — `DialogTitleParityTests`, `ConditionsPropertiesParityTests`, `FunctionBlockPropertiesParityTests`, `EnumVariablePropertiesParityTests`, `InsertProductDialogParityTests` |
+| Window shape and layout — needs an Avalonia window | `tests/safe_visual_tests/` — `ProductDialogWindowTests`, `VariableDialogFieldParityTests`, `DialogFillDirectionTests`, `DialogBoundsFromMetadataTests` |
 | Descriptor composition and write-back | `tests/safe_project_tests/products/` — `ProductDialogComposerTests`, `ApplyProductDialogTests`, `ProductDialogPresetTests`, `ProductDialogCatalogSweepTests`, `DialogValueRuleTests` |
 | Dialog metadata cannot reach the writers | `tests/safe_architecture_tests/DialogMetadataIsolationArchitectureTests.cs` |
 

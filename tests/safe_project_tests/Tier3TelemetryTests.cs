@@ -13,11 +13,10 @@ namespace Ihc.Vis.Tests
     /// cache's miss counter.
     ///
     /// The analysis one is a MIRROR rather than a replacement. <c>FullAnalysisCount</c> stays exactly as it
-    /// is, because a <c>[NonParallelizable]</c> test reads it directly and a metric is not readable from a
-    /// test without a listener. Mirroring means the two can be compared - which is what the last test here
-    /// does, so a future change that moves one and not the other is caught.
+    /// is, because a test reads it directly and a metric is not readable from a test without a listener.
+    /// Mirroring means the two can be compared - which is what the last test here does, so a future change
+    /// that moves one and not the other is caught.
     /// </summary>
-    [NonParallelizable]
     public class Tier3TelemetryTests
     {
         private static Project Fixture() =>

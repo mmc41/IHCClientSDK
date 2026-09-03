@@ -43,19 +43,18 @@ namespace Ihc.Vis.Tests
         private sealed record MarkSavedOp : Op;
         private sealed record MarkSavedStaleOp(int Pick) : Op;
 
-        private static readonly Gen<string> NameGen =
-            Gen.OneOfConst("abcæø 09".ToCharArray()).Array[1, 5].Select(cs => new string(cs));
-
+        // This law's own operation set: only it has a saved marker to move, so MarkSaved and MarkSavedStale
+        // belong here and nowhere else. Sharing one model would put a saved marker into laws that have none.
         private static readonly Gen<Op> AnyOp = Gen.OneOf(
-            NameGen.Select(n => (Op)new AddOp(n)),
-            Gen.Select(Gen.Int[0, 20], NameGen, (p, n) => (Op)new RenameOp(p, n)),
-            Gen.Int[0, 20].Select(p => (Op)new DeleteOp(p)),
-            Gen.Select(Gen.Int[0, 20], Gen.Int[0, 20], (p, pos) => (Op)new ReorderOp(p, pos)),
+            CsCheckValues.Name.Select(n => (Op)new AddOp(n)),
+            Gen.Select(CsCheckValues.Pick, CsCheckValues.Name, (p, n) => (Op)new RenameOp(p, n)),
+            CsCheckValues.Pick.Select(p => (Op)new DeleteOp(p)),
+            Gen.Select(CsCheckValues.Pick, CsCheckValues.Pick, (p, pos) => (Op)new ReorderOp(p, pos)),
             Gen.Const((Op)new UndoOp()),
             Gen.Const((Op)new RedoOp()),
             Gen.Const((Op)new RollbackOp()),
             Gen.Const((Op)new MarkSavedOp()),
-            Gen.Int[0, 20].Select(p => (Op)new MarkSavedStaleOp(p)));
+            CsCheckValues.Pick.Select(p => (Op)new MarkSavedStaleOp(p)));
 
         private static readonly Gen<Op[]> Sequence = AnyOp.Array[0, 12];
 

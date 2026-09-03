@@ -4,9 +4,10 @@ using NUnit.Framework;
 namespace Ihc.Tests
 {
     /// <summary>
-    /// The SDK half of the registry drift check. The app half lives in <c>safe_visual_tests</c>, because
-    /// <c>ihcclient</c> grants internals access to this suite and <c>ihc_openvisual</c> grants it to that
-    /// one - no single suite can reflect both assemblies, so the check is split rather than skipped.
+    /// The SDK half of the registry drift check. The app half is <c>AppTelemetryRegistryTests</c> in
+    /// <c>safe_project_tests</c>, because <c>ihcclient</c> grants internals access to this suite and
+    /// <c>ihc_openvisual</c> grants it to that one - no single suite can reflect both assemblies, so the
+    /// check is split rather than skipped.
     /// </summary>
     [TestFixture]
     public class SdkTelemetryRegistryTests

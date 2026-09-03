@@ -887,11 +887,10 @@ catalogs. A change to how these suites reach the engine is 14 edits with nothing
 - [ ] Leave the per-file fixture builders (`Dimmer`, `Modem`, `Block`) alone — those are the test content,
       not scaffolding.
 
-Also: `HostProblemCatalogTests.RepositoryRoot()` (`:406`) is a line-for-line copy of
-`TestRepository.RequireRoot()`, and `TheCatchAllSentenceIsWrittenOnceInTheApplication` (`:200`) walks the
-live checkout with a hand-rolled `bin`/`obj` filter — while `safe_visual_tests.csproj:52-56` copies the GUI
-sources to `appsrc/` *specifically* so no test walks the checkout, which is how
-`MessageSiteRegisterTests.cs:252` does it.
+Also: `HostProblemCatalogTests.RepositoryRoot()` is a line-for-line copy of `TestRepository.RequireRoot()`, and
+its `TheCatchAllSentenceIsWrittenOnceInTheApplication` walks the live checkout with a hand-rolled `bin`/`obj`
+filter — while `safe_project_tests.csproj` copies the GUI sources to `appsrc/` *specifically* so no test walks
+the checkout, which is how `MessageSiteRegisterTests` does it in the same suite.
 
 ### V11 · Four unreferenced severity icons
 

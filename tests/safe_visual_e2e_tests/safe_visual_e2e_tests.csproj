@@ -63,13 +63,21 @@
 
   <ItemGroup>
     <!-- The findings-oracle reader, and the row projection these tests compare the live panel against. Shared
-         with safe_visual_tests, whose FindingOracleLinkTests is the guard that the reader still finds rows —
-         this suite does not run in CI, so a reader that silently returned nothing would break nothing here.
-         ReportOracleHarness comes along because it owns the pinned instant the finding harness reads its clock
-         from. -->
+         with safe_project_tests, whose FindingOracleLinkTests is the guard that the reader still finds rows —
+         the desktop leg of this suite does not run in CI, so a reader that silently returned nothing would
+         break nothing here. ReportOracleHarness comes along because it owns the pinned instant the finding
+         harness reads its clock from. -->
     <Compile Include="..\shared\ReportOracleHarness.cs" Link="shared\ReportOracleHarness.cs" />
     <Compile Include="..\shared\FindingOracleHarness.cs" Link="shared\FindingOracleHarness.cs" />
     <Compile Include="..\shared\FindingOracleRows.cs" Link="shared\FindingOracleRows.cs" />
+    <!-- The safety rule, as a gate rather than a convention: this suite drives a GUI and may reach no
+         controller. It matters more here than anywhere, not less — the desktop leg is outside every default
+         verification, so an unsafe site added here would be policed by nothing at all. The IL decode and the
+         member population the scan reads come with it. -->
+    <Compile Include="..\shared\IlBody.cs" Link="shared\IlBody.cs" />
+    <Compile Include="..\shared\AuthoredMembers.cs" Link="shared\AuthoredMembers.cs" />
+    <Compile Include="..\shared\ControllerReachScan.cs" Link="shared\ControllerReachScan.cs" />
+    <Compile Include="..\shared\ControllerReachGuard.cs" Link="shared\ControllerReachGuard.cs" />
     <!-- The driver script lives under .claude/ and the projects the app opens are read as real paths, so this
          suite is one of the few that legitimately reaches the source checkout. -->
     <Compile Include="..\shared\TestRepository.cs" Link="shared\TestRepository.cs" />

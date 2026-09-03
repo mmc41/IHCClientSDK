@@ -14,7 +14,7 @@ using System.Text.RegularExpressions;
 namespace Ihc.Tests
 {
     [TestFixture]
-    [NonParallelizable]
+    [NonParallelizable]   // asserts identity over Serialization's process-wide serializer cache
     public class SerializeTest
     { 
          RequestEnvelope<Ihc.Soap.Authentication.inputMessageName2> authenticate1Object = new RequestEnvelope<Ihc.Soap.Authentication.inputMessageName2>(new Ihc.Soap.Authentication.inputMessageName2(new Ihc.Soap.Authentication.WSAuthenticationData()  { username = "a", password="b", application="c"} )); 

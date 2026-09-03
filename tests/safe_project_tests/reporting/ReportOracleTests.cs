@@ -11,7 +11,7 @@ namespace Ihc.Vis.Tests
     /// facade — in-memory generation with the DEFAULT unicode icon stand-ins (D5), UTF-8 no BOM + LF from the
     /// generator (S06), CRLF→LF normalization applied to the ORACLE side only. The coverage matrix, oracle
     /// naming, pinned generation clock (S10) and byte assert are the shared <see cref="ReportOracleHarness"/>
-    /// harness; the HTML half of the same contract lives in <c>safe_unit_tests</c>.
+    /// harness; the HTML half of the same contract is <c>ReportHtmlOracleTests</c>, in this suite.
     /// </summary>
     public class ReportOracleTests
     {

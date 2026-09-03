@@ -12,11 +12,14 @@ namespace Ihc.Tests
     /// <summary>
     /// Property-based tests for <see cref="LabAppService.OperationItem"/>'s argument vector, using CsCheck.
     ///
-    /// <para>Two laws, both stated over <b>any</b> operation whose parameters this fixture can generate
+    /// <para>Three laws, each stated over <b>any</b> operation whose parameters this fixture can generate
     /// values for, rather than over the single one-int operation the example tests used:</para>
     /// <list type="number">
     ///   <item><b>Round-trip</b> - <c>GetMethodArgumentsAsArray()</c> after
     ///   <c>SetMethodArgumentsFromArray(a)</c> is element-wise equal to <c>a</c>.</item>
+    ///   <item><b>Change events</b> - over a sequence of edits, <c>MethodArgumentChanged</c> fires
+    ///   exactly when the stored value changes, in argument order, carrying the right index, old
+    ///   value and new value.</item>
     ///   <item><b>Defensive copy</b> - the returned array is never the internal one, successive calls
     ///   return distinct instances, and mutating a returned copy does not change the operation.</item>
     /// </list>
@@ -151,29 +154,104 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// The "changed" relation the event contract is defined against, mirroring the service's own
-        /// rule: reference-equal counts as unchanged (so null-to-null does too), exactly one side being
-        /// null counts as changed, otherwise <c>Equals</c> decides.
+        /// How one edit relates to the value already stored. The expectation is derived from the
+        /// RELATION rather than from re-deciding whether two values are equal, which is what stops this
+        /// fixture agreeing with a wrong rule by sharing its assumption.
         /// </summary>
-        private static bool AreValuesEqual(object? a, object? b)
+        private enum EditRelation
         {
-            if (ReferenceEquals(a, b))
-                return true;
-            if (a == null || b == null)
-                return false;
-            return a.Equals(b);
+            /// <summary>Set the very instance already stored.</summary>
+            Repeat,
+
+            /// <summary>Set a distinct instance carrying the same value.</summary>
+            Rebox,
+
+            /// <summary>Set a value built by a transformation that cannot leave it unchanged.</summary>
+            Change,
         }
 
         /// <summary>
         /// One step of a generated edit sequence: either a single indexed set, or a whole-vector set.
         /// </summary>
-        private readonly record struct EditStep(bool WholeVector, int Index, int Seed);
+        private readonly record struct EditStep(bool WholeVector, int Index, EditRelation Relation);
+
+        /// <summary>
+        /// A distinct instance carrying the same value: a primitive is unboxed and boxed again, a string
+        /// is rebuilt from its own characters. Null and the empty string come back as themselves, because
+        /// neither has a second instance to offer - and a rebox that could not be made distinct simply IS
+        /// a repeat, which requires the same silence, so the degenerate case still asserts something true.
+        /// </summary>
+        private static object? Rebox(object? value)
+        {
+            if (value is null)
+                return null;
+
+            if (value is string text)
+                return text.Length == 0 ? text : new string(text.ToCharArray());
+
+            return Type.GetTypeCode(value.GetType()) switch
+            {
+                TypeCode.Byte => (byte)value,
+                TypeCode.SByte => (sbyte)value,
+                TypeCode.Int16 => (short)value,
+                TypeCode.UInt16 => (ushort)value,
+                TypeCode.Int32 => (int)value,
+                TypeCode.UInt32 => (uint)value,
+                TypeCode.Int64 => (long)value,
+                TypeCode.UInt64 => (ulong)value,
+                TypeCode.Single => (float)value,
+                TypeCode.Double => (double)value,
+                TypeCode.Decimal => (decimal)value,
+                TypeCode.Boolean => (bool)value,
+                TypeCode.Char => (char)value,
+                _ => value,
+            };
+        }
+
+        /// <summary>
+        /// A value that differs from <paramref name="current"/> by CONSTRUCTION rather than by comparison:
+        /// null becomes non-null, a number gains one, a bool inverts, a char advances, a string grows a
+        /// character. Nothing here asks whether two values are equal, which is the whole point of it.
+        /// </summary>
+        private static object NextDistinctValue(Type parameterType, object? current)
+        {
+            // Seed 1 rather than 0: ValueFor yields null exactly on the seeds divisible by seven.
+            if (current is null)
+                return ValueFor(Nullable.GetUnderlyingType(parameterType) ?? parameterType, 1)!;
+
+            if (current is string text)
+                return text + "x";
+
+            return Type.GetTypeCode(current.GetType()) switch
+            {
+                TypeCode.Byte => (byte)(((byte)current + 1) % 256),
+                TypeCode.SByte => (sbyte)(((sbyte)current + 1) % 128),
+                TypeCode.Int16 => (short)(((short)current + 1) % 32000),
+                TypeCode.UInt16 => (ushort)(((ushort)current + 1) % 32000),
+                TypeCode.Int32 => unchecked((int)current + 1),
+                TypeCode.UInt32 => unchecked((uint)current + 1),
+                TypeCode.Int64 => unchecked((long)current + 1),
+                TypeCode.UInt64 => unchecked((ulong)current + 1),
+                TypeCode.Single => (float)current + 1f,
+                TypeCode.Double => (double)current + 1d,
+                TypeCode.Decimal => (decimal)current + 1m,
+                TypeCode.Boolean => !(bool)current,
+                TypeCode.Char => (char)current == char.MaxValue ? 'a' : (char)((char)current + 1),
+                _ => throw new NotSupportedException($"No change transformation for {current.GetType().Name}"),
+            };
+        }
 
         /// <summary>
         /// Model-based law for <c>MethodArgumentChanged</c> over a SEQUENCE of edits: an event fires
         /// exactly when the stored value changes, in argument order, carrying the right index, old value
         /// and new value. The model is a plain <c>object[]</c> replaying the same edits - so the test
         /// states the contract independently of how the service tracks its arguments.
+        ///
+        /// <para>What each edit must produce is fixed by the RELATION it bears to the value already
+        /// stored, not by re-deciding equality: repeating the stored instance fires nothing, setting an
+        /// equal-but-differently-boxed instance fires nothing, and setting a value built by a
+        /// change-producing transformation fires exactly once. A predicate copied from the subject would
+        /// instead let a wrong rule agree with itself, since copy and original would be wrong together.</para>
         ///
         /// <para>Replaces eight single-edit examples. A sequence is strictly stronger: it also catches a
         /// service that reports the correct old value only on the first edit, or that compares against
@@ -189,11 +267,14 @@ namespace Ihc.Tests
 
             Assert.That(operations, Is.Not.Empty, "no usable parameterized operations - property would be vacuous");
 
+            int distinctReboxes = 0;
+            int changesRequired = 0;
+
             (from index in Gen.Int[0, operations.Count - 1]
              from steps in (from wholeVector in Gen.Bool
                             from stepIndex in Gen.Int[0, 7]
-                            from seed in Gen.Int[0, 40]
-                            select new EditStep(wholeVector, stepIndex, seed)).Array[1, 6]
+                            from relation in Gen.Int[0, 2]
+                            select new EditStep(wholeVector, stepIndex, (EditRelation)relation)).Array[1, 6]
              select (Operation: operations[index], Steps: steps))
             .Sample(testCase =>
             {
@@ -213,34 +294,60 @@ namespace Ihc.Tests
                 {
                     var expected = new List<(int Index, object? Old, object? New)>();
 
-                    foreach (var step in testCase.Steps)
+                    // Chooses the value a relation calls for at one index, and appends the event that
+                    // relation REQUIRES: exactly one for Change, none for Repeat and Rebox.
+                    object? Plan(int target, EditRelation relation)
                     {
+                        object? current = model[target];
+                        switch (relation)
+                        {
+                            case EditRelation.Repeat:
+                                return current;
+
+                            case EditRelation.Rebox:
+                                object? rebox = Rebox(current);
+                                if (!ReferenceEquals(rebox, current))
+                                    distinctReboxes++;
+                                model[target] = rebox;
+                                return rebox;
+
+                            default:
+                                object next = NextDistinctValue(parameters[target].Type, current);
+                                expected.Add((target, current, next));
+                                changesRequired++;
+                                model[target] = next;
+                                return next;
+                        }
+                    }
+
+                    for (int s = 0; s < testCase.Steps.Length; s++)
+                    {
+                        EditStep step = testCase.Steps[s];
+                        int firedBefore = actual.Count;
+                        int requiredBefore = expected.Count;
+                        string what;
+
                         if (step.WholeVector)
                         {
-                            object[] vector = parameters
-                                .Select((p, i) => ValueFor(p.Type, step.Seed + i)!)
-                                .ToArray();
-
+                            var vector = new object?[parameters.Length];
                             for (int i = 0; i < vector.Length; i++)
-                            {
-                                if (!AreValuesEqual(model[i], vector[i]))
-                                    expected.Add((i, model[i], vector[i]));
-                                model[i] = vector[i];
-                            }
+                                vector[i] = Plan(i, (EditRelation)(((int)step.Relation + i) % 3));
 
                             operation.SetMethodArgumentsFromArray(vector);
+                            what = $"whole vector, relations from {step.Relation}";
                         }
                         else
                         {
                             int target = step.Index % parameters.Length;
-                            object? value = ValueFor(parameters[target].Type, step.Seed);
-
-                            if (!AreValuesEqual(model[target], value))
-                                expected.Add((target, model[target], value));
-                            model[target] = value;
-
+                            object? value = Plan(target, step.Relation);
                             operation.SetMethodArgument(target, value);
+                            what = $"{step.Relation} at index {target}";
                         }
+
+                        // Per step, so a failure names the relation that broke rather than only the
+                        // position at which the whole sequence diverged.
+                        Assert.That(actual.Count - firedBefore, Is.EqualTo(expected.Count - requiredBefore),
+                            $"{operation.DisplayName}: step {s} ({what}) fired the wrong number of events");
                     }
 
                     Assert.That(actual, Is.EqualTo(expected), operation.DisplayName + ": event sequence");
@@ -252,6 +359,11 @@ namespace Ihc.Tests
                     operation.MethodArgumentChanged -= Record;
                 }
             }, threads: 1);
+
+            Assert.That(distinctReboxes, Is.GreaterThan(0),
+                "no rebox produced a second instance - the equal-but-differently-boxed relation would be vacuous");
+            Assert.That(changesRequired, Is.GreaterThan(0),
+                "no change step was generated - the fires-exactly-once relation would be vacuous");
         }
 
         [Test]
