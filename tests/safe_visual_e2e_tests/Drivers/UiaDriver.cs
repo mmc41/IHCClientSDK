@@ -12,6 +12,7 @@ using System.Threading;
 using Ihc.UiAutomation;
 using Ihc.Vis.Validation;
 using ihc_openvisual.Configuration;
+using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 
 using NUnit.Framework;
@@ -28,7 +29,7 @@ namespace safe_visual_e2e_tests;
 /// desktop's own modal stack — so it can fail on a defect in the Avalonia-to-UIA bridge, which no in-process
 /// test can reach.</para>
 ///
-/// <para><b>Mechanics live in <c>shared/ihc_uiautomation</c>; POLICY lives here.</b> The toolkit knows how to
+/// <para><b>Mechanics live in <c>shared/ihc_uiautomation_windows</c>; POLICY lives here.</b> The toolkit knows how to
 /// find an element, press a chord and take a window; it knows nothing about OpenVisual. The verb vocabulary,
 /// the result envelope, the automation ids and the gesture grammar are this file's, because none of them means
 /// anything outside this application.</para>
@@ -42,6 +43,14 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
 {
     /// <summary>The application's process name, without the extension, as <c>Process</c> reports it.</summary>
     private const string ProcessName = "ihc_openvisual";
+
+    /// <summary>
+    /// The switch that turns the application's read-only state snapshot on. Spelled here rather than shared
+    /// with the application's own constant on purpose: that one is <c>internal</c> to a type this driver has no
+    /// business reaching into, and a driver agreeing with the application about a command line is exactly the
+    /// kind of contract a test should state independently.
+    /// </summary>
+    private const string TestSurfaceArgument = "--test";
 
     /// <summary>How long a launched application has to publish a driveable window.</summary>
     private static readonly TimeSpan LaunchTimeout = TimeSpan.FromSeconds(60);
@@ -127,6 +136,7 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
         {
             ("doctor", _) => Launch(DriverArguments.Option(args, "--path")),
             ("session", "status") => Ok(),
+            ("session", "faults") => Faults(),
             ("capture", "window") => CaptureWindow(),
             ("problems", "state") => ProblemsState(args),
             ("problems", "rows") => ProblemsRows(),
@@ -137,7 +147,7 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
             ("node", "get-properties") => InvokeMenuItem(AutomationIds.MenuEdit, "node.properties"),
             ("projectInfo", "get") => InvokeMenuItem(AutomationIds.MenuDocumentation, "project.info"),
             ("view", "configuration") => SendToShell(new UiaGesture(UiaKey.Escape), "{ESC}"),
-            ("edit", "undo") => SendToShell(new UiaGesture(UiaKey.Z, UiaModifiers.Control), "^z"),
+            ("edit", "undo") => Undo(),
             ("key", "send") => KeySend(args),
             ("dialog", "read") => DialogRead(),
             ("dialog", "select-item") => DialogSelectItem(args),
@@ -165,7 +175,10 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
         // driver would attach to whichever the window manager happened to list first.
         KillApp();
 
-        List<string> arguments = [];
+        // --test is what every wait below depends on: without it the application publishes no snapshot and the
+        // driver is back to inferring lifecycle and validation currency from rendering. It gates PUBLICATION
+        // only, so what is launched here behaves as the shipped application behaves.
+        List<string> arguments = [TestSurfaceArgument];
         if (projectPath is { Length: > 0 })
         {
             arguments.Add(projectPath);
@@ -245,7 +258,10 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
             int milliseconds = int.TryParse(DriverArguments.Option(args, "--timeout"), out int given)
                 ? given
                 : 30_000;
-            WaitForBound(TimeSpan.FromMilliseconds(milliseconds));
+            if (WaitForBound(TimeSpan.FromMilliseconds(milliseconds)) is { } rejected)
+            {
+                return SnapshotRejected(rejected);
+            }
         }
 
         if (Panel() is not { } panel)
@@ -253,19 +269,47 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
             return PanelHidden();
         }
 
-        string state = ReadState(panel);
+        // The published currency BEFORE the counts and again AFTER them. Each tier count is a separate
+        // cross-process search and property read, so the four of them are not read at one instant — and an
+        // envelope reporting a state derived from one moment beside counts from another is not a coherent
+        // snapshot of anything. Asked twice, a move underneath is visible instead of merely happening.
+        SnapshotRead before = Snapshot();
+        if (before.Rejection is { } rejectedBefore)
+        {
+            return SnapshotRejected(rejectedBefore);
+        }
 
-        return Ok(new Dictionary<string, object?>
+        string state = ReadState(panel);
+        Dictionary<string, object?> counts = new()
         {
             // Always true on this path: the guard above refuses when the panel cannot be found at all.
             ["visible"] = true,
-            ["state"] = state,
-            ["bound"] = ProblemsStates.IsBound(state),
             ["warnings"] = TierCount(panel, ProblemsTier.Warning),
             ["errors"] = TierCount(panel, ProblemsTier.Error),
             ["infos"] = TierCount(panel, ProblemsTier.Info),
             ["fatals"] = TierCount(panel, ProblemsTier.Fatal),
-        });
+        };
+        SnapshotRead after = Snapshot();
+        if (after.Rejection is { } rejectedAfter)
+        {
+            return SnapshotRejected(rejectedAfter);
+        }
+
+        // The snapshot may WITHHOLD boundness, never grant it. It knows whether the DOCUMENT has been validated;
+        // the rendering is what a scenario actually reads its counts off, and a panel that has not caught up is
+        // still showing the previous numbers. So a published "not current" — including a currency that moved
+        // between the two reads — demotes an otherwise bound panel to stale, and nothing promotes one.
+        bool renderedBound = ProblemsStates.IsBound(state);
+        // `is not false` and not `== true`: a null here is the ABSENT surface, which withholds nothing. It is
+        // never a rejected one — that refused above, because a snapshot the driver cannot read is not "nothing
+        // published", and reading it so would hand the decision back to the rendering the parser just declined
+        // to vouch for.
+        bool bound = renderedBound
+            && before.Value?.IsValidationCurrent is not false
+            && after.Value?.IsValidationCurrent is not false;
+        counts["state"] = renderedBound && !bound ? ProblemsStates.Stale : state;
+        counts["bound"] = bound;
+        return Ok(counts);
     }
 
     /// <summary>
@@ -309,22 +353,246 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
     /// poll, every time, and the verb after it then read the counts from BEFORE the edit it was waiting for.
     /// The spinner is the observable that survives a panel with rows in it.
     /// </remarks>
-    private void WaitForBound(TimeSpan timeout)
+    /// <returns>
+    /// Null when the wait ran its course. The parser's rejection when the published snapshot could not be read,
+    /// which ends the wait at once: rendering is no substitute for a surface that is on and unreadable, and the
+    /// caller refuses on it rather than reporting a state it cannot vouch for.
+    /// </returns>
+    private string? WaitForBound(TimeSpan timeout)
     {
+        SnapshotRead first = Snapshot();
+        if (first.Rejection is { } rejection)
+        {
+            return rejection;
+        }
+
+        // The published comparison, when there is one. It is LEVEL-triggered — "the bound result describes the
+        // current document" — so it needs no pre-action baseline and cannot be defeated by a state that is only
+        // briefly distinguishable on screen. That last part is why this exists: the inference below cannot tell
+        // stale from up-to-date for the first second after an edit on any fixture that has rows, because the
+        // sentence is hidden whenever there are rows and the spinner is not raised until a full second of
+        // continuous staleness has passed. A wait built on it returns on its first poll, and the verb after it
+        // reads the counts from before the edit.
+        //
+        // What it does need is for the edit it follows to have LANDED. `val == gen.ver` holds for the document
+        // from before an undo exactly as it will for the one after, so a wait that began before `ver` moved
+        // would accept the old result on its first poll. Making sure of that is the edit verb's job, not this
+        // wait's: every verb that edits settles on its own effect before it returns — Undo, and the two
+        // activations through SettleAfterActivation — which is what makes "current" here mean current to the
+        // edited document rather than to whichever one the wait happened to start on.
+        if (first.Value is not null)
+        {
+            string? rejected = null;
+            UiaWait.Until(
+                () =>
+                {
+                    SnapshotRead read = Snapshot();
+                    rejected = read.Rejection;
+                    return read.Value?.IsValidationCurrent == true;
+                },
+                timeout,
+                poll: TimeSpan.FromMilliseconds(50),
+                // A rejection seen mid-wait is a reason to stop, not a value to keep polling past.
+                giveUp: () => rejected ?? (app is { HasExited: true } ? "the application exited" : null));
+            return rejected;
+        }
+
+        // No snapshot: the application was started without the test surface. Degrade to what the driver could
+        // see before it existed rather than refusing, and accept the blind window described above.
         long deadline = Environment.TickCount64 + (long)timeout.TotalMilliseconds;
         while (Environment.TickCount64 < deadline)
         {
             if (Panel() is not { } panel)
             {
-                return;
+                return null;
             }
 
             if (ProblemsStates.IsBound(ReadState(panel)))
             {
-                return;
+                return null;
             }
 
             Thread.Sleep(100);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// What an activation is measured against: the state the gesture found, read BEFORE it is delivered.
+    /// </summary>
+    /// <remarks>
+    /// Before, not after. A pattern call such as Invoke can be answered by the application before it returns,
+    /// so a baseline read afterwards may already describe the moved state — and a settle measured against that
+    /// either waits out its whole ceiling for a change that has already happened or, when the effect is the
+    /// very thing the next verb reads, reports as settled a state it never saw move.
+    /// </remarks>
+    /// <param name="Snapshot">The published state, or null when the application publishes none.</param>
+    /// <param name="Modals">How many of the application's dialogs were open.</param>
+    private readonly record struct ActivationBaseline(AutomationSnapshot? Snapshot, int Modals);
+
+    /// <summary>
+    /// Takes the baseline an activation will be settled against — or refuses, before anything is delivered,
+    /// when the application publishes a snapshot this driver cannot read.
+    /// </summary>
+    /// <returns>Null when <paramref name="baseline"/> was taken; the refusal otherwise.</returns>
+    private E2E.Envelope? TakeActivationBaseline(out ActivationBaseline baseline)
+    {
+        SnapshotRead read = Snapshot();
+        baseline = new ActivationBaseline(read.Value, AppDialogs().Count);
+        return read.Rejection is { } rejection ? SnapshotRejected(rejection) : null;
+    }
+
+    /// <summary>
+    /// Waits for an ACTIVATION to become observable: a modal opened, an edit landed, or validation currency
+    /// moved. Falls back to the measured sleep when nothing is published.
+    /// </summary>
+    /// <remarks>
+    /// <para>A sleep bounds nothing. Shorter than the work, it reads a state that has not happened yet — which
+    /// is what <see cref="ActivationSettle"/>'s own note records: a quarter of a second was enough for the
+    /// selection and not for the work, and it read as an activation that silently did nothing. Longer than the
+    /// work, it is waste on every occurrence. This returns as soon as the application shows the work, and keeps
+    /// the old constant only as the CEILING rather than as the price.</para>
+    ///
+    /// <para>It is a settle rather than an assertion: an activation that legitimately changes none of the three
+    /// falls through at the ceiling, exactly as the sleep did, because a driver cannot know which gestures those
+    /// are. What is gained is the common case, and what is lost is nothing.</para>
+    /// </remarks>
+    /// <param name="before">The state the gesture was delivered on, from <see cref="TakeActivationBaseline"/>.</param>
+    private void SettleAfterActivation(ActivationBaseline before)
+    {
+        if (before.Snapshot is not { } published)
+        {
+            Thread.Sleep(ActivationSettle);
+            return;
+        }
+
+        UiaWait.Until(
+            () => Snapshot().Value is { } now
+                && ActivationObservable(published, now, before.Modals, () => AppDialogs().Count),
+            ActivationSettle,
+            poll: TimeSpan.FromMilliseconds(25),
+            giveUp: () => app is { HasExited: true } ? "the application exited" : null);
+    }
+
+    /// <summary>
+    /// Whether the work behind an activation has become observable: the edit landed, validation currency moved,
+    /// or a dialog OPENED.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>A dialog that CLOSED is deliberately not on the list</b>, and that is the whole of this rule. A
+    /// dialog closes on the click that dismisses it, while the edit behind an affirmative button is committed
+    /// only after the awaited dialog returns — a dispatcher turn later at least, and more where the commit
+    /// reports through an operation scope. Accepting the close as completion returns the verb INTO that gap,
+    /// where the version still reads pre-edit and <c>val == gen.ver</c> still holds for the document from
+    /// before, so <see cref="WaitForBound"/> accepts the old result on its first poll and the scenario asserts
+    /// against counts the edit never reached.</para>
+    ///
+    /// <para>What it costs is a dismissal driven through a BUTTON — one that changes nothing falls through at
+    /// the ceiling rather than returning on the close, which is the price of not knowing which button was
+    /// affirmative and is bounded by the ceiling the fixed sleep used to cost unconditionally. Dismissal as a
+    /// verb pays nothing: <see cref="DialogCancel"/> watches its own window close and never comes here.</para>
+    ///
+    /// <para><paramref name="modalsNow"/> is a delegate because reading it is a cross-process enumeration of the
+    /// application's windows, on a 25 ms poll, and the two cheap comparisons answer the common case.</para>
+    /// </remarks>
+    internal static bool ActivationObservable(
+        AutomationSnapshot before, AutomationSnapshot now, int beforeModals, Func<int> modalsNow) =>
+        now.Version != before.Version
+        || now.IsValidationCurrent != before.IsValidationCurrent
+        || modalsNow() > beforeModals;
+
+    /// <summary>
+    /// The application's published state, read from the main window's peer.
+    /// </summary>
+    /// <remarks>
+    /// The property the application writes is the one this toolkit already round-trips for row identity, so the
+    /// transport is the driver's existing reachability and no more. An ABSENT property is not a failure: it is
+    /// what an application started without <see cref="TestSurfaceArgument"/> looks like, and callers degrade
+    /// rather than refuse. A REJECTED one is a failure, and is reported as such by whoever asked.
+    /// </remarks>
+    private SnapshotRead Snapshot() =>
+        mainWindow is { } shell ? AutomationSnapshot.Read(shell.ItemStatus) : default;
+
+    /// <summary>
+    /// The refusal a snapshot the driver could not read earns, from whichever verb asked.
+    /// </summary>
+    /// <remarks>
+    /// Its own code, because it is neither of the refusals it could be mistaken for. It is not the ABSENT
+    /// surface, which is the documented state of an application started without <see cref="TestSurfaceArgument"/>
+    /// and which callers degrade for; and it is not bad input to the verb. It is the application publishing
+    /// something this driver does not understand — a newer format, a field it never learned — which no later
+    /// verb can make sense of either. Failing on the first verb that noticed is the honest answer; reading on
+    /// from rendering the parser has just declined to vouch for is not. The headless driver refuses with the same
+    /// word, because a scenario reads the code without knowing which mode answered.
+    /// </remarks>
+    private E2E.Envelope SnapshotRejected(string why) => Refuse("SnapshotRejected", why);
+
+    /// <summary>
+    /// The application's own fault record, out of the published snapshot: how many faults it has appended since
+    /// it started, and the last one's code.
+    /// </summary>
+    /// <remarks>
+    /// Not the Problemer panel's internal tier, which this driver can already read and which no scenario does.
+    /// That list is capacity-bounded, collapses repeats, empties when the document changes and sits behind a
+    /// filter a scenario may itself toggle — four ways it can report nothing while something faulted. A refusal
+    /// here is honest: an application publishing no snapshot cannot be asked, and inventing a zero would turn
+    /// "nobody could see" into "nothing happened".
+    /// </remarks>
+    private E2E.Envelope Faults()
+    {
+        SnapshotRead read = SettledFaults();
+        if (read.Rejection is { } rejection)
+        {
+            return SnapshotRejected(rejection);
+        }
+
+        if (read.Value is not { } snapshot)
+        {
+            return Refuse("PreconditionMissing",
+                $"the application published no state snapshot; it was started without {TestSurfaceArgument}");
+        }
+
+        return Ok(new Dictionary<string, object?>
+        {
+            ["appended"] = snapshot.Faults,
+            ["last"] = snapshot.LastFault,
+        });
+    }
+
+    /// <summary>How long the fault fields are given to be republished after the fault they describe.</summary>
+    private static readonly TimeSpan FaultPublicationSettle = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>The most a fault reading will wait for the published count to hold still.</summary>
+    private static readonly TimeSpan FaultSettleCeiling = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// The snapshot once its fault count has held still across one settle interval.
+    /// </summary>
+    /// <remarks>
+    /// The fault fields are the one part of the snapshot not rewritten on the thread that changed it: a fault
+    /// is appended from wherever it happened, the log announces it through the host's marshal at background
+    /// priority, and the string is rewritten only when that announcement is delivered — a dispatcher turn
+    /// later. A count read in between is one fault stale, and a scenario's teardown reads right after its last
+    /// gesture. The headless driver drains the dispatcher before it reads; across a process boundary there is
+    /// nothing to drain, so this gives the turn room to happen and reads again until two readings agree. It
+    /// cannot see an announcement still queued behind a busy UI thread, which is why it is bounded rather than
+    /// exact, and one more reason the fault assertion is a smoke detector rather than a proof.
+    /// </remarks>
+    private SnapshotRead SettledFaults()
+    {
+        SnapshotRead read = Snapshot();
+        long deadline = Environment.TickCount64 + (long)FaultSettleCeiling.TotalMilliseconds;
+        while (true)
+        {
+            Thread.Sleep(FaultPublicationSettle);
+            SnapshotRead again = Snapshot();
+            if (again.Value?.Faults == read.Value?.Faults || Environment.TickCount64 >= deadline)
+            {
+                return again;
+            }
+
+            read = again;
         }
     }
 
@@ -421,14 +689,32 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
         int y = rect.Y + (rect.Height / 2);
 
         bool activating = DriverArguments.Has(args, "--double");
+
+        // Measured BEFORE the click lands anything: an activation is settled against the state it found.
+        ActivationBaseline baseline = default;
+        if (activating && TakeActivationBaseline(out baseline) is { } rejected)
+        {
+            return rejected;
+        }
+
         if (!Mouse.Click(x, y, activating ? 2 : 1))
         {
             return NotInjected(activating ? "a double click" : "a click");
         }
 
         // The application answers a click asynchronously; the next verb reads the result, so the settle belongs
-        // here rather than in every scenario.
-        Thread.Sleep(activating ? ActivationSettle : ClickSettle);
+        // here rather than in every scenario. An ACTIVATION is the gesture that makes the application do
+        // something — switch mode and rebuild a tree, or compose and open a dialog — so it waits on the work
+        // being observable rather than on a measured guess at how long it takes. A single click only moves a
+        // selection, which publishes nothing and stays on the sleep.
+        if (activating)
+        {
+            SettleAfterActivation(baseline);
+        }
+        else
+        {
+            Thread.Sleep(ClickSettle);
+        }
 
         return Ok(new Dictionary<string, object?>
         {
@@ -918,8 +1204,11 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
         {
             ["{ENTER}"] = new UiaGesture(UiaKey.Enter),
             ["{ESC}"] = new UiaGesture(UiaKey.Escape),
-            ["^z"] = new UiaGesture(UiaKey.Z, UiaModifiers.Control),
+            [UndoSpelling] = new UiaGesture(UiaKey.Z, UiaModifiers.Control),
         };
+
+    /// <summary>The undo chord as a scenario spells it — the one gesture that is also a verb of its own.</summary>
+    private const string UndoSpelling = "^z";
 
     /// <summary>Gestures refused BY NAME, each for its own reason.</summary>
     private static readonly Dictionary<string, string> Forbidden =
@@ -990,6 +1279,47 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
 
         Thread.Sleep(ClickSettle);
         return Ok(new Dictionary<string, object?> { ["gesture"] = spelling });
+    }
+
+    /// <summary>
+    /// Undoes the last edit by the chord a person presses, and returns once the undo has observably LANDED.
+    /// </summary>
+    /// <remarks>
+    /// <para>Not through <see cref="SendToShell"/>, whose fixed settle is right for Escape and wrong here. The
+    /// chord is delivered and answered asynchronously, and a verb that returned a quarter of a second later left
+    /// the wait after it — on validation currency — free to find <c>val == gen.ver</c> STILL TRUE for the
+    /// document from before the undo, and to accept it. The race is in the design rather than something
+    /// measured: that wait is level-triggered on the CURRENT version, so it is this verb's job to make the
+    /// current version the undone one before it returns.</para>
+    ///
+    /// <para>Landed means the version moved — undo bumps it exactly as an apply does. The settle is bounded and
+    /// falls through at its ceiling like every settle here, because an undo with nothing to undo moves nothing
+    /// and is not a fault.</para>
+    /// </remarks>
+    private E2E.Envelope Undo()
+    {
+        if (mainWindow is not { } shell)
+        {
+            return NotRunning();
+        }
+
+        if (TakeActivationBaseline(out ActivationBaseline baseline) is { } rejected)
+        {
+            return rejected;
+        }
+
+        if (!Foreground.Acquire(shell.NativeWindowHandle))
+        {
+            return NotForeground();
+        }
+
+        if (!Keyboard.Send(Gestures[UndoSpelling]))
+        {
+            return NotInjected(UndoSpelling);
+        }
+
+        SettleAfterActivation(baseline);
+        return Ok(new Dictionary<string, object?> { ["gesture"] = UndoSpelling });
     }
 
     /// <summary>
@@ -1176,12 +1506,22 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
             return Refuse("ControlNotFound", $"the dialog has no button '{wanted}'");
         }
 
+        // Before the Invoke, which the application may have answered in full by the time the call returns.
+        if (TakeActivationBaseline(out ActivationBaseline baseline) is { } rejected)
+        {
+            return rejected;
+        }
+
         if (!button.Invoke())
         {
             return Refuse("TargetNotFound", $"'{wanted}' exposes no Invoke pattern");
         }
 
-        Thread.Sleep(ClickSettle);
+        // A dialog button is an activation, not a selection: it closes a modal and usually applies an edit, and
+        // the verb after it reads the result of both. The scenario that authors a duplicate address through the
+        // pin dialog is exactly this shape — an OK click, then a wait for the panel, with a 300 ms debounce and
+        // a whole-project run in between that a quarter-second sleep does not cover.
+        SettleAfterActivation(baseline);
         return Ok(new Dictionary<string, object?> { ["clicked"] = wanted });
     }
 
@@ -1296,6 +1636,9 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
     private Dictionary<string, object?> Context() => new()
     {
         ["windowTitle"] = mainWindow?.Name ?? string.Empty,
+        // The document the application says is open, rather than a filename inferred from the front of the
+        // title bar. Empty when nothing is published, which is what a caller falls back to the title for.
+        ["document"] = Snapshot().Value?.DocumentName ?? string.Empty,
         ["openModals"] = OpenModals(),
         ["selections"] = Selections(),
     };

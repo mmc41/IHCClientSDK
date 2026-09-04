@@ -9,13 +9,18 @@ using Ihc.Tests.Shared;
 namespace safe_visual_e2e_tests;
 
 /// <summary>
-/// Activating a finding and arriving at the element it is about — driven end to end, with real pointer input.
+/// Activating a finding and arriving at the element it is about — driven end to end, with real input.
 ///
-/// <para><b>This is the one behaviour that cannot be proved headlessly.</b> The headless tests assert that the
-/// owning pane's selected property moves; only a live run proves that a POINTER GESTURE on a row produces that,
-/// through the app's real hit-testing, selection and mode machinery. The gesture is deliberately not a
-/// selection call: setting the selection directly would reach the outcome by a route no user can take, and the
-/// route is the thing under test.</para>
+/// <para><b>What only a live run can show.</b> That input injected at the desktop reaches the panel through the
+/// Win32 backend and the Avalonia-to-UIA bridge, that the desktop stacks the windows a route opens, and that real
+/// keyboard focus lands where the route says it does. The gesture semantics are not what is at stake here: that
+/// a single click only selects, and that Enter and a double-click produce one identical activation, is proved on
+/// the real control by <c>ProblemsActivationGestureTests</c> in <c>safe_visual_tests</c>, through Avalonia's own
+/// headless input pipeline. Where each KIND of row leads — a host route, a program row that switches mode and
+/// opens nothing, a row that leads nowhere — is the planner's business logic, asserted in
+/// <c>safe_project_tests</c> by <c>HostRouteTests</c>, <c>ProblemsNavigationTests</c> and
+/// <c>PlanExecutionTests</c>. So this fixture holds one scenario per INPUT PATH, the pointer and the keyboard,
+/// rather than one per destination.</para>
 ///
 /// <para><b>The gesture is the DOUBLE-click, never the single one.</b> A single click selects the row and must
 /// leave the trees, the mode and every window exactly as they were — the panel is a list to read down, and
@@ -25,22 +30,16 @@ namespace safe_visual_e2e_tests;
 /// with every sort and filter, and a test pinned to "row 3" silently starts asserting about a different finding.
 /// Each test below asks the oracle for a finding of the right SHAPE and then finds that row in the panel.</para>
 /// </summary>
-public class ProblemsNavigationE2ETests
+public class ProblemsNavigationE2ETests : E2EScenario
 {
     private const string FixtureFile = "Project6-Errors.vis";
     private const string OracleCase = "Project6-Errors";
-
-    /// <summary>The fixture's whole-project finding: its first oracle row, and the panel's non-navigable one.</summary>
-    private const string WholeProjectCode = "doc-project-info-blank";
 
     /// <summary>A finding on a product terminal — a configuration-tree target.</summary>
     private const string ConfigurationCode = "doc-not-linked";
 
     /// <summary>A terminal's missing cable colour — the deep route's own example (E1).</summary>
     private const string CableColourCode = "doc-cable-colour";
-
-    /// <summary>A finding on a variable inside a function block's program — reachable only in programming view.</summary>
-    private const string ProgrammingCode = "logic-variable-write-only";
 
     /// <summary>
     /// The fixture's bytes as the run found them. E1 opens two editors, and an editor that committed and saved
@@ -145,50 +144,16 @@ public class ProblemsNavigationE2ETests
     }
 
     /// <summary>
-    /// THE FIRST TIER, live: a single click selects the row and moves nothing else.
-    ///
-    /// <para>Two rows, because they fail differently. The program row's element exists only in programming view,
-    /// so a selection that navigated would switch the whole application into it under the reader; the
-    /// whole-project row names no element at all and would have nowhere to go even if it did.</para>
-    /// </summary>
-    [Test]
-    public void ASingleClickSelectsTheRowAndMovesNothingElse()
-    {
-        // Give the panel a selection to disturb, so "unchanged" is a real observation rather than the
-        // vacuous truth of nothing having been selected in the first place.
-        ActivateFinding(ConfigurationCode);
-        IReadOnlyList<E2E.Selection> before = E2E.Selections();
-        Assert.That(before, Is.Not.Empty, "precondition: something is selected before the single clicks");
-        Assert.That(E2E.PaneRootLabel(), Is.EqualTo(E2E.ConfigurationRootLabel), "precondition: configuration view");
-
-        E2E.Row wholeProject = ClickFinding(WholeProjectCode);
-        E2E.Row program = ClickFinding(ProgrammingCode);
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(wholeProject.Element, Is.EqualTo("utcs_project"),
-                "its primary location has no parsed element, so the Element cell shows the raw locator");
-            Assert.That(program.Element, Is.Not.Empty, "precondition: the program row does name an element");
-            Assert.That(E2E.PaneRootLabel(), Is.EqualTo(E2E.ConfigurationRootLabel),
-                "and the view did not change: the program row's element is reachable only in programming view, "
-                + "which is exactly why a single click must not be what takes the installer there");
-            Assert.That(E2E.Selections().Select(s => $"{s.Tree}={s.Name}"),
-                Is.EqualTo(before.Select(s => $"{s.Tree}={s.Name}")),
-                "no tree moved either — reading down the panel leaves the installer where they were");
-            Assert.That(E2E.OpenModalIds(), Is.Empty, "and nothing opened");
-        });
-    }
-
-    /// <summary>
     /// E1 — THE DEEP ROUTE, end to end. Activating a <c>doc-cable-colour</c> row lands the product selected in
     /// the tree, its dialog open, the terminal's own editor stacked ON TOP of that still-open dialog, and the
     /// caret in Ledningsfarve.
     ///
     /// <para>Taken by KEYBOARD. A keyboard user must reach the fix context by the route a mouse user takes, and
-    /// that the two gestures produce one identical activation is proved on the view-model, where it costs
-    /// nothing to state. What only a live run can show is that real focus carries Enter to the selected row at
-    /// all — so the keyboard leg is the one that belongs here, and running the pointer twin beside it would buy
-    /// a second traversal of an input path the scenarios above already take.</para>
+    /// that the two gestures produce one identical activation is proved on the real control by
+    /// <c>ProblemsActivationGestureTests</c>, where it costs nothing to state. What only a live run can show is
+    /// that real focus carries Enter to the selected row at all — so the keyboard leg is the one that belongs
+    /// here, and running the pointer twin beside it would buy a second traversal of an input path the scenario
+    /// above already takes.</para>
     ///
     /// <para><b>What is asserted about the parent dialog, and why it is the stack rather than its selected
     /// row.</b> The driver reads the TOPMOST modal, which here is the terminal editor; reading a covered window
@@ -206,9 +171,9 @@ public class ProblemsNavigationE2ETests
 
         // Select first, then activate with Enter — the same two-tier gesture the panel offers, taken by
         // KEYBOARD. The pointer twin is not run beside it: that the two gestures produce one identical
-        // activation is proved on the view-model, and what only a live run can prove is that real focus
-        // carries Enter to the selected row at all. The double-click route reaches this suite through the
-        // scenarios above.
+        // activation is proved on the real control one level down, and what only a live run can prove is that
+        // real focus carries Enter to the selected row at all. The double-click route reaches this suite
+        // through the scenario above.
         E2E.Row row = ClickRow(CableColourCode);
         E2E.RunOk("key", "send", "--gesture", "{ENTER}");
 
@@ -244,93 +209,4 @@ public class ProblemsNavigationE2ETests
             E2E.CloseAllModals(4);
         }
     }
-
-    /// <summary>
-    /// E5 — THE HOST ROUTE. The fixture's whole-project row names no element, and activating it opens the
-    /// project-information window anyway.
-    ///
-    /// <para>Everything else here routes from an element. This row has none — <i>every masthead is blank</i> is
-    /// about the project — so the destination comes from the finding's CODE, and this is the live proof that the
-    /// host table is wired rather than merely written.</para>
-    ///
-    /// <para>It is the exact counterpart of the single-click test above, and the pair is the point: a single
-    /// click on this row moves nothing at all; a double-click opens the one window that repairs it. A route that
-    /// had confused the two would fail one of them.</para>
-    /// </summary>
-    [Test]
-    public void ActivatingTheWholeProjectRowOpensTheProjectInformationWindow()
-    {
-        Assert.That(E2E.OpenModalIds(), Is.Empty, "precondition: nothing is open before the gesture");
-        E2E.Row row = ClickFinding(WholeProjectCode);
-        Assert.That(row.Element, Is.Not.Empty.And.Not.Null,
-            "precondition: the row still shows its raw locator in the element cell");
-
-        IReadOnlyList<E2E.Selection> before = E2E.Selections();
-        E2E.RunOk("problems", "click", "--row", row.Occurrence, "--double");
-
-        try
-        {
-            IReadOnlyList<string> modals = E2E.OpenModalIds();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(modals, Has.Count.EqualTo(1),
-                    $"one window, and only one. Modals were: {string.Join(", ", modals)}");
-                Assert.That(modals[0], Is.EqualTo(AutomationIds.ProjectInfoWindow),
-                    "the window the row's CODE names — there is no element to have derived it from");
-                Assert.That(E2E.Selections().Select(s => $"{s.Tree}={s.Name}"),
-                    Is.EqualTo(before.Select(s => $"{s.Tree}={s.Name}")),
-                    "and no tree moved on the way: this route has no tree leg at all");
-            });
-        }
-        finally
-        {
-            E2E.CloseAllModals(3);
-        }
-    }
-
-    /// <summary>
-    /// E4 — THE PROGRAM ROUTE, and the one that must open NOTHING.
-    ///
-    /// <para>A Logic finding lives inside a block's program, which the configuration tree does not draw at all:
-    /// the mode switch is what makes the element exist to select. Activating one therefore has to enter
-    /// programming mode and select the row — and then stop, because a program row is repaired by editing the
-    /// program in place, not through a properties dialog.</para>
-    ///
-    /// <para><b>The absence is the assertion.</b> Every other scenario here proves a window opened; this one
-    /// proves none did, which is the half that a route eager to open something would break silently. It is
-    /// checked after the DOUBLE-click, so a second gesture on an already-selected row cannot smuggle a dialog
-    /// in.</para>
-    /// </summary>
-    [Test]
-    public void ActivatingAProgramRowEntersProgrammingModeAndOpensNoDialog()
-    {
-        Assert.That(E2E.PaneRootLabel(), Is.EqualTo(E2E.ConfigurationRootLabel), "precondition: configuration view");
-        Assert.That(E2E.OpenModalIds(), Is.Empty, "precondition: nothing is open before the gesture");
-
-        E2E.Row row = ClickFinding(ProgrammingCode);
-        E2E.RunOk("problems", "click", "--row", row.Occurrence, "--double");
-
-        try
-        {
-            IReadOnlyList<string> modals = E2E.OpenModalIds();
-            IReadOnlyList<E2E.Selection> selections = E2E.Selections();
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(E2E.PaneRootLabel(), Is.Not.EqualTo(E2E.ConfigurationRootLabel),
-                    "activation still switches the mode — the element has no configuration-tree row, so this is "
-                    + "what makes it reachable at all");
-                Assert.That(selections, Is.Not.Empty, "and the program row is selected");
-                Assert.That(modals, Is.Empty,
-                    "but NOTHING opened: a program row is repaired by editing the program in place, and a "
-                    + $"dialog would be a modal to dismiss first. Modals were: {string.Join(", ", modals)}");
-            });
-        }
-        finally
-        {
-            E2E.CloseAllModals(3);
-        }
-    }
-
 }

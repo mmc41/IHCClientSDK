@@ -57,6 +57,9 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
     private MainWindow? window;
     private MainWindowViewModel? shell;
     private ProjectWorkflow? workflow;
+    private InternalErrorLog? internalErrors;
+    private AutomationSnapshotPublisher? automation;
+    private string snapshot = string.Empty;
     private string? scratchDir;
 
     private readonly EnvelopeWriter envelopes;
@@ -99,10 +102,20 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
     private void ReleaseShell()
     {
         RetireContent();
+        // The publisher first: it holds handlers on the workflow and on the fault log, and a subscriber has to
+        // let go before the object raising the event is torn down.
+        automation?.Dispose();
+        automation = null;
+        snapshot = string.Empty;
         shell?.Dispose();
         workflow?.Dispose();
         shell = null;
         workflow = null;
+        // NOT optional. The supervisor is static and this driver outlives a fixture, so a port left attached
+        // would keep reporting a later fixture's faults into a released log, and keep that log alive to receive
+        // them — the leaked-static polluter TESTSTRATEGY.md names.
+        TaskSupervisor.ReportTo(null);
+        internalErrors = null;
     }
 
     /// <summary>Closes the window and ends the headless session; the run is over.</summary>
@@ -124,6 +137,8 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
             KillApp();
         }
 
+        automation?.Dispose();
+        automation = null;
         shell?.Dispose();
         shell = null;
         workflow?.Dispose();
@@ -184,6 +199,7 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
         {
             ("doctor", _) => await LaunchAsync(Option(args, "--path")),
             ("session", "status") => Ok(),
+            ("session", "faults") => Faults(),
             ("problems", "state") => await ProblemsStateAsync(args),
             ("problems", "rows") => ProblemsRows(),
             ("problems", "click") => await ProblemsClickAsync(args),
@@ -212,20 +228,47 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
         Directory.CreateDirectory(scratchDir);
 
         AvaloniaDialogService dialogs = new();
-        ProjectAppService service = new(new IhcSettings(), new Ihc.Vis.Catalog.BuiltInCatalog(), TimeProvider.System);
+        // Background priority because that is what the composition root uses. App.axaml.cs declares the one
+        // marshal for every background result the shell binds, and warns in place that a priority changed in
+        // one copy gives two background results two different orderings — this driver is that second copy,
+        // and at the default priority it was ordering the panel's binds against input and render differently
+        // from the application it is supposed to be standing in for. Hoisted to a local for the same reason it
+        // is one there: the fault sink and the workflow now share it.
+        Action<Action> post = action => Dispatcher.UIThread.Post(action, DispatcherPriority.Background);
+
+        // FIRST, before anything that can fault into it — the order App.axaml.cs takes, for its reason. Every
+        // line of fault wiring below is here because this driver had NONE of it: the service took no fault
+        // port, the workflow no sink, the shell no log, and the supervisor reported nowhere. An assertion that
+        // nothing faulted would have read a counter nothing increments and gone green on every CI run, which is
+        // a worse outcome than not asserting at all.
+        internalErrors = new InternalErrorLog(post);
+        // The two-argument overload is the composition root's own: a lazy BuiltInCatalog on the system clock,
+        // which is what this driver was already building by hand, plus the SDK's fault port.
+        ProjectAppService service = new(new IhcSettings(), internalErrors.Append);
         RecentProjectsStore recent = new(Path.Combine(scratchDir, "recent.json"));
         // The REAL clock: the panel's debounce is part of what a scenario waits on, and `problems state --wait`
         // is the wait. A fake clock would need the driver to decide when time moves, which is a decision the
         // scenario is supposed to make by asking.
         workflow = new ProjectWorkflow(
             service, recent, dialogs, catalogDir: Path.Combine(scratchDir, "catalog"),
-            // Background priority because that is what the composition root uses. App.axaml.cs declares the one
-            // marshal for every background result the shell binds, and warns in place that a priority changed in
-            // one copy gives two background results two different orderings — this driver is that second copy,
-            // and at the default priority it was ordering the panel's binds against input and render differently
-            // from the application it is supposed to be standing in for.
-            post: action => Dispatcher.UIThread.Post(action, DispatcherPriority.Background));
-        shell = new MainWindowViewModel(workflow, dialogs, recent, new NullThemeService());
+            post: post,
+            faultSink: internalErrors.Append);
+        // Subscribed to the monitor's own announcement, as the application does — the sink compares the
+        // generation itself, so nothing below has to know it exists.
+        workflow.Validation.Changed += (_, _) => internalErrors.FollowGeneration(workflow.Validation.Generation);
+        // The supervisor is static, so its port is set rather than injected. ReleaseShell detaches it again.
+        TaskSupervisor.ReportTo(internalErrors.Append);
+        shell = new MainWindowViewModel(workflow, dialogs, recent, new NullThemeService(),
+            internalErrors: internalErrors);
+        // The SAME surface the desktop driver reads, through the same publisher and the same parser.
+        // This mode has the objects in hand and could read each field directly, and that is exactly why
+        // it does not: written twice, the two drivers would answer `session faults` and `document` from
+        // two derivations with nothing comparing them — the drift `ProblemsStates` already exists to
+        // prevent. Going through the published string also puts the format and its parser under CI,
+        // which the desktop-only leg cannot do.
+        snapshot = string.Empty;
+        automation = new AutomationSnapshotPublisher(
+            enabled: true, published => snapshot = published, workflow, internalErrors);
 
         // ONE window for the whole session, re-pointed at each launch's shell. A second Show() in a headless
         // session never comes back — measured: the run hangs on the first verb of the second fixture, with no
@@ -249,6 +292,46 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
         Dispatcher.UIThread.RunJobs();
 
         return Ok(new Dictionary<string, object?> { ["ready"] = true });
+    }
+
+    /// <summary>
+    /// The application's own fault record: how many faults it has appended since it started, and the last
+    /// one's code.
+    /// </summary>
+    /// <remarks>
+    /// Not the Problemer panel's internal tier, which a scenario can already read and which none of them do.
+    /// That list is capacity-bounded, collapses repeats into one row, empties when the document changes and
+    /// sits behind a filter a scenario may itself toggle — four different ways it can report nothing while
+    /// something faulted. This count has none of them, which is what makes it an oracle rather than a view.
+    /// </remarks>
+    private E2E.Envelope Faults()
+    {
+        // The one field of the snapshot that is not written on the thread that changed it. A fault can be
+        // appended from anywhere, so the log announces through the host's marshal at BACKGROUND priority, and
+        // the publisher only rewrites the string when that announcement is delivered. In a headless session
+        // nothing delivers it on its own — a verb dispatched at normal priority runs FIRST — so the count would
+        // read one turn stale. The real application's dispatcher is always running, which is why the desktop
+        // driver needs no equivalent and has none to make.
+        Dispatcher.UIThread.RunJobs();
+
+        SnapshotRead read = AutomationSnapshot.Read(snapshot);
+        if (read.Rejection is { } rejection)
+        {
+            // The same word the real driver refuses with. A snapshot the driver cannot read is neither the
+            // absent surface nor bad input, and a scenario reads the code without knowing which mode answered.
+            return Refuse("SnapshotRejected", rejection);
+        }
+
+        if (read.Value is not { } published)
+        {
+            return Refuse("PreconditionMissing", "the shell published no state snapshot");
+        }
+
+        return Ok(new Dictionary<string, object?>
+        {
+            ["appended"] = published.Faults,
+            ["last"] = published.LastFault,
+        });
     }
 
     private async Task<E2E.Envelope> ProblemsStateAsync(string[] args)
@@ -538,6 +621,7 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
     private Dictionary<string, object?> Context() => new()
     {
         ["windowTitle"] = window?.Title ?? string.Empty,
+        ["document"] = AutomationSnapshot.Read(snapshot).Value?.DocumentName ?? string.Empty,
         ["openModals"] = OpenModals(),
         ["selections"] = Selections(),
     };

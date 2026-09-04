@@ -32,20 +32,19 @@ public static class DesktopWindows
     {
         ArgumentNullException.ThrowIfNull(session);
 
+        // Handles first, elements second: resolving one to a UI-Automation element calls back into the provider,
+        // and doing that from inside the enumeration would re-enter the window manager mid-walk.
         List<nint> handles = [];
-        unsafe
-        {
-            PInvoke.EnumWindows(
-                (window, _) =>
-                {
-                    if (IsTopLevelWindowOf(window, processId))
-                        handles.Add(Win32Handles.ToNint(window));
-                    return true;
-                },
-                default);
-        }
+        PInvoke.EnumWindows(
+            (window, _) =>
+            {
+                if (IsTopLevelWindowOf(window, processId))
+                    handles.Add(Win32Handles.ToNint(window));
+                return true;
+            },
+            default);
 
-        List<UiaElement> windows = [];
+        List<UiaElement> windows = new(handles.Count);
         foreach (nint handle in handles)
         {
             if (session.FromHandle(handle) is { } element)
@@ -55,25 +54,20 @@ public static class DesktopWindows
         return windows;
     }
 
+    /// <remarks>
+    /// Ownership is tested FIRST because it is the condition that rejects almost every window on the desktop,
+    /// and this runs once per window per poll of a launch wait.
+    /// </remarks>
     private static bool IsTopLevelWindowOf(HWND window, int processId)
     {
+        if (Win32Handles.ProcessOf(window) != (uint)processId)
+            return false;
+
         if (!PInvoke.IsWindowVisible(window))
             return false;
 
         // A window whose root is not itself is owned by another one — a popup or a tooltip. The caller wants
         // the windows an application presents, and a stack of those is what "open modals" means.
-        if (PInvoke.GetAncestor(window, GET_ANCESTOR_FLAGS.GA_ROOT) != window)
-            return false;
-
-        uint owner = 0;
-        uint owningThread;
-        unsafe
-        {
-            owningThread = PInvoke.GetWindowThreadProcessId(window, &owner);
-        }
-
-        // A zero thread id means the window died between being enumerated and being asked about, in which case
-        // `owner` was never written and comparing it would be reading an uninitialized answer.
-        return owningThread != 0 && owner == (uint)processId;
+        return PInvoke.GetAncestor(window, GET_ANCESTOR_FLAGS.GA_ROOT) == window;
     }
 }

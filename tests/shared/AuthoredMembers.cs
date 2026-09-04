@@ -23,10 +23,15 @@ namespace Ihc.Tests
         /// instrumentation tracker, and a hot-reload weaver's markers, are authored by nobody here and land under
         /// roots of their own.</summary>
         internal static IEnumerable<MethodBase> Of(Assembly assembly, string authoredRoot) =>
+            Types(assembly, authoredRoot).SelectMany(Of);
+
+        /// <summary>The authored types themselves, under the same root and the same filter, for a rule that reads
+        /// what a type DECLARES — its fields, its attributes — rather than what its members do. Derived from the
+        /// members instead, a struct with fields and no constructor would have no member to be found through.</summary>
+        internal static IEnumerable<Type> Types(Assembly assembly, string authoredRoot) =>
             assembly.GetTypes()
                 .Where(t => t.FullName is { } name
-                            && (name.StartsWith(authoredRoot + ".", StringComparison.Ordinal) || name == authoredRoot))
-                .SelectMany(Of);
+                            && (name.StartsWith(authoredRoot + ".", StringComparison.Ordinal) || name == authoredRoot));
 
         private static IEnumerable<MethodBase> Of(Type type) =>
             type.GetMethods(All | BindingFlags.DeclaredOnly)

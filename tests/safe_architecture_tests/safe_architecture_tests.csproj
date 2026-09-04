@@ -4,6 +4,25 @@
     <!-- Anchors the SOAP-layer rules on a generated type so a rename breaks this fixture's compile rather
          than leaving a rule that silently matches nothing. Exempt from the repo-wide ban it enforces. -->
     <UsesGeneratedSoapLayer>true</UsesGeneratedSoapLayer>
+
+    <!--
+      No coverage from this suite. The decision belongs here rather than in .runsettings: that file declares
+      what is measured, a project declares whether it participates.
+
+      These rules READ the product assemblies rather than running them — ArchUnitNET and the IL scans ask what
+      the compiled code says, so the lines they would report are type loads and static constructors, not
+      behaviour anyone tested. Merged into a repo-wide number that credit is unearned, and it lands on exactly
+      the containment code the other suites are supposed to be measured against.
+
+      Switching it off also removes a hazard rather than merely a number. The collector instruments STATICALLY
+      on macOS, rewriting the very assembly these rules read: OpenVisualTaskDiscardArchitectureTests then cannot
+      read a discard out of a body nobody wrote and has to withhold its verdict. Uncollected, that stand-down
+      never fires and the rule is enforced on every leg.
+
+      Its TRX and blame dumps still land under artifacts/coverage/raw/<suite>/ — Directory.Build.targets keeps
+      the results-directory convention outside the coverage condition for this reason.
+    -->
+    <CollectCoverage>false</CollectCoverage>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,6 +40,15 @@
     <Compile Include="..\shared\IlBody.cs" Link="shared\IlBody.cs" />
     <Compile Include="..\shared\AuthoredMembers.cs" Link="shared\AuthoredMembers.cs" />
     <Compile Include="..\shared\ControllerReachScan.cs" Link="shared\ControllerReachScan.cs" />
+    <!-- The source checkout, for the project-file half of the Windows quarantine rule: a package reference is
+         a fact about the .csproj, and for a source generator it is the ONLY place the fact exists — nothing of
+         it reaches an assembly this suite could load. -->
+    <Compile Include="..\shared\TestRepository.cs" Link="shared\TestRepository.cs" />
+    <!-- The one project named for Windows, referenced so the quarantine rule has a REAL positive control: the
+         same scans run over it must report the reach they are built to find, which is what makes a clean result
+         over the neutral assemblies mean "no reach" rather than "saw nothing". Plain net10.0, so it compiles
+         on every leg; nothing here ever calls it. -->
+    <ProjectReference Include="..\..\shared\ihc_uiautomation_windows\ihc_uiautomation_windows.csproj" />
     <!-- The desktop GUI assembly is referenced so OpenVisualArchitectureTests can load its IL into the
          ArchUnitNET model and enforce the "thin GUI" boundary. This pulls Avalonia into this test project's
          output (never into the SDK — Sdk_DoesNotDependOn_Avalonia loads only the SDK assembly). -->

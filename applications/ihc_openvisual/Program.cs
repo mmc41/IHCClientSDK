@@ -38,6 +38,34 @@ internal sealed class Program
     internal static string? ParseStartupProjectPath(string[] args) =>
         args.FirstOrDefault(a => a.Length > 0 && !a.StartsWith('-'));
 
+    /// <summary>
+    /// Whether the application was started with <see cref="TestSurfaceArgument"/>. Set once in
+    /// <see cref="Main"/>; false in every session a person starts.
+    /// </summary>
+    /// <remarks>
+    /// It gates ONE thing: whether <see cref="Services.AutomationSnapshotPublisher"/> writes the read-only
+    /// state snapshot a driver waits on. It is read at the composition root and passed on as a VALUE, so
+    /// nothing below the root can branch on it — see that class, and the architecture gate that holds the rule.
+    /// </remarks>
+    public static bool TestSurfaceEnabled { get; private set; }
+
+    /// <summary>
+    /// The switch that turns the test surface on. Admissible behind it: state the application already computes
+    /// and discards, where publishing it unconditionally could disturb a user. NOT admissible, ever: anything
+    /// that changes what the application DOES — no seed, no reset, no time control, no relaxed validation, no
+    /// authentication bypass, no altered persistence. A candidate that would make the same input produce a
+    /// different outcome belongs neither behind this switch nor in the product.
+    /// </summary>
+    internal const string TestSurfaceArgument = "--test";
+
+    /// <summary>Whether <paramref name="args"/> asks for the test surface.</summary>
+    /// <remarks>
+    /// No change to <see cref="ParseStartupProjectPath"/> is needed or wanted: it already takes the first
+    /// argument that is not a switch, so <c>ihc_openvisual foo.vis --test</c> still resolves the file.
+    /// </remarks>
+    internal static bool ParseTestSurfaceEnabled(string[] args) =>
+        args.Contains(TestSurfaceArgument, StringComparer.Ordinal);
+
     // Initialization code. Don't use any Avalonia, third-party APIs or any SynchronizationContext-reliant
     // code before AppMain is called: things aren't initialized yet and stuff might break.
     [STAThread]
@@ -48,6 +76,7 @@ internal sealed class Program
             // Order matters: config and the telemetry pipeline first, then hook the ILogger-backed unhandled-error
             // handler (A-25). Startup exceptions before this point are caught by Main's catch below.
             StartupProjectPath = ParseStartupProjectPath(args);
+            TestSurfaceEnabled = ParseTestSurfaceEnabled(args);
             Config = new AppConfiguration();
             LoggerFactory = TelemetryBootstrap.SetupTelemetryAndLogging(
                 Telemetry.AppServiceName, Telemetry.AppServiceNamespace, Telemetry.ActivitySourceName,
@@ -288,6 +317,28 @@ internal sealed class Program
         return families.Select(f => new FontFallback { FontFamily = new FontFamily(f) }).ToArray();
     }
 
+    /// <summary>
+    /// Installs Avalonia's two log destinations at the level <c>LogLevel:Avalonia</c> configures: the framework's
+    /// own trace logger, and the sink that forwards Avalonia's internal logs into <see cref="ILogger"/> and hence
+    /// into OpenTelemetry.
+    /// </summary>
+    /// <remarks>
+    /// BOTH destinations take the level, and that is the whole point of this seam. The forwarding sink defaults to
+    /// <see cref="LogEventLevel.Verbose"/> — no floor of its own — and it logs under its own category rather than
+    /// an <c>Avalonia.*</c> one, so the <c>LogLevel:Avalonia</c> entry cannot reach it as an ILogger filter either.
+    /// Left at the default it forwards every layout pass Avalonia reports, at Information, to the console and to
+    /// the telemetry backend, and the configured level silently governs only the trace logger — which nothing
+    /// reads. Pinned by <c>AvaloniaLogLevelTests</c>.
+    /// </remarks>
+    internal static AppBuilder WithAvaloniaLogging(AppBuilder builder, IConfiguration loggingConfig,
+        ILoggerFactory loggerFactory)
+    {
+        LogLevel avaloniaLevel = loggingConfig.GetValue("LogLevel:Avalonia", LogLevel.Warning);
+        LogEventLevel level = AppTelemetryBootstrap.MapFromIlogToAvaloniaLogLevel(avaloniaLevel);
+        // The default trace logger must be installed before our sink so our sink can chain to it.
+        return builder.LogToTrace(level).LogToSink(loggerFactory, level);
+    }
+
     // Avalonia configuration, don't remove; also used by the visual designer.
     public static AppBuilder BuildAvaloniaApp()
     {
@@ -307,10 +358,8 @@ internal sealed class Program
 
         if (LoggerFactory is { } loggerFactory && Config is { } config)
         {
-            LogLevel avaloniaLevel = config.LoggingConfig.GetValue("LogLevel:Avalonia", LogLevel.Warning);
-            LogEventLevel level = AppTelemetryBootstrap.MapFromIlogToAvaloniaLogLevel(avaloniaLevel);
-            // The default trace logger must be installed before our sink so our sink can chain to it.
-            builder = builder.LogToTrace(level).LogToSink(loggerFactory).With(CreateX11Options(loggerFactory));
+            builder = WithAvaloniaLogging(builder, config.LoggingConfig, loggerFactory)
+                .With(CreateX11Options(loggerFactory));
             // The DISPATCHER exception layer (BP-09). AfterSetup, not Main: the dispatcher must exist first, and
             // reading Dispatcher.UIThread before Avalonia is initialized would create it too early.
             builder = builder.AfterSetup(_ =>

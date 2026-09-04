@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Threading;
+using System.Linq;
 
 namespace Ihc.UiAutomation;
 
@@ -13,11 +13,18 @@ namespace Ihc.UiAutomation;
 /// The started process. The caller owns it — it is live whether or not a window was found, which is what makes
 /// a failed launch diagnosable (exit code, standard error) instead of merely absent.
 /// </param>
-/// <param name="MainWindow">
-/// The first window satisfying the caller's predicate, or <see langword="null"/> if none appeared before the
-/// timeout — including because the process exited first.
+/// <param name="Wait">
+/// What the wait for that window saw: how long it looked, how often, and — when no window appeared — the
+/// reason. This is what makes a failed launch a sentence rather than a null.
 /// </param>
-public sealed record LaunchedApp(Process Process, UiaElement? MainWindow);
+public sealed record LaunchedApp(Process Process, UiaWaitResult<UiaElement> Wait)
+{
+    /// <summary>
+    /// The first window satisfying the caller's predicate, or <see langword="null"/> if none appeared before the
+    /// timeout — including because the process exited first.
+    /// </summary>
+    public UiaElement? MainWindow => Wait.Value;
+}
 
 /// <summary>
 /// Starting an application and waiting for it to be DRIVEABLE, and stopping every instance of one.
@@ -69,9 +76,13 @@ public static class AppLauncher
 
     /// <summary>
     /// Waits for a visible top-level window of <paramref name="process"/> that satisfies
-    /// <paramref name="isReady"/>, or null if none appears in time.
+    /// <paramref name="isReady"/>.
     /// </summary>
-    public static UiaElement? WaitForWindow(
+    /// <returns>
+    /// The wait, whose <see cref="UiaWaitResult{T}.Value"/> is the window and whose
+    /// <see cref="UiaWaitResult{T}.LastSeen"/> is why there is none.
+    /// </returns>
+    public static UiaWaitResult<UiaElement> WaitForWindow(
         UiaSession session,
         Process process,
         Func<UiaElement, bool> isReady,
@@ -81,26 +92,17 @@ public static class AppLauncher
         ArgumentNullException.ThrowIfNull(process);
         ArgumentNullException.ThrowIfNull(isReady);
 
-        long deadline = Environment.TickCount64 + (long)timeout.TotalMilliseconds;
-        while (true)
-        {
-            // An exited process will publish no window however long it is given, so waiting out the timeout
-            // only delays the report and buries the reason: the caller still holds the Process and can say
-            // "it exited with code N" instead of "it never appeared".
-            if (process.HasExited)
-                return null;
-
-            foreach (UiaElement window in DesktopWindows.OfProcess(session, process.Id))
-            {
-                if (isReady(window))
-                    return window;
-            }
-
-            if (Environment.TickCount64 >= deadline)
-                return null;
-
-            Thread.Sleep(PollInterval);
-        }
+        return UiaWait.Until(
+            probe: () => DesktopWindows.OfProcess(session, process.Id).FirstOrDefault(isReady),
+            satisfied: _ => true,
+            timeout: timeout,
+            poll: PollInterval,
+            // An exited process will publish no window however long it is given, so serving out the timeout
+            // only delays the report and buries the reason. Said here, the reason survives into the result
+            // instead of being something the caller has to go and work out from the Process it still holds.
+            giveUp: () => process.HasExited
+                ? $"process {process.Id} exited with code {process.ExitCode}"
+                : null);
     }
 
     /// <summary>
@@ -117,16 +119,16 @@ public static class AppLauncher
     {
         ArgumentNullException.ThrowIfNull(processName);
 
-        int stopped = 0;
-        foreach (Process process in Process.GetProcessesByName(processName))
+        Process[] running = Process.GetProcessesByName(processName);
+        List<Process> stopping = new(running.Length);
+        try
         {
-            using (process)
+            foreach (Process process in running)
             {
                 try
                 {
                     process.Kill(entireProcessTree: true);
-                    stopped++;
-                    process.WaitForExit((int)timeout.TotalMilliseconds);
+                    stopping.Add(process);
                 }
                 catch (InvalidOperationException)
                 {
@@ -139,8 +141,20 @@ public static class AppLauncher
                     // getting the one it expects.
                 }
             }
+
+            // All asked to stop FIRST, then waited for against ONE deadline. They are dying in parallel, so
+            // giving each its own full timeout would multiply the budget by however many were running — three
+            // stale instances turned a twenty-second bound into a minute of fixture set-up.
+            long deadline = Environment.TickCount64 + (long)timeout.TotalMilliseconds;
+            foreach (Process process in stopping)
+                process.WaitForExit((int)Math.Max(0, deadline - Environment.TickCount64));
+        }
+        finally
+        {
+            foreach (Process process in running)
+                process.Dispose();
         }
 
-        return stopped;
+        return stopping.Count;
     }
 }

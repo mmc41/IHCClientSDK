@@ -33,10 +33,13 @@
                 <ModulePath>.*\bihc_telemetrybootstrap\.dll$</ModulePath>
                 <ModulePath>.*\bihc_lab\.dll$</ModulePath>
                 <!--
-                  ihc_uiautomation.dll is deliberately absent. Its only consumer is safe_visual_e2e_tests,
-                  which opts out of collection entirely (see that project's own comment), so listing it here
-                  would name an assembly no measured run can ever reach and report it as nought percent
-                  covered — a gap that reads as a missing test but describes a decision made elsewhere.
+                  ihc_uiautomation_windows.dll is deliberately absent, and no longer because nothing measured
+                  reaches it: safe_visual_e2e_tests collects now, and safe_unit_tests exercises UiaWait. It is
+                  TEST-DRIVING infrastructure — a Windows UI-Automation toolkit whose only consumers are that
+                  suite's driver and that one polling type — so its lines say how much of the harness ran, not
+                  how much of the product did. Everything in it but UiaWait also needs a real desktop, which no
+                  default run and no CI leg has, so its figure would describe the leg that ran while reading as
+                  a statement about the product.
                 -->
               </Include>
               <!--
@@ -80,13 +83,15 @@
             </Attributes>
 
             <!--
-              Deliberately absent: CollectFromChildProcesses. The only suite that ever launched a process out of
-              the test host is the end-to-end one, and it is now its own project which opts out of coverage
-              entirely (see safe_visual_e2e_tests.csproj for why). Every suite measured here runs wholly
-              in-process, so turning it on would instrument nothing and would reintroduce the failure it used to
-              carry: an instrumented child outliving its test keeps a running ihc_openvisual.exe holding its bin
-              DLLs, which surfaces as a later build that cannot overwrite them.
+              OFF, and STATED rather than left to the collector's default, which is True. The end-to-end suite
+              collects, and its desktop leg launches ihc_openvisual.exe out of the test host: an instrumented
+              child outliving its test keeps that process holding its bin DLLs, which surfaces later as a build
+              that cannot overwrite them. Nothing is lost by switching it off — the headless leg CI runs hosts
+              the same window IN this process and is measured either way, and what a desktop run proves is that
+              whole scenarios still work, which was never a claim about lines.
             -->
+            <CollectFromChildProcesses>False</CollectFromChildProcesses>
+
             <UseVerifiableInstrumentation>True</UseVerifiableInstrumentation>
 
             <!--

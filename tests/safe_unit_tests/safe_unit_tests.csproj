@@ -36,6 +36,11 @@
     <!-- The credentials-file rewrite in ihc_settings_encrypt: its testable logic is in the utility rather
          than in the SDK, and no suite of its own exists to hold it. -->
     <ProjectReference Include="..\..\utilities\ihc_settings_encrypt\ihc_settings_encrypt.csproj" />
+    <!-- The UI-Automation toolkit, for its ONE platform-neutral type. `UiaWait` polls a delegate the caller
+         supplies and calls nothing, so unlike the rest of that project it can be exercised without a desktop —
+         and a `shared/` project with no suite of its own belongs here. Everything else in it stays verified by
+         the end-to-end suite's desktop runs; TESTSTRATEGY.md records the carve-out. -->
+    <ProjectReference Include="..\..\shared\ihc_uiautomation_windows\ihc_uiautomation_windows.csproj" />
   </ItemGroup>
 
   <!-- T002 characterization: the ProjectTreeProjector sub-program-name branch needs a real oracle carrying

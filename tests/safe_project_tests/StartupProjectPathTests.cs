@@ -31,6 +31,31 @@ public class StartupProjectPathTests
         });
     }
 
+    /// <summary>
+    /// The test-surface switch: recognised when passed, OFF in every session a person starts, and not something
+    /// the file argument has to be taught about.
+    /// </summary>
+    /// <remarks>
+    /// The default is the half worth pinning. It is the only gate between a shipped binary and an affordance
+    /// that exists for a driver, and a gate that is only ever tested in its enabled state is not tested.
+    /// </remarks>
+    [Test]
+    public void ParseTestSurfaceEnabled_IsOffUnlessTheSwitchIsPassed()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(Program.ParseTestSurfaceEnabled([]), Is.False, "a user passes no arguments at all");
+            Assert.That(Program.ParseTestSurfaceEnabled([@"C:\projects\Hus.vis"]), Is.False,
+                "nor does opening a file turn it on");
+            Assert.That(Program.ParseTestSurfaceEnabled(["--testing"]), Is.False,
+                "a switch that merely starts the same way is a different switch");
+            Assert.That(Program.ParseTestSurfaceEnabled(["--test"]), Is.True);
+            Assert.That(Program.ParseStartupProjectPath([@"C:\projects\Hus.vis", "--test"]),
+                Is.EqualTo(@"C:\projects\Hus.vis"),
+                "the file argument still resolves beside the switch — which is why no parser change was needed");
+        });
+    }
+
     [Test]
     public async Task Start_WithAProjectOnTheCommandLine_OpensThatProject()
     {

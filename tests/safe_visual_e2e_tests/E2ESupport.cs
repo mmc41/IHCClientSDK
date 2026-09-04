@@ -217,7 +217,129 @@ public static class E2E
             + "driver must run at the SAME ELEVATION as the app.");
         Assert.That(doctor.Flag("ready"), Is.True, $"driver reports not ready: {doctor.Raw}");
 
-        WaitForDocument(Path.GetFileName(fixturePath));
+        string fileName = Path.GetFileName(fixturePath);
+        WaitForDocument(fileName);
+        AssertStartedClean(fileName);
+    }
+
+    /// <summary>
+    /// Fails the launch when the application faulted while starting up or opening its document, and otherwise
+    /// makes that clean start the baseline for the first scenario.
+    /// </summary>
+    /// <remarks>
+    /// Asserted HERE, against zero, because this is the only window in which anyone looks. The count runs from
+    /// process start and is never reset — the application keeps its start-up faults on purpose, as the set
+    /// with no other record — so a baseline merely TAKEN after the open would fold every one of them into the
+    /// number all later comparisons subtract, and no scenario would ever report them. Failing the launch also
+    /// charges them to the launch, which is where they belong, rather than to whichever scenario runs first. A
+    /// fixture that launches inside its test body gets its baseline from here and needs no arrangement of its
+    /// own.
+    /// </remarks>
+    private static void AssertStartedClean(string fileName)
+    {
+        (FaultReading? reading, string? refusal) = ReadFaults();
+        if (reading is null)
+        {
+            Assert.Fail($"the application's fault record could not be read after launching on '{fileName}', so "
+                + $"no scenario on this launch could say whether it faulted: {refusal}");
+            return;
+        }
+
+        Assert.That(reading.Appended, Is.Zero,
+            $"the application recorded {reading.Appended} internal fault(s) while starting up and opening "
+            + $"'{fileName}'; the most recent was '{reading.LastCode}'. Read it as a product signal about "
+            + "start-up, and triage it before treating it as a test defect.");
+        faultBaseline = reading;
+        baselineRefusal = null;
+    }
+
+    /// <summary>One reading of the application's fault record: the count and the last code, from ONE moment.</summary>
+    private sealed record FaultReading(long Appended, string LastCode);
+
+    /// <summary>What the last baseline read, or null when the driver refused it.</summary>
+    private static FaultReading? faultBaseline;
+
+    /// <summary>Why the last baseline could not be taken, kept so the assertion that needs it can say so.</summary>
+    private static string? baselineRefusal;
+
+    /// <summary>
+    /// Marks the point a later <see cref="AssertNoNewFaults"/> compares against. Called by
+    /// <see cref="Launch"/> and again before each scenario, because three of this suite's four fixtures share
+    /// ONE launch across their tests — without a per-test baseline the first scenario's faults would be
+    /// re-reported against every scenario after it.
+    /// </summary>
+    /// <remarks>
+    /// A refusal here is recorded rather than asserted: a scenario that launches inside its own body has no
+    /// application to ask at set-up time, and its baseline comes from <see cref="Launch"/> instead. The teardown
+    /// is where a baseline that is still missing becomes a failure.
+    /// </remarks>
+    public static void TakeFaultBaseline() => (faultBaseline, baselineRefusal) = ReadFaults();
+
+    /// <summary>
+    /// Fails when the application recorded an internal fault since the last baseline — and fails just as hard
+    /// when nothing can say whether it did.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>OBSERVED, not CAUSED.</b> A non-zero delta says a fault was seen during this scenario's window,
+    /// never that this scenario produced it. The application says so itself: the unobserved-task layer fires
+    /// when the GC reaches a faulted task, which may be long after the fault and after any number of user
+    /// actions, so a task dropped by one scenario can be discovered inside the next and charged to it. Triage a
+    /// red one against the whole fixture's route, not only its own. It is a smoke detector, not a forensic
+    /// tool.</para>
+    ///
+    /// <para><b>A driver that cannot report the count FAILS this assertion</b>, naming the refusal. Both
+    /// drivers publish the count from the moment the application is launched, so a refusal is never a mode
+    /// that cannot see faults: it is the observer broken — a parser that rejected the snapshot, an application
+    /// started without the test surface, a transport that stopped answering. Returning quietly there would
+    /// switch off every fault assertion in the suite while every scenario stayed green, which is precisely the
+    /// false green this assertion exists to remove.</para>
+    /// </remarks>
+    public static void AssertNoNewFaults()
+    {
+        if (faultBaseline is not { } before)
+        {
+            Assert.Fail("no fault baseline was taken for this scenario, so nothing can say whether it faulted: "
+                + baselineRefusal);
+            return;
+        }
+
+        (FaultReading? after, string? refusal) = ReadFaults();
+        if (after is null)
+        {
+            Assert.Fail("the application's fault record could not be read at the end of this scenario, so its "
+                + $"fault assertion is unverifiable: {refusal}");
+            return;
+        }
+
+        Assert.That(after.Appended, Is.EqualTo(before.Appended),
+            $"the application recorded {after.Appended - before.Appended} internal fault(s) while this scenario "
+            + $"ran; the most recent was '{after.LastCode}'. Something faulted on this route — read it as a "
+            + "product signal and triage it before treating it as a test defect.");
+    }
+
+    /// <summary>
+    /// The count and the last code in ONE reading, so a failure message cannot quote a code from a different
+    /// moment than the count it is explaining — or, when the driver refuses the verb, the refusal in words.
+    /// </summary>
+    private static (FaultReading? Reading, string? Refusal) ReadFaults()
+    {
+        Envelope faults = Run("session", "faults");
+        if (!faults.Ok)
+        {
+            return (null, $"'{faults.Command}' was refused with {faults.Code}: {faults.Message}");
+        }
+
+        if (faults.Data.ValueKind != JsonValueKind.Object
+            || !faults.Data.TryGetProperty("appended", out JsonElement appended))
+        {
+            return (null, $"'{faults.Command}' answered without a count: {faults.Raw}");
+        }
+
+        string lastCode =
+            faults.Data.TryGetProperty("last", out JsonElement code) && code.ValueKind == JsonValueKind.String
+                ? code.GetString() ?? "none"
+                : "none";
+        return (new FaultReading(appended.GetInt64(), lastCode), null);
     }
 
     /// <summary>
@@ -234,18 +356,33 @@ public static class E2E
     private static void WaitForDocument(string fileName)
     {
         DateTime deadline = DateTime.UtcNow.AddSeconds(30);
-        string lastTitle = string.Empty;
+        string lastSeen = string.Empty;
         while (DateTime.UtcNow < deadline)
         {
             Envelope status = Run("session", "status");
-            lastTitle = TitleOf(status);
-            if (lastTitle.StartsWith(fileName, StringComparison.OrdinalIgnoreCase))
+            // What the application SAYS is open, when it publishes it; the title bar only when it does not.
+            // The title is a rendering, and reading a filename off the front of one is an inference: it also
+            // carries the dirty bullet and the application's own name, and the first version of this harness
+            // matched the untitled project the shell starts with and then asserted about the wrong document.
+            string document = ContextText(status, "document");
+            lastSeen = document.Length > 0 ? document : TitleOf(status);
+            if (document.Length > 0
+                ? string.Equals(document, fileName, StringComparison.OrdinalIgnoreCase)
+                : lastSeen.StartsWith(fileName, StringComparison.OrdinalIgnoreCase))
                 return;
             System.Threading.Thread.Sleep(250);
         }
 
-        Assert.Fail($"the app never opened '{fileName}' — the title bar still reads '{lastTitle}'.");
+        Assert.Fail($"the app never opened '{fileName}' — it still reports '{lastSeen}'.");
     }
+
+    /// <summary>One string out of an envelope's context block, empty when the block or the field is absent.</summary>
+    private static string ContextText(Envelope envelope, string name) =>
+        envelope.Context.ValueKind == JsonValueKind.Object
+        && envelope.Context.TryGetProperty(name, out JsonElement value)
+        && value.ValueKind == JsonValueKind.String
+            ? value.GetString() ?? string.Empty
+            : string.Empty;
 
     /// <summary>
     /// The open modal STACK, topmost first, as the driver reports it — read from the envelope's own

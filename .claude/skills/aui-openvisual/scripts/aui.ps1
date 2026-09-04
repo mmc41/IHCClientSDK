@@ -608,6 +608,20 @@ function Get-AppProcess {
 # fixes and neither is "pass --launch".
 $script:LaunchProblem = $null
 
+# The command line every launch hands the app. --test turns on the read-only state snapshot the app publishes
+# for automation drivers (AutomationProperties.ItemStatus on its main window), and gates that PUBLICATION
+# only: with it or without it the app takes the same paths and reaches the same state, so what this launches
+# behaves as the shipped application behaves. Unconditional, as it is in the E2E suite's driver -- a skill
+# launch that omitted it was the one route into the app that left the snapshot off. The project path, when
+# there is one, follows the switch; the app takes its first non-switch argument as the file, so the order is
+# a convention shared with that driver, not something the app requires.
+function Get-LaunchArguments {
+    param([string] $ProjectPath)
+    $arguments = @('--test')
+    if ($ProjectPath) { $arguments += $ProjectPath }
+    return $arguments
+}
+
 function Start-App {
     param([int] $TimeoutSec = 40, [string] $ProjectPath)
     $exe = Find-AppExe
@@ -615,7 +629,8 @@ function Start-App {
         $script:LaunchProblem = 'Could not find ihc_openvisual.exe: nothing under applications/ihc_openvisual/bin and nothing on PATH. Build it first: dotnet build applications/ihc_openvisual/ihc_openvisual.csproj'
         return $null
     }
-    # By default no launch arguments: the app comes up on the standard empty project with no start-up prompt.
+    # Without --path the app comes up on the standard empty project with no start-up prompt: the one switch
+    # every launch carries names no file.
     #
     # With --path, the file is passed as the app's OWN start-up argument -- the "Open with..." route it already
     # supports. That is the only way to open a project without the file dialog, and the file dialog needs the
@@ -623,11 +638,7 @@ function Start-App {
     # ignored the path and left the caller driving the untitled empty project while believing it had the file
     # open: a self-consistent, completely wrong answer. Note the app opens it AFTER the window is shown (so an
     # open-failure dialog has an owner), so a caller must still wait for the title rather than for readiness.
-    if ($ProjectPath) {
-        Start-Process -FilePath $exe -ArgumentList @($ProjectPath) | Out-Null
-    } else {
-        Start-Process -FilePath $exe | Out-Null
-    }
+    Start-Process -FilePath $exe -ArgumentList (Get-LaunchArguments -ProjectPath $ProjectPath) | Out-Null
     $win = Wait-MainWindow -TimeoutSec $TimeoutSec
     if (-not $win) {
         $script:LaunchProblem = "Started '$exe' but no main window appeared within $TimeoutSec s."

@@ -108,11 +108,12 @@ namespace Ihc.Tests
         /// rule reads that as "no unsupervised discards" and the honesty lists read it as "every exemption is
         /// stale", which is how a green rule and a red list came from the same blindness.
         ///
-        /// <para>So the question is withheld rather than answered from a body nobody wrote. The gate is not lost:
-        /// whether the rewrite happens is a property of the RUN, not of the code, so the legs whose collector
-        /// rewrites nothing still enforce it on the same commit — and a developer on a leg that does can get it
-        /// back with <c>-p:CollectCoverage=false</c>. The seeded controls further down are unaffected either way,
-        /// because the test assembly is outside the measured set: the detector is still proven armed here.</para>
+        /// <para>So the question is withheld rather than answered from a body nobody wrote. It should now never
+        /// have to be: this suite sets <c>CollectCoverage=false</c> in its own project — partly for this — so no
+        /// ordinary run instruments anything it reads, and the rule is enforced on every leg. This stays as the
+        /// backstop for a run that collects anyway, by an explicit <c>--settings</c> or by that property coming
+        /// back. The seeded controls further down are unaffected either way, because the test assembly is
+        /// outside the measured set: the detector is still proven armed here.</para>
         /// </summary>
         private static void SkipWhenTheGuiAssemblyWasRewritten()
         {
@@ -120,8 +121,8 @@ namespace Ihc.Tests
             {
                 Assert.Ignore(
                     "this run collects coverage by rewriting the assembly under test, so its IL is not the IL "
-                    + "anyone wrote and a discard cannot be read out of it; the legs that rewrite nothing enforce "
-                    + "this rule on the same commit, and -p:CollectCoverage=false enforces it here");
+                    + "anyone wrote and a discard cannot be read out of it; this suite does not collect by "
+                    + "default, so a plain `dotnet test` of it enforces the rule");
             }
         }
 

@@ -51,7 +51,10 @@ pwsh aui.ps1 capture control --id Toolbar     # screenshot one exact UIA control
 ```
 
 **Always start a session with `doctor --launch`.** It launches the app and confirms the window is
-usable.  Pass `--launch` on any command to auto-start the app if it isn't running.
+usable.  Pass `--launch` on any command to auto-start the app if it isn't running. A launch passes the
+app's `--test` switch, which only turns on the read-only state snapshot it publishes for automation
+drivers (`AutomationProperties.ItemStatus` on the main window); the app behaves exactly as a session a
+person starts. An instance already running is attached to as it is, switch or no switch.
 
 > **`doctor` gates readiness on a real DESCENDANT read, so trust it.** It reports
 > `ready:false` + `Code=PreconditionMissing` when the main window resolves but its descendants do not

@@ -1,28 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <!--
-      No coverage from this suite, and the decision belongs here rather than in .runsettings: .runsettings
-      declares what is measured, a project declares whether it participates.
+  <!--
+    This suite COLLECTS coverage. It used to opt out, and the two reasons it gave are answered elsewhere now
+    rather than by staying dark. (safe_architecture_tests is the only suite that opts out today, for a reason
+    of its own that is stated in its project.)
 
-      CI runs only this suite's HEADLESS leg, with the desktop-bound scenarios filtered out, so a slice from
-      here would cover whichever subset that filter happened to select — merged into a repo-wide report it would
-      read as a statement about the whole suite. The default mode is worse: it measures a CHILD process, and
-      collecting from one leaves the running ihc_openvisual.exe instrumented for as long as the collector holds
-      it, which is how a later build fails to overwrite the very binaries this suite just exercised. What these
-      tests prove is that whole scenarios still work, which is not a claim about line coverage.
-    -->
-    <CollectCoverage>false</CollectCoverage>
+    The child process is the one that mattered: the default mode launches ihc_openvisual.exe out of the test
+    host, and an instrumented child outliving its test keeps that process holding its bin DLLs, which is how a
+    later build fails to overwrite the very binaries this suite just exercised. That is settled in .runsettings,
+    where CollectFromChildProcesses is now switched OFF explicitly instead of being left to a default that is
+    True. What is measured here is therefore the HEADLESS leg, which hosts the same MainWindow in this process —
+    and that is the leg CI runs.
 
-    <!--
-      Results still go to the shared artifacts tree, because CollectCoverage=false would otherwise take
-      VSTestResultsDirectory with it: Directory.Build.targets assigns that inside the same coverage-conditioned
-      group, so opting out of instrumentation also opted out of the results-directory convention, and this
-      suite's TRX and its blame hang dumps landed in a project-local TestResults/ that CI never uploads. This
-      is the suite most likely to hang, so its blame artifact is the one worth keeping.
-    -->
-    <VSTestResultsDirectory>$(MSBuildThisFileDirectory)..\..\artifacts\coverage\raw\$(MSBuildProjectName)</VSTestResultsDirectory>
-  </PropertyGroup>
+    The other reason was that CI runs only a filtered subset, so a slice from here would describe less than the
+    suite. True, and true of every suite: a slice always describes the run that produced it, which is what
+    Summary.txt's per-suite listing and its stale marking are for. Reading a filtered slice as a statement about
+    the whole suite is a mistake about the report, not a reason to withhold the measurement.
+  -->
 
   <ItemGroup>
     <!-- The shared oracle harnesses pin their clock to one instant with a FakeTimeProvider. -->
@@ -50,7 +44,7 @@
     <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
     <!-- The Windows UI-Automation mechanics the real driver is built on. The DRIVER — the verbs, the envelope
          and the OpenVisual automation ids — stays here, because none of that is reusable by anything else. -->
-    <ProjectReference Include="..\..\shared\ihc_uiautomation\ihc_uiautomation.csproj" />
+    <ProjectReference Include="..\..\shared\ihc_uiautomation_windows\ihc_uiautomation_windows.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -39,7 +39,8 @@ if ($parseErrors -and $parseErrors.Count -gt 0) {
 }
 
 $wantedFunctions = @('Parse-Options', 'Get-OptValue', 'Get-OptInt', 'Get-PathOpt', 'Resolve-TreeId',
-                     'Split-TreePath', 'Resolve-ChildIndex', 'Test-DestructiveGesture', 'Test-TitleNamesFile')
+                     'Split-TreePath', 'Resolve-ChildIndex', 'Test-DestructiveGesture', 'Test-TitleNamesFile',
+                     'Get-LaunchArguments')
 $found = @{}
 foreach ($fn in $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
     if ($wantedFunctions -contains $fn.Name) {
@@ -636,6 +637,41 @@ $decoy13 = [System.Management.Automation.Language.Parser]::ParseInput(
     [ref]$null, [ref]$decoyErrors)
 Test-Case 'o2 the o1 ordering check is armed' 'title failure masks blocking modal' `
     (Test-FileDialogBlockingModalOrder $decoy13)
+
+# ---------------------------------------------------------------------------
+# (p) Every launch passes the app's --test switch, with the project path after it
+#
+#     --test turns on the read-only state snapshot the app publishes for automation drivers, and gates
+#     that publication only, so the launched process behaves as the shipped one. The E2E suite's driver
+#     passes it on every launch; a skill launch that did not was the one route into the app that left
+#     the snapshot off.
+# ---------------------------------------------------------------------------
+Test-Case 'p1 a bare launch passes only --test'      '--test'              (@(Get-LaunchArguments) -join '|')
+Test-Case 'p2 --path follows the switch'             '--test|C:\p\Hus.vis' (@(Get-LaunchArguments -ProjectPath 'C:\p\Hus.vis') -join '|')
+Test-Case 'p3 an empty --path is a bare launch'      '--test'              (@(Get-LaunchArguments -ProjectPath '') -join '|')
+
+# p4: the value tests above prove what the function answers, not that the launch asks it. A Start-Process
+# that built its own argument list would keep p1-p3 green while starting the app without the switch.
+function Test-LaunchTakesItsArguments {
+    param($Tree)
+    $fn = Get-FunctionAst $Tree 'Start-App'
+    if (-not $fn) { return 'no Start-App' }
+    $starts = @($fn.FindAll({ $args[0] -is [System.Management.Automation.Language.CommandAst] -and
+                              $args[0].GetCommandName() -eq 'Start-Process' }, $true))
+    if ($starts.Count -eq 0) { return 'no Start-Process' }
+    foreach ($start in $starts) {
+        if ($start.Extent.Text -notmatch 'Get-LaunchArguments') {
+            return "Start-Process without Get-LaunchArguments at line $($start.Extent.StartLineNumber)"
+        }
+    }
+    return 'every launch'
+}
+Test-Case 'p4 every Start-Process in Start-App takes its arguments from Get-LaunchArguments' 'every launch' `
+    (Test-LaunchTakesItsArguments $ast)
+$decoy14 = [System.Management.Automation.Language.Parser]::ParseInput(
+    'function Start-App { Start-Process -FilePath $exe -ArgumentList @($ProjectPath) }', [ref]$null, [ref]$decoyErrors)
+Test-Case 'p5 the p4 check is armed' 'Start-Process without Get-LaunchArguments at line 1' `
+    (Test-LaunchTakesItsArguments $decoy14)
 
 Write-Host ''
 if ($script:Failed -gt 0) {

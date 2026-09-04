@@ -11,6 +11,25 @@ namespace ihc_openvisual.Services;
 /// <param name="Occurrences">How many times this exact fault has been appended.</param>
 public sealed record InternalErrorRow(InternalError Error, int Occurrences);
 
+/// <summary>The cumulative fault record: every fault the process has seen, and the last one's code.</summary>
+/// <remarks>
+/// <see cref="InternalErrorLog.Rows"/> answers "what is wrong NOW", and is shaped for a person reading a panel:
+/// capacity-bounded, occurrence-collapsed, and cleared when a project is loaded. Each of those makes it
+/// unusable as the oracle for "nothing faulted while this ran" — a count that is not a count of faults, over a
+/// window that ends at the last document change. This is the same observation with none of those properties, so
+/// something outside the process can take a baseline and compare.
+/// </remarks>
+/// <param name="Appended">
+/// How many faults have been appended since the process started — every occurrence, including the repeats a row
+/// folds into its count and the rows the ring has since dropped. Never reset.
+/// </param>
+/// <param name="LastCode">
+/// The most recent fault's code, or <see langword="null"/> when nothing has faulted. A moved count says only
+/// THAT something faulted; this says WHICH. A SET of every code seen could not: a repeat of an already-seen code
+/// moves the count and leaves the set identical, so a delta would have no diagnostic beside it.
+/// </param>
+public readonly record struct InternalErrorTally(long Appended, string? LastCode);
+
 /// <summary>
 /// Where the application's own faults collect — the one place a fault in the TOOL can be reported to, as
 /// distinct from a finding about the project.
@@ -40,6 +59,8 @@ public sealed class InternalErrorLog
     // than clearing: the app always opens a document at start-up, so treating 0 -> 1 as a move would
     // wipe exactly the start-up faults that are hardest to reproduce and most worth keeping.
     private int? _generation;
+    private long _appended;
+    private string? _lastCode;
 
     /// <param name="post">
     /// The marshal back to the owning thread, supplied by the composition root because that is the only layer
@@ -69,6 +90,21 @@ public sealed class InternalErrorLog
         }
     }
 
+    /// <summary>
+    /// The cumulative record, read atomically so the count and the code can never come from different moments.
+    /// Unlike <see cref="Rows"/> it survives <see cref="FollowGeneration"/>, the capacity bound and de-duplication.
+    /// </summary>
+    public InternalErrorTally Tally
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return new InternalErrorTally(_appended, _lastCode);
+            }
+        }
+    }
+
     /// <summary>Records a fault. Safe to call from any thread.</summary>
     /// <param name="error">The fault to record.</param>
     public void Append(InternalError error)
@@ -76,6 +112,12 @@ public sealed class InternalErrorLog
         ArgumentNullException.ThrowIfNull(error);
         lock (_gate)
         {
+            // Before the ring, and outside every rule it applies: the tally counts what HAPPENED, where the
+            // rows describe what is worth showing. A repeat that costs a row only a counter still costs the
+            // tally a fault, and so does one whose row the ring is about to drop.
+            _appended++;
+            _lastCode = error.Code.Value;
+
             int at = _rows.FindIndex(row => Same(row.Error, error));
             if (at >= 0)
             {
@@ -117,6 +159,11 @@ public sealed class InternalErrorLog
     /// that treated that first bump as a move would discard every fault raised while starting up — which is
     /// precisely the set with no other record and the least chance of being reproduced.
     /// </para>
+    /// <para>
+    /// <see cref="Tally"/> is NOT cleared here, and that is the whole reason it exists separately. A fault
+    /// erased by a document change is exactly the one a run that only reads <see cref="Rows"/> would report
+    /// nothing about.
+    /// </para>
     /// </summary>
     /// <param name="generation">The monitor's current generation.</param>
     public void FollowGeneration(int generation)
@@ -144,15 +191,28 @@ public sealed class InternalErrorLog
 
     private void Announce() => _post(() =>
     {
-        try
+        if (Changed is not { } announcement)
         {
-            Changed?.Invoke(this, EventArgs.Empty);
+            return;
         }
-        catch (Exception)
+
+        // ONE SUBSCRIBER AT A TIME, because the subscribers are not interchangeable. Raised as a single
+        // multicast call, the first one that throws ends the invocation and everything attached after it is
+        // never told: the panel attaches while the view-model is built and the automation snapshot attaches
+        // after it, so the published fault count would stop moving while faults kept arriving, and a run
+        // reading that count would report the absence of an observer as the absence of faults.
+        foreach (Delegate subscriber in announcement.GetInvocationList())
         {
-            // FAIL-OPEN, and this is the last place in the application where that can be said: a subscriber
-            // that throws while being told about a fault would otherwise destroy the record of the fault it was
-            // being told about. There is nothing above this to report to — that is what makes it the sink.
+            try
+            {
+                ((EventHandler)subscriber)(this, EventArgs.Empty);
+            }
+            catch (Exception)
+            {
+                // FAIL-OPEN, and this is the last place in the application where that can be said: a subscriber
+                // that throws while being told about a fault would otherwise destroy the record of the fault it
+                // was being told about. There is nothing above this to report to — that is what makes it the sink.
+            }
         }
     });
 }

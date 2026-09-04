@@ -69,7 +69,7 @@
 
     This lives in .targets rather than .props because it depends on IsTestProject, which is set by
     Microsoft.NET.Test.Sdk's own props — Directory.Build.props is evaluated before those and could not
-    read it. Both properties below are consumed by the VSTest task rather than at evaluation time, so
+    read it. The properties below are consumed by the VSTest task rather than at evaluation time, so
     setting them this late is still in time. Non-test projects are left untouched.
 
     Each suite writes its own slice. The repo's CI issues a separate `dotnet test` per suite, so a single
@@ -82,22 +82,43 @@
     the obvious alternative does not work: passing an empty settings file makes the `dotnet test` CLI
     itself fail with "The path is empty", before any of this is consulted. Naming a *different* settings
     file does work — the SDK prefers an explicit one over RunSettingsFilePath.
+
+    One suite sets that property PERMANENTLY, in its own file rather than here: safe_architecture_tests,
+    whose rules read the product assemblies instead of running them. A list of exceptions here is a list
+    nothing keeps honest; the property is how they are found.
   -->
-  <PropertyGroup Condition="'$(IsTestProject)' == 'true' AND '$(CollectCoverage)' != 'false'">
-    <RunSettingsFilePath Condition="'$(RunSettingsFilePath)' == ''">$(MSBuildThisFileDirectory).runsettings</RunSettingsFilePath>
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
     <CoverageRawDirectory>$(MSBuildThisFileDirectory)artifacts/coverage/raw/$(MSBuildProjectName)</CoverageRawDirectory>
     <CoverageReportDirectory>$(MSBuildThisFileDirectory)artifacts/coverage/report</CoverageReportDirectory>
     <VSTestResultsDirectory Condition="'$(VSTestResultsDirectory)' == ''">$(CoverageRawDirectory)</VSTestResultsDirectory>
   </PropertyGroup>
 
   <!--
+    Where a suite's results go is NOT conditioned on whether it is measured, and the two used to share one
+    group. A suite that set CollectCoverage=false lost the results directory with it, and its TRX and its
+    blame hang dumps landed in a project-local TestResults/ that CI never uploads — worst for the suites
+    most likely to hang, which are exactly the ones a person switches collection off for. Only the settings
+    file below belongs to collection.
+  -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true' AND '$(CollectCoverage)' != 'false'">
+    <RunSettingsFilePath Condition="'$(RunSettingsFilePath)' == ''">$(MSBuildThisFileDirectory).runsettings</RunSettingsFilePath>
+  </PropertyGroup>
+
+  <!--
     Drop only THIS suite's slice. The reference implementation this was modelled on wipes the whole
     results tree before every run, which is correct for a repo that runs `dotnet test` once — here it
     would leave the merged report describing a single suite.
+
+    Unconditional on CollectCoverage on purpose: a suite that stops collecting is the one case where a
+    slice is left with nothing to refresh it, and the merge would fold that dead file into every later
+    roll-up. Cleaning for an opted-out suite too gives the raw tree one invariant — a suite directory
+    describes that suite's LAST run, and a run that measured nothing leaves no slice. The report itself
+    catches up on the next run that does collect; the merge below is not worth the seconds it costs a
+    run whose whole point was to skip instrumentation.
   -->
   <Target Name="CleanCoverageSlice"
           BeforeTargets="VSTest"
-          Condition="'$(IsTestProject)' == 'true' AND '$(CollectCoverage)' != 'false'">
+          Condition="'$(IsTestProject)' == 'true'">
     <RemoveDir Directories="$(CoverageRawDirectory)" ContinueOnError="true" />
   </Target>
 
@@ -106,66 +127,26 @@
     after any of them, and no single suite is reliably last: CI gates suites per OS, so the lab and
     visual suites do not run everywhere.
 
+    That "after each suite" is why the work is ONE step and not four. A solution-wide `dotnet test` runs
+    the suites in parallel, so several of them rebuild the same report at the same time; as separate
+    Exec steps they raced over one merged.coverage, one coverage.xml, one html/ directory and one
+    Summary.txt, and the merge exited 1 reading a file another suite was still writing. MSBuild cannot
+    hold a lock across tasks, so the script takes one for the whole pipeline and the suites queue.
+
     Nothing here may redden a green test run (coverage is a report, not a gate), hence ContinueOnError
-    throughout — a missing tool or an empty results directory warns and leaves the verdict alone.
+    — a missing tool or an empty results directory warns and leaves the verdict alone. The script keeps
+    the other half of that contract: it exits non-zero only when a step could not RUN.
 
-    The tool is invoked as `dotnet dotnet-coverage`, never bare: it is a LOCAL tool, and a bare call
-    resolves only if it also happens to be installed globally, which a fresh clone will not have.
-  -->
-  <Target Name="MergeCoverageReport"
-          AfterTargets="VSTest"
-          Condition="'$(IsTestProject)' == 'true' AND '$(CollectCoverage)' != 'false'">
+    The tools it invokes are LOCAL tools, so it calls them as `dotnet dotnet-coverage` and
+    `dotnet reportgenerator`, never bare: a bare call resolves only if the tool also happens to be
+    installed globally, which a fresh clone will not have.
 
-    <ItemGroup>
-      <!--
-        Blame stages a byte-identical second copy of each attachment under In/<machine>/. Merging is a
-        union so the percentage is unaffected either way, but merging the same bytes twice is waste.
-        The exclusion names only that known staging path, so an unfamiliar layout still gets picked up
-        by the wildcard rather than silently dropped.
-      -->
-      <CoverageSliceFile Include="$(MSBuildThisFileDirectory)artifacts/coverage/raw/**/*.coverage"
-                         Exclude="$(MSBuildThisFileDirectory)artifacts/coverage/raw/**/In/**/*.coverage" />
-    </ItemGroup>
-
-    <PropertyGroup>
-      <CoverageSliceArguments>@(CoverageSliceFile->'&quot;%(FullPath)&quot;', ' ')</CoverageSliceArguments>
-    </PropertyGroup>
-
-    <MakeDir Directories="$(CoverageReportDirectory)"
-             Condition="'@(CoverageSliceFile)' != ''" ContinueOnError="true" />
-
-    <Exec Condition="'@(CoverageSliceFile)' != ''"
-          WorkingDirectory="$(MSBuildThisFileDirectory)"
-          Command="dotnet dotnet-coverage merge $(CoverageSliceArguments) -o &quot;artifacts/coverage/report/merged.coverage&quot; --nologo"
-          ContinueOnError="true" StandardOutputImportance="low" />
-
-    <Exec Condition="'@(CoverageSliceFile)' != ''"
-          WorkingDirectory="$(MSBuildThisFileDirectory)"
-          Command="dotnet dotnet-coverage merge &quot;artifacts/coverage/report/merged.coverage&quot; -o &quot;artifacts/coverage/report/coverage.xml&quot; -f xml --nologo"
-          ContinueOnError="true" StandardOutputImportance="low" />
-
-    <CallTarget Targets="GenerateCoverageHtml" ContinueOnError="true"
-                Condition="'@(CoverageSliceFile)' != ''" />
-
-    <CallTarget Targets="DisplayCoverageSummary" ContinueOnError="true"
-                Condition="'@(CoverageSliceFile)' != ''" />
-  </Target>
-
-  <!--
-    Browsable form of the same report, for reading a specific file's uncovered lines rather than a total.
-
-    Fed the standard Microsoft coverage XML directly — the same file Summary.txt is built from, with no
-    intermediate format. That matters because ReportGenerator derives its own coverable-line denominator
-    from whatever it is given, so each conversion produces a slightly different headline percentage.
-    Reading the same file keeps the two as close as the tools allow; they still do not agree exactly,
-    and Summary.txt is the number this repository quotes. Converting to a third-party format first was
-    measured and drifts further, so do not add a conversion step here.
-
-    The default is the one-page summary. The full per-file drill-down is opt-in with
+    The default HTML form is the one-page summary. The full per-file drill-down is opt-in with
     `-p:CoverageHtmlDetail=true`, because it writes hundreds of files and a great deal more of them
     than anyone wants produced by every `dotnet test`.
   -->
-  <Target Name="GenerateCoverageHtml"
+  <Target Name="MergeCoverageReport"
+          AfterTargets="VSTest"
           Condition="'$(IsTestProject)' == 'true' AND '$(CollectCoverage)' != 'false'">
 
     <PropertyGroup>
@@ -173,28 +154,13 @@
       <CoverageHtmlReportTypes Condition="'$(CoverageHtmlReportTypes)' == ''">HtmlSummary</CoverageHtmlReportTypes>
     </PropertyGroup>
 
-    <!-- Switching between the two modes otherwise leaves the previous mode's pages behind. -->
-    <RemoveDir Directories="$(CoverageReportDirectory)/html" ContinueOnError="true" />
-
-    <Exec Condition="Exists('$(CoverageReportDirectory)/coverage.xml')"
-          WorkingDirectory="$(MSBuildThisFileDirectory)"
-          Command="dotnet reportgenerator -reports:&quot;artifacts/coverage/report/coverage.xml&quot; -targetdir:&quot;artifacts/coverage/report/html&quot; -reporttypes:$(CoverageHtmlReportTypes) -verbosity:Warning"
-          ContinueOnError="true" StandardOutputImportance="low" />
-  </Target>
-
-  <!--
-    One line on the console, after the merge. Deliberately not gated on a project name: with suites
-    gated per OS there is no project that is reliably last, so every run prints the current roll-up.
-    Re-emitted through Message so it survives at the minimal verbosity CI runs at.
-  -->
-  <Target Name="DisplayCoverageSummary"
-          Condition="'$(IsTestProject)' == 'true' AND '$(CollectCoverage)' != 'false'">
+    <!-- Re-emitted through Message so the roll-up line survives at the minimal verbosity CI runs at. -->
     <Exec WorkingDirectory="$(MSBuildThisFileDirectory)"
-          Command="dotnet run .build/coverage-summary.cs -- &quot;artifacts/coverage/report/coverage.xml&quot; &quot;artifacts/coverage/raw&quot; &quot;artifacts/coverage/report/Summary.txt&quot;"
+          Command="dotnet run .build/coverage-report.cs -- &quot;artifacts/coverage/raw&quot; &quot;artifacts/coverage/report&quot; $(CoverageHtmlReportTypes) &quot;.build/coverage-summary.cs&quot;"
           ContinueOnError="true" ConsoleToMSBuild="true" StandardOutputImportance="low">
-      <Output TaskParameter="ConsoleOutput" PropertyName="CoverageSummaryOutput" />
+      <Output TaskParameter="ConsoleOutput" PropertyName="CoverageReportOutput" />
     </Exec>
-    <Message Importance="high" Text="$(CoverageSummaryOutput)" Condition="'$(CoverageSummaryOutput)' != ''" />
+    <Message Importance="high" Text="$(CoverageReportOutput)" Condition="'$(CoverageReportOutput)' != ''" />
   </Target>
 
   <!--

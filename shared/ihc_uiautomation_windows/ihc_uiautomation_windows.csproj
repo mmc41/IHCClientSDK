@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    An app-agnostic Windows UI-Automation toolkit: the MECHANICS of driving a desktop application, and nothing
+    about any particular one. COM bootstrap, element finding, patterns, the control-view walker, synthesized
+    input inside a DPI scope, screen capture, launch-and-wait, top-level windows by process — plus one
+    platform-neutral primitive, the bounded wait every one of those is otherwise synchronized against by the
+    caller's fixed sleep.
+
+    It knows no verbs, no result envelope and no automation ids — those belong to whoever drives an application,
+    which today is tests/safe_visual_e2e_tests. That split is the point: the toolkit is reusable because it
+    carries no opinion about what is being driven.
+
+    DEVELOPMENT AND TEST TOOLING. No shipped application references it. ALMOST every method here is a call into
+    the live Windows UI-Automation client, which cannot be exercised without a desktop, so what verifies that
+    part is the end-to-end suite's desktop runs and what verifies it COMPILES everywhere is this project being
+    in the solution. The exception is UiaWait, which calls nothing at all: it polls a delegate its caller
+    supplies, so its logic is tested by UiaWaitTests in tests/safe_unit_tests. TESTSTRATEGY.md records both
+    halves of that routing.
+
+    The _windows suffix is in the NAME because that is where the platform fact belongs; the TFM deliberately
+    carries none. The name is also what the architecture suite reads: WindowsQuarantineArchitectureTests licenses
+    a Windows package and a Windows-only API call only in a project so named, so dropping the suffix would make
+    this project an offender under its own rule, and every consumer already reaches Windows through it. FlaUI has no net10.0 asset at all, and the raw UIA3 COM interfaces CsWin32 generates need none
+    — the assembly compiles on Linux and macOS and simply cannot be CALLED there, which is what
+    SupportedOSPlatform("windows6.1") states to the compiler. A -windows TFM would have forced every consumer
+    to multi-target for no gain.
+  -->
+
+  <PropertyGroup>
+    <!-- Every source file declares its namespace outright, so this seeds new files rather than deciding
+         anything already here; it is set so an added file starts in the repository's Ihc.* shape. -->
+    <RootNamespace>Ihc.UiAutomation</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Source generator: it emits the P/Invokes and COM interfaces listed in NativeMethods.txt at build time,
+         so nothing of it flows to a consumer's dependency graph. -->
+    <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
+    <!-- GDI+ imaging, for ScreenCapture. Not PrivateAssets: it is a real runtime dependency of this assembly. -->
+    <PackageReference Include="System.Drawing.Common" />
+  </ItemGroup>
+
+</Project>

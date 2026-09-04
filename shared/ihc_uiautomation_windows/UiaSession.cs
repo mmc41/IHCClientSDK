@@ -22,6 +22,7 @@ namespace Ihc.UiAutomation;
 public sealed class UiaSession : IDisposable
 {
     private IUIAutomation? _automation;
+    private IUIAutomationTreeWalker? _controlWalker;
 
     /// <summary>Connects to the UI-Automation client.</summary>
     public UiaSession() => _automation = (IUIAutomation)new CUIAutomation8();
@@ -33,7 +34,11 @@ public sealed class UiaSession : IDisposable
     /// The CONTROL view of the tree. Not the raw view: the raw view carries the presentational elements a
     /// theme happens to build, which differ between themes and are not what a person sees.
     /// </summary>
-    internal IUIAutomationTreeWalker ControlWalker => Automation.ControlViewWalker;
+    /// <remarks>
+    /// Held rather than re-read: it is a COM property on the client, so fetching it per walk is a cross-process
+    /// call before the walk has looked at anything, and the walker itself does not change for the session.
+    /// </remarks>
+    internal IUIAutomationTreeWalker ControlWalker => _controlWalker ??= Automation.ControlViewWalker;
 
     /// <summary>The element behind a window handle, or null if the handle names no live window.</summary>
     public UiaElement? FromHandle(nint windowHandle)
@@ -73,6 +78,7 @@ public sealed class UiaSession : IDisposable
     {
         IUIAutomation? automation = _automation;
         _automation = null;
+        _controlWalker = null;
         if (automation is not null && Marshal.IsComObject(automation))
             Marshal.FinalReleaseComObject(automation);
     }

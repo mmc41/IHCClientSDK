@@ -137,13 +137,28 @@ in order and stop at the first whose subject claims it; the last row is the gene
 | `safe_project_tests` | Engine · ms–s | Not general to the SDK but about the project domain: the `Ihc.Vis` engine, `ProjectAppService`, sessions and commands, validation rules, the problem catalogue, reporting — **and OpenVisual's non-GUI code** (view-models, services, stores, route planners, presentation mapping). Real application services, oracle files, and the catalog the test's scope calls for — `BuiltInCatalog` or a fake `ICatalog` | Anything needing execution in Avalonia |
 | `safe_unit_tests` | Unit · ms | The `ihcclient` SDK in general — transport, models, serialization, security, settings, telemetry primitives. Also **any utility or `shared/` project with no suite of its own**. Faked at the `IIHCApiService` seam | Anything Avalonia-shaped; anything app-specific |
 
-**`shared/ihc_uiautomation` has no suite, deliberately** — the one exception to the `safe_unit_tests` rule
-above. Every method in it is a call into the live Windows UI-Automation client or into `user32`, so there is
-nothing to exercise without a desktop: a test could only assert against a fake of the very API under test.
-What verifies it is `safe_visual_e2e_tests`' desktop mode, which is built on it and cannot pass unless it
-works; what verifies it COMPILES on every platform is its membership of the solution, since it is plain
-`net10.0` and CI builds the solution on Linux and macOS as well as Windows. A defect in it therefore surfaces
-as a desktop-mode failure, which is why that mode's failures are classified before they are fixed.
+**`shared/ihc_uiautomation_windows` has no suite except for its platform-independent polling logic** — the one
+exception to the `safe_unit_tests` rule above, and a carve-out from the exception. Almost every method in it is
+a call into the live Windows UI-Automation client or into `user32`, so there is nothing to exercise without a
+desktop: a test could only assert against a fake of the very API under test. What verifies THAT part is
+`safe_visual_e2e_tests`' desktop mode, which is built on it and cannot pass unless it works; what verifies it
+COMPILES on every platform is its membership of the solution, since it is plain `net10.0` and CI builds the
+solution on Linux and macOS as well as Windows. A defect in it therefore surfaces as a desktop-mode failure,
+which is why that mode's failures are classified before they are fixed.
+
+The carve-out is `UiaWait`, and it exists because the reason above does not reach it. It calls nothing — it
+polls a delegate the caller supplies, and a desktop adds nothing to a bounded wait, a poll count and a
+diagnostic string. `UiaWaitTests` in `safe_unit_tests` holds it, that being the suite which already owns *any
+utility or `shared/` project with no suite of its own*, gated on Windows because the ASSEMBLY declares
+`SupportedOSPlatform("windows6.1")` for the sake of every other type in it. Leaving it untested was the
+alternative and was declined: a bug in the poll loop would arrive as a desktop-mode failure with no
+distinguishing symptom, which is the **Unclassified** row below — the row the wait was added to shrink.
+
+The `_windows` in the toolkit's name is what the architecture suite reads: `WindowsQuarantineArchitectureTests`
+licenses a Windows package reference or a Windows-only API call only in a project so named, and holds every
+other project file in the solution and every neutral assembly the suite loads to the opposite — a platform
+guard around the call does not change the verdict. So a Windows dependency a test needs belongs in that
+toolkit, or in another project named for Windows, and never in the suite that uses it.
 
 Two rules for the architecture suite, because both are easy to get wrong: a clean subject with an empty
 exemption roster is indistinguishable from a **broken detector**, so every scan carries a seeded violator
@@ -188,12 +203,12 @@ Everything else — combinations, route matrices, sorting, filtering, counts, wo
 and business logic is cheaper one level down.
 
 The suite has two modes. The **default** launches the real `ihc_openvisual.exe` and drives it over Windows UI
-Automation, in-process, through the suite's own driver over `shared/ihc_uiautomation`; it holds the screen for
-minutes and force-kills any running OpenVisual, so run it only when asked and say so first. The **headless**
-mode, which CI gates, hosts the same `MainWindow` in-process and is a **second implementation** of the verb
-vocabulary: it exercises neither the real driver nor the UIA bridge, and it refuses the verbs behind
-`[Category(E2E.DesktopOnly)]` rather than approximating them. Read a headless pass as *"the scenario paths
-still work"*, never as *"the application is driveable"*.
+Automation, in-process, through the suite's own driver over `shared/ihc_uiautomation_windows`; it holds the
+screen for minutes and force-kills any running OpenVisual, so run it only when asked and say so first. The
+**headless** mode, which CI gates, hosts the same `MainWindow` in-process and is a **second implementation**
+of the verb vocabulary: it exercises neither the real driver nor the UIA bridge, and it refuses the verbs
+behind `[Category(E2E.DesktopOnly)]` rather than approximating them. Read a headless pass as *"the scenario
+paths still work"*, never as *"the application is driveable"*.
 
 **The suite and the `aui-openvisual` skill are independent, by construction.** The suite drives the application
 with its own C# driver and reaches nothing under `.claude/`; `SkillIndependenceGuard` enforces that from inside
@@ -210,9 +225,21 @@ so this campaign cut what it could count and left the desktop wall-clock unrecor
 can be said is that the work it does was more than halved, and that its remaining scenarios are ones no cheaper
 level can hold.
 
+**Measured again 2026-09-04, against the bar as written.** The last sentence above did not survive a second
+reading. Of the ten, four asserted what a named test one level down already asserted, and left: three were a
+route matrix over destination kind — the single click that selects and moves nothing, the whole-project row
+that opens the project-information window, the program row that switches mode and opens no dialog — held by
+`ProblemsActivationGestureTests` in `safe_visual_tests` and by `HostRouteTests`, `ProblemsNavigationTests` and
+`PlanExecutionTests` in `safe_project_tests`; the fourth was a success-path screenshot, which could fail only in
+the driver. The focus-probe fixture was reclassified as a driver control beside the fault-wiring one, since its
+subject was the probe and the product fact it read is `ResultDialogFocusTests`' in `safe_visual_tests`. Inside
+the survivors, the undo leg and the count comparisons went the same way, each to the test that already owned
+it. Five scenarios remain — two desktop-only, three in the headless leg — each kept for a reason the bar names
+rather than for a route it covers. The desktop wall-clock is still unrecorded, for the reason above.
+
 **One process per verb — SUPERSEDED 2026-09-03, and kept for the record.** The transport this ruling was about
 is gone: the desktop mode no longer spawns anything per verb, because it drives the application in-process
-through the suite's own driver over `shared/ihc_uiautomation`. The session-mode question it refused is
+through the suite's own driver over `shared/ihc_uiautomation_windows`. The session-mode question it refused is
 therefore moot — there is no process to amortise. The reasoning below is left standing because it is a
 measurement, and because its last paragraph names a hazard (a text transport must pin its encoding explicitly,
 or a Danish letter arrives mojibaked) that outlives the transport it was written about.
@@ -284,7 +311,7 @@ that answers it — and it is why the three are not equally defended.
 
 | How it goes quiet | Condition it breaks | What stands in the way |
 | ------------------- | --------------------- | ------------------------ |
-| **Never observed at all.** An `async void` handler faults after its first await, or a `Task` is produced and discarded, so the fault is raised on the finalizer thread arbitrarily later — or never | **Propagation.** The carrier is discarded, so the state never reaches an observation boundary at all | Detected **in the GUI assembly**, because a structural failure admits a structural answer: the architecture suite requires every `async void` handler there to reach a containment floor and every discarded task to be handed to `TaskSupervisor`, which observes it at once and reports it with the origin the fault itself cannot carry. Two limits worth knowing — the scans do not reach `ihcclient` or the utilities, and the discard scan stands itself down on a statically instrumented coverage run |
+| **Never observed at all.** An `async void` handler faults after its first await, or a `Task` is produced and discarded, so the fault is raised on the finalizer thread arbitrarily later — or never | **Propagation.** The carrier is discarded, so the state never reaches an observation boundary at all | Detected **in the GUI assembly**, because a structural failure admits a structural answer: the architecture suite requires every `async void` handler there to reach a containment floor and every discarded task to be handed to `TaskSupervisor`, which observes it at once and reports it with the origin the fault itself cannot carry. One limit worth knowing — the scans do not reach `ihcclient` or the utilities. The discard scan stands itself down on a statically instrumented coverage run, but that suite no longer collects, so the stand-down is a backstop rather than something an ordinary run meets |
 | **Observed and shown, but not traced.** The catch site shows the installer a dialog and forgets the span's outcome, so the operation failed for the user and succeeded in the telemetry | **Revealability.** It did propagate to an output; the oracle read the dialog and not the span. Only asserting the second output closes it | Construction AND detection. `FailureReport` folds the outcome, the log record and the dialog into one call, in that order — the outcome before the dialog, because a dialog awaits a person and a process that dies while the modal is up would record nothing — and the rule below fails any site that presents a fault without going through it |
 | **Traced and shown, but in the wrong shape.** A `ProblemChain` is one failure restated more precisely; a `ProblemAggregate` is N independent failures. Rendering either by the other's rule shows one failure twice, or loses all but one of N findings | **Propagation, lossily.** Information is lost on the way out, which is the canonical masking mechanism. Assert the shape, not the presence | The FUNNEL is detected, the VERDICT is not. `RaisedProblemDisplay` is the single decider and the same rule makes it the only route to the aggregate overload, so no site can choose a shape behind its back — the shell's widest catch was the last that did, and an aggregate escaping that far now shows every item. Which shape it picks is pinned by tests, over the decider and over the boundary that feeds it |
 
@@ -429,10 +456,16 @@ build, so this document, not a number, decides what is worth testing. Keep it on
 behaviour; add null-guard, expected-exception or multithreading tests only when asked.
 
 Each suite refreshes its own slice under `artifacts/coverage/raw/<suite>/` and every run re-merges what is
-present, so a repo-wide number is current only after every controller-free suite has run. `Summary.txt` names
-any stale slice and is the figure to quote. `safe_visual_e2e_tests` opts out entirely, because CI runs only
-a filtered subset of it. Opt a run out with `-p:CollectCoverage=false`; an empty `--settings` fails before it
-is read. Scope is declared once, in [.runsettings](.runsettings).
+present, so a repo-wide number is current only after every collecting suite has run — the controller-backed
+and desktop-bound ones included, which is why no CI leg produces a complete one. `Summary.txt` names any
+stale slice and is the figure to quote. **`safe_architecture_tests` is the one suite that does not collect**:
+its rules read the product assemblies rather than running them, so its lines would be type loads credited as
+tested behaviour — and staying uninstrumented is also what lets its task-discard rule read the IL it judges
+instead of standing down. `safe_visual_e2e_tests` does collect, and measures the leg that ran; its desktop
+leg's child process is deliberately not instrumented, because an instrumented `ihc_openvisual.exe` outliving
+its test locks its own bin DLLs. Opt a run out with `-p:CollectCoverage=false`, which drops that suite's
+slice rather than leaving a number no run produced; an empty `--settings` fails before it is read. Scope is
+declared once, in [.runsettings](.runsettings).
 
 Coverage says which lines ran, never whether a test would have noticed them going wrong. The measure for
 that is **mutation**: break the product code in small ways and see whether a test fails. It is run by hand,

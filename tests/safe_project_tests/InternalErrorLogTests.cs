@@ -118,6 +118,89 @@ public class InternalErrorLogTests
         Assert.That(log.Rows, Is.Empty, "an internal error lives for the session, and a load starts a new one");
     }
 
+    /// <summary>
+    /// The properties that make <see cref="InternalErrorLog.Tally"/> usable as an oracle where
+    /// <see cref="InternalErrorLog.Rows"/> is not. Each test below is a different way the panel's list stops
+    /// being a count of faults — it collapses repeats, it drops the oldest when full, and a document change
+    /// empties it — and a scenario asserting "nothing faulted while this ran" against the rows would go green
+    /// through all three.
+    /// </summary>
+    [Test]
+    public void TheTally_SurvivesTheGenerationMoveThatClearsTheRows()
+    {
+        var log = new InternalErrorLog();
+        log.FollowGeneration(1);
+        log.Append(Fault());
+        log.Append(Fault(detail: "at Bar()"));
+
+        log.FollowGeneration(2);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(log.Rows, Is.Empty, "the panel's list still lives for the session, unchanged");
+            Assert.That(log.Tally.Appended, Is.EqualTo(2),
+                "a fault a document change erased is exactly the one a green run would otherwise hide");
+            Assert.That(log.Tally.LastCode, Is.EqualTo("internal.unexpected"),
+                "and the diagnostic outlives the row it could have been read from");
+        });
+    }
+
+    [Test]
+    public void TheTally_CountsEveryOccurrence_WhereARowCountsOne()
+    {
+        var log = new InternalErrorLog();
+
+        log.Append(Fault());
+        log.Append(Fault());
+        log.Append(Fault());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(log.Rows, Has.Count.EqualTo(1), "de-duplication is right for the panel");
+            Assert.That(log.Tally.Appended, Is.EqualTo(3), "and wrong for a count of faults");
+        });
+    }
+
+    [Test]
+    public void TheTally_CountsTheFaultsTheRingHasDropped()
+    {
+        var log = new InternalErrorLog(capacity: 2);
+
+        log.Append(Fault(detail: "first"));
+        log.Append(Fault(detail: "second"));
+        log.Append(Fault(detail: "third"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(log.Rows, Has.Count.EqualTo(2), "the ring is still bounded");
+            Assert.That(log.Tally.Appended, Is.EqualTo(3), "the tally is not");
+        });
+    }
+
+    [Test]
+    public void TheTally_OfALogThatHasSeenNothing_NamesNoFault()
+    {
+        var log = new InternalErrorLog();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(log.Tally.Appended, Is.Zero);
+            Assert.That(log.Tally.LastCode, Is.Null, "a baseline has to be distinguishable from a fault");
+        });
+    }
+
+    [Test]
+    public void TheTally_NamesTheMostRecentFaultRatherThanTheFirst()
+    {
+        var log = new InternalErrorLog();
+
+        log.Append(Fault());
+        log.Append(Fault(code: "internal.rule-failed", detail: "at Rule()"));
+
+        Assert.That(log.Tally.LastCode, Is.EqualTo("internal.rule-failed"),
+            "a delta is diagnosed by what arrived last, which is why this is not a set of every code seen");
+    }
+
     [Test]
     public void TheSameGenerationAgain_ClearsNothing()
     {
@@ -165,6 +248,27 @@ public class InternalErrorLogTests
 
         Assert.DoesNotThrow(() => log.Append(Fault()));
         Assert.That(log.Rows, Has.Count.EqualTo(1), "and the fault is recorded, which is the point of the sink");
+    }
+
+    /// <summary>
+    /// And it survives them ONE AT A TIME. The subscribers are not interchangeable: the panel attaches while
+    /// the view-model is built and the automation snapshot attaches after it, so a throw in the first would
+    /// end a single multicast raise before the second was ever reached. The published fault count then stops
+    /// moving while faults keep arriving, and an end-to-end run reads "nothing faulted" from an observer that
+    /// was never told — the exact false green the tally exists to remove.
+    /// </summary>
+    [Test]
+    public void ASubscriberThatThrows_DoesNotSilenceTheOnesBehindIt()
+    {
+        var log = new InternalErrorLog();
+        bool laterSubscriberWasTold = false;
+        log.Changed += (_, _) => throw new InvalidOperationException("a broken reader");
+        log.Changed += (_, _) => laterSubscriberWasTold = true;
+
+        log.Append(Fault());
+
+        Assert.That(laterSubscriberWasTold, Is.True,
+            "a fault the snapshot publisher is never told about is a fault no scenario can see");
     }
 
     /// <summary>

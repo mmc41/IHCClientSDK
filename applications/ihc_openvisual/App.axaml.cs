@@ -80,11 +80,20 @@ public partial class App : Application
             var window = new MainWindow { DataContext = viewModel };
             dialogs.Owner = window;
             desktop.MainWindow = window;
-            desktop.ShutdownRequested += (_, _) =>
-            {
-                viewModel.Dispose();   // detach the VM's session/recent event handlers first
-                session.Dispose();
-            };
+
+            // The read-only test surface, and the ONE place the flag is read. It arrives as a value, so nothing
+            // below can branch on it, and where the string goes is decided here because this is the only layer
+            // allowed to name Avalonia. Off — which is every session a person starts — it subscribes to nothing
+            // and writes nothing.
+            var automation = new AutomationSnapshotPublisher(
+                Program.TestSurfaceEnabled,
+                snapshot => Avalonia.Automation.AutomationProperties.SetItemStatus(window, snapshot),
+                session,
+                internalErrors);
+
+            // IN ORDER: the publisher lets go of the workflow's events, then the view-model detaches its
+            // session/recent handlers, and only then is the session itself torn down.
+            DisposeOnShutdown(desktop, automation, viewModel, session);
 
             // Open the start-up document — the file named on the command line ("Open with…" / a double-clicked
             // .vis), or the standard empty project — once the window is shown, so an open-failure dialog has a
@@ -94,4 +103,22 @@ public partial class App : Application
 
         base.OnFrameworkInitializationCompleted();
     }
+
+    /// <summary>
+    /// Releases what the composition root built, in the order given, when the desktop lifetime shuts down.
+    /// </summary>
+    /// <remarks>
+    /// One handler rather than a disposal line per object: the ORDER matters — a subscriber has to let go of an
+    /// event before the object raising it is torn down — and an order stated once in a list cannot fall out of
+    /// step the way three separate registrations can.
+    /// </remarks>
+    private static void DisposeOnShutdown(
+        IClassicDesktopStyleApplicationLifetime desktop, params IDisposable[] owned) =>
+        desktop.ShutdownRequested += (_, _) =>
+        {
+            foreach (IDisposable item in owned)
+            {
+                item.Dispose();
+            }
+        };
 }

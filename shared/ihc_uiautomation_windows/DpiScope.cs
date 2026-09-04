@@ -44,6 +44,9 @@ public sealed class DpiScope : IDisposable
     /// <summary>Restores the thread's previous DPI awareness.</summary>
     public void Dispose()
     {
+        // The version check is REDUNDANT with `_entered` and must stay anyway: the generated
+        // SetThreadDpiAwarenessContext is annotated for Windows 10 1607 while this assembly declares 6.1, so
+        // CA1416 demands the guard at the call site rather than at the one that set the flag.
         if (!_entered || !OperatingSystem.IsWindowsVersionAtLeast(10, 0, 14393))
             return;
 

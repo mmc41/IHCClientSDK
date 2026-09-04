@@ -21,14 +21,14 @@
           "Default": "Debug",
           "Microsoft": "Warning",
           "Microsoft.Hosting.Lifetime": "Information",
-          "Avalonia": "Trace"
+          "Avalonia": "Warning"
         }
     },
     "telemetry": {
       "comment" : "OpenTelemetry settings for specific solution.", 
       "Host": "Url to hosted telemetry solution frontpage that the user can login to (OpenTel provider specified)",
       "Traces": "Trace endpoint provided by telemetry solution. Used to send data to solution. (OpenTel provider specified)",
-      "Logs": "Trace endpoint provided by telemetry solution. Used to send data to solution. (OpenTel provider specified)",
+      "Logs": "Trace endpoint provided by telemetry solution. Used to send data to solution. (OpenTel provider specified)",
       "Environment": "Deployment environment reported as deployment.environment.name, e.g. development, staging or production. Empty reports development.",
       "Metrics": "Metrics endpoint provided by telemetry solution. Leave empty to disable metrics. (OpenTel provider specified)",
       "Headers": "Comma-seperated list of key=value pairs including authorization information (OpenTel provider specified)",

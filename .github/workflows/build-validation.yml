@@ -93,8 +93,8 @@ jobs:
     #
     # None of these steps names a results directory. Directory.Build.targets gives each suite its own
     # one under artifacts/coverage/raw/<suite>/, so the TRX, the blame files and that suite's coverage
-    # slice land together — and naming one here would override that and collapse all five suites into
-    # a shared directory, leaving the merged coverage report describing whichever ran last.
+    # slice land together — and naming one here would override that and collapse every suite into a
+    # shared directory, leaving the merged coverage report describing whichever ran last.
 
     - name: Test (controller-free unit tests)
       run: dotnet test tests/safe_unit_tests/safe_unit_tests.csproj --no-build --logger "trx;LogFileName=safe_unit_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash
@@ -169,8 +169,10 @@ jobs:
         retention-days: 14
 
     - name: Upload coverage report
-      # Only the Windows leg runs all five suites, so it is the only one whose merged number describes
-      # the whole repository; the other legs would upload a report with suites missing from it.
+      # Only the Windows leg runs every suite this workflow runs, so it is the only one whose merged number
+      # is worth uploading; the other legs would upload a report with suites missing from it. Not even this
+      # one is repo-wide: safe_integration_tests collects and no CI leg runs it, because it needs a
+      # controller. The number here is what the controller-free suites reached.
       # Carries Summary.txt, the coverage XML and the one-page HTML. The per-file HTML drill-down is
       # opt-in locally and is not generated here, so this stays small.
       if: always() && matrix.os == 'windows-latest'

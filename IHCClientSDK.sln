@@ -53,7 +53,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihc_telemetrybootstrap", "s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "safe_visual_e2e_tests", "tests\safe_visual_e2e_tests\safe_visual_e2e_tests.csproj", "{4396DA02-5806-42CB-8708-5501B8E6EA8B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihc_uiautomation", "shared\ihc_uiautomation\ihc_uiautomation.csproj", "{0D2C5827-210E-4617-B5E9-7FECEC09B729}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ihc_uiautomation_windows", "shared\ihc_uiautomation_windows\ihc_uiautomation_windows.csproj", "{0D2C5827-210E-4617-B5E9-7FECEC09B729}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

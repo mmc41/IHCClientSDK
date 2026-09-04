@@ -33,13 +33,11 @@ public sealed class UiaElement
         _element = element;
     }
 
-    internal IUIAutomationElement Native => _element;
-
     /// <summary>The element's accessible name — what a screen reader announces. Localized, so never a key.</summary>
-    public string Name => Read(() => _element.CurrentName.ToString());
+    public string Name => ReadString(UIA_PROPERTY_ID.UIA_NamePropertyId);
 
     /// <summary>The stable, locale-independent id a driver targets. Empty when the element publishes none.</summary>
-    public string AutomationId => Read(() => _element.CurrentAutomationId.ToString());
+    public string AutomationId => ReadString(UIA_PROPERTY_ID.UIA_AutomationIdPropertyId);
 
     /// <summary>What kind of control it is.</summary>
     public UiaControlType ControlType =>
@@ -72,13 +70,16 @@ public sealed class UiaElement
     /// The element's ItemStatus — a second, machine-readable identity published beside the name, where an
     /// application has one to give. Empty when it publishes none.
     /// </summary>
-    public string ItemStatus => Read(() =>
-        _element.GetCurrentPropertyValue(UIA_PROPERTY_ID.UIA_ItemStatusPropertyId) as string);
+    public string ItemStatus => ReadString(UIA_PROPERTY_ID.UIA_ItemStatusPropertyId);
 
     /// <summary>The Value pattern's text, or null when the element exposes no such pattern.</summary>
+    /// <remarks>
+    /// The pattern is fetched to answer "does it expose one at all"; the text itself comes from the element's
+    /// property, for the memory reason given on <see cref="ReadString"/>.
+    /// </remarks>
     public string? Value =>
-        Pattern<IUIAutomationValuePattern>(UIA_PATTERN_ID.UIA_ValuePatternId) is { } value
-            ? Read(() => value.CurrentValue.ToString())
+        Pattern<IUIAutomationValuePattern>(UIA_PATTERN_ID.UIA_ValuePatternId) is not null
+            ? ReadString(UIA_PROPERTY_ID.UIA_ValueValuePropertyId)
             : null;
 
     // ── Walking ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -183,10 +184,10 @@ public sealed class UiaElement
         UIA_PATTERN_ID.UIA_InvokePatternId, pattern => pattern.Invoke());
 
     /// <summary>Whether the element is open, and whether it can be.</summary>
-    public UiaExpandState ExpandState =>
-        Pattern<IUIAutomationExpandCollapsePattern>(UIA_PATTERN_ID.UIA_ExpandCollapsePatternId) is { } pattern
-            ? Read(() => (UiaExpandState)((int)pattern.CurrentExpandCollapseState + 1), UiaExpandState.NotExpandable)
-            : UiaExpandState.NotExpandable;
+    public UiaExpandState ExpandState => ReadPattern<IUIAutomationExpandCollapsePattern, UiaExpandState>(
+        UIA_PATTERN_ID.UIA_ExpandCollapsePatternId,
+        pattern => (UiaExpandState)((int)pattern.CurrentExpandCollapseState + 1),
+        UiaExpandState.NotExpandable);
 
     /// <summary>Opens the element. False when it exposes no ExpandCollapse pattern.</summary>
     public bool Expand() => Operate<IUIAutomationExpandCollapsePattern>(
@@ -201,9 +202,8 @@ public sealed class UiaElement
         UIA_PATTERN_ID.UIA_SelectionItemPatternId, pattern => pattern.Select());
 
     /// <summary>Whether this element is the selected one in its container.</summary>
-    public bool IsSelected =>
-        Pattern<IUIAutomationSelectionItemPattern>(UIA_PATTERN_ID.UIA_SelectionItemPatternId) is { } pattern
-        && Read(() => (bool)pattern.CurrentIsSelected, false);
+    public bool IsSelected => ReadPattern<IUIAutomationSelectionItemPattern, bool>(
+        UIA_PATTERN_ID.UIA_SelectionItemPatternId, pattern => pattern.CurrentIsSelected, false);
 
     /// <summary>
     /// What this CONTAINER currently has selected. Empty when it exposes no Selection pattern, which is also
@@ -216,11 +216,7 @@ public sealed class UiaElement
 
         try
         {
-            IUIAutomationElementArray selected = pattern.GetCurrentSelection();
-            List<UiaElement> elements = [];
-            for (int i = 0; i < selected.Length; i++)
-                elements.Add(new UiaElement(_session, selected.GetElement(i)));
-            return elements;
+            return Wrap(pattern.GetCurrentSelection());
         }
         catch (COMException)
         {
@@ -244,9 +240,8 @@ public sealed class UiaElement
     /// template, and the list's own peer exposes none — so paging "the list" moves nothing at all, silently,
     /// and a search reports rows that plainly exist as missing.
     /// </remarks>
-    public bool IsVerticallyScrollable =>
-        Pattern<IUIAutomationScrollPattern>(UIA_PATTERN_ID.UIA_ScrollPatternId) is { } pattern
-        && Read(() => (bool)pattern.CurrentVerticallyScrollable, false);
+    public bool IsVerticallyScrollable => ReadPattern<IUIAutomationScrollPattern, bool>(
+        UIA_PATTERN_ID.UIA_ScrollPatternId, pattern => pattern.CurrentVerticallyScrollable, false);
 
     /// <summary>
     /// Whether the element exposes the Scroll pattern AT ALL, regardless of whether it can currently scroll.
@@ -268,16 +263,14 @@ public sealed class UiaElement
     /// else — no selection moves, no command runs — which is what makes it a safe way to REACH something
     /// rather than a way of faking the gesture under test.
     /// </remarks>
-    public UiaRange? Range =>
-        Pattern<IUIAutomationRangeValuePattern>(UIA_PATTERN_ID.UIA_RangeValuePatternId) is { } pattern
-            ? Read<UiaRange?>(
-                () => new UiaRange(
-                    pattern.CurrentValue,
-                    pattern.CurrentMinimum,
-                    pattern.CurrentMaximum,
-                    pattern.CurrentLargeChange),
-                null)
-            : null;
+    public UiaRange? Range => ReadPattern<IUIAutomationRangeValuePattern, UiaRange?>(
+        UIA_PATTERN_ID.UIA_RangeValuePatternId,
+        pattern => new UiaRange(
+            pattern.CurrentValue,
+            pattern.CurrentMinimum,
+            pattern.CurrentMaximum,
+            pattern.CurrentLargeChange),
+        null);
 
     /// <summary>Moves a ranged element to a value. False when it exposes no RangeValue pattern.</summary>
     public bool SetRangeValue(double value) => Operate<IUIAutomationRangeValuePattern>(
@@ -387,12 +380,20 @@ public sealed class UiaElement
         }
     }
 
+    private List<UiaElement> Materialize(TreeScope scope, IUIAutomationCondition condition) =>
+        Wrap(_element.FindAll(scope, condition));
+
     /// <summary>Turns a UI-Automation element array into wrappers. The one place that walks one.</summary>
-    private List<UiaElement> Materialize(TreeScope scope, IUIAutomationCondition condition)
+    /// <remarks>
+    /// <c>Length</c> is read ONCE. It is a COM property on a remote array, so testing it per iteration is a
+    /// cross-process call per element — and it also gives the list its exact capacity, which no reallocation
+    /// then has to guess at.
+    /// </remarks>
+    private List<UiaElement> Wrap(IUIAutomationElementArray found)
     {
-        IUIAutomationElementArray found = _element.FindAll(scope, condition);
-        List<UiaElement> elements = [];
-        for (int i = 0; i < found.Length; i++)
+        int count = found.Length;
+        List<UiaElement> elements = new(count);
+        for (int i = 0; i < count; i++)
             elements.Add(new UiaElement(_session, found.GetElement(i)));
         return elements;
     }
@@ -408,6 +409,29 @@ public sealed class UiaElement
             return null;
         }
     }
+
+    /// <summary>
+    /// Reads a pattern-backed value, answering <paramref name="whenAbsent"/> both when the element exposes no
+    /// such pattern and when the read itself finds the element gone.
+    /// </summary>
+    private TValue ReadPattern<TPattern, TValue>(
+        UIA_PATTERN_ID patternId,
+        Func<TPattern, TValue> read,
+        TValue whenAbsent)
+        where TPattern : class =>
+        Pattern<TPattern>(patternId) is { } pattern ? Read(() => read(pattern), whenAbsent) : whenAbsent;
+
+    /// <summary>
+    /// Reads a string property through <c>GetCurrentPropertyValue</c>, which is VARIANT-marshalled.
+    /// </summary>
+    /// <remarks>
+    /// Never through the <c>Current*</c> accessors. Those are declared as returning a raw <c>BSTR</c> with no
+    /// marshalling attribute, so the string the provider allocates crosses as a bare pointer that this process
+    /// then owns and nothing frees — every read would leak it. The VARIANT form costs the same single
+    /// cross-process call and the runtime releases the allocation.
+    /// </remarks>
+    private string ReadString(UIA_PROPERTY_ID property) =>
+        Read(() => _element.GetCurrentPropertyValue(property) as string);
 
     private bool Operate<T>(UIA_PATTERN_ID patternId, Action<T> operation) where T : class
     {

@@ -6,18 +6,22 @@ using NUnit.Framework;
 namespace safe_visual_e2e_tests;
 
 /// <summary>
-/// The driver can read which control holds KEYBOARD FOCUS — the one observable difference between a dialog that
-/// merely opened and one that opened AT a field.
+/// A DRIVER CONTROL, not a scenario: the driver can read which control holds KEYBOARD FOCUS — the one observable
+/// difference between a dialog that merely opened and one that opened AT a field.
 ///
-/// <para>Asserted against a window whose focus behaviour is already settled and not part of this feature's work:
-/// <c>ProjectInfoWindow</c> focuses its project-number box on open. That makes this a test of the PROBE rather
-/// than of any new focus code — if it fails, the probe is wrong, not the app.</para>
+/// <para>Asserted against a window whose focus behaviour is settled and pinned one level down —
+/// <c>ProjectInfoWindow</c> focuses its project-number box on open, which <c>ResultDialogFocusTests</c> in
+/// <c>safe_visual_tests</c> asserts on the real window. That makes this a test of the PROBE rather than of the
+/// app: if it fails, the probe is wrong, not the product, and the scenario that reads focus for real — the
+/// cable-colour route in <see cref="ProblemsNavigationE2ETests"/> — can be classified before it is fixed. It is
+/// the focus twin of <see cref="FaultReportingTests"/>, and like that fixture it is not counted against the
+/// end-to-end bar.</para>
 ///
-/// <para>It is an E2E rather than a headless test on purpose. Focus is a real windowing-system fact: a headless
-/// render can be asked which control a view-model wanted focused, but only a live run can say what UI Automation
-/// actually publishes, and publishing it is the whole point of the probe.</para>
+/// <para>It needs the desktop on purpose. Focus is a real windowing-system fact: a headless render can be asked
+/// which control a view-model wanted focused, but only a live run can say what UI Automation actually
+/// publishes, and publishing it is the whole point of the probe.</para>
 /// </summary>
-public class DialogFocusProbeE2ETests
+public class DialogFocusProbeTests : E2EScenario
 {
     private const string FixtureFile = "Project6-Errors.vis";
 

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -44,16 +43,14 @@ public static class Mouse
         if (!Position(x, y))
             return false;
 
-        // Settled before the button goes down, exactly as Wheel does: on a busy machine the target window can
-        // still be handling the move when the press arrives, and the press is then delivered against a stale
-        // hover state — which looks like a click that did nothing.
-        Thread.Sleep(BetweenClicks);
-
         bool injected = true;
         for (int i = 0; i < count; i++)
         {
-            if (i > 0)
-                Thread.Sleep(BetweenClicks);
+            // The same gap before every press. Ahead of the first it settles the move — on a busy machine the
+            // target window can still be handling it when the press arrives, and the press then lands against a
+            // stale hover state, which looks like a click that did nothing. Between a pair it is what keeps the
+            // two inside the double-click budget while giving them distinct timestamps.
+            Thread.Sleep(BetweenClicks);
 
             injected &= SynthesizedInput.Send([
                 MouseEvent(MOUSE_EVENT_FLAGS.MOUSEEVENTF_LEFTDOWN),
@@ -154,26 +151,39 @@ public static class Keyboard
     {
         using DpiScope scope = DpiScope.Enter();
 
-        List<VIRTUAL_KEY> modifiers = [];
-        if (gesture.Modifiers.HasFlag(UiaModifiers.Control))
-            modifiers.Add(VIRTUAL_KEY.VK_CONTROL);
-        if (gesture.Modifiers.HasFlag(UiaModifiers.Shift))
-            modifiers.Add(VIRTUAL_KEY.VK_SHIFT);
-        if (gesture.Modifiers.HasFlag(UiaModifiers.Alt))
-            modifiers.Add(VIRTUAL_KEY.VK_MENU);
+        Span<VIRTUAL_KEY> held = stackalloc VIRTUAL_KEY[ModifierKeys.Length];
+        int modifiers = 0;
+        foreach ((UiaModifiers flag, VIRTUAL_KEY key) in ModifierKeys)
+        {
+            if (gesture.Modifiers.HasFlag(flag))
+                held[modifiers++] = key;
+        }
 
-        List<INPUT> strokes = [];
-        foreach (VIRTUAL_KEY modifier in modifiers)
-            strokes.Add(SynthesizedInput.Key(modifier, down: true));
+        VIRTUAL_KEY pressed = (VIRTUAL_KEY)(ushort)gesture.Key;
+        Span<INPUT> strokes = stackalloc INPUT[(modifiers * 2) + 2];
+        int at = 0;
 
-        strokes.Add(SynthesizedInput.Key((VIRTUAL_KEY)(ushort)gesture.Key, down: true));
-        strokes.Add(SynthesizedInput.Key((VIRTUAL_KEY)(ushort)gesture.Key, down: false));
+        for (int i = 0; i < modifiers; i++)
+            strokes[at++] = SynthesizedInput.Key(held[i], down: true);
 
-        for (int i = modifiers.Count - 1; i >= 0; i--)
-            strokes.Add(SynthesizedInput.Key(modifiers[i], down: false));
+        strokes[at++] = SynthesizedInput.Key(pressed, down: true);
+        strokes[at++] = SynthesizedInput.Key(pressed, down: false);
 
-        return SynthesizedInput.Send(strokes) == strokes.Count;
+        for (int i = modifiers - 1; i >= 0; i--)
+            strokes[at++] = SynthesizedInput.Key(held[i], down: false);
+
+        return SynthesizedInput.Send(strokes) == strokes.Length;
     }
+
+    /// <summary>
+    /// The modifiers, in the order they are pressed. Reversed on the way up, so this order is the chord.
+    /// </summary>
+    private static readonly (UiaModifiers Flag, VIRTUAL_KEY Key)[] ModifierKeys =
+    [
+        (UiaModifiers.Control, VIRTUAL_KEY.VK_CONTROL),
+        (UiaModifiers.Shift, VIRTUAL_KEY.VK_SHIFT),
+        (UiaModifiers.Alt, VIRTUAL_KEY.VK_MENU),
+    ];
 }
 
 /// <summary>
@@ -208,20 +218,21 @@ public static class Foreground
     {
         HWND window = Win32Handles.ToHwnd(windowHandle);
         if (window.IsNull)
-        {
             return false;
-        }
 
-        if (Request(window, TimeSpan.FromMilliseconds(80)))
-        {
+        // Already in front — the steady state once a driver has attached — so there is nothing to request and
+        // nothing to wait for. Without this, every gesture pays the settle for a transition that never happens.
+        if (PInvoke.GetForegroundWindow() == window)
             return true;
-        }
+
+        if (Request(window, FirstAttempt))
+            return true;
 
         // ONLY when the foreground belongs to ANOTHER process. The tap exists to acquire foreground rights
         // from whoever holds them; when the window in front is already one of our target's own — a dialog it
         // opened, say — those rights are not the obstacle, and the keystroke is then a stray ALT delivered
         // into the application under test, where it opens a menu or moves a focus nobody asked it to.
-        if (ProcessOf(PInvoke.GetForegroundWindow()) != ProcessOf(window))
+        if (Win32Handles.ProcessOf(PInvoke.GetForegroundWindow()) != Win32Handles.ProcessOf(window))
         {
             _ = SynthesizedInput.Send([
                 SynthesizedInput.Key(VIRTUAL_KEY.VK_MENU, down: true),
@@ -229,29 +240,38 @@ public static class Foreground
             ]);
         }
 
-        return Request(window, TimeSpan.FromMilliseconds(150));
+        return Request(window, AfterAltTap);
     }
 
-    private static uint ProcessOf(HWND window)
-    {
-        uint owner = 0;
-        unsafe
-        {
-            _ = PInvoke.GetWindowThreadProcessId(window, &owner);
-        }
+    /// <summary>How long the first request is given before the ALT tap is tried.</summary>
+    private static readonly TimeSpan FirstAttempt = TimeSpan.FromMilliseconds(80);
 
-        return owner;
-    }
+    /// <summary>How long the request after the ALT tap is given. Longer: the rights have just changed hands.</summary>
+    private static readonly TimeSpan AfterAltTap = TimeSpan.FromMilliseconds(150);
 
+    /// <summary>
+    /// Asks for the foreground and waits until the window HAS it, or the span runs out.
+    /// </summary>
+    /// <remarks>
+    /// Polled, not slept. The transition is asynchronous — the window manager grants it when the owning thread
+    /// next pumps — so a fixed sleep is either longer than the machine needed or shorter than it took, and
+    /// which one changes with the load. Reading the foreground back is cheap next to the transition itself.
+    /// </remarks>
     private static bool Request(HWND window, TimeSpan settle)
     {
         // Restored first: a minimized window cannot become the foreground one, and its rectangle would be
         // off-screen even if it did.
         _ = PInvoke.ShowWindow(window, SHOW_WINDOW_CMD.SW_RESTORE);
         _ = PInvoke.SetForegroundWindow(window);
-        Thread.Sleep(settle);
-        return PInvoke.GetForegroundWindow() == window;
+
+        return UiaWait.Until(
+            () => PInvoke.GetForegroundWindow() == window,
+            settle,
+            ForegroundPoll)
+            .Satisfied;
     }
+
+    private static readonly TimeSpan ForegroundPoll = TimeSpan.FromMilliseconds(10);
 
     /// <summary>The window currently in front, or zero if there is none.</summary>
     public static nint Current() => Win32Handles.ToNint(PInvoke.GetForegroundWindow());
@@ -277,11 +297,8 @@ internal static class SynthesizedInput
     /// UIPI blocks injection into a more privileged window, and a wrong <c>cbSize</c> is rejected outright.
     /// Discarding this is how a driver reports a gesture that the system silently refused.
     /// </returns>
-    internal static uint Send(List<INPUT> inputs)
-    {
-        if (inputs.Count == 0)
-            return 0;
+    internal static uint Send(ReadOnlySpan<INPUT> inputs) =>
+        inputs.IsEmpty ? 0 : PInvoke.SendInput(inputs, InputSize);
 
-        return PInvoke.SendInput(CollectionsMarshal.AsSpan(inputs), Marshal.SizeOf<INPUT>());
-    }
+    private static readonly int InputSize = Marshal.SizeOf<INPUT>();
 }
