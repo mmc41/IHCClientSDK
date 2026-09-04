@@ -58,15 +58,61 @@ public static class E2E
         string.Equals(TestContext.Parameters.Get(HeadlessParameter, "false"), "true",
             StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// The run parameter choosing WHICH real-GUI driver drives the desktop. Ignored when
+    /// <see cref="HeadlessParameter"/> is set, which has no desktop to drive.
+    /// </summary>
+    /// <example>
+    /// <code>dotnet test … -- 'TestRunParameters.Parameter(name="driver",value="uia")'</code>
+    /// </example>
+    public const string DriverParameter = "driver";
+
+    /// <summary>The suite's own in-process driver, over Windows UI Automation.</summary>
+    public const string UiaDriverName = "uia";
+
+    /// <summary>
+    /// What a run gets when it names no driver: the suite's OWN driver, which needs nothing outside this
+    /// repository.
+    /// </summary>
+    public const string DefaultDriverName = UiaDriverName;
+
     private static IE2EDriver? driver;
 
     /// <summary>
     /// The driver this run uses, decided once. Held statically because the headless one owns a window and an
     /// Avalonia dispatcher that outlive a single fixture, exactly as the real one owns a process.
     /// </summary>
-    internal static IE2EDriver Driver => driver ??= Headless
-        ? new HeadlessDriver()
-        : new AuiProcessDriver();
+    internal static IE2EDriver Driver => driver ??=
+        CreateDriver(Headless, TestContext.Parameters.Get(DriverParameter, DefaultDriverName));
+
+    /// <summary>
+    /// Which driver a given pair of run parameters selects. Separate from <see cref="Driver"/> so the choice can
+    /// be asserted without a live application, and so a typo in the parameter fails LOUDLY rather than silently
+    /// falling back to the default.
+    /// </summary>
+    /// <param name="headless">Whether the run drives the in-process window. Wins over <paramref name="requested"/>.</param>
+    /// <param name="requested">The requested real-GUI driver.</param>
+    internal static IE2EDriver CreateDriver(bool headless, string requested)
+    {
+        if (headless)
+        {
+            return new HeadlessDriver();
+        }
+
+        return requested switch
+        {
+            // D16: the type is Windows-only at COMPILE time, so off Windows there is nothing to construct —
+            // the run still needs a driver object to ask for its unmet requirement, which is what the stub is.
+            UiaDriverName when OperatingSystem.IsWindowsVersionAtLeast(6, 1) => new UiaDriver(),
+            UiaDriverName => new UnavailableDriver(
+                $"{UiaDriverName} (real GUI)", DriverRequirements.NeedsWindowsUiAutomation()),
+            _ => throw new ArgumentException(
+                $"unknown driver '{requested}': this suite drives the desktop through '{UiaDriverName}', or "
+                + "runs in-process with "
+                + $"-- 'TestRunParameters.Parameter(name=\"{HeadlessParameter}\",value=\"true\")'",
+                nameof(requested)),
+        };
+    }
 
     /// <summary>A fixture under tests/testdata/projects, as an absolute path the app can open.</summary>
     public static string Fixture(params string[] relativeParts) => Path.Combine(
@@ -123,6 +169,14 @@ public static class E2E
     }
 
     /// <summary>
+    /// What a traced command line reads as. It names the SUITE's verb vocabulary, which every driver answers,
+    /// and deliberately not a tool: there is no executable to retype it into, and a prefix that named one sent
+    /// a reader to the <c>aui-openvisual</c> skill — which this suite does not use, and which
+    /// <see cref="SkillIndependenceGuard"/> exists to keep it from using.
+    /// </summary>
+    private const string CommandPrefix = "e2e ";
+
+    /// <summary>
     /// Runs one driver command and returns its envelope. It does NOT assert success: several tests are about a
     /// refusal, and a helper that threw on <c>ok:false</c> would make those unwritable.
     /// </summary>
@@ -133,7 +187,7 @@ public static class E2E
     /// </remarks>
     public static Envelope Run(params string[] args)
     {
-        string command = "aui " + string.Join(' ', args);
+        string command = CommandPrefix + string.Join(' ', args);
         TestContext.Out.WriteLine($"> {command}  [{Driver.Name}]");
         Envelope envelope = Driver.Run(args) with { Command = command };
         TestContext.Out.WriteLine($"  {envelope.Code}: {envelope.Message}");
@@ -315,31 +369,6 @@ public static class E2E
 
     /// <summary>The configuration view's root label; anything else means a block's program is open.</summary>
     public const string ConfigurationRootLabel = "Lokaliteter";
-
-    /// <summary>
-    /// Whether <c>Controller ▸ Send projekt</c> is offered, read from the menu bar itself.
-    /// </summary>
-    /// <remarks>
-    /// The menu dump reports each row's enabled state but not its REASON, and the reason cannot be read another
-    /// way either: it surfaces as a tooltip on a disabled row, or in the status bar after a refused F5 — and the
-    /// driver refuses to synthesize F5 at all, because that gesture is the controller transfer. So an E2E test
-    /// can observe that the transfer is withheld, not why. Which gate withheld it is proved headlessly.
-    /// </remarks>
-    public static bool SendProjectEnabled()
-    {
-        Envelope menu = RunOk("menu", "dump-bar", "--menu", "Controller", "--with-id");
-        foreach (JsonElement title in menu.Field("titles").EnumerateArray())
-        {
-            foreach (JsonElement item in title.GetProperty("children").EnumerateArray())
-            {
-                if (item.TryGetProperty("id", out JsonElement id) && id.GetString() == "controller.send")
-                    return item.GetProperty("enabled").GetBoolean();
-            }
-        }
-
-        Assert.Fail($"the Controller menu has no controller.send row: {menu.Raw}");
-        return false;
-    }
 
     /// <summary>
     /// Kills the application. Called in every teardown, and not only for tidiness: a surviving instance holds

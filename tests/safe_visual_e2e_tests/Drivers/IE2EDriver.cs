@@ -5,25 +5,23 @@ namespace safe_visual_e2e_tests;
 /// </summary>
 /// <remarks>
 /// <para>The seam exists because there are two ways to reach the application and they answer different
-/// questions. <see cref="AuiProcessDriver"/> speaks to the real <c>ihc_openvisual.exe</c> over Windows UI
-/// Automation, which is the only thing that proves the Avalonia-to-UIA bridge, real focus and the desktop's
-/// modal stack. <see cref="HeadlessDriver"/> runs the same window in-process on Avalonia's headless backend,
-/// which proves the scenario paths and runs anywhere — including CI, where the process driver cannot go.</para>
+/// questions. <see cref="UiaDriver"/> launches the real <c>ihc_openvisual.exe</c> and drives it over Windows UI
+/// Automation, which is the only thing that proves the Avalonia-to-UIA bridge, real focus, real pointer input
+/// and the desktop's modal stack. <see cref="HeadlessDriver"/> runs the same window in-process on Avalonia's
+/// headless backend, which proves the scenario paths and runs anywhere — including CI, which has no desktop
+/// to take.</para>
 ///
 /// <para><b>They are not interchangeable, and a green headless run does not stand in for a real one.</b> The
 /// headless driver reads Avalonia's automation peers directly, so it cannot see a defect in the bridge that
-/// projects those peers onto Windows UIA — the class of defect this suite was originally written for. Nor does
-/// it exercise <c>aui.ps1</c> at all, which in the real mode is part of the system under test. Treat a headless
-/// pass as "the scenario still works", never as "the driver still works".</para>
+/// projects those peers onto Windows UIA — the class of defect this suite was originally written for. Treat a
+/// headless pass as "the scenario still works", never as "the application is driveable".</para>
 ///
-/// <para><b>And the ROUTE differs, which is the subtler half.</b> The driver manifest
-/// (<c>.claude/skills/aui-openvisual/scripts/commands.json</c>) classifies every verb by what its transcript is
-/// evidence OF, and records that the real driver has no <c>synthetic</c> row: each mutating verb drives a real
-/// menu, key, pointer or control pattern. The headless driver reaches several of the same outcomes by setting
-/// view-model state instead — assigning the selected row, toggling a tier, invoking a command object — which is
-/// the manifest's own definition of synthetic. By its rule such a verb may ARRANGE state but can never answer
-/// which action triggers which response. So a headless pass says the scenario's OUTCOMES still hold; only the
-/// real mode says a user's route still reaches them.</para>
+/// <para><b>And the ROUTE differs, which is the subtler half.</b> The real driver reaches every outcome the way
+/// a person does: a menu opened and a leaf invoked, a chord pressed, a pointer clicked at a real screen
+/// position. The headless driver reaches several of the same outcomes by setting view-model state instead —
+/// assigning the selected row, toggling a tier, invoking a command object. Such a verb may ARRANGE state, but
+/// it can never answer which action triggers which response. So a headless pass says the scenario's OUTCOMES
+/// still hold; only the real mode says a user's route still reaches them.</para>
 /// </remarks>
 internal interface IE2EDriver
 {

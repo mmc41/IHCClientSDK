@@ -14,6 +14,9 @@ on:
     - '**/*.dtd'
     - 'tests/**'
     - '.github/workflows/**'
+    # CsWin32's input: this file IS the list of Win32 APIs generated into the UI-automation toolkit, so adding
+    # or removing a line changes compiled source without touching a .cs file anywhere.
+    - '**/NativeMethods.txt'
     # Analyzer enforcement. Warnings are errors here, so a severity change alone can break the build in
     # every project without touching a single .cs file — and none of the patterns above match these names.
     - '.globalconfig'

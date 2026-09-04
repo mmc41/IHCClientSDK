@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ihc_openvisual.Configuration;
 using NUnit.Framework;
 
 using Ihc.Tests.Shared;
@@ -138,7 +139,7 @@ public class ProblemsNavigationE2ETests
             Assert.That(selections.Select(s => s.Name), Has.Some.Contains(target.Element),
                 $"the selected row names the finding's element ('{target.Element}'); selections were: "
                 + string.Join(", ", selections.Select(s => $"{s.Tree}={s.Name}")));
-            Assert.That(selections.Select(s => s.Tree), Has.Some.EqualTo("InstallationTree"),
+            Assert.That(selections.Select(s => s.Tree), Has.Some.EqualTo(AutomationIds.InstallationTree),
                 "and it is the OWNING pane that moved — a configuration target belongs to the installation tree");
         });
     }
@@ -218,17 +219,17 @@ public class ProblemsNavigationE2ETests
 
             Assert.Multiple(() =>
             {
-                Assert.That(E2E.Selections().Select(s => s.Tree), Has.Some.EqualTo("InstallationTree"),
+                Assert.That(E2E.Selections().Select(s => s.Tree), Has.Some.EqualTo(AutomationIds.InstallationTree),
                     "Enter: the tree moved to the owning product");
                 Assert.That(modals, Has.Count.EqualTo(2),
                     "Enter: BOTH windows are open — the editor did not replace its parent, it stacked "
                     + $"on it. Modals were: {string.Join(", ", modals)}");
-                Assert.That(modals[0], Is.EqualTo("PinPropertiesWindow"),
+                Assert.That(modals[0], Is.EqualTo(AutomationIds.PinPropertiesWindow),
                     "Enter: the terminal editor is on top");
-                Assert.That(modals[1], Is.EqualTo("ProductDialogWindow"),
+                Assert.That(modals[1], Is.EqualTo(AutomationIds.ProductDialogWindow),
                     "Enter: with the product dialog still beneath it");
                 Assert.That(read.Field("focused").GetProperty("id").GetString(),
-                    Is.EqualTo("CableColourBox"),
+                    Is.EqualTo(AutomationIds.CableColourBox),
                     "Enter: and the caret is in Ledningsfarve — the field the finding is about");
                 Assert.That(read.Field("dialog").GetProperty("title").GetString(),
                     Does.Contain(row.Element).IgnoreCase.Or.Contain("gang"),
@@ -275,7 +276,7 @@ public class ProblemsNavigationE2ETests
             {
                 Assert.That(modals, Has.Count.EqualTo(1),
                     $"one window, and only one. Modals were: {string.Join(", ", modals)}");
-                Assert.That(modals[0], Is.EqualTo("ProjectInfoWindow"),
+                Assert.That(modals[0], Is.EqualTo(AutomationIds.ProjectInfoWindow),
                     "the window the row's CODE names — there is no element to have derived it from");
                 Assert.That(E2E.Selections().Select(s => $"{s.Tree}={s.Name}"),
                     Is.EqualTo(before.Select(s => $"{s.Tree}={s.Name}")),

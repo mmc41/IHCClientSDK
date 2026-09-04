@@ -9,11 +9,12 @@
         xmlns:controls="using:ihc_openvisual.Controls"
         xmlns:views="using:ihc_openvisual.Views"
         xmlns:a="using:Avalonia.Automation"
+        xmlns:cfg="using:ihc_openvisual.Configuration"
         xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
         mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="680"
         x:Class="ihc_openvisual.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        a:AutomationProperties.AutomationId="MainWindow"
+        a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.MainWindow}"
         Icon="/Assets/openvisual.ico"
         Width="1000" Height="680"
         FontSize="{DynamicResource WorkspaceFontSize}"
@@ -283,7 +284,7 @@
              access-key underscores such as "Gem projekt _som…" — do not. Items with no registry row (submenu hosts,
              the Tema/Tekststørrelse radio items) take a coined menu./theme./textScale. id. The node context flyout
              below offers many of the SAME commands and prefixes its copies with "ctx." so no id is ambiguous. -->
-        <controls:AccessibleMenu DockPanel.Dock="Top" a:AutomationProperties.AutomationId="MenuBar" a:AutomationProperties.Name="Menulinje">
+        <controls:AccessibleMenu DockPanel.Dock="Top" a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.MenuBar}" a:AutomationProperties.Name="Menulinje">
             <controls:AccessibleMenuItem Header="_Filer" a:AutomationProperties.AutomationId="MenuFile">
                 <controls:AccessibleMenuItem Header="_Nyt projekt" Command="{Binding NewCommand}" InputGesture="{OnPlatform 'Ctrl+N', macOS='Cmd+N'}"
                           a:AutomationProperties.AutomationId="file.new"/>
@@ -341,7 +342,7 @@
             </controls:AccessibleMenuItem>
 
             <!-- Edit is owned by later epics (E14–E15); present as a stable host. -->
-            <controls:AccessibleMenuItem Header="_Rediger" a:AutomationProperties.AutomationId="MenuEdit">
+            <controls:AccessibleMenuItem Header="_Rediger" a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.MenuEdit}">
                 <!-- Undo/Redo are the one pair whose HEADER is a binding ("Fortryd Slet lokalitet"), so header-text
                      addressing does not merely localize badly here — it changes with the history. -->
                 <controls:AccessibleMenuItem Header="{Binding UndoMenuHeader}" Command="{Binding UndoCommand}" InputGesture="{OnPlatform 'Ctrl+Z', macOS='Cmd+Z'}"
@@ -377,7 +378,7 @@
                           ToolTip.Tip="{Binding Registry.Bar[node.properties].Reason}"/>
             </controls:AccessibleMenuItem>
 
-            <controls:AccessibleMenuItem Header="_Vis" a:AutomationProperties.AutomationId="MenuView">
+            <controls:AccessibleMenuItem Header="_Vis" a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.MenuView}">
                 <!-- The vendor's Vis leads with the three view/navigation commands (uxparity S-27):
                      Konfigurationsvisning (ESC), Vis program (F3), Hop til modsat link (F4). OpenVisual bound all
                      three as keys but surfaced none of them in the menu. -->
@@ -543,7 +544,7 @@
                  &Projektinfo); its &Rediger data tabeller is out of scope (product.md exclusion), and its
                  Rapporter… is replaced by our three named report entries, kept below a separator as
                  Bibliotek keeps its extensions. -->
-            <controls:AccessibleMenuItem Header="_Dokumentation" a:AutomationProperties.AutomationId="MenuDocumentation">
+            <controls:AccessibleMenuItem Header="_Dokumentation" a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.MenuDocumentation}">
                 <controls:AccessibleMenuItem Header="_Datalinie moduler…" Command="{Binding ModuleMapCommand}"
                           a:AutomationProperties.AutomationId="project.moduleMap"
                           IsEnabled="{Binding Registry.Bar[project.moduleMap].Enabled}"
@@ -782,7 +783,7 @@
                 <!-- The id is explicit, not left to the x:Name fallback: the pane is the first thing a driver
                      addresses, and x:Name is an internal detail a rename tool changes silently. -->
                 <controls:AccessibleTreeView x:Name="InstallationTree" ItemsSource="{Binding InstallationNodes}" KeyDown="OnTreeKeyDown"
-                          a:AutomationProperties.AutomationId="InstallationTree"
+                          a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.InstallationTree}"
                           a:AutomationProperties.Name="{Binding InstallationPaneHeader}"
                           SelectedItem="{Binding SelectedInstallationNode, Mode=TwoWay}"
                           ContextFlyout="{StaticResource NodeContextMenu}"
@@ -809,7 +810,7 @@
                                FontWeight="SemiBold" FontSize="{DynamicResource BodyFontSize}"/>
                 </Border>
                 <controls:AccessibleTreeView x:Name="FunctionsTree" ItemsSource="{Binding FunctionNodes}" KeyDown="OnTreeKeyDown"
-                          a:AutomationProperties.AutomationId="FunctionsTree"
+                          a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.FunctionsTree}"
                           a:AutomationProperties.Name="{Binding FunctionsPaneHeader}"
                           SelectedItem="{Binding SelectedFunctionsNode, Mode=TwoWay}"
                           ContextFlyout="{StaticResource NodeContextMenu}"

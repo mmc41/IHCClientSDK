@@ -15,6 +15,7 @@ using Avalonia.VisualTree;
 using Ihc;
 using Ihc.Tests.Shared;
 using Ihc.Vis;
+using ihc_openvisual.Configuration;
 using ihc_openvisual.Services;
 using ihc_openvisual.ViewModels;
 using ihc_openvisual.Views;
@@ -25,13 +26,13 @@ namespace safe_visual_e2e_tests;
 
 /// <summary>
 /// The HEADLESS mode: the same <see cref="MainWindow"/> the shipped application shows, hosted in this process on
-/// Avalonia's headless backend, answering the same verb vocabulary as <see cref="AuiProcessDriver"/>.
+/// Avalonia's headless backend, answering the same verb vocabulary as <see cref="UiaDriver"/>.
 /// </summary>
 /// <remarks>
 /// <para><b>What this mode is for, and what it is not.</b> It exists so the scenario paths can be gated by CI,
 /// which cannot host a desktop session. It reads Avalonia's own automation peers and view-models directly, so it
-/// says nothing about the Avalonia-to-UIA bridge, about real focus, or about <c>aui.ps1</c> — every one of which
-/// is part of the system under test in the real mode. See <see cref="IE2EDriver"/>.</para>
+/// says nothing about the Avalonia-to-UIA bridge, about real focus, or about synthesized input — every one of
+/// which is part of the system under test in the real mode. See <see cref="IE2EDriver"/>.</para>
 ///
 /// <para><b>A verb this mode cannot honestly answer REFUSES.</b> It does not approximate. A scenario that needs
 /// the desktop fails in headless mode with <see cref="UnsupportedCode"/> naming the verb, which is a readable
@@ -58,6 +59,10 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
     private ProjectWorkflow? workflow;
     private string? scratchDir;
 
+    private readonly EnvelopeWriter envelopes;
+
+    internal HeadlessDriver() => envelopes = new EnvelopeWriter(Context);
+
     /// <summary>
     /// The most recent activation, still running because it opened something modal. Observed on the next verb so
     /// a fault inside it is reported rather than swallowed as an unobserved task.
@@ -67,16 +72,14 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
     private HeadlessUnitTestSession Session => session ??=
         HeadlessUnitTestSession.StartNew(typeof(OpenVisualHeadlessApp), AvaloniaTestIsolationLevel.PerAssembly);
 
-    public E2E.Envelope Run(string[] args)
-    {
-        string command = "aui " + string.Join(' ', args);
-        TestContext.Out.WriteLine($"> {command}  [{Name}]");
-        E2E.Envelope envelope = Session
-            .Dispatch(() => ExecuteAsync(args), CancellationToken.None)
-            .GetAwaiter().GetResult() with { Command = command };
-        TestContext.Out.WriteLine($"  {envelope.Code}: {envelope.Message}");
-        return envelope;
-    }
+    /// <summary>
+    /// Answers one verb on the Avalonia dispatcher. The command stamp and the trace around it belong to
+    /// <see cref="E2E.Run"/>, the one call site both drivers pass through — repeated here they printed every
+    /// verb twice and named a tool this suite does not use.
+    /// </summary>
+    public E2E.Envelope Run(string[] args) => Session
+        .Dispatch(() => ExecuteAsync(args), CancellationToken.None)
+        .GetAwaiter().GetResult();
 
     public void KillApp() => Session.Dispatch(() =>
     {
@@ -274,8 +277,8 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
             // Always true on this path: the guard above refuses when the panel is hidden. The key stays because
             // the envelope's shape is the contract, and the real driver reports it too.
             ["visible"] = true,
-            ["state"] = panel.State.ToString().ToLowerInvariant(),
-            ["bound"] = panel.State != ProblemsState.Validating,
+            ["state"] = ProblemsStates.Of(panel.State),
+            ["bound"] = ProblemsStates.IsBound(panel.State),
             ["warnings"] = panel.Warnings.Count,
             ["errors"] = panel.Errors.Count,
             ["infos"] = panel.Infos.Count,
@@ -308,7 +311,7 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
             }
 
             Dispatcher.UIThread.RunJobs();
-            if (vm.Problems.State != ProblemsState.Validating)
+            if (ProblemsStates.IsBound(vm.Problems.State))
             {
                 return;
             }
@@ -367,15 +370,12 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
     {
         ItemsControl? list = window?.GetVisualDescendants()
             .OfType<ItemsControl>()
-            .FirstOrDefault(c => Avalonia.Automation.AutomationProperties.GetAutomationId(c) == ProblemsListId);
+            .FirstOrDefault(c => Avalonia.Automation.AutomationProperties.GetAutomationId(c) == AutomationIds.ProblemsList);
 
         return list?.GetRealizedContainers() is { } containers
             ? containers.OrderBy(c => c.Bounds.Top).Select(c => c.DataContext).OfType<ProblemsPanelRowViewModel>()
             : vm.Problems.Rows;
     }
-
-    /// <summary>The list's own automation id, as the view declares it and the GUI suite's audit asserts it.</summary>
-    private const string ProblemsListId = "ProblemsList";
 
     private async Task<E2E.Envelope> ProblemsClickAsync(string[] args)
     {
@@ -522,7 +522,7 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
         TestContext.AddTestAttachment(path, "E2E window capture");
 
         // The PATH goes in the message, where the real driver puts it and where the scenario reads it from.
-        return Envelope(true, "OK", path, new Dictionary<string, object?> { ["path"] = path });
+        return envelopes.Build(true, "OK", path, new Dictionary<string, object?> { ["path"] = path });
     }
 
     // ---- envelope construction -----------------------------------------------------------------------------
@@ -530,31 +530,9 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
     private E2E.Envelope NotRunning() =>
         Refuse("AppNotRunning", "no window is hosted; launch first");
 
-    private E2E.Envelope Ok(object? data = null) => Envelope(true, "OK", string.Empty, data);
+    private E2E.Envelope Ok(object? data = null) => envelopes.Ok(data);
 
-    private E2E.Envelope Refuse(string code, string message) => Envelope(false, code, message, null);
-
-    /// <summary>
-    /// Serializes the envelope and parses it straight back through the SAME reader the process driver uses.
-    /// </summary>
-    /// <remarks>
-    /// The round trip is not waste. Every consumer reads either <c>Data</c> or the <c>context</c> block beside
-    /// it, so building the string is the only way both halves are guaranteed to describe the same envelope, and
-    /// it makes a shape mismatch with <c>aui.ps1</c> a JSON difference rather than a C# one.
-    /// <para>Read back by <see cref="E2E.Envelope.Parse"/> rather than field by field here, so the two drivers
-    /// cannot come to disagree about the shape. Reading it here independently is exactly how they did: this one
-    /// populated no context, and every reader of the modal stack, the window title and the selections quietly
-    /// saw nothing in headless mode.</para>
-    /// </remarks>
-    private E2E.Envelope Envelope(bool ok, string code, string message, object? data) =>
-        E2E.Envelope.Parse(JsonSerializer.Serialize(new Dictionary<string, object?>
-        {
-            ["ok"] = ok,
-            ["code"] = code,
-            ["message"] = message,
-            ["data"] = data ?? new Dictionary<string, object?>(),
-            ["context"] = Context(),
-        }));
+    private E2E.Envelope Refuse(string code, string message) => envelopes.Refuse(code, message);
 
     /// <summary>The block every envelope carries: what document is open, what is selected, what is modal.</summary>
     private Dictionary<string, object?> Context() => new()
@@ -581,7 +559,8 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
         }
 
         List<object> selections = [];
-        Add(vm.IsInstallationPaneActive ? "InstallationTree" : "FunctionsTree", vm.SelectedNode?.DisplayName);
+        Add(vm.IsInstallationPaneActive ? AutomationIds.InstallationTree : AutomationIds.FunctionsTree,
+            vm.SelectedNode?.DisplayName);
         return selections;
 
         void Add(string tree, string? name)
@@ -621,11 +600,7 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
 
     // ---- argument parsing ----------------------------------------------------------------------------------
 
-    private static string? Option(string[] args, string name)
-    {
-        int i = Array.IndexOf(args, name);
-        return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
-    }
+    private static string? Option(string[] args, string name) => DriverArguments.Option(args, name);
 
-    private static bool Has(string[] args, string flag) => Array.IndexOf(args, flag) >= 0;
+    private static bool Has(string[] args, string flag) => DriverArguments.Has(args, flag);
 }

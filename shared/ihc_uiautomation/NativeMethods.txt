@@ -1,0 +1,45 @@
+// What CsWin32 generates for this toolkit. One name per line; a type pulls in whatever its members
+// reference, so this list is the ENTRY POINTS rather than the full generated surface.
+//
+// Ask for the ENUMS UIA_PROPERTY_ID and UIA_PATTERN_ID, never the individual UIA_*Id constants: requesting a
+// constant that is also an enum member is PInvoke004.
+
+// ── The UI-Automation client ────────────────────────────────────────────────────────────────────────────────
+CUIAutomation8
+IUIAutomation
+IUIAutomationElement
+IUIAutomationElementArray
+IUIAutomationCondition
+IUIAutomationTreeWalker
+TreeScope
+UIA_PROPERTY_ID
+UIA_PATTERN_ID
+
+// ── Control patterns the driver operates ────────────────────────────────────────────────────────────────────
+IUIAutomationInvokePattern
+IUIAutomationExpandCollapsePattern
+IUIAutomationSelectionItemPattern
+IUIAutomationSelectionPattern
+IUIAutomationScrollPattern
+IUIAutomationScrollItemPattern
+IUIAutomationValuePattern
+IUIAutomationRangeValuePattern
+
+// ── Synthesized input, and the DPI context it has to run in ─────────────────────────────────────────────────
+SendInput
+SetCursorPos
+SetForegroundWindow
+GetForegroundWindow
+ShowWindow
+SHOW_WINDOW_CMD
+SetThreadDpiAwarenessContext
+DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+
+// ── Top-level windows of a process, in Z-ORDER ──────────────────────────────────────────────────────────────
+EnumWindows
+GetWindowThreadProcessId
+IsWindowVisible
+GetAncestor
+
+// ── Capture ─────────────────────────────────────────────────────────────────────────────────────────────────
+PrintWindow

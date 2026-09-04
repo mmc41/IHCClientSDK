@@ -3,10 +3,11 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:a="using:Avalonia.Automation"
+        xmlns:cfg="using:ihc_openvisual.Configuration"
         xmlns:controls="using:ihc_openvisual.Controls"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="520"
         x:Class="ihc_openvisual.Views.ProjectInfoWindow"
-        a:AutomationProperties.AutomationId="ProjectInfoWindow"
+        a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.ProjectInfoWindow}"
         Title="Rediger projekt oplysninger"
         Width="800" Height="520"
         WindowStartupLocation="CenterOwner"
@@ -61,6 +62,7 @@
                     <TextBlock Grid.Row="0" Grid.Column="2" Name="ProjProgrammerLabel" Text="Programmør:" Margin="0,0,10,2"/>
                     <TextBlock Grid.Row="0" Grid.Column="3" Name="ProjDrawingLabel" Text="Tegning:" Margin="0,0,0,2"/>
                     <TextBox Grid.Row="1" Grid.Column="0" Name="ProjNumberBox" Margin="0,0,10,0"
+                             a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.ProjNumberBox}"
                              a:AutomationProperties.LabeledBy="{Binding #ProjNumberLabel}"/>
                     <TextBox Grid.Row="1" Grid.Column="1" Name="ProjTypeBox" Margin="0,0,10,0"
                              a:AutomationProperties.LabeledBy="{Binding #ProjTypeLabel}"/>

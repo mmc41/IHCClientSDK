@@ -64,6 +64,10 @@
          GHSA-w3x6-4m5h-cxqf). Any 8.0.3+ clears those; it rides the runtime's own release train, so it
          tracks ConfigurationManager above rather than the WCF versions it is overriding. -->
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.11" />
+    <!-- GDI+ imaging, for the screen capture in shared/ihc_uiautomation. Windows-only at RUN time (its types
+         carry SupportedOSPlatform("windows")), which is exactly what that toolkit already declares; the package
+         ships a net10.0 asset, so a platform-neutral project still compiles against it everywhere. -->
+    <PackageVersion Include="System.Drawing.Common" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup Label="Avalonia / GUI">
@@ -124,6 +128,11 @@
          Directory.Build.targets). Same Roslyn analyzer release train as the public-API analyzer above:
          bump them together. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0" />
+    <!-- Source generator for the Win32 and UIA3 COM surface ihc_uiautomation drives (shared/ihc_uiautomation
+         only). Generator-only: PrivateAssets="all" at the reference keeps it out of any dependency graph, and
+         nothing of it ships. Pinned at the version measured to compile clean at plain net10.0 under this
+         repository's analyzer settings — FlaUI, the obvious alternative, publishes no net10.0 asset at all. -->
+    <PackageVersion Include="Microsoft.Windows.CsWin32" Version="0.3.321" />
   </ItemGroup>
 
 </Project>

@@ -90,8 +90,8 @@ public class FileMenuGroupingParityTests
     private static string Region(string automationId, string nextAutomationId)
     {
         string xaml = Xaml();
-        int start = xaml.IndexOf($"AutomationId=\"{automationId}\"", StringComparison.Ordinal);
-        int nextId = xaml.IndexOf($"AutomationId=\"{nextAutomationId}\"", StringComparison.Ordinal);
+        int start = XamlAnchor.IndexOfAutomationId(xaml, automationId);
+        int nextId = XamlAnchor.IndexOfAutomationId(xaml, nextAutomationId);
         Assert.That(start, Is.GreaterThanOrEqualTo(0), $"{automationId} not found in the markup");
         Assert.That(nextId, Is.GreaterThan(start), $"{nextAutomationId} must follow {automationId}");
         int end = xaml.LastIndexOf("<controls:AccessibleMenuItem", nextId, StringComparison.Ordinal);

@@ -59,10 +59,11 @@ public class DocumentationMenuParityTests
     [Test]
     public void DokumentationTitle_TakesTheVendorsDAccessKey()
     {
+        string tag = BarTitleTag("MenuDocumentation");
+
         Assert.Multiple(() =>
         {
-            Assert.That(Xaml(), Does.Contain(
-                "Header=\"_Dokumentation\" a:AutomationProperties.AutomationId=\"MenuDocumentation\""),
+            Assert.That(tag, Does.Contain("Header=\"_Dokumentation\""),
                 "the vendor's title is &Dokumentation — D, not the u of Dok_umentation");
             Assert.That(BarTitleAccessKeys().Where(k => k == 'D').ToArray(), Has.Length.EqualTo(1),
                 "…which is free to take: no other bar title claims D");
@@ -94,12 +95,31 @@ public class DocumentationMenuParityTests
         return i >= 0 && i + 1 < header.Length ? char.ToLowerInvariant(header[i + 1]) : '\0';
     }
 
+    /// <summary>
+    /// The access key of every bar title. The id is matched in either spelling — a literal, or bound through
+    /// <c>{x:Static}</c> to the constant of the same name — because a title that switched spellings would
+    /// otherwise drop OUT of this set and free its letter for a second claimant without failing anything.
+    /// </summary>
     private static IEnumerable<char> BarTitleAccessKeys() =>
-        Regex.Matches(Xaml(), @"Header=""(?<h>[^""]*)"" a:AutomationProperties.AutomationId=""Menu[^""]*""")
+        Regex.Matches(
+                Xaml(),
+                @"Header=""(?<h>[^""]*)"" a:AutomationProperties.AutomationId=""(?:\{x:Static cfg:AutomationIds\.)?Menu[^""]*""")
             .Select(m => char.ToUpperInvariant(AccessKey(m.Groups["h"].Value)));
 
     private static string Xaml() =>
         File.ReadAllText(Path.Combine(TestContext.CurrentContext.TestDirectory, "appxaml", "MainWindow.axaml"));
+
+    /// <summary>
+    /// The whole opening tag of the bar title that publishes <paramref name="automationId"/>, so an assertion
+    /// about its other attributes neither depends on their ORDER nor on how the id itself is spelled.
+    /// </summary>
+    private static string BarTitleTag(string automationId)
+    {
+        string xaml = Xaml();
+        int anchor = XamlAnchor.IndexOfAutomationId(xaml, automationId);
+        Assert.That(anchor, Is.GreaterThanOrEqualTo(0), $"{automationId} not found in the markup");
+        return xaml[xaml.LastIndexOf('<', anchor)..xaml.IndexOf('>', anchor)];
+    }
 
     /// <summary>The markup of one bar menu: from its own AutomationId to the start of the NEXT menu's item tag, so
     /// it survives edits either side of it. See <see cref="LibraryMenuParityTests"/> for why the end backs up to
@@ -107,8 +127,8 @@ public class DocumentationMenuParityTests
     private static string Region(string automationId, string nextAutomationId)
     {
         string xaml = Xaml();
-        int start = xaml.IndexOf($"AutomationId=\"{automationId}\"", StringComparison.Ordinal);
-        int nextId = xaml.IndexOf($"AutomationId=\"{nextAutomationId}\"", StringComparison.Ordinal);
+        int start = XamlAnchor.IndexOfAutomationId(xaml, automationId);
+        int nextId = XamlAnchor.IndexOfAutomationId(xaml, nextAutomationId);
         Assert.That(start, Is.GreaterThanOrEqualTo(0), $"{automationId} not found in the markup");
         Assert.That(nextId, Is.GreaterThan(start), $"{nextAutomationId} must follow {automationId}");
         int end = xaml.LastIndexOf("<controls:AccessibleMenuItem", nextId, StringComparison.Ordinal);

@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    An app-agnostic Windows UI-Automation toolkit: the MECHANICS of driving a desktop application, and nothing
+    about any particular one. COM bootstrap, element finding, patterns, the control-view walker, synthesized
+    input inside a DPI scope, screen capture, launch-and-wait, top-level windows by process.
+
+    It knows no verbs, no result envelope and no automation ids — those belong to whoever drives an application,
+    which today is tests/safe_visual_e2e_tests. That split is the point: the toolkit is reusable because it
+    carries no opinion about what is being driven.
+
+    DEVELOPMENT AND TEST TOOLING. No shipped application references it, and it has no test suite of its own:
+    every method here is a call into the live Windows UI-Automation client, which cannot be exercised without a
+    desktop. What verifies it is the end-to-end suite's desktop runs; what verifies it COMPILES everywhere is
+    this project being in the solution. TESTSTRATEGY.md records that routing.
+
+    net10.0 with no platform suffix, deliberately: FlaUI has no net10.0 asset at all, and the raw UIA3 COM
+    interfaces CsWin32 generates need none — the assembly compiles on Linux and macOS and simply cannot be
+    CALLED there, which is what SupportedOSPlatform("windows6.1") states to the compiler. A -windows TFM would
+    have forced every consumer to multi-target for no gain.
+  -->
+
+  <PropertyGroup>
+    <!-- The assembly name is what consumers reference; the namespace follows the repository's Ihc.* shape. -->
+    <RootNamespace>Ihc.UiAutomation</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Source generator: it emits the P/Invokes and COM interfaces listed in NativeMethods.txt at build time,
+         so nothing of it flows to a consumer's dependency graph. -->
+    <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
+    <!-- GDI+ imaging, for ScreenCapture. Not PrivateAssets: it is a real runtime dependency of this assembly. -->
+    <PackageReference Include="System.Drawing.Common" />
+  </ItemGroup>
+
+</Project>

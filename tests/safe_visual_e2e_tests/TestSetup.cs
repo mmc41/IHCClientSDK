@@ -13,7 +13,7 @@ namespace safe_visual_e2e_tests;
 /// is the point of the split. So they have to answer honestly on a machine that cannot host them.</para>
 ///
 /// <para><b>The requirement belongs to the DRIVER, not to the assembly.</b> Only the real mode needs Windows,
-/// because only it speaks UI Automation through <c>pwsh</c>; the headless mode is Avalonia's own cross-platform
+/// because only it speaks Windows UI Automation; the headless mode is Avalonia's own cross-platform
 /// backend and needs nothing but a runtime. Asking the selected driver is what makes that true in code rather
 /// than only in the README — the guard used to ignore the whole assembly off Windows, which silently withheld
 /// the one mode built to run anywhere.</para>

@@ -3,9 +3,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:a="using:Avalonia.Automation"
+        xmlns:cfg="using:ihc_openvisual.Configuration"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="420"
         x:Class="ihc_openvisual.Views.PinPropertiesWindow"
-        a:AutomationProperties.AutomationId="PinPropertiesWindow"
+        a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.PinPropertiesWindow}"
         Title="Klemme adressering"
         Width="420" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
@@ -27,7 +28,9 @@
         <TextBox Name="NoteBox" a:AutomationProperties.LabeledBy="{Binding #NoteLabel}"/>
 
         <TextBlock Name="CableColourLabel" Classes="label" Text="Ledningsfarve"/>
-        <TextBox Name="CableColourBox" a:AutomationProperties.LabeledBy="{Binding #CableColourLabel}"/>
+        <TextBox Name="CableColourBox"
+                 a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.CableColourBox}"
+                 a:AutomationProperties.LabeledBy="{Binding #CableColourLabel}"/>
 
         <StackPanel Name="InitialValuePanel">
             <TextBlock Name="InitialValueLabel" Classes="label" Text="Initial værdi"/>
@@ -59,12 +62,15 @@
         <!-- Captioned by the terminal's own DIRECTION, as the original captions it (Udgang for an output). -->
         <TextBlock Name="TerminalLabel" Classes="label" Text="Udgang"/>
         <ComboBox Name="TerminalList" HorizontalAlignment="Stretch"
+                  a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.TerminalList}"
                   a:AutomationProperties.LabeledBy="{Binding #TerminalLabel}"/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
             <!-- OK, Cancel, Apply — the vendor's button order (uxparity S-14). -->
-            <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"/>
-            <Button Name="CancelButton" Content="Annuller" MinWidth="84" IsCancel="True" Click="OnCancel"/>
+            <Button Name="OkButton" Content="OK" MinWidth="84" IsDefault="True" Click="OnOk"
+                    a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.OkButton}"/>
+            <Button Name="CancelButton" Content="Annuller" MinWidth="84" IsCancel="True" Click="OnCancel"
+                    a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.CancelButton}"/>
             <Button Name="ApplyButton" Content="Anvend" MinWidth="84" Click="OnApply"/>
         </StackPanel>
     </StackPanel>

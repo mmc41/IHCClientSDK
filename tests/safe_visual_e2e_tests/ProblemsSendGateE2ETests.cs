@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using ihc_openvisual.Configuration;
 using NUnit.Framework;
 
 namespace safe_visual_e2e_tests;
@@ -50,8 +51,11 @@ public class ProblemsSendGateE2ETests
         E2E.RunOk("node", "select", "--path", Pin);
         E2E.RunOk("node", "get-properties");
         // Its sibling already holds terminal 1 on data line 1; the list marks it in use rather than hiding it.
-        E2E.RunOk("dialog", "select-item", "--control", "TerminalList", "--item", "1 (i brug)");
-        E2E.Run("dialog", "click", "--button", "OK");
+        E2E.RunOk("dialog", "select-item", "--control", AutomationIds.TerminalList, "--item", "1 (i brug)");
+        // By its automation id, not by the Danish word on it: the driver accepts either, but only the id is a
+        // declared contract that AutomationIdConstantsTests holds the dialog to. Addressed by label, a relabelled
+        // button breaks this scenario on the desktop while every gate that could have caught it stays green.
+        E2E.Run("dialog", "click", "--button", AutomationIds.OkButton);
 
         E2E.Envelope after = E2E.WaitForBoundProblems();
         Assert.Multiple(() =>

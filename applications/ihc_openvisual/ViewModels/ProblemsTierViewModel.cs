@@ -1,6 +1,7 @@
 using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Ihc.Vis.Validation;
+using ihc_openvisual.Configuration;
 
 namespace ihc_openvisual.ViewModels;
 
@@ -54,7 +55,7 @@ public sealed partial class ProblemsTierViewModel : ObservableObject
     public string AutomationId => "problems.filter." + Tier.ToString().ToLowerInvariant();
 
     /// <summary>The count's own id, e.g. <c>problems.count.error</c>, so a driver can read the number back.</summary>
-    public string CountAutomationId => "problems.count." + Tier.ToString().ToLowerInvariant();
+    public string CountAutomationId => AutomationIds.ProblemsCountPrefix + Tier.ToString().ToLowerInvariant();
 
     /// <summary>How many findings the BOUND RESULT has in this tier — not how many are currently listed.</summary>
     [ObservableProperty] private int _count;

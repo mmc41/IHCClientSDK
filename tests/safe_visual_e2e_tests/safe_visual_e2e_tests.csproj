@@ -39,7 +39,7 @@
       the workflow behind them — which is also why ihc_openvisual grants this assembly InternalsVisibleTo: the
       app is built here the way Program builds it, WithAppFonts included.
 
-      The real mode never touches a product type; it drives a separate process through the aui driver. It needs
+      The real mode never touches a product type; it drives a separate process through UiaDriver. It needs
       the reference anyway, because without it that driver would find whatever exe happened to be left under
       applications/ihc_openvisual/bin from an earlier build, and the suite would silently report on a stale
       application.
@@ -48,6 +48,27 @@
     -->
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
     <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
+    <!-- The Windows UI-Automation mechanics the real driver is built on. The DRIVER — the verbs, the envelope
+         and the OpenVisual automation ids — stays here, because none of that is reusable by anything else. -->
+    <ProjectReference Include="..\..\shared\ihc_uiautomation\ihc_uiautomation.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Where the real driver launches the application from: the APPLICATION'S own build output, not the copy the
+      ProjectReference above stages beside these tests.
+
+      The difference is ihcsettings.json. The app probes for it beside its own executable, and its project
+      stages the repository's file there (CopyIhcSettingsToOutput); the copy in this suite's output has no such
+      file, so an app launched from here starts with no telemetry and a desktop run produces nothing to diagnose
+      with. Baking the path in at build time — rather than computing it at run time — also pins the
+      CONFIGURATION to the one these tests were built in, so a Release test run cannot silently drive a Debug
+      application.
+
+      Windows-only by construction, and so is the mode that reads it: the headless leg never launches anything.
+    -->
+    <AssemblyMetadata Include="OpenVisualExecutable"
+                      Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\applications\ihc_openvisual\bin\$(Configuration)\$(TargetFramework)\ihc_openvisual.exe'))" />
   </ItemGroup>
 
   <ItemGroup>
@@ -67,8 +88,10 @@
     <Compile Include="..\shared\AuthoredMembers.cs" Link="shared\AuthoredMembers.cs" />
     <Compile Include="..\shared\ControllerReachScan.cs" Link="shared\ControllerReachScan.cs" />
     <Compile Include="..\shared\ControllerReachGuard.cs" Link="shared\ControllerReachGuard.cs" />
-    <!-- The driver script lives under .claude/ and the projects the app opens are read as real paths, so this
-         suite is one of the few that legitimately reaches the source checkout. -->
+    <!-- The projects the application opens are read as real paths out of tests/testdata, so this suite is one
+         of the few that legitimately reaches the source checkout. That is now its ONLY reason to: the driver
+         is this suite's own code, and SkillIndependenceGuard fails the build if a path under .claude/ comes
+         back. -->
     <Compile Include="..\shared\TestRepository.cs" Link="shared\TestRepository.cs" />
     <!-- The headless Avalonia app builder, shared with safe_visual_tests: it is what decides font metrics,
          and the two suites have to agree about layout to agree about which rows are on screen. -->

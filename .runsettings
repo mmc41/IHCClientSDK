@@ -32,6 +32,12 @@
                 <ModulePath>.*\bihc_appbootstrap\.dll$</ModulePath>
                 <ModulePath>.*\bihc_telemetrybootstrap\.dll$</ModulePath>
                 <ModulePath>.*\bihc_lab\.dll$</ModulePath>
+                <!--
+                  ihc_uiautomation.dll is deliberately absent. Its only consumer is safe_visual_e2e_tests,
+                  which opts out of collection entirely (see that project's own comment), so listing it here
+                  would name an assembly no measured run can ever reach and report it as nought percent
+                  covered — a gap that reads as a missing test but describes a decision made elsewhere.
+                -->
               </Include>
               <!--
                 Redundant against the include list above, and kept anyway: that list is hand-edited as

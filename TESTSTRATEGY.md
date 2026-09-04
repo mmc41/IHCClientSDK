@@ -137,6 +137,14 @@ in order and stop at the first whose subject claims it; the last row is the gene
 | `safe_project_tests` | Engine · ms–s | Not general to the SDK but about the project domain: the `Ihc.Vis` engine, `ProjectAppService`, sessions and commands, validation rules, the problem catalogue, reporting — **and OpenVisual's non-GUI code** (view-models, services, stores, route planners, presentation mapping). Real application services, oracle files, and the catalog the test's scope calls for — `BuiltInCatalog` or a fake `ICatalog` | Anything needing execution in Avalonia |
 | `safe_unit_tests` | Unit · ms | The `ihcclient` SDK in general — transport, models, serialization, security, settings, telemetry primitives. Also **any utility or `shared/` project with no suite of its own**. Faked at the `IIHCApiService` seam | Anything Avalonia-shaped; anything app-specific |
 
+**`shared/ihc_uiautomation` has no suite, deliberately** — the one exception to the `safe_unit_tests` rule
+above. Every method in it is a call into the live Windows UI-Automation client or into `user32`, so there is
+nothing to exercise without a desktop: a test could only assert against a fake of the very API under test.
+What verifies it is `safe_visual_e2e_tests`' desktop mode, which is built on it and cannot pass unless it
+works; what verifies it COMPILES on every platform is its membership of the solution, since it is plain
+`net10.0` and CI builds the solution on Linux and macOS as well as Windows. A defect in it therefore surfaces
+as a desktop-mode failure, which is why that mode's failures are classified before they are fixed.
+
 Two rules for the architecture suite, because both are easy to get wrong: a clean subject with an empty
 exemption roster is indistinguishable from a **broken detector**, so every scan carries a seeded violator
 proving it can fail — the seed families several detectors share live in `ArchitectureDetectorSeeds.cs`, a seed
@@ -173,19 +181,25 @@ scenario only pins the leak in place.
 `safe_visual_e2e_tests` is not part of ordinary verification, and it has an explicit admission test:
 
 > A scenario belongs here only if it fails for a reason that exists **solely** in the real desktop: the
-> Avalonia-to-Windows-UIA bridge, real keyboard focus, the desktop modal stack, process startup and document
-> binding, or the `aui` driver itself.
+> Avalonia-to-Windows-UIA bridge, real keyboard focus, the desktop modal stack, or process startup and document
+> binding.
 
 Everything else — combinations, route matrices, sorting, filtering, counts, wording, undo — is business logic,
 and business logic is cheaper one level down.
 
 The suite has two modes. The **default** launches the real `ihc_openvisual.exe` and drives it over Windows UI
-Automation, one `pwsh` process per verb; it holds the screen for minutes and force-kills any running
-OpenVisual, so run it only when asked and say so first. The **headless** mode, which CI gates, hosts the same
-`MainWindow` in-process and is a **second implementation** of the verb vocabulary: it exercises neither
-`aui.ps1` nor the UIA bridge, and it refuses the verbs behind `[Category(E2E.DesktopOnly)]` rather than
-approximating them. Read a headless pass as *"the scenario paths still work"*, never as *"the application is
-driveable"*.
+Automation, in-process, through the suite's own driver over `shared/ihc_uiautomation`; it holds the screen for
+minutes and force-kills any running OpenVisual, so run it only when asked and say so first. The **headless**
+mode, which CI gates, hosts the same `MainWindow` in-process and is a **second implementation** of the verb
+vocabulary: it exercises neither the real driver nor the UIA bridge, and it refuses the verbs behind
+`[Category(E2E.DesktopOnly)]` rather than approximating them. Read a headless pass as *"the scenario paths
+still work"*, never as *"the application is driveable"*.
+
+**The suite and the `aui-openvisual` skill are independent, by construction.** The suite drives the application
+with its own C# driver and reaches nothing under `.claude/`; `SkillIndependenceGuard` enforces that from inside
+the suite, by scanning its own compiled assembly's string heap, so a new edge fails a build rather than a
+review. The other direction — the skill not reaching into `tests/` — holds by convention: the skill is a
+hand-driven development tool that must stay free to change, and nothing here constrains it.
 
 **What the reduction achieved, measured 2026-09-02.** The suite went from twenty-one scenarios to ten, of
 which three are desktop-only and seven run in the gated headless leg; that leg went from ninety-one driver
@@ -196,7 +210,14 @@ so this campaign cut what it could count and left the desktop wall-clock unrecor
 can be said is that the work it does was more than halved, and that its remaining scenarios are ones no cheaper
 level can hold.
 
-**One process per verb is a measured choice, not an oversight.** A stdin-driven session mode was built as a
+**One process per verb — SUPERSEDED 2026-09-03, and kept for the record.** The transport this ruling was about
+is gone: the desktop mode no longer spawns anything per verb, because it drives the application in-process
+through the suite's own driver over `shared/ihc_uiautomation`. The session-mode question it refused is
+therefore moot — there is no process to amortise. The reasoning below is left standing because it is a
+measurement, and because its last paragraph names a hazard (a text transport must pin its encoding explicitly,
+or a Danish letter arrives mojibaked) that outlives the transport it was written about.
+
+A stdin-driven session mode was built as a
 spike and works: one `pwsh` process answered six verbs with envelopes byte-identical to the per-process form,
 including a 47 KB one and Danish payloads, and `aui.ps1` needed no change to allow it — `Write-Result`'s `exit`
 ends an `&`-invoked script without ending its host. It would save about 795 ms per verb, roughly a factor of
@@ -205,7 +226,7 @@ would gain nothing; the only beneficiary is a suite deliberately outside every d
 request; and the change could not be verified without seizing a screen, so building it would mean shipping an
 unverified change to the desktop mode's only transport. A session mode also has a hazard the per-process form
 cannot meet — stdin must be decoded as UTF-8 explicitly, or a Danish letter arrives mojibaked, the inbound twin
-of the C1-control-byte corruption `AuiProcessDriver` already pins its output encoding to avoid.
+of the C1-control-byte corruption the process driver of the day had to pin its output encoding to avoid.
 
 **When it fails, classify before fixing.** A suite with a process boundary fails for six distinguishable
 reasons, and the expensive mistake is to assume the first one.

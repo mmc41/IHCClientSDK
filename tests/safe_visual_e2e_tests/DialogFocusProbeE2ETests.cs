@@ -1,5 +1,6 @@
 using System.Linq;
 using System.Text.Json;
+using ihc_openvisual.Configuration;
 using NUnit.Framework;
 
 namespace safe_visual_e2e_tests;
@@ -21,7 +22,7 @@ public class DialogFocusProbeE2ETests
     private const string FixtureFile = "Project6-Errors.vis";
 
     /// <summary>The field <c>ProjectInfoWindow</c> focuses when it opens.</summary>
-    private const string FocusedOnOpen = "ProjNumberBox";
+    private const string FocusedOnOpen = AutomationIds.ProjNumberBox;
 
     [OneTimeSetUp]
     public void LaunchApp() => E2E.Launch(E2E.Fixture(FixtureFile));

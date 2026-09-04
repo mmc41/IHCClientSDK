@@ -37,7 +37,7 @@ public class NodeContextMenuShortcutParityTests
 
     private static string ItemTag(string xaml, string automationId)
     {
-        int id = xaml.IndexOf($"AutomationId=\"{automationId}\"", StringComparison.Ordinal);
+        int id = XamlAnchor.IndexOfAutomationId(xaml, automationId);
         Assert.That(id, Is.GreaterThanOrEqualTo(0), $"{automationId} not found in the shell markup");
         int start = xaml.LastIndexOf("<controls:AccessibleMenuItem", id, StringComparison.Ordinal);
         int end = xaml.IndexOf("/>", id, StringComparison.Ordinal);

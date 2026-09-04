@@ -3,13 +3,14 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:a="using:Avalonia.Automation"
+             xmlns:cfg="using:ihc_openvisual.Configuration"
              xmlns:vm="using:ihc_openvisual.ViewModels"
              xmlns:svg="clr-namespace:Avalonia.Svg.Skia;assembly=Svg.Controls.Skia.Avalonia"
              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="180"
              x:Class="ihc_openvisual.Views.ProblemsPanel"
              x:DataType="vm:MainWindowViewModel"
 
-             a:AutomationProperties.AutomationId="ProblemsPanel"
+             a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.ProblemsPanel}"
              a:AutomationProperties.LandmarkType="Region"
              a:AutomationProperties.AccessibilityView="Control"
              a:AutomationProperties.Name="Problemer"
@@ -156,7 +157,7 @@
                         <ProgressBar Name="ProblemsSpinner" Width="80" Height="4" VerticalAlignment="Center"
                                      IsIndeterminate="True"
                                      IsVisible="{Binding IsStaleIndicatorEngaged}"
-                                     a:AutomationProperties.AutomationId="ProblemsSpinner"
+                                     a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.ProblemsSpinner}"
                                      a:AutomationProperties.Name="Validerer"
                                      ToolTip.Tip="Projektet valideres…"/>
 
@@ -260,7 +261,7 @@
                     </Transitions>
                 </Grid.Transitions>
             <TableView Name="ProblemsContent"
-                       a:AutomationProperties.AutomationId="ProblemsList"
+                       a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.ProblemsList}"
                        a:AutomationProperties.Name="Problemer"
                        ItemsSource="{Binding Rows}"
                        SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
@@ -367,7 +368,7 @@
                      has a sentence; keying on the sentence painted "Validerer projektet..." straight across
                      the one row the user needed to read. -->
                 <TextBlock Name="ProblemsStateText"
-                           a:AutomationProperties.AutomationId="ProblemsStateText"
+                           a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.ProblemsStateText}"
                            Text="{Binding StateText}"
                            IsVisible="{Binding !Rows.Count}"
                            HorizontalAlignment="Center" VerticalAlignment="Center"

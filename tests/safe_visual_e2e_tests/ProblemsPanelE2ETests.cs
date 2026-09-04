@@ -10,7 +10,7 @@ namespace safe_visual_e2e_tests;
 
 /// <summary>
 /// The Problemer panel driven end to end: the real application, on a real fixture, read and operated through the
-/// <c>aui</c> UI-Automation driver exactly as a person would.
+/// suite's own UI-Automation driver exactly as a person would.
 ///
 /// <para>What these tests buy that the headless ones cannot: they exercise the panel through the ACCESSIBILITY
 /// SURFACE. A headless test reads a view-model property; this reads what UI Automation actually publishes, which
