@@ -77,6 +77,41 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        /// <summary>
+        /// The PREVIEW half, which used to answer the opposite of the two Apply tests above. Preview and Apply
+        /// run the same kernel, so the same editor-open guard fires for both — but Preview's catch had no arm
+        /// for a coded refusal, so it reported the rules working as an engine break: status Faulted, the ENGLISH
+        /// diagnostic, and an internal-error row filed for it. On a document with duplicate ids or an undeclared
+        /// attribute that was EVERY command, in both spellings of the guard.
+        /// </summary>
+        [TestCase("attr-undeclared", "Ukendt attribut")]
+        [TestCase("id-duplicate-token", "Dobbelt id")]
+        public void PreviewReportsACodedEditOpenRefusalTheSameWayApplyDoes(string code, string danishPrefix)
+        {
+            ProjectDocumentSession session = new();
+            session.Open(code == "attr-undeclared" ? WithUndeclaredAttribute() : WithDuplicateIds());
+            ProjectCommand command =
+                new UpdateProjectInfo(ProjectInfoData.Empty with { Description = "Ny beskrivelse" });
+
+            PreviewOutcome preview = session.Preview(command);
+            EditOutcome applied = session.Apply(command);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(preview.Status, Is.EqualTo(PreviewStatus.Refused),
+                    "asking whether an edit WOULD work must not report the answer as an engine bug");
+                Assert.That(preview.Code.Value, Is.EqualTo(code));
+                Assert.That(preview.Reason, Does.StartWith(danishPrefix),
+                    "the Danish sentence a caller may show, not the engine's English diagnostic");
+                Assert.That(preview.Fault, Is.Null,
+                    "and no internal-error row: a refusal is the rules working, not a fault to file");
+                // The parity that matters more than any single field: the two doors run one kernel, so they must
+                // not disagree about the same throw.
+                Assert.That(preview.Code, Is.EqualTo(applied.Code));
+                Assert.That(preview.Reason, Is.EqualTo(applied.Reason));
+            });
+        }
+
         /// <summary>A minimal project whose two groups carry the SAME id under different token spellings.</summary>
         /// <remarks>
         /// '_0x532' and '_0x0532' are different token strings but the same <c>ElementId</c>, which is precisely

@@ -76,6 +76,13 @@ namespace Ihc.Vis.Tests
         /// concurrent double-run is legal, and a counter asserting "once" would either be wrong or hide it.
         /// The catalog is process-wide and may already be materialized, so this asserts the instrument
         /// EXISTS and is recordable rather than that it fired during this test.
+        /// <para>
+        /// The same process-wide Lazy is why the <c>BuiltInCatalog.Materialize</c> SPAN that now accompanies
+        /// this histogram is not pinned here: whether it fires during any given test depends on which test ran
+        /// first, and a conditional assertion pins nothing. It is verified against the live backend instead -
+        /// on a launch it appears under the operation that first touched the catalog, which is what the span
+        /// exists to reveal - and §11 of the OpenVisual telemetry-points document carries that check.
+        /// </para>
         /// </summary>
         [Test]
         public void TheCatalogMaterializationInstrumentIsLiveAndRecordable()

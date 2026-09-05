@@ -18,14 +18,30 @@ namespace Ihc
         /// </summary>
         Refused,
 
+        /// <summary>
+        /// The person abandoned the operation — a dismissed file picker, a "Fortryd" on a save prompt. NOT an
+        /// error, and not a refusal either: nothing declined it and nothing broke, it simply did not happen.
+        /// </summary>
+        /// <remarks>
+        /// The fourth case exists because three were not enough to let a caller answer honestly. A door that
+        /// says only "did it happen" reports a cancelled picker and a failed save identically, and every
+        /// operation above it then has to record success or invent a failure — which is exactly why failures
+        /// used to stop at the layer that handled them instead of reaching the gesture that caused them.
+        /// </remarks>
+        Cancelled,
+
         /// <summary>The operation could not complete. This alone sets the span's status to Error.</summary>
         Failed,
     }
 
     /// <summary>
-    /// The result an instrumented operation reports. Three cases, because two is the mistake: collapsing
-    /// <see cref="OperationStatus.Refused"/> into failure is what makes a refusal indistinguishable from a
-    /// defect, and collapsing it into success loses the reason entirely.
+    /// The result an instrumented operation reports. Four cases, because each collapse loses something a
+    /// reader needs: folding <see cref="OperationStatus.Refused"/> into failure makes a rule working look like
+    /// a defect and folding it into success loses the reason; folding
+    /// <see cref="OperationStatus.Cancelled"/> into either makes a person changing their mind
+    /// indistinguishable from an operation that broke.
+    /// <para>It is also the type a door RETURNS, not only the one it reports. A door whose answer is a bare
+    /// "did it happen" forces every caller to guess which of these four it meant.</para>
     /// </summary>
     public readonly struct OperationOutcome : IEquatable<OperationOutcome>
     {
@@ -45,6 +61,13 @@ namespace Ihc
         /// <summary>The failure's exception when there was one; null otherwise.</summary>
         public Exception? Exception { get; }
 
+        /// <summary>
+        /// Whether the operation did what it was asked to. The question a CALLER asks — "may I go on?" — kept
+        /// as one reading so a call site does not have to know which of the three non-Ok cases it is looking at
+        /// in order to branch. A site that must tell them apart reads <see cref="Status"/> instead.
+        /// </summary>
+        public bool IsOk => Status == OperationStatus.Ok;
+
         /// <summary>The operation succeeded.</summary>
         public static OperationOutcome Ok { get; } = new(OperationStatus.Ok, null, null);
 
@@ -52,6 +75,9 @@ namespace Ihc
         /// <param name="problemCode">The catalogue code naming the refusal.</param>
         public static OperationOutcome Refused(string problemCode) =>
             new(OperationStatus.Refused, problemCode, null);
+
+        /// <summary>The person abandoned the operation. No code: nothing declined it and nothing broke.</summary>
+        public static OperationOutcome Cancelled { get; } = new(OperationStatus.Cancelled, null, null);
 
         /// <summary>The operation could not complete, because of <paramref name="exception"/>.</summary>
         public static OperationOutcome Failed(Exception exception) =>
@@ -295,6 +321,14 @@ namespace Ihc
         public void SetOutcome(OperationOutcome value) => outcome = value;
 
         /// <summary>
+        /// What the scope will record — whatever it was last told, or success if nothing told it.
+        /// <para>Readable so a boundary that OWNS the scope can hand its own answer back to its caller without
+        /// the body having to return the outcome a second time. That is what lets an operation report a
+        /// handled failure to the gesture above it rather than swallowing it into a bare "did it happen".</para>
+        /// </summary>
+        public OperationOutcome Outcome => outcome;
+
+        /// <summary>
         /// Adds a dimension to every instrument this scope records. Span-only attributes go on
         /// <see cref="Activity"/> instead - a metric dimension multiplies series, so it is a deliberate choice
         /// rather than a copy of everything the span carries.
@@ -357,8 +391,8 @@ namespace Ihc
                 Activity.SetTag(SdkTelemetryRegistry.Attributes.ProblemCode, outcome.ProblemCode);
             }
 
-            // Error is reserved for Failed. A refusal keeps the status Unset so a healthy session that
-            // declines something does not read as a broken one.
+            // Error is reserved for Failed. A refusal and a cancellation keep the status Unset so a healthy
+            // session that declines something, or a person who changed their mind, does not read as breakage.
             if (outcome.Status == OperationStatus.Failed)
             {
                 Activity.SetTag(SdkTelemetryRegistry.Attributes.ErrorType, ErrorTypePolicy.Resolve(outcome));
@@ -408,6 +442,7 @@ namespace Ihc
         {
             OperationStatus.Ok => SdkTelemetryRegistry.Values.StatusOk,
             OperationStatus.Refused => SdkTelemetryRegistry.Values.StatusRefused,
+            OperationStatus.Cancelled => SdkTelemetryRegistry.Values.StatusCancelled,
             OperationStatus.Failed => SdkTelemetryRegistry.Values.StatusFailed,
             _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown operation status"),
         };

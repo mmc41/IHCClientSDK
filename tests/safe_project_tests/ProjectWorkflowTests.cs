@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using ihc_openvisual.Services;
+using Ihc.Vis.Session;
 
 namespace Ihc.Vis.Tests;
 
@@ -36,7 +37,7 @@ public class ProjectWorkflowTests
         string path = harness.TempPath("StandardHouse_1.vis");
         harness.Dialogs.SavePath = path;
 
-        bool saved = await harness.Session.SaveAsAsync();
+        bool saved = (await harness.Session.SaveAsAsync()).IsOk;
 
         Assert.Multiple(() =>
         {
@@ -58,7 +59,7 @@ public class ProjectWorkflowTests
         // No SavePath is offered now; a plain Save must go to the already-known file.
         harness.Dialogs.SavePath = null;
         await harness.Session.AddLocalityAsync();
-        bool saved = await harness.Session.SaveAsync();
+        bool saved = (await harness.Session.SaveAsync()).IsOk;
 
         Assert.Multiple(() =>
         {
@@ -91,7 +92,7 @@ public class ProjectWorkflowTests
         var before = harness.Session.Current;
         harness.Dialogs.SaveChangesResult = SaveChangesResult.Cancel;
 
-        bool result = await harness.Session.NewAsync();
+        bool result = (await harness.Session.NewAsync()).IsOk;
 
         Assert.Multiple(() =>
         {
@@ -110,7 +111,7 @@ public class ProjectWorkflowTests
         await harness.Session.AddLocalityAsync();
         harness.Dialogs.SaveChangesResult = SaveChangesResult.Discard;
 
-        bool result = await harness.Session.NewAsync();
+        bool result = (await harness.Session.NewAsync()).IsOk;
 
         Assert.Multiple(() =>
         {
@@ -134,7 +135,7 @@ public class ProjectWorkflowTests
         await harness.Session.NewAsync();
         Assert.That(harness.Session.DocumentName, Is.EqualTo("unavngivet"));
 
-        bool opened = await harness.Session.OpenAsync(path);
+        bool opened = (await harness.Session.OpenAsync(path)).IsOk;
 
         Assert.Multiple(() =>
         {
@@ -163,7 +164,7 @@ public class ProjectWorkflowTests
         string? undoLabelBefore = harness.Session.UndoLabel;
         string badPath = harness.TempPath(Path.Combine("no-such-dir", "out.ifb"));   // export must fail
 
-        bool ok = await harness.Session.SaveFunctionBlockAsync(fbId, badPath, "Doomed", "note");
+        bool ok = (await harness.Session.SaveFunctionBlockAsync(fbId, badPath, "Doomed", "note")).IsOk;
 
         Assert.Multiple(() =>
         {
@@ -192,7 +193,7 @@ public class ProjectWorkflowTests
         int versionBefore = harness.Session.Version;
         string path = harness.TempPath("Reusable.ifb");
 
-        bool ok = await harness.Session.SaveFunctionBlockAsync(fbId, path, "Reusable", "note");
+        bool ok = (await harness.Session.SaveFunctionBlockAsync(fbId, path, "Reusable", "note")).IsOk;
 
         Assert.Multiple(() =>
         {
@@ -204,7 +205,7 @@ public class ProjectWorkflowTests
                 "the transform committed as exactly one step");
         });
 
-        bool undone = await harness.Session.UndoAsync();
+        bool undone = await harness.Session.UndoAsync() is { Status: EditStatus.Committed };
 
         Assert.Multiple(() =>
         {
@@ -250,7 +251,7 @@ public class ProjectWorkflowTests
         await harness.Session.StartAsync();
         await harness.Session.AddLocalityAsync();
 
-        bool undone = await harness.Session.UndoAsync();
+        bool undone = await harness.Session.UndoAsync() is { Status: EditStatus.Committed };
         Assert.Multiple(() =>
         {
             Assert.That(undone, Is.True);
@@ -259,7 +260,7 @@ public class ProjectWorkflowTests
             Assert.That(harness.Session.LastChange!.Origin, Is.EqualTo("undo"));
         });
 
-        bool redone = await harness.Session.RedoAsync();
+        bool redone = await harness.Session.RedoAsync() is { Status: EditStatus.Committed };
         Assert.Multiple(() =>
         {
             Assert.That(redone, Is.True);
@@ -277,7 +278,7 @@ public class ProjectWorkflowTests
         await harness.Session.SaveAsAsync();
 
         // Not dirty, so no save prompt.
-        bool closed = await harness.Session.CloseAsync();
+        bool closed = (await harness.Session.CloseAsync()).IsOk;
 
         Assert.Multiple(() =>
         {
@@ -298,7 +299,7 @@ public class ProjectWorkflowTests
         await harness.Session.AddLocalityAsync();
         Assert.That(harness.Session.IsDirty, Is.True, "precondition: changes were recorded");
 
-        bool saved = await harness.Session.SaveAsAsync();
+        bool saved = (await harness.Session.SaveAsAsync()).IsOk;
 
         Assert.Multiple(() =>
         {

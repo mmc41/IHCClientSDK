@@ -31,7 +31,7 @@ public class SavePointTests
         await harness.Session.UndoAsync();
         harness.Dialogs.SaveChangesResult = SaveChangesResult.Cancel;
 
-        bool proceeded = await harness.Session.NewAsync();
+        bool proceeded = (await harness.Session.NewAsync()).IsOk;
 
         Assert.Multiple(() =>
         {

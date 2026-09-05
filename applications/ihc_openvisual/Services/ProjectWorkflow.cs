@@ -205,7 +205,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// <c>.vis</c> or an explicit path argument. A path that cannot be opened reports itself through the ordinary
     /// open-failure dialog and leaves the empty starter project, so a bad association never blocks the
     /// launch.</para></summary>
-    public async Task StartAsync(string? startupProjectPath = null)
+    public async Task<Ihc.OperationOutcome> StartAsync(string? startupProjectPath = null)
     {
         using OperationScope scope = _telemetry.Start(nameof(StartAsync));
         scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectSource,
@@ -214,33 +214,77 @@ public sealed class ProjectWorkflow : IDisposable
         // The launch file (BP-11a). OpenAsync is the same door File ▸ Open uses, so the load, the normalization,
         // the recent-list entry and the failure dialog are all the established ones; a failure just falls through
         // to the empty project below.
-        if (!string.IsNullOrWhiteSpace(startupProjectPath) && await OpenAsync(startupProjectPath))
-            return;
+        if (string.IsNullOrWhiteSpace(startupProjectPath))
+        {
+            NewInternal();
+            return Ihc.OperationOutcome.Ok;
+        }
 
+        Ihc.OperationOutcome opened = await OpenAsync(startupProjectPath, fileFaultRow: true);
+        if (opened.IsOk)
+            return opened;
+
+        // The fallback still runs — a bad association must never block the launch — but the LAUNCH did not do
+        // what it was asked. Answering Ok here is what made a failed start-up open invisible above this line:
+        // the failure marked OpenAsync's span and stopped there, so App.Startup, InitializeAsync and this
+        // operation all read ok over a red child, which is the roll-up every other door in this class performs.
         NewInternal();
+        return Recorded(scope, opened);
     }
 
     /// <summary>File → New (US-002): prompt to save the open project, then open the standard empty project.</summary>
-    public async Task<bool> NewAsync()
+    public async Task<Ihc.OperationOutcome> NewAsync()
     {
         using OperationScope scope = _telemetry.Start(nameof(NewAsync));
         scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectSource, SourceEmpty);
-        if (!await ConfirmSaveIfDirtyAsync())
-            return false;
+        if (await StoppedByPromptAsync(scope) is { } stopped)
+            return stopped;
         NewInternal();
-        return true;
+        return Ihc.OperationOutcome.Ok;
+    }
+
+    /// <summary>
+    /// The save prompt run as a PRECONDITION of a lifecycle gesture: null when the caller may go on, and the
+    /// prompt's own answer — <c>Cancelled</c>, or the failure of the save it asked for — when it may not.
+    /// </summary>
+    /// <remarks>
+    /// FORWARDED, not flattened: the prompt already knows whether the installer pressed <i>Fortryd</i> or the
+    /// save it offered broke, and that distinction is what the operations above owe their own callers. Recorded
+    /// on <paramref name="scope"/> here rather than at each of the three gestures that ask, so no site can
+    /// return the answer without also putting it on its span.
+    /// </remarks>
+    private async Task<Ihc.OperationOutcome?> StoppedByPromptAsync(OperationScope scope) =>
+        await ConfirmSaveIfDirtyAsync() is { IsOk: false } stopped ? Recorded(scope, stopped) : null;
+
+    /// <summary>
+    /// Records <paramref name="outcome"/> on <paramref name="scope"/> and hands it back — the pair every door
+    /// in this class performs, in one place so no site can do half of it. Returning without recording is the
+    /// silence this layer stopped keeping; recording without returning leaves the caller to guess.
+    /// </summary>
+    private static Ihc.OperationOutcome Recorded(OperationScope scope, Ihc.OperationOutcome outcome)
+    {
+        scope.SetOutcome(outcome);
+        return outcome;
     }
 
     /// <summary>File → Open (US-004): prompt to save, then load the chosen file as the single active project.</summary>
-    public async Task<bool> OpenAsync(string path)
+    public Task<Ihc.OperationOutcome> OpenAsync(string path) => OpenAsync(path, fileFaultRow: false);
+
+    /// <inheritdoc cref="OpenAsync(string)"/>
+    /// <param name="path">The file to open.</param>
+    /// <param name="fileFaultRow">
+    /// Whether a failure should also leave a durable row in <i>Intern fejl</i>. True for the START-UP open and
+    /// nowhere else — see <see cref="FileStartupOpenFailure"/> for why that one differs.
+    /// </param>
+    private async Task<Ihc.OperationOutcome> OpenAsync(string path, bool fileFaultRow)
     {
         using OperationScope scope = _telemetry.Start(nameof(OpenAsync), metrics:
             LoadMetrics);
         scope.AddSharedTag(AppTelemetryRegistry.Attributes.ProjectSource, SourceFile);
         scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectPath, path);
 
-        if (!await ConfirmSaveIfDirtyAsync())
-            return false;
+        if (await StoppedByPromptAsync(scope) is { } stopped)
+            return stopped;
         Project loaded;
         try
         {
@@ -250,18 +294,29 @@ public sealed class ProjectWorkflow : IDisposable
             loaded = _service.NormalizeOnOpen(await _service.Load(path));
             // ADOPTED inside this guard, deliberately. Creating or re-opening the document and building its index
             // is what makes the project open at all, so a failure here means there is NO open document and the
-            // answer has to be false — containing it would let this method report success over a null document,
+            // answer cannot be Ok — containing it would let this method report success over a null document,
             // and StartAsync would then skip the empty-project fallback that keeps the shell usable.
             AdoptProject(loaded, path, dirty: false);
         }
         catch (Exception ex)
         {
-            // The outcome BEFORE the dialog, and all three in one call: the `return false` below discards the
-            // exception entirely, which is how an open failure used to leave no trace at all.
+            // Bound ONCE and used for both channels below, so the row an installer reads afterwards and the
+            // dialog they read now cannot come to say different things about one failure.
+            Ihc.Vis.Problems.Problem problem = HostProblems.ProjectOpenFailed(path, ex);
+            // BEFORE the dialog, for the reason FailureReport states about the span: the dialog awaits a person,
+            // and a process that dies while the modal is up must not lose the durable record too.
+            if (fileFaultRow)
+            {
+                FileStartupOpenFailure(problem, ex, path);
+            }
+            // The outcome BEFORE the dialog, and all three in one call: the return below discards the exception
+            // itself, keeping only what the report recorded — which is how an open failure used to leave no
+            // trace at all, back when the return was a bare `false`.
             await FailureReport.FailedAsync(
-                scope, _logger, _dialogs, OpenFailedTitle, HostProblems.ProjectOpenFailed(path, ex), ex,
+                scope, _logger, _dialogs, OpenFailedTitle, problem, ex,
+                faultRowFiled: fileFaultRow,
                 "Failed to open project {Path}", path);
-            return false;
+            return scope.Outcome;
         }
 
         // THE DOCUMENT IS OPEN FROM HERE. What is left is announcing it, and each announcement runs arbitrary
@@ -274,47 +329,60 @@ public sealed class ProjectWorkflow : IDisposable
         Contain(() => RaiseChanged(), $"{nameof(OpenAsync)} state notification");
         Contain(() => _recent.Add(path), $"{nameof(OpenAsync)} recent list");
         scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectFileSize, FileSizeOrNull(path));
-        return true;
+        return Ihc.OperationOutcome.Ok;
     }
 
-    public async Task<bool> OpenWithPickerAsync()
+    public async Task<Ihc.OperationOutcome> OpenWithPickerAsync()
     {
         string? path = await _dialogs.PickOpenProjectAsync(_recent.LastDirectory);
-        return path is not null && await OpenAsync(path);
+        // A dismissed picker is the installer changing their mind, and now says so rather than borrowing the
+        // answer a broken open would have given.
+        return path is null ? Ihc.OperationOutcome.Cancelled : await OpenAsync(path);
     }
 
     /// <summary>File → Save (US-003): re-save to the existing file, or fall through to Save As when unnamed.</summary>
-    public async Task<bool> SaveAsync()
+    public async Task<Ihc.OperationOutcome> SaveAsync()
     {
         using OperationScope scope = _telemetry.Start(nameof(SaveAsync));
         if (Current is null)
-            return false;
-        return FilePath is null ? await SaveAsAsync() : await SaveToAsync(FilePath);
+            return Recorded(scope, NothingOpen);
+        return Recorded(scope, FilePath is null ? await SaveAsAsync() : await SaveToAsync(FilePath));
     }
 
     /// <summary>File → Save As (US-003): pick a file name and write the project there.</summary>
-    public async Task<bool> SaveAsAsync()
+    public async Task<Ihc.OperationOutcome> SaveAsAsync()
     {
         using OperationScope scope = _telemetry.Start(nameof(SaveAsAsync));
         if (Current is null)
-            return false;
+            return Recorded(scope, NothingOpen);
         string suggested = FilePath is not null ? Path.GetFileName(FilePath) : "Untitled.vis";
         string? path = await _dialogs.PickSaveProjectAsync(_recent.LastDirectory, suggested);
-        return path is not null && await SaveToAsync(path);
+        return Recorded(scope, path is null ? Ihc.OperationOutcome.Cancelled : await SaveToAsync(path));
     }
 
     /// <summary>File → Close: prompt to save, then return to a fresh empty project.</summary>
-    public async Task<bool> CloseAsync()
+    public async Task<Ihc.OperationOutcome> CloseAsync()
     {
         using OperationScope scope = _telemetry.Start(nameof(CloseAsync));
-        if (!await ConfirmSaveIfDirtyAsync())
-            return false;
+        if (await StoppedByPromptAsync(scope) is { } stopped)
+            return stopped;
         NewInternal();
-        return true;
+        return Ihc.OperationOutcome.Ok;
     }
 
-    /// <summary>Quit gate (US-064): prompt to save. Returns false to cancel the quit.</summary>
-    public Task<bool> CanQuitAsync() => ConfirmSaveIfDirtyAsync();
+    /// <summary>Quit gate (US-064): prompt to save. Anything but Ok cancels the quit.
+    /// <para>WHICH non-Ok it is decides nothing here — the quit is cancelled either way — but it is what the
+    /// caller records, and a quit stopped by a failed save is not the same event as one the installer
+    /// abandoned.</para></summary>
+    public Task<Ihc.OperationOutcome> CanQuitAsync() => ConfirmSaveIfDirtyAsync();
+
+    /// <summary>
+    /// The answer a door gives when there is no open project to act on. A REFUSAL with the session layer's own
+    /// code, not a failure: the command gates normally keep it unreachable, and a door reached anyway has
+    /// declined rather than broken.
+    /// </summary>
+    private static readonly Ihc.OperationOutcome NothingOpen =
+        Ihc.OperationOutcome.Refused(Ihc.Vis.Session.EditRefusalCodes.NoProjectOpen.Value);
 
     /// <summary>The placeholder name a freshly inserted locality carries until the installer renames it (US-008).
     /// It is written into the file as <c>&lt;group name="…"&gt;</c> — project data, not UI text — so it is the
@@ -439,11 +507,15 @@ public sealed class ProjectWorkflow : IDisposable
     /// the snapshot, dirty flag, version and history untouched) for this one — so the two cannot drift silently.
     /// </para>
     /// </summary>
-    public async Task<bool> SaveFunctionBlockAsync(ElementId functionBlockId, string filePath, string name, string note)
+    public async Task<Ihc.OperationOutcome> SaveFunctionBlockAsync(
+        ElementId functionBlockId, string filePath, string name, string note)
     {
-        if (Current is not { } project)
-            return false;
+        // The scope opens BEFORE the precondition, like every other door here. Refusing outside it left the one
+        // reachable "there is nothing to save" with no span at all — the only outcome this class produced that
+        // a reader could not find.
         using OperationScope scope = _telemetry.Start(nameof(SaveFunctionBlockAsync));
+        if (Current is not { } project)
+            return Recorded(scope, NothingOpen);
         string? normalizedNote = string.IsNullOrEmpty(note) ? null : note;
         try
         {
@@ -459,13 +531,13 @@ public sealed class ProjectWorkflow : IDisposable
                 scope, _logger, _dialogs, SaveFailedTitle,
                 HostProblems.BlockExportFailed(name, filePath, ex), ex,
                 "Failed to save function block {Id} to {Path}", functionBlockId.ToToken(), filePath);
-            return false;
+            return scope.Outcome;
         }
         EditOutcome outcome = await ApplyAsync(
             Commands.SaveFunctionBlockToLibrary(project, functionBlockId, name, Environment.UserName, normalizedNote));
         if (outcome.Status == EditStatus.Committed)
         {
-            return true;
+            return Ihc.OperationOutcome.Ok;
         }
         // The .ifb is written by now; the library COMMIT is what did not happen. Reducing this to a bool left the
         // scope above reading OK even for a refusal, so the one channel that could show this was saying the
@@ -481,7 +553,7 @@ public sealed class ProjectWorkflow : IDisposable
             _logger.LogError("Library commit for function block {Id} ended {Status} ({Code})",
                 functionBlockId.ToToken(), outcome.Status, outcome.Code.Value);
         }
-        return false;
+        return scope.Outcome;
     }
 
     /// <summary>
@@ -492,15 +564,23 @@ public sealed class ProjectWorkflow : IDisposable
     /// immediately, which is the whole point of "saving to the library" and is exactly what a picked path elsewhere
     /// on disk would NOT do.
     /// </summary>
-    /// <returns>The file written, or null when the export, the library commit or the registration failed.</returns>
-    public async Task<string?> SaveFunctionBlockToLibraryAsync(ElementId functionBlockId, string name, string note)
+    /// <returns>
+    /// What the save DID, and the file it wrote when it wrote one — <c>Path</c> is null exactly when the outcome
+    /// is not Ok.
+    /// <para>Both, rather than the bare path this used to answer: the path told a caller only whether something
+    /// happened, so an export that broke and a library commit the engine refused arrived as the same <c>null</c>
+    /// and the gesture above recorded <c>ok</c> for both. The outcome is the one
+    /// <see cref="SaveFunctionBlockAsync"/> already recorded on its own span, forwarded rather than re-derived.</para>
+    /// </returns>
+    public async Task<(Ihc.OperationOutcome Outcome, string? Path)> SaveFunctionBlockToLibraryAsync(
+        ElementId functionBlockId, string name, string note)
     {
         ArgumentNullException.ThrowIfNull(name);
 
         Directory.CreateDirectory(_catalogDir);
         string path = Path.Combine(_catalogDir, LibraryFileName(name));
-        if (!await SaveFunctionBlockAsync(functionBlockId, path, name, note))
-            return null;
+        if (await SaveFunctionBlockAsync(functionBlockId, path, name, note) is { IsOk: false } failed)
+            return (failed, null);
         // persist:false — the file is ALREADY in the catalog folder, so PersistFile would copy it onto itself.
         // This call is for the registration half: it parses the block into the live catalog and fires
         // CatalogChanged, which is what rebuilds the insertion menus.
@@ -509,7 +589,13 @@ public sealed class ProjectWorkflow : IDisposable
         // Indsæt ▸ FunktionsBlokke, so a rejected registration did not save the block to the LIBRARY however
         // well the file was written — and ImportFileAsync has already shown the installer why. Discarding this
         // put a success line under that rejection dialog: two contradictory statements about one action.
-        return await _catalog.ImportFileAsync(path, persist: false) ? path : null;
+        //
+        // The registration half answers a BOOL and has no scope of its own, so there is no outcome here to
+        // forward — this is the one arm that words its own, and CatalogFileRejected is the code its dialog
+        // already showed.
+        return await _catalog.ImportFileAsync(path, persist: false)
+            ? (Ihc.OperationOutcome.Ok, path)
+            : (Ihc.OperationOutcome.FailedWith(HostProblemCodes.CatalogFileRejected.Value), null);
     }
 
     /// <summary>The block's name as a file name. A block name is free text and may hold characters no file system
@@ -620,7 +706,10 @@ public sealed class ProjectWorkflow : IDisposable
     /// <summary>The typed preview of a command applied now, without committing (M8/D05): the delta it would commit
     /// when it <see cref="PreviewStatus.WouldChange"/>, else a refuse / no-change / engine-fault status. Drives the
     /// Preview→confirm→Apply flow (W2-13). Currently exercised only by tests — the GUI's delete-confirm flow reads
-    /// <see cref="ProjectCommands.PreviewDelete"/> instead.</summary>
+    /// <see cref="ProjectCommands.PreviewDelete"/> instead.
+    /// <para>TODO: unused here, and NOT what enables or disables a menu or toolbar row — the command rows' gates
+    /// read <see cref="CanApply"/>, which is cheap enough to re-ask on every selection change. See the deletion
+    /// note on <c>ProjectAppService.Preview</c>.</para></summary>
     public PreviewOutcome Preview(ProjectCommand command) =>
         _document?.Preview(command) ?? PreviewOutcome.Refused(NoDocumentReason);
 
@@ -650,36 +739,39 @@ public sealed class ProjectWorkflow : IDisposable
     /// Undoes the last project-mutating edit (US-052): the document restores the previous snapshot and reports the
     /// exact delta, which flows to the reconciler via <see cref="LastChange"/> (crudarch G3). A cascading edit
     /// (e.g. a non-empty locality delete) reverses as one step because it was committed as a single snapshot.
-    /// A no-op (returns false) when there is nothing to undo.
+    /// A no-op (answers Ok, having done what it could) when there is nothing to undo.
     /// </summary>
-    public Task<bool> UndoAsync() => HistoryStep(nameof(UndoAsync), d => d.Undo());
+    public Task<EditOutcome?> UndoAsync() => HistoryStep(nameof(UndoAsync), d => d.Undo());
 
     /// <summary>Discards the last committed edit as if it never happened — the cancel arm of an
     /// apply → dialog → cancel gesture (a cancelled product insert). Unlike <see cref="UndoAsync"/> the document
     /// restores the snapshot verbatim (a cancelled gesture burns no ids — vendor-measured, uxparity S-12) and
-    /// leaves nothing on the redo stack (a gesture that never completed is not redoable). No-op (false) when
+    /// leaves nothing on the redo stack (a gesture that never completed is not redoable). No-op (Ok) when
     /// there is nothing to roll back.</summary>
-    public Task<bool> RollbackAsync() => HistoryStep(nameof(RollbackAsync), d => d.Rollback());
+    public Task<EditOutcome?> RollbackAsync() => HistoryStep(nameof(RollbackAsync), d => d.Rollback());
 
-    /// <summary>Re-applies the last undone edit (US-052): the mirror of <see cref="UndoAsync"/>. No-op (false) when the
+    /// <summary>Re-applies the last undone edit (US-052): the mirror of <see cref="UndoAsync"/>. No-op (Ok) when the
     /// redo history is empty.</summary>
-    public Task<bool> RedoAsync() => HistoryStep(nameof(RedoAsync), d => d.Redo());
+    public Task<EditOutcome?> RedoAsync() => HistoryStep(nameof(RedoAsync), d => d.Redo());
 
     /// <summary>
     /// The shared body of the three history gestures. They differ only in which document call they make, and
     /// the classification and the change-raise below are the part that must not diverge between them.
     /// </summary>
-    private Task<bool> HistoryStep(string operation, Func<IProjectDocument, EditOutcome> step) =>
+    private Task<EditOutcome?> HistoryStep(string operation, Func<IProjectDocument, EditOutcome> step) =>
         Task.FromResult(_telemetry.Run(operation, scope =>
         {
             EditOutcome? outcome = _document is null ? null : step(_document);
-            if (outcome is not { Status: EditStatus.Committed })
+            // The ENGINE's answer, handed back whole. A bool could not say whether a step that did not happen
+            // had nothing to do or had broken; OperationOutcome — which the span still records here — cannot
+            // separate "committed" from "nothing to undo", because both are the operation working. Only
+            // EditStatus holds all four, and it is already the vocabulary every other edit answers in.
+            scope.SetOutcome(ClassifyEdit(outcome));
+            if (outcome is { Status: EditStatus.Committed })
             {
-                scope.SetOutcome(ClassifyEdit(outcome));
-                return false;
+                RaiseChanged(outcome.Changes);
             }
-            RaiseChanged(outcome.Changes);
-            return true;
+            return outcome;
         }));
 
     /// <summary>Where the project in play came from: the vocabulary of the project-source dimension.</summary>
@@ -724,7 +816,12 @@ public sealed class ProjectWorkflow : IDisposable
     /// thing and collapsing them into the returned <c>false</c> is what made an undo that FAILED
     /// indistinguishable from one that had nothing to undo.
     /// </summary>
-    private static Ihc.OperationOutcome ClassifyEdit(EditOutcome? outcome) => outcome?.Status switch
+    /// <remarks>
+    /// PUBLIC because the doors that answer an <see cref="EditOutcome"/> hand the caller the richer value, and
+    /// the caller still has to give its own scope the operation reading. One mapping, here, so the span a
+    /// history step records and the span its gesture records cannot disagree about the same event.
+    /// </remarks>
+    public static Ihc.OperationOutcome ClassifyEdit(EditOutcome? outcome) => outcome?.Status switch
     {
         // No document, or nothing on the history: the operation did what it could, which was nothing.
         null or EditStatus.NoChange or EditStatus.Committed => Ihc.OperationOutcome.Ok,
@@ -733,7 +830,7 @@ public sealed class ProjectWorkflow : IDisposable
         _ => Ihc.OperationOutcome.Ok,
     };
 
-    private async Task<bool> SaveToAsync(string path)
+    private async Task<Ihc.OperationOutcome> SaveToAsync(string path)
     {
         using OperationScope scope = _telemetry.Start(nameof(SaveToAsync), metrics:
             SaveMetrics);
@@ -754,7 +851,9 @@ public sealed class ProjectWorkflow : IDisposable
             await FailureReport.FailedAsync(
                 scope, _logger, _dialogs, SaveFailedTitle, HostProblems.ProjectSaveFailed(path, ex), ex,
                 "Failed to save project {Path}", path);
-            return false;
+            // The outcome the report just recorded, read back rather than rebuilt: one derivation, so the
+            // answer the caller gets and the answer the span carries cannot come to disagree.
+            return scope.Outcome;
         }
 
         // THE BYTES ARE ON DISK FROM HERE. What follows is this application's own bookkeeping — the save point,
@@ -777,7 +876,7 @@ public sealed class ProjectWorkflow : IDisposable
         Contain(() => _recent.Add(path), $"{nameof(SaveToAsync)} recent list");
         Contain(() => RaiseChanged(), $"{nameof(SaveToAsync)} state notification");
         scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectFileSize, FileSizeOrNull(path));
-        return true;
+        return Ihc.OperationOutcome.Ok;
     }
 
     /// <summary>
@@ -790,6 +889,43 @@ public sealed class ProjectWorkflow : IDisposable
     /// FAIL-OPEN, like every other writer to that sink: a sink that throws must not become the failure reported
     /// on top of the one being reported.
     /// </remarks>
+    /// <summary>
+    /// Leaves a durable row for a START-UP open that failed — the one open failure this application answers
+    /// behind the installer's back.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>A deliberate exception to <c>FailureReport.ReportIfUnanticipated</c></b>, which keeps an
+    /// <c>IOException</c> or a <c>FormatException</c> OUT of the fault tier on the stated grounds that
+    /// collecting them "would report the tool as broken every time somebody opened the wrong file — which is
+    /// how a fault list becomes noise". That argument holds for File ▸ Open: the installer stays where they
+    /// were, and the dialog is the whole story. It does not hold here. The launch answers the failure by
+    /// silently opening the standard empty project, so once the dialog is dismissed NOTHING on any surface
+    /// says why the window is empty — and the row is what survives to say it.</para>
+    /// <para><b>Origin Platform, not Host</b>: what failed is the file the machine handed this application, not
+    /// this application. The tier still reads <i>Intern fejl</i>, which is the closest surface that exists;
+    /// a row that is neither a tool fault nor a statement about the open project has no better home today.</para>
+    /// <para>The row survives the empty-project fallback that follows it, and not by luck:
+    /// <c>InternalErrorLog</c> treats the FIRST generation as a baseline rather than a move, expressly so that
+    /// "start-up faults" are not wiped by the document the app always opens at start-up.</para>
+    /// </remarks>
+    private void FileStartupOpenFailure(Problem problem, Exception failure, string path)
+    {
+        if (_faultSink is not { } sink)
+        {
+            return;
+        }
+        try
+        {
+            sink(InternalError.From(
+                problem, InternalErrorOrigin.Platform,
+                $"{nameof(ProjectWorkflow)}.{nameof(StartAsync)}: {path}{Environment.NewLine}{failure}"));
+        }
+        catch (Exception)
+        {
+            // Fail-open, for the reason ReportInternalFault gives below.
+        }
+    }
+
     private void ReportInternalFault(Exception failure, string origin)
     {
         // The exception itself, and no {Message} beside it: the pipeline already renders it whole, and reading
@@ -811,21 +947,27 @@ public sealed class ProjectWorkflow : IDisposable
         }
     }
 
-    private async Task<bool> ConfirmSaveIfDirtyAsync()
+    /// <remarks>
+    /// The three answers are why this door stopped returning a bool. "Fortryd" and a save that BROKE both left
+    /// the caller with <c>false</c>, so a quit cancelled by the installer and a quit blocked by a failed save
+    /// were the same event — to every operation above this one, and to anyone reading the trace afterwards.
+    /// </remarks>
+    private async Task<Ihc.OperationOutcome> ConfirmSaveIfDirtyAsync()
     {
         // Its OWN span, and a child of whatever lifecycle operation is running. The prompt awaits a HUMAN, so
         // left inline its think-time would land in the parent duration and every load/save percentile would
         // measure how fast the user reads rather than how fast the app works.
         using OperationScope scope = _telemetry.Start(nameof(ConfirmSaveIfDirtyAsync));
         if (!IsDirty)
-            return true;
+            return Ihc.OperationOutcome.Ok;
         SaveChangesResult result = await _dialogs.ConfirmSaveChangesAsync(DocumentName);
-        return result switch
+        return Recorded(scope, result switch
         {
+            // Whatever the save answered, unchanged — including its failure, which is the whole point.
             SaveChangesResult.Save => await SaveAsync(),
-            SaveChangesResult.Discard => true,
-            _ => false
-        };
+            SaveChangesResult.Discard => Ihc.OperationOutcome.Ok,
+            _ => Ihc.OperationOutcome.Cancelled,
+        });
     }
 
     private void NewInternal()
@@ -849,9 +991,9 @@ public sealed class ProjectWorkflow : IDisposable
     /// </summary>
     /// <remarks>
     /// Split from the announcement because the two have opposite failure meanings, and conflating them was a real
-    /// defect: this half FAILING means there is no open document, so an open must answer false, while the
+    /// defect: this half FAILING means there is no open document, so an open must answer not-Ok, while the
     /// announcement failing means only that a subscriber broke after the document was already open. A guard that
-    /// contained both let <see cref="OpenAsync"/> answer true with <c>_document</c> still null.
+    /// contained both let <see cref="OpenAsync"/> answer Ok with <c>_document</c> still null.
     /// <para>
     /// One persistent document for the workflow's lifetime (crudarch D01): created via the service door on the
     /// first load, re-opened per load/create after. Each Open resets history and version (US-052). A project

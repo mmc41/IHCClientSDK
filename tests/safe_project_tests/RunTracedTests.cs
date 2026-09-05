@@ -206,8 +206,8 @@ namespace Ihc.Vis.Tests
 
                 var recorded = points.ToArray();
                 Assert.That(recorded, Has.Length.EqualTo(2), "one point per operation, success and failure alike");
-                Assert.That(recorded[0].Tags["ihc.edit.status"], Is.EqualTo("ok"));
-                Assert.That(recorded[1].Tags["ihc.edit.status"], Is.EqualTo("failed"));
+                Assert.That(recorded[0].Tags["ihc.operation.status"], Is.EqualTo("ok"));
+                Assert.That(recorded[1].Tags["ihc.operation.status"], Is.EqualTo("failed"));
                 Assert.That(recorded[1].Tags["error.type"], Is.EqualTo(failure.GetTagItem("error.type")),
                     "span and metric must carry the same error type or they cannot be joined");
             });

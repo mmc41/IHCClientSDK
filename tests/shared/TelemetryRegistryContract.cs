@@ -64,6 +64,7 @@ namespace Ihc.Tests.Shared
                 foreach (string name in attributeNames)
                 {
                     AssertNameFollowsTheRules(name, requireIhcPrefix: !SemanticConventions.Contains(name));
+                    AssertNameIsNotAlsoANamespace(name, attributeNames);
                 }
 
                 Assert.That(instruments.Select(i => i.Name).ToList(), Is.Unique);
@@ -83,6 +84,32 @@ namespace Ihc.Tests.Shared
                 Assert.That(instrument.Meter, Is.SameAs(expectedMeter),
                     $"instrument '{instrument.Name}' must come from the layer's own surface");
             }
+        }
+
+        /// <summary>
+        /// No name may be BOTH a value and a namespace. <c>ihc.operation</c> beside <c>ihc.operation.status</c>
+        /// asks one key to be a string on one record and an object on the next, which is a mapping conflict for
+        /// every backend that expands dotted keys into nested structures — and invisible on a backend that
+        /// flattens the dots instead, which is why this has to be a build-time rule rather than something a
+        /// query would eventually reveal. The conventions solve it by moving the leaf down
+        /// (<c>db.operation</c> → <c>db.operation.name</c>) rather than by avoiding the namespace.
+        /// </summary>
+        /// <remarks>
+        /// Attribute names only. Metric names live in their own space, where <c>ihc.edit.apply</c> and
+        /// <c>ihc.edit.apply.duration</c> are two flat identifiers rather than a value inside a namespace.
+        /// <para>WITHIN one registry, which is all a single test assembly can see — the two registries are in
+        /// different assemblies for the reason given in the class remarks. A collision ACROSS them would need
+        /// both prefixes to be the same, and the <c>ihc.</c>-prefixed families they own do not overlap.</para>
+        /// </remarks>
+        private static void AssertNameIsNotAlsoANamespace(string name, IReadOnlyCollection<string> allNames)
+        {
+            List<string> beneath = allNames
+                .Where(other => other.StartsWith(name + ".", StringComparison.Ordinal))
+                .ToList();
+
+            Assert.That(beneath, Is.Empty,
+                $"'{name}' is a value and also the namespace of {string.Join(", ", beneath)}; "
+                + "move the leaf down a level (e.g. add '.name') so the two cannot collide");
         }
 
         private static void AssertNameFollowsTheRules(string name, bool requireIhcPrefix)

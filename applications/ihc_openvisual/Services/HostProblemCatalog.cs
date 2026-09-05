@@ -64,6 +64,12 @@ internal static class HostProblemCodes
     /// <summary>A whole validation run failed, so the listed findings no longer describe the document.</summary>
     public static ProblemCode ValidationFaulted { get; } = new("app.openvisual.validation-faulted");
 
+    /// <summary>
+    /// A cancelled insert could not be rolled back, so the project holds an element the installer declined
+    /// (US-010, uxparity S-12).
+    /// </summary>
+    public static ProblemCode InsertRollbackFailed { get; } = new("app.openvisual.insert-rollback-failed");
+
     /// <summary>There was no clipboard to copy to, so nothing was copied.</summary>
     public static ProblemCode ClipboardUnavailable { get; } = new("app.openvisual.clipboard-unavailable");
 
@@ -155,7 +161,7 @@ internal static class HostProblemCatalog
     [
         Unexpected, EditFailed, ControllerRequiredSend, ControllerRequiredRetrieve, ValidationErrorsBlockSend,
         ValidationIncompleteBlocksSend,
-        ClipboardUnavailable, ValidationFaulted, PlatformFault, TelemetryPipelineDown,
+        ClipboardUnavailable, ValidationFaulted, InsertRollbackFailed, PlatformFault, TelemetryPipelineDown,
         TelemetryHostMissing, TelemetryHostUnreachable,
         CatalogFileRejected, CatalogFolderMissing, CatalogImportStopped,
         ReportNotOpenable, ReportViewFailed, ReportSaveFailed,
@@ -283,6 +289,24 @@ internal static class HostProblemCatalog
         HostProblemCodes.ValidationFaulted,
         "Valideringen stoppede. Listen er muligvis forældet.",
         "A whole validation run faulted; the bound findings are kept but no longer describe the document.");
+
+    /// <summary>
+    /// A cancelled insert whose roll-back did not happen. The FAULT shape, not the outcome shape: the gesture
+    /// committed the insert moments earlier, so the history certainly held it and a roll-back that answers
+    /// anything but Committed is this tool misbehaving — §1's rule is to pick by what the row RECORDS, not by
+    /// the status line it is shown on.
+    /// <para>
+    /// The product is a declared argument rather than a spliced word, and the sentence is the one the site
+    /// already showed — this row makes it the catalogue's rather than the view-model's, so the installer reads
+    /// the same words and the span gains an identity to group by.
+    /// </para>
+    /// </summary>
+    internal static ProblemCatalogEntry InsertRollbackFailed => Fault(
+        HostProblemCodes.InsertRollbackFailed,
+        "Indsætning af '{product}' kunne ikke fortrydes.",
+        "A cancelled product insert could not be rolled back; the element the installer declined is still in "
+        + "the project. The engine's own outcome status goes to the log.",
+        new ProblemArgumentSlot("product", ProblemArgumentType.AuthoredName));
 
     /// <summary>
     /// The platform offered no clipboard, so the copy could not happen. Its sentence is short on purpose: it is
@@ -476,6 +500,11 @@ internal static class HostProblems
 
     /// <summary>Nothing was copied, because the platform offered no clipboard.</summary>
     public static Problem ClipboardUnavailable() => Bind(HostProblemCatalog.ClipboardUnavailable, null, null);
+
+    /// <summary>A cancelled insert could not be rolled back, so the declined element is still in the project.</summary>
+    /// <param name="product">The product the installer was placing, as the menu named it.</param>
+    public static Problem InsertRollbackFailed(string product) =>
+        Bind(HostProblemCatalog.InsertRollbackFailed, null, null, new ProblemArgument("product", product));
 
     /// <summary>No telemetry host is configured.</summary>
     public static Problem TelemetryHostMissing() => Bind(HostProblemCatalog.TelemetryHostMissing, null, null);

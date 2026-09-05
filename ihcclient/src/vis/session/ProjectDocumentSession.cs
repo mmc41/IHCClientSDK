@@ -296,7 +296,7 @@ namespace Ihc.Vis.Session
             Project? updated;
             try
             {
-                updated = TryProduceUpdated(current, execute);
+                updated = Produce(current, execute);
             }
             catch (EditRefusedException ex)   // a deep guard refuses only inside Execute
             {
@@ -320,11 +320,11 @@ namespace Ihc.Vis.Session
                 // through an exception filter and reports the test as always true.
                 if (ex is IProblemCarrier carrier)
                 {
-                    // BOTH shapes, in ONE place. A carrier answers with a chain or with an aggregate, and
-                    // matching only the chain is precisely the half-honoured contract the widened interface was
-                    // chosen to prevent — a site that tests for one shape and forgets the other reports a coded
-                    // refusal as an untyped failure. Two tests here cost nothing because there is one such site;
-                    // the rejected sibling-interface design would have needed them at every one.
+                    // BOTH shapes. A carrier answers with a chain or with an aggregate, and matching only the
+                    // chain is precisely the half-honoured contract the widened interface was chosen to prevent
+                    // — a site that tests for one shape and forgets the other reports a coded refusal as an
+                    // untyped failure. Two tests cost little because there are two such sites, this and the peer
+                    // arm in Preview; the rejected sibling-interface design would have needed them everywhere.
                     if (carrier.Problems is { } refusal)
                     {
                         return new EditOutcome(
@@ -372,6 +372,46 @@ namespace Ihc.Vis.Session
             activity?.SetTag(SdkTelemetryRegistry.Attributes.EditChangedCount, changes.Changed.Count);
             return new EditOutcome(EditStatus.Committed, label, null, changes);
         }
+
+        /// <summary>
+        /// The edit kernel, TIMED. <c>Apply</c> covers four things — the gate, the mutation, the index rebuild
+        /// and the diff — of which the last two already reported spans of their own, so the mutation was the
+        /// unnamed remainder: measured on a live edit, 4 ms of 9.6 were accounted for and nothing said what the
+        /// rest was. It is also the part that grows with the project, which is the reason to be able to see it.
+        /// </summary>
+        /// <remarks>
+        /// The classification is the point of the wrapper, not the timing. A deep guard REFUSES by throwing, so
+        /// a phase span that read every escaping exception as a failure would mark the commonest refusal path
+        /// Error — reintroducing one level down the Error/Unset split that classifying the outcome removed at
+        /// the apply level.
+        /// </remarks>
+        private Project? Produce(Project current, Action<ProjectEditor> execute)
+        {
+            using OperationScope produce = _telemetry.Start("Produce");
+            try
+            {
+                return TryProduceUpdated(current, execute);
+            }
+            catch (Exception ex)
+            {
+                produce.SetOutcome(ClassifyThrow(ex));
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// What an exception escaping the edit body MEANS, in the same terms the catch arms below give the
+        /// caller: a coded refusal is a refusal, and everything else is broken. Only the identity is derived
+        /// here — the sentence a refusal carries stays with the arm that builds the outcome, so there is one
+        /// place a user-facing message comes from.
+        /// </summary>
+        private static OperationOutcome ClassifyThrow(Exception failure) => failure switch
+        {
+            EditRefusedException refused => OperationOutcome.Refused(refused.Code.Value),
+            IProblemCarrier { Problems: { } chain } => OperationOutcome.Refused(chain.Cause.Code.Value),
+            IProblemCarrier { Aggregate: { } aggregate } => OperationOutcome.Refused(aggregate.Head.Code.Value),
+            _ => OperationOutcome.Failed(failure),
+        };
 
         // The single edit kernel BOTH Apply and Preview run: open an editor over <paramref name="current"/>, run the
         // command's mutation, and return the updated project — or null when it produced no change. Because the change
@@ -449,9 +489,11 @@ namespace Ihc.Vis.Session
 
         /// <summary>The typed preview of a command applied now — without committing — mirroring <see cref="Apply"/>
         /// (M8/D05): <see cref="PreviewStatus.WouldChange"/> carries the delta the subsequent Apply would commit,
-        /// while a legality refusal, a deep-guard <see cref="EditRefusedException"/>, a no-change and an unexpected
-        /// engine fault are each their own status — so the GUI can report a genuine bug instead of swallowing it as
-        /// "nothing to preview". Drives the Preview→confirm→Apply flow (W2-13).</summary>
+        /// while a legality refusal, a deep-guard <see cref="EditRefusedException"/>, any other CODED refusal, a
+        /// no-change and an unexpected engine fault are each their own status — so the GUI can report a genuine bug
+        /// instead of swallowing it as "nothing to preview". Drives the Preview→confirm→Apply flow (W2-13).
+        /// <para>Mirroring Apply is a REQUIREMENT, not a description: the two run one kernel, so a throw either
+        /// classifies the same way in both or the doors contradict each other about the same document.</para></summary>
         public PreviewOutcome Preview(ProjectCommand command)
         {
             ArgumentNullException.ThrowIfNull(command);
@@ -469,7 +511,7 @@ namespace Ihc.Vis.Session
                 Project? updated;
                 try
                 {
-                    updated = TryProduceUpdated(current, command.Execute);
+                    updated = Produce(current, command.Execute);
                 }
                 catch (EditRefusedException ex)   // a deep guard refuses only inside Execute — a refusal, not a fault
                 {
@@ -477,6 +519,27 @@ namespace Ihc.Vis.Session
                 }
                 catch (Exception ex)   // an unexpected engine fault — surfaced, not swallowed as "nothing to preview" (D05)
                 {
+                    // A CODED refusal raised below the gate is a REFUSAL here too, for the reason Apply's peer
+                    // arm gives: the sentence a caller may show is the catalogue's Danish one, so reporting it as
+                    // an engine fault hands over the ENGLISH diagnostic AND files an internal-error row for the
+                    // rules working. Preview and Apply run the same kernel, so without this they disagreed about
+                    // the same throw — and the throw is not exotic: the editor-open guard raises it for a
+                    // duplicate id token or an undeclared attribute, which is EVERY command on such a project.
+                    if (ex is IProblemCarrier carrier)
+                    {
+                        // Both carrier shapes, as at the Apply site: matching only the chain is the
+                        // half-honoured contract the widened interface exists to prevent.
+                        if (carrier.Problems is { } refusal)
+                        {
+                            return PreviewOutcome.Refused(refusal.Cause.Message, refusal.Cause.Code);
+                        }
+
+                        if (carrier.Aggregate is { } aggregate)
+                        {
+                            return PreviewOutcome.Refused(aggregate.Head.Message, aggregate.Head.Code);
+                        }
+                    }
+
                     // Captured HERE, where the exception still exists; the factory only threads it through.
                     return PreviewOutcome.Faulted(
                         ex.Message,

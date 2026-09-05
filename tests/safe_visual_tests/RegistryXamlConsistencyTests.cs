@@ -73,7 +73,7 @@ public class RegistryXamlConsistencyTests : AvaloniaTestBase
         // ARMED direction 2: a seeded row whose Placement claims a surface no XAML item binds.
         var seededRows = vm.Registry.Rows.Append(new CommandSpec(
             "seeded.orphan", null, Surfaces.MenuBar,
-            _ => Task.CompletedTask, _ => Ihc.Vis.Session.EditVerdict.Allow)).ToList();
+            _ => Task.FromResult(Ihc.OperationOutcome.Ok), _ => Ihc.Vis.Session.EditVerdict.Allow)).ToList();
         var seededMap = new Dictionary<string, string>(propToRow) { ["SeededOrphanCommand"] = "seeded.orphan" };
         Assert.That(Check(regions, seededRows, seededMap), Is.Not.Empty,
             "armed(2): a placed row with no bound XAML item must be reported");

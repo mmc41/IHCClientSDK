@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Ihc.Vis;
@@ -26,6 +27,134 @@ public sealed class AvaloniaDialogService : IDialogService
 
     public AvaloniaDialogService(ILoggerFactory? loggerFactory = null) =>
         _logger = (loggerFactory ?? NullLoggerFactory.Instance).CreateLogger<AvaloniaDialogService>();
+
+    /// <summary>This service's entry point into the instrumentation core.</summary>
+    private readonly Ihc.OperationTelemetry _telemetry =
+        new(AppTelemetryRegistry.Surface, nameof(AvaloniaDialogService));
+
+    /// <summary>
+    /// One modal's span, covering the whole wait — from raising the dialog to the person answering it.
+    ///
+    /// <para>Why a span for something that is only a person thinking: without it, that thinking is billed to the
+    /// operation the dialog interrupted, and nothing says so. Measured on a live save, the failure dialog turned
+    /// 24 ms of file I/O into a 13.6 s <c>SaveToAsync</c>, and a picker turned a save-as into 20 s — numbers a
+    /// reader of the trace, or of the save-duration histogram, cannot tell from slow work. A child span makes the
+    /// remainder honest by subtraction and costs one span per modal.</para>
+    ///
+    /// <para><see cref="CallerMemberNameAttribute"/> rather than a literal per site: the member IS the dialog's
+    /// name, so no call site can pass a name that has drifted from the method it names, and a dialog added later
+    /// is named correctly without anyone remembering to name it. A private helper that fronts more than one
+    /// public door leaves the parameter to ITS caller, so the span reports the door the installer used.</para>
+    /// <para>
+    /// EVERY door comes through here — including the ones that read as ordinary <c>async</c> methods. They used
+    /// to open the scope themselves with a bare <c>using</c>, which is the same funnel written out by hand and
+    /// drifted the way a copy does: the hand-written half never classified a dialog that FAULTED, so a picker
+    /// that broke recorded <c>ok</c>. One funnel is what keeps the two halves from disagreeing again.
+    /// </para>
+    /// <para>
+    /// It HANDS BACK the task rather than awaiting it, which keeps the one property an <c>async</c> rewrite
+    /// would quietly destroy: a modal that cannot even be BUILT — no platform, no window — throws
+    /// SYNCHRONOUSLY, before its caller's next statement runs.
+    /// </para>
+    /// <para>
+    /// That is not a nicety. <c>ShowProblemAsync</c> counts a problem only AFTER asking for its presentation,
+    /// precisely so a dialog that failed to appear is not counted as one an installer saw; turning the throw
+    /// into a faulted task made the count fire anyway, and <c>APresentationThatFailsIsNotCounted</c> caught it.
+    /// So <paramref name="show"/> is invoked inside a plain try — not after an await — and the scope is closed
+    /// on that path too, because a started span nobody stops would stay <see cref="Activity.Current"/> and
+    /// adopt every later span on the thread as its child.
+    /// </para>
+    /// </summary>
+    /// <param name="enrich">
+    /// Runs against the scope BEFORE the dialog is raised, for a door that knows something about the wait worth
+    /// carrying on its span. Last in the list so <see cref="CallerMemberNameAttribute"/> still fills
+    /// <paramref name="dialog"/> for every caller that does not need it.
+    /// </param>
+    private Task<T> TimedAsync<T>(Func<Task<T>> show, [CallerMemberName] string dialog = "",
+        Action<Ihc.OperationScope>? enrich = null)
+    {
+        // The caller's ambient activity, captured to be PUT BACK below. Starting a span makes it current, and
+        // this method is a PLAIN one — there is no async kickoff to restore the execution context on the way
+        // out, so what it leaves current is what the caller's continuation keeps. Measured with a probe over
+        // the three shapes (telemetry_points §12.3): the change escapes from a plain method and does not from
+        // an `async` one. Left unrestored, every span a gesture opened AFTER the dialog — the apply behind a
+        // properties dialog, the delete behind its confirm — became a child of a modal span that had already
+        // stopped.
+        System.Diagnostics.Activity? ambient = System.Diagnostics.Activity.Current;
+        Ihc.OperationScope modal = _telemetry.Start(dialog);
+        enrich?.Invoke(modal);
+        Task<T> pending;
+        try
+        {
+            pending = show();
+        }
+        catch (Exception ex)
+        {
+            // No restore needed on this arm: disposing the scope stops the span, and stopping it makes its own
+            // parent current again.
+            modal.SetOutcome(Ihc.OperationOutcome.Failed(ex));
+            modal.Dispose();
+            throw;
+        }
+        // AFTER `show()`, so the dialog's own work is raised while the modal span is current and nests under
+        // it; before the return, so nothing the CALLER does afterwards can.
+        System.Diagnostics.Activity.Current = ambient;
+        // CA2025 sees a disposable handed to a task this method does not await. That is the design: the scope is
+        // disposed by AwaitedAsync when the dialog is ANSWERED, which is the wait this span exists to measure,
+        // and disposing it here instead would time the raising of the dialog rather than the waiting for it.
+#pragma warning disable CA2025
+        return AwaitedAsync(pending, modal);
+#pragma warning restore CA2025
+    }
+
+    /// <inheritdoc cref="TimedAsync{T}"/>
+    /// <remarks>
+    /// CA1859 would have this declare the <c>Task&lt;bool&gt;</c> it actually returns. Declined, and suppressed
+    /// rather than silenced repo-wide: that <c>bool</c> is scaffolding — the value <see cref="CompletedAsync"/>
+    /// invents so one generic can serve both shapes — and publishing it would push a meaningless result up
+    /// through every void dialog door that calls this.
+    /// </remarks>
+#pragma warning disable CA1859
+    private Task TimedAsync(Func<Task> show, [CallerMemberName] string dialog = "",
+        Action<Ihc.OperationScope>? enrich = null) =>
+        // Through the generic so the try/catch above is written once. The inner call is an ARGUMENT, evaluated
+        // where the generic invokes the lambda, so a synchronous throw still lands in that one catch.
+        TimedAsync(() => CompletedAsync(show()), dialog, enrich);
+#pragma warning restore CA1859
+
+    /// <summary>
+    /// Closes <paramref name="modal"/> when the dialog is answered — which is what times the wait — and says
+    /// what the answer WAS.
+    /// </summary>
+    /// <remarks>
+    /// The catch is the other half of <see cref="TimedAsync{T}"/>'s: a dialog can fail before it is built, which
+    /// that one records, and it can fail after — a window that could not be shown, a storage provider that
+    /// threw. Without this arm the <c>using</c> disposes with the default outcome, so a modal that BROKE is
+    /// recorded as one the installer answered, which is the single thing the outcome machinery exists to
+    /// prevent. Rethrown unchanged; recording is additive.
+    /// </remarks>
+    private static async Task<T> AwaitedAsync<T>(Task<T> pending, Ihc.OperationScope modal)
+    {
+        using (modal)
+        {
+            try
+            {
+                return await pending;
+            }
+            catch (Exception ex)
+            {
+                modal.SetOutcome(Ihc.OperationOutcome.Failed(ex));
+                throw;
+            }
+        }
+    }
+
+    /// <summary>A void dialog as a valued one, so <see cref="TimedAsync{T}"/> serves both shapes.</summary>
+    private static async Task<bool> CompletedAsync(Task pending)
+    {
+        await pending;
+        return true;
+    }
 
     /// <summary>The main window, used as the modal owner and storage-provider source. Set after it is created.</summary>
     public Window? Owner { get; set; }
@@ -64,12 +193,13 @@ public sealed class AvaloniaDialogService : IDialogService
     /// stays the one call that is actually its own.
     /// <para>It also decides WHICH window owns the modal: <see cref="Innermost"/>, so a dialog raised from
     /// inside another stacks on it.</para></summary>
-    private Task<T?> WithOwnerAsync<T>(Func<Window, Task<T?>> show) where T : class =>
-        Owner is { } owner ? show(Innermost(owner)) : Task.FromResult<T?>(null);
+    private Task<T?> WithOwnerAsync<T>(Func<Window, Task<T?>> show, [CallerMemberName] string dialog = "")
+        where T : class =>
+        TimedAsync(() => Owner is { } owner ? show(Innermost(owner)) : Task.FromResult<T?>(null), dialog);
 
     /// <inheritdoc cref="WithOwnerAsync{T}"/>
-    private Task WithOwnerAsync(Func<Window, Task> show) =>
-        Owner is { } owner ? show(Innermost(owner)) : Task.CompletedTask;
+    private Task WithOwnerAsync(Func<Window, Task> show, [CallerMemberName] string dialog = "") =>
+        TimedAsync(() => Owner is { } owner ? show(Innermost(owner)) : Task.CompletedTask, dialog);
 
     private static readonly FilePickerFileType VisFileType = new("IHC projekt (*.vis)") { Patterns = new[] { "*.vis" } };
     private static readonly FilePickerFileType CatalogFileType =
@@ -84,22 +214,19 @@ public sealed class AvaloniaDialogService : IDialogService
     internal const string SaveChangesCancelLabel = "Annuller";
     internal static string SaveChangesMessage(string documentName) => $"Gem ændringer i {documentName} før du fortsætter?";
 
-    public async Task<SaveChangesResult> ConfirmSaveChangesAsync(string documentName)
-    {
-        var result = await ShowButtonsAsync(
+    public Task<SaveChangesResult> ConfirmSaveChangesAsync(string documentName) =>
+        TimedAsync(() => ShowButtonsAsync(
             SaveChangesTitle,
             SaveChangesMessage(documentName),
             (SaveChangesSaveLabel, SaveChangesResult.Save),
             (SaveChangesDiscardLabel, SaveChangesResult.Discard),
-            (SaveChangesCancelLabel, SaveChangesResult.Cancel));
-        return result;
-    }
+            (SaveChangesCancelLabel, SaveChangesResult.Cancel)));
 
     public Task<bool> ConfirmAsync(string title, string message) =>
-        ShowButtonsAsync(title, message, ("Ja", true), ("Nej", false));
+        TimedAsync(() => ShowButtonsAsync(title, message, ("Ja", true), ("Nej", false)));
 
     public Task ShowMessageAsync(string title, string message) =>
-        ShowButtonsAsync(title, message, ("OK", true));
+        TimedAsync(() => ShowButtonsAsync(title, message, ("OK", true)));
 
     // The coded doors render through the shell's ONE presentation path and then reuse the same box: identity is
     // decided there, never per dialog, so a problem shown here and one shown in a future findings pane read alike.
@@ -148,12 +275,30 @@ public sealed class AvaloniaDialogService : IDialogService
     /// problem shown is counted whether or not it is dismissed; a problem that never reached the screen is not
     /// counted at all.</para>
     /// </remarks>
-    private Task PresentAsync(Ihc.Vis.Problems.ProblemCode code, string title, string text)
-    {
-        Task shown = ShowMessageAsync(title, text);
-        CountProblem(code);
-        return shown;
-    }
+    /// <remarks>
+    /// <para>It raises the box DIRECTLY rather than through <see cref="ShowMessageAsync"/>, and the difference is
+    /// the span. A coded problem routed through the message door produced a span named
+    /// <c>ShowMessageAsync</c> — indistinguishable from an informational box, which is the worst possible answer
+    /// for the case that motivated modal spans at all: the audit measured a failure dialog holding a 24 ms save
+    /// open for 13.6 s. Named for the coded door and carrying the code, the span says WHICH problem the
+    /// installer was reading. The rendering is unchanged; this is the same call the message door makes.</para>
+    /// </remarks>
+    private Task PresentAsync(Ihc.Vis.Problems.ProblemCode code, string title, string text) =>
+        TimedAsync(
+            () =>
+            {
+                // The order the remarks above turn on: raise first, count second, so a box that could not be
+                // built throws out of here without being counted. Inside the lambda, so that throw lands in
+                // TimedAsync's own catch and closes the span.
+                //
+                // Typed Task, not Task<bool>: the button's value is scaffolding this door has no use for, and
+                // the wider type is what selects the void funnel rather than the generic one.
+                Task shown = ShowButtonsAsync(title, text, ("OK", true));
+                CountProblem(code);
+                return shown;
+            },
+            nameof(ShowProblemAsync),
+            modal => modal.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProblemCode, code.Value));
 
     /// <summary>Records one problem actually presented, keyed by its code and the family that code belongs to.</summary>
     private static void CountProblem(Ihc.Vis.Problems.ProblemCode code) =>
@@ -161,7 +306,7 @@ public sealed class AvaloniaDialogService : IDialogService
             new KeyValuePair<string, object?>(AppTelemetryRegistry.Attributes.ProblemCode, code.Value),
             new KeyValuePair<string, object?>(AppTelemetryRegistry.Attributes.ProblemFamily, code.Family.ToString()));
 
-    public async Task<string?> PickOpenProjectAsync(string? initialDirectory)
+    public Task<string?> PickOpenProjectAsync(string? initialDirectory) => TimedAsync<string?>(async () =>
     {
         if (Owner is null)
             return null;
@@ -173,22 +318,23 @@ public sealed class AvaloniaDialogService : IDialogService
             SuggestedStartLocation = await GetFolderAsync(initialDirectory)
         });
         return files.Count > 0 ? files[0].TryGetLocalPath() : null;
-    }
+    });
 
-    public async Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName)
-    {
-        if (Owner is null)
-            return null;
-        IStorageFile? file = await Owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+    public Task<string?> PickSaveProjectAsync(string? initialDirectory, string suggestedFileName) =>
+        TimedAsync<string?>(async () =>
         {
-            Title = "Gem projekt som",
-            SuggestedFileName = suggestedFileName,
-            DefaultExtension = "vis",
-            FileTypeChoices = new[] { VisFileType },
-            SuggestedStartLocation = await GetFolderAsync(initialDirectory)
+            if (Owner is null)
+                return null;
+            IStorageFile? file = await Owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Gem projekt som",
+                SuggestedFileName = suggestedFileName,
+                DefaultExtension = "vis",
+                FileTypeChoices = new[] { VisFileType },
+                SuggestedStartLocation = await GetFolderAsync(initialDirectory)
+            });
+            return file?.TryGetLocalPath();
         });
-        return file?.TryGetLocalPath();
-    }
 
     /// <summary>
     /// How the save dialog describes ONE document this application writes: the Danish title over the dialog, the
@@ -222,27 +368,29 @@ public sealed class AvaloniaDialogService : IDialogService
     // The one picker call both doors delegate to. The caller already chose the format, so the dialog offers
     // exactly that one rather than letting a typed extension contradict the choice; the suggested name carries
     // the same extension, but it is a display string and never the format's source.
-    private async Task<string?> PickSaveAsync(SaveFileDescription description, string suggestedFileName)
-    {
-        if (Owner is null)
-            return null;
-        IStorageFile? file = await Owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+    private Task<string?> PickSaveAsync(SaveFileDescription description, string suggestedFileName,
+        [CallerMemberName] string dialog = "") =>
+        TimedAsync<string?>(async () =>
         {
-            Title = description.Title,
-            SuggestedFileName = suggestedFileName,
-            DefaultExtension = description.Extension,
-            FileTypeChoices = new[]
+            if (Owner is null)
+                return null;
+            IStorageFile? file = await Owner.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                new FilePickerFileType(description.FileTypeLabel)
+                Title = description.Title,
+                SuggestedFileName = suggestedFileName,
+                DefaultExtension = description.Extension,
+                FileTypeChoices = new[]
                 {
-                    Patterns = new[] { "*." + description.Extension },
-                },
-            }
-        });
-        return file?.TryGetLocalPath();
-    }
+                    new FilePickerFileType(description.FileTypeLabel)
+                    {
+                        Patterns = new[] { "*." + description.Extension },
+                    },
+                }
+            });
+            return file?.TryGetLocalPath();
+        }, dialog);
 
-    public async Task<string?> PickCatalogFileAsync()
+    public Task<string?> PickCatalogFileAsync() => TimedAsync<string?>(async () =>
     {
         if (Owner is null)
             return null;
@@ -253,9 +401,9 @@ public sealed class AvaloniaDialogService : IDialogService
             FileTypeFilter = new[] { CatalogFileType }
         });
         return files.Count > 0 ? files[0].TryGetLocalPath() : null;
-    }
+    });
 
-    public async Task<string?> PickCatalogFolderAsync()
+    public Task<string?> PickCatalogFolderAsync() => TimedAsync<string?>(async () =>
     {
         if (Owner is null)
             return null;
@@ -265,27 +413,33 @@ public sealed class AvaloniaDialogService : IDialogService
             AllowMultiple = false
         });
         return folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
-    }
+    });
 
-    public async Task ShowAboutAsync()
+    public Task ShowAboutAsync() => TimedAsync(async () =>
     {
         if (Owner is null)
             return;
         // Passing this: the About window's repository link opens through OpenExternalUrlAsync below rather than
         // launching for itself, so there is ONE external-open policy in the app.
         await new AboutWindow(this).ShowDialog(Owner);
-    }
+    });
 
-    public async Task ShowInternalErrorAsync(Ihc.Vis.Problems.InternalError error)
+    public Task ShowInternalErrorAsync(Ihc.Vis.Problems.InternalError error)
     {
+        // OUTSIDE the funnel: a null argument is the caller's bug, not a modal that failed, and reporting it as
+        // one would put a span and an error.type on an operation that never started (CA1062).
         ArgumentNullException.ThrowIfNull(error);
-        if (Owner is null)
-            return;
-        await new InternalErrorWindow(error).ShowDialog(Owner);
+        return TimedAsync(async () =>
+        {
+            if (Owner is null)
+                return;
+            await new InternalErrorWindow(error).ShowDialog(Owner);
+        });
     }
 
     public Task ShowSettingsAsync(string settingsText) =>
-        ShowButtonsAsync("Effektive indstillinger", settingsText, selectable: true, ("Luk", true));
+        TimedAsync(() => ShowButtonsAsync(
+            "Effektive indstillinger", settingsText, selectable: true, ("Luk", true)));
 
     public Task<PropertiesResult?> EditPropertiesAsync(string title, string name, string note, LibraryOrigin? origin = null,
         string affirmative = "OK", string? userGroupCaption = null, bool? conditionsOr = null,

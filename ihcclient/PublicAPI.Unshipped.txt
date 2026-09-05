@@ -1069,6 +1069,7 @@ Ihc.MetricBinding
 Ihc.OperationOutcome
 Ihc.OperationOutcome.Equals(Ihc.OperationOutcome other) -> bool
 Ihc.OperationOutcome.Exception.get -> System.Exception?
+Ihc.OperationOutcome.IsOk.get -> bool
 Ihc.OperationOutcome.OperationOutcome() -> void
 Ihc.OperationOutcome.ProblemCode.get -> string?
 Ihc.OperationOutcome.Status.get -> Ihc.OperationStatus
@@ -1077,9 +1078,11 @@ Ihc.OperationScope.Activity.get -> System.Diagnostics.Activity?
 Ihc.OperationScope.AddMetricTag(string! key, object? value) -> void
 Ihc.OperationScope.AddSharedTag(string! key, object? value) -> void
 Ihc.OperationScope.Dispose() -> void
+Ihc.OperationScope.Outcome.get -> Ihc.OperationOutcome
 Ihc.OperationScope.SetOutcome(Ihc.OperationOutcome value) -> void
 Ihc.OperationStatus
-Ihc.OperationStatus.Failed = 2 -> Ihc.OperationStatus
+Ihc.OperationStatus.Cancelled = 2 -> Ihc.OperationStatus
+Ihc.OperationStatus.Failed = 3 -> Ihc.OperationStatus
 Ihc.OperationStatus.Ok = 0 -> Ihc.OperationStatus
 Ihc.OperationStatus.Refused = 1 -> Ihc.OperationStatus
 Ihc.OperationTelemetry
@@ -1099,6 +1102,7 @@ override Ihc.OperationOutcome.Equals(object? obj) -> bool
 override Ihc.OperationOutcome.GetHashCode() -> int
 static Ihc.MetricBinding.For(System.Diagnostics.Metrics.Histogram<double>? duration = null, System.Diagnostics.Metrics.Counter<long>? occurrences = null) -> Ihc.MetricBinding!
 static Ihc.MetricBinding.None.get -> Ihc.MetricBinding!
+static Ihc.OperationOutcome.Cancelled.get -> Ihc.OperationOutcome
 static Ihc.OperationOutcome.Failed(System.Exception! exception) -> Ihc.OperationOutcome
 static Ihc.OperationOutcome.FailedWith(string! problemCode) -> Ihc.OperationOutcome
 static Ihc.OperationOutcome.Ok.get -> Ihc.OperationOutcome

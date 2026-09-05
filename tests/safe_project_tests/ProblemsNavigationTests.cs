@@ -268,7 +268,7 @@ public class ProblemsNavigationTests
         using ProblemsShellRig rig = new();
         await rig.Shell.InitializeAsync();
 
-        bool opened = await rig.Harness.Session.OpenAsync(ProjectWithTwoScenesSharingAnId(rig.Harness));
+        bool opened = (await rig.Harness.Session.OpenAsync(ProjectWithTwoScenesSharingAnId(rig.Harness))).IsOk;
         await rig.SettleAsync();
 
         Assert.Multiple(() =>

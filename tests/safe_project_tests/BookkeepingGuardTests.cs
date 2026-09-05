@@ -103,7 +103,7 @@ public class BookkeepingGuardTests
             int repaints = 0;
             harness.Session.StateChanged += (_, _) => repaints++;
 
-            bool saved = await harness.Session.SaveAsAsync();
+            bool saved = (await harness.Session.SaveAsAsync()).IsOk;
 
             Assert.Multiple(() =>
             {
@@ -129,7 +129,7 @@ public class BookkeepingGuardTests
         {
             harness.Dialogs.SavePath = Directory.CreateDirectory(harness.TempPath("not-a-file.vis")).FullName;
 
-            bool saved = await harness.Session.SaveAsAsync();
+            bool saved = (await harness.Session.SaveAsAsync()).IsOk;
 
             Assert.Multiple(() =>
             {
@@ -155,7 +155,7 @@ public class BookkeepingGuardTests
             faults.Clear();
             harness.Session.StateChanged += (_, _) => throw Breaking();
 
-            bool opened = await harness.Session.OpenAsync(path);
+            bool opened = (await harness.Session.OpenAsync(path)).IsOk;
 
             Assert.Multiple(() =>
             {
@@ -206,7 +206,7 @@ public class BookkeepingGuardTests
             string rotten = harness.TempPath("rotten.vis");
             await File.WriteAllTextAsync(rotten, "this is not a project file");
 
-            bool opened = await harness.Session.OpenAsync(rotten);
+            bool opened = (await harness.Session.OpenAsync(rotten)).IsOk;
 
             Assert.Multiple(() =>
             {

@@ -89,12 +89,12 @@ namespace Ihc.Tests
                 Assert.That(recorded, Has.Count.EqualTo(1), "one controller call is one point, never zero or two");
                 Assert.That(recorded[0].Value, Is.GreaterThanOrEqualTo(0.0));
                 Assert.That(recorded[0].Tag("ihc.service"), Is.EqualTo("TestService"));
-                Assert.That(recorded[0].Tag("ihc.operation"), Is.EqualTo("isSDCardReady"));
+                Assert.That(recorded[0].Tag("ihc.operation.name"), Is.EqualTo("isSDCardReady"));
                 Assert.That(recorded[0].Tags, Does.Not.ContainKey("error.type"),
                     "a successful call carries no error dimension at all, so the success series stays one series");
                 // The dimension set is CLOSED: an unlisted dimension would multiply every series silently.
                 Assert.That(recorded[0].Tags.Keys,
-                    Is.EquivalentTo(new[] { "ihc.edit.status", "ihc.service", "ihc.operation" }));
+                    Is.EquivalentTo(new[] { "ihc.operation.status", "ihc.service", "ihc.operation.name" }));
             });
         }
 
@@ -114,7 +114,7 @@ namespace Ihc.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(recorded, Has.Count.EqualTo(1), "a failed call is still timed");
-                Assert.That(recorded[0].Tag("ihc.edit.status"), Is.EqualTo("failed"));
+                Assert.That(recorded[0].Tag("ihc.operation.status"), Is.EqualTo("failed"));
                 Assert.That(recorded[0].Tag("error.type"), Is.EqualTo("System.Net.Http.HttpRequestException"));
             });
         }

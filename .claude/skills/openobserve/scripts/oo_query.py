@@ -5,7 +5,8 @@ oo_query.py - Query OpenObserve logs, traces and metrics for errors during devel
 Reads the `telemetry` section of ihcsettings.json (the same settings the IHC apps
 export to), discovers the real log/trace/metric stream names, and runs OpenObserve's
 `_search` API over `curl`. Built for an LLM to check for and diagnose errors while
-developing against the IHC SDK/apps.
+developing against the IHC SDK/apps -- and, with --trace/--run, to read a trace's
+parent/child nesting as a tree rather than as a flat rowset to reassemble by hand.
 
 Nothing here prints the Authorization credential: the equivalent curl command is
 echoed to stderr with the auth value redacted so the call stays reproducible.
@@ -23,8 +24,17 @@ Examples:
     # List the actual stream names OpenObserve stores:
     python oo_query.py --list-streams
 
-    # Run any SQL yourself (stream names are lowercased by OpenObserve):
+    # ONE TRACE AS A TREE - what ran inside what, and how long the parent covered:
+    python oo_query.py --trace 5bab50c64950fa09bae9eecdc2c9083a
+
+    # EVERY TRACE OF THE NEWEST LAUNCH, as trees. The view that answers "is this
+    # workflow one tree, and does its root time the whole thing":
+    python oo_query.py --run --since 2h --size 500
+
+    # Run any SQL yourself (stream names are lowercased by OpenObserve). `:run` expands to
+    # the newest launch's instance predicate, with the right field name for the signal:
     python oo_query.py --type traces --sql 'SELECT * FROM "ihc" WHERE duration > 500000 ORDER BY duration DESC' --size 20
+    python oo_query.py --type traces --sql 'SELECT operation_name, duration FROM "ihc" WHERE :run ORDER BY duration DESC'
 
     # Metrics: every point of one instrument, newest first, from the last app launch.
     # The dotted instrument name is accepted; OpenObserve's underscore form also works.
@@ -352,6 +362,199 @@ def latest_instance(base, org, auth, stream, stream_type, inst_field, start, end
     return hits[0].get(inst_field) if hits else None
 
 
+# Columns a tree needs. Explicit rather than SELECT *: `events` alone can carry a whole stack trace per
+# span, and a trace view asks for every span at once.
+TREE_COLUMNS = ("_timestamp, service_name, service_service_instance_id, trace_id, span_id, "
+                "reference_parent_span_id, operation_name, span_status, duration, start_time, links, events")
+
+
+def link_targets(h):
+    """The (trace_id, span_id) pairs this span LINKS to. Empty for the overwhelming majority."""
+    raw = h.get("links")
+    if not raw or raw == "[]":
+        return []
+    try:
+        links = json.loads(raw) if isinstance(raw, str) else raw
+    except (ValueError, TypeError):
+        return []
+    out = []
+    for link in links or []:
+        ctx = (link or {}).get("context") or {}
+        if ctx.get("traceId"):
+            out.append((ctx["traceId"], ctx.get("spanId") or ""))
+    return out
+
+
+def build_tree(hits):
+    """Group spans into parent -> children. Returns (children_by_parent, roots, dangling_ids).
+
+    A span whose parent is not among the rows is treated as a root and REPORTED as dangling rather
+    than silently re-rooted: the usual cause is --size truncation, and a tree that hides that reads
+    as a complete picture of an incomplete one.
+    """
+    by_id = {h.get("span_id"): h for h in hits if h.get("span_id")}
+    children, roots, dangling = {}, [], set()
+    for h in hits:
+        parent = h.get("reference_parent_span_id")
+        if parent and parent in by_id:
+            children.setdefault(parent, []).append(h)
+        else:
+            roots.append(h)
+            if parent:
+                dangling.add(h.get("span_id"))
+    for kids in children.values():
+        kids.sort(key=lambda s: s.get("start_time") or 0)
+    roots.sort(key=lambda s: s.get("start_time") or 0)
+    return children, roots, dangling
+
+
+def duration_ms(h):
+    try:
+        return int(h["duration"]) / 1000.0
+    except (KeyError, ValueError, TypeError):
+        return None
+
+
+def render_span(h, depth, dangling, known_traces):
+    ms = duration_ms(h)
+    dur = f"  {ms:.1f}ms" if ms is not None else ""
+    status = h.get("span_status")
+    flag = f"  [{status}]" if status not in (None, "", "UNSET") else ""
+    notes = []
+    for trace_id, _ in link_targets(h):
+        seen = " (shown above)" if trace_id in known_traces else ""
+        notes.append(f"-> links to trace {trace_id[:8]}{seen}")
+    if h.get("span_id") in dangling:
+        notes.append(f"!! parent {str(h.get('reference_parent_span_id'))[:8]} is not in these rows")
+    note = ("  " + "  ".join(notes)) if notes else ""
+    line = f"{'  ' * depth}{h.get('operation_name') or '?'}{dur}{flag}{note}"
+    exc = extract_exception(h.get("events"))
+    if exc:
+        line += f"\n{'  ' * (depth + 1)}! {exc}"
+    return line
+
+
+def render_tree(hits, known_traces):
+    """The indented tree, plus what the caller needs to summarise it.
+
+    Returns (lines, anomalies, roots, dangling): the rendered lines, the "child outlasts parent" notes, the
+    root spans and the ids whose parent was not among the rows.
+    """
+    children, roots, dangling = build_tree(hits)
+    lines, anomalies, visited = [], [], set()
+
+    def walk(span, depth):
+        span_id = span.get("span_id")
+        if span_id in visited:      # a malformed parent chain must not hang the renderer
+            lines.append(f"{'  ' * depth}(cycle at {str(span_id)[:8]})")
+            return
+        visited.add(span_id)
+        lines.append(render_span(span, depth, dangling, known_traces))
+        parent_ms = duration_ms(span)
+        for kid in children.get(span_id, []):
+            kid_ms = duration_ms(kid)
+            if parent_ms is not None and kid_ms is not None and kid_ms > parent_ms:
+                anomalies.append(
+                    f"{kid.get('operation_name')} ({kid_ms:.1f}ms) outlasts its parent "
+                    f"{span.get('operation_name')} ({parent_ms:.1f}ms)")
+            walk(kid, depth + 1)
+
+    for root in roots:
+        walk(root, 0)
+    return lines, anomalies, roots, dangling
+
+
+def id_predicate(field, value):
+    """Match an id EXACTLY when it is full length, as a PREFIX when it is shorter.
+
+    The trees print ids abbreviated to 8 characters, so an abbreviation is exactly what a reader will
+    paste back; a tool that then matched nothing would be teaching its own output to be useless. The
+    charset check is what keeps a value out of the SQL it is spliced into.
+    """
+    if not re.fullmatch(r"[0-9a-fA-F-]{4,64}", value):
+        sys.exit(f"'{value}' is not an id: expected hex, optionally with dashes (4-64 chars).")
+    return f"{field} = '{value}'" if len(value) >= 32 else f"{field} LIKE '{value}%'"
+
+
+def trace_mode(args, base, org, auth, trace_stream, start, end, quiet):
+    """--trace / --run: spans as a TREE rather than a flat rowset.
+
+    This is step 3 of the diagnosis workflow ("follow the trace_id") done for you: assembling parents
+    by hand from a flat table is what every trace deep-dive otherwise begins with, and the shape - what
+    ran inside what, and how long the parent covered - is the whole question a nesting bug turns on.
+    """
+    if not trace_stream:
+        sys.exit("No traces stream exists yet; nothing to draw.")
+
+    scope, where = "", None
+    if args.run:
+        run = args.run
+        if run == "latest":
+            run = latest_instance(base, org, auth, trace_stream, "traces",
+                                  INSTANCE_FIELD["traces"], start, end)
+            if not run:
+                # Explained HERE, and said so, because the caller's generic "no spans found" would follow it
+                # with advice about an id the user never supplied.
+                print(f"\nNo run found in the last {args.since}. Widen --since, or run the app first.")
+                args.explained = True
+                return 0
+        where = id_predicate(INSTANCE_FIELD["traces"], run)
+        scope = f"run {run[:8]}"
+    else:
+        where = id_predicate("trace_id", args.trace)
+        scope = f"trace {args.trace}"
+
+    sql = f'SELECT {TREE_COLUMNS} FROM "{trace_stream}" WHERE {where} ORDER BY start_time'
+    hits = search(base, org, auth, "traces", sql, start, end, args.size, quiet)
+    if args.json:
+        for h in hits:
+            print(json.dumps(h))
+        return len(hits)
+    if not hits:
+        return 0
+
+    by_trace = {}
+    for h in hits:
+        by_trace.setdefault(h.get("trace_id"), []).append(h)
+    # Oldest trace first, so a run reads in the order it happened.
+    ordered = sorted(by_trace.items(), key=lambda kv: min(s.get("start_time") or 0 for s in kv[1]))
+
+    all_anomalies, total_roots, total_dangling, drawn = [], 0, 0, set()
+    blocks = []
+    for trace_id, spans in ordered:
+        lines, anomalies, roots, dangling = render_tree(spans, drawn)
+        drawn.add(trace_id)
+        total_roots += len(roots)
+        total_dangling += len(dangling)
+        all_anomalies.extend(anomalies)
+        # The FULL id in the header, because this is the line a reader copies to drill into one trace;
+        # the abbreviations elsewhere are cross-references, not things to paste.
+        header = f"--- trace {trace_id} ({len(spans)} spans)" if args.run else ""
+        blocks.append(("\n".join([header] + lines) if header else "\n".join(lines)))
+
+    # ASCII only: this prints to a Windows console whose default code page mangles anything else.
+    counts = f"{len(hits)} spans, {total_roots} roots" if args.trace \
+        else f"{len(hits)} spans, {len(by_trace)} traces, {total_roots} roots"
+    print(f"\n=== {scope}: {counts} ===")
+    print("\n\n".join(blocks))
+
+    if args.trace and len(by_trace) > 1:
+        print(f"\nNOTE: '{args.trace}' is a PREFIX that matched {len(by_trace)} traces, drawn above in order. "
+              "Pass more characters to single one out.")
+    if len(hits) >= args.size:
+        print(f"\nNOTE: {len(hits)} rows returned with --size {args.size}, so this may be TRUNCATED - "
+              f"raise --size. Truncation is also what usually explains a '!! parent not in these rows'.")
+    if total_dangling:
+        print(f"\n{total_dangling} span(s) reference a parent that is not in these rows (marked !!).")
+    if all_anomalies:
+        print("\nchildren outlasting their parent:")
+        for line in all_anomalies:
+            print(f"  - {line}")
+        print("  (a parent that ended first did not await its child - deliberate for work posted to "
+              "another thread, a defect where the parent could have awaited)")
+    return len(hits)
+
+
 def run_once(args, base, org, auth, log_stream, trace_stream, start, end, quiet):
     """One pass. `end` doubles as 'now' for age display. Returns total hit count."""
     now = end
@@ -359,16 +562,38 @@ def run_once(args, base, org, auth, log_stream, trace_stream, start, end, quiet)
     want_logs = args.type in ("logs", "both")
     want_traces = args.type in ("traces", "both")
 
+    if args.trace or args.run:
+        return trace_mode(args, base, org, auth, trace_stream, start, end, quiet)
+
     if args.sql:
         stream_type = args.type if args.type in ("logs", "traces", "metrics") else "logs"
-        if args.latest_run:
+        field = INSTANCE_FIELD.get(stream_type, "service_instance_id")
+        if ":run" in args.sql:
+            # The two traps this removes, both documented and both easy to hit: the instance field is
+            # spelled differently per signal, and the id has to be looked up first. Expanded to the whole
+            # predicate rather than to the bare id, so neither has to be got right by hand.
+            #
+            # A metrics query resolves the id from the LOGS stream: one launch has one
+            # service.instance.id across all three signals, and there is no single metrics stream to ask
+            # (one per instrument), so the query's own stream is not discoverable from here.
+            src_type = "logs" if stream_type == "metrics" else stream_type
+            src_stream = {"logs": log_stream, "traces": trace_stream}.get(src_type) or args.stream \
+                or pick_stream(base, org, auth, src_type, None)
+            iid = latest_instance(base, org, auth, src_stream, src_type,
+                                  INSTANCE_FIELD[src_type], start, end) if src_stream else None
+            if not iid:
+                sys.exit(f"`:run` found no launch in the last {args.since}. Widen --since, or drop `:run`.")
+            args.sql = args.sql.replace(":run", f"{field} = '{iid}'")
+            print(f"scope: :run -> {field} = '{iid[:8]}...'", file=sys.stderr)
+        elif args.latest_run:
             # Raw SQL is passed through verbatim, so the instance filter the other branches add cannot be
             # applied here without rewriting a query this script does not parse. Say so loudly: a silent
             # no-op reads as "these rows are one launch" and quietly merges runs, which is the single
             # easiest way to mistake a previous build's telemetry for the run just made.
             print(f"\nWARNING: --latest-run does NOT apply to --sql; the query ran unscoped over the whole "
-                  f"window. Add \"{INSTANCE_FIELD.get(stream_type, 'service_instance_id')} = '<id>'\" "
-                  f"to the WHERE clause yourself, or select that column and check it per row.",
+                  f"window. Put `:run` in the WHERE clause and it expands to "
+                  f"\"{INSTANCE_FIELD.get(stream_type, 'service_instance_id')} = '<newest id>'\" - or write "
+                  f"that predicate yourself, or select the column and check it per row.",
                   file=sys.stderr)
         hits = search(base, org, auth, stream_type, args.sql, start, end, args.size, quiet)
         print(f"\n=== {stream_type} ({len(hits)}) ===")
@@ -454,7 +679,9 @@ def run_once(args, base, org, auth, log_stream, trace_stream, start, end, quiet)
 
 
 def main():
-    p = argparse.ArgumentParser(description="Query OpenObserve for errors in IHC logs and traces.")
+    p = argparse.ArgumentParser(
+        description="Query OpenObserve for errors in IHC logs, traces and metrics, and draw a "
+                    "trace (or a whole app launch) as a TREE.")
     p.add_argument("--config", help="Path to ihcsettings.json (default: search upward from cwd).")
     # --errors is a no-op alias: the canned error query is already the default action
     # (run whenever neither --list-streams nor --sql is given). Kept so the documented,
@@ -469,7 +696,15 @@ def main():
     p.add_argument("--since", default="15m", help="Look-back window: 30s, 15m, 2h, 1d. Default 15m.")
     p.add_argument("--size", type=int, default=100, help="Max rows to return. Default 100.")
     p.add_argument("--stream", help="Override the discovered stream name.")
-    p.add_argument("--sql", help="Run custom SQL instead of the canned error query (use with --type logs|traces|metrics).")
+    p.add_argument("--sql", help="Run custom SQL instead of the canned error query (use with --type logs|traces|metrics). "
+                                 "`:run` anywhere in the SQL expands to the newest launch's instance predicate "
+                                 "(the right field name per signal), so a custom query can be scoped to one run.")
+    p.add_argument("--trace", metavar="ID",
+                   help="Draw one trace as a TREE: parent/child nesting, each span's duration and status. "
+                        "Always reads the traces stream, whatever --type says.")
+    p.add_argument("--run", nargs="?", const="latest", metavar="ID",
+                   help="Draw EVERY trace of one app launch as trees, newest launch when given no id "
+                        "(--run). This is the view that answers 'is this workflow one tree'.")
     p.add_argument("--list-streams", action="store_true", help="List stream names and exit.")
     p.add_argument("--latest-run", action="store_true",
                    help="Scope to the newest app launch, so stale errors from earlier runs are excluded. Uses "
@@ -494,6 +729,13 @@ def main():
         # One stream per instrument, so this list is long and is the metric inventory.
         print("metrics:", ", ".join(sorted(list_streams(base, org, auth, "metrics"))) or "(none)")
         return
+
+    if args.trace and args.run:
+        sys.exit("--trace draws ONE trace and --run draws every trace of a launch; pass one or the other.")
+    if args.trace or args.run:
+        # A tree is a traces question whatever --type happens to say, and forcing it here means the log
+        # stream is not picked (one fewer API call) and the traces stream always is.
+        args.type = "traces"
 
     if args.type == "metrics" and not (args.sql or args.metric):
         sys.exit("--type metrics needs --metric <instrument> or --sql: there is no canned "
@@ -522,7 +764,13 @@ def main():
             time.sleep(args.wait)
 
     if total == 0:
-        if not args.sql and not queried_streams:
+        if (args.trace or args.run) and not getattr(args, "explained", False):
+            what = f"trace '{args.trace}'" if args.trace else (
+                "the newest launch" if args.run == "latest" else f"run '{args.run}'")
+            print(f"\nNo spans found for {what} in the last {args.since}. A short id matches by PREFIX, so "
+                  "check the prefix is right rather than lengthening it; widen --since for an older run, and "
+                  "remember OpenObserve indexes on a short delay.")
+        elif not args.sql and not queried_streams:
             print(
                 f"\nNo '{args.type}' stream exists yet in org '{org}'. Nothing has been ingested for it, "
                 "so there is nothing to query (more --wait/--since will not help). Run the app so it "

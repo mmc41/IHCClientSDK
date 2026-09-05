@@ -27,7 +27,7 @@ public sealed class TreeDragDropController(
     Func<Ihc.OperationScope, ProjectCommand, string, Task> applyAndReport,
     Action<TreeNodeViewModel, TreeNodeViewModel> useVariableInProgram,
     Action<string> setStatus,
-    Func<string, Func<Ihc.OperationScope, Task>, Task> runAsync)
+    Func<string, Func<Ihc.OperationScope, Task>, Task<Ihc.OperationOutcome>> runAsync)
 {
     private TreeNodeViewModel? _dropTargetNode;
 
@@ -94,7 +94,7 @@ public sealed class TreeDragDropController(
 
     /// <summary>Performs a drop using a verdict the view already obtained while routing the gesture. This overload
     /// lets the UI present route-specific feedback without asking the SDK's legality probes a second time.</summary>
-    public Task PerformDropAsync(ElementId dragged, ElementId target, DropVerdict verdict) => runAsync(nameof(PerformDropAsync), async scope =>
+    public Task<Ihc.OperationOutcome> PerformDropAsync(ElementId dragged, ElementId target, DropVerdict verdict) => runAsync(nameof(PerformDropAsync), async scope =>
     {
         if (!verdict.Ok)
         {

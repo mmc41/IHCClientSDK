@@ -126,7 +126,7 @@ namespace Ihc.Tests
             {
                 Assert.That(status, Is.EqualTo(ActivityStatusCode.Error));
                 Assert.That(tags["error.type"], Is.EqualTo("500"));
-                Assert.That(tags["ihc.edit.status"], Is.EqualTo("failed"));
+                Assert.That(tags["ihc.operation.status"], Is.EqualTo("failed"));
             });
         }
 

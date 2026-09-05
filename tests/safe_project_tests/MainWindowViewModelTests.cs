@@ -1471,14 +1471,14 @@ public class MainWindowViewModelTests
         var fbId = (await harness.Session.AddFunctionBlockAsync(loc, block.MasterType))!.Value;
         string path = harness.TempPath("MyStairLight.ifb");
 
-        var ok = await harness.Session.SaveFunctionBlockAsync(fbId, path, "My stair light", "reusable block");
+        Ihc.OperationOutcome saved = await harness.Session.SaveFunctionBlockAsync(fbId, path, "My stair light", "reusable block");
 
         // Re-import through a fresh catalog proves the file is a valid, readable .ifb.
         var reimport = new ProjectAppService(new IhcSettings());
         reimport.ImportCatalogFile(path);
         Assert.Multiple(() =>
         {
-            Assert.That(ok, Is.True);
+            Assert.That(saved.IsOk, Is.True);
             Assert.That(File.Exists(path) && new FileInfo(path).Length > 0, Is.True, "a non-empty .ifb was written");
             Assert.That(reimport.GetAvailableFunctionBlocks().Any(f => f.MasterName == "My stair light"), Is.True,
                 "the saved block re-imports into the catalog");

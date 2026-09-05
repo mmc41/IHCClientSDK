@@ -7,7 +7,9 @@ description: >-
   actually failed and why — after running an IHC app/example/utility, after a
   reported bug or exception, when an operation "does nothing" or silently fails, when
   investigating errors/warnings/timeouts/slow spans, when checking whether an instrument
-  (counter/histogram) actually reached the backend, or when the user mentions
+  (counter/histogram) actually reached the backend, when asking where the time in an
+  operation actually went or whether a workflow's spans nest into one trace (it draws a
+  trace, or a whole app launch, as a TREE), or when the user mentions
   OpenObserve, OTel, telemetry, traces, spans, metrics, or observability. Prefer this over
   guessing from source code alone, since the controller and OTLP export happen out of
   process. Accounts for OpenObserve's short indexing delay so a just-triggered error
@@ -60,10 +62,58 @@ python .claude/skills/openobserve/scripts/oo_query.py --list-streams
 # Only traces, or only logs:
 python .claude/skills/openobserve/scripts/oo_query.py --errors --type traces --since 2h
 
-# Diagnose deeper with your own SQL (stream name is lowercase; see the reference):
+# One trace as a TREE — what ran inside what, and how long the parent covered:
+python .claude/skills/openobserve/scripts/oo_query.py --trace <TRACE_ID>
+
+# Every trace of the newest launch, as trees:
+python .claude/skills/openobserve/scripts/oo_query.py --run --since 2h --size 500
+
+# Diagnose deeper with your own SQL (stream name is lowercase; see the reference).
+# `:run` expands to the newest launch's instance predicate, in the right spelling:
 python .claude/skills/openobserve/scripts/oo_query.py --type traces \
   --sql 'SELECT operation_name,span_status,duration,trace_id FROM "ihc" ORDER BY duration DESC' --size 20
+python .claude/skills/openobserve/scripts/oo_query.py --type traces \
+  --sql 'SELECT operation_name,duration FROM "ihc" WHERE :run ORDER BY duration DESC'
 ```
+
+## Traces are a TREE, and `--trace` / `--run` is how you read it
+
+A span's meaning is mostly its position: which operation it ran inside, and whether that parent
+covered it. A flat rowset hides exactly that, so these two flags assemble it for you instead of
+leaving every deep-dive to start by re-deriving parents from `reference_parent_span_id`.
+
+```
+=== run 87655bec: 55 spans, 7 traces, 7 roots ===
+--- trace 9472472d0e6b41f9a0f2b5c9d3e8a71c (13 spans)
+CommandRegistry.Invoke                          4855.4ms
+  MainWindowViewModel.OpenAsync                 4855.0ms
+    AvaloniaDialogService.PickOpenProjectAsync  4766.4ms      <- the person, not the app
+    ProjectWorkflow.OpenAsync                     85.3ms
+      ProjectAppService.Load                      15.3ms
+
+--- trace 1c4af162e15a4c0b8d77e0a2f6b41d93 (4 spans)
+ValidationWorker.Run  173.5ms  -> links to trace 905d54a8 (shown above)
+  ProjectAppService.ValidateStructured  172.1ms
+```
+
+An **id may be abbreviated**: `--trace 9472472d` matches by prefix, so the ids the trees
+print are paste-able straight back. Per-trace headers carry the full id for that reason;
+the 8-character ones in link markers are cross-references.
+
+- **`--trace <id>`** draws one trace. **`--run [<id>]`** draws every trace of one launch, newest
+  launch when given no id — the view that answers *"is this workflow one tree, and does its root
+  time the whole thing"*. Both read the traces stream whatever `--type` says.
+- **Raise `--size`** for `--run`: the default 100 truncates a busy launch, and the output says so
+  when the row count hits the limit. 500 is a reasonable launch-sized number.
+- **Links are drawn, because a linked span is invisible otherwise.** A span that deliberately
+  starts its own trace and links back — this repo's debounced `ValidationWorker.Run` is one —
+  shows as `-> links to trace <id>`. Without that marker it reads as an unrelated root, which is
+  the opposite of what the design says.
+- **Two structural anomalies are reported, not judged.** *Children outlasting their parent* (a
+  parent that did not await — deliberate for work posted to another thread, a defect where it
+  could have awaited) and *spans whose parent is not in the rows* (usually `--size` truncation).
+  Whether a given root is legitimate is a question about what the operation MEANS; the tool
+  states the shape and leaves that to you.
 
 ## Metrics are queried differently from logs and traces
 
@@ -105,9 +155,9 @@ to the trace that produced it — the metric-to-trace join. The summary line rep
 many an row carries; `--json` prints them in full.
 
 Useful flags: `--since 30s|15m|2h|1d` (window, default 15m), `--latest-run` (only the
-newest app launch), `--size N`, `--include-warnings`, `--no-exception-events` (traces:
-match only `span_status='ERROR'`, skip exception-carrying spans), `--metric NAME`
-(metrics: one instrument or a histogram family), `--stream NAME`
+newest app launch), `--size N`, `--trace ID` / `--run [ID]` (draw trees), `--include-warnings`,
+`--no-exception-events` (traces: match only `span_status='ERROR'`, skip exception-carrying spans),
+`--metric NAME` (metrics: one instrument or a histogram family), `--stream NAME`
 (override discovery), `--json` (raw hits), `--config PATH`, `--quiet` (don't echo the
 curl command), `--wait S --retries N` (poll for delayed data). `--errors` is optional —
 the error query is the default action.
@@ -156,9 +206,10 @@ triggered:
    Each error/exception span shows time, `span_status`, service, `operation_name`,
    duration, `trace_id`, and — when present — the exception type and message pulled
    from the span's `events`.
-3. **Follow the `trace_id`.** It is the join key between a log line and its span. Pull
-   the whole trace to see the operation's parent/child spans and where it broke:
-   `--type traces --sql 'SELECT operation_name,span_status,duration,span_id,reference_parent_span_id FROM "ihc" WHERE trace_id='"'"'<ID>'"'"' ORDER BY start_time'`.
+3. **Follow the `trace_id`.** It is the join key between a log line and its span. Draw the
+   whole trace — `--trace <ID>` — to see the operation's parent/child spans and where it
+   broke. Prefer it over hand-written SQL here: a flat rowset makes you rebuild the nesting
+   yourself, and quoting a string literal into `--sql` is painful from both shells.
 4. **Correlate with the code.** Span `operation_name`s map to SDK methods (the
    `ihcclient` ActivitySource); input args and return values are recorded as span tags
    (`input.*`, `retv`). Use them to pinpoint the failing call, then read that source.

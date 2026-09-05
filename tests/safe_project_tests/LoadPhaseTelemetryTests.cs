@@ -55,6 +55,44 @@ namespace Ihc.Vis.Tests
             }
         }
 
+        /// <summary>
+        /// The other half of a save to a FILE, and the half that was invisible: producing the bytes is one
+        /// phase, putting them on disk — atomically, keeping the replaced file as a .BAK — is another. Measured
+        /// on a live save before this span existed, the two spans under <c>Save</c> accounted for 11 ms of 24;
+        /// the missing 13 were the write, which is also the phase that grows on a network drive or a slow disk.
+        /// </summary>
+        [Test]
+        public async Task ASaveToAFileEmitsTheWritePhase_CarryingTheBytesItPutOnDisk()
+        {
+            string path = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(), $"ihc-write-phase-{System.Guid.NewGuid():N}.vis");
+            try
+            {
+                using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName);
+                var app = new ProjectAppService(TestSetup.Settings);
+                Project project = await app.Load(Fixture);
+
+                await app.Save(project, path, ProjectSaveOptions.PreserveExistingMetadata);
+
+                Activity write = capture.Spans.Last(s => s.OperationName == "ProjectAppService.WriteAtomically");
+                Activity save = capture.Spans.Last(s => s.OperationName == "ProjectAppService.Save");
+
+                Assert.Multiple(() =>
+                {
+                    Assert.That(write.Parent, Is.SameAs(save), "the write is a phase OF the save");
+                    Assert.That(write.GetTagItem("ihc.project.file_size"), Is.EqualTo(
+                        new System.IO.FileInfo(path).Length),
+                        "the size on the span IS the size on disk, not a separately measured number");
+                    Assert.That(write.GetTagItem("ihc.save.create_backup"), Is.EqualTo(false),
+                        "whether a .BAK was kept is the other thing that decides what this phase cost");
+                });
+            }
+            finally
+            {
+                System.IO.File.Delete(path);
+            }
+        }
+
         [Test]
         public void IndexingAndDiffingReportTheirSizes()
         {

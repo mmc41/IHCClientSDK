@@ -93,6 +93,13 @@ dotnet test <test-project.csproj> --filter "FullyQualifiedName~TestName"
 - Do not run `safe_integration_tests` as a substitute for controller-free verification.
 - Check continously for unexpected errors reported via telemetry to openobserve server using openobserve skill (note openobserve server may not allways be active, warn and ignore if not).
 
+### Coverage as a completeness check
+
+- Coverage judges whether a NEW feature's tests are adequate, and only over the files that change touched: once the mapped suite passes, read THOSE files' uncovered lines -- `-p:CoverageHtmlDetail=true` writes the per-file drill-down that shows them.
+- The repo-wide percentage and every untouched module are noise for that judgement -- the number moves with which suites happened to run, so a rise or drop there is not evidence about this change.
+- An uncovered new line is a QUESTION, not a defect: cover it when it is observable product behavior, and leave it when covering it would only add the null-guard or expected-exception tests Testing declines.
+- A feature whose main path or new branches are untested is not complete; when reporting one done, say which of its lines stayed uncovered and why.
+
 ## Project Structure
 
 - `ihcclient/src/vis/` is the controller-free `.vis` engine behind `ProjectAppService`.

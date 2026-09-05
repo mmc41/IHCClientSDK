@@ -98,6 +98,13 @@ separate — add them only when asked.
 `flags`. IHC-specific span tags surface as their own columns, e.g.
 `arguments_failed_count`, `arguments_restored_count`.
 
+`links` is a JSON string, `[]` when there are none, otherwise
+`[{"context":{"traceId":…,"spanId":…,…},…}]`. **Links survive ingestion**, so a span that
+deliberately starts its own trace and links back stays joinable in SQL
+(`links LIKE '%<trace_id>%'`) — which is the only way to reach one, since a link is not a
+parent edge and no tree walk will find it. `--trace`/`--run` print them as
+`-> links to trace <id>`.
+
 Error filter: `span_status = 'ERROR'`.
 
 > **Exceptions can hide on `UNSET` spans.** The SDK's `SetError(ex)` sets
@@ -169,9 +176,23 @@ FROM "ihc" WHERE span_status = 'ERROR' OR events LIKE '%exception%' ORDER BY _ti
 SELECT _timestamp, service_name, severity, body FROM "ihc"
 WHERE body LIKE '%timeout%' ORDER BY _timestamp DESC;
 
--- All spans of one trace (follow a trace_id found above)
+-- All spans of one trace (follow a trace_id found above). `--trace <ID>` DRAWS this as a
+-- tree; the SQL is here for when you want the raw rows or extra columns.
 SELECT operation_name, span_status, duration, span_id, reference_parent_span_id
 FROM "ihc" WHERE trace_id = '<TRACE_ID>' ORDER BY start_time;
+
+-- Every span of ONE app launch (`--run` draws these as trees). The traces spelling of the
+-- run id; `:run` in --sql expands to exactly this predicate for the newest launch.
+SELECT operation_name, span_id, reference_parent_span_id, trace_id, duration, start_time, links
+FROM "ihc" WHERE service_service_instance_id = '<RUN_ID>' ORDER BY start_time;
+
+-- Which operations START a trace (i.e. have no parent), and how often. A root that is not a
+-- named operation - a gesture, a launch, a deliberately linked background run - is a fragment.
+-- Scope to ONE run before concluding anything: over a long window this mixes builds, and an
+-- operation that was a root only in an older build is not evidence about today.
+SELECT operation_name, count(*) AS n FROM "ihc"
+WHERE reference_parent_span_id IS NULL AND service_name = 'IhcOpenVisual'
+GROUP BY operation_name ORDER BY n DESC;
 
 -- Slowest spans (duration is microseconds)
 SELECT operation_name, duration, trace_id FROM "ihc" ORDER BY duration DESC;
@@ -196,9 +217,18 @@ WHERE service_instance_id = '<RUN_ID>' ORDER BY CAST(le AS DOUBLE);
 SELECT (SELECT sum(value) FROM "ihc_edit_apply_duration_sum") /
        (SELECT sum(value) FROM "ihc_edit_apply_duration_count") AS mean_seconds;
 
--- Which dimension values a counter was actually recorded with
-SELECT ihc_edit_status, sum(value) AS n FROM "ihc_edit_apply"
-GROUP BY ihc_edit_status ORDER BY n DESC;
+-- Which dimension values a counter was actually recorded with. Four now: ok / refused / cancelled / failed.
+-- Two renames sit in the history of these columns, and neither falls back — rows exported by an older
+-- build keep the old column name and are NOT matched by the new one:
+--   ihc_edit_status -> ihc_operation_status   (the status is on every operation, not only edits)
+--   ihc_operation   -> ihc_operation_name     (the old name was a value AND the namespace of the one above)
+SELECT ihc_operation_status, sum(value) AS n FROM "ihc_edit_apply"
+GROUP BY ihc_operation_status ORDER BY n DESC;
+
+-- A gesture's own failure rate, which is what the roll-up bought: a handled failure deep in a workflow now
+-- reaches the invocation count, so this needs no join to the spans underneath.
+SELECT ihc_command_id, ihc_operation_status, sum(value) AS n FROM "ihc_command_invocation"
+GROUP BY ihc_command_id, ihc_operation_status ORDER BY n DESC;
 
 -- Follow a metric point to its trace (exemplars is a JSON string)
 SELECT _timestamp, value, exemplars FROM "ihc_edit_apply"
@@ -228,3 +258,6 @@ To hand a human the full waterfall, build a link from `telemetry.Host`:
 `{Host}/web/traces?stream=ihc&org_identifier={org}` and have them search the
 `trace_id`. The `trace_id` printed by the script is the join key between a log line
 and its span.
+
+For your own reading, `--trace <ID>` and `--run` draw the same nesting in the terminal —
+faster than a browser round-trip, and the output is diffable between two runs.

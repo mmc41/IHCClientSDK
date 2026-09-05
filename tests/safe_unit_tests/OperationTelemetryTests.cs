@@ -99,7 +99,7 @@ namespace Ihc.Tests
                 Assert.That(h.Spans, Has.Count.EqualTo(1));
                 Assert.That(h.Spans[0].OperationName, Is.EqualTo("TestOwner.DoThing"));
                 Assert.That(h.Point("ihc.test.duration").Value, Is.GreaterThanOrEqualTo(0.0));
-                Assert.That(h.Point("ihc.test.duration").Tags["ihc.edit.status"], Is.EqualTo("ok"));
+                Assert.That(h.Point("ihc.test.duration").Tags["ihc.operation.status"], Is.EqualTo("ok"));
             });
         }
 
@@ -133,10 +133,10 @@ namespace Ihc.Tests
             {
                 Assert.That(span.Status, Is.EqualTo(ActivityStatusCode.Unset),
                     "a refusal is the system working as designed, not an error");
-                Assert.That(span.GetTagItem("ihc.edit.status"), Is.EqualTo("refused"));
+                Assert.That(span.GetTagItem("ihc.operation.status"), Is.EqualTo("refused"));
                 Assert.That(span.GetTagItem("ihc.problem.code"), Is.EqualTo("edit.locked"));
                 Assert.That(span.GetTagItem("error.type"), Is.Null, "a refusal has no error type");
-                Assert.That(h.Point("ihc.test.duration").Tags["ihc.edit.status"], Is.EqualTo("refused"),
+                Assert.That(h.Point("ihc.test.duration").Tags["ihc.operation.status"], Is.EqualTo("refused"),
                     "the metric dimension must agree with the span, or the two cannot be joined");
             });
         }
@@ -153,8 +153,8 @@ namespace Ihc.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(span.Status, Is.EqualTo(ActivityStatusCode.Error));
-                Assert.That(span.GetTagItem("ihc.edit.status"), Is.EqualTo("failed"));
-                Assert.That(h.Point("ihc.test.duration").Tags["ihc.edit.status"], Is.EqualTo("failed"),
+                Assert.That(span.GetTagItem("ihc.operation.status"), Is.EqualTo("failed"));
+                Assert.That(h.Point("ihc.test.duration").Tags["ihc.operation.status"], Is.EqualTo("failed"),
                     "a failed operation is still timed - excluding it would flatter every latency graph");
             });
         }
@@ -198,7 +198,7 @@ namespace Ihc.Tests
             {
                 Assert.That(result, Is.EqualTo(5));
                 Assert.That(h.Spans[0].OperationName, Is.EqualTo("TestOwner.DoThingAsync"));
-                Assert.That(h.Point("ihc.test.duration").Tags["ihc.edit.status"], Is.EqualTo("ok"));
+                Assert.That(h.Point("ihc.test.duration").Tags["ihc.operation.status"], Is.EqualTo("ok"));
             });
         }
 

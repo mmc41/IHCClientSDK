@@ -122,11 +122,13 @@ public class PinPropertiesAnvendFloorTests
         Ihc.OperationScope? anvendScope = null;
         string? guardedOperation = null;
 
-        async Task Guarded(string operation, Func<Ihc.OperationScope, Task> body)
+        async Task<Ihc.OperationOutcome> Guarded(string operation, Func<Ihc.OperationScope, Task> body)
         {
             using Ihc.OperationScope inner = telemetry.Start(operation);
             (guardedOperation, anvendScope) = (operation, inner);
             await body(inner);
+            // The same answer the real boundary gives: whatever the body left on the scope.
+            return inner.Outcome;
         }
 
         var coordinator = new PropertiesDialogCoordinator(

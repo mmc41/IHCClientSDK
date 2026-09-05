@@ -76,7 +76,9 @@ namespace Ihc.Vis
         /// guards; false when no project is open.</summary>
         bool CanReorder(ElementId id, int delta);
 
-        /// <summary>The typed preview of a command applied now, without committing.</summary>
+        /// <summary>The typed preview of a command applied now, without committing.
+        /// <para>TODO: unused, and NOT the door a menu gate asks — that is <see cref="CanApply"/>. See the
+        /// deletion note on <c>ProjectAppService.Preview</c>.</para></summary>
         PreviewOutcome Preview(ProjectCommand command);
 
         /// <summary>Reverses the most recent edit. A committed outcome carries the undo change set

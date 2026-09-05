@@ -20,7 +20,7 @@ namespace ihc_openvisual.ViewModels;
 internal sealed class LinkingCoordinator(
     ProjectWorkflow session,
     IDialogService dialogs,
-    Func<string, Func<Ihc.OperationScope, Task>, Task> runAsync,
+    Func<string, Func<Ihc.OperationScope, Task>, Task<Ihc.OperationOutcome>> runAsync,
     // Reports whether the command COMMITTED — the two-step gesture needs the answer: a source pin that was armed
     // and then refused must stay armed, or the installer has to re-run "Link from here" before every retry.
     Func<Ihc.OperationScope, ProjectCommand, string, Task<bool>> applyAndReport,
@@ -31,7 +31,7 @@ internal sealed class LinkingCoordinator(
 {
     /// <summary>Links two pins (US-022/US-023): the <paramref name="source"/> pin is linked onto the
     /// <paramref name="target"/> pin (the target gets the "link from" half). Both must be pins.</summary>
-    public Task LinkPinsAsync(TreeNodeViewModel? source, TreeNodeViewModel? target) =>
+    public Task<Ihc.OperationOutcome> LinkPinsAsync(TreeNodeViewModel? source, TreeNodeViewModel? target) =>
         runAsync("LinkPins", scope => TryLinkPinsAsync(scope, source, target));
 
     // The same link, reporting whether it was actually created. Not wrapped in runAsync: LinkToHereAsync already
@@ -61,7 +61,7 @@ internal sealed class LinkingCoordinator(
     /// <summary>Completes a link onto the given pin or scenes container (US-022/US-024), pairing it with the armed
     /// pending source. A scene output onto a scenes container makes a scenario link (opens the value dialog);
     /// otherwise a follow-link between two pins.</summary>
-    public Task LinkToHereAsync(TreeNodeViewModel? node) =>
+    public Task<Ihc.OperationOutcome> LinkToHereAsync(TreeNodeViewModel? node) =>
         runAsync("LinkToHere", async scope =>
         {
             if (node is not { } || (!node.IsPin && !node.IsSceneTarget))

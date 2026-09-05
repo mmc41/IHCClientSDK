@@ -44,7 +44,7 @@ namespace Ihc.Vis.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(span.Status, Is.EqualTo(ActivityStatusCode.Unset));
-                Assert.That(span.GetTagItem("ihc.edit.status"), Is.EqualTo("ok"));
+                Assert.That(span.GetTagItem("ihc.operation.status"), Is.EqualTo("ok"));
                 Assert.That(span.GetTagItem("ihc.edit.added_count"), Is.EqualTo(1),
                     "a committed edit says how much it changed, which is what makes an outsized one visible");
                 Assert.That(span.GetTagItem("ihc.edit.removed_count"), Is.EqualTo(0));
@@ -72,7 +72,7 @@ namespace Ihc.Vis.Tests
                 Assert.That(points.Count(p => p.Instrument == "ihc.edit.apply.duration"), Is.EqualTo(1));
                 foreach (CapturedPoint point in points)
                 {
-                    Assert.That(point.Tag("ihc.edit.status"), Is.EqualTo("ok"), point.Instrument);
+                    Assert.That(point.Tag("ihc.operation.status"), Is.EqualTo("ok"), point.Instrument);
                     Assert.That(point.Tag("ihc.edit.command"), Is.Not.Null, point.Instrument);
                 }
             });
@@ -95,7 +95,7 @@ namespace Ihc.Vis.Tests
             Assert.That(outcome.Status, Is.EqualTo(EditStatus.NoChange));
             Assert.Multiple(() =>
             {
-                Assert.That(capture.Span("ProjectDocumentSession.Apply").GetTagItem("ihc.edit.status"), Is.EqualTo("ok"),
+                Assert.That(capture.Span("ProjectDocumentSession.Apply").GetTagItem("ihc.operation.status"), Is.EqualTo("ok"),
                     "producing no change is the command working, not declining");
                 Assert.That(capture.Span("ProjectDocumentSession.Apply").Status, Is.EqualTo(ActivityStatusCode.Unset));
             });
@@ -174,7 +174,7 @@ namespace Ihc.Vis.Tests
                     "the outcome names its code, which is what the span reads");
                 Assert.That(span.Status, Is.EqualTo(ActivityStatusCode.Error),
                     "a failure IS an error — unlike a refusal, which is the rules working");
-                Assert.That(span.GetTagItem("ihc.edit.status"), Is.EqualTo("failed"));
+                Assert.That(span.GetTagItem("ihc.operation.status"), Is.EqualTo("failed"));
                 Assert.That(span.GetTagItem("error.type"), Is.EqualTo("internal.edit-failed"),
                     "and NOT the catch-all bucket an outcome with no code normalizes to");
             });
@@ -213,13 +213,106 @@ namespace Ihc.Vis.Tests
             Assert.That(session.Apply(new AddLocality("Ny lokalitet")).Fault, Is.Null);
         }
 
+        /// <summary>A command that passes its gate and then refuses from INSIDE its body — a deep guard.</summary>
+        private sealed record DeepGuardCommand : ProjectCommand
+        {
+            internal override string Describe(Project project) => "Deep-guarded edit";
+
+            internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;
+
+            internal override void Execute(ProjectEditor editor) =>
+                throw new EditRefusedException(Ihc.Vis.Session.EditRefusalCodes.DeepGuard, "Nej, ikke sådan.");
+        }
+
+        /// <summary>
+        /// The edit body's own span. <c>Apply</c> covers the gate, the mutation, the index rebuild and the diff;
+        /// measured on a live edit, the index and the diff accounted for 4 ms of 9.6 and nothing named the rest.
+        /// The mutation is the part that grows with the project, so it gets a span of its own.
+        /// </summary>
+        [Test]
+        public void ACommittedEdit_TimesTheMutationAsAPhaseOfTheApply()
+        {
+            using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName,
+                spanNames: new[] { "ProjectDocumentSession.Apply", "ProjectDocumentSession.Produce" });
+            IProjectDocument session = OpenSession();
+
+            session.Apply(new AddLocality("Ny lokalitet"));
+
+            Activity apply = capture.Span("ProjectDocumentSession.Apply");
+            Activity produce = capture.Span("ProjectDocumentSession.Produce");
+            Assert.Multiple(() =>
+            {
+                Assert.That(produce.Parent, Is.SameAs(apply), "the mutation is a phase OF the apply");
+                Assert.That(apply.Duration, Is.GreaterThanOrEqualTo(produce.Duration));
+                Assert.That(produce.GetTagItem("ihc.operation.status"), Is.EqualTo("ok"));
+            });
+        }
+
+        /// <summary>
+        /// The trap this span had to avoid. A deep guard refuses by THROWING, so a phase span that treated
+        /// every escaping exception as a failure would mark the commonest refusal path Error — reintroducing,
+        /// one level down, exactly the Error/Unset split the outcome classification above removed. The phase
+        /// classifies the throw the same way the apply classifies the outcome.
+        /// </summary>
+        [Test]
+        public void AnEditRefusedFromInsideItsBody_LeavesThePhaseRefusedRatherThanFailed()
+        {
+            using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName,
+                spanNames: new[] { "ProjectDocumentSession.Apply", "ProjectDocumentSession.Produce" });
+            IProjectDocument session = OpenSession();
+
+            EditOutcome outcome = session.Apply(new DeepGuardCommand());
+
+            Activity produce = capture.Span("ProjectDocumentSession.Produce");
+            Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
+            Assert.Multiple(() =>
+            {
+                Assert.That(produce.Status, Is.EqualTo(ActivityStatusCode.Unset),
+                    "a refusal raised from inside the body is still a refusal");
+                Assert.That(produce.GetTagItem("ihc.operation.status"), Is.EqualTo("refused"));
+                Assert.That(produce.GetTagItem("ihc.problem.code"), Is.EqualTo(outcome.Code.Value),
+                    "the phase names the same refusal the caller was given");
+                Assert.That(produce.GetTagItem("error.type"), Is.Null);
+            });
+        }
+
+        /// <summary>A body that BREAKS is still a failure, on the phase as on the apply.</summary>
+        [Test]
+        public void AnEditThatBreaksInsideItsBody_MarksThePhaseFailed()
+        {
+            using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName,
+                spanNames: new[] { "ProjectDocumentSession.Produce" });
+            IProjectDocument session = OpenSession();
+
+            session.Apply(new BreakingCommand());
+
+            Activity produce = capture.Span("ProjectDocumentSession.Produce");
+            Assert.Multiple(() =>
+            {
+                Assert.That(produce.Status, Is.EqualTo(ActivityStatusCode.Error));
+                Assert.That(produce.GetTagItem("ihc.operation.status"), Is.EqualTo("failed"));
+                Assert.That(produce.GetTagItem("error.type"), Is.EqualTo("System.InvalidOperationException"));
+            });
+        }
+
+        /// <summary>A command that passes its gate and then breaks — the Failed shape, one level down.</summary>
+        private sealed record BreakingCommand : ProjectCommand
+        {
+            internal override string Describe(Project project) => "Breaking edit";
+
+            internal override EditVerdict Evaluate(EditContext context) => EditVerdict.Allow;
+
+            internal override void Execute(ProjectEditor editor) =>
+                throw new System.InvalidOperationException("engine boom");
+        }
+
         private static void AssertRefused(Activity span, EditOutcome outcome)
         {
             Assert.Multiple(() =>
             {
                 Assert.That(span.Status, Is.EqualTo(ActivityStatusCode.Unset),
                     "a refusal is the rules working - marking it Error makes a healthy session look broken");
-                Assert.That(span.GetTagItem("ihc.edit.status"), Is.EqualTo("refused"));
+                Assert.That(span.GetTagItem("ihc.operation.status"), Is.EqualTo("refused"));
                 Assert.That(span.GetTagItem("ihc.problem.code"), Is.EqualTo(outcome.Code.Value),
                     "the span carries the SAME code the caller was given");
                 Assert.That(span.GetTagItem("error.type"), Is.Null, "a refusal is not an error and has no error type");

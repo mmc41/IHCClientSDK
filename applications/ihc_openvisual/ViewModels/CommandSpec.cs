@@ -60,11 +60,19 @@ public sealed record Availability(bool Visible, bool Enabled, string? Reason)
 /// markup that renders it, and a row-level copy could only ever be a second, unread home for it (review F12).
 /// (The flyout insert labels themselves now match the bar's bare nouns — the vendor uses the same word on both
 /// surfaces; measured 2026-08-09, alignment F-18.)</remarks>
+/// <remarks>
+/// <para><paramref name="Execute"/> ANSWERS an <see cref="Ihc.OperationOutcome"/>, and that is what lets a
+/// gesture's trace root say whether the gesture worked. The registry's invocation funnel is the root span of
+/// every menu, toolbar, flyout and keyboard route; a row that handed back a bare task left that root recording
+/// success for a save that had failed and reported itself, because nothing threw past the view-model's error
+/// boundary. A row with nothing to declare answers <see cref="Ihc.OperationOutcome.Ok"/>, which is what the
+/// boundary returns when no body said otherwise — so most rows say nothing and are unchanged.</para>
+/// </remarks>
 [CommandContextValue]
 public sealed record CommandSpec(
     string Id,
     string? Gesture,
     Surfaces Placement,
-    Func<ShellContext, Task> Execute,
+    Func<ShellContext, Task<Ihc.OperationOutcome>> Execute,
     Func<ShellContext, EditVerdict> Gate,
     Func<ShellContext, Surface, Availability?>? SurfacePolicy = null);

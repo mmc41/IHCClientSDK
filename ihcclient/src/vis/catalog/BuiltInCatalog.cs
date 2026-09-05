@@ -48,14 +48,21 @@ namespace Ihc.Vis.Catalog
         /// rare concurrent double-materialization is legal - and is exactly the event worth being able to
         /// see. A counter asserting it happens once would either be wrong or hide it.</para>
         /// </summary>
-        private static MaterializedCatalog MaterializeTimed()
-        {
-            long started = System.Diagnostics.Stopwatch.GetTimestamp();
-            MaterializedCatalog result = new BuiltInCatalog().Materialize();
-            SdkTelemetryRegistry.CatalogMaterializationDuration.Record(
-                System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalSeconds);
-            return result;
-        }
+        private static MaterializedCatalog MaterializeTimed() =>
+            // A SPAN as well as the histogram, and through the one seam that records both. The histogram says
+            // how long first use cost; only the span says which operation paid it — materialization happens
+            // inside whatever touched the catalog first, so without a child span that operation simply reads
+            // slow, once per process, for no visible reason. The core also measures it on the same monotonic
+            // clock the hand-rolled Stopwatch here used, so the recorded number is unchanged.
+            Telemetry.Run("Materialize", _ => new BuiltInCatalog().Materialize(), MaterializationMetrics);
+
+        /// <summary>The catalog's entry point into the instrumentation core.</summary>
+        private static readonly OperationTelemetry Telemetry =
+            new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(BuiltInCatalog));
+
+        /// <summary>The binding is IMMUTABLE and its instrument is static, so it is built once rather than per operation.</summary>
+        private static readonly MetricBinding MaterializationMetrics =
+            MetricBinding.For(SdkTelemetryRegistry.CatalogMaterializationDuration);
 
         // File→New templates, reassigned by AuthorTemplates() (Phase C) before Materialize() reads them. The empty
         // defaults keep the catalog materializable while Phase C is outstanding; the Phase C byte tests are what

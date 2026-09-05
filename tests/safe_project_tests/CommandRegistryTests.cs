@@ -20,9 +20,9 @@ public class CommandRegistryTests
         Surfaces placement = Surfaces.MenuBar | Surfaces.ContextMenu | Surfaces.Toolbar,
         Func<ShellContext, EditVerdict>? gate = null,
         Func<ShellContext, Surface, Availability?>? surfacePolicy = null,
-        Func<ShellContext, Task>? execute = null) =>
+        Func<ShellContext, Task<Ihc.OperationOutcome>>? execute = null) =>
         new(id, "Ctrl+T", placement,
-            execute ?? (_ => Task.CompletedTask),
+            execute ?? (_ => Task.FromResult(Ihc.OperationOutcome.Ok)),
             gate ?? (_ => EditVerdict.Allow),
             surfacePolicy);
 
@@ -102,7 +102,7 @@ public class CommandRegistryTests
         bool executed = false;
         var command = registry.Register(Row(
             gate: c => c.ProjectOpen ? EditVerdict.Allow : EditVerdict.Refuse(EditRefusalCodes.TargetMissing, "No project."),
-            execute: _ => { executed = true; return Task.CompletedTask; }));
+            execute: _ => { executed = true; return Task.FromResult(Ihc.OperationOutcome.Ok); }));
 
         Assert.That(command.CanExecute(null), Is.False, "the materialized CanExecute IS the gate (D02)");
 

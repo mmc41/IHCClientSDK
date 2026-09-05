@@ -156,7 +156,7 @@ public sealed class CommandRegistry : ObservableObject
         ArgumentNullException.ThrowIfNull(row);
 
         _rows.Add(row.Id, row);
-        Task Execute(object? parameter)
+        async Task Execute(object? parameter)
         {
             // ONE place for all four surfaces. Menu bar, toolbar, context flyout and gesture all materialize
             // from this same local function, so counting here counts every route without the four having to
@@ -165,15 +165,46 @@ public sealed class CommandRegistry : ObservableObject
             // WHAT THIS DOES AND DOES NOT CLAIM, stated where it is declared because the name invites a
             // wider reading. It counts REGISTERED ROWS being invoked - not feature usage, and not user
             // gestures. There is no surface dimension, because this function structurally cannot observe
-            // WHICH of the four surfaces invoked it; and no error dimension, because it hands back the row's
-            // task and never observes whether that task faulted. Anything the shell does outside a
-            // registered row is invisible here by construction.
+            // WHICH of the four surfaces invoked it. Anything the shell does outside a registered row is
+            // invisible here by construction.
+            //
+            // AWAITED, not handed back. This span is the ROOT of the gesture's trace, and a root that closes
+            // at the row's first await times none of what it parents - measured on a live save, the root read
+            // 10 ms over work that ran 20 s, which is a tree with a stub for a root. Awaiting costs one state
+            // machine per invocation and buys three things: the root's duration IS the gesture's, a fault that
+            // escapes the row reaches the span and the count as an error.type, and the trace root that a red
+            // span deep in a workflow has to be joined back to carries the command id for the whole gesture.
+            //
+            // What it also changes, said plainly: the count is now recorded when the row FINISHES rather than
+            // when it starts, so a gesture whose process dies mid-modal is no longer counted. That is the cost
+            // OperationScope already documents for every other operation, and paying it here keeps the count
+            // and the span describing the same event.
             using Ihc.OperationScope scope = _telemetry.Start("Invoke", metrics:
                 InvokeMetrics);
             scope.AddSharedTag(ihc_openvisual.Configuration.AppTelemetryRegistry.Attributes.CommandId, row.Id);
 
-            _beforeExecute?.Invoke(parameter);
-            return row.Execute(_context());
+            try
+            {
+                // INSIDE the guard, along with the row itself. The pre-execute hook is part of what a gesture
+                // does, so a throw from it is a gesture that failed - and left outside, it disposed the scope
+                // with the default outcome and recorded that failure as a success, which is the one thing the
+                // outcome machinery exists to prevent.
+                _beforeExecute?.Invoke(parameter);
+                // The row's ANSWER, applied to the root. A failure the shell handled - a save that could not be
+                // written, a prompt the installer cancelled - never throws past the view-model's error
+                // boundary, so awaiting alone leaves this span reading ok for a gesture that did not work.
+                // This is the line that carries such an outcome up to the span a reader starts from, and onto
+                // the invocation count's dimensions with it.
+                scope.SetOutcome(await row.Execute(_context()));
+            }
+            catch (Exception ex)
+            {
+                // Rethrown UNCHANGED - the row's caller is owed its own exception. Recording is additive, and
+                // it is the only record there would be: a row that faults past the view-model's error boundary
+                // is by definition one that boundary did not handle.
+                scope.SetOutcome(Ihc.OperationOutcome.Failed(ex));
+                throw;
+            }
         }
         var command = new AsyncRelayCommand<object?>(Execute, _ => Gate(row, _context()).Ok);
         _commands.Add(row.Id, command);

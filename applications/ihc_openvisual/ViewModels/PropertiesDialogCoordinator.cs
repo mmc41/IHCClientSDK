@@ -49,7 +49,7 @@ internal sealed class PropertiesDialogCoordinator(
     IDialogService dialogs,
     ApplyAndReport applyAndReport,
     Action<string> setStatus,
-    Func<string, Func<Ihc.OperationScope, Task>, Task> guarded)
+    Func<string, Func<Ihc.OperationScope, Task>, Task<Ihc.OperationOutcome>> guarded)
 {
     /// <summary>Opens the properties dialog appropriate to the element's type (the node dispatch, US-044). A modem, a
     /// product, a data-line pin, a scenes container, a scene value, an enum variable, and a locality/function block

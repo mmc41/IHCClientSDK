@@ -378,6 +378,19 @@ namespace Ihc.Vis
         /// committing (D02/M8): the delta it would commit (<see cref="PreviewStatus.WouldChange"/>), else a
         /// refuse / no-change / engine-fault status. Runs on a fresh single-use session.
         /// </summary>
+        /// <remarks>
+        /// TODO: UNUSED, and a candidate for deletion. No frontend calls it — it was built for a generic
+        /// Preview→confirm→Apply flow that was never wired, and the one flow that shipped (the delete confirm)
+        /// reads <c>ProjectCommands.PreviewDelete</c> instead. Decide whether a consumer will ever want it; if
+        /// not, this and <c>IProjectDocument.Preview</c> go together.
+        /// <para>
+        /// SPECIFICALLY NOT the door a menu or toolbar gate asks. Gates read
+        /// <see cref="IProjectDocument.CanApply"/> / <c>CanDelete</c> / <c>CanReorder</c>, which evaluate a rule
+        /// against the per-commit index. This one opens a scratch session, RUNS the mutation and diffs the whole
+        /// project — a cost the design already refused one tier down, where <c>CanDelete</c> exists precisely so
+        /// the interactive gate does not pay <c>PreviewDelete</c>'s cascade simulation on every selection change.
+        /// </para>
+        /// </remarks>
         public PreviewOutcome Preview(Project project, ProjectCommand command)
         {
             ArgumentNullException.ThrowIfNull(project);
@@ -618,7 +631,20 @@ namespace Ihc.Vis
                 System.Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes)));
         }
 
-        private async Task WriteAtomically(string path, byte[] bytes, bool createBackup)
+        private Task WriteAtomically(string path, byte[] bytes, bool createBackup) =>
+            // A PHASE of the save, and the one the caller waits on hardware for: producing the bytes and putting
+            // them on disk have different costs and different reasons to get slow, and a save span alone cannot
+            // tell a slow serialize from a slow volume. The two tags are what make the phase explicable - how
+            // much was written, and whether a second file (the .BAK copy) was written alongside it.
+            RunTracedAsync(nameof(WriteAtomically), async activity =>
+            {
+                activity?.SetTag(SdkTelemetryRegistry.Attributes.ProjectFileSize, bytes.Length);
+                activity?.SetTag(SdkTelemetryRegistry.Attributes.SaveCreateBackup, createBackup);
+                await WriteAtomicallyCore(path, bytes, createBackup)
+                    .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            });
+
+        private async Task WriteAtomicallyCore(string path, byte[] bytes, bool createBackup)
         {
             string fullPath = Path.GetFullPath(path);
             string? backup = createBackup ? Path.ChangeExtension(fullPath, ".BAK") : null;

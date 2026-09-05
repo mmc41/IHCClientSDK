@@ -26,7 +26,7 @@ namespace ihc_openvisual.ViewModels;
 internal sealed class ProgramAuthoringCoordinator(
     ProjectWorkflow session,
     IDialogService dialogs,
-    Func<string, Func<Ihc.OperationScope, Task>, Task> runAsync,
+    Func<string, Func<Ihc.OperationScope, Task>, Task<Ihc.OperationOutcome>> runAsync,
     Func<Ihc.OperationScope, ProjectCommand, string, Task> applyAndReport,
     Action<TreeNodeViewModel> selectNode,
     Action<string> setStatus,
@@ -255,26 +255,26 @@ internal sealed class ProgramAuthoringCoordinator(
     private const string EventAddedStatus = "Hændelse tilføjet til programmet.";
     private const string ConditionAddedStatus = "Betingelse tilføjet.";
 
-    private Task AddProgramEventAsync(ElementId eventsId, ElementId variableId, string method, string name, string note) =>
+    private Task<Ihc.OperationOutcome> AddProgramEventAsync(ElementId eventsId, ElementId variableId, string method, string name, string note) =>
         runAsync(nameof(AddProgramEventAsync), async scope =>
         {
             if (session.Commands.AddProgramEvent(session.Current!, eventsId, variableId, method, name, note) is { } command)
                 await applyAndReport(scope, command, EventAddedStatus);
         });
 
-    private Task AddProgramCommandAsync(ElementId actionsId, ElementId variableId, string method, string name, string note) =>
+    private Task<Ihc.OperationOutcome> AddProgramCommandAsync(ElementId actionsId, ElementId variableId, string method, string name, string note) =>
         runAsync(nameof(AddProgramCommandAsync), scope =>
             applyAndReport(scope, session.Commands.AddProgramCommand(session.Current!, actionsId, variableId, method, name, note), "Kommando tilføjet til programmet."));
 
-    private Task AddConditionAsync(ElementId conditionsId, ElementId variableId, string method, string name, string note) =>
+    private Task<Ihc.OperationOutcome> AddConditionAsync(ElementId conditionsId, ElementId variableId, string method, string name, string note) =>
         runAsync(nameof(AddConditionAsync), scope =>
             applyAndReport(scope, session.Commands.AddCondition(session.Current!, conditionsId, variableId, method, name, note), ConditionAddedStatus));
 
-    private Task AddCaseAsync(ElementId commandsId, ElementId switchVariableId) =>
+    private Task<Ihc.OperationOutcome> AddCaseAsync(ElementId commandsId, ElementId switchVariableId) =>
         runAsync(nameof(AddCaseAsync), scope =>
             applyAndReport(scope, session.Commands.AddCase(session.Current!, commandsId, switchVariableId), "Case struktur indsat."));
 
-    private Task AddArithmeticAsync(
+    private Task<Ihc.OperationOutcome> AddArithmeticAsync(
         ElementId commandsId,
         ElementId targetId,
         string method,
@@ -286,14 +286,14 @@ internal sealed class ProgramAuthoringCoordinator(
 
     // T008: the two-operand event / condition authors — the arithmetic peer for the Events/Conditions families
     // (%P <op> %S with the author-chosen operand %S), through the extended AddProgramEvent/AddCondition (link2).
-    private Task AddTwoOperandEventAsync(ElementId eventsId, ElementId variableId, ElementId operandId, string method, string name, string note) =>
+    private Task<Ihc.OperationOutcome> AddTwoOperandEventAsync(ElementId eventsId, ElementId variableId, ElementId operandId, string method, string name, string note) =>
         runAsync(nameof(AddTwoOperandEventAsync), async scope =>
         {
             if (session.Commands.AddProgramEvent(session.Current!, eventsId, variableId, method, name, note, operandId) is { } command)
                 await applyAndReport(scope, command, EventAddedStatus);
         });
 
-    private Task AddTwoOperandConditionAsync(ElementId conditionsId, ElementId variableId, ElementId operandId, string method, string name, string note) =>
+    private Task<Ihc.OperationOutcome> AddTwoOperandConditionAsync(ElementId conditionsId, ElementId variableId, ElementId operandId, string method, string name, string note) =>
         runAsync(nameof(AddTwoOperandConditionAsync), scope =>
             applyAndReport(scope, session.Commands.AddCondition(session.Current!, conditionsId, variableId, method, name, note, operandId), ConditionAddedStatus));
 
@@ -365,7 +365,7 @@ internal sealed class ProgramAuthoringCoordinator(
     // thin [RelayCommand] entry points, delegating their bodies to these. ----
 
     /// <summary>Adds a Powerup system event to the selected Events group (US-033) — no operand needed.</summary>
-    public Task AddPowerEventAsync(TreeNodeViewModel? node) => runAsync("AddPowerEvent", async scope =>
+    public Task<Ihc.OperationOutcome> AddPowerEventAsync(TreeNodeViewModel? node) => runAsync("AddPowerEvent", async scope =>
     {
         if (node is { IsEventsContainer: true, ElementId: { } eventsId } && session.Current is { } project
             && session.Commands.AddPowerEvent(project, eventsId) is { } command)
@@ -373,7 +373,7 @@ internal sealed class ProgramAuthoringCoordinator(
     });
 
     /// <summary>Toggles an output's <i>Save current value</i> power-loss persistence (US-033).</summary>
-    public Task ToggleSaveValueAsync(TreeNodeViewModel? node) => runAsync("ToggleSaveValue", async scope =>
+    public Task<Ihc.OperationOutcome> ToggleSaveValueAsync(TreeNodeViewModel? node) => runAsync("ToggleSaveValue", async scope =>
     {
         if (node is { IsOutputPin: true, ElementId: { } outputId } && session.Current is { } project)
             await applyAndReport(scope, session.Commands.SetOutputBackup(project, outputId, !node.IsValueSaved),
@@ -382,33 +382,33 @@ internal sealed class ProgramAuthoringCoordinator(
 
     /// <summary>Adds a new, empty program to a block's Programs group (US-026, uxparity2 W4). A block may hold more
     /// than one program; each arrives with its own events and commands groups, ready to author.</summary>
-    public Task AddProgramAsync(TreeNodeViewModel? node) => runAsync("AddProgram", async scope =>
+    public Task<Ihc.OperationOutcome> AddProgramAsync(TreeNodeViewModel? node) => runAsync("AddProgram", async scope =>
     {
         if (node is { Kind: TreeNodeKind.Programs, ElementId: { } id } && session.Current is { } project)
             await applyAndReport(scope, session.Commands.AddProgram(project, id, ProgramDefaultName), "Program indsat.");
     });
 
     /// <summary>Inserts a conditional sub-program (Conditions + true/false command branches) into a Commands group (US-029).</summary>
-    public Task AddSubProgramAsync(TreeNodeViewModel? node) => runAsync("AddSubProgram", async scope =>
+    public Task<Ihc.OperationOutcome> AddSubProgramAsync(TreeNodeViewModel? node) => runAsync("AddSubProgram", async scope =>
     {
         if (node is { IsCommandsContainer: true, ElementId: { } id } && session.Current is { } project)
             await applyAndReport(scope, session.Commands.AddSubProgram(project, id), "Under program indsat.");
     });
 
     /// <summary>Inserts a nested logic group inside a Conditions group for a compound expression (US-029).</summary>
-    public Task AddLogicGroupAsync(TreeNodeViewModel? node) => runAsync("AddLogicGroup", async scope =>
+    public Task<Ihc.OperationOutcome> AddLogicGroupAsync(TreeNodeViewModel? node) => runAsync("AddLogicGroup", async scope =>
     {
         if (node is { IsConditionsContainer: true, ElementId: { } id } && session.Current is { } project)
             await applyAndReport(scope, session.Commands.AddLogicGroup(project, id), "Logik gruppe indsat.");
     });
 
     /// <summary>Combines a Conditions group with OR (<c>&gt;=1</c>) (US-029).</summary>
-    public Task SetConditionsOrAsync(TreeNodeViewModel? node) => ToggleConditionsAsync(node, or: true);
+    public Task<Ihc.OperationOutcome> SetConditionsOrAsync(TreeNodeViewModel? node) => ToggleConditionsAsync(node, or: true);
 
     /// <summary>Combines a Conditions group with AND (<c>&amp;</c>, the default) (US-029).</summary>
-    public Task SetConditionsAndAsync(TreeNodeViewModel? node) => ToggleConditionsAsync(node, or: false);
+    public Task<Ihc.OperationOutcome> SetConditionsAndAsync(TreeNodeViewModel? node) => ToggleConditionsAsync(node, or: false);
 
-    private Task ToggleConditionsAsync(TreeNodeViewModel? node, bool or) => runAsync("ToggleConditionsAsync", async scope =>
+    private Task<Ihc.OperationOutcome> ToggleConditionsAsync(TreeNodeViewModel? node, bool or) => runAsync("ToggleConditionsAsync", async scope =>
     {
         if (node is { IsConditionsContainer: true, ElementId: { } id } && session.Current is { } project)
             await applyAndReport(scope, session.Commands.SetConditionsLogic(project, id, or),
@@ -419,7 +419,7 @@ internal sealed class ProgramAuthoringCoordinator(
     /// inserts a command group tagged with it (filled by the normal Add-command gesture). For an ENUM-keyed case the
     /// criterion must name one of the type's states (T014) — they are surfaced in the prompt and a non-state is
     /// reported rather than silently dropped.</summary>
-    public Task NewCaseValueAsync(TreeNodeViewModel? node) => runAsync("NewCaseValue", async scope =>
+    public Task<Ihc.OperationOutcome> NewCaseValueAsync(TreeNodeViewModel? node) => runAsync("NewCaseValue", async scope =>
     {
         if (node is not { IsCaseNode: true, ElementId: { } caseId } || session.Current is not { } project)
             return;

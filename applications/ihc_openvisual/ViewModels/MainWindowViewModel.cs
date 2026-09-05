@@ -455,7 +455,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private Task InsertVariableAsync(ElementId sectionId, string tag, string label, string sectionLabel) =>
+    private Task<Ihc.OperationOutcome> InsertVariableAsync(ElementId sectionId, string tag, string label, string sectionLabel) =>
         // An enum insertion first defines its type + states through the enumerator dialog (US-030); all other
         // variable types insert directly (US-027).
         tag == "resource_enum"
@@ -498,19 +498,27 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Edit ▸ Undo (US-052, Ctrl+Z): reverses the last project-mutating edit; a no-op when there is nothing
     /// to undo. Refreshes both panes via the session's StateChanged.</summary>
-    private Task Undo() => RunAsync(nameof(Undo), async _ =>
+    private Task<Ihc.OperationOutcome> Undo() => RunAsync(nameof(Undo), async scope =>
     {
+        // The step's own answer decides BOTH, and they are different questions. Committed is what makes the
+        // sentence true; the classification is what the gesture above records. An OperationOutcome alone could
+        // not do the first — an undo with an empty history is the operation working, so "ok" would print
+        // "Fortrød…" over a stack that never moved.
         string? label = _session.UndoLabel;   // capture before the stack pops — names the action (E14)
-        StatusText = await _session.UndoAsync()
+        EditOutcome? outcome = await _session.UndoAsync();
+        scope.SetOutcome(ProjectWorkflow.ClassifyEdit(outcome));
+        StatusText = outcome is { Status: EditStatus.Committed }
             ? label is null ? "Fortrød den seneste ændring." : $"Fortrød: {label}"
             : "Intet at fortryde.";
     });
 
     /// <summary>Edit ▸ Redo (US-052, Ctrl+Y): re-applies the last undone edit; a no-op when the redo history is empty.</summary>
-    private Task Redo() => RunAsync(nameof(Redo), async _ =>
+    private Task<Ihc.OperationOutcome> Redo() => RunAsync(nameof(Redo), async scope =>
     {
         string? label = _session.RedoLabel;
-        StatusText = await _session.RedoAsync()
+        EditOutcome? outcome = await _session.RedoAsync();
+        scope.SetOutcome(ProjectWorkflow.ClassifyEdit(outcome));
+        StatusText = outcome is { Status: EditStatus.Committed }
             ? label is null ? "Gentog ændringen." : $"Gentog: {label}"
             : "Intet at gentage.";
     });
@@ -661,7 +669,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Shows help text for the selected element (US-044/US-045, F1) — the element's note, or a generic
     /// message when it has none.</summary>
-    private Task Help(TreeNodeViewModel? node) => RunAsync(nameof(Help), async _ =>
+    private Task<Ihc.OperationOutcome> Help(TreeNodeViewModel? node) => RunAsync(nameof(Help), async _ =>
     {
         string name = node?.DisplayName ?? Constants.AppName;
         string help = node?.ElementId is { } id && _session.Current?.FindById(id) is { } element
@@ -672,12 +680,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     });
 
     /// <summary>Inserts an input variable into the programming block's Input section (US-045, Ctrl+I).</summary>
-    private Task InsertInput() => InsertBlockPinAsync("inputs", "resource_input", "Input");
+    private Task<Ihc.OperationOutcome> InsertInput() => InsertBlockPinAsync("inputs", "resource_input", "Input");
 
     /// <summary>Inserts an output variable into the programming block's Output section (US-045, Ctrl+U).</summary>
-    private Task InsertOutput() => InsertBlockPinAsync("outputs", "resource_output", "Output");
+    private Task<Ihc.OperationOutcome> InsertOutput() => InsertBlockPinAsync("outputs", "resource_output", "Output");
 
-    private Task InsertBlockPinAsync(string container, string tag, string label) => RunAsync(nameof(InsertBlockPinAsync), async scope =>
+    private Task<Ihc.OperationOutcome> InsertBlockPinAsync(string container, string tag, string label) => RunAsync(nameof(InsertBlockPinAsync), async scope =>
     {
         if (IsProgrammingBlockLocked || _programmingBlockId is not { } blockId
             || _session.Current?.FindById(blockId)?.FindChild(container) is not { Id: { } sectionId })
@@ -692,7 +700,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     });
 
     /// <summary>Opens the Project information dialog (US-039) prefilled from the project, and applies edits.</summary>
-    private Task ProjectInfo() => RunAsync(nameof(ProjectInfo), async scope =>
+    private Task<Ihc.OperationOutcome> ProjectInfo() => RunAsync(nameof(ProjectInfo), async scope =>
     {
         ProjectInfoData? result = await _dialogs.EditProjectInfoAsync(
             _session.GetProjectInfo(), ProjectInfoSuggestions.From(_session.DataTables));
@@ -727,7 +735,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     };
 
     /// <summary>Documentation ▸ Data line modules (US-050): opens the read-only input/output data-line module map.</summary>
-    private Task ModuleMap() => RunAsync(nameof(ModuleMap), async _ =>
+    private Task<Ihc.OperationOutcome> ModuleMap() => RunAsync(nameof(ModuleMap), async _ =>
     {
         await _dialogs.ShowModuleMapAsync(_session.GetDatalineModuleMap());
     });
@@ -745,7 +753,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Controller ▸ Send project (US-042, F5): runs the offline pre-flight — warns about unlinked wireless
     /// products (they can be linked later) — then reports that the actual transfer needs a connected controller (the
     /// controller send/retrieve itself is deferred per E10; this build never contacts a controller).</summary>
-    private Task SendProject() => RunAsync(nameof(SendProject), async scope =>
+    private Task<Ihc.OperationOutcome> SendProject() => RunAsync(nameof(SendProject), async scope =>
     {
         IReadOnlyList<string> unlinked = _session.GetUnlinkedWirelessProducts();
         if (unlinked.Count > 0 &&
@@ -763,7 +771,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Controller ▸ Retrieve project (US-043): reports that retrieving needs a connected controller — the
     /// transfer is deferred per E10 and this build never contacts a controller.</summary>
-    private Task RetrieveProject() => RunAsync(nameof(RetrieveProject), async scope =>
+    private Task<Ihc.OperationOutcome> RetrieveProject() => RunAsync(nameof(RetrieveProject), async scope =>
     {
         await FailureReport.RefusedAsync(scope, _logger, _dialogs, ControllerRequiredTitle,
             HostProblems.ControllerRequiredRetrieve(), "Retrieve needs a connected controller");
@@ -773,7 +781,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Documentation ▸ the three report entries (T015, R12/D4/D01): each opens the ONE shared
     /// picker dialog with its report pre-selected in the type dropdown; [Vis] generates via the facade
     /// (SVG icons for HTML) to a temp file and opens it in the OS default application (US-063).</summary>
-    private Task OpenReportPicker(ReportKind preselected) => RunAsync(nameof(OpenReportPicker), async _ =>
+    private Task<Ihc.OperationOutcome> OpenReportPicker(ReportKind preselected) => RunAsync(nameof(OpenReportPicker), async _ =>
     {
         var viewModel = new ReportPickerViewModel(preselected,
             _session.ViewReportInBrowserAsync, _session.SaveReportAsAsync);
@@ -785,28 +793,28 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     // points delegating their bodies there (the XAML bindings and the *Command tests are unchanged).
 
     /// <summary>Adds a Powerup system event to the selected Events group (US-033).</summary>
-    private Task AddPowerEvent(TreeNodeViewModel? node) => _programAuthoring.AddPowerEventAsync(node);
+    private Task<Ihc.OperationOutcome> AddPowerEvent(TreeNodeViewModel? node) => _programAuthoring.AddPowerEventAsync(node);
 
     /// <summary>Toggles an output's <i>Save current value</i> power-loss persistence (US-033).</summary>
-    private Task ToggleSaveValue(TreeNodeViewModel? node) => _programAuthoring.ToggleSaveValueAsync(node);
+    private Task<Ihc.OperationOutcome> ToggleSaveValue(TreeNodeViewModel? node) => _programAuthoring.ToggleSaveValueAsync(node);
 
     /// <summary>Adds a new program to a block's Programs group (US-026, W4) — a block may hold several.</summary>
-    private Task AddProgram(TreeNodeViewModel? node) => _programAuthoring.AddProgramAsync(node);
+    private Task<Ihc.OperationOutcome> AddProgram(TreeNodeViewModel? node) => _programAuthoring.AddProgramAsync(node);
 
     /// <summary>Inserts a conditional sub-program into a Commands group (US-029).</summary>
-    private Task AddSubProgram(TreeNodeViewModel? node) => _programAuthoring.AddSubProgramAsync(node);
+    private Task<Ihc.OperationOutcome> AddSubProgram(TreeNodeViewModel? node) => _programAuthoring.AddSubProgramAsync(node);
 
     /// <summary>Inserts a nested logic group inside a Conditions group (US-029).</summary>
-    private Task AddLogicGroup(TreeNodeViewModel? node) => _programAuthoring.AddLogicGroupAsync(node);
+    private Task<Ihc.OperationOutcome> AddLogicGroup(TreeNodeViewModel? node) => _programAuthoring.AddLogicGroupAsync(node);
 
     /// <summary>Combines a Conditions group with OR (<c>&gt;=1</c>) (US-029).</summary>
-    private Task SetConditionsOr(TreeNodeViewModel? node) => _programAuthoring.SetConditionsOrAsync(node);
+    private Task<Ihc.OperationOutcome> SetConditionsOr(TreeNodeViewModel? node) => _programAuthoring.SetConditionsOrAsync(node);
 
     /// <summary>Combines a Conditions group with AND (<c>&amp;</c>, the default) (US-029).</summary>
-    private Task SetConditionsAnd(TreeNodeViewModel? node) => _programAuthoring.SetConditionsAndAsync(node);
+    private Task<Ihc.OperationOutcome> SetConditionsAnd(TreeNodeViewModel? node) => _programAuthoring.SetConditionsAndAsync(node);
 
     /// <summary>Adds a case value branch to the selected Case node (US-031).</summary>
-    private Task NewCaseValue(TreeNodeViewModel? node) => _programAuthoring.NewCaseValueAsync(node);
+    private Task<Ihc.OperationOutcome> NewCaseValue(TreeNodeViewModel? node) => _programAuthoring.NewCaseValueAsync(node);
 
     /// <summary>Raised by the <i>Exit</i> command to ask the window to close (the close then runs the save prompt).</summary>
     public event EventHandler? CloseRequested;
@@ -888,10 +896,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // the panel: the gate must move with the validation whether or not the panel is open.
         _onValidationChanged = (_, _) => RebuildContext();
         _session.Validation.BlockingChanged += _onValidationChanged;
-        BuildProductMenu();
-        RefreshRecent();
-        Refresh();
-        RebuildVariableBarMenu(null);   // F-12/F-13a: nothing is selected at startup, and the bar list is never empty
+        // The constructor's own WORK, named. What follows reads the whole component catalog to build the
+        // catalog menus, builds both trees for the first time and sweeps every command row's gate — the bulk
+        // of the time between launching the application and having a window to look at. Unnamed it was not
+        // untraced: each piece opened a span with nothing above it, so a launch left several single-span
+        // traces and no operation a reader could open to ask why it was slow.
+        using (Ihc.OperationScope compose = _telemetry.Start("Compose"))
+        {
+            BuildProductMenu();
+            RefreshRecent();
+            Refresh();
+            RebuildVariableBarMenu(null);   // F-12/F-13a: nothing is selected at startup, and the bar list is never empty
+        }
     }
 
     /// <summary>Detaches the session/recent-store event handlers so this view-model does not leak through those
@@ -987,21 +1003,30 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Library ▸ Import catalog file (US-059): imports a single <c>.def</c>/<c>.ifb</c> so its component
     /// becomes insertable; persisted by default (US-061) so it survives a restart.</summary>
-    private Task ImportCatalogFile() => RunAsync(nameof(ImportCatalogFile), async _ =>
+    private Task<Ihc.OperationOutcome> ImportCatalogFile() => RunAsync(nameof(ImportCatalogFile), async scope =>
     {
         if (await _dialogs.PickCatalogFileAsync() is not { } path)
+        {
+            scope.SetOutcome(Ihc.OperationOutcome.Cancelled);
             return;
+        }
         if (await _session.ImportCatalogFileAsync(path, persist: true))
             StatusText = "Importerede 1 komponent (gemt i katalogmappen).";
     });
 
     /// <summary>Library ▸ Import catalog folder (US-060): imports every <c>.def</c>/<c>.ifb</c> in a folder and its
     /// subfolders, reporting how many components were imported; persisted by default (US-061).</summary>
-    private Task ImportCatalogFolder() => RunAsync(nameof(ImportCatalogFolder), async _ =>
+    private Task<Ihc.OperationOutcome> ImportCatalogFolder() => RunAsync(nameof(ImportCatalogFolder), async scope =>
     {
         if (await _dialogs.PickCatalogFolderAsync() is not { } dir)
+        {
+            scope.SetOutcome(Ihc.OperationOutcome.Cancelled);
             return;
+        }
         CatalogImportOutcome outcome = await _session.ImportCatalogFolderAsync(dir, persist: true);
+        // The import's OWN recorded answer, carried up. A missing folder and a run that stopped at an unreadable
+        // file both reported themselves and then left this gesture reading ok.
+        scope.SetOutcome(outcome.Outcome);
         if (outcome.FolderMissing)
             return;   // already reported by the workflow, and nothing was imported to announce
         string components = $"{outcome.Imported} komponent{(outcome.Imported == 1 ? string.Empty : "er")}";
@@ -1014,7 +1039,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Inserts an empty function block under the selected locality (US-019). Invoked from the right-click
     /// <i>Empty function block</i> item and Ctrl+Shift+B.</summary>
-    private Task InsertEmptyFunctionBlock() => RunAsync(nameof(InsertEmptyFunctionBlock), async scope =>
+    private Task<Ihc.OperationOutcome> InsertEmptyFunctionBlock() => RunAsync(nameof(InsertEmptyFunctionBlock), async scope =>
     {
         if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
         {
@@ -1032,7 +1057,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Inserts a preprogrammed library function block (US-018) under the selected locality — shown in the
     /// Functions pane. Invoked by the leaf commands in <see cref="FunctionBlocksMenu"/>.</summary>
-    private Task InsertFunctionBlockAsync(string masterType, string blockName) =>
+    private Task<Ihc.OperationOutcome> InsertFunctionBlockAsync(string masterType, string blockName) =>
         RunAsync(nameof(InsertFunctionBlockAsync), async scope =>
         {
             if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
@@ -1068,60 +1093,76 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Opens the start-up document: <paramref name="startupProjectPath"/> (the <c>.vis</c> the app was
     /// launched on), else the empty project.</summary>
-    public Task InitializeAsync(string? startupProjectPath = null) =>
+    public Task<Ihc.OperationOutcome> InitializeAsync(string? startupProjectPath = null) =>
         // Through the same wrapper every command uses. Start-up was the one path that produced NO span at all,
         // so the work between launch and a usable window - the load, the first validation, the catalog - hung
         // off nothing and could not be seen as one operation, nor its failure reported like any other.
-        RunAsync(nameof(InitializeAsync), _ => _session.StartAsync(startupProjectPath));
+        //
+        // FORWARDED, so App.Startup reads what the launch actually did. A start-up file that cannot be opened
+        // leaves a usable window over the empty project, which is why this recovers rather than throws - but
+        // the launch is not therefore a success, and the operation a reader opens has to say so.
+        RunAsync(nameof(InitializeAsync), async scope =>
+            Announce(scope, await _session.StartAsync(startupProjectPath)));
 
     /// <summary>Runs the window-close save prompt (US-064); returns false to cancel the quit.
     /// <para>Routed through <see cref="RunAsync"/> — the view-model's one error boundary — because the caller is
     /// <c>Window.Closing</c>, which runs off the window message loop where NO global exception handler can see a
     /// fault (Avalonia logging review AP-06/WS-11). A failure therefore leaves the answer <c>false</c>: the quit is
-    /// cancelled, since a save prompt that never completed cannot be read as "the installer chose to discard".</para></summary>
+    /// cancelled, since a save prompt that never completed cannot be read as "the installer chose to discard".</para>
+    /// <para>The BOOL is right here and nowhere below: the window either closes or it does not. What the gate no
+    /// longer does is let that bool be the only record — the span says which of the three "no"s it was, because
+    /// a quit stopped by a failed save is not the event a cancelled one is.</para></summary>
     public async Task<bool> CanCloseAsync()
     {
         bool canClose = false;
-        await RunAsync(nameof(CanCloseAsync), async _ => canClose = await _session.CanQuitAsync());
+        await RunAsync(nameof(CanCloseAsync), async scope =>
+        {
+            Ihc.OperationOutcome outcome = await _session.CanQuitAsync();
+            // The gate is still a yes/no — the window either closes or does not — but the SPAN now says which
+            // of the three "no"s it was: the installer pressed Fortryd, or the save they asked for broke.
+            Announce(scope, outcome);
+            canClose = outcome.IsOk;
+        });
         return canClose;
     }
 
-    private Task NewAsync() => RunAsync(nameof(NewAsync), async _ =>
-    {
-        if (await _session.NewAsync())
-            StatusText = "Startede et nyt projekt.";
-    });
+    private Task<Ihc.OperationOutcome> NewAsync() => RunAsync(nameof(NewAsync), async scope =>
+        Announce(scope, await _session.NewAsync(), "Startede et nyt projekt."));
 
-    private Task OpenAsync() => RunAsync(nameof(OpenAsync), async _ =>
-    {
-        if (await _session.OpenWithPickerAsync())
-            StatusText = $"Åbnede {_session.DocumentName}.";
-    });
+    private Task<Ihc.OperationOutcome> OpenAsync() => RunAsync(nameof(OpenAsync), async scope =>
+        Announce(scope, await _session.OpenWithPickerAsync(), $"Åbnede {_session.DocumentName}."));
 
     [RelayCommand]
-    private Task OpenRecentAsync(string path) => RunAsync(nameof(OpenRecentAsync), async _ =>
-    {
-        if (await _session.OpenAsync(path))
-            StatusText = $"Åbnede {_session.DocumentName}.";
-    });
+    private Task<Ihc.OperationOutcome> OpenRecentAsync(string path) => RunAsync(nameof(OpenRecentAsync), async scope =>
+        Announce(scope, await _session.OpenAsync(path), $"Åbnede {_session.DocumentName}."));
 
-    private Task SaveAsync() => RunAsync(nameof(SaveAsync), async _ =>
-    {
-        if (await _session.SaveAsync())
-            StatusText = $"Gemte {_session.DocumentName}.";
-    });
+    private Task<Ihc.OperationOutcome> SaveAsync() => RunAsync(nameof(SaveAsync), async scope =>
+        Announce(scope, await _session.SaveAsync(), $"Gemte {_session.DocumentName}."));
 
-    private Task SaveAsAsync() => RunAsync(nameof(SaveAsAsync), async _ =>
-    {
-        if (await _session.SaveAsAsync())
-            StatusText = $"Gemte {_session.DocumentName}.";
-    });
+    private Task<Ihc.OperationOutcome> SaveAsAsync() => RunAsync(nameof(SaveAsAsync), async scope =>
+        Announce(scope, await _session.SaveAsAsync(), $"Gemte {_session.DocumentName}."));
 
-    private Task CloseAsync() => RunAsync(nameof(CloseAsync), async _ =>
+    private Task<Ihc.OperationOutcome> CloseAsync() => RunAsync(nameof(CloseAsync), async scope =>
+        Announce(scope, await _session.CloseAsync(), "Lukkede projektet."));
+
+    /// <summary>
+    /// Hands a lifecycle door's answer to the span and, on success, to the status line — the two things every
+    /// one of those gestures does with it, in one place so no site can do half of it.
+    /// </summary>
+    /// <remarks>
+    /// The <c>SetOutcome</c> is what carries a handled failure OUT of here. Without it the boundary above
+    /// records success, because nothing threw: a failed save reports itself, marks its own span, and then
+    /// answers its caller — and every operation between that span and the installer's gesture used to read
+    /// <c>ok</c>. The status line is only touched on success for the reason it always was: a failure has
+    /// already said so in a dialog, and overwriting that with a cheerful line would be the second message.
+    /// </remarks>
+    /// <param name="success">The Danish line to show when the door succeeded, or null to leave the line alone.</param>
+    private void Announce(Ihc.OperationScope scope, Ihc.OperationOutcome outcome, string? success = null)
     {
-        if (await _session.CloseAsync())
-            StatusText = "Lukkede projektet.";
-    });
+        scope.SetOutcome(outcome);
+        if (outcome.IsOk && success is not null)
+            StatusText = success;
+    }
 
     private void Exit() => CloseRequested?.Invoke(this, EventArgs.Empty);
 
@@ -1156,7 +1197,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Inserts a new locality under <i>Localities</i> (US-008), then selects it in the Installation pane.
     /// Invoked from the right-click <i>Insert locality</i> item on the Localities root.</summary>
-    private Task InsertLocality() => RunAsync(nameof(InsertLocality), async scope =>
+    private Task<Ihc.OperationOutcome> InsertLocality() => RunAsync(nameof(InsertLocality), async scope =>
     {
         if (_session.Current is not { } project)
             return;
@@ -1187,7 +1228,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// library is for.
     /// </para>
     /// </summary>
-    private Task SaveFunctionBlock(TreeNodeViewModel? node) => RunAsync(nameof(SaveFunctionBlock), async _ =>
+    private Task<Ihc.OperationOutcome> SaveFunctionBlock(TreeNodeViewModel? node) => RunAsync(nameof(SaveFunctionBlock), async scope =>
     {
         ElementId? id = node?.Kind == TreeNodeKind.FunctionBlock ? node.ElementId : _programmingBlockId;
         if (id is not { } blockId || _session.Current?.FindById(blockId) is not { } fb || fb.Kind != ElementKind.FunctionBlock)
@@ -1197,14 +1238,20 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         PropertiesResult? meta = await _dialogs.EditPropertiesAsync("Gem Funktionsblok...", currentName, currentNote,
             affirmative: "Gem");
         if (meta is null)
+        {
+            scope.SetOutcome(Ihc.OperationOutcome.Cancelled);
             return;   // cancelled
-        if (await _session.SaveFunctionBlockToLibraryAsync(blockId, meta.Name, meta.Note) is not null)
-            StatusText = $"Gemte funktionsblokken '{meta.Name}' i biblioteket.";
+        }
+        // The door's own answer, forwarded. The workflow already marked its span for a failed export or a
+        // refused library commit; reading only "did a path come back" left this gesture — and the invocation
+        // count above it — reporting ok for both.
+        Announce(scope, (await _session.SaveFunctionBlockToLibraryAsync(blockId, meta.Name, meta.Note)).Outcome,
+            $"Gemte funktionsblokken '{meta.Name}' i biblioteket.");
     });
 
     /// <summary>Unlocks a locked library function block (US-020) so its internals become editable; the tree rebuild
     /// then shows the editable icon. Invoked from the right-click <i>Unlock</i> item.</summary>
-    private Task Unlock(TreeNodeViewModel? node) => RunAsync(nameof(Unlock), async scope =>
+    private Task<Ihc.OperationOutcome> Unlock(TreeNodeViewModel? node) => RunAsync(nameof(Unlock), async scope =>
     {
         if (node?.ElementId is not { } id || _session.Current is not { } project)
             return;
@@ -1218,7 +1265,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// uses the general confirm-and-cascade delete. Reachable from the right-click item, Edit ▸ Delete, and the
     /// Delete key (US-044) — all three routes run the registry's "edit.delete" command, gated by the row's ONE
     /// SDK-backed gate (the engine's <c>CanDelete</c>), so none can bypass the guard.</summary>
-    private Task Delete(TreeNodeViewModel? node) => RunAsync(nameof(Delete), async scope =>
+    private Task<Ihc.OperationOutcome> Delete(TreeNodeViewModel? node) => RunAsync(nameof(Delete), async scope =>
     {
         // The localities root is structure, not content: it holds the localities but is not itself a node the
         // installer can remove. It carries no element id (see the projector), so the ElementId guard below already
@@ -1255,6 +1302,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                     $"'{name}' indeholder produkter. Sletter du den, fjernes også de produkter og de "
                     + "kommandoer og betingelser, der bruger dem. Slet alligevel?"))
             {
+                // Answering "Nej" to a destructive confirm is the installer changing their mind, not the rules
+                // declining and not a break — so a delete rate built on this gesture must not count it as either.
+                scope.SetOutcome(Ihc.OperationOutcome.Cancelled);
                 return;   // declined — nothing is deleted
             }
         }
@@ -1297,7 +1347,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Paste the clipboard node onto the selected target (US-054 move / US-056 duplicate, Ctrl+V).</summary>
-    private Task Paste(TreeNodeViewModel? node) => RunAsync(nameof(Paste), async scope =>
+    private Task<Ihc.OperationOutcome> Paste(TreeNodeViewModel? node) => RunAsync(nameof(Paste), async scope =>
     {
         if (_clipboardId is not { } sourceId || node is null || _session.Current is not { } project)
             return;
@@ -1334,12 +1384,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>Moves the selected node one position up among its siblings (US-055) — the non-drag reorder route.</summary>
-    private Task MoveUp(TreeNodeViewModel? node) => ReorderAsync(node, -1);
+    private Task<Ihc.OperationOutcome> MoveUp(TreeNodeViewModel? node) => ReorderAsync(node, -1);
 
     /// <summary>Moves the selected node one position down among its siblings (US-055).</summary>
-    private Task MoveDown(TreeNodeViewModel? node) => ReorderAsync(node, +1);
+    private Task<Ihc.OperationOutcome> MoveDown(TreeNodeViewModel? node) => ReorderAsync(node, +1);
 
-    private Task ReorderAsync(TreeNodeViewModel? node, int delta) => RunAsync(nameof(ReorderAsync), async scope =>
+    private Task<Ihc.OperationOutcome> ReorderAsync(TreeNodeViewModel? node, int delta) => RunAsync(nameof(ReorderAsync), async scope =>
     {
         if (node?.ElementId is { } id && _session.Current is { } project
             && _session.Commands.ReorderNode(project, id, delta) is { } command)
@@ -1348,7 +1398,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Opens the Properties dialog for a tree node to rename a locality (US-007). Invoked from the
     /// right-click <i>Properties</i> item (node passed in) and from F2 (the selected node passed in).</summary>
-    private Task Properties(TreeNodeViewModel? node) => RunAsync(nameof(Properties), scope => OpenPropertiesAsync(scope, node));
+    private Task<Ihc.OperationOutcome> Properties(TreeNodeViewModel? node) => RunAsync(nameof(Properties), scope => OpenPropertiesAsync(scope, node));
 
     /// <summary>
     /// Activates a tree node — the double-click route (US-044). IHC Visual opens a per-node-type properties dialog
@@ -1360,7 +1410,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// installation root and a link row open <b>nothing</b>.</para>
     /// </summary>
     [RelayCommand]
-    private Task ActivateNode(TreeNodeViewModel? node) => RunAsync(nameof(ActivateNode), scope => ActivateNodeAsync(scope, node));
+    private Task<Ihc.OperationOutcome> ActivateNode(TreeNodeViewModel? node) => RunAsync(nameof(ActivateNode), scope => ActivateNodeAsync(scope, node));
 
     private Task ActivateNodeAsync(Ihc.OperationScope scope, TreeNodeViewModel? node)
     {
@@ -1409,7 +1459,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Inserts a catalog product (US-010) under the currently selected locality; the leaf menu commands in
     /// <see cref="ProductsMenu"/> call this. Routed through <see cref="RunAsync"/> for tracing and error surfacing.</summary>
-    private Task InsertProductAsync(string productIdentifier, string productName) =>
+    private Task<Ihc.OperationOutcome> InsertProductAsync(string productIdentifier, string productName) =>
         RunAsync(nameof(InsertProductAsync), async scope =>
         {
             if (SelectedNode?.ElementId is not { } localityId || _session.Current is not { } project)
@@ -1461,14 +1511,25 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 // gesture's outcome before anything had established it, and a roll-back that did not happen is a
                 // fault the installer cannot act on — so the detail goes to the log and the status line says only
                 // what is true.
-                if (!await _session.RollbackAsync())
+                if (await _session.RollbackAsync() is not { Status: EditStatus.Committed })
                 {
+                    // A FAULT, and now recorded as one. The insert committed moments ago, so the history held
+                    // it — a roll-back that did not happen is this tool misbehaving, and the installer is left
+                    // holding an element they declined. Logging it alone left the gesture reading ok on both
+                    // the span and the invocation count.
+                    Ihc.Vis.Problems.Problem problem = HostProblems.InsertRollbackFailed(productName);
+                    scope.SetOutcome(Ihc.OperationOutcome.FailedWith(problem.Code.Value));
                     _logger.LogError(
                         "Rollback of the cancelled insert of {Product} under {Locality} did not happen",
                         productName, localityName);
-                    StatusText = $"Indsætning af '{productName}' kunne ikke fortrydes.";
+                    // The catalogue's sentence, rendered WHOLE — the same words the site used to spell out for
+                    // itself, now owned by the row that declares the code.
+                    StatusText = problem.Message;
                     return;
                 }
+                // The gesture ENDED because the installer pressed Annuller, and the project is back where it
+                // started. Ok would report placing a product that was not placed.
+                scope.SetOutcome(Ihc.OperationOutcome.Cancelled);
                 StatusText = $"Indsætning af '{productName}' annulleret.";
                 return;
             }
@@ -1485,7 +1546,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Toggles a "Log …" row's log mark (US-068, the vendor's &amp;Logmærke): the SDK flips its Logning state
     /// between Off and the first logging mode, and the tree re-renders the row's new state.</summary>
-    private Task ToggleLogMark(TreeNodeViewModel? node) => RunAsync(nameof(ToggleLogMark), async scope =>
+    private Task<Ihc.OperationOutcome> ToggleLogMark(TreeNodeViewModel? node) => RunAsync(nameof(ToggleLogMark), async scope =>
     {
         if (node is { IsLogMarkPin: true, ElementId: { } id } && _session.Current is { } project)
             await ApplyAsync(scope, _session.Commands.ToggleLogMark(project, id), $"Skiftede logmærket på {node.DisplayName}.");
@@ -1555,7 +1616,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// the task this returns, so without one a fault on the way to the fix reached nobody: no dialog, no log
     /// record, no span, and a double-click that looked ignored.</para>
     /// </remarks>
-    private Task ActivateProblemAsync(NavigationPlan plan) => RunAsync(nameof(ActivateProblemAsync), async scope =>
+    private Task<Ihc.OperationOutcome> ActivateProblemAsync(NavigationPlan plan) => RunAsync(nameof(ActivateProblemAsync), async scope =>
     {
         // A HOST window first: a whole-project finding has no element, so there is no tree leg to walk and the
         // reveal below would have nothing to aim at.
@@ -1923,15 +1984,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     // App-level rows default to bar-only placement; the two controller commands also ride the toolbar (T020).
-    private void RegisterAppRow(string id, string? gesture, Func<ShellContext, Task> execute,
+    private void RegisterAppRow(string id, string? gesture, Func<ShellContext, Task<Ihc.OperationOutcome>> execute,
         Func<ShellContext, EditVerdict> gate, Surfaces placement = Surfaces.MenuBar) =>
         Registry.Register(new CommandSpec(id, gesture, placement, execute, gate));
 
-    // A row's Execute is Func<ShellContext, Task>, but many command bodies are plain void — this is the ONE home
-    // for the sync→async ceremony they need, instead of a `{ …; return Task.CompletedTask; }` block per row
-    // (review F13). What each row then shows is its actual body, not the adapter around it.
-    private static Func<ShellContext, Task> Sync(Action<ShellContext> body) =>
-        ctx => { body(ctx); return Task.CompletedTask; };
+    // A row's Execute answers Task<OperationOutcome>, but many command bodies are plain void — this is the ONE
+    // home for the sync→outcome ceremony they need, instead of a `{ …; return Task.FromResult(…); }` block per
+    // row (review F13). What each row then shows is its actual body, not the adapter around it.
+    private static Func<ShellContext, Task<Ihc.OperationOutcome>> Sync(Action<ShellContext> body) =>
+        // Ok, because a synchronous row that returns at all did what it was asked; a row of this shape that can
+        // fail does so by throwing, which the invocation funnel records for it.
+        ctx => { body(ctx); return Task.FromResult(Ihc.OperationOutcome.Ok); };
 
     private static EditVerdict AllowGate(ShellContext ctx) => EditVerdict.Allow;
 
@@ -2060,7 +2123,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Links two pins (US-022/US-023) — a thin entry point delegating to <see cref="LinkingCoordinator"/>
     /// (the drag path and the LinkPins characterization test drive this).</summary>
-    public Task LinkPins(TreeNodeViewModel? source, TreeNodeViewModel? target) => _linking.LinkPinsAsync(source, target);
+    public Task<Ihc.OperationOutcome> LinkPins(TreeNodeViewModel? source, TreeNodeViewModel? target) => _linking.LinkPinsAsync(source, target);
 
     /// <summary>The pin from which a link is being drawn — armed by <i>Link from here</i>, consumed by
     /// <i>Link to here</i> (US-022). The two-step gesture is the reliable, testable substitute for pin drag-and-drop.</summary>
@@ -2071,7 +2134,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>Completes a link onto the given pin or scenes container (US-022/US-024) — delegates to
     /// <see cref="LinkingCoordinator"/>.</summary>
-    private Task LinkToHere(TreeNodeViewModel? node) => _linking.LinkToHereAsync(node);
+    private Task<Ihc.OperationOutcome> LinkToHere(TreeNodeViewModel? node) => _linking.LinkToHereAsync(node);
 
     /// <summary>Home: selects the FIRST row of the pane (uxparity S-29 — the vendor lands on the tree root).</summary>
     [RelayCommand]
@@ -2225,7 +2288,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private Task OpenPropertiesAsync(Ihc.OperationScope scope, TreeNodeViewModel? node) =>
         node?.ElementId is { } id ? _properties.OpenAsync(scope, id) : Task.CompletedTask;
 
-    private Task InsertEnumAsync(ElementId sectionId, string sectionLabel) => RunAsync(nameof(InsertEnumAsync), async scope =>
+    private Task<Ihc.OperationOutcome> InsertEnumAsync(ElementId sectionId, string sectionLabel) => RunAsync(nameof(InsertEnumAsync), async scope =>
     {
         EnumDefinitionResult? result = await _dialogs.EditEnumDefinitionAsync(
             new EnumDefinitionInput("Ny enumerator", string.Empty, System.Array.Empty<string>(), IsNew: true));
@@ -2246,7 +2309,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     // PG-7/D02: authors a standalone (0-state, unreferenced) enumerator TYPE — no variable is inserted, decoupled from
     // any section. The enumerator dialog supplies the name (and any states); an empty type is authored when none given.
-    private Task AddStandaloneEnumTypeAsync() => RunAsync(nameof(AddStandaloneEnumTypeAsync), async scope =>
+    private Task<Ihc.OperationOutcome> AddStandaloneEnumTypeAsync() => RunAsync(nameof(AddStandaloneEnumTypeAsync), async scope =>
     {
         EnumDefinitionResult? result = await _dialogs.EditEnumDefinitionAsync(
             new EnumDefinitionInput("Ny selvstændig enumerator type", string.Empty, System.Array.Empty<string>(), IsNew: true));
@@ -2272,7 +2335,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <see cref="ProjectProjections.GetEnumeratorTypeViews"/> after each operation rather than holding a copy.
     /// </para>
     /// </summary>
-    private Task ManageEnumTypesAsync() => RunAsync(nameof(ManageEnumTypesAsync), scope =>
+    private Task<Ihc.OperationOutcome> ManageEnumTypesAsync() => RunAsync(nameof(ManageEnumTypesAsync), scope =>
         _dialogs.ManageEnumTypesAsync(new EnumTypeManagerInput(
             "Enumerator typer og værdier",
             () => _session.Current?.GetEnumeratorTypeViews() ?? System.Array.Empty<EnumTypeView>(),
@@ -2319,7 +2382,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     // PG-4: inserts a variable of an EXISTING enumerator type — references its def-id, authoring NO new type (the "Ny…"
     // option above authors a new one).
-    private Task InsertEnumOfExistingTypeAsync(ElementId sectionId, string typeName, string sectionLabel) =>
+    private Task<Ihc.OperationOutcome> InsertEnumOfExistingTypeAsync(ElementId sectionId, string typeName, string sectionLabel) =>
         RunAsync(nameof(InsertEnumOfExistingTypeAsync), async scope =>
         {
             if (_session.Current is { } project
@@ -2328,11 +2391,11 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         });
 
 
-    private Task AboutAsync() => RunAsync(nameof(AboutAsync), _ => _dialogs.ShowAboutAsync());
+    private Task<Ihc.OperationOutcome> AboutAsync() => RunAsync(nameof(AboutAsync), _ => _dialogs.ShowAboutAsync());
 
-    private Task ShowSettingsAsync() => RunAsync(nameof(ShowSettingsAsync), _ => _dialogs.ShowSettingsAsync(BuildSettingsText()));
+    private Task<Ihc.OperationOutcome> ShowSettingsAsync() => RunAsync(nameof(ShowSettingsAsync), _ => _dialogs.ShowSettingsAsync(BuildSettingsText()));
 
-    private Task TelemetryDiagnosticsAsync() => RunAsync(nameof(TelemetryDiagnosticsAsync), async scope =>
+    private Task<Ihc.OperationOutcome> TelemetryDiagnosticsAsync() => RunAsync(nameof(TelemetryDiagnosticsAsync), async scope =>
     {
         string? host = _config?.TelemetryConfig.Host;
         if (string.IsNullOrWhiteSpace(host))
@@ -2361,7 +2424,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// uses for the same kind of event. If that choice is revisited, this line moves with it — a refusal that is
     /// not an error could be recorded everywhere at no cost to the rate.
     /// </remarks>
-    private async Task RunAsync(string operation, Func<Ihc.OperationScope, Task> action)
+    /// <returns>
+    /// What the scope was left holding — the body's own <c>SetOutcome</c>, the failure this boundary recorded,
+    /// or success when neither said otherwise. RETURNED rather than kept, because this is the one boundary
+    /// every command body passes through: the gesture's root span sits above it and can only learn that
+    /// something failed if this hands the answer up. The body's shape is unchanged, so a body with nothing to
+    /// declare still says nothing.
+    /// </returns>
+    private async Task<Ihc.OperationOutcome> RunAsync(string operation, Func<Ihc.OperationScope, Task> action)
     {
         // Shape B rather than the delegate form: the outcome has to be recorded BEFORE the dialog below, which
         // awaits a person, and the contract is unchanged - the exception is still swallowed and still becomes
@@ -2401,6 +2471,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             await FailureReport.FailedAsync(scope, _logger, _dialogs, UnexpectedErrorTitle, problem, ex,
                 faultRowFiled: _internalErrors is not null, "Command {Operation} failed", operation);
         }
+        return scope.Outcome;
     }
 
     /// <summary>

@@ -145,6 +145,12 @@ public class MessageSiteRegisterTests
             "The clipboard is a PLATFORM facility this application reached for; the SDK has no notion of one, "
             + "so there is no engine code to narrate. Reported in place on the button rather than in a dialog: "
             + "this site is already inside a modal, so a second window over it would be worse than the failure."),
+        new("MainWindowViewModel.InsertProductAsync (roll-back did not happen)", Owner.Host,
+            HostProblemCodes.InsertRollbackFailed,
+            "The cancel arm's roll-back is the shell's own step, and the SDK raises no coded refusal for a "
+            + "history step that answers NoChange. Shown on the STATUS LINE rather than in a dialog: the "
+            + "installer has just dismissed one, and a second window over the element they declined would say "
+            + "less than the sentence does."),
         new("MainWindowViewModel.TelemetryDiagnosticsAsync (no host)", Owner.Host,
             HostProblemCodes.TelemetryHostMissing,
             "Application configuration, read from this app's own settings file. The SDK has no telemetry host."),

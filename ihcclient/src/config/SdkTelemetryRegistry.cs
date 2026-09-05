@@ -76,8 +76,14 @@ namespace Ihc
             /// <summary>
             /// How an instrumented operation ended, on both the span and its instruments' dimensions - the
             /// two must agree or a metric point cannot be traced back to the spans it came from.
+            /// <para>
+            /// It was spelled <c>ihc.edit.status</c> until the operation-status rename, which is a name every
+            /// span carried and only a minority were edits: a reader filtering failed LOADS had to ask an
+            /// attribute named for editing. Queries written against the old spelling do not fall back - they
+            /// match nothing - and the metric series split at the cutover rather than continuing.
+            /// </para>
             /// </summary>
-            public const string OperationStatus = "ihc.edit.status";
+            public const string OperationStatus = "ihc.operation.status";
 
             /// <summary>Which command was applied, as a metric dimension and a span attribute.</summary>
             public const string EditCommand = "ihc.edit.command";
@@ -169,8 +175,18 @@ namespace Ihc
             /// <summary>Which controller service a SOAP operation belongs to.</summary>
             public const string Service = "ihc.service";
 
-            /// <summary>Which operation (SOAP action) was invoked.</summary>
-            public const string Operation = "ihc.operation";
+            /// <summary>
+            /// Which operation (SOAP action) was invoked.
+            /// <para>
+            /// It was spelled <c>ihc.operation</c> until <see cref="OperationStatus"/> claimed that namespace.
+            /// A name cannot be a scalar and a namespace at once: an attribute set carrying both
+            /// <c>ihc.operation</c> and <c>ihc.operation.status</c> is a mapping conflict for any backend that
+            /// expands dotted keys into nested objects, and OpenObserve hides it only because it flattens the
+            /// dots to underscores. The semantic conventions solve it the same way -- <c>db.operation</c> became
+            /// <c>db.operation.name</c> to free the namespace beneath it.
+            /// </para>
+            /// </summary>
+            public const string Operation = "ihc.operation.name";
 
             /// <summary>
             /// The failure's normalized identity. A published semantic convention rather than an IHC name,
@@ -187,6 +203,15 @@ namespace Ihc
 
             /// <summary>The operation declined by design, with a coded reason. Not an error.</summary>
             public const string StatusRefused = "refused";
+
+            /// <summary>
+            /// The person abandoned the operation - a dismissed picker, a "Fortryd" on a prompt. Neither
+            /// refused (no rule declined it) nor failed (nothing broke) nor ok (it did not happen), and a
+            /// distinct value because the alternative is what it replaces: a lifecycle door answering the same
+            /// thing for a cancelled picker and a failed save, which is what stopped a failure from being
+            /// reported on the operations above it.
+            /// </summary>
+            public const string StatusCancelled = "cancelled";
 
             /// <summary>The operation could not complete. The only status that marks a span Error.</summary>
             public const string StatusFailed = "failed";

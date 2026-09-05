@@ -191,7 +191,7 @@ internal sealed class CatalogImportWorkflow(
             await FailureReport.RefusedAsync(
                 scope, logger, dialogs, ImportFailedTitle, HostProblems.CatalogFolderMissing(dir),
                 "Catalog import folder {Dir} does not exist", dir);
-            return CatalogImportOutcome.NotFound;
+            return CatalogImportOutcome.NotFound with { Outcome = scope.Outcome };
         }
         int count = 0;
         bool stopped = false;
@@ -225,7 +225,7 @@ internal sealed class CatalogImportWorkflow(
             // the shell's generic catch-all instead.
             Announce(nameof(ImportFolderAsync));
         }
-        return new CatalogImportOutcome(count, stopped);
+        return new CatalogImportOutcome(count, stopped, FolderMissing: false, Outcome: scope.Outcome);
     }
 }
 
@@ -238,9 +238,16 @@ internal sealed class CatalogImportWorkflow(
 /// <param name="Imported">How many components were imported (0 or more; 0 when the folder was missing).</param>
 /// <param name="Stopped">Whether the run stopped early on an unreadable file, so more files were left unread.</param>
 /// <param name="FolderMissing">Whether the folder did not exist, so nothing was even attempted.</param>
-public readonly record struct CatalogImportOutcome(int Imported, bool Stopped, bool FolderMissing = false)
+/// <param name="Outcome">
+/// What the import span recorded — FORWARDED from the run's own scope rather than re-derived from the three
+/// flags above. A caller that classified them for itself would be a second judgement to keep in step with the
+/// one the span already made; and the gesture that invoked the import has no other way to learn that a missing
+/// folder or an unreadable file made it fail.
+/// </param>
+public readonly record struct CatalogImportOutcome(
+    int Imported, bool Stopped, bool FolderMissing = false, Ihc.OperationOutcome Outcome = default)
 {
-    /// <summary>The outcome of an import whose folder was not there.</summary>
+    /// <summary>The shape of an import whose folder was not there; the run supplies its own recorded outcome.</summary>
     public static CatalogImportOutcome NotFound { get; } = new(0, Stopped: false, FolderMissing: true);
 
     /// <summary>Whether every file in the folder was read — the only outcome that may be announced as complete.</summary>

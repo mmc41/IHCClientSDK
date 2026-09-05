@@ -14,14 +14,14 @@ namespace Ihc.Vis.Tests
     ///
     /// <para>Each of these six operations starts its own scope and disposes it on the way out. Disposal records
     /// whichever outcome the scope was last told about, and the default is success — so a phase that leaves
-    /// through a throw without saying so records <c>ihc.edit.status = "ok"</c> and no <c>error.type</c>. The
+    /// through a throw without saying so records <c>ihc.operation.status = "ok"</c> and no <c>error.type</c>. The
     /// failure is then invisible in BOTH signals: the span is not Error, the metric point counts as a success,
     /// and a dashboard reading either shows a healthy load, save, report, diff, index or validation run that in
     /// fact blew up. A failure that reports as a success is worse than no instrumentation at all, because it is
     /// evidence pointing the wrong way.</para>
     ///
     /// <para>The three assertions are the same for all six, because the guarantee comes from the core rather
-    /// than from each site: status Error, <c>ihc.edit.status = "failed"</c>, and the <c>error.type</c> the
+    /// than from each site: status Error, <c>ihc.operation.status = "failed"</c>, and the <c>error.type</c> the
     /// error-type policy resolved — a catalogue code when the exception carried one, an allowlisted CLR type
     /// name when it did not, and <c>_OTHER</c> for everything else.</para>
     /// </summary>
@@ -51,7 +51,7 @@ namespace Ihc.Vis.Tests
             {
                 Assert.That(span.Status, Is.EqualTo(ActivityStatusCode.Error),
                     "a phase that threw is an error, and only the span's status says so to a trace view");
-                Assert.That(span.GetTagItem("ihc.edit.status"), Is.EqualTo("failed"),
+                Assert.That(span.GetTagItem("ihc.operation.status"), Is.EqualTo("failed"),
                     "the outcome a metric breakdown groups on — 'ok' here would count the failure as a success");
                 Assert.That(span.GetTagItem("error.type"), Is.EqualTo(expectedErrorType),
                     "the normalized identity, so a failure can be told apart from every other failure");
@@ -148,9 +148,9 @@ namespace Ihc.Vis.Tests
             Activity run = capture.Span("WholeProjectValidator.Validate");
             Assert.Multiple(() =>
             {
-                Assert.That(run.GetTagItem("ihc.edit.status"), Is.EqualTo("ok"),
+                Assert.That(run.GetTagItem("ihc.operation.status"), Is.EqualTo("ok"),
                     "report-and-continue means the RUN did what it was asked to do");
-                Assert.That(rule.GetTagItem("ihc.edit.status"), Is.EqualTo("failed"),
+                Assert.That(rule.GetTagItem("ihc.operation.status"), Is.EqualTo("failed"),
                     "the rule did not, and the child span is the only place that fact fits");
                 Assert.That(rule.GetTagItem("error.type"), Is.EqualTo("System.InvalidOperationException"));
             });

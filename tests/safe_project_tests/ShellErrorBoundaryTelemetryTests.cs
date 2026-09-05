@@ -37,7 +37,7 @@ public class ShellErrorBoundaryTelemetryTests
             Assert.Multiple(() =>
             {
                 Assert.That(startup.Status, Is.EqualTo(ActivityStatusCode.Unset), "a clean start-up is not an error");
-                Assert.That(startup.GetTagItem("ihc.edit.status"), Is.EqualTo("ok"));
+                Assert.That(startup.GetTagItem("ihc.operation.status"), Is.EqualTo("ok"));
             });
         }
     }
@@ -66,7 +66,7 @@ public class ShellErrorBoundaryTelemetryTests
             Activity failed = probe.Spans(capture).Single(s => s.Status == ActivityStatusCode.Error);
             Assert.Multiple(() =>
             {
-                Assert.That(failed.GetTagItem("ihc.edit.status"), Is.EqualTo("failed"));
+                Assert.That(failed.GetTagItem("ihc.operation.status"), Is.EqualTo("failed"));
                 Assert.That(failed.GetTagItem("error.type"), Is.EqualTo("System.TimeoutException"),
                     "the normalized type, not the English diagnostic the installer never sees");
                 Assert.That(harness.Dialogs.LastProblem, Is.Not.Null,

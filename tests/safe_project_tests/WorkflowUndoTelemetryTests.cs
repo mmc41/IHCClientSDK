@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Ihc;
 using Ihc.Vis.Model;
+using Ihc.Vis.Session;
 using Ihc.Tests.Shared;
 using NUnit.Framework;
 
@@ -31,17 +32,17 @@ public class WorkflowUndoTelemetryTests
             await harness.Session.AddEmptyFunctionBlockAsync(locality);
 
             using TraceProbe probe = TraceProbe.Start();
-            Assert.That(await harness.Session.UndoAsync(), Is.True, "the inserted block is undoable");
-            Assert.That(await harness.Session.RedoAsync(), Is.True);
+            Assert.That(await harness.Session.UndoAsync() is { Status: EditStatus.Committed }, Is.True, "the inserted block is undoable");
+            Assert.That(await harness.Session.RedoAsync() is { Status: EditStatus.Committed }, Is.True);
 
             Activity undo = probe.Span(capture, "ProjectWorkflow.UndoAsync");
             Activity redo = probe.Span(capture, "ProjectWorkflow.RedoAsync");
 
             Assert.Multiple(() =>
             {
-                Assert.That(undo.GetTagItem("ihc.edit.status"), Is.EqualTo("ok"),
+                Assert.That(undo.GetTagItem("ihc.operation.status"), Is.EqualTo("ok"),
                     "the outcome attribute these capture.Spans did not have before");
-                Assert.That(redo.GetTagItem("ihc.edit.status"), Is.EqualTo("ok"));
+                Assert.That(redo.GetTagItem("ihc.operation.status"), Is.EqualTo("ok"));
                 Assert.That(undo.Status, Is.EqualTo(ActivityStatusCode.Unset), "a successful undo is not an error");
             });
         }
@@ -77,7 +78,7 @@ public class WorkflowUndoTelemetryTests
             {
                 Assert.That(undo.Status, Is.EqualTo(ActivityStatusCode.Error),
                     "a failed undo must not read as a successful one");
-                Assert.That(undo.GetTagItem("ihc.edit.status"), Is.EqualTo("failed"));
+                Assert.That(undo.GetTagItem("ihc.operation.status"), Is.EqualTo("failed"));
                 Assert.That(undo.GetTagItem("error.type"), Is.EqualTo("System.TimeoutException"));
             });
         }
@@ -98,14 +99,14 @@ public class WorkflowUndoTelemetryTests
             await vm.InitializeAsync();
 
             using TraceProbe probe = TraceProbe.Start();
-            Assert.That(await harness.Session.UndoAsync(), Is.False);
+            Assert.That(await harness.Session.UndoAsync() is { Status: EditStatus.Committed }, Is.False);
 
             Activity undo = probe.Span(capture, "ProjectWorkflow.UndoAsync");
             Assert.Multiple(() =>
             {
                 Assert.That(undo.Status, Is.EqualTo(ActivityStatusCode.Unset),
                     "nothing to undo is the operation working, not failing");
-                Assert.That(undo.GetTagItem("ihc.edit.status"), Is.EqualTo("ok"));
+                Assert.That(undo.GetTagItem("ihc.operation.status"), Is.EqualTo("ok"));
                 Assert.That(undo.GetTagItem("error.type"), Is.Null);
             });
         }

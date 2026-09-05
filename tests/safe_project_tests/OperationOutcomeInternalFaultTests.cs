@@ -102,7 +102,7 @@ public class OperationOutcomeInternalFaultTests
         using CapturedFaults captured = new();
         List<InternalError> reported = captured.Rows;
         harness.Dialogs.Reset();
-        bool opened = await harness.Session.OpenAsync(rotten);
+        bool opened = (await harness.Session.OpenAsync(rotten)).IsOk;
 
         Assert.Multiple(() =>
         {

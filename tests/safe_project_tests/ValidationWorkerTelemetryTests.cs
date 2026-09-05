@@ -260,17 +260,9 @@ public class ValidationWorkerTelemetryTests
             post: action => action(),
             time: clock);
 
-        ActivityContext editContext;
-        using (Activity edit = source.StartActivity("TheEdit")!)
-        {
-            editContext = edit.Context;
-            worker.Notify(RequestFor(EmptyProject(), generation: 1, version: 1));
-        }
+        (Activity run, ActivityContext editContext) =
+            await DriveOneRunAsync(worker, source, clock, capture, done.Task);
 
-        clock.Advance(System.TimeSpan.FromSeconds(1));
-        await done.Task.WaitAsync(System.TimeSpan.FromSeconds(5));
-
-        Activity run = (await SpansAsync(capture, editContext, 1)).Single();
         Assert.Multiple(() =>
         {
             Assert.That(run.Links.Select(l => l.Context.SpanId), Does.Contain(editContext.SpanId),
@@ -278,5 +270,99 @@ public class ValidationWorkerTelemetryTests
             Assert.That(run.Parent?.SpanId, Is.Not.EqualTo(editContext.SpanId),
                 "but it is a LINK, not a parent - the run serves every coalesced edit, not just this one");
         });
+    }
+
+    /// <summary>
+    /// The same claim under the condition that broke it: an activity that is AMBIENT when the debounce timer
+    /// fires. Live, that ambient activity arrives by a route no test has — the timer is built in the worker's
+    /// constructor and a <see cref="System.Threading.Timer"/> captures the execution context it is created in,
+    /// so once the shell's composition had a span of its own, every run for the life of the application
+    /// inherited it. Measured on a live launch: three runs, one minutes after start-up, all children of a
+    /// start-up span that had closed.
+    /// </summary>
+    /// <remarks>
+    /// The ROUTE is not reproducible here and this fixture does not pretend otherwise:
+    /// <c>FakeTimeProvider</c>'s timer references <c>ExecutionContext</c> nowhere, so it neither captures a
+    /// context at construction nor restores one when it fires — it runs the callback on the advancing thread,
+    /// under that thread's context. What IS reproducible, and what the fix actually implements, is the
+    /// property itself: a run does not adopt whatever activity happens to be ambient when it starts. So the
+    /// ambient one is supplied where the fake puts it, at the <c>Advance</c> — see
+    /// <see cref="DriveOneRunAsync"/>. Constructing the worker inside the span as well is kept because it
+    /// costs nothing and states the live shape; it is not what makes the test bite.
+    /// </remarks>
+    [Test]
+    public async Task ARunStartedWhileAnActivityIsAmbient_IsStillATraceRootRatherThanThatActivitysChild()
+    {
+        using TelemetryCapture capture = TelemetryCapture.Listen(ihc_openvisual.Configuration.Telemetry.ActivitySourceName,
+            spanNames: new[] { "ValidationWorker.Run" });
+        var clock = new FakeTimeProvider();
+        var done = new TaskCompletionSource();
+
+        using var source = new ActivitySource("Ihc.CompositionProbe");
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = s => s.Name == source.Name,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        // Open for the whole test, because a CLOSED span is still adopted as a parent - which is exactly what
+        // the live defect looked like: runs minutes after start-up, under a launch that had long finished.
+        using Activity composition = source.StartActivity("Composition")!;
+        using var worker = new ValidationWorker(
+            validate: _ => NoFindings,
+            onCompleted: _ => done.TrySetResult(),
+            post: action => action(),
+            time: clock);
+
+        (Activity run, ActivityContext editContext) =
+            await DriveOneRunAsync(worker, source, clock, capture, done.Task, ambientWhenTheTimerFires: composition);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(run.Parent, Is.Null, "a debounced run starts a trace of its own");
+            Assert.That(run.TraceId, Is.Not.EqualTo(composition.TraceId),
+                "and not a continuation of the trace that was merely AMBIENT when the timer fired");
+            Assert.That(run.TraceId, Is.Not.EqualTo(editContext.TraceId),
+                "nor of the edit that triggered it - that one is reached by the link");
+        });
+    }
+
+    /// <summary>
+    /// Drives exactly one debounced run to completion and hands back the run's span and the context that
+    /// triggered it: notify from inside <paramref name="source"/>'s own edit activity, which is what gives the
+    /// run something to link back to, then let the quiet period elapse.
+    /// </summary>
+    /// <param name="ambientWhenTheTimerFires">
+    /// The activity to make current across the clock advance, or null for none. It is a PARAMETER rather than
+    /// something the caller sets around this call because the fake clock runs the debounce callback inline, on
+    /// the advancing thread and under its execution context — so this one statement is the whole of the
+    /// worker's "what was ambient when the run started", and a test that wants to control it has nowhere else
+    /// to say so.
+    /// </param>
+    private static async Task<(Activity Run, ActivityContext Edit)> DriveOneRunAsync(
+        ValidationWorker worker, ActivitySource source, FakeTimeProvider clock,
+        TelemetryCapture capture, Task completed, Activity? ambientWhenTheTimerFires = null)
+    {
+        ActivityContext editContext;
+        using (Activity edit = source.StartActivity("TheEdit")!)
+        {
+            editContext = edit.Context;
+            worker.Notify(RequestFor(EmptyProject(), generation: 1, version: 1));
+        }
+
+        Activity? previous = Activity.Current;
+        Activity.Current = ambientWhenTheTimerFires;
+        try
+        {
+            clock.Advance(System.TimeSpan.FromSeconds(1));
+        }
+        finally
+        {
+            Activity.Current = previous;
+        }
+
+        await completed.WaitAsync(System.TimeSpan.FromSeconds(5));
+        return ((await SpansAsync(capture, editContext, 1)).Single(), editContext);
     }
 }

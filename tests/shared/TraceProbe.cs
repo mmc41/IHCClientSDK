@@ -29,8 +29,9 @@ namespace Ihc.Tests;
 /// (the panel's bind, posted from inside the run) sit under that second trace.</item>
 /// </list>
 ///
-/// <para>So a span is this test's when its trace is the probe's trace, or a trace whose span links back to the
-/// probe. That is <see cref="Owns"/>, and it uses the very mechanism under test rather than a clock.</para>
+/// <para>So a span is this test's when its trace is the probe's trace, or a trace whose span links back into
+/// one of the probe's traces. That is <see cref="Owns"/>, and it uses the very mechanism under test rather
+/// than a clock.</para>
 /// </summary>
 internal sealed class TraceProbe : IDisposable
 {
@@ -83,15 +84,33 @@ internal sealed class TraceProbe : IDisposable
     public Activity Span(TelemetryCapture capture, string operationName) =>
         SpansNamed(capture, operationName).Single();
 
-    /// <summary>The traces this test owns: its own, plus every trace opened by a span that links back to it.</summary>
+    /// <summary>
+    /// The traces this test owns: its own, plus every trace opened by a span that links back INTO one of
+    /// them — followed to a fixpoint, so a chain of linked traces is reached rather than only the first hop.
+    /// </summary>
+    /// <remarks>
+    /// The link is matched on its TRACE, not on the probe's own span id, and the difference is not academic:
+    /// the debounced validation run links back to whatever was current when the edit NOTIFIED it, which is a
+    /// span well inside the probe's trace rather than the probe itself. While such a run merely inherited the
+    /// ambient activity as its parent, that trace was the probe's anyway and the narrower rule never had to be
+    /// right; once the run is forced to be a root — which is what its documented link-not-parent design always
+    /// claimed — matching only the probe's span id finds nothing at all.
+    /// </remarks>
     private HashSet<ActivityTraceId> Traces(TelemetryCapture capture)
     {
         HashSet<ActivityTraceId> traces = [_activity.TraceId];
-        foreach (Activity span in capture.Spans)
+        IReadOnlyList<Activity> spans = capture.Spans;
+        for (bool grew = true; grew;)
         {
-            if (span.Links.Any(l => l.Context.SpanId == SpanId))
+            grew = false;
+            foreach (Activity span in spans)
             {
-                traces.Add(span.TraceId);
+                if (!traces.Contains(span.TraceId)
+                    && span.Links.Any(l => traces.Contains(l.Context.TraceId)))
+                {
+                    traces.Add(span.TraceId);
+                    grew = true;
+                }
             }
         }
 

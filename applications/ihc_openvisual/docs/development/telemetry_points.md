@@ -15,6 +15,14 @@ This was an **analysis and proposal**, and §1–§9 are kept as the record of w
 since been **implemented**; §10 records the outcome, including the two places where what was built differs
 from what §2 proposed. Read §10 before treating a symbol in §1 or §2 as current — several moved.
 
+§11 is a later audit of a different question: not where enrichment should go, but whether what was built
+actually nests — whether a workflow reads as ONE tree whose root times it. It measures the running
+application rather than the source, and it supersedes both earlier sections where they disagree.
+
+§12 reviews §11 against the OpenTelemetry research corpus and re-measures it: an attribute name that collided,
+two tests that could not fail, a restore that was never needed, and the `bool` return type that was the real
+reason a handled failure never reached the gesture that caused it. It is current over all of the above.
+
 ---
 
 ## How to review this document
@@ -688,7 +696,7 @@ a semantic convention.]**
 | `ihc.command.id` | string | command span + metric | the `CommandSpec.Id` set — closed. Registered rows only (§2 (5)) |
 | ~~`ihc.command.surface`~~ | — | **blocked** | the registry's `Execute` cannot see the surface, and `Surface` has no keyboard member. Needs an execution-context change first — see §2 (5) |
 | `ihc.edit.command` | string | edit span + metric | command class names — closed |
-| `ihc.edit.status` | string | edit span + metric | `EditStatus` — closed (4) |
+| `ihc.operation.status` | string | **every** operation's span + metric | `ok` / `refused` / `cancelled` / `failed` — closed. Spelled `ihc.edit.status` before §11.3's rename, and three-valued before §11.7 added `cancelled` |
 | `ihc.edit.added_count` | int | edit span only | unbounded |
 | `ihc.edit.removed_count` | int | edit span only | unbounded |
 | `ihc.edit.changed_count` | int | edit span only | unbounded |
@@ -715,10 +723,10 @@ indistinguishable from a bulk insert of the same size.
 |---|---|---|---|---|---|
 | `ihc.project.load.duration` | Histogram | s | `ihc.project.source`, `error.type` | explicit (s) | sources × normalized error types (§5.4) |
 | `ihc.project.save.duration` | Histogram | s | `ihc.project.source`, `error.type` | explicit (s) | same, small |
-| `ihc.edit.apply` | Counter | `{edit}` | `ihc.edit.command`, `ihc.edit.status` | — | commands × 4 |
-| `ihc.edit.apply.duration` | Histogram | s | `ihc.edit.status` | explicit (s) | 4 |
+| `ihc.edit.apply` | Counter | `{edit}` | `ihc.edit.command`, `ihc.operation.status` | — | commands × 4 |
+| `ihc.edit.apply.duration` | Histogram | s | `ihc.operation.status` | explicit (s) | 4 |
 | `ihc.validation.run.duration` | Histogram | s | `ihc.validation.outcome` | explicit (s) | 4 |
-| `ihc.command.invocation` | Counter | `{invocation}` | `ihc.command.id` | — | registered rows. **No error dimension** — the registry cannot observe a failure (§2 (5)) |
+| `ihc.command.invocation` | Counter | `{invocation}` | `ihc.command.id`, `ihc.operation.status`, `error.type` | — | registered rows × statuses. The error dimension arrived with §11.7: the funnel awaits the row AND reads its answer, so a handled failure reaches the count. Still **no surface dimension** — that one the registry structurally cannot see (§2 (5)) |
 | `ihc.ui.tree_update.duration` | Histogram | s | `ihc.tree.update` | explicit (s) | 2 |
 | `ihc.ui.context_rebuild.duration` | Histogram | s | — | explicit (s) | 1 |
 | `ihc.problem.raised` | Counter | `{problem}` | `ihc.problem.code`, `ihc.problem.family` | — | catalogue size |
@@ -1103,3 +1111,314 @@ Verified end to end: a point on `ihc.edit.apply` carries
 A regression here is silent — no test fails, no error is logged, the metric simply loses its link to the
 trace — so `TelemetryCompositionTests.TheMeterProvider_AttachesExemplarsSoAMetricPointCanBeTracedBack` reads
 the filter back off the built provider and fails if the call is removed.
+
+---
+
+## 11. The nesting audit — is a workflow one tree, and does that tree time it?
+
+§10 records what was BUILT. This section records an audit of what the built instrumentation actually
+produces at run time, the gaps it found, and what closed them. The question it answers is narrower than
+§1–§9's "where should enrichment go": **can a major workflow — load, save, edit, insert, validate — be read
+in OpenObserve as ONE tree whose root times the whole operation and whose children explain it?**
+
+Read §10 first where a symbol disagrees with §1–§9. Where this section disagrees with §10, this one is
+current.
+
+### 11.1 Method, so the audit can be re-run rather than believed
+
+Every claim below is either a symbol in this repository or a measurement taken from the live OpenObserve
+backend named in `ihcsettings.json`. Nothing is inferred from the source alone: the whole point of the audit
+is that a span's PARENT is decided at run time by an ambient `Activity`, which no amount of reading a call
+site can settle.
+
+The two queries the audit is built on, both against the traces stream (`ihc`):
+
+```sql
+-- (A) Which operations start a trace of their own, and how often. A root that is not a named
+--     operation — a gesture, a launch, a deliberately linked background run — is a fragment.
+SELECT operation_name, count(*) AS n FROM "ihc"
+WHERE reference_parent_span_id IS NULL AND service_name = 'IhcOpenVisual'
+GROUP BY operation_name ORDER BY n DESC;
+
+-- (B) One launch, whole. service_service_instance_id is the traces spelling of the run id
+--     (logs and metrics spell it service_instance_id); one value = one launch of the app.
+SELECT operation_name, span_id, reference_parent_span_id, trace_id, duration, start_time, links
+FROM "ihc" WHERE service_service_instance_id = '<RUN>' ORDER BY start_time;
+```
+
+Query (A) over the whole history mixes builds, and an operation that is a root in an old build only because
+the span above it did not exist yet is not evidence about today. **Scope to one run** — pick the newest
+`service_service_instance_id` — before drawing any conclusion. The audit's first pass did not, and read four
+historical roots as live defects; they were older builds.
+
+Both queries are wrapped by the skill now, and the audit is why: `oo_query.py --run` runs (B) and draws the
+result as trees, `--trace <id>` does one trace, and `:run` inside a `--sql` string expands to the newest
+launch's instance predicate — `--latest-run` alone does NOT reach `--sql`, which is what made the run id
+have to be spelled out by hand here. The raw SQL is kept above because it is what the flags do, and because
+a question the flags do not answer starts from it. The skill's reference
+(`references/openobserve-api.md`) carries the field schemas.
+
+### 11.2 What the audit found — measured, before any change
+
+Baseline: the four newest launches at the time of the audit, and one live save and one live edit pulled from
+the same backend.
+
+| # | Finding | The measurement |
+|---|---|---|
+| 1 | **The gesture root timed nothing.** `CommandRegistry.Invoke` disposed its scope on RETURNING the row's task, so it closed at the row's first await. | Root `CommandRegistry.Invoke` **10.1 ms** over a child `MainWindowViewModel.SaveAsAsync` of **20 226 ms**. |
+| 2 | **Composition-time work was orphaned.** The shell's constructor builds the catalog menus, both trees and the gate sweep outside any span. | Per launch: `GetAvailableFunctionBlocks` a root **4 times of 4**, `CatalogImportWorkflow.LoadPersisted` **4 of 4**, `TreeUpdate` **4 of 8**, `OnContextChanged` **6 of 12**. A launch left about four single-span traces. |
+| 3 | **Modal think-time was billed to the operation.** | `ProjectWorkflow.SaveToAsync` **13 657 ms** over a `ProjectAppService.Save` of **24 ms**; the difference was an undismissed failure dialog, and `ihc.project.save.duration` recorded it. A picker turned a save-as into **20 s**. |
+| 4 | **Phases missing inside the top-tier I/O.** | Under a 24 ms `Save`, the two child spans accounted for **11 ms**; the atomic write was unnamed. Under a 9.6 ms `Apply`, index + diff accounted for **4 ms**; the mutation was unnamed. `BuiltInCatalog` materialization was a metric with no span. |
+| 5 | **`ihc.edit.status` was the status attribute of EVERY span**, not only edits. | The attribute appears on `ValidationWorker.Run`, `Load`, `Save`, `GenerateReport` — a reader filtering failed loads had to ask an attribute named for editing. |
+
+Two things the audit examined and did NOT change:
+
+- **Errors do not roll up.** A handled failure marks its own span and leaves its ancestors `UNSET` — measured
+  on the save above, where only `SaveToAsync` was `ERROR`. This is kept: a lifecycle method answers `false`
+  both when it failed and when the installer cancelled a picker, so marking the ancestor Error would report
+  cancelling as breakage. Finding the gesture behind a red span is a QUERY, and finding 1's fix is what makes
+  it work — the trace root now spans the whole gesture and carries `ihc.command.id`.
+- **The debounced validation run links rather than parents.** One run serves every edit that coalesced into
+  it. Confirmed still true, and confirmed to survive ingestion: the run's `links` column holds the triggering
+  trace id, so the join is available in SQL even though the tree does not show it.
+
+### 11.3 What changed
+
+| Gap | Change | Where |
+|---|---|---|
+| 1 | The invocation funnel AWAITS the row's task, so the span covers the gesture and observes its faults. The count now records on completion rather than on invocation — stated at the site, because a gesture whose process dies mid-modal is no longer counted. | `CommandRegistry.Register` |
+| 2 | A `Compose` span over the constructor's work; an `App.Startup` span over composition AND the start-up load. | `MainWindowViewModel` ctor, `App.OnFrameworkInitializationCompleted` |
+| 3 | A span per modal, named by `[CallerMemberName]` on the dialog service's funnels. | `AvaloniaDialogService` |
+| 4 | `WriteAtomically`, `Produce` (the edit kernel) and `BuiltInCatalog.Materialize` each report a span; the catalog's hand-rolled `Stopwatch` is replaced by the core, which records the same histogram. | `ProjectAppService`, `ProjectDocumentSession`, `BuiltInCatalog` |
+| 5 | `ihc.edit.status` → **`ihc.operation.status`**. | `SdkTelemetryRegistry.Attributes.OperationStatus` |
+
+Two consequences of gap 5 that the rename itself did not settle, both closed in §11.7: the new name COLLIDED with the
+SOAP layer's `ihc.operation`, and `BuiltInCatalog.Materialize`'s histogram silently gained the status dimension when
+its hand-rolled `Stopwatch` was replaced by the core. That second one is a series change of the same kind as the
+rename, and belongs in the same announcement: `ihc.catalog.materialization.duration` had no dimensions at all before.
+
+Gap 3 is closed for TRACES and deliberately left open for METRICS. The child span makes the modal's time
+subtractable in a tree; `ihc.project.save.duration` still records the whole wait, because the alternative is a
+suspend/resume pair on `OperationScope` — considered and declined in that type's own remarks, since it would put a
+host's presentation concern into the SDK's measurement contract. Read a save percentile knowing that.
+
+**The rename is a break, and D8 said it must be an announced one.** Queries and dashboards written against
+`ihc_edit_status` match nothing after the cutover — they do not fall back — and every metric series carrying
+the dimension splits there. The old spelling stays readable in rows exported by older builds, which is why
+the skill's SQL cookbook notes both. It is a separable edit: one declaration, its uses in the telemetry test
+fixtures, and the cookbook.
+
+Two changes were made only because the LIVE run showed them, and neither could have been found by reading
+the code or by any headless test:
+
+- **A worker built inside a span inherits it forever.** `ValidationWorker`'s debounce timer is created in its
+  constructor, and a timer captures the execution context it is created in. Once composition had a span,
+  every validation run for the life of the process became that span's child — three runs, one of them
+  minutes after start-up, all parented to a launch span that had closed. The run now clears
+  `Activity.Current` before opening its span, which makes the link-not-parent design explicit instead of
+  accidental. Pinned by `ValidationWorkerTelemetryTests.ARunStartedWhileAnActivityIsAmbient_…` (§12.2 explains
+  why the test is shaped around what is ambient rather than around how the worker was built).
+- **Starting a span in the composition root leaves it ambient on the message loop.** `StartActivity` makes
+  the new activity current, and `OnFrameworkInitializationCompleted` runs straight off the message loop, so
+  what it leaves current is what the loop keeps. The quit prompt arrived as a 3.1 s child of a 1.5 s launch.
+  The launch is now restored to the previous ambient value once composition returns, while the scope itself
+  stays open until the start-up document has loaded.
+
+The second is the general hazard worth remembering: **an ambient span is not scoped by the method that
+started it.** A `using` restores it on the way out; a scope held across an await or across a callback
+boundary does not.
+
+### 11.4 The measured result
+
+One launch, driven through `aui-openvisual`: open a project through the file picker, insert a locality, quit
+and discard. Before, the same shape of session produced roughly 20 spans across about 8 traces with 6
+fragments among the roots. After:
+
+```
+55 spans · 7 traces · 7 roots · 0 fragments
+roots: App.Startup ×1 · CommandRegistry.Invoke ×2 · ValidationWorker.Run ×3 (linked) · CanCloseAsync ×1
+```
+
+```
+App.Startup                                    1477.7ms
+  CatalogImportWorkflow.LoadPersisted              1.9ms
+  MainWindowViewModel.Compose                    599.7ms
+    ProjectAppService.GetAvailableProducts       561.0ms
+      BuiltInCatalog.Materialize                 551.1ms
+    ProjectAppService.GetAvailableFunctionBlocks   0.2ms
+    MainWindowViewModel.TreeUpdate                 5.0ms
+    CommandRegistry.OnContextChanged               5.1ms
+  MainWindowViewModel.InitializeAsync             34.3ms
+    ProjectWorkflow.StartAsync                    33.8ms
+      ProjectAppService.CreateNew                  6.3ms
+      ProjectAppService.OpenDocument               6.1ms
+        ProjectIndex.Build                         4.8ms
+      ValidationMonitor.OnDocumentChanged          4.3ms
+      MainWindowViewModel.TreeUpdate              14.8ms
+
+CommandRegistry.Invoke                          5157.9ms
+  MainWindowViewModel.OpenAsync                 5157.4ms
+    AvaloniaDialogService.PickOpenProjectAsync  5071.4ms   <- the installer, not the app
+    ProjectWorkflow.OpenAsync                     82.5ms
+      ProjectAppService.Load                      14.7ms
+        ProjectReader.Read                        12.6ms
+      ProjectAppService.NormalizeOnOpen           26.9ms
+        ProjectChangeSet.Diff                     16.2ms
+      MainWindowViewModel.TreeUpdate              30.1ms
+
+CommandRegistry.Invoke                            29.7ms
+  MainWindowViewModel.InsertLocality              29.6ms
+    ProjectDocumentSession.Apply                   7.8ms
+      ProjectDocumentSession.Produce               1.9ms
+      ProjectChangeSet.Diff                        4.0ms
+
+ValidationWorker.Run  (a root, linking back)     153.7ms
+  ProjectAppService.ValidateStructured           152.4ms
+    WholeProjectValidator.Validate                76.6ms
+  ProblemsPanelViewModel.Bind                      0.4ms
+```
+
+Three readings that were not available before, and are the audit's actual payoff: **551 of a 1478 ms launch
+is materializing the component catalog**; **5071 of a 5158 ms open is the file picker**, leaving 83 ms of
+work; and an insert's mutation is 1.9 ms of its 7.8 ms apply.
+
+### 11.5 What is still true, and deliberately so
+
+- **`ProblemsPanelViewModel.Bind` can outlast the run that parents it** (12.2 ms under a 4.6 ms run). The
+  bind is posted to the UI thread and the run must not wait for it — ADR-001. The parentage is causally true
+  and the two durations measure different things. Unlike finding 1, this parent could NOT have awaited.
+- **`BuiltInCatalog.Materialize` is not pinned by a test.** The guarding `Lazy` is process-wide, so whether
+  the span fires during any given test depends on which test ran first; a conditional assertion pins nothing.
+  It is verified live, in 11.4, and `Tier3TelemetryTests` records why the unit test is absent.
+- **The controller bridge is unexercised from OpenVisual.** `SendProject`/`RetrieveProject` refuse without a
+  controller (E10), so no host trace reaches `DownloadFrom`/`UploadTo`. Those app-service operations and the
+  SOAP + HTTP spans beneath them are instrumented and will nest when the transfer is wired; nothing here
+  measures that.
+- **`App.Startup` is lost if composition throws.** The scope closes in the `Opened` handler, which such a
+  launch never reaches. That launch ends in `Main`'s catch and process exit.
+
+### 11.6 Re-running the audit
+
+```bash
+# 1. The suites that gate the nesting claims (all controller-free)
+dotnet test tests/safe_project_tests/safe_project_tests.csproj      # phases, apply, startup, invocation, worker
+dotnet test tests/safe_visual_tests/safe_visual_tests.csproj        # the dialog spans
+dotnet test tests/safe_unit_tests/safe_unit_tests.csproj            # the instrumentation core
+
+# 2. A live launch, driven rather than clicked
+pwsh .claude/skills/aui-openvisual/scripts/aui.ps1 doctor --launch
+pwsh .claude/skills/aui-openvisual/scripts/aui.ps1 project open --path tests/testdata/projects/Project1-SimpelWired.vis
+pwsh .claude/skills/aui-openvisual/scripts/aui.ps1 locality insert
+#    close the window, then answer the save prompt with "Gem ikke" — the fixture is a byte-pinned oracle
+
+# 3. Read the trees back. --run draws every trace of the newest launch, reports
+#    "N spans, N traces, N roots", and names any child that outlasts its parent.
+python .claude/skills/openobserve/scripts/oo_query.py --run --since 1h --size 500
+
+#    Then check three properties it does NOT decide for you: every root is a named
+#    operation; the only child outlasting its parent is the posted panel bind; every
+#    AvaloniaDialogService span sits under the operation that raised it.
+#    --trace <id> drills into one; query (B) of 11.1 is the same rows unassembled.
+```
+
+The tests pin the shape; only the live run pins the PARENTAGE, because parentage is decided by an ambient
+`Activity` that a headless harness does not have. Both of the run-time defects in 11.3 passed every suite.
+
+---
+
+## 12. The review pass — what §11 got wrong, and the outcome roll-up
+
+§11 was audited against the OpenTelemetry research corpus and re-measured. Six things it left behind are recorded
+here; where this section disagrees with §11, this one is current.
+
+### 12.1 A name cannot be a value and a namespace at once
+
+Renaming `ihc.edit.status` to `ihc.operation.status` put it directly on top of `ihc.operation`, the SOAP layer's
+action name — and `SoapPostTelemetryTests` pins BOTH on one metric point. A backend that expands dotted keys into
+nested structures then has to store one key as a string and as an object; OpenObserve hides it only because it
+flattens the dots to underscores, which is exactly why this had to become a build-time rule rather than something a
+query eventually reveals. The conventions solve it by moving the leaf down — `db.operation` became
+`db.operation.name` — and so does this: **`ihc.operation` → `ihc.operation.name`**, a second announced break
+deliberately spent in the same cutover as the first.
+
+`TelemetryRegistryContract.AssertNameIsNotAlsoANamespace` now fails any registry that reintroduces the shape. Its
+existing checks — lowercase, `ihc.` prefix, singular segments, uniqueness — could not: `Is.Unique` sees only exact
+duplicates.
+
+### 12.2 Two tests that could not fail
+
+- **`ValidationWorker`'s trace-root test.** It passed with the fix removed — verified by removing it. Two reasons,
+  and each alone was enough: `FakeTimeProvider`'s timer references `ExecutionContext` NOWHERE, so it reproduces
+  none of the "a timer captures its creation context" mechanism the docstring described; and by the time the test
+  advanced the clock, both of its activity scopes had closed, so `Activity.Current` was already null. The property
+  the fix actually implements — a run does not adopt whatever is ambient when it starts — is now supplied where the
+  fake puts it, at the `Advance`, and the test fails without the fix.
+- **`StartupTraceTelemetryTests`' gate-sweep assertion.** `Is.Not.Null` on a parent, under a `TraceProbe` that
+  makes every owned span have one. Its own sibling test's docstring argues against exactly this. Now `Is.SameAs`.
+
+### 12.3 One of the two ambient restores was dead code
+
+Measured with a probe over the three shapes: an ExecutionContext change made before the first `await` escapes to
+the caller from a PLAIN method, and does not from an `async void` lambda or an `async Task` method — the async
+kickoff restores it. So `OnFrameworkInitializationCompleted`'s restore is load-bearing and the `Opened` handler's
+try/finally was not, though its comment claimed the opposite and cited a measurement belonging to the other site.
+The handler now assigns and says why nothing has to undo it. `ValidationWorker.RunAsync`'s "the timer callback's
+context is discarded" note is likewise weaker than the truth: the guarantee is the method's own `async` shape.
+
+### 12.4 Smaller things
+
+`CommandRegistry`'s pre-execute hook ran outside the try, so a throw from it recorded the gesture as a success.
+`ShowProblemAsync` routed through the message door and produced a span named `ShowMessageAsync` — indistinguishable
+from an informational box, for precisely the case §11.2's finding 3 measured; it now opens its own span, named for
+the coded door and carrying `ihc.problem.code`. And the new worker test copied thirteen lines of its neighbour,
+which is now one `DriveOneRunAsync`.
+
+### 12.5 The roll-up: `bool` was the reason failures stopped at the layer that handled them
+
+§11.2 kept "errors do not roll up", reasoning that a lifecycle door answers `false` both for a failure and for a
+cancelled picker, so marking the ancestor Error would report cancelling as breakage. That reasoning is correct
+GIVEN a bool — and the bool was the thing to change.
+
+Four meanings were riding on one `false`, and the sharpest case was not a picker at all:
+`ConfirmSaveIfDirtyAsync` answered `false` when the installer pressed *Fortryd* **and** when the save they asked
+for broke. A quit stopped by a failed save and a quit the installer abandoned were one event.
+
+Why a trace query does not repair this: `error.type` belongs on the operation's duration metric as well as its
+span, and a metric point can be joined to its own span and to nothing beneath it. A failure that stops at a child
+span is invisible to every rate built on `ihc.command.invocation`, `ihc.project.load.duration` and
+`ihc.project.save.duration` — no query fixes that, only the roll-up.
+
+What changed:
+
+| Layer | Before | After |
+|---|---|---|
+| `OperationStatus` | `Ok`/`Refused`/`Failed` | plus **`Cancelled`** — a person changing their mind is neither a rule declining nor a break. Span status stays Unset, like a refusal |
+| `ProjectWorkflow` lifecycle doors | `Task<bool>` | `Task<OperationOutcome>` — the vocabulary the core already speaks, rather than a second one to keep in step |
+| The three history doors | `Task<bool>` | `Task<EditOutcome?>` — `OperationOutcome` cannot separate "committed" from "nothing to undo", because both are the operation working, and both callers need that difference |
+| `MainWindowViewModel.RunAsync` | `Task` | `Task<OperationOutcome>`, read off the scope. Every body's shape is unchanged; a body with nothing to declare still says nothing |
+| `CommandSpec.Execute` | `Func<ShellContext, Task>` | `Func<ShellContext, Task<OperationOutcome>>`, so the funnel can put the answer on the gesture's ROOT — the span every query starts from |
+
+`OperationScope.Outcome` is readable so a boundary hands back what it recorded rather than deriving it twice; the
+`Announce` helper puts a door's answer on the span and the status line together, so no site can do half of it.
+
+### 12.6 What this section did NOT change
+
+- **A refusal is still not an error, and neither is a cancellation.** Only `Failed` sets a span Error.
+- **`ihc.command.surface` is still blocked** — the funnel structurally cannot see which surface invoked it.
+- **The modal think-time still lands in the duration histograms** (§11.3's note on gap 3).
+- **`ImportCatalogFileAsync` still answers a bool.** It delegates to a collaborator with no scope of its own, so
+  there is no outcome to forward; converting it would have invented one.
+
+### 12.7 What stayed uncovered, and why
+
+Read over the changed files only, per the coverage rule in `CLAUDE.md`. Every new branch that is observable
+product behaviour is covered — the four outcome values on a gesture's root and its count, the quit gate's two
+"no"s, a dismissed picker and a stopped prompt, the pre-execute hook's throw, the coded dialog's span. What is
+left, and the reason each is left:
+
+| Uncovered | Why |
+|---|---|
+| `ProjectWorkflow`'s `NothingOpen` guards (`SaveAsync`, `SaveAsAsync`, `SaveFunctionBlockAsync`) | Precondition guards the command gates make unreachable, and uncovered before this change too — they only changed what they RETURN. The `Testing` rule declines null-guard tests unless the risk area is asked for. |
+| `AvaloniaDialogService.ConfirmSaveChangesAsync`'s body | Needs an owner window and a dismissal; the headless suite covers the same funnel through `ConfirmAsync`, and the workflow suite drives the fake dialog rather than this one. |
+| `OperationOutcome`'s `Equals`/`GetHashCode`/operators | Structural equality nobody calls; unchanged by this pass. |
+| `App.axaml.cs`'s launch span | The composition root, which no controller-free suite can reach — §11.5 already says so, and the ExecutionContext behaviour it turns on is pinned by the probe in §12.3 rather than by a test. |

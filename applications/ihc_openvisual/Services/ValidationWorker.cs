@@ -256,6 +256,19 @@ public sealed class ValidationWorker : IDisposable
     {
         System.Collections.Generic.IEnumerable<System.Diagnostics.ActivityLink>? links =
             link == default ? null : new[] { new System.Diagnostics.ActivityLink(link) };
+        // A TRACE ROOT, forced. The link below is the causal statement this run is entitled to make; being
+        // some ambient activity's CHILD is one it is not, and until the shell opened a span around its own
+        // composition nothing made that distinction do any work — there simply was no ambient activity to
+        // inherit. Now there is, and a timer captures the context it was CREATED in: the debounce timer is
+        // built in this worker's constructor, so every run for the life of the application inherited whatever
+        // was current at composition. Measured on a live launch: three runs, one of them minutes after
+        // start-up, all parented to a start-up span that had closed long before.
+        //
+        // Cleared without restoring, and the guarantee is this method's OWN shape rather than its caller's: an
+        // async method's kickoff restores the execution context after the synchronous prefix, so an ambient
+        // change made here cannot escape into whoever called it. That holds for the pool thread the real timer
+        // uses AND for a test's fake clock, which fires the callback inline on the advancing thread.
+        System.Diagnostics.Activity.Current = null;
         using Ihc.OperationScope scope = _telemetry.Start(
             "Run", System.Diagnostics.ActivityKind.Internal,
             RunMetrics, links);

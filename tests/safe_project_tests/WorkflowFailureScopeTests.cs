@@ -44,7 +44,12 @@ public class WorkflowFailureScopeTests
         Activity? span = probe.SpansNamed(capture, "CatalogImportWorkflow.ImportFolderAsync").LastOrDefault();
         Assert.Multiple(() =>
         {
-            Assert.That(outcome, Is.EqualTo(CatalogImportOutcome.NotFound), "non-vacuity: the branch ran");
+            Assert.That(outcome.FolderMissing, Is.True, "non-vacuity: the branch ran");
+            Assert.That(outcome.Imported, Is.Zero);
+            // The scope's answer, FORWARDED on the value rather than left for the span alone: the gesture that
+            // asked for the import has no other way to learn that the folder was not there.
+            Assert.That(outcome.Outcome.IsOk, Is.False,
+                "the import reports what it recorded, so the invoking gesture cannot read it as a success");
             AssertRefusedScope(harness, span, "app.openvisual.catalog-folder-missing");
         });
     }

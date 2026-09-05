@@ -23,10 +23,29 @@ public partial class App : Application
         Resources["MonoFontFamily"] = new Avalonia.Media.FontFamily(Program.MonoFontFamily);
     }
 
+    /// <summary>
+    /// The composition root's entry point into the instrumentation core. A span from here is named
+    /// <c>App.&lt;operation&gt;</c>, and this layer opens exactly one of them: the launch.
+    /// </summary>
+    private static readonly Ihc.OperationTelemetry Telemetry =
+        new(AppTelemetryRegistry.Surface, nameof(App));
+
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // THE LAUNCH, as one operation. Everything below — building the SDK service, the workflow (which
+            // loads the persisted catalog imports), the shell (which builds the catalog menus and both trees)
+            // — and then the start-up document load in the Opened handler at the end are one thing a person
+            // waits for. Each used to open a trace of its own, so "why was the window slow to appear" had no
+            // operation to open, only fragments.
+            //
+            // Held in a local rather than a `using`: the last phase runs in the Opened handler below, which is
+            // where this is disposed. The cost of that shape, stated: a launch that throws before reaching the
+            // handler never disposes the scope and exports no span — which is what happens today anyway, and
+            // Main's catch is what reports such a failure.
+            System.Diagnostics.Activity? ambient = System.Diagnostics.Activity.Current;
+            Ihc.OperationScope startup = Telemetry.Start("Startup");
             // Composition root: one shared logging/telemetry pipeline, one ProjectAppService and one
             // ProjectWorkflow for the whole window (US-063). The app is file-only: no controller is passed, so
             // the SDK service runs against its embedded catalog with no network/install needed.
@@ -98,7 +117,50 @@ public partial class App : Application
             // Open the start-up document — the file named on the command line ("Open with…" / a double-clicked
             // .vis), or the standard empty project — once the window is shown, so an open-failure dialog has a
             // visible owner.
-            window.Opened += async (_, _) => await viewModel.InitializeAsync(Program.StartupProjectPath);
+            window.Opened += async (_, _) =>
+            {
+                // The launch span is made ambient again before the load starts, because this handler runs off the
+                // window message loop under whatever execution context the dispatcher restores rather than the
+                // one the scope was opened in; without it the load would open a trace of its own and the launch
+                // would split in two exactly where the wait is longest. InitializeAsync opens its span in its
+                // synchronous prefix, so it is already parented by the time the task comes back.
+                //
+                // NOT restored afterwards, and that is safe for a reason belonging to this lambda rather than to
+                // discipline: it is `async`, and an async method's kickoff restores the execution context once
+                // the synchronous prefix yields — so nothing assigned here reaches the message loop that raised
+                // the event. The composition root below needs its own restore precisely because it is NOT async.
+                if (startup.Activity is { } launch)
+                {
+                    System.Diagnostics.Activity.Current = launch;
+                }
+                Task load = viewModel.InitializeAsync(Program.StartupProjectPath);
+
+                // The launch ENDS when there is a document to look at. Awaited here rather than fired at a
+                // supervisor, so this stays the async void hook whose fault reaches the view-model's own error
+                // boundary — the containment shape G1 anchors on. Disposal is idempotent, so a window shown
+                // twice records the first launch and nothing further.
+                try
+                {
+                    await load;
+                }
+                finally
+                {
+                    startup.Dispose();
+                }
+            };
+
+            // The launch stops being AMBIENT here, though it stays OPEN until the handler above closes it.
+            // Starting a span makes it current, and this method is a PLAIN method running straight off the
+            // message loop — no async kickoff to restore the context on the way out, so what it leaves current
+            // is what the message loop keeps, for the life of the process. Measured before this line existed:
+            // the quit prompt arrived minutes later as a 3.1 s child of a 1.5 s launch that had closed long
+            // before, and any window-lifecycle callback would have done the same. The `async` handler above
+            // needs no such line, which is the whole of the difference between the two.
+            //
+            // Placed here rather than in a finally around the whole composition, deliberately: the only way past
+            // it is an exception during composition, and that path does not reach a usable application at all —
+            // Main's catch logs it and the process exits, so there is no later work left to mis-parent.
+            System.Diagnostics.Activity.Current = ambient;
         }
 
         base.OnFrameworkInitializationCompleted();
