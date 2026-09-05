@@ -91,15 +91,15 @@ a correct project, so they ask for no repair and no judgement.
 
 | Code | Fatal error | Error | Warning | Information | Total |
 | --- | --- | --- | --- | --- | --- |
-| **INT** | 19 | 16 | 9 | 0 | 44 |
+| **INT** | 19 | 16 | 10 | 0 | 45 |
 | **WIR** | 0 | 1 | 6 | 1 | 8 |
 | **LOG** | 0 | 13 | 24 | 6 | 43 |
-| **SCN** | 0 | 2 | 8 | 0 | 10 |
+| **SCN** | 0 | 3 | 8 | 0 | 11 |
 | **ADR** | 0 | 5 | 11 | 4 | 20 |
-| **DEV** | 0 | 1 | 10 | 4 | 15 |
+| **DEV** | 0 | 2 | 10 | 4 | 16 |
 | **DOC** | 0 | 0 | 18 | 0 | 18 |
 | **PRJ** | 0 | 10 | 6 | 5 | 21 |
-| **Total** | **19** | **48** | **92** | **20** | **179** |
+| **Total** | **19** | **50** | **93** | **20** | **182** |
 <!-- END GENERATED -->
 
 ## 2. Severity
@@ -210,6 +210,7 @@ better copy of the file, a re-export, or a repair.
 | `dataline-address-duplicate` ⊘ | ADR | Error | — | Two terminals of the same direction claim the same data-line address | Both react to the same command and neither can be addressed alone. **Reclassified from §5:** IHC Visual offers an already-claimed address as `N (i brug)` but disables OK, so no legal edit produces this. **Oracle:** `tests/testdata/projects/Synthetic/DuplicatedAdressErrors.vis` — necessarily synthetic, since the state cannot be authored; it carries two inputs on 1.01, two on 1.02 and two outputs on 1.01 |
 | `addr-s0-ticks-missing` ⊘ | ADR | Warning | — | An S0 meter device has no pulses-per-unit value | Energy readings cannot be scaled. **Reclassified from §5:** the field is validated on commit — *"Antallet af pulser skal være mellem 1 og 10000"* — so a blank value cannot be authored |
 | `dev-dimmer-fade-zero` ⊘ | DEV | Warning | — | An RS485 LED-dimmer channel's fade-up and fade-down rates are both zero | The dimmer switches hard instead of fading. **Reclassified from §5:** the field clamps to a 200 ms minimum, so zero cannot be authored on this family |
+| `dev-setting-unreadable` ⊘ | DEV | Error | — | A numeric device setting — a dimmer's fade rates, minimum or maximum, or a shutter's travel times — stores text that is not a whole number | No layer can say what the device will do with it: the numeric rows above cannot judge a value they cannot read, and nothing downstream can either. **Refused, not authored:** every one of these fields is a spinner in IHC Visual, so non-numeric text arrives by hand-edit or a third-party writer. **An Error where its numeric neighbours are Warnings:** those report a value the tool can read and judges unwise, this one a value no layer can read at all, and that consequence holds whatever the author intended. **A BLANK value is reported too**, deliberately: `dev-setting-default` reads the same attribute by PRESENCE and already counts `value=""` as commissioned, so an empty one is the single state on which two rows would otherwise disagree — which is what this row exists to end. **An ABSENT value is excluded**: that is an uncommissioned setting, and `dev-setting-default` owns it |
 | `dev-write-to-read-only` ⊘ | DEV | Error | — | A program assigns a variable declared read-only | The assignment is refused or ignored at runtime. **Reclassified from §5:** no variable dialog carries an accessibility control, so a block variable cannot be marked read-only; and programs are block-local, so none can reference a product's read-only resource |
 | `enum-def-duplicate-name` ⊘ | LOG | Warning | — | Two values of one enum share a name | The two states are indistinguishable to a reader. **Reclassified from §5:** the editor answers *"Vælg et andet navn"* and refuses the commit |
 | `enum-def-duplicate-index` ⊘ | LOG | Error | — | Two values of one enum share an index | The stored value is ambiguous. **Reclassified from §5:** the enum editor has no reorder and no index field; values append and their indices follow insertion order |
@@ -217,6 +218,7 @@ better copy of the file, a re-export, or a repair.
 | `scene-member-unwired` ⊘ | SCN | Warning | — | A scene member row references no output | That row has no effect. **Reclassified from §5:** neither member dialog carries an output selector, and a member exists only as one half of a reciprocal pair — see the §6 note |
 | `struct-icon-default` ⊘ | PRJ | Warning | — | An element is left with the default icon in a project where icons are otherwise chosen | Inconsistent reading of the tree and the reports. **Reclassified from §5:** not one element-properties dialog in the application carries an icon picker, so there is no "otherwise chosen" to deviate from |
 | `scene-dimming-out-of-range` ⊘ | SCN | Warning | — | A scene member's light level is outside 0–100 % | No dimmer can act on it, and the vendor tool **silently zeroes it** the first time the member's dialog is committed — the value the author wrote quietly becomes 0. **Reclassified from §5:** the *Lysniveau* spinner cannot express an out-of-range value (it stops at 100 and does not wrap), while the file layer carries and renders one, so the state arrives by hand-edit or a defective writer. **A Warning, not an Error:** the demonstrated harm depends on which tool touches the row next, and controller behaviour is untested — an Error's consequence must hold whatever the author intended. The floor is declared `Authored` and carries a TODO: no source probed the lower bound |
+| `scene-dimming-unreadable` ⊘ | SCN | Error | — | A scene member's stored light level is not a number at all | No layer — this tool, the vendor's, or the controller — can determine what the scene does to that output. **Refused, not authored:** the *Lysniveau* spinner can no more produce non-numeric text than it can produce an out-of-range number, so the state arrives by hand-edit or a defective writer, exactly as for the row above. **An Error where that sibling is a Warning:** an out-of-range level states an intention the tool can read and disagree with, an unreadable one states no intention to read. **An ABSENT or empty value is excluded** — unset rather than unreadable, the same exclusion the range row draws, and the whole scene family reads absent and empty alike |
 | `capacity-voicemodem-dimmer-conflict` ⊘ | PRJ | Error | — | The project contains both a Voice Modem and an RS485 LED Dimmer | The two cannot share a controller, so one of them can never operate. **Reclassified from §5:** IHC Visual 3.4 refuses the insert with *"Kan ikke indsætte Voice Modem og RS485 LED Dimmer i det samme projekt."* **An incompatibility, not a capacity** — it declares no threshold and binds no arguments, because one of each is already the whole condition. **The SMS modem is a different product and is excluded**, which is what keeps the row silent on the three committed projects that carry a dimmer beside one. The Voice Modem is identified by its device-root tag rather than by a catalog lookup, because the built-in catalog ships no voice-modem product at all |
 | `capacity-rs485-exceeded` ⊘ | PRJ | Error | — | The project holds more than 32 RS-485 bus components, the SMS modem included | The bus takes 32; past that the project cannot be fully commissioned however it is wired. **Reclassified from §5:** IHC Visual 3.4 refuses the insert that would exceed the limit with *"Det maksimalt antal tilladte RS485 komponenter er 32 inkl. SMS modem"*. **An Error, not a Warning**, on the vendor's own wording — *"maksimalt antal tilladte"* is a hard maximum, where `capacity-wireless-exceeded` says *"bør"* and was corrected down to Warning for exactly that reason. **The SMS modem counts**, because the guard sentence names it. The threshold's evidence records that the boundary is uncited: the box was driven, but no run established that 32 commits and 33 does not |
 | `capacity-s0-multiple` ⊘ | PRJ | Error | — | The project contains more than one S0 metering product | The controller binds exactly one, so the extra products can never be commissioned and the file misdocuments the installation. **Reclassified from §5:** IHC Visual 3.4 refuses the second insert with *"Der kan kun være et S0 produkt i Visual projektet"*, so a file carrying two arrived by import or by hand. **Unlike its sibling `capacity-modem-multiple`, it declares its limit as data** — that row keeps "one" in its predicate, this one has a citable vendor sentence behind the number, and the divergence is deliberate. The measurement's own limit is recorded in the threshold's evidence: the box was driven, the boundary was not |
@@ -710,7 +712,7 @@ fall behind the declarations. Edit the declarations, not this table.
 The evidence and rationale columns of the sections above are deliberately absent here: they are
 prose, and they live as doc-comments on each declaration.
 
-### Project findings (168)
+### Project findings (170)
 
 | Id | Cat | Costs | Kind | Status | Danish label |
 | --- | --- | --- | --- | --- | --- |
@@ -757,6 +759,7 @@ prose, and they live as doc-comments on each declaration.
 | `dev-inivalue-out-of-range` | DEV | Warning | UserContentRule | Active | Startværdien {value} på '{variable}' er uden for det gyldige område {minimum}-{maximum}. |
 | `dev-inivalue-overwritten` | DEV | Warning | UserContentRule | Active | Startværdien '{value}' på '{variable}' sættes af et program ved hver opstart. |
 | `dev-setting-default` | DEV | Warning | UserContentRule | Active | Produktet '{product}' har {untouched} af {settings} indstillinger på fabriksværdien. |
+| `dev-setting-unreadable` | DEV | Error | UserContentRule | Active | Indstillingen '{setting}' på '{product}' har værdien '{value}', som ikke kan læses som et tal. |
 | `dev-shutter-traveltime-zero` | DEV | Warning | UserContentRule | Active | Gardinet '{product}' har en køretid på 0 sekunder. |
 | `dev-write-to-read-only` | DEV | Error | UserContentRule | Active | Kommandoen '{action}' skriver til den skrivebeskyttede variabel '{variable}'. |
 | `doc-address` | DOC | Warning | UserContentRule | Active | Mangler Adresse |
@@ -875,6 +878,7 @@ prose, and they live as doc-comments on each declaration.
 | `scene-all-off` | SCN | Warning | UserContentRule | Active | Scenariet '{scene}' slukker alle {members} medlemmer. |
 | `scene-bijection` | SCN | Error | UserContentRule | Active | Scenerækken er ensidig: <{tag}> '{id}' er ikke forbundet begge veje til en partner af den modsatte type. |
 | `scene-dimming-out-of-range` | SCN | Warning | UserContentRule | Active | Scenemedlemmet '{member}' har lysniveauet {value} %; det gyldige område er {minimum}-{maximum} %. |
+| `scene-dimming-unreadable` | SCN | Error | UserContentRule | Active | Scenemedlemmet '{member}' har lysniveauet '{value}', som ikke kan læses som et tal. |
 | `scene-duplicate-target` | SCN | Warning | UserContentRule | Active | Scenariet '{scene}' styrer udgangen '{output}' i flere rækker. |
 | `scene-long-delay` | SCN | Warning | UserContentRule | Active | Ramptiden {seconds} sekunder er længere end de tilladte {limit}. |
 | `scene-member-unwired` | SCN | Warning | UserContentRule | Active | Scenarierækken i '{product}' peger ikke på nogen udgang. |
@@ -883,11 +887,12 @@ prose, and they live as doc-comments on each declaration.
 | `struct-modified-stale` | PRJ | Warning | UserContentRule | RuledOut | *(to author)* |
 | `struct-product-no-terminals` | PRJ | Warning | UserContentRule | Active | Produktet '{product}' har ingen klemmer. |
 
-### Catalog-definition findings (11)
+### Catalog-definition findings (12)
 
 | Id | Cat | Costs | Kind | Status | Danish label |
 | --- | --- | --- | --- | --- | --- |
 | `block-identity-missing` | INT | Error | UserContentRule | Active | Mangler blokidentitet |
+| `catalog-bound-unreadable` | INT | Warning | SchemaSerializationGuard | Active | Grænseværdi kan ikke læses |
 | `grammar-dangling-idref` | INT | Warning | SchemaSerializationGuard | Active | Reference uden mål |
 | `grammar-duplicate-id` | INT | Warning | SchemaSerializationGuard | Active | Dobbelt id |
 | `grammar-enum-value` | INT | Warning | SchemaSerializationGuard | Active | Værdi uden for listen |
@@ -899,7 +904,7 @@ prose, and they live as doc-comments on each declaration.
 | `resource-enum-unwired` | LOG | Error | UserContentRule | Active | Enumerator ikke forbundet |
 | `scenes-without-output` | SCN | Error | UserContentRule | Active | Scener uden udgang |
 
-### Operation outcomes (52)
+### Operation outcomes (53)
 
 | Id | Cat | Costs | Kind | Status | Danish label |
 | --- | --- | --- | --- | --- | --- |
@@ -920,6 +925,7 @@ prose, and they live as doc-comments on each declaration.
 | `edit.enum-value-missing` | — | Refusal | EditPrecondition | Active | Enumeratortypen {name} har ingen værdi nummer {index}. |
 | `edit.field-above-maximum` | — | Refusal | EditPrecondition | Active | Feltet '{field}' skal være højst {maximum}. |
 | `edit.field-below-minimum` | — | Refusal | EditPrecondition | Active | Feltet '{field}' skal være mindst {minimum}. |
+| `edit.field-not-a-number` | — | Refusal | EditPrecondition | Active | Feltet '{field}' skal være et helt tal. '{value}' er ikke et tal. |
 | `edit.field-not-offered` | — | Refusal | EditPrecondition | Active | Produktets dialog har ikke feltet {field}. |
 | `edit.field-out-of-range` | — | Refusal | EditPrecondition | Active | Feltet '{field}' skal være mellem {minimum} og {maximum}. |
 | `edit.field-outside-product` | — | Refusal | EditPrecondition | Active | Et af felterne peger på et element uden for produktet. |
@@ -956,5 +962,5 @@ prose, and they live as doc-comments on each declaration.
 | `io.load` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke åbnes |
 | `io.save` | — | Refusal | OperationOutcome | Active | Projektet kunne ikke gemmes: {count} fejl skal rettes først. |
 
-**Total: 231 entries.** 223 active, 4 retired, 4 ruled out.
+**Total: 235 entries.** 227 active, 4 retired, 4 ruled out.
 <!-- END GENERATED -->

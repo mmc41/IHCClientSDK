@@ -662,6 +662,41 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
+        /// The submitted value is not a whole number, in a field whose catalog element declares bounds.
+        /// <para>
+        /// The other half of the same question D05's three bound rows answer. Those ask whether a number is
+        /// within its bounds; this one is raised when there is no number to ask about, which used to read as
+        /// "no bounds violation" and let the text through to the file.
+        /// </para>
+        /// <para>
+        /// Scoped by the DECLARED bound, which is the catalog stating the element holds a number — so an
+        /// unbounded free-text field is untouched. Blank is not this condition: it means "at the declared
+        /// default", and committing it writes the default back.
+        /// </para>
+        /// PREDICATE: none — it is raised by the command that refuses, never detected by a scan.
+        /// </summary>
+        private static ProblemCatalogEntry EditFieldNotANumber =>
+            new ProblemCatalogEntry(
+                EditRefusalCodes.FieldNotANumber,
+                ProblemCatalogSection.OperationOutcomes,
+                null,
+                CatalogDisposition.Refusal,
+                RuleKind.EditPrecondition,
+                RuleFaces.None,
+                default,
+                FindingShape.OneFinding,
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("field", ProblemArgumentType.AuthoredName),
+                    new ProblemArgumentSlot("value", ProblemArgumentType.AttributeValue),
+                ]),
+                EditRefusalProblems.FieldNotANumberRefusal)
+            {
+                Diagnostic = "The submitted value is not an integer, but the field's catalog element declares numeric bounds.",
+                Evidence = EvidenceMark.Authored,
+            };
+
+        /// <summary>
         /// The criterion is not a state of the switch enumerator type.
         /// <para>
         /// CROSS-REFERENCE: the catalogue row <c>logic-case-duplicate-value</c> states the same constraint about a
@@ -1058,6 +1093,7 @@ namespace Ihc.Vis.Validation
             EditFieldOutOfRange,
             EditFieldBelowMinimum,
             EditFieldAboveMaximum,
+            EditFieldNotANumber,
             EditCaseBranchInvalid,
             EditNotALogRow,
             EditNotACommandGroup,

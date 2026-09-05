@@ -48,7 +48,12 @@ namespace Ihc
         /// <summary>Controller is in simulation mode.</summary>
         Simulation,
 
-        /// <summary>Unknown state. Should not be used (unless controller has a hidden state we don't know).</summary>
+        /// <summary>
+        /// The controller's state could not be read: it named a state this SDK does not know (a hidden one,
+        /// perhaps), or it named none at all. Deliberately NOT the enum's zero member, so an unread state is
+        /// distinguishable from an unassigned variable and from <see cref="Uninitialized"/>, which is a state
+        /// a controller genuinely reports.
+        /// </summary>
         Unknown
     };
 

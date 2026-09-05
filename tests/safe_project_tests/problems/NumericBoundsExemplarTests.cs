@@ -34,21 +34,8 @@ namespace Ihc.Vis.Tests
         private static ProjectAppService App => new(TestSetup.Settings);
 
         /// <summary>A fresh project with the SMS modem placed — the one shipped product with a bounded number field.</summary>
-        private static async Task<(ProjectDocumentSession Session, ElementId ProductId, DialogDescriptorField Pin)> WithModem()
-        {
-            ProjectAppService app = App;
-            Project project = await app.Load("testdata/projects/project3-KompleksWired.vis");
-            ElementId locality = project.Groups.First().Id!.Value;
-            ProductDefinition modem = app.GetAvailableProducts().First(p => p.ProductIdentifier == "_0x3103");
-
-            ProjectDocumentSession session = new();
-            session.Open(project);
-            ElementId id = session.Apply(new AddProduct(locality, modem)).Value;
-
-            DialogDescriptorField pin = app.GetProductDialog(session.Current!, id)
-                .AllFields.Single(f => f.AutomationId.EndsWith("indstillinger.pinkode", StringComparison.Ordinal));
-            return (session, id, pin);
-        }
+        private static Task<(ProjectDocumentSession Session, ElementId ProductId, DialogDescriptorField Pin)> WithModem() =>
+            PlacedModem.Open();
 
         private static ProductDialogEdit Edit(DialogDescriptorField field, string value) =>
             new(field.Target, field.Attribute, value);
@@ -129,6 +116,74 @@ namespace Ihc.Vis.Tests
 
             Assert.That(outcome.Status, Is.Not.EqualTo(EditStatus.Refused),
                 "blank is the declared default, not an out-of-range value");
+        }
+
+        /// <summary>
+        /// The hole beside the bounds check: <c>int.TryParse</c> failing used to mean "no bounds violation", so a
+        /// value that is not a number at all fell through every gate and was written into the project verbatim.
+        /// OpenVisual binds a <c>NumericUpDown</c> so its own dialog cannot produce one — but the SDK command is
+        /// a public door, and a field whose catalog element DECLARES bounds is a field the catalog says holds a
+        /// number.
+        /// </summary>
+        [TestCase("abc")]
+        [TestCase("12abc")]
+        [TestCase("1.5")]
+        [TestCase("1,5")]
+        [TestCase("0x10")]
+        [TestCase("١٢٣")]
+        public async Task ANonNumericValueInABoundedFieldIsRefusedAtCommit(string submitted)
+        {
+            (ProjectDocumentSession session, ElementId id, DialogDescriptorField pin) = await WithModem();
+
+            EditVerdict verdict = session.CanApply(
+                new ApplyProductDialog(id, EquatableArray.Create<ProductDialogEdit>([Edit(pin, submitted)])));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(verdict.Ok, Is.False, $"'{submitted}' is not a number the field can hold");
+                Assert.That(verdict.Code, Is.EqualTo(EditRefusalCodes.FieldNotANumber));
+                Assert.That(verdict.Reason, Does.Contain(pin.Caption), "the refusal names the field");
+                Assert.That(verdict.Reason, Does.Contain(submitted), "the refusal quotes what was submitted");
+            });
+        }
+
+        /// <summary>
+        /// The second, independent check: the refusal happens BEFORE the write, so the project the session holds
+        /// still serializes to the bytes it had. A refusal that fired after the edit was applied would leave the
+        /// non-numeric value in the file whatever verdict it returned.
+        /// </summary>
+        [Test]
+        public async Task ARefusedNonNumericValueLeavesTheProjectBytesUnchanged()
+        {
+            (ProjectDocumentSession session, ElementId id, DialogDescriptorField pin) = await WithModem();
+            byte[] before = ProjectSerializer.Serialize(session.Current!);
+
+            EditOutcome outcome = session.Apply(
+                new ApplyProductDialog(id, EquatableArray.Create<ProductDialogEdit>([Edit(pin, "abc")])));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(outcome.Status, Is.EqualTo(EditStatus.Refused));
+                Assert.That(ProjectSerializer.Serialize(session.Current!), Is.EqualTo(before));
+            });
+        }
+
+        /// <summary>
+        /// The refusal is scoped to fields the catalog says are numeric. A free-text field still takes free text,
+        /// which is what keeps the guard from becoming "every dialog field must be a number".
+        /// </summary>
+        [Test]
+        public async Task AnUnboundedFieldStillAcceptsFreeText()
+        {
+            (ProjectDocumentSession session, ElementId id, _) = await WithModem();
+
+            DialogDescriptorField free = App.GetProductDialog(session.Current!, id).AllFields
+                .First(f => !f.ReadOnly && f.Rule is null && f.Minimum is null && f.Maximum is null);
+
+            EditVerdict verdict = session.CanApply(
+                new ApplyProductDialog(id, EquatableArray.Create<ProductDialogEdit>([Edit(free, "ikke et tal")])));
+
+            Assert.That(verdict.Ok, Is.True, "a field the catalog declares no bounds for is not a numeric field");
         }
 
         /// <summary>

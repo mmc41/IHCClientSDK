@@ -117,8 +117,8 @@ namespace Ihc {
                 Phone = u.phone,
                 Group = mapUserGroup(u.group),
                 Project = u.project,
-                CreatedDate = u.createdDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
-                LoginDate = u.loginDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue
+                CreatedDate = DateHelper.OrAbsentSentinel(u.createdDate?.ToDateTimeOffset(), nameof(IhcUser.CreatedDate)),
+                LoginDate = DateHelper.OrAbsentSentinel(u.loginDate?.ToDateTimeOffset(), nameof(IhcUser.LoginDate))
             };
         }
 
@@ -191,7 +191,14 @@ namespace Ihc {
                     var resp = await impl.getUsersAsync(new inputMessageName2() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
                     // Note that we for safty reasons can return users without password in return object
-                    var retv = new HashSet<IhcUser>(resp.getUsers1.Where((v) => v != null).Select((u) => mapUser(u, includePassword)));
+                    // A null wire entry is discarded silently, so an administrator reading this list cannot tell a
+                    // controller with fewer users from one whose answer was partly unreadable. The set is the
+                    // contract; the count is the diagnosis, and it is taken over the WIRE entries rather than over
+                    // the returned set: IhcUser is a record with value equality and this mapping REDACTS the
+                    // password unless the caller asked for it, so two users differing only there merge - a set
+                    // smaller than the wire list is not by itself evidence that anything was unreadable.
+                    var retv = new HashSet<IhcUser>(
+                        WireList.MapPresent(resp.getUsers1, (u) => mapUser(u, includePassword), activity, nameof(GetUsers)));
 
                     // Register activity - note that regardless of if password is included, any password will be also not be logged/observed unless LogSensitiveData allows it.
                     // Stringified here through the LogSensitiveData-aware overload: the tag is rendered by

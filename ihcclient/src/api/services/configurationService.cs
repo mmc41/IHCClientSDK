@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using System;
-using System.Linq;
 using Ihc.Soap.Configuration;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -788,7 +787,7 @@ namespace Ihc {
                 {
                     var resp = await impl.getWLanScanAsync(new inputMessageName13()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     IReadOnlyList<WLanCell> retv = resp.getWLanScan1 is { } cells
-                        ? cells.Select(mapWLanCell).OfType<WLanCell>().ToList()
+                        ? WireList.MapPresent(cells, mapWLanCell, activity, nameof(GetWLanScan))
                         : Array.Empty<WLanCell>();
 
                     activity?.SetReturnValue(retv);

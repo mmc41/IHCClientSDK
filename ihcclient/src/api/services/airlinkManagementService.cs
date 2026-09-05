@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using System;
-using System.Linq;
 using Ihc.Soap.Airlinkmanagement;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -329,8 +328,12 @@ namespace Ihc
                 try
                 {
                     var result = await impl.getDetectedDeviceListAsync(new inputMessageName7()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    // OfType drops any list entry the wire left empty: mapRFDevice maps a null entry to null.
-                    IReadOnlyList<RFDevice> retv = result.getDetectedDeviceList1 == null ? Array.Empty<RFDevice>() : result.getDetectedDeviceList1.Select(mapRFDevice).OfType<RFDevice>().ToList();
+                    // A list entry the wire left empty is dropped, and counted: an absent LIST is an empty answer,
+                    // but a shorter one than the controller sent is a partly-unreadable answer that used to look
+                    // the same.
+                    IReadOnlyList<RFDevice> retv = result.getDetectedDeviceList1 is { } devices
+                        ? WireList.MapPresent(devices, mapRFDevice, activity, nameof(GetDetectedDeviceList))
+                        : Array.Empty<RFDevice>();
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -352,6 +355,17 @@ namespace Ihc
                     activity?.SetParameters((nameof(resourceId), resourceId));
 
                     var result = await impl.getBatteryLevelAsync(new inputMessageName10(resourceId)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    if (!result.getBatteryLevel2.HasValue)
+                    {
+                        // Zero is a REAL battery level, so a caller cannot tell an unanswered read from a flat
+                        // battery. The substitution stays - it is the contract - and the warning is what makes
+                        // the two distinguishable after the fact.
+                        activity.AddWarning(
+                            $"The controller answered no battery level for resource {resourceId}; substituting 0.",
+                            ("type", "AbsentWireValue"),
+                            ("field", nameof(GetBatteryLevel)),
+                            ("resourceId", resourceId));
+                    }
                     var retv = result.getBatteryLevel2.HasValue ? result.getBatteryLevel2.Value : 0;
 
                     activity?.SetReturnValue(retv);

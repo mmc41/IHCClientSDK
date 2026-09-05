@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using System;
-using System.Linq;
 using Ihc.Soap.Messagecontrollog;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -68,7 +67,7 @@ namespace Ihc {
 
             return new LogEventEntry()
             {
-                Date = mapDate(e.date),
+                Date = DateHelper.OrAbsentSentinel(e.date?.ToDateTimeOffset(), nameof(LogEventEntry.Date)),
                 ControlType = e.controlType,
                 LogEntryType = e.logEntryType,
                 SenderAddress = e.senderAddress?.address,
@@ -77,14 +76,6 @@ namespace Ihc {
                 AuthenticationTypeAsString = e.authenticationTypeAsString,
                 ActionTypeAsString = e.actionTypeAsString
             };
-        }
-
-        private static DateTimeOffset mapDate(WSDate? v)
-        {
-            if (v == null)
-                return DateTimeOffset.MinValue;
-
-            return new DateTimeOffset(v.year, v.monthWithJanuaryAsOne, v.day, v.hours, v.minutes, v.seconds, DateHelper.GetWSTimeOffset());
         }
 
         public async Task EmptyLog()
@@ -110,7 +101,11 @@ namespace Ihc {
                 try
                 {
                     var resp = await impl.getEventsAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getEvents1.Where((v) => v != null).Select((v) => mapEvent(v)).OfType<LogEventEntry>().ToList();
+
+                    // Through the shared mapper, so the DROPS are counted. A null entry in the wire list is
+                    // discarded - there is nothing to map - and the discarded entries used to leave the caller a
+                    // shorter log with nothing saying so, which for a log is the one loss that matters.
+                    var retv = WireList.MapPresent(resp.getEvents1, mapEvent, activity, nameof(GetEvents));
 
                     activity?.SetReturnValue(retv);
                     return retv;

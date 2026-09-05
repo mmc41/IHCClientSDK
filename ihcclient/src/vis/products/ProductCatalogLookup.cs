@@ -21,8 +21,8 @@ namespace Ihc.Vis.Products
         /// nothing, the identifier still decides when it is unambiguous. Omitted, the ambiguous case resolves to
         /// null rather than to a guess — refusing is the point.</para>
         /// <para>One rule, one place. It was written three times over two assemblies, in three shapes, and only
-        /// the frontend's copy could disambiguate — so the SDK's own authoring door silently could not place
-        /// the seventeen catalog products that share an identifier, while the GUI could.</para>
+        /// the frontend's copy could disambiguate — so the SDK's own authoring door silently could not place the
+        /// catalog products that share an identifier, while the GUI could.</para>
         /// </summary>
         public static ProductDefinition? Resolve(
             IEnumerable<ProductDefinition> products, string? productIdentifier, string? displayName = null)
@@ -31,11 +31,10 @@ namespace Ihc.Vis.Products
             {
                 return null;
             }
-            // KNOWN DEFECT: Take(2) assumes no identifier has a third member, but _0x4408 has three (see
-            // DuplicateProductIdentifierTests.SharedIdentifiers), so a displayName naming that third —
-            // WindowMaster WUC 102 — matches nothing here and the caller gets null. The ambiguity test below is
-            // right; the truncation is not.
-            var byIdentifier = products.Where(p => p.ProductIdentifier == productIdentifier).Take(2).ToList();
+            // EVERY candidate, not the first two: a group's third member has to be reachable by name, and the
+            // ambiguity test below decides on the count rather than on how many were fetched. The groups are
+            // single-digit, so materialising them all costs nothing worth a truncation.
+            var byIdentifier = products.Where(p => p.ProductIdentifier == productIdentifier).ToList();
             return (displayName is null ? null : byIdentifier.FirstOrDefault(p => p.DisplayName == displayName))
                    ?? (byIdentifier.Count == 1 ? byIdentifier[0] : null);
         }

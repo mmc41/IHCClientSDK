@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using System;
-using System.Linq;
 using Ihc.Soap.Leddimmermanagement;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -154,12 +153,16 @@ namespace Ihc
 
         /// <summary>
         /// Maps a device list the controller may omit entirely, dropping any entry that carried no
-        /// device. An absent list is an empty one, never null.
+        /// device. An absent list is an empty one, never null; a list SHORTER than the one that arrived is
+        /// warned about, because that one is a partly-unreadable answer rather than a shorter installation.
         /// </summary>
-        private IReadOnlyList<LedDimmerInfo> MapInfoList(WSLEDDimmerInfo[]? devices)
-            => devices == null
-                ? Array.Empty<LedDimmerInfo>()
-                : devices.Select(MapInfo).OfType<LedDimmerInfo>().ToList();
+        /// <param name="devices">The wire list, or null when the response carried none.</param>
+        /// <param name="activity">The calling operation's span.</param>
+        /// <param name="field">The calling operation's name, for the warning's <c>field</c> tag.</param>
+        private IReadOnlyList<LedDimmerInfo> MapInfoList(WSLEDDimmerInfo[]? devices, Activity? activity, string field)
+            => devices is { } present
+                ? WireList.MapPresent(present, MapInfo, activity, field)
+                : Array.Empty<LedDimmerInfo>();
 
         private LedDimmerInfo? MapInfo(WSLEDDimmerInfo? ws)
         {
@@ -282,7 +285,7 @@ namespace Ihc
                     activity?.SetParameters((nameof(scanParameter1), scanParameter1), (nameof(scanParameter2), scanParameter2));
 
                     var result = await impl.scanConfiguredDevicesAsync(new inputMessageName4(scanParameter1, scanParameter2)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    IReadOnlyList<LedDimmerInfo> retv = MapInfoList(result.scanConfiguredDevices3);
+                    IReadOnlyList<LedDimmerInfo> retv = MapInfoList(result.scanConfiguredDevices3, activity, nameof(ScanConfiguredDevices));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -366,7 +369,7 @@ namespace Ihc
                 try
                 {
                     var result = await impl.getDeviceListAsync(new inputMessageName8()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    IReadOnlyList<LedDimmerInfo> retv = MapInfoList(result.getDeviceList1);
+                    IReadOnlyList<LedDimmerInfo> retv = MapInfoList(result.getDeviceList1, activity, nameof(GetDeviceList));
 
                     activity?.SetReturnValue(retv);
                     return retv;

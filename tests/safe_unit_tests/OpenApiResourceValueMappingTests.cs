@@ -219,5 +219,67 @@ namespace Ihc.Tests
             });
         }
 
+        /// <summary>
+        /// The wire's TIME element carries whole hours, minutes and seconds and nothing else, so a
+        /// <see cref="TimeSpan"/> outside that shape has no representation in it. Both mappers used to write
+        /// the components anyway: <c>TimeSpan.FromHours(25)</c> went out as one hour, a negative span went
+        /// out component-wise as its own negation's parts, and a fractional second simply vanished. Each is
+        /// a value the controller stores that the caller never asked for.
+        /// </summary>
+        [TestCaseSource(nameof(UnwritableSpans))]
+        public void TimeOutsideTheWiresRange_IsRefusedTheSameWayByBothMappers(TimeSpan span)
+        {
+            ResourceValue value = TimeValue(span);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(() => ResourceValueEnvelopeMapper.ToWire(value), Throws.ArgumentException);
+                Assert.That(() => OpenApiResourceValueMapper.ToWire(value), Throws.ArgumentException);
+            });
+        }
+
+        /// <summary>The three shapes the wire cannot hold: too wide, negative, and finer than a second.</summary>
+        private static IEnumerable<TestCaseData> UnwritableSpans() =>
+            new[]
+            {
+                TimeSpan.FromHours(25),
+                new TimeSpan(1, 0, 0, 0),
+                TimeSpan.FromHours(-1),
+                TimeSpan.FromMilliseconds(-1),
+                TimeSpan.FromMilliseconds(500),
+                new TimeSpan(0, 12, 30, 45, 1),
+            }.Select(s => new TestCaseData(s).SetName($"{{m}}({s})"));
+
+        /// <summary>
+        /// The other half of the guard: every span the wire CAN hold still maps, and still maps to the same
+        /// components in both mappers - so the refusal is proven not to have narrowed the legitimate range.
+        /// </summary>
+        [TestCase(0, 0, 0)]
+        [TestCase(0, 0, 1)]
+        [TestCase(13, 24, 35)]
+        [TestCase(23, 59, 59)]
+        public void ARepresentableTime_StillRoundTripsThroughBothMappers(int hours, int minutes, int seconds)
+        {
+            var span = new TimeSpan(hours, minutes, seconds);
+
+            var openApiWire = (Api.WSTimeValue)OpenApiResourceValueMapper.ToWire(TimeValue(span));
+            var twinWire = (Ri.WSTimeValue)ResourceValueEnvelopeMapper.ToWire(TimeValue(span))!.value!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ViaOpenApi(openApiWire).TimeValue, Is.EqualTo(span));
+                Assert.That(ViaTwin(twinWire).TimeValue, Is.EqualTo(span));
+                Assert.That((openApiWire.hours, openApiWire.minutes, openApiWire.seconds),
+                    Is.EqualTo((twinWire.hours, twinWire.minutes, twinWire.seconds)),
+                    "the two mappers must still write the same components for a representable span");
+            });
+        }
+
+        private static ResourceValue TimeValue(TimeSpan span) => new()
+        {
+            ResourceID = 42,
+            TypeString = TypeStrings.DatalineOutput,
+            Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.TIME, TimeValue = span }
+        };
     }
 }

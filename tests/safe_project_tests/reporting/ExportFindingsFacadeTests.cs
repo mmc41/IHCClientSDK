@@ -4,6 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
+using Ihc.Vis.Catalog;
+using Microsoft.Extensions.Time.Testing;
+
 namespace Ihc.Vis.Tests
 {
     /// <summary>
@@ -24,7 +27,21 @@ namespace Ihc.Vis.Tests
     [TestFixture]
     public sealed class ExportFindingsFacadeTests
     {
-        private static ProjectAppService App() => new(TestSetup.Settings);
+        /// <summary>
+        /// The instant every export in this fixture is stamped with.
+        /// <para>FIXED, because an export's <c>generated</c> attribute is taken from the service's clock to the
+        /// second, and two exports of one payload are only byte-identical if they share it. Nothing here asserts
+        /// on what the timestamp says, so pinning it costs no coverage — see
+        /// <see cref="TwoExportsDifferOnlyByTheirGeneratedStamp"/>, which is the mechanism stated as a test.</para>
+        /// </summary>
+        private static readonly DateTimeOffset FixedNow = new(2026, 9, 5, 12, 0, 0, TimeSpan.FromHours(2));
+
+        /// <summary>Materialized ONCE: the catalog is the expensive half of building a service, and every test
+        /// here wants the same one.</summary>
+        private static readonly ICatalog Catalog = new BuiltInCatalog();
+
+        private static ProjectAppService App() =>
+            new(TestSetup.Settings, Catalog, new FakeTimeProvider(FixedNow));
 
         private static Project Corpus() => ValidationCharacterizationTests.Corpus
             .First(c => c.Case == "fixture/Project6-Errors").Build();
@@ -184,6 +201,43 @@ namespace Ihc.Vis.Tests
                 Assert.That(ProjectFile.Encoding.GetString(viaPath), Does.Contain(" order=\"host:code\""));
             });
         }
+
+        /// <summary>
+        /// The mechanism behind the flakiness the pair above used to carry, reproduced deterministically.
+        ///
+        /// <para>Every export stamps its own <c>generated</c> from the service's clock, to the SECOND. So two
+        /// exports of one identical payload differ whenever the calls straddle a second boundary — which the
+        /// byte comparison above hit about as often as a run takes to cross one. The clock is the ONLY thing
+        /// that differs: with it advanced on purpose, the two documents are equal everywhere else.</para>
+        ///
+        /// <para>Which is why <see cref="App"/> holds a fixed clock rather than the system one. Nothing in this
+        /// fixture asserts on what the timestamp SAYS — only that the same call twice writes the same bytes —
+        /// so pinning it removes the race without weakening a single assertion.</para>
+        /// </summary>
+        [Test]
+        public async Task TwoExportsDifferOnlyByTheirGeneratedStamp()
+        {
+            var clock = new FakeTimeProvider(FixedNow);
+            var app = new ProjectAppService(TestSetup.Settings, Catalog, clock);
+            Project project = Corpus();
+            ImmutableArray<ValidationFinding> subset = [.. app.ValidateStructured(project).Findings.Take(3)];
+
+            string first = await ExportToText(s => app.ExportFindings(project, subset, s));
+            clock.Advance(TimeSpan.FromSeconds(1));
+            string second = await ExportToText(s => app.ExportFindings(project, subset, s));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(second, Is.Not.EqualTo(first), "a second's difference is enough to change the bytes");
+                Assert.That(Without(second, "generated"), Is.EqualTo(Without(first, "generated")),
+                    "and the stamp is the whole of the difference — nothing else in an export depends on when it ran");
+            });
+        }
+
+        /// <summary>The document with one root attribute's value blanked, so two exports can be compared on
+        /// everything else.</summary>
+        private static string Without(string document, string attribute) =>
+            System.Text.RegularExpressions.Regex.Replace(document, $" {attribute}=\"[^\"]*\"", $" {attribute}=\"\"");
 
         /// <summary>An empty caller sequence is a legal export, not an error: it is what an all-tiers-off panel has.</summary>
         [Test]

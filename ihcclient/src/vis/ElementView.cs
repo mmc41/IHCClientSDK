@@ -65,13 +65,32 @@ namespace Ihc.Vis
         /// derives a field's range from it, and the dialog-metadata face advertises it to a hand-written window.
         /// A second reader would be the staleness the composer's own "derived, never declared" note warns about.
         /// </para>
+        /// <para>
+        /// THREE STATES, NOT TWO — see <see cref="DeclaredNumericBounds.Unreadable"/>. A pair of nullable numbers
+        /// could not tell "the catalog declares no bound" from "the catalog declares one this engine cannot read",
+        /// and both callers therefore saw an unconstrained field for a limit the catalog states.
+        /// </para>
         /// </summary>
-        public (int? Minimum, int? Maximum) DeclaredBounds =>
-            (ParseBound(Effective("minimum")), ParseBound(Effective("maximum")));
+        public DeclaredNumericBounds DeclaredBounds
+        {
+            get
+            {
+                string? minimum = Effective("minimum");
+                string? maximum = Effective("maximum");
+                return new DeclaredNumericBounds(
+                    ParseBound(minimum),
+                    ParseBound(maximum),
+                    IsUnreadable(minimum) || IsUnreadable(maximum));
+            }
+        }
 
         private static int? ParseBound(string? raw) =>
             int.TryParse(raw, System.Globalization.NumberStyles.Integer,
                 System.Globalization.CultureInfo.InvariantCulture, out int value) ? value : null;
+
+        /// <summary>A bound the element DECLARES — non-blank — that does not parse as a whole number.</summary>
+        private static bool IsUnreadable(string? raw) =>
+            !string.IsNullOrWhiteSpace(raw) && ParseBound(raw) is null;
 
         /// <summary>The element's effective initial value (<c>inivalue</c>, e.g. an output's on/off power-up state),
         /// or its DTD default.</summary>
@@ -97,6 +116,24 @@ namespace Ihc.Vis
         /// (e.g. <c>"no"</c> → <c>false</c>).</summary>
         private bool Flag(string attr) => Effective(attr) == "yes";
     }
+
+    /// <summary>
+    /// What an element's <c>minimum</c>/<c>maximum</c> attributes say about its <c>value</c>.
+    /// </summary>
+    /// <param name="Minimum">The declared lower bound, when one is declared AND readable.</param>
+    /// <param name="Maximum">The declared upper bound, when one is declared AND readable.</param>
+    /// <param name="Unreadable">
+    /// Whether the element declares a bound whose text is not a whole number. It is the third state a pair of
+    /// nullable numbers cannot express: a null bound otherwise means "the catalog declares none", so an
+    /// unreadable declaration silently became "no limit" — on a path that writes to a <c>.vis</c>. A reader that
+    /// finds this set must not treat the field as unbounded; the defect is in the DEFINITION file, and
+    /// <c>catalog-bound-unreadable</c> is the row that reports it.
+    /// </param>
+    /// <remarks>
+    /// The struct's <see langword="default"/> is "no bound declared", so an element with neither attribute reads
+    /// as the loosest answer — the same property <c>FieldConstraintMetadata.Unconstrained</c> has.
+    /// </remarks>
+    public readonly record struct DeclaredNumericBounds(int? Minimum, int? Maximum, bool Unreadable);
 
     /// <summary>Project-scoped read-surface entry points (API-C/D, fablerefac Wave 1).</summary>
     public static class ProjectReadView

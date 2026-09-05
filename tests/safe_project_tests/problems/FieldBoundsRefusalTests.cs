@@ -65,6 +65,7 @@ namespace Ihc.Vis.Tests
                 (EditRefusalCodes.FieldOutOfRange, EditRefusalProblems.FieldOutOfRangeRefusal),
                 (EditRefusalCodes.FieldBelowMinimum, EditRefusalProblems.FieldBelowMinimumRefusal),
                 (EditRefusalCodes.FieldAboveMaximum, EditRefusalProblems.FieldAboveMaximumRefusal),
+                (EditRefusalCodes.FieldNotANumber, EditRefusalProblems.FieldNotANumberRefusal),
             ];
 
             Assert.Multiple(() =>
@@ -110,6 +111,23 @@ namespace Ihc.Vis.Tests
                     Assert.That(refusal.Value.Message, Does.Not.Contain("{"),
                         $"{name}: every declared slot of the chosen row binds");
                 }
+            });
+        }
+
+        /// <summary>
+        /// The not-a-number row binds both its slots, so no placeholder survives into the sentence a user sees.
+        /// </summary>
+        [Test]
+        public void TheNotANumberRowBindsTheFieldAndTheSubmittedText()
+        {
+            (ProblemCode code, string message) = EditRefusalProblems.FieldNotANumber("SIM-pinkode", "abc");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(code, Is.EqualTo(EditRefusalCodes.FieldNotANumber));
+                Assert.That(message, Does.Contain("SIM-pinkode"));
+                Assert.That(message, Does.Contain("abc"));
+                Assert.That(message, Does.Not.Contain("{"), "every declared slot binds");
             });
         }
 

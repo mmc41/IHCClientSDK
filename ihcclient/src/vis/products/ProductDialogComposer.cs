@@ -161,7 +161,8 @@ namespace Ihc.Vis.Products
             (ProjectElement Element, string Attribute) resolved, bool lockedElement,
             FrozenDictionary<string, EquatableArray<string>> suggestions)
         {
-            (int? min, int? max) = NumericRange(project, resolved.Element, field.Control);
+            DeclaredNumericBounds declared = NumericRange(project, resolved.Element, field.Control);
+            (int? min, int? max) = (declared.Minimum, declared.Maximum);
             // The BOUNDS are scaled with the value. A field captioned in seconds over a millisecond attribute
             // must offer seconds bounds too, or it shows 5 in a box that refuses anything under 2000.
             if (field.DisplayDivisor > 1)
@@ -176,7 +177,7 @@ namespace Ihc.Vis.Products
                 resolved.Element.Id!.Value,
                 resolved.Attribute,
                 Displayed(field, ReadValue(project, resolved.Element, resolved.Attribute, field.HidesUnresolvedResourceKey)),
-                field.ReadOnly || (lockedElement && field.ReadOnlyWhenLocked),
+                field.ReadOnly || (lockedElement && field.ReadOnlyWhenLocked) || declared.Unreadable,
                 field.Rule,
                 min,
                 max,
@@ -287,7 +288,7 @@ namespace Ihc.Vis.Products
                          .OrderBy(e => KeyOrder(e.GetAttribute(repeat.KeyAttribute))))
             {
                 string key = item.GetAttribute(repeat.KeyAttribute) ?? string.Empty;
-                (int? min, int? max) = NumericRange(project, item, repeat.Control);
+                DeclaredNumericBounds declared = NumericRange(project, item, repeat.Control);
                 yield return new DialogDescriptorField(
                     AutomationId(group.Id, repeat.Id + "." + key),
                     string.Format(CultureInfo.InvariantCulture, repeat.CaptionPattern, key),
@@ -297,10 +298,10 @@ namespace Ihc.Vis.Products
                     // A repeat expands over value-bearing descendants — the modem's phone numbers — and no
                     // catalog ships a localisation key in one, so no repeat claims the rule.
                     ReadValue(project, item, repeat.ValueAttribute, hidesUnresolvedResourceKey: false),
-                    lockedElement,
+                    lockedElement || declared.Unreadable,
                     repeat.Rule,
-                    min,
-                    max);
+                    declared.Minimum,
+                    declared.Maximum);
             }
         }
 
@@ -381,11 +382,18 @@ namespace Ihc.Vis.Products
         /// catalog seeds the modem's PIN with 0–9999, and a preset that hardcoded that would go stale silently the
         /// moment a catalog changed it.
         /// </summary>
-        private static (int? Min, int? Max) NumericRange(Project project, ProjectElement element, DialogControlKind control)
+        /// <remarks>
+        /// A bound the catalog DECLARES but the engine cannot read comes back with
+        /// <see cref="DeclaredNumericBounds.Unreadable"/> set, and the field is then not offered for editing at
+        /// all. Offering it unbounded would be the engine dropping a limit the catalog states, on the one path
+        /// that writes the value into a <c>.vis</c>; the definition file is what is broken, and
+        /// <c>catalog-bound-unreadable</c> is the row that says so.
+        /// </remarks>
+        private static DeclaredNumericBounds NumericRange(Project project, ProjectElement element, DialogControlKind control)
         {
             if (control != DialogControlKind.Number)
             {
-                return (null, null);
+                return default;
             }
             return project.View(element).DeclaredBounds;
         }

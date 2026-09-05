@@ -48,7 +48,23 @@ Ihc.Vis.DeleteImpact.DeleteImpact(bool Deletable, bool NeedsConfirm, Ihc.Vis.Del
 Ihc.Vis.DeleteImpact.Refusal.get -> Ihc.Vis.Problems.Problem?
 Ihc.Vis.DeleteImpact.Refusal.init -> void
 Ihc.Vis.DimmerView.SettingConstraint(string! settingTag) -> Ihc.Vis.Validation.FieldConstraintMetadata
-Ihc.Vis.ElementView.DeclaredBounds.get -> (int? Minimum, int? Maximum)
+Ihc.Vis.ElementView.DeclaredBounds.get -> Ihc.Vis.DeclaredNumericBounds
+Ihc.Vis.DeclaredNumericBounds
+Ihc.Vis.DeclaredNumericBounds.DeclaredNumericBounds() -> void
+Ihc.Vis.DeclaredNumericBounds.DeclaredNumericBounds(int? Minimum, int? Maximum, bool Unreadable) -> void
+Ihc.Vis.DeclaredNumericBounds.Deconstruct(out int? Minimum, out int? Maximum, out bool Unreadable) -> void
+Ihc.Vis.DeclaredNumericBounds.Maximum.get -> int?
+Ihc.Vis.DeclaredNumericBounds.Maximum.init -> void
+Ihc.Vis.DeclaredNumericBounds.Minimum.get -> int?
+Ihc.Vis.DeclaredNumericBounds.Minimum.init -> void
+Ihc.Vis.DeclaredNumericBounds.Equals(Ihc.Vis.DeclaredNumericBounds other) -> bool
+Ihc.Vis.DeclaredNumericBounds.Unreadable.get -> bool
+Ihc.Vis.DeclaredNumericBounds.Unreadable.init -> void
+override Ihc.Vis.DeclaredNumericBounds.GetHashCode() -> int
+static Ihc.Vis.DeclaredNumericBounds.operator !=(Ihc.Vis.DeclaredNumericBounds left, Ihc.Vis.DeclaredNumericBounds right) -> bool
+static Ihc.Vis.DeclaredNumericBounds.operator ==(Ihc.Vis.DeclaredNumericBounds left, Ihc.Vis.DeclaredNumericBounds right) -> bool
+~override Ihc.Vis.DeclaredNumericBounds.Equals(object obj) -> bool
+~override Ihc.Vis.DeclaredNumericBounds.ToString() -> string
 Ihc.Vis.Io.LoadRefusalCodes
 Ihc.Vis.Io.ProjectFormatException.Problems.get -> Ihc.Vis.Problems.ProblemChain?
 Ihc.Vis.Io.ProjectFormatException.ProjectFormatException(Ihc.Vis.Problems.RefusalIdentity refusal, string! diagnostic, System.Exception? innerException = null) -> void
@@ -877,6 +893,7 @@ virtual Ihc.Vis.Validation.ProjectInspection.Invoke(Ihc.Vis.Validation.IProjectI
 Ihc.Vis.Problems.RefusalIdentity.Binding(params Ihc.Vis.Problems.ProblemArgument[]! arguments) -> Ihc.Vis.Problems.RefusalIdentity
 static Ihc.Vis.Session.EditRefusalCodes.FieldBelowMinimum.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Session.EditRefusalCodes.FieldAboveMaximum.get -> Ihc.Vis.Problems.ProblemCode
+static Ihc.Vis.Session.EditRefusalCodes.FieldNotANumber.get -> Ihc.Vis.Problems.ProblemCode
 Ihc.Vis.Session.EditRefusedException.Code.get -> Ihc.Vis.Problems.ProblemCode
 Ihc.Vis.Session.EditRefusedException.EditRefusedException(Ihc.Vis.Problems.ProblemCode code, string! message) -> void
 Ihc.Vis.Editing.EditOpenRefusalCodes

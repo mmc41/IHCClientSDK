@@ -36,20 +36,8 @@ namespace Ihc.Tests
             }
         }
 
-        /// <summary>A minimal SOAP service over the stub transport, so soapPost runs exactly as in production.</summary>
-        private sealed class TestSoapService : ServiceBaseImpl
-        {
-            public TestSoapService(IhcSettings settings, ICookieHandler cookieHandler, HttpClient transport)
-                : base(cookieHandler, settings, "TestService", transport) { }
-
-            public Task<outputMessageName9> Call() =>
-                soapPost<outputMessageName9, inputMessageName9>("isSDCardReady", new inputMessageName9());
-        }
-
-        /// <summary>A well-formed SOAP response for the call above, built with the SDK's own serializer.</summary>
-        private static string SoapResponse(bool value) =>
-            Serialization.SerializeXml<ResponseEnvelope<outputMessageName9>>(
-                new ResponseEnvelope<outputMessageName9>(new outputMessageName9(value)));
+        /// <summary>A well-formed SOAP response for <see cref="TestSoapService.Call"/>.</summary>
+        private static string SoapResponse(bool value) => TestSoapService.Response(value);
 
         [Test]
         public async Task SoapPost_SuccessfulCall_DisposesTheResponse()

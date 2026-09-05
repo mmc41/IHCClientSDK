@@ -1701,6 +1701,58 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
+        /// A device setting stores a value that cannot be read as a number.
+        /// <para>
+        /// THE ROW CLOSES A BLIND SPOT BETWEEN TWO READINGS OF ONE ATTRIBUTE. The numeric device-setting rows
+        /// read a setting's stored <c>value</c> and skip it when there is none — deliberately, because the
+        /// catalog ships these elements without a value and an absent one means "at the factory default", which
+        /// is <c>dev-setting-default</c>'s subject rather than a stored zero. But the same read also answered
+        /// "none" for a value that is PRESENT and unreadable, so those rows skipped it too and nothing reported
+        /// it. Meanwhile <c>dev-setting-default</c> reads the very same attribute by PRESENCE, and therefore
+        /// counted the element as commissioned. The two readings disagreed about one element, and this row is
+        /// what lets both keep their own correct answer to their own question.
+        /// </para>
+        /// <para>
+        /// AN ERROR, where the numeric rows around it are Warnings. Those report a value the tool can read and
+        /// judge unwise; this one reports a value no layer can read at all, so what the device will do with it
+        /// is not merely unwise but unknown. That consequence holds whatever the author intended.
+        /// </para>
+        /// PREDICATE: a numeric device-setting element carries a <c>value</c> whose text does not parse as an
+        /// integer.
+        /// SUBJECT: exactly the setting tags the numeric rows read — the dimmer's fade rates, minimum and
+        /// maximum, and the shutter's two travel times. Scoped by that same list rather than by "every setting",
+        /// so the row and the rows it covers for cannot come to disagree about which settings hold numbers.
+        /// EXCLUSION: an ABSENT value, which is uncommissioned rather than unreadable; and the load mode, whose
+        /// values are enumerated words by declaration.
+        /// LOCATION: the setting element, which is the field to repair.
+        /// ARGUMENTS: <c>setting</c> — which field; <c>product</c> — which device; <c>value</c> — the text as it
+        /// stands in the file, which is what the reader has to see to correct it. Declared in that order because
+        /// declared order is first-appearance order in the template, and the sentence opens on the setting.
+        /// </summary>
+        private static ProblemCatalogEntry DevSettingUnreadable =>
+            new ProblemCatalogEntry(
+                new ProblemCode("dev-setting-unreadable"),
+                ProblemCatalogSection.ProjectFindings,
+                ValidationCategory.DeviceSettings,
+                CatalogDisposition.Error,
+                RuleKind.UserContentRule,
+                RuleFaces.WholeProject,
+                default,
+                FindingShape.OnePerOccurrence,
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("setting", ProblemArgumentType.SchemaName),
+                    new ProblemArgumentSlot("product", ProblemArgumentType.AuthoredName),
+                    new ProblemArgumentSlot("value", ProblemArgumentType.AttributeValue),
+                ]),
+                "Indstillingen '{setting}' på '{product}' har værdien '{value}', som ikke kan læses som et tal.")
+            {
+                Diagnostic = "Device setting '{setting}' on '{product}' stores '{value}', which is not an "
+                    + "integer; the numeric rules cannot judge it and no layer can say what the device will do.",
+                Evidence = EvidenceMark.Refused,
+            };
+
+        /// <summary>
         /// A program command assigning a variable declared read-only: the assignment is refused or ignored at
         /// runtime. The one ERROR of this set, as the catalogue rates it.
         /// PREDICATE: an <c>action</c> whose <c>link1</c> resolves to a resource whose <c>access</c> is
@@ -5866,6 +5918,54 @@ namespace Ihc.Vis.Validation
             };
 
         /// <summary>
+        /// A scene member's stored light level cannot be read as a number at all.
+        /// <para>
+        /// THE ROW EXISTS BECAUSE TWO RULES DISAGREED ABOUT ONE ATTRIBUTE. <c>scene-dimming-out-of-range</c>
+        /// skips a <c>dimming_value</c> it cannot parse — correctly, there is no number to compare — while the
+        /// off-reading that <c>scene-all-off</c> and <c>rs485-dimmer-scene-multi-off</c> share folded the same
+        /// unreadable value to zero and called the row switched off. One of those two answers had to go, and
+        /// removing the wrong one leaves the value reported by nothing at all. This row is what makes it
+        /// reportable, so the off-reading could be corrected without creating a blind spot.
+        /// </para>
+        /// <para>
+        /// AN ERROR, WHERE THE SIBLING RANGE ROW IS A WARNING, and §2's axis is again what decides it. An
+        /// out-of-range level states an intention the tool can read and disagree with; an unreadable one states
+        /// no intention at all, so no layer — this tool, the vendor's, or the controller — can say what the scene
+        /// does to that output. That consequence does not depend on which tool touches the row next.
+        /// </para>
+        /// PREDICATE: a scene member carries a <c>dimming_value</c> whose text does not parse as an integer.
+        /// SUBJECT: <c>scene_dimmer</c> member rows — the only row kind that carries a light level at all, and
+        /// the same subject the sibling range row scans.
+        /// EXCLUSION: a member with NO <c>dimming_value</c>, which is unset rather than unreadable and is the
+        /// same exclusion the range row draws; and a relay or shutter row, which carries no light level at all.
+        /// LOCATION: the member row. ARGUMENTS: <c>member</c> — which row to repair; <c>value</c> — the text as
+        /// it stands in the file.
+        /// WHY <c>value</c> IS <c>AttributeValue</c> and not <c>Integer</c>: by construction there is no integer
+        /// to render, and the reader has to see the bytes they are being asked to correct.
+        /// </summary>
+        private static ProblemCatalogEntry SceneDimmingUnreadable =>
+            new ProblemCatalogEntry(
+                new ProblemCode("scene-dimming-unreadable"),
+                ProblemCatalogSection.ProjectFindings,
+                ValidationCategory.Scenes,
+                CatalogDisposition.Error,
+                RuleKind.UserContentRule,
+                RuleFaces.WholeProject,
+                default,
+                FindingShape.OnePerOccurrence,
+                EquatableArray.Create<ProblemArgumentSlot>(
+                [
+                    new ProblemArgumentSlot("member", ProblemArgumentType.AuthoredName),
+                    new ProblemArgumentSlot("value", ProblemArgumentType.AttributeValue),
+                ]),
+                "Scenemedlemmet '{member}' har lysniveauet '{value}', som ikke kan læses som et tal.")
+            {
+                Diagnostic = "Scene member '{member}' carries a dimming_value of '{value}', which is not an "
+                    + "integer; no layer can determine what the scene does to that output.",
+                Evidence = EvidenceMark.Refused,
+            };
+
+        /// <summary>
         /// One scene drives the same output through two member rows: the rows contradict each other.
         /// PREDICATE: two or more <c>scene_link</c> halves of ONE scene whose member rows sit in containers
         /// binding the same output resource.
@@ -6207,6 +6307,7 @@ namespace Ihc.Vis.Validation
             DevInivalueOutOfRange,
             DevInivalueOverwritten,
             DevSettingDefault,
+            DevSettingUnreadable,
             DevShutterTraveltimeZero,
             DevWriteToReadOnly,
             DocAddress,
@@ -6324,6 +6425,7 @@ namespace Ihc.Vis.Validation
             SceneAllOff,
             SceneBijection,
             SceneDimmingOutOfRange,
+            SceneDimmingUnreadable,
             SceneDuplicateTarget,
             SceneLongDelay,
             SceneMemberUnwired,

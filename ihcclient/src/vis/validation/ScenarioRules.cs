@@ -65,6 +65,7 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "scene-all-off", AllOff),
                 Rule(catalog, "scene-long-delay", LongDelay(catalog)),
                 Rule(catalog, "scene-dimming-out-of-range", DimmingOutOfRange(catalog)),
+                Rule(catalog, "scene-dimming-unreadable", DimmingUnreadable),
                 Rule(catalog, "rs485-dimmer-scenario-recall", DimmerScenarioRecall),
                 Rule(catalog, "rs485-dimmer-scene-multi-off", DimmerSceneMultiOff));
         }
@@ -301,11 +302,18 @@ namespace Ihc.Vis.Validation
         private static ProjectElement Owner(ITopologyAnalysis topology, ProjectElement container) =>
             topology.Parent(container) ?? container;
 
-        /// <summary>Whether a member row switches its output OFF: a relay to off, a dimmer to zero.</summary>
+        /// <summary>
+        /// Whether a member row switches its output OFF: a relay to off, a dimmer to zero.
+        /// <para>An unreadable dimming value is NOT off. Folding it to zero made this reading disagree with
+        /// <c>scene-dimming-out-of-range</c>, which skips the same value because there is no number in it — and
+        /// the row it produced said the author had switched an output off when nothing in the file says so.
+        /// <c>scene-dimming-unreadable</c> is what reports the value instead.</para>
+        /// </summary>
         private static bool IsOff(ProjectElement member) => member.Tag switch
         {
             "scene_relay" => member.GetAttribute("relay_value") is null or "off",
-            "scene_dimmer" => (Milliseconds(member.GetAttribute(DimmingValueAttribute)) ?? 0) == 0,
+            "scene_dimmer" => member.GetAttribute(DimmingValueAttribute) is not { Length: > 0 } stored
+                              || Milliseconds(stored) == 0,
             _ => false,
         };
 
@@ -363,6 +371,27 @@ namespace Ihc.Vis.Validation
                     }
                 }
             };
+        }
+
+        /// <summary>
+        /// A member row whose stored light level is not a number at all.
+        /// <para>SUBJECT: every <c>scene_dimmer</c> member row carrying a non-empty <c>dimming_value</c>.
+        /// EXCLUSION: an ABSENT or empty value, which is unset rather than unreadable — the same exclusion
+        /// <see cref="DimmingOutOfRange"/> draws, and for the same reason. Empty is folded with absent
+        /// throughout this family — <see cref="IsOff"/> reads both as "no level was set" — so an empty value
+        /// contradicts no other reading here and needs no row. The device-setting family draws the line
+        /// differently because there it does: see <c>DeviceSettingRules.SettingUnreadable</c>.</para>
+        /// </summary>
+        private static void DimmingUnreadable(IProjectInspection inspection)
+        {
+            foreach (ProjectElement member in inspection.Analyses.WithTag("scene_dimmer"))
+            {
+                if (member.GetAttribute(DimmingValueAttribute) is { Length: > 0 } stored
+                    && Milliseconds(stored) is null)
+                {
+                    inspection.Report(member, Arguments(("member", Name(member)), ("value", stored)));
+                }
+            }
         }
 
         private static long? Milliseconds(string? raw) =>

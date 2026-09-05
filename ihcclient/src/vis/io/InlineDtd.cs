@@ -49,7 +49,17 @@ namespace Ihc.Vis.Io
             var builder = ImmutableDictionary.CreateBuilder<string, string>(StringComparer.Ordinal);
             foreach (string block in ProjectSchemaRegistry.SplitBlocks(subset))
             {
-                builder[ProjectSchemaRegistry.ReadTag(block)] = block;
+                string tag = ProjectSchemaRegistry.ReadTag(block);
+                // A second declaration for a tag is REFUSED rather than allowed to replace the first. Keyed
+                // assignment made the last one win silently, so a document that states two grammars for one type
+                // loaded under whichever came later — while CatalogGrammar.Build throws for the same input.
+                // Two readers of one malformed file, two answers; the message is that one so they read alike.
+                if (builder.ContainsKey(tag))
+                {
+                    throw new VisSchemaFormatException($"Grammar declares tag '{tag}' twice.");
+                }
+
+                builder[tag] = block;
             }
             AddOrphanAttlists(subset, builder);
             return builder.ToImmutable();

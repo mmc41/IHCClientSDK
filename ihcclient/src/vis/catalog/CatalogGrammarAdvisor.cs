@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 
 using Ihc.Vis.Model;
 using Ihc.Vis.Schema;
@@ -18,11 +19,11 @@ namespace Ihc.Vis.Catalog
     /// </summary>
     internal static class CatalogGrammarAdvisor
     {
-        /// <summary>The six advisory categories over <paramref name="body"/> against <paramref name="grammar"/>:
+        /// <summary>The advisory categories over <paramref name="body"/> against <paramref name="grammar"/>:
         /// <c>grammar-undeclared-type</c> ("declared" = any declaration record for the tag, full or
         /// orphan-ATTLIST-only, ordinal match), <c>grammar-undeclared-attribute</c>,
-        /// <c>grammar-missing-required</c>, <c>grammar-enum-value</c>, <c>grammar-duplicate-id</c>, and
-        /// <c>grammar-dangling-idref</c> (within the definition).</summary>
+        /// <c>grammar-missing-required</c>, <c>grammar-enum-value</c>, <c>grammar-duplicate-id</c>,
+        /// <c>grammar-dangling-idref</c> (within the definition), and <c>catalog-bound-unreadable</c>.</summary>
         public static ImmutableArray<ProjectValidationFinding> Advise(ProjectElement body, CatalogGrammar grammar)
         {
             var findings = ImmutableArray.CreateBuilder<ProjectValidationFinding>();
@@ -61,7 +62,7 @@ namespace Ihc.Vis.Catalog
             }
             else
             {
-                AdviseAttrs(element, declaration, findings);
+                AdviseAttrs(element, declaration, view.TryGet(element.Tag), findings);
             }
 
             // IDREF dangling detection reads the schema view (grammar first, registry fallback), so a registry
@@ -87,7 +88,7 @@ namespace Ihc.Vis.Catalog
         }
 
         private static void AdviseAttrs(ProjectElement element, GrammarDeclaration declaration,
-            ImmutableArray<ProjectValidationFinding>.Builder findings)
+            ElementSchema? schema, ImmutableArray<ProjectValidationFinding>.Builder findings)
         {
             foreach ((string name, string value) in element.Attrs)
             {
@@ -106,6 +107,9 @@ namespace Ihc.Vis.Catalog
                         $"({string.Join(" | ", attr.EnumTokens)})."));
                 }
             }
+
+            AdviseBounds(element, schema, findings);
+
             foreach (GrammarAttr attr in declaration.Attrs)
             {
                 if (attr.Default == GrammarDefault.Required && element.GetAttribute(attr.Name) is null)
@@ -116,6 +120,43 @@ namespace Ihc.Vis.Catalog
                 }
             }
         }
+
+        /// <summary>
+        /// A declared numeric bound the reader cannot parse. Downstream it is indistinguishable from no bound at
+        /// all, so the definition states a limit nothing enforces and the composed dialog stops offering the
+        /// field rather than offering it unbounded — this row is what says why.
+        /// </summary>
+        /// <remarks>
+        /// EFFECTIVE, exactly as <see cref="ElementView.Effective"/> reads it: the element's own value when
+        /// present, else the attribute's declared DEFAULT. Checking only what the element carries would leave a
+        /// grammar that defaults <c>minimum</c> to something unreadable reported by nothing, while every element
+        /// of that tag inherits it — which is the same silence the row was minted to end, one level up. The
+        /// schema view is the same reader the read side uses, so the pass and the consequence cannot disagree
+        /// about what the bound says.
+        /// </remarks>
+        private static void AdviseBounds(ProjectElement element, ElementSchema? schema,
+            ImmutableArray<ProjectValidationFinding>.Builder findings)
+        {
+            foreach (string name in BoundAttributes)
+            {
+                string? effective = element.GetAttribute(name)
+                    ?? (schema?.FindAttr(name) is { Kind: AttrKind.Defaulted } declared ? declared.Default : null);
+                if (effective is not { Length: > 0 } bound
+                    || int.TryParse(bound, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+                {
+                    continue;
+                }
+
+                findings.Add(Warn("catalog-bound-unreadable", $"{element.Tag}@{name}",
+                    "Grænseværdi kan ikke læses",
+                    $"Bound '{name}' on <{element.Tag}> is '{bound}', which is not a whole number — the " +
+                    "engine reads it as no bound at all, and a dialog will not offer the field."));
+            }
+        }
+
+        /// <summary>The two attributes whose value is a numeric bound on the element's own <c>value</c> — the same
+        /// pair <c>ElementView.DeclaredBounds</c> reads.</summary>
+        private static readonly string[] BoundAttributes = ["minimum", "maximum"];
 
         private static void CollectIds(ProjectElement element, HashSet<string> ids, HashSet<string> duplicates)
         {

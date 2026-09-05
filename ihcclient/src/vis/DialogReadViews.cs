@@ -214,8 +214,15 @@ namespace Ihc.Vis
                 return Validation.FieldConstraintMetadata.Unconstrained;
             }
 
-            (int? minimum, int? maximum) = Project.View(el).DeclaredBounds;
-            return Validation.FieldConstraintMetadata.Unconstrained with { Minimum = minimum, Maximum = maximum };
+            // An UNREADABLE declaration advertises no number, which is all FieldConstraintMetadata can express:
+            // it carries a pair of nullable bounds and has no third state to put "declared but unreadable" in.
+            // The composed product dialog does not need one — ProductDialogComposer reads DeclaredBounds itself
+            // and marks such a field read-only, so nothing offers it for editing there. A host binding THIS face
+            // to a hand-written window gets no such protection, so it must not read a null bound as "no limit";
+            // `catalog-bound-unreadable` is the row that reports the definition defect behind it.
+            DeclaredNumericBounds bounds = Project.View(el).DeclaredBounds;
+            return Validation.FieldConstraintMetadata.Unconstrained
+                with { Minimum = bounds.Minimum, Maximum = bounds.Maximum };
         }
 
         /// <summary>The dimmer's load mode (auto/rc/rl), defaulting to auto when unset.</summary>

@@ -462,7 +462,9 @@ namespace Ihc
                 {
                     var resp = await impl.getTimeAndDateAsync(new inputMessageName9()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var result = resp.getTimeAndDate1;
-                    var retv = result.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(result.Value) : DateTimeOffset.MinValue;
+                    var retv = DateHelper.OrAbsentSentinel(
+                        result.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(result.Value) : null,
+                        nameof(GetTimeAndDate));
 
                     activity?.SetReturnValue(retv);
                     return retv;

@@ -1126,5 +1126,61 @@ namespace Ihc.Tests
         }
 
         #endregion
+
+        #region ApplyChanges routing
+
+        /// <summary>
+        /// A change type the routing switch does not know is REFUSED, not skipped.
+        ///
+        /// <para>The switch had no default arm, so an unhandled member fell straight through: the change was
+        /// reported as applied and nothing was sent to the controller. Every member has a case today and nothing
+        /// <c>DetectChanges</c> produces can be unrecognised — the arm is what keeps that true after a member is
+        /// added, which is the repository's Code Style rule and the reason it asks for one.</para>
+        /// </summary>
+        [Test]
+        public void ApplyChanges_AnUnknownChangeType_IsRefusedRatherThanSkipped()
+        {
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var changes = new List<AdminChange>
+            {
+                new() { ChangeType = (AdminChangeType)(-1), Payload = null },
+            };
+
+            Assert.That(async () => await service.ApplyChanges(changes),
+                Throws.InstanceOf<ArgumentOutOfRangeException>().With.Message.Contains("ChangeType"));
+        }
+
+        /// <summary>Every member the enum declares is still routed — so the arm above is proven to guard a gap
+        /// rather than to have swallowed a case.</summary>
+        [Test]
+        public void ApplyChanges_EveryDeclaredChangeType_IsRouted()
+        {
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+
+            Assert.Multiple(() =>
+            {
+                foreach (AdminChangeType type in Enum.GetValues<AdminChangeType>())
+                {
+                    Assert.That(async () => await service.ApplyChanges([new AdminChange { ChangeType = type, Payload = PayloadFor(type) }]),
+                        Throws.Nothing, type.ToString());
+                }
+            });
+        }
+
+        /// <summary>The payload each arm casts its change to.</summary>
+        private static object PayloadFor(AdminChangeType type) => type switch
+        {
+            AdminChangeType.UserAdded or AdminChangeType.UserUpdated or AdminChangeType.UserDeleted =>
+                new IhcUser { Username = "u" },
+            AdminChangeType.EmailControlChanged => new EmailControlSettings(),
+            AdminChangeType.SmtpSettingsChanged => new SMTPSettings(),
+            AdminChangeType.DnsServersChanged => new DNSServers(),
+            AdminChangeType.NetworkSettingsChanged => new NetworkSettings(),
+            AdminChangeType.WebAccessChanged => new WebAccessControl(),
+            AdminChangeType.WLanSettingsChanged => new WLanSettings(),
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, "this fixture has no payload for it"),
+        };
+
+        #endregion
     }
 }

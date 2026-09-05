@@ -384,6 +384,7 @@
     <xs:attribute name="arg_scene" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_seconds" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_section" type="argumentValue" use="optional"/>
+    <xs:attribute name="arg_setting" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_settings" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_shieldlength" type="argumentValue" use="optional"/>
     <xs:attribute name="arg_signals" type="argumentValue" use="optional"/>

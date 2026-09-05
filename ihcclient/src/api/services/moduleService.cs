@@ -145,8 +145,8 @@ namespace Ihc {
                 Filepath = info.filepath,
                 Remote = info.remote,
                 Version = info.version,
-                Created = info.created?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
-                LastModified = info.lastmodified?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
+                Created = DateHelper.OrAbsentSentinel(info.created?.ToDateTimeOffset(), nameof(SceneProjectInfo.Created)),
+                LastModified = DateHelper.OrAbsentSentinel(info.lastmodified?.ToDateTimeOffset(), nameof(SceneProjectInfo.LastModified)),
                 Description = info.description,
                 Crc = info.crc
             } : null;

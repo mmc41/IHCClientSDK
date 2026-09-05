@@ -47,14 +47,15 @@ namespace Ihc.Vis.Tests
                 // are `dataline-address`, `capacity-modules-exceeded` (split into the three capacity rows under
                 // D2) and `capacity-addresses` (split again, per direction, so a project over on both no longer
                 // reports two findings distinguishable only by their numbers).
-                Assert.That(project, Has.Count.EqualTo(168));
-                Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Active), Is.EqualTo(161));
+                Assert.That(project, Has.Count.EqualTo(170));
+                Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Active), Is.EqualTo(163));
                 Assert.That(project.Count(e => e.Status == ProblemCodeStatus.RuledOut), Is.EqualTo(4));
                 Assert.That(project.Count(e => e.Status == ProblemCodeStatus.Retired), Is.EqualTo(3));
 
-                // The codes that already shipped with no catalogue row behind them, plus the one MINTED
-                // here: `block-identity-missing`, the function-block half of `identity-missing`'s split.
-                Assert.That(definitions, Has.Count.EqualTo(11));
+                // The codes that already shipped with no catalogue row behind them, plus the two MINTED
+                // here: `block-identity-missing`, the function-block half of `identity-missing`'s split, and
+                // `catalog-bound-unreadable`, which reports a declared bound the engine reads as no bound.
+                Assert.That(definitions, Has.Count.EqualTo(12));
 
                 // The operation-outcome section grows with the work that gives each operation a coded outcome;
                 // the catch-all is here from the start because nothing else mints it.

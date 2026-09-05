@@ -362,7 +362,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(resourceIds), resourceIds));
 
                     var resp = await impl.enableInitialValueNotificationsAsync(new inputMessageName6() { enableInitialValueNotifications1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.enableInitialValueNotifications2.Where((v) => v != null).Select((v) => ResourceValueEnvelopeMapper.ToDomain(v)).OfType<ResourceValue>().ToList();
+                    var retv = WireList.MapPresent(resp.enableInitialValueNotifications2, ResourceValueEnvelopeMapper.ToDomain, activity, nameof(EnableInitialValueNotifications));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -384,7 +384,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(resourceIds), resourceIds));
 
                     var resp = await impl.enableRuntimeValueNotificationsAsync(new inputMessageName4() { enableRuntimeValueNotifications1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.enableRuntimeValueNotifications2.Where((v) => v != null).Select((v) => ResourceValueEnvelopeMapper.ToDomain(v)).OfType<ResourceValue>().ToList();
+                    var retv = WireList.MapPresent(resp.enableRuntimeValueNotifications2, ResourceValueEnvelopeMapper.ToDomain, activity, nameof(EnableRuntimeValueNotifications));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -404,7 +404,7 @@ namespace Ihc {
                 try
                 {
                     var resp = await impl.getAllDatalineInputsAsync(new inputMessageName12()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getAllDatalineInputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).OfType<DatalineResource>().ToList();
+                    var retv = WireList.MapPresent(resp.getAllDatalineInputs1, mapDatalineResource, activity, nameof(GetAllDatalineInputs));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -424,7 +424,7 @@ namespace Ihc {
                 try
                 {
                     var resp = await impl.getExtraDatalineInputsAsync(new inputMessageName10()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getExtraDatalineInputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).OfType<DatalineResource>().ToList();
+                    var retv = WireList.MapPresent(resp.getExtraDatalineInputs1, mapDatalineResource, activity, nameof(GetExtraDatalineInputs));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -444,7 +444,7 @@ namespace Ihc {
                 try
                 {
                     var resp = await impl.getAllDatalineOutputsAsync(new inputMessageName13()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getAllDatalineOutputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).OfType<DatalineResource>().ToList();
+                    var retv = WireList.MapPresent(resp.getAllDatalineOutputs1, mapDatalineResource, activity, nameof(GetAllDatalineOutputs));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -464,7 +464,7 @@ namespace Ihc {
                 try
                 {
                     var resp = await impl.getEnumeratorDefinitionsAsync(new inputMessageName9() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getEnumeratorDefinitions1.Where((v) => v != null).Select((e) => mapMapEnumeratorDefinitions(e)).OfType<EnumDefinition>().ToList();
+                    var retv = WireList.MapPresent(resp.getEnumeratorDefinitions1, mapMapEnumeratorDefinitions, activity, nameof(GetEnumeratorDefinitions));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -484,7 +484,7 @@ namespace Ihc {
                 try
                 {
                     var resp = await impl.getExtraDatalineOutputsAsync(new inputMessageName11()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getExtraDatalineOutputs1.Where((v) => v != null).Select((i) => mapDatalineResource(i)).OfType<DatalineResource>().ToList();
+                    var retv = WireList.MapPresent(resp.getExtraDatalineOutputs1, mapDatalineResource, activity, nameof(GetExtraDatalineOutputs));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -532,7 +532,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(initialValues), initialValues));
 
                     var resp = await impl.getInitialValuesAsync(new inputMessageName17() { getInitialValues1 = initialValues.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getInitialValues2.Where((v) => v != null).Select((v) => ResourceValueEnvelopeMapper.ToDomain(v)).OfType<ResourceValue>().ToList();
+                    var retv = WireList.MapPresent(resp.getInitialValues2, ResourceValueEnvelopeMapper.ToDomain, activity, nameof(GetInitialValues));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -600,7 +600,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(resourceId), resourceId));
 
                     var resp = await impl.getLoggedDataAsync(new inputMessageName20() { getLoggedData1 = resourceId }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getLoggedData2.Where((v) => v != null).Select((l) => new LoggedData() { Value = l.value, Id = l.id, Timestamp = DateTimeOffset.FromUnixTimeSeconds(l.timestamp) }).ToList();
+                    var retv = WireList.MapPresent(resp.getLoggedData2, (l) => new LoggedData() { Value = l.value, Id = l.id, Timestamp = DateTimeOffset.FromUnixTimeSeconds(l.timestamp) }, activity, nameof(GetLoggedData));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -670,7 +670,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(resourceIDs), resourceIDs));
 
                     var resp = await impl.getRuntimeValuesAsync(new inputMessageName16() { getRuntimeValues1 = resourceIDs.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getRuntimeValues2.Where((v) => v != null).Select((v) => ResourceValueEnvelopeMapper.ToDomain(v)).OfType<ResourceValue>().ToList();
+                    var retv = WireList.MapPresent(resp.getRuntimeValues2, ResourceValueEnvelopeMapper.ToDomain, activity, nameof(GetRuntimeValues));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -692,7 +692,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(sceneGroupResourceIdAndPositions), sceneGroupResourceIdAndPositions));
 
                     var resp = await impl.getSceneGroupResourceIdAndPositionsAsync(new inputMessageName1(sceneGroupResourceIdAndPositions) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getSceneGroupResourceIdAndPositions2.Where((v) => v != null).Select((v) => mapSceneResourceIdAndLocation(v)).OfType<SceneResourceIdAndLocation>().ToList();
+                    var retv = WireList.MapPresent(resp.getSceneGroupResourceIdAndPositions2, mapSceneResourceIdAndLocation, activity, nameof(GetSceneGroupResourceIdAndPositions));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -736,7 +736,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(timeout_seconds), timeout_seconds));
 
                     var resp = await impl.waitForResourceValueChangesAsync(new inputMessageName8() { waitForResourceValueChanges1 = timeout_seconds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.waitForResourceValueChanges2.Where((v) => v != null).Select((v) => ResourceValueEnvelopeMapper.ToDomain(v)).OfType<ResourceValue>().ToList();
+                    var retv = WireList.MapPresent(resp.waitForResourceValueChanges2, ResourceValueEnvelopeMapper.ToDomain, activity, nameof(WaitForResourceValueChanges));
 
                     activity?.SetReturnValue(retv);
                     return retv;

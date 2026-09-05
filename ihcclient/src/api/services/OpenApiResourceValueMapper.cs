@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Ihc.Soap.Openapi;
 using static Ihc.ResourceValuePayload;
 
@@ -100,6 +101,17 @@ namespace Ihc
                 value.ValueKind = ResourceValue.ValueKind.SceneShutter;
             }
 
+            if (value.ValueKind == ResourceValue.ValueKind.NONE)
+            {
+                // NONE is the deliberate classification for a value this mapping does not recognise, and it
+                // stays. What it cannot say is WHICH type went unrecognised - this side carries no TypeString -
+                // so a caller seeing NONE has no way to tell a scene from a wire kind the SDK has not learned.
+                Activity.Current.AddWarning(
+                    $"An OpenAPI resource value of wire type '{v.GetType().Name}' was not recognised; classified as NONE.",
+                    ("type", "UnrecognizedWireValueKind"),
+                    ("wireType", v.GetType().Name));
+            }
+
             return new ResourceValue() { Value = value };
         }
 
@@ -138,7 +150,7 @@ namespace Ihc
                         day = (sbyte)date.Day
                     };
                 case ResourceValue.ValueKind.TIME:
-                    var time = Required(v.Value.TimeValue, kind, nameof(v.Value.TimeValue));
+                    var time = Representable(Required(v.Value.TimeValue, kind, nameof(v.Value.TimeValue)), kind, nameof(v.Value.TimeValue));
                     return new WSTimeValue()
                     {
                         hours = time.Hours,

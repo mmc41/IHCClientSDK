@@ -1402,6 +1402,53 @@ namespace Ihc.Tests
             Assert.That(received, Has.Count.EqualTo(1));
         }
 
+        /// <summary>
+        /// A cancellation the USER did not ask for is a fault, not a normal end.
+        ///
+        /// <para>The catch here took every <see cref="OperationCanceledException"/> as "StopStream was pressed".
+        /// The SOAP <c>HttpClient</c> carries no configured timeout, so its 100-second default surfaces as a
+        /// <see cref="TaskCanceledException"/> — which IS an <see cref="OperationCanceledException"/> — and the
+        /// SDK's own retry wrapper rethrows it here after marking its span failed. The stream then ended
+        /// looking exactly like a user stop, with the items already received still on screen: the one shape in
+        /// which a dropped connection is indistinguishable from a completed read.</para>
+        ///
+        /// <para>The filter is on the TOKEN, which is the only thing that can tell the two apart.</para>
+        /// </summary>
+        [Test]
+        public void StartStream_ACancellationTheUserDidNotAskFor_SurfacesAsTheFaultItIs()
+        {
+            A.CallTo(() => fakeResourceService.GetResourceValueChanges(A<IReadOnlyList<int>>._, A<CancellationToken>._, A<int>._))
+                .ReturnsLazily((IReadOnlyList<int> ids, CancellationToken ct, int t) => TimingOutStream(ct));
+
+            var labService = SelectGetResourceValueChanges();
+            var received = new List<object?>();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(async () => await labService.StartStream(item => received.Add(item)),
+                    Throws.InstanceOf<TaskCanceledException>().With.Message.Contains("timed out"),
+                    "a transport timeout must not be reported as the user stopping the stream");
+                Assert.That(received, Has.Count.EqualTo(1), "the item read before the fault still arrived");
+            });
+        }
+
+        /// <summary>
+        /// One item, then the shape a 100-second <c>HttpClient</c> default produces: a
+        /// <see cref="TaskCanceledException"/> raised while the caller's token is NOT cancelled.
+        /// </summary>
+        private static async IAsyncEnumerable<ResourceValue> TimingOutStream(
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+        {
+            yield return new ResourceValue
+            {
+                ResourceID = 0,
+                Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.INT, IntValue = 0 }
+            };
+            await Task.Yield();
+            Assert.That(ct.IsCancellationRequested, Is.False, "the fault must arrive with the token still live");
+            throw new TaskCanceledException("The request timed out.");
+        }
+
         #endregion
 
         #region SetResourceValue (US-A3) Tests
@@ -1526,6 +1573,41 @@ namespace Ihc.Tests
             Assert.That(content.SuggestedFileName, Is.EqualTo("myhouse.vis"));
             Assert.That(content.Bytes, Is.EqualTo(ProjectFile.Encoding.GetBytes(xml)));
             Assert.That(content.Bytes, Does.Contain((byte)0xF8), "ISO-8859-1 encodes 'ø' as a single 0xF8 byte");
+        }
+
+        /// <summary>
+        /// A ProjectFile with no payload is REFUSED rather than written as a zero-byte <c>.vis</c>.
+        ///
+        /// <para>The <c>?? string.Empty</c> turned an absent project body into an empty byte array under a name
+        /// that says it is a project. That file is not a project: it will not open, and nothing about the name
+        /// or the extension says so — the one shape where a failed download and a successful save look alike on
+        /// disk.</para>
+        /// </summary>
+        [TestCase(null, TestName = "{m}(no data at all)")]
+        [TestCase("", TestName = "{m}(an empty body)")]
+        [TestCase("   \r\n", TestName = "{m}(whitespace only)")]
+        public void BuildResultFileContent_ProjectFileWithNoPayload_IsRefused(string? data)
+        {
+            var project = new ProjectFile("myhouse.vis", data!);
+
+            Assert.That(() => LabAppService.BuildResultFileContent(project, "preview", "GetProject"),
+                Throws.ArgumentException.With.Message.Contains("myhouse.vis"),
+                "a zero-byte file under a .vis name is not a project, and saving one says otherwise");
+        }
+
+        /// <summary>The other branches are untouched: an empty BINARY payload is a legitimate file, and an empty
+        /// text result is a legitimate text file.</summary>
+        [Test]
+        public void BuildResultFileContent_EmptyPayloadsOfOtherKinds_AreStillWritten()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(LabAppService.BuildResultFileContent(new BackupFile("b.dat", null!), "p", "GetBackup").Bytes,
+                    Is.Empty);
+                Assert.That(LabAppService.BuildResultFileContent(System.Array.Empty<byte>(), "p", "GetData").Bytes,
+                    Is.Empty);
+                Assert.That(LabAppService.BuildResultFileContent(42, "", "GetSystemInfo").Bytes, Is.Empty);
+            });
         }
 
         /// <summary>

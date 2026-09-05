@@ -59,7 +59,54 @@ namespace Ihc.Vis.Validation
                 Rule(catalog, "dev-dimmer-range-inverted", RangeInverted),
                 Rule(catalog, "dev-dimmer-max-zero", MaximumZero),
                 Rule(catalog, "dev-dimmer-load-mode-auto", LoadModeAutomatic),
-                Rule(catalog, "dev-shutter-traveltime-zero", TravelTimeZero));
+                Rule(catalog, "dev-shutter-traveltime-zero", TravelTimeZero),
+                Rule(catalog, "dev-setting-unreadable", SettingUnreadable));
+        }
+
+        /// <summary>
+        /// The setting tags whose value is a NUMBER — exactly those <see cref="Stored(ProjectElement, string)"/> is asked for above.
+        /// Shared with <see cref="SettingUnreadable"/> so the row that reports an unreadable value and the rows
+        /// that skip one cannot come to disagree about which settings hold numbers.
+        /// <para><see cref="LoadModeTag"/> is deliberately absent: its values are enumerated words.</para>
+        /// </summary>
+        private static readonly ImmutableArray<string> NumericSettingTags =
+            [MinimumTag, MaximumTag, FadeUpTag, FadeDownTag, TravelUpTag, TravelDownTag];
+
+        /// <summary>
+        /// A numeric device setting storing text no arithmetic can read.
+        /// <para>
+        /// <see cref="Stored(ProjectElement?)"/> answers null for two different states — a setting carrying no value at all, and
+        /// one carrying a value that does not parse — and the five rows above skip both. The first is deliberate
+        /// (an absent value is an uncommissioned setting, which <c>dev-setting-default</c> owns); the second was
+        /// a blind spot, and one the presence-reading in <c>dev-setting-default</c> made worse by counting the
+        /// same element as commissioned. This row reports it, so each of the other readings can keep its own
+        /// correct answer to its own question.
+        /// </para>
+        /// <para>SUBJECT: <see cref="NumericSettingTags"/>. EXCLUSION: an ABSENT value, and only that.</para>
+        /// <para>
+        /// A BLANK value IS reported, and deliberately: <c>dev-setting-default</c> reads this attribute by
+        /// PRESENCE, so <c>value=""</c> already counts as commissioned there while every numeric row skips it —
+        /// which is exactly the disagreement this row exists to end. (The scene family draws the line elsewhere:
+        /// <c>scene-dimming-unreadable</c> excludes an empty <c>dimming_value</c> because every reading in that
+        /// family — the range row and the off-reading alike — treats absent and empty as one "unset" state, so
+        /// there an empty value contradicts nothing.)
+        /// </para>
+        /// </summary>
+        private static void SettingUnreadable(IProjectInspection inspection)
+        {
+            foreach (ProjectElement product in AllProducts(inspection.Analyses))
+            {
+                foreach (string tag in NumericSettingTags)
+                {
+                    if (Setting(product, tag) is { } setting
+                        && setting.GetAttribute("value") is { } raw
+                        && Stored(setting) is null)
+                    {
+                        inspection.Report(setting, Arguments(
+                            ("product", Name(product)), ("setting", tag), ("value", raw)));
+                    }
+                }
+            }
         }
 
         /// <summary>

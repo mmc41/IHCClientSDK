@@ -208,7 +208,14 @@ namespace Ihc
             var respObj = Serialization.DeserializeXml<ResponseEnvelope<RESP>>(respStr)
                 ?? throw new ErrorWithCodeException(Errors.XML_DESERIALIZE_ERROR,
                     $"The {soapAction} response did not deserialize to a SOAP envelope.");
-            return respObj.Body;
+            // An envelope whose Body is empty, or whose body element carries a name the deserializer never
+            // matched, leaves Body at its `default!` - null for every generated message type. Unrefused, that
+            // null walks into each service's mapping and surfaces as a bare NullReferenceException with no
+            // cause in it; one service folded it to a clean `false`. Refused here, every service gets the
+            // same answer, and the answer names the call.
+            return respObj.Body
+                ?? throw new ErrorWithCodeException(Errors.XML_DESERIALIZE_ERROR,
+                    $"The {soapAction} response carried no <Body> the deserializer could match.");
         }
     }
 }

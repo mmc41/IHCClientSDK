@@ -274,6 +274,43 @@ namespace Ihc.Vis.Validation
                 Evidence = EvidenceMark.Authored,
             };
 
+        /// <summary>
+        /// The definition declares a numeric bound whose text is not a whole number, so the engine reads it as no
+        /// bound at all.
+        /// <para>
+        /// A DEFINITION defect rather than a project one, which is why it sits here: the <c>minimum</c> and
+        /// <c>maximum</c> the reader could not parse are the catalog's own, and a project placing the product
+        /// inherits them. What made it worth a row is that the two readings had the same shape — the read view
+        /// answered <c>null</c> both for "the catalog declares no bound" and for "the catalog declares one I
+        /// cannot read", so a limit the catalog STATES disappeared silently on the path that writes a value into
+        /// a <c>.vis</c>. The dialog now declines to offer such a field at all; this row is what says why.
+        /// </para>
+        /// PREDICATE: an element's EFFECTIVE <c>minimum</c> or <c>maximum</c> — its own value when it carries
+        /// one, else the grammar's declared default for that attribute — is non-blank and does not parse as an
+        /// integer. Effective rather than carried, because that is how <c>ElementView.DeclaredBounds</c> reads
+        /// it: a grammar defaulting a bound to something unreadable reaches every element of the tag, so a
+        /// carried-only check would leave the dialog refusing a field this row never reported.
+        /// SUBJECT: every element of the definition body. EXCLUSION: an absent or blank bound, which declares
+        /// nothing.
+        /// </summary>
+        private static ProblemCatalogEntry CatalogBoundUnreadable =>
+            new ProblemCatalogEntry(
+                new ProblemCode("catalog-bound-unreadable"),
+                ProblemCatalogSection.CatalogDefinitionFindings,
+                ValidationCategory.FileIntegrity,
+                CatalogDisposition.Warning,
+                RuleKind.SchemaSerializationGuard,
+                RuleFaces.WholeProject,
+                default,
+                FindingShape.OnePerOccurrence,
+                default,
+                "Grænseværdi kan ikke læses")
+            {
+                Diagnostic = "A declared minimum or maximum is not a whole number, so the engine reads it as no "
+                    + "bound at all; a dialog will not offer the field rather than offer it unbounded.",
+                Evidence = EvidenceMark.Authored,
+            };
+
         /// <summary>Every catalog-definition declaration, in code order.</summary>
         private static ProblemCatalogEntry[] CatalogDefinitionFindings =>
         [
@@ -288,6 +325,7 @@ namespace Ihc.Vis.Validation
             GrammarUndeclaredAttribute,
             GrammarEnumValue,
             GrammarMissingRequired,
+            CatalogBoundUnreadable,
         ];
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Ihc.Soap.Resourceinteraction;
 using static Ihc.ResourceValuePayload;
@@ -14,7 +15,9 @@ namespace Ihc
     /// Two conversions are intentionally lossy (preserved verbatim from the original code):
     /// DATE keeps only year/month/day - the round-trip reconstructs time-of-day as 00:00:00 at the
     /// WS offset (<see cref="DateHelper.GetWSTimeOffset"/>); TIME keeps only whole
-    /// Hours/Minutes/Seconds (no Days, no milliseconds, magnitude &lt; 24h).
+    /// Hours/Minutes/Seconds (no Days, no milliseconds, magnitude &lt; 24h). A span OUTSIDE that range is
+    /// refused rather than encoded - see <see cref="ResourceValuePayload.Representable"/> - because writing
+    /// its components would send a different value, not a coarser one.
     /// </summary>
     internal static class ResourceValueEnvelopeMapper
     {
@@ -106,6 +109,19 @@ namespace Ihc
                 value.ValueKind = ResourceValue.ValueKind.SceneShutter;
             }
 
+            if (value.ValueKind == ResourceValue.ValueKind.NONE)
+            {
+                // As in the twin: NONE is the deliberate classification and it stays. The envelope DOES carry a
+                // typeString, so the warning can name the resource as well as the wire type - which is what
+                // separates a scene (no writable value, expected) from a kind the SDK has not learned.
+                Activity.Current.AddWarning(
+                    $"A resource value of wire type '{v.value?.GetType().Name ?? "(none)"}' was not recognised; classified as NONE.",
+                    ("type", "UnrecognizedWireValueKind"),
+                    ("wireType", v.value?.GetType().Name),
+                    ("typeString", v.typeString),
+                    ("resourceId", v.resourceID));
+            }
+
             return new ResourceValue() { ResourceID = v.resourceID, IsValueRuntime = v.isValueRuntime, TypeString = v.typeString, Value = value };
         }
 
@@ -125,7 +141,7 @@ namespace Ihc
                 case ResourceValue.ValueKind.INT: val = new WSIntegerValue() { integer = Required(v.Value.IntValue, kind, nameof(v.Value.IntValue)) }; break;
                 case ResourceValue.ValueKind.DOUBLE: val = new WSFloatingPointValue() { floatingPointValue = Required(v.Value.DoubleValue, kind, nameof(v.Value.DoubleValue)) }; break;
                 case ResourceValue.ValueKind.ENUM: val = MapEnumValue(Required(v.Value.EnumValue, kind, nameof(v.Value.EnumValue))); break;
-                case ResourceValue.ValueKind.TIME: val = MapTime(Required(v.Value.TimeValue, kind, nameof(v.Value.TimeValue))); break;
+                case ResourceValue.ValueKind.TIME: val = MapTime(Representable(Required(v.Value.TimeValue, kind, nameof(v.Value.TimeValue)), kind, nameof(v.Value.TimeValue))); break;
                 case ResourceValue.ValueKind.TIMER: val = MapTimer(Required(v.Value.TimerValue, kind, nameof(v.Value.TimerValue))); break;
                 case ResourceValue.ValueKind.WEEKDAY: val = MapWeekday(Required(v.Value.WeekdayValue, kind, nameof(v.Value.WeekdayValue))); break;
                 case ResourceValue.ValueKind.PhoneNumber: val = new WSPhoneNumberValue() { number = Required(v.Value.PhoneNumberValue, kind, nameof(v.Value.PhoneNumberValue)) }; break;
@@ -162,13 +178,10 @@ namespace Ihc
             return new WSEnumValue() { definitionTypeID = v.DefinitionTypeID, enumValueID = v.EnumValueID, enumName = v.EnumName };
         }
 
-        private static DateTimeOffset MapDate(WSDateValue? v)
-        {
-            if (v == null)
-                return DateTimeOffset.MinValue;
-
-            return new DateTimeOffset(v.year, v.month, v.day, 0, 0, 0, DateHelper.GetWSTimeOffset());
-        }
+        private static DateTimeOffset MapDate(WSDateValue? v) =>
+            DateHelper.OrAbsentSentinel(
+                v is null ? null : new DateTimeOffset(v.year, v.month, v.day, 0, 0, 0, DateHelper.GetWSTimeOffset()),
+                nameof(ResourceValue.UnionValue.DateValue));
 
         private static WSDateValue MapDate(DateTimeOffset v)
         {

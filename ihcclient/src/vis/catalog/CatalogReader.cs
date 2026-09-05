@@ -81,7 +81,8 @@ namespace Ihc.Vis.Catalog
             {
                 return parse();
             }
-            catch (Exception ex) when (ex is XmlException or IOException or UnauthorizedAccessException)
+            catch (Exception ex) when (ex is XmlException or IOException or UnauthorizedAccessException
+                                             or DecoderFallbackException)
             {
                 throw new RefusedImportException(ImportRefusalCodes.CatalogUnparsable,
                     $"Failed to parse IHC Visual catalog file '{path}': {ex.Message}", ex);
@@ -169,7 +170,19 @@ namespace Ihc.Vis.Catalog
         {
             if (CatalogTextEncodingExtensions.HasUtf8Bom(bytes))
             {
-                return Encoding.UTF8;   // redundant with the StreamReader's own BOM detection, but explicit
+                // A BOM says UTF-8, so bytes that are not UTF-8 are refused rather than decoded to U+FFFD.
+                // Encoding.UTF8's decoder substitutes the replacement character, and the writer's strict UTF-8
+                // encodes U+FFFD without complaint — so a BOM written over a body that was never re-encoded
+                // turned an import→re-save into a silent character substitution. That is the loss D4's strict
+                // ENCODING exists to prevent, arriving through the decode side.
+                //
+                // Validated here rather than by handing the StreamReader a throwing decoder: with BOM detection
+                // on it REPLACES the supplied encoding with Encoding.UTF8 the moment it sees the preamble, so a
+                // strict instance passed in would be discarded. Turning detection off is not the alternative —
+                // the preamble would then decode to a leading U+FEFF that the head-text capture would carry into
+                // the DTD it reproduces.
+                RequireValidUtf8(bytes);
+                return Encoding.UTF8;
             }
             // Trust the CONTENT, not the declaration. Classify records SourceEncoding, and the writer re-encodes with
             // exactly that, so the byte the reader decodes with MUST be the one Classify picks — otherwise import→re-save
@@ -180,6 +193,21 @@ namespace Ihc.Vis.Catalog
             // (review D2). A declared UTF-8/ISO-8859-1 is already covered by the content classification, so nothing real
             // is lost. TextEncoding() decodes tolerantly, and Latin-1 is total, so this never throws for the real corpus.
             return CatalogTextEncodingExtensions.Classify(bytes).TextEncoding();
+        }
+
+        // The cheap check first — a vectorized validity scan over the whole file, no allocation — and only a file
+        // that FAILS it pays for a decode, which is what produces a DecoderFallbackException naming the offending
+        // bytes and their position. Every vendor .def carries a BOM, so the fast path is the corpus's path.
+        private static void RequireValidUtf8(byte[] bytes)
+        {
+            if (System.Text.Unicode.Utf8.IsValid(bytes))
+            {
+                return;
+            }
+
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true).GetString(bytes);
+            throw new DecoderFallbackException(
+                "The file begins with a UTF-8 byte-order mark but its bytes are not valid UTF-8.");
         }
 
         // The depth and character-data guards are this walk's, not just its twin's: a .def/.ifb reaches here from

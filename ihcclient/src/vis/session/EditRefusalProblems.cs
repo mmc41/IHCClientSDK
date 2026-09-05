@@ -127,6 +127,24 @@ namespace Ihc.Vis.Session
         /// <summary>The Danish template for <see cref="EditRefusalCodes.FieldAboveMaximum"/> — maximum only.</summary>
         internal const string FieldAboveMaximumRefusal = "Feltet '{field}' skal være højst {maximum}.";
 
+        /// <summary>The Danish template for <see cref="EditRefusalCodes.FieldNotANumber"/> — no number at all.</summary>
+        internal const string FieldNotANumberRefusal = "Feltet '{field}' skal være et helt tal. '{value}' er ikke et tal.";
+
+        /// <summary>
+        /// The refusal a bounded field earns when what was submitted is not a number, with its sentence already
+        /// bound. Beside <see cref="FieldBounds"/> because it answers the other half of the same question: that
+        /// one asks whether a number is within its bounds, this one whether there is a number to ask about.
+        /// </summary>
+        /// <param name="field">The field's caption, as the dialog shows it.</param>
+        /// <param name="value">The offending value, as submitted.</param>
+        internal static (ProblemCode Code, string Message) FieldNotANumber(string field, string value) =>
+            (EditRefusalCodes.FieldNotANumber,
+                ProblemTemplate.Bind(FieldNotANumberRefusal,
+                [
+                    new ProblemArgument("field", field),
+                    new ProblemArgument("value", value),
+                ]));
+
         /// <summary>
         /// Which of D05's three bound refusals a submitted number earns, and its sentence already bound — or null
         /// when the number is within its bounds.

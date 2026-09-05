@@ -63,6 +63,8 @@ namespace Ihc
         /// <item><description><b>ComparerFallback:</b> Dictionary/HashSet comparer couldn't be preserved</description></item>
         /// <item><description><b>ReadOnlyPropertyLost:</b> Read-only property without matching constructor</description></item>
         /// <item><description><b>IndexedPropertySkipped:</b> Indexed properties cannot be copied</description></item>
+        /// <item><description><b>SetCollision:</b> A non-injective transformer mapped two or more distinct set
+        /// elements onto one value, so the copy holds fewer elements than the source</description></item>
         /// </list>
         /// <para>To capture warnings, configure an ActivityListener that listens to the "ihcclient" ActivitySource.</para>
         /// <para><b>Type Fidelity and Interface Collections:</b> When copying interface-typed collection properties
@@ -473,6 +475,7 @@ namespace Ihc
             var addMethod = setType.GetMethod("Add");
 
             int index = 0;
+            int collapsed = 0;
             foreach (var item in (System.Collections.IEnumerable)src!)
             {
                 var itemPath = $"{path}[{index}]";
@@ -538,8 +541,28 @@ namespace Ihc
                     }
                 }
 
-                addMethod!.Invoke(copiedSet, new[] { transformedItem });
+                // Add returns whether the element was NEW. Discarding that result made a non-injective
+                // transformer - two distinct elements mapped onto one - silently yield a smaller set. A warning
+                // rather than a throw: the result is lossy but well-defined, which is the same class as the
+                // ComparerFallback and TypeFidelityLoss warnings above, where the throw a few lines up is for
+                // the UNSAFE case of an element mutated in place.
+                if (addMethod!.Invoke(copiedSet, new[] { transformedItem }) is false)
+                {
+                    collapsed++;
+                }
+
                 index++;
+            }
+
+            if (collapsed > 0)
+            {
+                activity?.AddWarning(
+                    $"HashSet transformation at path: {path} collapsed {collapsed} element(s) onto values already "
+                    + "in the set; the copy holds fewer elements than the source",
+                    ("type", "SetCollision"),
+                    ("path", path),
+                    ("elementType", genericArgs[0].FullName),
+                    ("collapsed", collapsed));
             }
 
             return copiedSet;

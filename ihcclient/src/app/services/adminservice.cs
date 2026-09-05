@@ -615,8 +615,11 @@ namespace Ihc.App
         /// Changes are applied sequentially in the order provided.
         /// DNS, network, and WLAN changes require a controller reboot and will set the return value to true.
         /// Each change type is routed to the appropriate service method (UserManagerService or ConfigurationService).
+        /// <para>INTERNAL rather than private only so a test can reach the default arm below: no change this
+        /// class DETECTS can carry an unrecognised type, so the arm is unreachable through <see cref="Store"/>
+        /// and a test that could only go through it would be asserting nothing.</para>
         /// </remarks>
-        private async Task<bool> ApplyChanges(List<AdminChange> changes)
+        internal async Task<bool> ApplyChanges(List<AdminChange> changes)
         {
             return await RunTracedAsync(nameof(ApplyChanges), async activity =>
             {
@@ -679,6 +682,12 @@ namespace Ihc.App
                                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                             rebootRequiredFlag = true;
                             break;
+
+                        default:
+                            // A member added to the enum without a case here would otherwise be reported as
+                            // applied while nothing reached the controller.
+                            throw new ArgumentOutOfRangeException(
+                                nameof(changes), change.ChangeType, $"Unknown {nameof(AdminChange.ChangeType)}");
                     }
                 }
 

@@ -233,6 +233,57 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
+        /// A tag declared TWICE in the inline DTD is refused, not silently resolved to whichever declaration came
+        /// last.
+        ///
+        /// <para>The capture keyed its blocks by tag with a plain assignment, so a second <c>&lt;!ELEMENT&gt;</c>
+        /// replaced the first and the project loaded under a grammar the file does not unambiguously state — while
+        /// <c>CatalogGrammar.Build</c> throws "declares tag twice" for exactly this input. Two readers of one
+        /// malformed document had two answers; they now have one.</para>
+        /// </summary>
+        [Test]
+        public void ATagDeclaredTwiceInTheInlineDtdIsRefusedAsLoadDtdMalformed()
+        {
+            ProjectFormatException refused = Refused(Encoding.Latin1.GetBytes(
+                """
+                <?xml version="1.0" encoding="ISO-8859-1"?>
+                <!DOCTYPE utcs_project [
+                   <!ELEMENT utcs_project ANY>
+                   <!ATTLIST utcs_project version_major CDATA "4">
+                   <!ELEMENT groups ANY>
+                   <!ATTLIST groups id ID #REQUIRED>
+                   <!ELEMENT groups ANY>
+                   <!ATTLIST groups id ID #REQUIRED>
+                ]>
+                <utcs_project version_major="4"/>
+                """));
+
+            AssertRefusal(refused, LoadRefusalCodes.DtdMalformed, "Ugyldig indbygget DTD", "groups");
+        }
+
+        /// <summary>
+        /// The shape the guard must NOT catch: an orphan <c>&lt;!ATTLIST&gt;</c> — one with no
+        /// <c>&lt;!ELEMENT&gt;</c> of its own — is legitimate, is what authentic catalog files carry, and is
+        /// synthesised into a declaration by the capture rather than rejected by it.
+        /// </summary>
+        [Test]
+        public void AnOrphanAttlistStillLoads()
+        {
+            Project project = ProjectReader.Read(new MemoryStream(Encoding.Latin1.GetBytes(
+                """
+                <?xml version="1.0" encoding="ISO-8859-1"?>
+                <!DOCTYPE utcs_project [
+                   <!ELEMENT utcs_project ANY>
+                   <!ATTLIST utcs_project version_major CDATA "4">
+                   <!ATTLIST resource_light inivalue CDATA "500.00">
+                ]>
+                <utcs_project version_major="4"/>
+                """)));
+
+            Assert.That(project.InlineDtdBlocks.Keys, Does.Contain("resource_light"));
+        }
+
+        /// <summary>
         /// A TRUNCATED file refuses as <c>load-not-xml</c>, and this test is the measurement behind ruling
         /// <c>load-truncated</c> out rather than the assertion that it fires. An XML parser at
         /// <c>ConformanceLevel.Document</c> refuses an unclosed document before the reader's own

@@ -130,6 +130,14 @@ namespace Ihc.Vis.Session
         /// <summary>The submitted value is above the only bound the field declares.</summary>
         public static ProblemCode FieldAboveMaximum { get; } = new("edit.field-above-maximum");
 
+        /// <summary>
+        /// The submitted value is not a whole number, in a field whose catalog element declares bounds.
+        /// <para>Scoped to fields that DECLARE bounds, because that declaration is the catalog stating the field
+        /// holds a number; an unbounded free-text field is untouched. A blank value is not this condition either
+        /// — blank means "at the declared default", and committing it writes the default back.</para>
+        /// </summary>
+        public static ProblemCode FieldNotANumber { get; } = new("edit.field-not-a-number");
+
         // ── programs ────────────────────────────────────────────────────────────────────────────────
 
         /// <summary>Not a valid case branch on a command group.</summary>
@@ -214,6 +222,7 @@ namespace Ihc.Vis.Session
                 TerminalMissing, TerminalAddressRange,
                 FieldTargetMissing, FieldOutsideProduct, FieldNotOffered, FieldReadOnly, FieldValueRule,
                 FieldPhonenumberMalformed, FieldOutOfRange, FieldBelowMinimum, FieldAboveMaximum,
+                FieldNotANumber,
                 CaseBranchInvalid, NotALogRow, NotACommandGroup,
                 MoveNotAllowed, ContainerRejectsNode,
                 DeletionRefusedCatalogPin, DeletionRefusedLockedBlock, DeletionRefusedStructural,

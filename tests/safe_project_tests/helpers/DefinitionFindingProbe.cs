@@ -75,7 +75,7 @@ namespace Ihc.Vis.Tests
             block.Program("Tom");
             Collect(nameof(FunctionBlockDefinitionBuilder), block.Validate());
 
-            // The six grammar advisories, each through a product body the effective grammar rejects.
+            // The grammar advisories, each through a product body the effective grammar rejects.
             foreach ((_, Func<ProductDefinitionBuilder> body) in GrammarAdvisories)
             {
                 Collect(nameof(CatalogGrammarAdvisor), body().Validate());
@@ -85,7 +85,7 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
-        /// The six product bodies the effective grammar objects to, one per advisory code — the provocations
+        /// The product bodies the effective grammar objects to, one per advisory code — the provocations
         /// themselves, held apart from what is asked of them.
         ///
         /// <para>Read from here by <c>BuilderGrammarSurfaceTests</c> as well, which asks whether each one
@@ -126,6 +126,11 @@ namespace Ihc.Vis.Tests
                 .RawChild(new ProjectElement("dataline_input", new ElementId(0x9, 0x11),
                     ImmutableArray.Create(("id", "_0x911"), ("name", "B")),
                     ImmutableArray<ProjectElement>.Empty))),
+
+            // A declared numeric bound whose text is not a number: the engine reads it as "no bound at all", so
+            // the definition states a limit that nothing downstream can enforce.
+            ("catalog-bound-unreadable",
+                () => Dataline().AddInput("Tryk", i => i.Attribute("minimum", "x"))),
 
             ("grammar-dangling-idref", () => Dataline()
                 .AddOutput("Udgang")

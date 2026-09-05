@@ -293,13 +293,15 @@ namespace Ihc {
             );
         }
 
-        private static DateTimeOffset mapDate(WSDate? v)
-        {
-            if (v == null)
-                return DateTimeOffset.MinValue;
-
-            return new DateTimeOffset(v.year, v.monthWithJanuaryAsOne, v.day, v.hours, v.minutes, v.seconds, DateHelper.GetWSTimeOffset());
-        }
+        /// <summary>
+        /// One wire date, through the shared conversion and the shared absent-value answer.
+        /// <para>It used to build the <see cref="DateTimeOffset"/> itself, which put a second opinion on what a
+        /// corrupt date means beside <see cref="DateHelper.CreateDateTimeOffset"/>'s: that one answers with the
+        /// documented sentinel, this one threw. Two sibling services carried a byte-identical copy of the same
+        /// helper, so the divergence was written three times.</para>
+        /// </summary>
+        private static DateTimeOffset mapDate(WSDate? v, string field) =>
+            DateHelper.OrAbsentSentinel(v?.ToDateTimeOffset(), field);
 
         private static ProjectInfo? mapProjectInfo(Ihc.Soap.Controller.WSProjectInfo? projectInfo)
         {
@@ -312,7 +314,7 @@ namespace Ihc {
                 VisualMinorVersion = projectInfo.visualMinorVersion,
                 ProjectMajorRevision = projectInfo.projectMajorRevision,
                 ProjectMinorRevision = projectInfo.projectMinorRevision,
-                Lastmodified = mapDate(projectInfo.lastmodified),
+                Lastmodified = mapDate(projectInfo.lastmodified, nameof(ProjectInfo.Lastmodified)),
                 ProjectNumber = projectInfo.projectNumber,
                 CustomerName = projectInfo.customerName,
                 InstallerName = projectInfo.installerName
@@ -378,8 +380,12 @@ namespace Ihc {
 
             private static ControllerState mapControllerState(Ihc.Soap.Controller.WSControllerState? state)
         {
+            // An answer that names no state is not the Uninitialized state: that is a state the controller
+            // genuinely reports, by name, in the switch below - and it is also the enum's ZERO member, so
+            // folding an unreadable answer onto it made "never assigned", "genuinely uninitialized" and "the
+            // answer did not say" one value. Unknown is the member that already means the last of those.
             if (state == null || String.IsNullOrEmpty(state.state))
-                return ControllerState.Uninitialized;
+                return ControllerState.Unknown;
 
             switch (state.state)
             {
@@ -557,6 +563,15 @@ namespace Ihc {
                 try
                 {
                     var result = await impl.getS0MeterValueAsync(new inputMessageName11() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    if (!result.getS0MeterValue1.HasValue)
+                    {
+                        // Zero is a REAL meter reading - a meter that has counted nothing - so the substitution
+                        // is indistinguishable from one. The value stays; the warning says it was substituted.
+                        activity.AddWarning(
+                            "The controller answered no S0 meter value; substituting 0.",
+                            ("type", "AbsentWireValue"),
+                            ("field", nameof(GetS0MeterValue)));
+                    }
                     var retv = result.getS0MeterValue1.HasValue ? result.getS0MeterValue1.Value : 0.0f;
 
                     activity?.SetReturnValue(retv);
@@ -859,7 +874,13 @@ namespace Ihc {
 
                     await Task.Delay(100).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // Wait a little to let controller settle.
 
-                    var retv = result?.storeIHCProject2 == true;
+                    // An absent acknowledgement element is not a declined store: the bytes were sent, and the
+                    // answer simply did not say what became of them. Folded to `false` it is indistinguishable
+                    // from a controller that refused, which is the one thing a caller would act on differently.
+                    if (result?.storeIHCProject2 is null)
+                        throw new InvalidOperationException("Controller did not acknowledge the project store: the response carried no result. The project bytes were sent, so the controller's state is unknown.");
+
+                    var retv = result.storeIHCProject2 == true;
 
                     activity?.SetReturnValue(retv);
                     return retv;

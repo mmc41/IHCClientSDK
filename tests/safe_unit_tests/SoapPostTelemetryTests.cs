@@ -31,18 +31,7 @@ namespace Ihc.Tests
         private static StubTransport Stub(HttpStatusCode status, string responseBody) =>
             new(status, new StringContent(responseBody, Encoding.UTF8, "text/xml"));
 
-        private sealed class TestSoapService : ServiceBaseImpl
-        {
-            public TestSoapService(IhcSettings settings, ICookieHandler cookieHandler, HttpClient transport)
-                : base(cookieHandler, settings, "TestService", transport) { }
-
-            public Task<outputMessageName9> Call() =>
-                soapPost<outputMessageName9, inputMessageName9>("isSDCardReady", new inputMessageName9());
-        }
-
-        private static string SoapResponse(bool value) =>
-            Serialization.SerializeXml<ResponseEnvelope<outputMessageName9>>(
-                new ResponseEnvelope<outputMessageName9>(new outputMessageName9(value)));
+        private static string SoapResponse(bool value) => TestSoapService.Response(value);
 
         /// <summary>Runs one call and returns every tag the soapPost span carried, plus what was actually sent.</summary>
         private static async Task<(Dictionary<string, object?> Tags, string? RequestBody, Exception? Thrown)>

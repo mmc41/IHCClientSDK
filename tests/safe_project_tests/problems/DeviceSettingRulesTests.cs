@@ -168,6 +168,59 @@ namespace Ihc.Vis.Tests
             Assert.That(Count(Dimmer(fadeUp: "700"), "dev-shutter-traveltime-zero"), Is.Zero);
         }
 
+        // ── dev-setting-unreadable ───────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The blind spot between the two readings of one attribute. <c>Stored</c> answers null both for a
+        /// setting that carries NO value — an uncommissioned setting, deliberately not defaulted to zero — and
+        /// for one that carries a value no arithmetic can read, and the five numeric rows skip both alike. So a
+        /// commissioned setting holding nonsense was reported by nothing.
+        ///
+        /// <para>It is not merely unreported: <c>dev-setting-default</c> reads the same attribute by PRESENCE, so
+        /// the very same element counts as configured there. The two readings disagreed, and one of them had to
+        /// grow a finding rather than a different opinion.</para>
+        /// </summary>
+        [Test]
+        public void AnUnreadableStoredValueIsReported_WhereAnAbsentOneIsNot()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Dimmer(fadeUp: "abc"), "dev-setting-unreadable"), Is.EqualTo(1));
+                Assert.That(Count(Dimmer(fadeUp: null), "dev-setting-unreadable"), Is.Zero,
+                    "an ABSENT value is an uncommissioned setting, which is a different state and other rows own it");
+                Assert.That(Count(Dimmer(fadeUp: "700"), "dev-setting-unreadable"), Is.Zero,
+                    "a value that reads is not this row");
+            });
+        }
+
+        /// <summary>
+        /// One finding per unreadable setting, not one per product — each is a separate value to repair. And the
+        /// non-numeric load-mode setting is NOT one of them: its values are words by declaration.
+        /// </summary>
+        [Test]
+        public void EachUnreadableNumericSettingIsItsOwnFinding_AndAWordValuedOneIsNotReported()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Dimmer(fadeUp: "abc", fadeDown: "  "), "dev-setting-unreadable"),
+                    Is.EqualTo(2), "two settings, two values to repair");
+                Assert.That(Count(LedDimmer(loadMode: "rc"), "dev-setting-unreadable"), Is.Zero,
+                    "the load mode is an enumerated word, not a number that failed to parse");
+            });
+        }
+
+        [Test]
+        public void TheUnreadableSettingFindingNamesTheSettingAndTheStoredText()
+        {
+            string message = Message(Dimmer(fadeUp: "abc"), "dev-setting-unreadable");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(message, Does.Contain("abc"), "the reader has to see the text that is in the file");
+                Assert.That(message, Does.Not.Contain("{"), "every declared slot binds");
+            });
+        }
+
         // ── the shipped catalog: a placed product is not a defect ────────────────────────────────────
 
         [Test]

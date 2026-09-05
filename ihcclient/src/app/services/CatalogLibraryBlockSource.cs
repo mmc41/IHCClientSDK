@@ -63,10 +63,13 @@ namespace Ihc.App
         /// The definitions read twice over, once per question, from one enumeration — materializing the catalog is
         /// the expensive half and a second pass over it would double it for nothing.
         /// <para>
-        /// BODIES: first entry wins for a duplicate key, the same convention the id and topology analyses use, so
-        /// a catalog holding two variants of one identity resolves deterministically rather than by dictionary
-        /// order. VERSIONS: sorted ordinal-ascending because the port's contract says so — the catalog's own
-        /// declaration order is not a promise, and a rule binds one of these into a Danish sentence.
+        /// BODIES: LAST entry wins for a duplicate key, because of what the enumeration IS. It comes from the
+        /// composite, which lists base components first and imports last precisely so that last-wins yields
+        /// imported-wins (<see cref="CompositeCatalog"/>'s documented contract). Indexing it first-wins made this
+        /// port the one lookup in the system that resolved a shadowed identity to the built-in body while every
+        /// other resolved it to the imported one. VERSIONS: sorted ordinal-ascending because the port's contract
+        /// says so — the catalog's own declaration order is not a promise, and a rule binds one of these into a
+        /// Danish sentence.
         /// </para>
         /// </summary>
         private static LibraryIndex Build(IReadOnlyList<FunctionBlockDefinition> definitions)
@@ -75,7 +78,7 @@ namespace Ihc.App
             Dictionary<string, SortedSet<string>> versions = [];
             foreach (FunctionBlockDefinition definition in definitions)
             {
-                bodies.TryAdd((definition.MasterType, definition.MasterVersion), definition.Body);
+                bodies[(definition.MasterType, definition.MasterVersion)] = definition.Body;
                 if (!versions.TryGetValue(definition.MasterType, out SortedSet<string>? held))
                 {
                     held = new SortedSet<string>(StringComparer.Ordinal);

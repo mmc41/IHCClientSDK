@@ -1,6 +1,5 @@
 using System.Threading.Tasks;
 using System;
-using System.Linq;
 using Ihc.Soap.Notificationmanager;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -67,7 +66,7 @@ namespace Ihc {
 
             return new NotificationMessage()
             {
-                Date = mapDate(e.date),
+                Date = DateHelper.OrAbsentSentinel(e.date?.ToDateTimeOffset(), nameof(NotificationMessage.Date)),
                 NotificationType = e.notificationType,
                 Recipient = e.recipient,
                 Sender = e.sender,
@@ -75,14 +74,6 @@ namespace Ihc {
                 Body = e.body,
                 Delivered = e.delivered
             };
-        }
-
-        private static DateTimeOffset mapDate(WSDate? v)
-        {
-            if (v == null)
-                return DateTimeOffset.MinValue;
-
-            return new DateTimeOffset(v.year, v.monthWithJanuaryAsOne, v.day, v.hours, v.minutes, v.seconds, DateHelper.GetWSTimeOffset());
         }
 
         public async Task ClearMessages()
@@ -108,7 +99,7 @@ namespace Ihc {
                 try
                 {
                     var resp = await impl.getMessagesAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.getMessages1.Where((v) => v != null).Select((v) => mapMessage(v)).OfType<NotificationMessage>().ToList();
+                    var retv = WireList.MapPresent(resp.getMessages1, mapMessage, activity, nameof(GetMessages));
 
                     activity?.SetReturnValue(retv);
                     return retv;

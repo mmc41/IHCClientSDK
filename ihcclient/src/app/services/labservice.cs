@@ -660,9 +660,25 @@ namespace Ihc.App
             // (ISO-8859-1) with the canonical *.vis extension - not the display preview as UTF-8 .txt. Preserve a
             // controller-supplied base name but force the .vis extension so the saved file is a valid IHC project.
             if (rawResult is ProjectFile projectFile)
+            {
+                // An absent body is REFUSED rather than written as an empty file under a .vis name. The name and
+                // the extension both say "project", the bytes are not one, and nothing on disk distinguishes a
+                // failed download saved this way from a successful one.
+                //
+                // Only this branch, and the asymmetry is the point: a .vis has a FORMAT contract - it must be an
+                // XML document with a utcs_project root, and zero bytes cannot be one - while the byte[] and
+                // BinaryFile branches above carry payloads whose length nothing constrains, so an empty one there
+                // is a legitimate file rather than a broken instance of a declared format.
+                if (string.IsNullOrWhiteSpace(projectFile.Data))
+                    throw new ArgumentException(
+                        $"The project result '{projectFile.Filename}' carries no content; saving it would write a "
+                        + $"file with the .{ProjectFile.FileExtension} extension that is not a project.",
+                        nameof(rawResult));
+
                 return new ResultFileContent(
-                    ProjectFile.Encoding.GetBytes(projectFile.Data ?? string.Empty),
+                    ProjectFile.Encoding.GetBytes(projectFile.Data),
                     $"{ProjectBaseName(projectFile.Filename, baseName)}.{ProjectFile.FileExtension}");
+            }
 
             return new ResultFileContent(System.Text.Encoding.UTF8.GetBytes(displayText ?? string.Empty), $"{baseName}.txt");
         }
@@ -1260,9 +1276,15 @@ namespace Ihc.App
                         onItem(currentProperty!.GetValue(enumerator));
                     }
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
                     // StopStream cancels the token; a cancelled stream is a normal end, not an error.
+                    //
+                    // The FILTER is what makes that true. Unfiltered, this also swallowed a cancellation nobody
+                    // asked for: the SOAP HttpClient has no configured timeout, so its 100-second default
+                    // surfaces as a TaskCanceledException — an OperationCanceledException — and the stream ended
+                    // looking exactly like a user stop, with the items received so far left standing. The token
+                    // is the only thing that tells the two apart.
                 }
                 finally
                 {

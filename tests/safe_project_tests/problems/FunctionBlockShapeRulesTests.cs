@@ -144,6 +144,57 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
+        /// The adapter and the composite must resolve one identity to the SAME body.
+        ///
+        /// <para>The composite documents imported-wins and gets it from <c>MaterializedCatalog</c>'s last-wins rule
+        /// over an enumeration that lists base components first and imports last. The adapter indexed the very same
+        /// enumeration first-wins, calling that a convention — so for a master type and version present in both, the
+        /// library port answered with the BUILT-IN body while every other lookup answered with the imported one.</para>
+        /// </summary>
+        [Test]
+        public void TheAdapterResolvesAShadowedIdentityToTheSameBodyTheCompositeDoes()
+        {
+            var composite = new CompositeCatalog(new BuiltInCatalog());
+            FunctionBlockDefinition builtIn = composite.FunctionBlocks
+                .First(b => !string.IsNullOrEmpty(b.MasterType) && !string.IsNullOrEmpty(b.MasterVersion));
+            FunctionBlockDefinition imported = builtIn with
+            {
+                DisplayName = "Importeret",
+                Body = builtIn.Body.WithAttribute("name", "Importeret"),
+            };
+            composite.Import(imported);
+
+            ILibraryBlockSource library = new Ihc.App.CatalogLibraryBlockSource(() => composite.FunctionBlocks);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(library.TryGetBody(builtIn.MasterType, builtIn.MasterVersion, out ProjectElement body), Is.True);
+                Assert.That(body.GetAttribute("name"), Is.EqualTo("Importeret"),
+                    "the imported body shadows the built-in one, exactly as the composite's own lookup resolves it");
+                Assert.That(composite.FunctionBlocks.Last(b => b.MasterType == builtIn.MasterType
+                        && b.MasterVersion == builtIn.MasterVersion).Body.GetAttribute("name"),
+                    Is.EqualTo("Importeret"),
+                    "and the enumeration the adapter is handed is the one that puts imports last");
+            });
+        }
+
+        /// <summary>Two versions of one type both stay listed — the VERSIONS half is a separate contract and this
+        /// change must not have narrowed it.</summary>
+        [Test]
+        public void TwoVersionsOfOneTypeBothRemainListed()
+        {
+            var composite = new CompositeCatalog(new BuiltInCatalog());
+            FunctionBlockDefinition builtIn = composite.FunctionBlocks
+                .First(b => !string.IsNullOrEmpty(b.MasterType) && !string.IsNullOrEmpty(b.MasterVersion));
+            composite.Import(builtIn with { MasterVersion = builtIn.MasterVersion + "z" });
+
+            ILibraryBlockSource library = new Ihc.App.CatalogLibraryBlockSource(() => composite.FunctionBlocks);
+
+            Assert.That(library.TryGetVersions(builtIn.MasterType, out EquatableArray<string> held), Is.True);
+            Assert.That(held, Does.Contain(builtIn.MasterVersion).And.Contain(builtIn.MasterVersion + "z"));
+        }
+
+        /// <summary>
         /// A library block carrying full master identity whose <c>Timer</c> setting stores the given minute — null
         /// stores nothing at all.
         /// </summary>

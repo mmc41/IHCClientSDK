@@ -15,7 +15,7 @@ namespace Ihc.Vis.Tests
     /// it; and every closed-emitter tag must be declared by its family preset (tag presence — preset CONTENT is
     /// byte-pinned by the designated oracle tests);
     /// (2) <c>.ExtendGrammar</c> extends the preset without disturbing it;
-    /// (3) the six grammar↔body <c>Validate()</c> advisory categories are non-blocking warnings.
+    /// (3) the grammar↔body <c>Validate()</c> advisory categories are non-blocking warnings.
     /// </summary>
     public class BuilderGrammarSurfaceTests
     {
@@ -316,13 +316,13 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        // ---- (3) the six advisory categories: non-blocking warnings, Build() and Write still succeed ----
+        // ---- (3) the advisory categories: non-blocking warnings, Build() and Write still succeed ----
 
         /// <summary>
         /// One advisory: its body raises that code as a WARNING, and Build and Write still succeed.
         /// <para>
-        /// The six bodies live on <see cref="DefinitionFindingProbe.GrammarAdvisories"/> rather than here,
-        /// because the drift and severity gates provoke exactly the same six. They are sensitive to the
+        /// The bodies live on <see cref="DefinitionFindingProbe.GrammarAdvisories"/> rather than here,
+        /// because the drift and severity gates provoke exactly the same ones. They are sensitive to the
         /// grammar presets to the byte, so a second copy could stop objecting on one side — passing while
         /// testing nothing — while the other side stayed honest.
         /// </para>
@@ -331,9 +331,9 @@ namespace Ihc.Vis.Tests
         public void Advisory_Warns(string code) => AssertAdvisoryWarns(code);
 
         /// <summary>
-        /// The advisory codes, READ from the probe rather than re-listed. A seventh advisory added there is
+        /// The advisory codes, READ from the probe rather than re-listed. A further advisory added there is
         /// covered here the moment it exists; a hand-kept list of stubs would have left it silently untested
-        /// until someone remembered to write a seventh method.
+        /// until someone remembered to write another method.
         /// </summary>
         private static IEnumerable<string> GrammarAdvisoryCodes =>
             DefinitionFindingProbe.GrammarAdvisories.Select(a => a.Code);
@@ -355,6 +355,52 @@ namespace Ihc.Vis.Tests
                     $"expected a '{code}' warning; got: " +
                     string.Join("; ", validation.Findings.Select(f => f.RuleId)));
             });
+        }
+
+        /// <summary>
+        /// A bound the GRAMMAR defaults, which no element carries and every element of the tag inherits.
+        ///
+        /// <para>The advisory read only the attributes an element physically carries, while
+        /// <c>ElementView.DeclaredBounds</c> — the reader whose answer decides whether the composed dialog
+        /// offers the field — reads the EFFECTIVE value and so falls back to the declared default. A definition
+        /// defaulting <c>minimum</c> to something unreadable therefore made every placed instance's field
+        /// read-only with no finding to say why, which is the same silence this row was minted to end, one
+        /// level up.</para>
+        /// </summary>
+        [Test]
+        public void Advisory_UnreadableBoundDeclaredOnlyAsAGrammarDefault_IsStillWarned()
+        {
+            ProductDefinitionBuilder builder = ProductDefinitionBuilder
+                .Dataline("_0x9fe6", "Bound default probe")
+                .ExtendGrammar(g => g.Element("resource_probe",
+                    GrammarAttr.Id("id"), GrammarAttr.Cdata("name", ""), GrammarAttr.Cdata("minimum", "x")))
+                .RawChild(new ProjectElement("resource_probe", new ElementId(0x90, 0x06),
+                    ImmutableArray.Create(("id", "_0x9006"), ("name", "Probe")),
+                    ImmutableArray<ProjectElement>.Empty));
+
+            ProjectValidationResult validation = builder.Validate();
+
+            Assert.That(validation.Findings.Where(f => f.RuleId == "catalog-bound-unreadable")
+                    .Select(f => f.Locator),
+                Does.Contain("resource_probe@minimum"),
+                "the element carries no minimum of its own, so only the declared default states the bound — and "
+                + "it is the one every instance of the tag reads");
+        }
+
+        /// <summary>A grammar default that DOES parse states a bound the engine can honour, and is not this
+        /// row — the control without which the case above would pass on any default at all.</summary>
+        [Test]
+        public void Advisory_ReadableBoundDeclaredAsAGrammarDefault_IsNotWarned()
+        {
+            ProductDefinitionBuilder builder = ProductDefinitionBuilder
+                .Dataline("_0x9fe7", "Bound default control")
+                .ExtendGrammar(g => g.Element("resource_probe",
+                    GrammarAttr.Id("id"), GrammarAttr.Cdata("name", ""), GrammarAttr.Cdata("minimum", "0")))
+                .RawChild(new ProjectElement("resource_probe", new ElementId(0x90, 0x07),
+                    ImmutableArray.Create(("id", "_0x9007"), ("name", "Probe")),
+                    ImmutableArray<ProjectElement>.Empty));
+
+            Assert.That(builder.Validate().Findings.Where(f => f.RuleId == "catalog-bound-unreadable"), Is.Empty);
         }
 
         [Test]

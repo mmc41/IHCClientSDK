@@ -330,6 +330,14 @@ namespace Ihc {
         {
             if (eventPackage == null)
             {
+                // A FABRICATED package: "not running, no events, no subscriptions" is a well-formed answer a
+                // caller acts on, and none of it was read from the controller. The shape stays - WaitForEvents
+                // polls this and a null would only move the problem - and the warning is what tells the two
+                // apart afterwards.
+                Activity.Current.AddWarning(
+                    "The controller answered no event package; substituting an empty, not-running one.",
+                    ("type", "AbsentEventPackage"));
+
                 return new EventPackage()
                 {
                     ResourceValueEvents = Array.Empty<ResourceValue>(),
@@ -364,7 +372,7 @@ namespace Ihc {
                 VisualMajorVersion = info.visualMajorVersion,
                 ProjectMajorRevision = info.projectMajorRevision,
                 ProjectMinorRevision = info.projectMinorRevision,
-                Lastmodified = info.lastmodified?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
+                Lastmodified = DateHelper.OrAbsentSentinel(info.lastmodified?.ToDateTimeOffset(), nameof(ProjectInfo.Lastmodified)),
                 ProjectNumber = info.projectNumber,
                 CustomerName = info.customerName,
                 InstallerName = info.installerName
@@ -380,8 +388,8 @@ namespace Ihc {
                 Filepath = info.filepath,
                 Remote = info.remote,
                 Version = info.version,
-                Created = info.created?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
-                LastModified = info.lastmodified?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
+                Created = DateHelper.OrAbsentSentinel(info.created?.ToDateTimeOffset(), nameof(SceneProjectInfo.Created)),
+                LastModified = DateHelper.OrAbsentSentinel(info.lastmodified?.ToDateTimeOffset(), nameof(SceneProjectInfo.LastModified)),
                 Description = info.description,
                 Crc = info.crc
             } : null;
@@ -550,7 +558,7 @@ namespace Ihc {
                 try
                 {
                     var result = await impl.getTimeAsync(new inputMessageName8()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = result.getTime1?.ToDateTimeOffset() ?? DateTimeOffset.MinValue;
+                    var retv = DateHelper.OrAbsentSentinel(result.getTime1?.ToDateTimeOffset(), nameof(GetTime));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -846,6 +854,16 @@ namespace Ihc {
                 try
                 {
                     var result = await impl.getIHCProjectNumberOfSegmentsAsync(new inputMessageName19()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    if (!result.getIHCProjectNumberOfSegments1.HasValue)
+                    {
+                        // A caller sizing a segmented download off this reads "no segments" and downloads
+                        // nothing - the one substitution here that silently produces an empty result rather
+                        // than a wrong number.
+                        activity.AddWarning(
+                            "The controller answered no project segment count; substituting 0.",
+                            ("type", "AbsentWireValue"),
+                            ("field", nameof(GetIHCProjectNumberOfSegments)));
+                    }
                     var retv = result.getIHCProjectNumberOfSegments1.HasValue ? result.getIHCProjectNumberOfSegments1.Value : 0;
 
                     activity?.SetReturnValue(retv);

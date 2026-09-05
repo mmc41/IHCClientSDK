@@ -104,7 +104,7 @@ namespace Ihc {
                 GmtOffsetInHours = ws.gmtOffsetInHours,
                 ServerName = ws.serverName,
                 SyncIntervalInHours = ws.syncIntervalInHours,
-                TimeAndDateInUTC = ws.timeAndDateInUTC?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
+                TimeAndDateInUTC = DateHelper.OrAbsentSentinel(ws.timeAndDateInUTC?.ToDateTimeOffset(), nameof(TimeManagerSettings.TimeAndDateInUTC)),
                 OnlineCalendarUpdateOnline = ws.online_calendar_update_online,
                 OnlineCalendarCountry = ws.online_calendar_country,
                 OnlineCalendarValidUntil = ws.online_calendar_valid_until
@@ -135,9 +135,9 @@ namespace Ihc {
             return new TimeServerConnectionResult
             {
                 ConnectionWasSuccessful = ws.connectionWasSuccessful,
-                DateFromServer = ws.dateFromServer > 0
-                    ? DateTimeOffset.FromUnixTimeMilliseconds(ws.dateFromServer)
-                    : DateTimeOffset.MinValue,
+                DateFromServer = DateHelper.OrAbsentSentinel(
+                    ws.dateFromServer > 0 ? DateTimeOffset.FromUnixTimeMilliseconds(ws.dateFromServer) : null,
+                    nameof(TimeServerConnectionResult.DateFromServer)),
                 ConnectionFailedDueToUnknownHost = ws.connectionFailedDueToUnknownHost,
                 ConnectionFailedDueToOtherErrors = ws.connectionFailedDueToOtherErrors
             };
@@ -170,7 +170,7 @@ namespace Ihc {
                 {
                     var resp = await impl.getCurrentLocalTimeAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var result = resp.getCurrentLocalTime1;
-                    var retv = result != null ? result.ToDateTimeOffset() : DateTimeOffset.MinValue;
+                    var retv = DateHelper.OrAbsentSentinel(result?.ToDateTimeOffset(), nameof(GetCurrentLocalTime));
 
                     activity?.SetReturnValue(retv);
                     return retv;

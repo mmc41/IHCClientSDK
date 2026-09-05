@@ -1321,19 +1321,46 @@ namespace Ihc.Vis.Editing
             ProjectElement node = Require(id);
             ProjectElement parent = FindParentOf(root, id)
                 ?? throw new InvalidOperationException($"Cannot reorder {id.ToToken()}: it has no parent.");
+            // The parent is ADDRESSED by id below, and an id-less one is the same open-world shape the sibling
+            // translation just under this guard is about: the engine admits element types a project's own DTD
+            // declares, and the edit-open guard skips id-less elements rather than refusing them. Named here
+            // rather than left to `parent.Id!.Value`, which would answer that input with a bare
+            // NullReferenceException naming nothing.
+            if (parent.Id is not { } parentId)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot reorder {id.ToToken()}: its parent <{parent.Tag}> carries no id to move it within.");
+            }
+
             List<ProjectElement> sameTag = parent.Children.Where(c => c.Tag == node.Tag).ToList();
             int clamped = Math.Clamp(index, 0, sameTag.Count - 1);
             // Translate the same-tag position to the absolute child index of the sibling currently sitting there.
-            ElementId? targetId = sameTag[clamped].Id;
+            //
+            // By REFERENCE, not by id. `sameTag` is a filter of `parent.Children`, so its entries ARE those
+            // children — but ElementId is a record struct and Id is nullable, so an id comparison reads
+            // null == null for an id-less target and stops at the parent's first id-less child, whatever its
+            // tag. That is reachable: the engine admits undeclared element types a project's own DTD declares,
+            // and the edit-open guard skips id-less elements rather than refusing them, so an imported or
+            // hand-edited file can present same-tag siblings of mixed present and absent ids. The reorder then
+            // landed in front of an unrelated element that merely shared their lack of an id.
+            ProjectElement target = sameTag[clamped];
             int absolute = -1;
             for (int i = 0; i < parent.Children.Count && absolute < 0; i++)
             {
-                if (parent.Children[i].Id == targetId)
+                if (ReferenceEquals(parent.Children[i], target))
                 {
                     absolute = i;
                 }
             }
-            return MoveSubtree(id, parent.Id!.Value, absolute);
+            if (absolute < 0)
+            {
+                // Unreachable while `sameTag` is built by filtering `parent.Children`: an engine bug rather than
+                // an input, so it is named here instead of silently reordering to the front.
+                throw new InvalidOperationException(
+                    $"Cannot reorder {id.ToToken()}: the selected same-tag sibling is not among its parent's children.");
+            }
+
+            return MoveSubtree(id, parentId, absolute);
         }
 
         private void InsertChildAt(ElementId parentId, ProjectElement child, int? index) =>

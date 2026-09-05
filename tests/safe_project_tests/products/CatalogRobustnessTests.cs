@@ -35,6 +35,71 @@ namespace Ihc.Vis.Tests
                 "a UTF-8-without-BOM catalog file must not be mojibaked through a Latin-1 decode");
         }
 
+        /// <summary>A UTF-8 BOM in front of a body that is real Latin-1 — what an editor produces when it stamps a
+        /// BOM onto a vendor <c>.def</c> without re-encoding it. The <c>æ</c> is a lone <c>0xE6</c>, valid Latin-1
+        /// and not valid UTF-8.</summary>
+        private static byte[] BomOverLatin1Body() =>
+        [
+            .. new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetPreamble(),
+            .. Encoding.Latin1.GetBytes(
+                "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\r\n" +
+                "<product_dataline id=\"_0x153\" product_identifier=\"_0x2101\" name=\"Tænd/sluk\"/>"),
+        ];
+
+        /// <summary>
+        /// A BOM alone used to select <c>Encoding.UTF8</c>, whose REPLACING decoder turns a byte that is not
+        /// valid UTF-8 into U+FFFD. The writer's strict UTF-8 then encodes U+FFFD perfectly happily, so a
+        /// catalog import followed by a re-save substituted characters without a word — the one loss the
+        /// strict-encoding decision (D4) exists to prevent, arriving through the decode side instead.
+        /// </summary>
+        /// <remarks>
+        /// It takes an editor that wrote a BOM without re-encoding the body, which is exactly what a
+        /// well-meaning tool does to a vendor <c>.def</c> that declares ISO-8859-1.
+        /// </remarks>
+        [Test]
+        public void CatalogReader_BomOverBytesThatAreNotUtf8_IsRefusedRatherThanReplaced()
+        {
+            using var ms = new MemoryStream(BomOverLatin1Body());
+
+            Assert.Throws<DecoderFallbackException>(() => CatalogReader.Read(ms),
+                "a byte the declared encoding cannot decode must not become U+FFFD and be written back");
+        }
+
+        /// <summary>The other half: a BOM over genuinely valid UTF-8 still reads, so the guard refuses only what
+        /// it cannot decode.</summary>
+        [Test]
+        public void CatalogReader_BomOverValidUtf8_StillReads()
+        {
+            byte[] bytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true).GetBytes(
+                "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\r\n" +
+                "<product_dataline id=\"_0x153\" product_identifier=\"_0x2101\" name=\"Tænd/sluk æøå\"/>");
+
+            using var ms = new MemoryStream(bytes);
+            ProjectElement body = CatalogReader.Read(ms);
+
+            Assert.That(body.GetAttribute("name"), Is.EqualTo("Tænd/sluk æøå"));
+        }
+
+        /// <summary>
+        /// Through the path a user actually reaches it by: the file-context wrap turns the decode failure into
+        /// the same coded import refusal a malformed file earns, naming the offending path.
+        /// </summary>
+        [Test]
+        public void CatalogReader_BomOverBytesThatAreNotUtf8_SurfacesAsACodedImportRefusal()
+        {
+            byte[] bytes = BomOverLatin1Body();
+
+            var ex = Assert.Throws<RefusedImportException>(() =>
+                CatalogReader.ParseCatalogFile("C:\\corpus\\Broken.def", () => CatalogReader.Read(bytes)));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ex!.Problems!.Operation.Code, Is.EqualTo(ImportRefusalCodes.CatalogUnparsable.Operation));
+                Assert.That(ex.Problems.Cause.Code, Is.EqualTo(ImportRefusalCodes.CatalogUnparsable.Cause));
+                Assert.That(ex.Message, Does.Contain("Broken.def"));
+            });
+        }
+
         // ----- CatalogReader element-walk hardening, at parity with its ProjectReader twin -----
         //
         // CatalogReader.ReadElement and ProjectReader.ReadElement are the same walk over two file families, and

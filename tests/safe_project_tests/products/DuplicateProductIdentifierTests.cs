@@ -27,10 +27,11 @@ namespace Ihc.Vis.Tests
 
         /// <summary>
         /// The collision census — every shared identifier and every product that answers to it, stated rather
-        /// than left to be inferred. Eight groups, and <c>_0x4408</c> has <b>THREE</b> members, so any resolver
-        /// that takes a fixed number of candidates is wrong for that one: <c>ProductCatalogLookup</c>'s
-        /// <c>Take(2)</c> still cannot reach <c>WindowMaster WUC 102</c>. Fixing that lookup is separate work —
-        /// this table is what makes the defect visible, not a test of it.
+        /// than left to be inferred. <c>_0x4408</c> has <b>THREE</b> members, which is why a resolver reading a
+        /// fixed number of candidates was wrong for that one: <c>ProductCatalogLookup</c> truncated at two and
+        /// could not reach <c>WindowMaster WUC 102</c> by name at all. The table now drives
+        /// <see cref="EveryMemberOfASharedIdentifierResolvesByItsOwnName"/>, so a group that grows a fourth
+        /// member arrives with a case rather than needing one written.
         /// </summary>
         private static readonly (string Identifier, string[] Members)[] SharedIdentifiers =
         [
@@ -65,6 +66,61 @@ namespace Ihc.Vis.Tests
                     Assert.That(duplicated.SingleOrDefault(g => g.Key == identifier)?.Select(p => p.DisplayName),
                         Is.EquivalentTo(members), identifier);
                 }
+            });
+        }
+
+        /// <summary>
+        /// EVERY member of every shared group is reachable BY NAME — including the third one.
+        ///
+        /// <para>The resolver took only the first two candidates, on the assumption that no identifier has a
+        /// third member. <c>_0x4408</c> has three, so a <c>displayName</c> naming <c>WindowMaster WUC 102</c>
+        /// matched nothing and the caller got null: the SDK's own authoring door could not place a product the
+        /// catalog ships. The truncation was never the ambiguity rule — that rule is the count test below, and it
+        /// is unchanged.</para>
+        ///
+        /// <para>Driven off <see cref="SharedIdentifiers"/> rather than off the one product that exposed the
+        /// defect, so a group that grows a fourth member arrives with a case rather than needing one.</para>
+        /// </summary>
+        [Test]
+        public void EveryMemberOfASharedIdentifierResolvesByItsOwnName()
+        {
+            var products = App.GetAvailableProducts().ToList();
+
+            Assert.Multiple(() =>
+            {
+                foreach ((string identifier, string[] members) in SharedIdentifiers)
+                {
+                    foreach (string member in members)
+                    {
+                        Assert.That(ProductCatalogLookup.Resolve(products, identifier, member)?.DisplayName,
+                            Is.EqualTo(member), $"{identifier} / {member}");
+                    }
+                }
+            });
+        }
+
+        /// <summary>
+        /// The ambiguity rule itself, unchanged by the truncation's removal: the identifier ALONE still resolves
+        /// to nothing when more than one product answers to it — including the three-member group, where a
+        /// resolver reading only two candidates would have reached the same verdict for the wrong reason.
+        /// </summary>
+        [Test]
+        public void ASharedIdentifierAloneStillResolvesToNothing()
+        {
+            var products = App.GetAvailableProducts().ToList();
+
+            Assert.Multiple(() =>
+            {
+                foreach ((string identifier, string[] members) in SharedIdentifiers)
+                {
+                    Assert.That(ProductCatalogLookup.Resolve(products, identifier), Is.Null,
+                        $"{identifier} names {members.Length} products; the identifier cannot say which");
+                }
+
+                Assert.That(ProductCatalogLookup.Resolve(products, "_0x2701")?.ProductIdentifier,
+                    Is.EqualTo("_0x2701"), "an unambiguous identifier still resolves without a name");
+                Assert.That(ProductCatalogLookup.Resolve(products, "_0x2102", "Ikke et produkt"), Is.Null,
+                    "a name nothing matches leaves the identifier ambiguous, which is still null");
             });
         }
 

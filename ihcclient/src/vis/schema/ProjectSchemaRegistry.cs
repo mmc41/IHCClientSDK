@@ -68,7 +68,16 @@ namespace Ihc.Vis.Schema
             foreach (string block in SplitBlocks(dtd))
             {
                 ElementSchema schema = ParseBlock(block);
-                schemas[schema.Tag] = schema;
+                // The THIRD reader of a DTD subset, refusing a doubly-declared tag on the same terms as the other
+                // two: CatalogGrammar.Build throws for it, and InlineDtd.CaptureFromText refuses a project whose
+                // inline subset carries it. Keyed assignment here made the last declaration win silently, which
+                // for the canonical resource means a hand edit could shadow a block and leave every project
+                // serializing against a grammar no reviewer chose.
+                if (!schemas.TryAdd(schema.Tag, schema))
+                {
+                    throw new VisSchemaFormatException(
+                        $"Grammar declares tag '{schema.Tag}' twice in {ResourceName}.");
+                }
             }
             return schemas.ToFrozenDictionary(StringComparer.Ordinal);
         }

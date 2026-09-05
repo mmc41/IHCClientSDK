@@ -274,6 +274,61 @@ namespace Ihc.Vis.Tests
             });
         }
 
+        // ── scene-dimming-unreadable ────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Two rules used to read one attribute and disagree about it. <c>scene-dimming-out-of-range</c> skips a
+        /// <c>dimming_value</c> it cannot parse — there is no number to compare — while <c>IsOff</c>, which
+        /// <c>scene-all-off</c> and <c>rs485-dimmer-scene-multi-off</c> both read, folded the same unreadable
+        /// value to zero and called the row switched off. Whichever answer is right, they could not both be.
+        ///
+        /// <para>The value itself is now a finding of its own, so the row is reported by something rather than
+        /// by nothing.</para>
+        /// </summary>
+        [Test]
+        public void AnUnreadableDimmingValueIsReportedRatherThanSkippedByEveryRule()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Dimming("abc"), "scene-dimming-unreadable"), Is.EqualTo(1));
+                Assert.That(Count(Dimming("60"), "scene-dimming-unreadable"), Is.Zero, "a readable level");
+                Assert.That(Count(Dimming(null), "scene-dimming-unreadable"), Is.Zero,
+                    "an ABSENT value is unset, not unreadable — the distinction the sibling row also draws");
+                Assert.That(Count(Scene(members: 1), "scene-dimming-unreadable"), Is.Zero,
+                    "a relay row carries no light level at all");
+            });
+        }
+
+        [Test]
+        public void TheUnreadableDimmingFindingNamesTheRowAndTheStoredText()
+        {
+            string message = Message(Dimming("abc"), "scene-dimming-unreadable");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(message, Does.Contain("abc"), "the reader has to see the text that is in the file");
+                Assert.That(message, Does.Contain("Scenarie link"), "and which row holds it");
+                Assert.That(message, Does.Not.Contain("{"), "every declared slot binds");
+            });
+        }
+
+        /// <summary>
+        /// The consistency half. An unreadable level must not read as OFF anywhere: <c>scene-all-off</c> reports
+        /// a scene that switches everything off, and a scene whose only member cannot be read is not one the tool
+        /// can say that about.
+        /// </summary>
+        [Test]
+        public void AnUnreadableDimmingValueIsNoLongerReadAsSwitchedOff()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(Count(Dimming("abc"), "scene-all-off"), Is.Zero,
+                    "an unreadable level is not evidence that the scene switches its output off");
+                Assert.That(Count(Dimming("0"), "scene-all-off"), Is.EqualTo(1),
+                    "a level of zero still is — the reading that was right all along");
+            });
+        }
+
         /// <summary>The declared dimming bound of that name, with the confidence grade the entry must carry.</summary>
         /// <param name="name">The threshold's declared name.</param>
         private static double DeclaredDimming(string name)

@@ -49,5 +49,26 @@ namespace Ihc
 
             return payload;
         }
+
+        /// <summary>
+        /// Refuses a <see cref="TimeSpan"/> the TIME wire element cannot hold. That element carries whole
+        /// hours, minutes and seconds and nothing else, so a span of a day or more, a negative span, or one
+        /// with a sub-second remainder has no representation there at all.
+        /// </summary>
+        /// <remarks>
+        /// Both mappers write the components straight out of the span, which for such a value is not a lossy
+        /// encoding but a different one: 25 hours writes as one, and a negative span writes as its own
+        /// magnitude's components. The loss the mappers' own doc-comments call intentional is the DATE
+        /// time-of-day and the TIME sub-day granularity of a value that fits - not a value that does not.
+        /// One implementation, called from both, so the two stay each other's second opinion on the mapping
+        /// without becoming two opinions on what is writable.
+        /// </remarks>
+        internal static TimeSpan Representable(TimeSpan time, ResourceValue.ValueKind kind, string field)
+        {
+            if (time < TimeSpan.Zero || time >= TimeSpan.FromHours(24) || time.Ticks % TimeSpan.TicksPerSecond != 0)
+                throw new ArgumentException($"ResourceValue of kind {kind} carries a {field} of {time}, which the wire cannot represent: it holds whole seconds from 00:00:00 up to but not including 24:00:00.");
+
+            return time;
+        }
     }
 }

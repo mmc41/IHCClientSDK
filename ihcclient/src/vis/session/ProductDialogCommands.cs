@@ -290,14 +290,21 @@ namespace Ihc.Vis.Session
                 : (EditRefusalCodes.FieldValueRule, rule.Refusal);
 
         /// <summary>
-        /// Which coded refusal a numeric field's value earns when it falls outside the bounds its own catalog
-        /// element declares, or null when it does not. Blank and unparseable values are not this condition.
+        /// Which coded refusal a numeric field's value earns — either because it is not a number at all, or
+        /// because it falls outside the bounds its own catalog element declares. Null when neither holds.
         /// <para>
-        /// The identity and the sentence BOTH come from <see cref="EditRefusalProblems.FieldBounds"/> (D05).
-        /// This site used to author four sentences of its own, one per bound shape, under a single code whose
-        /// catalogue row declared a template none of them matched — so the row described words no user saw. The
-        /// site now decides nothing about wording: it reports which bounds the field declares and what was
-        /// submitted, and the owner beside the codes answers with the row's own sentence, bound.
+        /// The identity and the sentence BOTH come from <see cref="EditRefusalProblems"/> (D05). This site used
+        /// to author four sentences of its own, one per bound shape, under a single code whose catalogue row
+        /// declared a template none of them matched — so the row described words no user saw. The site now
+        /// decides nothing about wording: it reports which bounds the field declares and what was submitted, and
+        /// the owner beside the codes answers with the row's own sentence, bound.
+        /// </para>
+        /// <para>
+        /// The declared bound is also what makes the field NUMERIC: it is the catalog stating the element holds
+        /// a number. Text that is not one used to fall through here as "no bounds violation" and be written into
+        /// the project verbatim — the dialog's own NumericUpDown cannot produce it, but the command is a public
+        /// door. A BLANK value is still not this condition: blank means "at the declared default", and
+        /// committing it writes the default back.
         /// </para>
         /// </summary>
         private static (ProblemCode Code, string Message)? OutsideBounds(
@@ -308,10 +315,14 @@ namespace Ihc.Vis.Session
                 return null;
             }
 
-            if (string.IsNullOrWhiteSpace(value)
-                || !int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int number))
+            if (string.IsNullOrWhiteSpace(value))
             {
                 return null;
+            }
+
+            if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int number))
+            {
+                return EditRefusalProblems.FieldNotANumber(field.Caption, value);
             }
 
             return EditRefusalProblems.FieldBounds(field.Caption, field.Minimum, field.Maximum, number);

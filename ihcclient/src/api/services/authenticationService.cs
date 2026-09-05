@@ -276,8 +276,8 @@ namespace Ihc {
             Email = loggedInUser.email,
             Group = UserManagerService.mapUserGroup(loggedInUser.group?.type),
             Project = loggedInUser.project,
-            CreatedDate = loggedInUser.createdDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
-            LoginDate = loggedInUser.loginDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
+            CreatedDate = DateHelper.OrAbsentSentinel(loggedInUser.createdDate?.ToDateTimeOffset(), nameof(IhcUser.CreatedDate)),
+            LoginDate = DateHelper.OrAbsentSentinel(loggedInUser.loginDate?.ToDateTimeOffset(), nameof(IhcUser.LoginDate)),
         };
 
         /// <summary>

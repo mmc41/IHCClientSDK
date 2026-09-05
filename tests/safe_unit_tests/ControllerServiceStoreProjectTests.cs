@@ -86,5 +86,35 @@ namespace Ihc.Tests
                 "an out-of-repertoire character must fail loudly, never be stored as '?'");
             A.CallTo(() => soap.enterProjectChangeModeAsync(A<inputMessageName12>._)).MustNotHaveHappened();
         }
+
+        /// <summary>
+        /// The acknowledgement element is <c>Nullable&lt;bool&gt;</c> on the wire, and an absent one used to
+        /// fold to the same clean <c>false</c> as an explicit refusal - after the project bytes had already
+        /// been sent. "The controller declined the store" and "the controller's answer did not say" are
+        /// different facts, and only the first is one a caller can act on.
+        /// </summary>
+        [Test]
+        public void StoreProject_AbsentAcknowledgement_IsRefusedRatherThanReportedAsADeclinedStore()
+        {
+            var soap = HappySoap();
+            A.CallTo(() => soap.storeIHCProjectAsync(A<inputMessageName4>._))
+                .Returns(Task.FromResult(new outputMessageName4(null)));
+            var service = NewService(soap);
+
+            Assert.That(async () => await service.StoreProject(new ProjectFile("Project.ihc", "<utcs_project/>")),
+                Throws.InvalidOperationException.With.Message.Contains("acknowledge"));
+        }
+
+        /// <summary>An explicit <c>false</c> still means what it always meant: the controller declined.</summary>
+        [Test]
+        public async Task StoreProject_ExplicitlyDeclined_StillReturnsFalse()
+        {
+            var soap = HappySoap();
+            A.CallTo(() => soap.storeIHCProjectAsync(A<inputMessageName4>._))
+                .Returns(Task.FromResult(new outputMessageName4(false)));
+            var service = NewService(soap);
+
+            Assert.That(await service.StoreProject(new ProjectFile("Project.ihc", "<utcs_project/>")), Is.False);
+        }
     }
 }
