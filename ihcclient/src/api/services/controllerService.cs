@@ -137,8 +137,6 @@ namespace Ihc {
     /// </summary>
     public class ControllerService : ServiceBase, IControllerService
     {
-        private readonly IAuthenticationService authService;
-
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Controller.ControllerService
         {
             public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "ControllerService") { }
@@ -253,7 +251,6 @@ namespace Ihc {
         public ControllerService(IAuthenticationService authService)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
@@ -261,7 +258,6 @@ namespace Ihc {
         internal ControllerService(IAuthenticationService authService, Ihc.Soap.Controller.ControllerService impl)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = impl;
         }
 

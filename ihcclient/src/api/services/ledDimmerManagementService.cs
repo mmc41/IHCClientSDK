@@ -76,8 +76,6 @@ namespace Ihc
 
     public class LedDimmerManagementService : ServiceBase, ILedDimmerManagementService
     {
-        private readonly IAuthenticationService authService;
-
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Leddimmermanagement.LEDDimmerManagementService
         {
             public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "LEDDimmerManagementService") { }
@@ -133,7 +131,7 @@ namespace Ihc
             }
         }
 
-        private readonly SoapImpl impl;
+        private readonly Ihc.Soap.Leddimmermanagement.LEDDimmerManagementService impl;
 
         /// <summary>
         /// Create a LedDimmerManagementService instance for access to the IHC API related to LED dimmer management.
@@ -142,8 +140,14 @@ namespace Ihc
         public LedDimmerManagementService(IAuthenticationService authService)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
+        }
+
+        /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
+        internal LedDimmerManagementService(IAuthenticationService authService, Ihc.Soap.Leddimmermanagement.LEDDimmerManagementService impl)
+            : base(SettingsOf(authService))
+        {
+            this.impl = impl;
         }
 
         // Map methods for translating between SOAP models and high-level models

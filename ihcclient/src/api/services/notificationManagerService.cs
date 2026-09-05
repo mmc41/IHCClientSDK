@@ -26,8 +26,6 @@ namespace Ihc {
     /// A highlevel implementation of a client to the IHC NotificationManagerService without exposing any of the soap distractions.
     /// </summary>
     public class NotificationManagerService : ServiceBase, INotificationManagerService {
-        private readonly IAuthenticationService authService;
-
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Notificationmanager.NotificationManagerService
         {
             public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "NotificationManagerService") {}
@@ -43,7 +41,7 @@ namespace Ihc {
             }
         }
 
-        private readonly SoapImpl impl;
+        private readonly Ihc.Soap.Notificationmanager.NotificationManagerService impl;
 
         /// <summary>
         /// Create a NotificationManagerService instance for access to the IHC API related to notifications.
@@ -52,8 +50,14 @@ namespace Ihc {
         public NotificationManagerService(IAuthenticationService authService)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
+        }
+
+        /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
+        internal NotificationManagerService(IAuthenticationService authService, Ihc.Soap.Notificationmanager.NotificationManagerService impl)
+            : base(SettingsOf(authService))
+        {
+            this.impl = impl;
         }
 
         private static NotificationMessage? mapMessage(WSNotificationMessage? e)

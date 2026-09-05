@@ -27,8 +27,6 @@ namespace Ihc {
     /// </summary>
     public class MessageControlLogService : ServiceBase, IMessageControlLogService
     {
-        private readonly IAuthenticationService authService;
-
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Messagecontrollog.MessageControlLogService
         {
             public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "MessageControlLogService") { }
@@ -44,7 +42,7 @@ namespace Ihc {
             }
         }
 
-        private readonly SoapImpl impl;
+        private readonly Ihc.Soap.Messagecontrollog.MessageControlLogService impl;
 
         /// <summary>
         /// Create an Messagecontrollog instance for access to the IHC API related to messages.
@@ -53,8 +51,14 @@ namespace Ihc {
         public MessageControlLogService(IAuthenticationService authService)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
+        }
+
+        /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
+        internal MessageControlLogService(IAuthenticationService authService, Ihc.Soap.Messagecontrollog.MessageControlLogService impl)
+            : base(SettingsOf(authService))
+        {
+            this.impl = impl;
         }
 
         private static LogEventEntry? mapEvent(WSMessageControlLogEntry? e)

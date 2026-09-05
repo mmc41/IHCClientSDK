@@ -223,6 +223,40 @@ namespace Ihc.Safety.Seeded
     }
 
     /// <summary>
+    /// Positive control for the OTHER half of the transport exclusion. A constructor handed its transport is
+    /// exempt because it reaches only where that transport does — which holds exactly as long as a suite
+    /// cannot build a live one. This builds one: an HttpClient given no handler talks to whatever address it
+    /// is asked for, over the BCL's own socket. Must be flagged.
+    /// </summary>
+    internal static class SeededLiveTransportBuilder
+    {
+        internal static System.Net.Http.HttpClient Build() => new();
+    }
+
+    /// <summary>A handler this assembly declares, answering from itself: the shape a suite is SUPPOSED to
+    /// substitute at the socket.</summary>
+    internal sealed class SeededStubHandler : System.Net.Http.HttpMessageHandler
+    {
+        protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(
+            System.Net.Http.HttpRequestMessage request, System.Threading.CancellationToken cancellationToken) =>
+            Task.FromResult(new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.OK));
+    }
+
+    /// <summary>
+    /// Negative control: a client built OVER that stub reaches only where the stub does, so neither the
+    /// handler nor the client is a live transport. Flagging this would indict the substitution the safety rule
+    /// prescribes, exactly as flagging the local stub above would.
+    /// </summary>
+    internal static class SeededStubTransportUser
+    {
+        // CA2000: the handler is handed to the HttpClient, which owns it from here on - the same ownership
+        // transfer Client.CreateHttpClient documents.
+#pragma warning disable CA2000
+        internal static System.Net.Http.HttpClient Build() => new(new SeededStubHandler());
+#pragma warning restore CA2000
+    }
+
+    /// <summary>
     /// The scan's KNOWN LIMIT, pinned rather than left to prose: a service the test never constructs itself,
     /// because a product-side factory constructed it.
     /// </summary>

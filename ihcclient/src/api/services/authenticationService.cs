@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using Ihc.Soap.Authentication;
 using System.Diagnostics;
+using System.Net.Http;
 
 
 namespace Ihc {
@@ -47,7 +48,10 @@ namespace Ihc {
     /// </summary>
     public class AuthenticationService : ServiceBase, IAuthenticationService
     {
-        private readonly ICookieHandler cookieHandler;
+        // Concrete rather than ICookieHandler because this service MINTS the handler every other service
+        // borrows, so the field is never anything else - and CA1859 refuses the interface where the concrete
+        // type is known, which it is at both assignments.
+        private readonly CookieHandler cookieHandler;
 
         public ICookieHandler GetCookieHandler()
         {
@@ -56,7 +60,8 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Authentication.AuthenticationService
         {
-            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "AuthenticationService") { }
+            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings, HttpClient? transport)
+                : base(cookieHandler, settings, "AuthenticationService", transport) { }
 
             public Task<outputMessageName2> authenticateAsync(inputMessageName2 request)
             {
@@ -85,12 +90,12 @@ namespace Ihc {
                 });
             }
 
+            // The cookie is dropped by Disconnect's finally rather than by an on-OK side effect here: the
+            // side effect runs only after EnsureSuccessStatusCode, so a controller that answered 5xx left
+            // the session reporting disconnected while every later call still presented its cookie.
             public Task<outputMessageName1> disconnectAsync(inputMessageName1 request)
             {
-                return soapPost<outputMessageName1, inputMessageName1>("disconnect", request, resp =>
-                {
-                    cookieHandler.SetCookie(null);
-                });
+                return soapPost<outputMessageName1, inputMessageName1>("disconnect", request);
             }
 
             public Task<outputMessageName3> pingAsync(inputMessageName3 request)
@@ -113,7 +118,27 @@ namespace Ihc {
             : base(settings)
         {
             this.cookieHandler = new CookieHandler(settings.LogSensitiveData);
-            this.impl = new SoapImpl(cookieHandler, settings);
+            this.impl = new SoapImpl(cookieHandler, settings, transport: null);
+            this.isConnected = false;
+        }
+
+        /// <summary>
+        /// Test seam: substitute the HTTP transport (used by unit tests only). Every other service
+        /// inherits this one's settings and cookie session, so the login exchange itself is only
+        /// reachable controller-free by answering it at the socket - the seam
+        /// <see cref="ServiceBaseImpl"/> already carries, which this constructor threads through.
+        /// </summary>
+        /// <remarks>
+        /// The transport is REQUIRED here rather than optional, so that taking one is a truthful claim
+        /// that the caller supplied it. The controller-reach guard reads that claim off the signature:
+        /// a constructor handed its transport cannot reach a network the caller did not provide.
+        /// </remarks>
+        internal AuthenticationService(IhcSettings settings, HttpClient transport)
+            : base(settings)
+        {
+            ArgumentNullException.ThrowIfNull(transport);
+            this.cookieHandler = new CookieHandler(settings.LogSensitiveData);
+            this.impl = new SoapImpl(cookieHandler, settings, transport);
             this.isConnected = false;
         }
 
@@ -175,27 +200,36 @@ namespace Ihc {
                         // Add null checks for loggedInUser and nested properties
                         if (result.loggedInUser == null)
                         {
+                            // The controller reported a SUCCESSFUL login, so a session now exists on it and its
+                            // cookie has been captured - but the answer cannot be made into a user, so it is
+                            // refused. Nothing else would ever end that session: Dispose logs out only a session
+                            // it believes is live, and this one never became connected.
+                            await EndTheSessionThisAnswerOpened().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                             throw new ErrorWithCodeException(Errors.LOGIN_UNKNOWN_ERROR, "Ihc server login succeeded but returned null user data for " + impl.Url);
+                        }
+
+                        // The session is handed over only once there is a user to hand over with it. The
+                        // controller opened it and sent its cookie before the SDK looked at the answer at
+                        // all, so a mapping that threw with the session already marked live would leave
+                        // IsAuthenticated true and the cookie attached on a login this call reports as
+                        // FAILED - and a caller reading that as "login failed" has no reason to dispose,
+                        // which is what would otherwise end the session.
+                        IhcUser user;
+                        try
+                        {
+                            user = MapLoggedInUser(result.loggedInUser);
+                        }
+                        catch (Exception ex)
+                        {
+                            await EndTheSessionThisAnswerOpened().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                            throw new ErrorWithCodeException(Errors.LOGIN_UNKNOWN_ERROR,
+                                "Ihc server login succeeded but returned user data that could not be mapped for " + impl.Url, ex);
                         }
 
                         lock (isConnectedLock)
                         {
                             isConnected = true;
                         }
-
-                        var user = new IhcUser()
-                        {
-                            Username = result.loggedInUser.username,
-                            Password = result.loggedInUser.password,
-                            Firstname = result.loggedInUser.firstname,
-                            Lastname = result.loggedInUser.lastname,
-                            Phone = result.loggedInUser.phone,
-                            Group = UserManagerService.mapUserGroup(result.loggedInUser.group?.type),
-                            Project = result.loggedInUser.project,
-                            CreatedDate = result.loggedInUser.createdDate.ToDateTimeOffset(),
-                            LoginDate = result.loggedInUser.loginDate.ToDateTimeOffset(),
-
-                        };
 
                         activity?.SetReturnValue(user.ToString(settings.LogSensitiveData));
                         return user;
@@ -224,6 +258,49 @@ namespace Ihc {
             };
         }
 
+        /// <summary>
+        /// The user the login answer carries.
+        /// </summary>
+        /// <remarks>
+        /// The dates are nullable on this wire and read as unset when absent, the way every other WSDate the
+        /// SDK maps does - <see cref="UserManagerService"/> included, which maps these very fields off the
+        /// same record and which this has to agree with about one account.
+        /// </remarks>
+        private static IhcUser MapLoggedInUser(WSUser loggedInUser) => new()
+        {
+            Username = loggedInUser.username,
+            Password = loggedInUser.password,
+            Firstname = loggedInUser.firstname,
+            Lastname = loggedInUser.lastname,
+            Phone = loggedInUser.phone,
+            Email = loggedInUser.email,
+            Group = UserManagerService.mapUserGroup(loggedInUser.group?.type),
+            Project = loggedInUser.project,
+            CreatedDate = loggedInUser.createdDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
+            LoginDate = loggedInUser.loginDate?.ToDateTimeOffset() ?? DateTimeOffset.MinValue,
+        };
+
+        /// <summary>
+        /// Ends a controller session this instance opened but will not hand to its caller.
+        /// </summary>
+        /// <remarks>
+        /// Best effort: a controller that will not answer the logout leaves nothing this side can do about
+        /// the session, and the refusal the caller is about to receive is the failure worth reporting.
+        /// <see cref="Disconnect"/> drops the cookie either way, so no later call rides a session this
+        /// instance has disowned.
+        /// </remarks>
+        private async Task EndTheSessionThisAnswerOpened()
+        {
+            try
+            {
+                await Disconnect().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            }
+            catch (Exception)
+            {
+                // Deliberately swallowed; see above.
+            }
+        }
+
         public async Task<bool> Disconnect()
         {
             using (var activity = StartActivity(nameof(Disconnect)))
@@ -239,10 +316,14 @@ namespace Ihc {
                     }
                     finally
                     {
+                        // BOTH halves of the local session end, whatever the controller answered. Clearing
+                        // the flag alone left the cookie attached to every later request, so a session
+                        // reporting itself disconnected went on presenting itself as live on the wire.
                         lock (isConnectedLock)
                         {
                             isConnected = false;
                         }
+                        cookieHandler.SetCookie(null);
                     }
 
                     var retv = result.HasValue ? result.Value : false;

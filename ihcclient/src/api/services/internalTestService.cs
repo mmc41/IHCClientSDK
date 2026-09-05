@@ -160,8 +160,6 @@ namespace Ihc
 
     public class InternalTestService : ServiceBase, IInternalTestService
     {
-        private readonly IAuthenticationService authService;
-
         private class SoapImpl : ServiceBaseImpl, TestIhcService
         {
             public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "TestIhcService") { }
@@ -282,7 +280,7 @@ namespace Ihc
             }
         }
 
-        private readonly SoapImpl impl;
+        private readonly TestIhcService impl;
 
         /// <summary>
         /// Create an InternalTestService instance for access to the IHC API related to internal testing.
@@ -291,8 +289,14 @@ namespace Ihc
         public InternalTestService(IAuthenticationService authService)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
+        }
+
+        /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
+        internal InternalTestService(IAuthenticationService authService, TestIhcService impl)
+            : base(SettingsOf(authService))
+        {
+            this.impl = impl;
         }
 
         public async Task<string?> GetAirlinkVersion()

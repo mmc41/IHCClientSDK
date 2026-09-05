@@ -41,8 +41,6 @@ namespace Ihc {
     /// </summary>
     public class TimeManagerService : ServiceBase, ITimeManagerService
     {
-        private readonly IAuthenticationService authService;
-
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Timemanager.TimeManagerService
         {
             public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "TimeManagerService") { }
@@ -73,7 +71,7 @@ namespace Ihc {
             }
         }
 
-        private readonly SoapImpl impl;
+        private readonly Ihc.Soap.Timemanager.TimeManagerService impl;
 
         /// <summary>
         /// Create a TimeManagerService instance for access to the IHC API related to time management.
@@ -82,8 +80,14 @@ namespace Ihc {
         public TimeManagerService(IAuthenticationService authService)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
+        }
+
+        /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
+        internal TimeManagerService(IAuthenticationService authService, Ihc.Soap.Timemanager.TimeManagerService impl)
+            : base(SettingsOf(authService))
+        {
+            this.impl = impl;
         }
         
         // Map methods for translating between SOAP models and high-level models

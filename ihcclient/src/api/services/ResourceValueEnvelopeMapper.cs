@@ -1,5 +1,7 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Ihc.Soap.Resourceinteraction;
+using static Ihc.ResourceValuePayload;
 
 namespace Ihc
 {
@@ -112,7 +114,7 @@ namespace Ihc
             if (v == null)
                 return null;
 
-            WSResourceValue? val;
+            WSResourceValue val;
 
             var kind = v.Value.ValueKind;
 
@@ -122,11 +124,11 @@ namespace Ihc
                 case ResourceValue.ValueKind.DATE: val = MapDate(Required(v.Value.DateValue, kind, nameof(v.Value.DateValue))); break;
                 case ResourceValue.ValueKind.INT: val = new WSIntegerValue() { integer = Required(v.Value.IntValue, kind, nameof(v.Value.IntValue)) }; break;
                 case ResourceValue.ValueKind.DOUBLE: val = new WSFloatingPointValue() { floatingPointValue = Required(v.Value.DoubleValue, kind, nameof(v.Value.DoubleValue)) }; break;
-                case ResourceValue.ValueKind.ENUM: val = MapEnumValue(v.Value.EnumValue); break;
+                case ResourceValue.ValueKind.ENUM: val = MapEnumValue(Required(v.Value.EnumValue, kind, nameof(v.Value.EnumValue))); break;
                 case ResourceValue.ValueKind.TIME: val = MapTime(Required(v.Value.TimeValue, kind, nameof(v.Value.TimeValue))); break;
                 case ResourceValue.ValueKind.TIMER: val = MapTimer(Required(v.Value.TimerValue, kind, nameof(v.Value.TimerValue))); break;
                 case ResourceValue.ValueKind.WEEKDAY: val = MapWeekday(Required(v.Value.WeekdayValue, kind, nameof(v.Value.WeekdayValue))); break;
-                case ResourceValue.ValueKind.PhoneNumber: val = new WSPhoneNumberValue() { number = v.Value.PhoneNumberValue }; break;
+                case ResourceValue.ValueKind.PhoneNumber: val = new WSPhoneNumberValue() { number = Required(v.Value.PhoneNumberValue, kind, nameof(v.Value.PhoneNumberValue)) }; break;
                 case ResourceValue.ValueKind.SceneDimmer: val = new WSSceneDimmerValue() { dimmerPercentage = Required(v.Value.DimmerPercentage, kind, nameof(v.Value.DimmerPercentage)), delayTime = Required(v.Value.DimmerDelayTime, kind, nameof(v.Value.DimmerDelayTime)), rampTime = Required(v.Value.DimmerRampTime, kind, nameof(v.Value.DimmerRampTime)) }; break;
                 case ResourceValue.ValueKind.SceneRelay: val = new WSSceneRelayValue() { delayTime = Required(v.Value.RelayDelayTime, kind, nameof(v.Value.RelayDelayTime)), relayValue = Required(v.Value.RelayValue, kind, nameof(v.Value.RelayValue)) }; break;
                 case ResourceValue.ValueKind.SceneShutter: val = new WSSceneShutterSimpleValue() { shutterPositionIsUp = Required(v.Value.ShutterPositionIsUp, kind, nameof(v.Value.ShutterPositionIsUp)), delayTime = Required(v.Value.ShutterDelayTime, kind, nameof(v.Value.ShutterDelayTime)) }; break;
@@ -143,19 +145,6 @@ namespace Ihc
             };
         }
 
-        // Unwrap a payload that must be present for the value kind being written to the wire. A
-        // well-formed ResourceValue always carries the payload matching its ValueKind; a caller that
-        // sets ValueKind but leaves the payload null would otherwise trip an unconditional
-        // Nullable<T> cast and surface an opaque "Nullable object must have a value"
-        // InvalidOperationException. Failing here turns that into a clear, actionable error.
-        private static T Required<T>(T? payload, ResourceValue.ValueKind kind, string field) where T : struct
-        {
-            if (!payload.HasValue)
-                throw new ArgumentException($"ResourceValue of kind {kind} is missing its required {field} payload.");
-
-            return payload.Value;
-        }
-
         internal static EnumValue? MapEnumValue(WSEnumValue? v)
         {
             if (v == null)
@@ -164,6 +153,7 @@ namespace Ihc
             return new EnumValue() { DefinitionTypeID = v.definitionTypeID, EnumValueID = v.enumValueID, EnumName = v.enumName };
         }
 
+        [return: NotNullIfNotNull(nameof(v))]
         internal static WSEnumValue? MapEnumValue(EnumValue? v)
         {
             if (v == null)

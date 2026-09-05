@@ -145,8 +145,6 @@ namespace Ihc {
     /// </summary>
     public class ConfigurationService : ServiceBase, IConfigurationService
     {
-        private readonly IAuthenticationService authService;
-
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Configuration.ConfigurationService
         {
             public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "ConfigurationService") { }
@@ -272,7 +270,7 @@ namespace Ihc {
             }
         }
 
-        private readonly SoapImpl impl;
+        private readonly Ihc.Soap.Configuration.ConfigurationService impl;
 
         /// <summary>
         /// Create an ConfigurationService instance for access to the IHC API related to configuration.
@@ -281,8 +279,14 @@ namespace Ihc {
         public ConfigurationService(IAuthenticationService authService)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
+        }
+
+        /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
+        internal ConfigurationService(IAuthenticationService authService, Ihc.Soap.Configuration.ConfigurationService impl)
+            : base(SettingsOf(authService))
+        {
+            this.impl = impl;
         }
 
         private static SystemInfo mapSystemInfo(Ihc.Soap.Configuration.WSSystemInfo? info)
@@ -318,7 +322,10 @@ namespace Ihc {
                 return Array.Empty<string>();
 
             string logs = e.data != null ? System.Text.Encoding.UTF8.GetString(e.data) : "";
-            return logs.Split('\n', '\r');
+            // Separators are NORMALISED, not split on individually: splitting on both characters turns each
+            // CRLF into a pair of separators and so into an empty line between every real one. Genuinely
+            // blank lines in the log survive, because only the terminators are collapsed.
+            return logs.ReplaceLineEndings("\n").Split('\n');
         }
 
         private static NetworkSettings? mapNetworkSettings(Ihc.Soap.Configuration.WSNetworkSettings? settings)

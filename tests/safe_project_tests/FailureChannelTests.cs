@@ -38,11 +38,17 @@ namespace Ihc.Vis.Tests;
 public class FailureChannelTests
 {
     /// <summary>The channels, asserted TOGETHER for one failed operation.</summary>
+    /// <remarks>
+    /// Reachable from any fixture in this suite that asserts a failure was REPORTED, which is the whole point
+    /// of there being one of these: copies of the same asserts drift, and the operation added later gets all
+    /// but one of them. A fixture that also has something to say about the PARTICULAR failure - its code, its
+    /// wording - says that beside this call rather than in place of it.
+    /// </remarks>
     /// <param name="what">Names the operation in every failure message.</param>
     /// <param name="dialogs">The port the user report arrives on.</param>
     /// <param name="logs">The pipeline the English diagnostic arrives on.</param>
     /// <param name="span">The operation's own span.</param>
-    private static void AssertAllChannels(
+    internal static void AssertAllChannels(
         string what, FakeDialogService dialogs, CapturingLoggerFactory logs, Activity? span)
     {
         Assert.Multiple(() =>

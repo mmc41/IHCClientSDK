@@ -127,10 +127,19 @@ namespace Ihc
         {
             this.settings = settings;
             this.serviceName = serviceName;
-            this.Url = settings.Endpoint + "/ws/" + serviceName;
+            this.Url = UrlOf(settings, serviceName);
             this.cookieHandler = cookieHandler;
             this.ihcClient = new Client(cookieHandler, Url, settings, transport);
         }
+
+        /// <summary>
+        /// The address a named SOAP service is reached at. Exposed so a wrapper that names the endpoint
+        /// in a diagnostic can build it from its settings, rather than reaching through the
+        /// implementation it holds - which, for a wrapper carrying a test seam, is not necessarily one
+        /// of these at all.
+        /// </summary>
+        internal static string UrlOf(IhcSettings settings, string serviceName) =>
+            settings.Endpoint + "/ws/" + serviceName;
 
         private static string escapeXMl(string xmlString)
         {

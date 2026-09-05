@@ -115,6 +115,17 @@ namespace Ihc.Tests.Shared
         internal Activity Span(string operationName) =>
             spans.Single(s => s.OperationName == operationName);
 
+        /// <summary>
+        /// A span's tags as one text, for a fixture asserting that a value IS or is NOT among what an
+        /// exporter would ship. Shared because asserting over the joined text rather than over one tag is
+        /// what makes a redaction test see a credential that moved to a different tag.
+        /// </summary>
+        internal static string TagText(Activity span)
+        {
+            ArgumentNullException.ThrowIfNull(span);
+            return string.Join("\n", span.TagObjects.Select(t => $"{t.Key}={t.Value}"));
+        }
+
         /// <summary>Every span with this operation name, in the order they started.</summary>
         internal IReadOnlyList<Activity> SpansNamed(string operationName) =>
             spans.Where(s => s.OperationName == operationName).OrderBy(s => s.StartTimeUtc).ToArray();

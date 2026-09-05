@@ -59,8 +59,6 @@ namespace Ihc {
     /// A highlevel implementation of a client to the IHC ModuleService without exposing any of the soap distractions.
     /// </summary>
     public class ModuleService : ServiceBase, IModuleService {
-        private readonly IAuthenticationService authService;
-
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Module.ModuleService
         {
             public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "ModuleService") {}
@@ -101,7 +99,7 @@ namespace Ihc {
             }
         }
 
-        private readonly SoapImpl impl;
+        private readonly Ihc.Soap.Module.ModuleService impl;
 
         /// <summary>
         /// Create an ModuleService instance for access to the IHC API related to projects.
@@ -110,8 +108,14 @@ namespace Ihc {
         public ModuleService(IAuthenticationService authService)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
+        }
+
+        /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
+        internal ModuleService(IAuthenticationService authService, Ihc.Soap.Module.ModuleService impl)
+            : base(SettingsOf(authService))
+        {
+            this.impl = impl;
         }
 
         private static SceneProject? mapSceneProject(Ihc.Soap.Module.WSFile? proj)

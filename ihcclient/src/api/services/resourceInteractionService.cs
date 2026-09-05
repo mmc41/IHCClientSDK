@@ -149,8 +149,6 @@ namespace Ihc {
     /// </summary>
     public class ResourceInteractionService : ServiceBase, IResourceInteractionService
     {
-        private readonly IAuthenticationService authService;
-
         /// <summary>
         /// This internal class implements the raw IHC soap service interface and provides the basis
         /// for the higher level public service methods below it.
@@ -301,7 +299,6 @@ namespace Ihc {
         public ResourceInteractionService(IAuthenticationService authService)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
@@ -309,7 +306,6 @@ namespace Ihc {
         internal ResourceInteractionService(IAuthenticationService authService, Ihc.Soap.Resourceinteraction.ResourceInteractionService impl)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = impl;
         }
 

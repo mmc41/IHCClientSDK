@@ -97,6 +97,46 @@ namespace Ihc.Tests
                 Scores = scores,
             };
 
+        /// <summary>
+        /// The collection kinds carrying RECORDS rather than primitives - the shape the admin model's
+        /// encrypt/decrypt copy actually walks. A primitive element is copied by value whatever the container
+        /// does with it, so a container that shared its elements instead of copying them could only be caught
+        /// by a reference element; and the set's own element-mutation guard is skipped entirely for an element
+        /// type the copier knows to be immutable.
+        /// </summary>
+        public record CopyRecordCollections
+        {
+            public List<CopyLeaf>? Leaves { get; init; }
+            public HashSet<CopyLeaf>? UniqueLeaves { get; init; }
+            public Dictionary<string, CopyLeaf>? ByName { get; init; }
+
+            /// <summary>A NON-GENERIC list, which the copier reaches through a different door entirely.</summary>
+            public ArrayList? Legacy { get; init; }
+        }
+
+        /// <summary>
+        /// Sets and dictionaries built on a NON-DEFAULT comparer. The comparer is not part of the contents, so
+        /// a copy that dropped it compares equal to its source and still answers lookups differently - the one
+        /// way this copier can lose meaning without losing data.
+        /// </summary>
+        public record CopyComparerCollections
+        {
+            public HashSet<string>? Tags { get; init; }
+            public Dictionary<string, int>? Scores { get; init; }
+        }
+
+        private static readonly Gen<CopyRecordCollections> GenRecordCollections =
+            from leaves in GenLeaf.Array[0, 4]
+            from unique in GenLeaf.Array[0, 4]
+            from named in GenLeaf.Array[0, 4]
+            select new CopyRecordCollections
+            {
+                Leaves = new List<CopyLeaf>(leaves),
+                UniqueLeaves = new HashSet<CopyLeaf>(unique),
+                ByName = named.Select((leaf, i) => (Key: $"k{i}", Leaf: leaf)).ToDictionary(p => p.Key, p => p.Leaf),
+                Legacy = new ArrayList(leaves),
+            };
+
         private static readonly Gen<CopyInterfaceCollections> GenInterfaceCollections =
             from numbers in Gen.Int.Array[0, 5]
             from tags in ShortText.Array[0, 5]
@@ -127,8 +167,10 @@ namespace Ihc.Tests
                 GenGraph.Select(v => ((object)v, typeof(CopyGraph))),
                 GenCollections.Select(v => ((object)v, typeof(CopyCollections))),
                 GenInterfaceCollections.Select(v => ((object)v, typeof(CopyInterfaceCollections))),
+                GenRecordCollections.Select(v => ((object)v, typeof(CopyRecordCollections))),
                 GenLeaf.Array[0, 4].Select(v => ((object)v, typeof(CopyLeaf[]))),
                 GenLeaf.Array[0, 4].Select(v => ((object)new List<CopyLeaf>(v), typeof(List<CopyLeaf>))),
+                GenLeaf.Array[0, 4].Select(v => ((object)new ArrayList(v), typeof(ArrayList))),
                 ShortText.Array[0, 5].Select(v => ((object)new HashSet<string>(v), typeof(HashSet<string>))));
 
         /// <summary>
@@ -172,6 +214,89 @@ namespace Ihc.Tests
                 inCopy.IntersectWith(inSource);
                 Assert.That(inCopy, Is.Empty, "copy and source share no mutable reference");
             });
+        }
+
+        /// <summary>
+        /// A set's and a dictionary's COMPARER survives the copy. It is not part of the contents, so the two
+        /// laws above hold whether it survives or not: a copy that fell back to the default comparer is
+        /// structurally equal to its source and shares nothing with it, and answers a lookup differently. On
+        /// the admin path a case-insensitive key that came back case-sensitive is a credential that cannot be
+        /// found again.
+        /// </summary>
+        [Test]
+        public void DeepCopyAndApply_PreservesTheComparerASetOrDictionaryWasBuiltWith()
+        {
+            var source = new CopyComparerCollections
+            {
+                Tags = new HashSet<string>(["Alpha"], StringComparer.OrdinalIgnoreCase),
+                Scores = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["Alpha"] = 1 },
+            };
+
+            var copy = (CopyComparerCollections)CopyUtil.DeepCopyAndApply(source, Identity)!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(copy.Tags!.Contains("alpha"), Is.True, "the set still ignores case");
+                Assert.That(copy.Scores!.ContainsKey("alpha"), Is.True, "and so does the dictionary");
+                Assert.That(copy.Tags, Is.Not.SameAs(source.Tags), "while still being a copy");
+                Assert.That(copy.Scores, Is.Not.SameAs(source.Scores));
+            });
+        }
+
+        /// <summary>
+        /// A NON-GENERIC list is copied as its own type, not normalized to a <see cref="List{T}"/> the way the
+        /// generic interfaces are - it carries no element type to build one from, so the copier reconstructs the
+        /// source's own container instead.
+        /// </summary>
+        [Test]
+        public void DeepCopyAndApply_CopiesANonGenericListAsItsOwnType()
+        {
+            var source = new ArrayList { new CopyLeaf { Id = 1, Name = "a" }, new CopyLeaf { Id = 2, Name = "b" } };
+
+            var copy = (ArrayList)CopyUtil.DeepCopyAndApply(source, Identity)!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(copy, Is.Not.SameAs(source));
+                Assert.That(copy.Count, Is.EqualTo(2));
+                Assert.That(copy[0], Is.EqualTo(source[0]).And.Not.SameAs(source[0]),
+                    "the elements are copied too, not merely re-listed");
+            });
+        }
+
+        /// <summary>
+        /// The set guard, which is a REFUSAL rather than a copy rule and belongs to the credential path this
+        /// copier exists for. A transformer that returns a different object for a set element - which is
+        /// exactly what encrypting one does - would leave a set whose members no longer hash where they sit, so
+        /// the copier refuses instead of producing one. Immutable element types are unaffected, which is why
+        /// the encrypt/decrypt models get away with sets of strings.
+        /// </summary>
+        [Test]
+        public void DeepCopyAndApply_RefusesToTransformTheElementsOfASetOfMutableThings()
+        {
+            var source = new HashSet<CopyLeaf> { new() { Id = 1, Name = "a" } };
+            Func<PropertyInfo?, object?, object?> replaceLeaves =
+                (_, value) => value is CopyLeaf leaf ? leaf with { Name = "changed" } : value;
+
+            Assert.Multiple(() =>
+            {
+                Assert.Throws<InvalidOperationException>(() => CopyUtil.DeepCopyAndApply(source, replaceLeaves));
+                Assert.DoesNotThrow(() => CopyUtil.DeepCopyAndApply(new HashSet<string> { "a" }, replaceLeaves),
+                    "a set of immutable elements has no hashing to break");
+            });
+        }
+
+        /// <summary>
+        /// The dictionary's counterpart guard, refused at the KEY rather than at the value: a key whose
+        /// equality can change is a key that cannot be looked up again after a copy, so such a dictionary is
+        /// refused up front rather than copied into something subtly unusable.
+        /// </summary>
+        [Test]
+        public void DeepCopyAndApply_RefusesADictionaryKeyedOnSomethingMutable()
+        {
+            var source = new Dictionary<CopyLeaf, int> { [new CopyLeaf { Id = 1 }] = 1 };
+
+            Assert.Throws<NotSupportedException>(() => CopyUtil.DeepCopyAndApply(source, Identity));
         }
 
         /// <summary>

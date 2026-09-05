@@ -44,8 +44,6 @@ namespace Ihc {
     /// </summary>
     public class UserManagerService : ServiceBase, IUserManagerService
     {
-        private readonly IAuthenticationService authService;
-
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Usermanager.UserManagerService
         {
             public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "UserManagerService") { }
@@ -136,24 +134,28 @@ namespace Ihc {
                 phone = u.Phone,
                 group = mapUserGroup(u.Group),
                 project = u.Project,
-                createdDate = new Ihc.Soap.Usermanager.WSDate()
-                {
-                    year = u.CreatedDate.Year,
-                    monthWithJanuaryAsOne = u.CreatedDate.Month,
-                    day = u.CreatedDate.Day,
-                    hours = u.CreatedDate.Hour,
-                    minutes = u.CreatedDate.Minute,
-                    seconds = u.CreatedDate.Second
-                },
-                loginDate = new Ihc.Soap.Usermanager.WSDate()
-                {
-                    year = u.LoginDate.Year,
-                    monthWithJanuaryAsOne = u.LoginDate.Month,
-                    day = u.LoginDate.Day,
-                    hours = u.LoginDate.Hour,
-                    minutes = u.LoginDate.Minute,
-                    seconds = u.LoginDate.Second
-                }
+                createdDate = mapWSDate(u.CreatedDate),
+                loginDate = mapWSDate(u.LoginDate)
+            };
+        }
+
+        /// <summary>
+        /// The wire carries a bare clock face and no offset, so the value is moved to the WS offset FIRST -
+        /// the offset <c>ToDateTimeOffset</c> reads it back at. Copying the source's own fields instead wrote
+        /// a date stated at any other offset as though its wall clock had already been WS-local, and it read
+        /// back shifted by the difference between the two.
+        /// </summary>
+        private static Ihc.Soap.Usermanager.WSDate mapWSDate(DateTimeOffset v)
+        {
+            var dto = v.ToOffset(DateHelper.GetWSTimeOffset());
+            return new Ihc.Soap.Usermanager.WSDate()
+            {
+                year = dto.Year,
+                monthWithJanuaryAsOne = dto.Month,
+                day = dto.Day,
+                hours = dto.Hour,
+                minutes = dto.Minute,
+                seconds = dto.Second
             };
         }
 
@@ -164,7 +166,6 @@ namespace Ihc {
         public UserManagerService(IAuthenticationService authService)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
         }
 
@@ -172,7 +173,6 @@ namespace Ihc {
         internal UserManagerService(IAuthenticationService authService, Ihc.Soap.Usermanager.UserManagerService impl)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = impl;
         }
 

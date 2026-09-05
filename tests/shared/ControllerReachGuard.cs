@@ -29,12 +29,6 @@ namespace Ihc.Tests
     [TestFixture]
     public class ControllerReachGuard
     {
-        /// <summary>Every controller-facing service carries this, so it is what "reaches a controller" means.</summary>
-        private const string MarkerInterface = "Ihc.IIHCApiService";
-
-        /// <summary>The generated SOAP layer: a constructor taking one of its types is handed its transport.</summary>
-        private const string TransportNamespace = "Ihc.Soap.";
-
         /// <summary>
         /// Sites allowed to construct a real service anyway. Empty for most suites: an entry here is a claim that
         /// building one is safe, which is only true while nothing is called on it.
@@ -50,7 +44,30 @@ namespace Ihc.Tests
                 BridgeWiringReason,
             ["Ihc.Vis.Tests.ControllerBridgeTests.MatchedPairBridge_AuthenticatesTheExactAuthTheControllerWasBuiltFrom"] =
                 BridgeWiringReason,
+
+            ["Ihc.Tests.ServiceConstructionTests.AuthenticationService_ConstructedFromSettings_OwnsItsCookieSession"] =
+                ProductionConstructionReason,
+            ["Ihc.Tests.ServiceConstructionTests.OpenAPIService_ConstructedFromASession_AdoptsThatSessionsCookieHandler"] =
+                ProductionConstructionReason,
+            ["Ihc.Tests.ServiceConstructionTests.OpenAPIService_ConstructedFromSettings_OwnsItsCookieSession"] =
+                ProductionConstructionReason,
+            ["Ihc.Tests.ServiceConstructionTests.ServiceBase_RefusesAnUnusableEndpoint"] =
+                ProductionConstructionReason,
         };
+
+        /// <summary>
+        /// Shared by the sites that exercise the PRODUCTION constructor itself. What they assert is what
+        /// construction WIRED - the settings instance, the cookie handler instance, or the refusal of an
+        /// unusable endpoint - which a fake cannot answer, since a fake would report whatever it was told. No
+        /// operation is called on any service built there, and the endpoint they configure is under the
+        /// reserved <c>.invalid</c> TLD, which is guaranteed never to resolve - unlike <c>.local</c>, which is
+        /// mDNS and answers on a LAN.
+        /// </summary>
+        private const string ProductionConstructionReason =
+            "builds real services through their public constructor to assert that construction shares the "
+            + "session's settings and cookie handler - the invariant ARCHITECTURE.md states and no fake can "
+            + "answer. No operation is called on them, and the configured endpoint is under the reserved "
+            + ".invalid TLD.";
 
         /// <summary>
         /// Shared by the two bridge-wiring sites. They assert WHICH auth a controller rides, which can only be
@@ -63,7 +80,9 @@ namespace Ihc.Tests
             + "the controller was built from. Construction performs no I/O, no operation is called, and the "
             + "endpoint is under the reserved .invalid TLD.";
 
-        private static ControllerReachScan.Anchors AnchorsForThisSuite() => new(MarkerInterface, TransportNamespace, Admitted);
+        // The marker interface and the transport doors come from the scan itself, so this suite and the
+        // architecture suite that proves its exclusions cannot come to scan by different ones.
+        private static ControllerReachScan.Anchors AnchorsForThisSuite() => ControllerReachScan.AnchorsFor(Admitted);
 
         /// <summary>The rule. A suite that may not reach a controller must not be able to build one.</summary>
         [Test]
@@ -78,8 +97,11 @@ namespace Ihc.Tests
             Assert.That(offending, Is.Empty,
                 "this suite may not reach a live controller: its state changes are destructive and a test run "
                 + "cannot undo them. Put the fake on the low-level IIHCApiService implementation, which is the "
-                + "seam the safety rule prescribes — or, if the site only CONSTRUCTS a service and calls nothing "
-                + "on it, admit it in ControllerReachGuard WITH that reason");
+                + "seam the safety rule prescribes — and build a substituted transport through "
+                + "Client.CreateHttpClient over a handler this suite declares, never a bare HttpClient or a "
+                + "generated Ihc.Soap client, which are sockets onto the real network. If the site only "
+                + "CONSTRUCTS a service and calls nothing on it, admit it in ControllerReachGuard WITH that "
+                + "reason");
         }
 
         /// <summary>

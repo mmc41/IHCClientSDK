@@ -5,7 +5,6 @@ using System.Diagnostics.Metrics;
 using System.Net;
 using System.Net.Http;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Ihc.Envelope;
 using Ihc.Soap.Controller;
@@ -29,29 +28,8 @@ namespace Ihc.Tests
     [TestFixture]
     public class SoapPostTelemetryTests
     {
-        /// <summary>Stands in for the socket: records what was sent, answers with a canned response.</summary>
-        private sealed class StubTransport : HttpMessageHandler
-        {
-            private readonly HttpStatusCode status;
-            private readonly string responseBody;
-
-            public StubTransport(HttpStatusCode status, string responseBody)
-            {
-                this.status = status;
-                this.responseBody = responseBody;
-            }
-
-            public string? RequestBody { get; private set; }
-
-            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            {
-                RequestBody = await request.Content!.ReadAsStringAsync(cancellationToken);
-                return new HttpResponseMessage(status)
-                {
-                    Content = new StringContent(responseBody, Encoding.UTF8, "text/xml")
-                };
-            }
-        }
+        private static StubTransport Stub(HttpStatusCode status, string responseBody) =>
+            new(status, new StringContent(responseBody, Encoding.UTF8, "text/xml"));
 
         private sealed class TestSoapService : ServiceBaseImpl
         {
@@ -61,14 +39,6 @@ namespace Ihc.Tests
             public Task<outputMessageName9> Call() =>
                 soapPost<outputMessageName9, inputMessageName9>("isSDCardReady", new inputMessageName9());
         }
-
-        private static IhcSettings Settings(bool logSensitiveData) =>
-            new IhcSettings
-            {
-                Endpoint = "http://unit.test.local",
-                AsyncContinueOnCapturedContext = false,
-                LogSensitiveData = logSensitiveData
-            };
 
         private static string SoapResponse(bool value) =>
             Serialization.SerializeXml<ResponseEnvelope<outputMessageName9>>(
@@ -81,9 +51,9 @@ namespace Ihc.Tests
             using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName,
                 spanNames: new[] { "soapPost.isSDCardReady" });
 
-            var stub = new StubTransport(status, SoapResponse(true));
+            var stub = Stub(status, SoapResponse(true));
             using var transport = Client.CreateHttpClient(stub);
-            var service = new TestSoapService(Settings(logSensitiveData), new CookieHandler(false), transport);
+            var service = new TestSoapService(FakeSession.Settings(logSensitiveData), new CookieHandler(false), transport);
 
             Exception? thrown = null;
             try
@@ -119,9 +89,9 @@ namespace Ihc.Tests
             using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName,
                 instruments: new[] { "ihc.controller.operation.duration" });
 
-            var stub = new StubTransport(HttpStatusCode.OK, SoapResponse(true));
+            var stub = Stub(HttpStatusCode.OK, SoapResponse(true));
             using var transport = Client.CreateHttpClient(stub);
-            await new TestSoapService(Settings(false), new CookieHandler(false), transport).Call();
+            await new TestSoapService(FakeSession.Settings(), new CookieHandler(false), transport).Call();
 
             IReadOnlyList<CapturedPoint> recorded = capture.PointsOf("ihc.controller.operation.duration");
 
@@ -145,10 +115,10 @@ namespace Ihc.Tests
             using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName,
                 instruments: new[] { "ihc.controller.operation.duration" });
 
-            var stub = new StubTransport(HttpStatusCode.InternalServerError, SoapResponse(true));
+            var stub = Stub(HttpStatusCode.InternalServerError, SoapResponse(true));
             using var transport = Client.CreateHttpClient(stub);
             Assert.ThrowsAsync<HttpRequestException>(async () =>
-                await new TestSoapService(Settings(false), new CookieHandler(false), transport).Call());
+                await new TestSoapService(FakeSession.Settings(), new CookieHandler(false), transport).Call());
 
             IReadOnlyList<CapturedPoint> recorded = capture.PointsOf("ihc.controller.operation.duration");
 

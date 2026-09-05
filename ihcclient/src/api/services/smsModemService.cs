@@ -41,8 +41,6 @@ namespace Ihc
 
     public class SmsModemService : ServiceBase, ISmsModemService
     {
-        private readonly IAuthenticationService authService;
-
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Smsmodem.SMSModemService
         {
             public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "SMSModemService") { }
@@ -73,7 +71,7 @@ namespace Ihc
             }
         }
 
-        private readonly SoapImpl impl;
+        private readonly Ihc.Soap.Smsmodem.SMSModemService impl;
 
         /// <summary>
         /// Create a SmsModemService instance for access to the IHC API related to SMS modem operations.
@@ -82,8 +80,14 @@ namespace Ihc
         public SmsModemService(IAuthenticationService authService)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
+        }
+
+        /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
+        internal SmsModemService(IAuthenticationService authService, Ihc.Soap.Smsmodem.SMSModemService impl)
+            : base(SettingsOf(authService))
+        {
+            this.impl = impl;
         }
 
         // Map methods for translating between SOAP models and high-level models

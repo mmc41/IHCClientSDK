@@ -66,8 +66,6 @@ namespace Ihc
 
     public class AirlinkManagementService : ServiceBase, IAirlinkManagementService
     {
-        private readonly IAuthenticationService authService;
-
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Airlinkmanagement.AirlinkManagementService
         {
             public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, "AirlinkManagementService") { }
@@ -123,7 +121,7 @@ namespace Ihc
             }
         }
 
-        private readonly SoapImpl impl;
+        private readonly Ihc.Soap.Airlinkmanagement.AirlinkManagementService impl;
 
         /// <summary>
         /// Create an AirlinkManagementService instance for access to the IHC API related to Airlink RF device management.
@@ -132,8 +130,14 @@ namespace Ihc
         public AirlinkManagementService(IAuthenticationService authService)
             : base(SettingsOf(authService))
         {
-            this.authService = authService;
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
+        }
+
+        /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
+        internal AirlinkManagementService(IAuthenticationService authService, Ihc.Soap.Airlinkmanagement.AirlinkManagementService impl)
+            : base(SettingsOf(authService))
+        {
+            this.impl = impl;
         }
 
         private RFDevice? mapRFDevice(WSRFDevice? device)

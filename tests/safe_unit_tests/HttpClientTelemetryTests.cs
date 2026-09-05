@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Ihc.Tests.Shared;
 using NUnit.Framework;
@@ -23,13 +22,10 @@ namespace Ihc.Tests
     [TestFixture]
     public class HttpClientTelemetryTests
     {
-        private sealed class StubTransport : HttpMessageHandler
-        {
-            private readonly HttpStatusCode status;
-
-            public StubTransport(HttpStatusCode status) => this.status = status;
-
-            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        /// <summary>Answers with the headers a controller sends back - the session cookie the handler must not
+        /// export, and a server banner it may.</summary>
+        private static StubTransport Stub(HttpStatusCode status) =>
+            new(_ =>
             {
                 var response = new HttpResponseMessage(status)
                 {
@@ -37,9 +33,8 @@ namespace Ihc.Tests
                 };
                 response.Headers.Add("Set-Cookie", "JSESSIONID=secret-session");
                 response.Headers.Add("Server", "IhcController/1.0");
-                return Task.FromResult(response);
-            }
-        }
+                return response;
+            });
 
         /// <summary>Sends one request through the real handler chain and returns the span it produced.</summary>
         private static async Task<(string Name, ActivityStatusCode Status, Dictionary<string, object?> Tags, ActivityKind Kind)>
@@ -48,7 +43,7 @@ namespace Ihc.Tests
             // The handler produces the only span here; nothing else runs inside this call, so no name filter.
             using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName);
 
-            using var client = Client.CreateHttpClient(new StubTransport(status));
+            using var client = Client.CreateHttpClient(Stub(status));
             using var request = new HttpRequestMessage(HttpMethod.Post, "http://unit.test.local/ws/TestService")
             {
                 Content = new StringContent("<req/>", Encoding.UTF8, "text/xml")
