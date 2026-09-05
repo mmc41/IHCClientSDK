@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using CsCheck;
 using Ihc.Vis.Session;
@@ -36,13 +37,31 @@ namespace Ihc.Vis.Tests
         private static readonly Gen<double> Subnormal = Gen.Select(Gen.Long[1, (1L << 52) - 1], Gen.Bool)
             .Select(t => t.Item2 ? -BitConverter.Int64BitsToDouble(t.Item1) : BitConverter.Int64BitsToDouble(t.Item1));
 
-        /// <summary>The named edges, which random sampling will not hit on its own.</summary>
-        private static readonly Gen<double> Edges = Gen.OneOfConst(
+        /// <summary>
+        /// The named edges, which random sampling will not hit on its own — so they are not sampled. They used to
+        /// be a fourth branch of the generator below, which meant the most valuable inputs in the file were reached
+        /// by chance: at a quarter of the draws spread over eleven values, a short run could miss
+        /// <c>double.MaxValue</c> entirely and still report as a pass. That made the iteration count load-bearing
+        /// for a reason nothing stated, and it is why the count was high.
+        /// <para>Enumerated instead, they are reached on EVERY run, at a cost that does not scale with anything —
+        /// which is what lets the sampled branches below run shorter without losing them.</para>
+        /// </summary>
+        private static readonly double[] NamedEdges =
+        [
             0d, -0d, double.Epsilon, -double.Epsilon, double.MaxValue, double.MinValue,
-            1d / 3d, -1d / 3d, 0.005, -0.005, 0.994999999999);
+            1d / 3d, -1d / 3d, 0.005, -0.005, 0.994999999999,
+        ];
 
+        /// <summary>
+        /// What is left to SAMPLE once the named edges are enumerated: the regions too large to name a
+        /// representative of. Iterations here buy coverage of those regions and nothing else.
+        /// </summary>
         private static readonly Gen<double> AnyFinite =
-            Gen.OneOf(Realistic, AnyFiniteBitPattern, Subnormal, Edges);
+            Gen.OneOf(Realistic, AnyFiniteBitPattern, Subnormal);
+
+        /// <summary>How many values each sampled law draws. Lower than it was, because the eleven values that
+        /// previously justified a high count are no longer drawn at all.</summary>
+        private const int SampledValues = 300;
 
         private static ProjectAppService App => new(TestSetup.Settings);
 
@@ -80,7 +99,7 @@ namespace Ihc.Vis.Tests
             {
                 string? written = Written(session, variable, value);
                 return written is null || TwoDecimalShape.IsMatch(written);
-            }, iter: 1000, threads: 1);
+            }, iter: SampledValues, threads: 1);
         }
 
         /// <summary>
@@ -97,7 +116,37 @@ namespace Ihc.Vis.Tests
                 string? written = Written(session, variable, value);
                 bool roundsToZero = Math.Abs(value) < 0.005;
                 return written is null == roundsToZero;
-            }, iter: 1000, threads: 1);
+            }, iter: SampledValues, threads: 1);
+        }
+
+        /// <summary>
+        /// Both laws above, at every named edge, on every run. One test rather than eleven cases because the
+        /// eleven share a session and a single load: the values are the subject, not the fixtures. Both laws are
+        /// asserted together here for the same reason they are separate above — a single concrete value has one
+        /// answer for each, so checking both says strictly more per value, where a SAMPLED run wants each law
+        /// named so a shrunk counter-example says which one broke.
+        /// <para><see cref="Assert.Multiple"/> so a formatter that breaks several edges at once reports all of
+        /// them, and each message carries the value: <c>R</c> round-trips every double exactly, so the failure
+        /// names an input that can be pasted back in.</para>
+        /// </summary>
+        [Test]
+        public async Task Decimal_AtEveryNamedEdge_KeepsBothLaws()
+        {
+            (ProjectDocumentSession session, ElementId variable) = await WithMeter();
+
+            Assert.Multiple(() =>
+            {
+                foreach (double value in NamedEdges)
+                {
+                    string? written = Written(session, variable, value);
+                    string edge = value.ToString("R", CultureInfo.InvariantCulture);
+
+                    Assert.That(written is null || TwoDecimalShape.IsMatch(written), Is.True,
+                        $"edge {edge}: wrote '{written}', which is neither omitted nor two-fraction-digit shape");
+                    Assert.That(written is null, Is.EqualTo(Math.Abs(value) < 0.005),
+                        $"edge {edge}: wrote '{written}', but omission must mean exactly 'rounds to zero'");
+                }
+            });
         }
 
         /// <summary>

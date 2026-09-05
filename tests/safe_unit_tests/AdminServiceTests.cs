@@ -686,6 +686,17 @@ namespace Ihc.Tests
             var service = new AdminAppService(
                 settings, fileEncryption, fakeAuthService, fakeUserService, fakeConfigService);
 
+            // The two flags are two equivalence classes over ONE model sweep, not two sweeps worth running to
+            // the same depth. What varies across samples is the model — the hostile text above — and that is
+            // what the whole-model claim rests on, so the unencrypted class carries the full run because a
+            // sample there costs nothing. The encrypted class adds exactly one thing: that the fields marked
+            // sensitive survive the encrypt/decrypt hop. That set is fixed and small, the crypto round trip is
+            // SecurityPropertyTests' own subject, and a derived key is deliberately expensive to compute
+            // (PBKDF2 at the cost factor SimpleSecret pins), which put ~175 ms on every sample and made this
+            // one case the slowest test in the suite by an order of magnitude. A handful of samples covers the
+            // partition; the hundredth encrypted model says nothing the tenth did not.
+            int samples = fileEncryption ? 10 : 100;
+
             AdminModelGen.Sample(model =>
             {
                 using var stream = new System.IO.MemoryStream();
@@ -698,7 +709,7 @@ namespace Ihc.Tests
                     throw new AssertionException($"encryption={fileEncryption}: {difference}");
                 }
                 return true;
-            }, iter: 100, threads: 1);
+            }, iter: samples, threads: 1);
         }
 
         /// <summary>

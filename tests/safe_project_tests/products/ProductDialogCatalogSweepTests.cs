@@ -28,8 +28,20 @@ namespace Ihc.Vis.Tests
         /// Iterations per product. Deliberately far below the 100 a single-product property runs: the law is being
         /// checked across ~100 dialogs rather than deeply within one, and the whole suite has a runtime ceiling
         /// (D02). Raising this trades sweep breadth for depth — the breadth is the point here.
+        ///
+        /// <para>What sets the number is that cost here is linear in it and in nothing else. An iteration submits
+        /// a handful of edits down two routes and compares the two projects by serializing both WHOLE, so it costs
+        /// the same whichever product is being swept — measured, and identical to the per-iteration cost of the
+        /// single-family property next door. So this constant alone decides what the sweep costs, and at ten it
+        /// made this the slowest test in the repository by some margin.</para>
+        ///
+        /// <para>Halving it keeps every part of the sweep that is load-bearing: each product is still placed, its
+        /// dialog still composed and its writable fields still counted — the three coverage guards below read
+        /// those, not this — and what shrinks is only how many field subsets each individual dialog is tried with.
+        /// Depth on one dialog is what <see cref="ProductDialogMetamorphicTests"/> is for, which is why lowering
+        /// this is not an argument for folding that test in here.</para>
         /// </summary>
-        private const int IterationsPerProduct = 10;
+        private const int IterationsPerProduct = 5;
 
         [Test]
         public async Task EveryPlaceableProductsDialog_SubmitsTheSameWhetherBatchedOrOneFieldAtATime()

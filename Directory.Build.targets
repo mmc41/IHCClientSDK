@@ -144,10 +144,24 @@
     The default HTML form is the one-page summary. The full per-file drill-down is opt-in with
     `-p:CoverageHtmlDetail=true`, because it writes hundreds of files and a great deal more of them
     than anyone wants produced by every `dotnet test`.
+
+    Opt a run out of the MERGE while keeping its collection, with `-p:RunCoverageMerge=false`. The slice is still
+    written, so nothing is lost and the next run that does merge folds it in.
+
+    This exists because the step above is unconditionally per-suite and the merge is not cheap: measured, it is
+    around four and a half seconds, nearly all of it the fixed cost of starting the script and the two local tools
+    it drives rather than anything proportional to the coverage data. A CI leg pays that once and needs to, for
+    the reason the target's own remarks give — no suite is reliably last. A developer running every suite in
+    sequence pays it once per suite and only the final one survives, which was most of what a full local run
+    spent outside the tests themselves.
+
+    Deliberately NOT the default, and deliberately not automatic: MSBuild cannot see that it is one suite in a
+    sequence, and a merge that guessed would be wrong exactly when someone ran a single suite and wanted its
+    number. So the sequence says so, by passing the flag on every suite but the last.
   -->
   <Target Name="MergeCoverageReport"
           AfterTargets="VSTest"
-          Condition="'$(IsTestProject)' == 'true' AND '$(CollectCoverage)' != 'false'">
+          Condition="'$(IsTestProject)' == 'true' AND '$(CollectCoverage)' != 'false' AND '$(RunCoverageMerge)' != 'false'">
 
     <PropertyGroup>
       <CoverageHtmlReportTypes Condition="'$(CoverageHtmlDetail)' == 'true'">Html</CoverageHtmlReportTypes>

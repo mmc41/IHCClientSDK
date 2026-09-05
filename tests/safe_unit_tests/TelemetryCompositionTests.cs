@@ -27,7 +27,41 @@ namespace Ihc.Tests
     {
         private const string AppScopeName = "IhcCompositionTestApp";
 
-        // Port 1 refuses instantly, so a flush on dispose cannot stall the suite.
+        /// <summary>
+        /// How long a provider built here may spend trying to reach its collector before giving up.
+        ///
+        /// <para>Load-bearing, and it replaces a comment that claimed the opposite. "Port 1 refuses instantly,
+        /// so a flush on dispose cannot stall the suite" is false. The refusal is indeed instant; what is not is
+        /// what the exporter does with it, which is to keep spending its timeout budget rather than conclude the
+        /// endpoint is unreachable. Measured, every test that built the endpoint-configured providers paid about
+        /// four seconds on dispose — most of this fixture's runtime, and most of this suite's, spent waiting on a
+        /// socket no assertion here reads. Shortening the budget removes it; the exact retry shape inside that
+        /// budget was not worth pinning down, because at this length nothing here wants to wait at all.</para>
+        ///
+        /// <para>These tests never export. They build the providers and inspect them, so the shortest timeout
+        /// that still lets one be constructed is the honest setting; the flush has nothing to deliver either
+        /// way. Set through the specification's own environment variable rather than through
+        /// <c>OtlpExporterOptions</c>, because the exporter is configured inside the composition root under
+        /// test and the variable is the seam that reaches it from outside.</para>
+        /// </summary>
+        private const string ExportTimeoutVariable = "OTEL_EXPORTER_OTLP_TIMEOUT";
+        private const string ShortExportTimeoutMilliseconds = "50";
+
+        private string? timeoutBeforeFixture;
+
+        [OneTimeSetUp]
+        public void ShortenTheExportTimeout()
+        {
+            timeoutBeforeFixture = Environment.GetEnvironmentVariable(ExportTimeoutVariable);
+            Environment.SetEnvironmentVariable(ExportTimeoutVariable, ShortExportTimeoutMilliseconds);
+        }
+
+        /// <summary>Restored rather than cleared, so a run under an operator's own setting leaves it as it found it.</summary>
+        [OneTimeTearDown]
+        public void RestoreTheExportTimeout() =>
+            Environment.SetEnvironmentVariable(ExportTimeoutVariable, timeoutBeforeFixture);
+
+        // Port 1 has nothing listening, so a provider built here reaches no collector even if it tries.
         private static TelemetryConfiguration AllEndpoints() => new()
         {
             Host = "http://localhost:1",

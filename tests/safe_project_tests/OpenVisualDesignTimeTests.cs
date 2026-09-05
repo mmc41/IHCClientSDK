@@ -55,21 +55,50 @@ public class OpenVisualDesignTimeTests
     [Test]
     public void DesignMainWindowViewModel_WritesNothingToDisk()
     {
-        string designDir = Path.Combine(Path.GetTempPath(), "ihc-openvisual-design");
-        if (Directory.Exists(designDir))
-            Directory.Delete(designDir, recursive: true);
-        string[] tempBefore = Directory.GetFiles(Path.GetTempPath());
-
-        // Several times over, as the previewer would.
-        for (int i = 0; i < 3; i++)
-            _ = new DesignMainWindowViewModel();
-
-        Assert.Multiple(() =>
+        // The constructor is given a temp directory of its OWN, and the assertion is that the directory is still
+        // empty afterwards. The obvious version of this test — snapshot the real temp directory, construct, and
+        // compare the listing — was neither fast nor sound. It enumerated a directory the test does not own and
+        // set-compared two listings of it, which on a developer machine means millions of entries and seconds of
+        // wall clock; and because the test host, the build and the coverage collector all write there while it
+        // runs, any of them landing a file between the two listings failed this test for a reason that has
+        // nothing to do with the view-model.
+        //
+        // Redirecting is what makes the claim exact rather than approximate: an empty directory afterwards means
+        // NOTHING was written anywhere under temp, where the listing diff could only ever say that nothing
+        // survived to the second listing. Both variables are set because the platforms disagree on which one
+        // Path.GetTempPath reads, and they are restored so a suite that runs after this one is handed the
+        // environment it expects.
+        string? tmpBefore = Environment.GetEnvironmentVariable("TMP");
+        string? tempBefore = Environment.GetEnvironmentVariable("TEMP");
+        string? tmpdirBefore = Environment.GetEnvironmentVariable("TMPDIR");
+        string sandbox = Path.Combine(Path.GetTempPath(), "ihc-designtime-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(sandbox);
+        try
         {
-            Assert.That(Directory.Exists(designDir), Is.False,
-                "the design-time stores read through missing paths; nothing is created");
-            Assert.That(Directory.GetFiles(Path.GetTempPath()), Is.EquivalentTo(tempBefore),
-                "and no stray temp files are left behind");
-        });
+            Environment.SetEnvironmentVariable("TMP", sandbox);
+            Environment.SetEnvironmentVariable("TEMP", sandbox);
+            Environment.SetEnvironmentVariable("TMPDIR", sandbox);
+
+            Assert.That(Path.GetTempPath().TrimEnd(Path.DirectorySeparatorChar),
+                Is.EqualTo(sandbox.TrimEnd(Path.DirectorySeparatorChar)),
+                "precondition: the redirect took, so what follows is about the view-model and not about the "
+                + "platform ignoring the variables");
+
+            // Several times over, as the previewer would.
+            for (int i = 0; i < 3; i++)
+                _ = new DesignMainWindowViewModel();
+
+            Assert.That(Directory.EnumerateFileSystemEntries(sandbox, "*", SearchOption.AllDirectories),
+                Is.Empty,
+                "the design-time stores read through missing paths, so construction creates neither the "
+                + "design directory nor any stray temp file");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("TMP", tmpBefore);
+            Environment.SetEnvironmentVariable("TEMP", tempBefore);
+            Environment.SetEnvironmentVariable("TMPDIR", tmpdirBefore);
+            Directory.Delete(sandbox, recursive: true);
+        }
     }
 }

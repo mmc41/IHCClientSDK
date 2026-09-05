@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using CsCheck;
 using Ihc.Vis.Model;
@@ -56,7 +57,48 @@ namespace Ihc.Vis.Tests
             Gen.Const((Op)new MarkSavedOp()),
             CsCheckValues.Pick.Select(p => (Op)new MarkSavedStaleOp(p)));
 
-        private static readonly Gen<Op[]> Sequence = AnyOp.Array[0, 12];
+        /// <summary>
+        /// An edit, its undo, and the redo that undo makes possible — drawn as ONE unit, because the three only
+        /// mean anything ADJACENT. A redo does real work solely while the redo stack is live, and every edit
+        /// clears that stack, so in a flat draw over the alphabet above a redo is a no-op unless it happens to
+        /// follow an undo with no edit in between: about one position in forty-five. Measured, that left redo
+        /// exercised single-figure times per run while every other operation ran into the hundreds — the
+        /// operation was nominally covered and effectively untested, which is the failure mode a coverage guard
+        /// is supposed to catch rather than exhibit.
+        /// <para>The edit at the front is what makes the run reliable rather than merely likely: an undo needs
+        /// something to undo, and starting from an arbitrary earlier state does not guarantee one.</para>
+        /// </summary>
+        private static readonly Gen<Op[]> UndoRedoRun =
+            CsCheckValues.Name.Select(n => new Op[] { new AddOp(n), new UndoOp(), new RedoOp() });
+
+        /// <summary>
+        /// Several edits back to back. The counterpart to the run above, and needed for the same reason: a
+        /// BOUNDED history only trims once more edits are stacked than the cap allows, so trimming is reachable
+        /// by DEPTH where redo is reachable by adjacency, and a draw that scatters single edits among eight other
+        /// operations rarely stacks enough of them. Adding the undo/redo run without this one made the point by
+        /// breaking it — trimming at the largest cap dropped to a handful of occurrences per run, because the new
+        /// runs displaced exactly the consecutive edits it depends on.
+        /// </summary>
+        private static readonly Gen<Op[]> EditRun =
+            CsCheckValues.Name.Array[3, 7].Select(names =>
+                names.Select(n => (Op)new AddOp(n)).ToArray());
+
+        /// <summary>
+        /// A sequence of runs, flattened. Most runs are a single arbitrary operation, so the interleaving this
+        /// law is about is still what the sequences are mostly made of; a minority are the deliberate undo/redo
+        /// run above. Building the adjacency rather than waiting for it is what raises redo to the same order as
+        /// the rest of the alphabet, and the runs still land in arbitrary POSITIONS, so a redo is still met under
+        /// a stale save point, after a rollback, or at the head of a sequence — which is the part that had to
+        /// stay random. Lengths are chosen so the flattened sequence averages what the flat draw averaged, and
+        /// costs about what it cost.
+        /// </summary>
+        private static readonly Gen<Op[]> Sequence =
+            Gen.Frequency(
+                    (9, AnyOp.Select(op => new Op[] { op })),
+                    (2, UndoRedoRun),
+                    (2, EditRun))
+                .Array[0, 7]
+                .Select(runs => runs.SelectMany(run => run).ToArray());
 
         private static ProjectCommand? EditCommand(Op op, Project project)
         {
@@ -370,7 +412,16 @@ namespace Ihc.Vis.Tests
             {
                 Assert.That(counters.Applied, Is.GreaterThan(0), "no edit was ever committed");
                 Assert.That(counters.Undone, Is.GreaterThan(0), "no undo was ever performed");
-                Assert.That(counters.Redone, Is.GreaterThan(0), "no redo was ever performed");
+                // Not `> 0`, and the difference is the point. A redo only does anything while the redo stack is
+                // live, and an edit clears it — so with a flat alphabet a redo that lands anywhere but directly
+                // after an undo is a no-op, and this guard cleared on single figures while every other counter
+                // ran into the hundreds. It passed, which is worse than failing: it reported an operation as
+                // covered that the sequences had barely reached. The floor is set where it is because the
+                // generator now BUILDS undo/redo adjacency rather than waiting for it, and what a floor has to
+                // do is fail if that ever stops being true.
+                Assert.That(counters.Redone, Is.GreaterThan(40),
+                    "redo was reached only incidentally — the generator is no longer producing undo/redo runs, "
+                    + "so redo is going untested while this suite reports it as exercised");
                 Assert.That(counters.RolledBack, Is.GreaterThan(0), "no rollback was ever performed");
                 Assert.That(counters.SavedStale, Is.GreaterThan(0), "no save point was ever set to an older snapshot");
                 Assert.That(counters.DirtyAfterSave, Is.GreaterThan(0),
