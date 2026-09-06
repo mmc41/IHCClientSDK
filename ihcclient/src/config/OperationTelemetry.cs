@@ -471,16 +471,25 @@ namespace Ihc
     /// <summary>
     /// The one seam that mints a span and records an operation's instruments, for one owner within a layer.
     ///
-    /// <para>Two shapes, because two shapes are genuinely needed. <b>Shape A</b> (<see cref="Run{T}"/> /
-    /// <see cref="RunAsync{T}"/>) wraps a delegate and is what an ordinary operation uses. <b>Shape B</b>
-    /// (<see cref="Start"/>) hands back the scope for a site whose work does not fit inside one delegate -
-    /// a handler that must return a value it is still building, or a span needing a non-default
-    /// <see cref="ActivityKind"/> or creation-time links.</para>
+    /// <para>Three shapes, because each expresses something the others cannot. <b>Shape A</b>
+    /// (<see cref="Run{T}"/> / <see cref="RunAsync{T}"/>) wraps a delegate and is what an ordinary operation
+    /// uses. <b>Shape B</b> (<see cref="Start"/>) hands back the scope for a site whose work does not fit inside
+    /// one delegate - a handler that must return a value it is still building, or a span needing a non-default
+    /// <see cref="ActivityKind"/> or creation-time links. <b>Shape C</b> (<see cref="Record"/>) reports an
+    /// operation that ALREADY ran, at the times it ran, for work that finished before this surface had a
+    /// listener to record it.</para>
     ///
-    /// <para>Both guarantee the same things: the span is named <c>&lt;Owner&gt;.&lt;operation&gt;</c>, the
-    /// duration is measured on a monotonic clock and works with tracing off, instruments are recorded while
-    /// the span is live, only a failure sets status Error, and a fault in the instrumentation never reaches
-    /// the caller.</para>
+    /// <para>All three guarantee the same things: the span is named <c>&lt;Owner&gt;.&lt;operation&gt;</c>, it is
+    /// minted through the one seam below, and a fault in RECORDING the operation - a broken tag, a disposed
+    /// meter, a listener that throws while the span is stopped - is reported through the owner's fault port
+    /// rather than raised at the caller. That guard does not extend to the span's CREATION in any of the three:
+    /// <c>StartActivity</c> is called outside it, so a throwing <c>ActivityListener</c> sampling callback still
+    /// reaches the caller. Nothing an owner writes can produce that one - it is a process-wide listener being
+    /// broken - which is why no shape pays to catch it. A and B
+    /// additionally MEASURE the duration - on a monotonic clock, and with tracing off - record instruments while
+    /// the span is live, and set status Error on a failure and only on one. C does none of those three: it is
+    /// handed its duration and has no outcome to report, which is the whole of why it is a shape rather than an
+    /// overload. A caller with an outcome or an instrument wants A or B.</para>
     /// </summary>
     public sealed class OperationTelemetry
     {
@@ -559,14 +568,110 @@ namespace Ihc
                 onFault is null ? null : failure => Report(operation, failure));
 
         /// <summary>
-        /// Mints the span and NOTHING else, for a legacy helper whose shipped signature returns a bare
-        /// <see cref="Activity"/>. Such a helper cannot own a scope: its caller owns the <c>using</c>, so the
-        /// helper is not present when the operation ends and could never record an outcome or a duration.
-        /// Handing it a scope it will not dispose would be worse than not making one.
+        /// Records an operation that has ALREADY run, at the times it actually ran (Shape C).
+        /// </summary>
+        /// <remarks>
+        /// <para>For the one case the other shapes cannot express: work that finished BEFORE this surface had a
+        /// listener. A span cannot be opened retroactively, and opening one afterwards without saying when it
+        /// began reports a duration of zero for work that took real time — so the phase either lands in the
+        /// trace backdated, or it does not land at all. A host's launch is the standing example: configuration
+        /// and the telemetry pipeline itself are built before anything can record them, and they are not small.
+        /// </para>
+        /// <para><b>Always a ROOT, and this is the one place the core departs from <see cref="Start"/>.</b> Every
+        /// other shape takes the ambient <see cref="Activity"/> as its parent, which is right for work happening
+        /// now. A backdated phase's times are bounded by nothing, so an ambient parent would routinely be a span
+        /// that STARTED AFTER its own child — not a tree any backend can draw, and silently dependent on where
+        /// the call happens to sit rather than on what it means. A caller wanting a backdated child of a
+        /// specific parent needs a shape that says which, not this one.</para>
+        /// <para>It takes no <see cref="MetricBinding"/>: the caller is reporting a measurement it made itself
+        /// rather than asking to be measured, and an instrument fed from a timestamp the core did not take
+        /// would not be comparable with the rest of its series.</para>
+        /// <para><b>The times are REJECTED rather than repaired, because neither of the framework's own
+        /// answers is readable.</b> <see cref="Activity.SetEndTime"/> clamps a non-positive duration to one
+        /// TICK (its zero means "end time not set", which the stop would otherwise refill), so a reversed pair
+        /// would export as an instantaneous span sitting at <paramref name="startedAt"/> — indistinguishable
+        /// from a phase that was genuinely fast, which inverts the reading a person would take from it. A
+        /// <c>default</c> <paramref name="startedAt"/> is worse still: <c>StartActivity</c> ignores a default
+        /// start time, so the span would begin at the wall clock, the exact opposite of backdating. The guard for
+        /// that one reads the INSTANT rather than the value, because a caller holding <c>DateTime</c>s — which
+        /// the standing host does — converts <c>default(DateTime)</c> at the local offset, and west of UTC the
+        /// result is year 1 at some hour and equal to no <c>default</c> anything. Both are
+        /// caller mistakes with no honest rendering, so they throw. That is not in tension with "a measurement
+        /// may not fail the launch it measures": a host contains its own recording, and the ONLY thing a
+        /// silent version would buy is a wrong number nobody can spot.</para>
+        /// <para><b>One limit on the restore, and it cannot be fixed from here.</b>
+        /// <see cref="Activity.Current"/>'s setter silently refuses a STOPPED activity, so if the caller's
+        /// ambient span has already been stopped — a captured execution context outliving its span — the
+        /// ambient cannot be put back and the caller is left with none. Every span it starts afterwards becomes
+        /// a root. There is no public API that can restore a stopped activity; a caller in that position has a
+        /// leaked context, which is a defect wherever it came from.</para>
+        /// </remarks>
+        /// <param name="operation">Operation name; the span becomes <c>&lt;Owner&gt;.&lt;operation&gt;</c>.</param>
+        /// <param name="startedAt">When the operation began. Must be a real instant — anything in year 1 is
+        /// refused, which is <c>default</c> in every spelling that can reach here.</param>
+        /// <param name="endedAt">When it ended. Must not precede <paramref name="startedAt"/>.</param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="startedAt"/> is unset, or <paramref name="endedAt"/> precedes it.
+        /// </exception>
+        public void Record(string operation, DateTimeOffset startedAt, DateTimeOffset endedAt)
+        {
+            // The INSTANT, not the value, because the equality guard this replaced had a hole on the conversion
+            // path a host actually uses. A caller handing default(DateTime) converts at the LOCAL offset, so west
+            // of UTC it arrives as year 1 at some hour — not default(DateTimeOffset) at all — and slipped through
+            // into a span backdated to the year 1. Year 1 is the framework's zero however it is spelled, and no
+            // measurement lands there. (East of UTC the conversion itself throws, before this is reached.)
+            if (startedAt.UtcDateTime.Year == 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(startedAt), startedAt,
+                    "A recorded phase must carry the instant it actually began.");
+            }
+            ArgumentOutOfRangeException.ThrowIfLessThan(endedAt, startedAt, nameof(endedAt));
+            try
+            {
+                // Detached for the duration of the call, because passing default(ActivityContext) does NOT mean
+                // "no parent" — it means "use Activity.Current", which is how every other shape here gets
+                // parented. Both the detach and the restore are INSIDE the guard: each assigns Activity.Current,
+                // which raises the process-wide CurrentChanged event, and a throwing subscriber there would be
+                // instrumentation breaking its caller — the one thing this shape promises it will not do.
+                Activity? ambient = Activity.Current;
+                Activity.Current = null;
+                try
+                {
+                    // The restore belongs in the finally and not after the using: disposal stops the phase, which
+                    // makes ITS parent current — and the detach above made that null.
+                    using Activity? phase = StartSpan(operation, startTime: startedAt);
+                    phase?.SetEndTime(endedAt.UtcDateTime);
+                }
+                finally
+                {
+                    Activity.Current = ambient;
+                }
+            }
+#pragma warning disable CA1031 // Fail-open: see the type summary, and the remarks above on what this shape adds.
+            catch (Exception failure)
+#pragma warning restore CA1031
+            {
+                // The same port the other shapes report a recording fault through — a throwing listener is the
+                // realistic case. This shape does more of its own work than the others (it detaches the ambient
+                // activity, backdates the span and stops it by hand), so it is the one with the most to contain.
+                Report(operation, failure);
+            }
+        }
+
+        /// <summary>
+        /// Mints the span and NOTHING else. Two callers: <see cref="Record"/>, which owns its own timing, and a
+        /// legacy helper whose shipped signature returns a bare <see cref="Activity"/> - such a helper cannot own
+        /// a scope, because its caller owns the <c>using</c>, so it is not present when the operation ends and
+        /// could never record an outcome or a duration. Handing it a scope it will not dispose would be worse
+        /// than not making one.
+        /// <para><paramref name="startTime"/> BACKDATES the span. Leaving it <c>default</c> is what every other
+        /// caller does and means "now": <c>StartActivity</c> ignores a default start time and reads the wall
+        /// clock, so adding this parameter changed nothing for them.</para>
         /// </summary>
         internal Activity? StartSpan(string operation, ActivityKind kind = ActivityKind.Internal,
-            IEnumerable<ActivityLink>? links = null) =>
-            surface.ActivitySource.StartActivity(SpanName(operation), kind, default(ActivityContext), links: links);
+            IEnumerable<ActivityLink>? links = null, DateTimeOffset startTime = default) =>
+            surface.ActivitySource.StartActivity(SpanName(operation), kind, default(ActivityContext), links: links,
+                startTime: startTime);
 
         /// <summary>Runs <paramref name="body"/> inside an instrumented operation (Shape A).</summary>
         /// <param name="operation">Operation name.</param>

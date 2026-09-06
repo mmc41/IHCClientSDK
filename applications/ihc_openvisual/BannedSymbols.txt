@@ -26,6 +26,12 @@ N:Ihc.Vis.Editing;Mutate through the Ihc.Vis.Session commands, not the low-level
 // output of its own; the pipeline's builders, shape document and format writers are the SDK's.
 N:Ihc.Vis.Reporting;The SDK generates finished reports — call ProjectAppService.GenerateReport.
 
+// The component catalog is the SDK's, and the GUI consumes it only as what ProjectAppService hands back —
+// GetAvailableProducts/GetAvailableFunctionBlocks/GetProductCatalogItems, and Warmup to build it early.
+// Named here the moment the host first had a reason to reach in, so "unlisted" never comes to read as
+// "allowed": this is the namespace a launch-time warm-up would otherwise have called directly.
+N:Ihc.Vis.Catalog;Reach the catalog through ProjectAppService — GetAvailable*/GetProductCatalogItems, or Warmup to build it early.
+
 // One type, never the Ihc.Vis.Session namespace: the command, outcome and change-set contract types live
 // there and the GUI legitimately consumes them. Only the concrete engine runner is out of bounds —
 // interactive code holds the IProjectDocument port from ProjectAppService.OpenDocument.

@@ -32,28 +32,69 @@ namespace Ihc.Vis.Catalog
     /// </remarks>
     public sealed partial class BuiltInCatalog : ICatalog
     {
-        // One process-wide materialization: the factory instance below exists only as the build context the partial
-        // registration hooks write into; every BuiltInCatalog instance forwards to the same immutable value.
-        // PublicationOnly (not ExecutionAndPublication) so a transient first-touch failure (e.g. OOM) is NOT cached
-        // forever — the next access retries — matching ProjectAppService's own catalog Lazy. The factory returns a
-        // fresh immutable instance with no shared mutable state, so a rare concurrent double-run is harmless.
-        private static readonly Lazy<MaterializedCatalog> materialized =
-            new(MaterializeTimed, LazyThreadSafetyMode.PublicationOnly);
+        // The materialized value; null means "not built yet". One process-wide materialization: every
+        // BuiltInCatalog instance forwards to this same immutable value.
+        private static MaterializedCatalog? snapshot;
+
+        // Created on demand by LazyInitializer, which is why this is neither readonly nor pre-assigned.
+        private static object? gate;
 
         /// <summary>
-        /// Materializes the catalog and records how long it took. First use pays for the whole component set,
-        /// and it happens inside whatever operation touched the catalog first - so without this the cost is
-        /// attributed to that operation rather than to the catalog.
-        /// <para>Recorded as a HISTOGRAM, not a once-only counter: the Lazy above is PublicationOnly, so a
-        /// rare concurrent double-materialization is legal - and is exactly the event worth being able to
-        /// see. A counter asserting it happens once would either be wrong or hide it.</para>
+        /// The process-wide materialized catalog, built on first use.
+        /// </summary>
+        /// <remarks>
+        /// <para><b>Built once, waited on rather than duplicated.</b> A second thread arriving while a first is
+        /// materializing blocks and takes that result — which is what makes <see cref="Warmup"/> worth starting
+        /// at all. Under the <c>PublicationOnly</c> <see cref="Lazy{T}"/> this replaced a caller never waited, it
+        /// ran the factory itself, so an unfinished warm-up bought nothing but a second core doing the same
+        /// work.</para>
+        /// <para><b>A failure is still not cached.</b> A throwing factory leaves <c>snapshot</c> null, so the next
+        /// access retries — the property <c>PublicationOnly</c> was chosen for, and the reason this is not
+        /// <c>ExecutionAndPublication</c>, which caches the exception forever.</para>
+        /// <para>Those two properties together are exactly
+        /// <see cref="LazyInitializer.EnsureInitialized{T}(ref T, ref object, System.Func{T})"/> and no other
+        /// primitive: <c>Lazy</c> caches the exception, and an <c>Interlocked</c> publication is
+        /// <c>PublicationOnly</c> by another name.</para>
+        /// </remarks>
+        private static MaterializedCatalog Materialized =>
+            LazyInitializer.EnsureInitialized(ref snapshot, ref gate, MaterializeTimed);
+
+        /// <summary>
+        /// Materializes the process-wide catalog now, so a later first use finds it already built.
+        /// </summary>
+        /// <remarks>
+        /// <para><b>The mechanism, not the door.</b> A host asks for this through
+        /// <see cref="ProjectAppService.Warmup"/>, which is the facade's single "get ready" entry and the
+        /// only one a frontend should know about; this stays internal so warming the SDK never requires naming
+        /// an engine type. Started on a background thread at launch, the component factories run while the
+        /// caller gets on with something else, and the first real catalog query returns a built value instead of
+        /// paying for one.</para>
+        /// <para>What it costs a caller — it BLOCKS for the whole materialization, so a UI thread must not call
+        /// it — is the door's contract and is stated there, once. Do not restate it here: the two copies drifting
+        /// is not hypothetical, it is what left the comment below describing a parenting this change had
+        /// replaced.</para>
+        /// <para><b>It changes no outcome</b>, and that part IS local: the catalog's content is code-authored and
+        /// deterministic, so this only moves WHEN the one materialization happens, and a call that faults leaves
+        /// the catalog unbuilt for the real first use to build and report. What a warm-up does NOT make
+        /// retryable is a fault below this type's own gate — see the forkability rule in <c>ARCHITECTURE.md</c>,
+        /// which is where that limit is stated once.</para>
+        /// </remarks>
+        internal static void Warmup() => _ = Materialized;
+
+        /// <summary>
+        /// Materializes the catalog and records how long it took. One caller pays for the whole component set —
+        /// a host's <see cref="Warmup"/> where there is one, and otherwise whatever operation touched the
+        /// catalog first — and without this the cost is attributed to that caller rather than to the catalog.
+        /// <para>Why the instrument is a histogram rather than a once-only counter is stated where the
+        /// instrument is declared - <c>SdkTelemetryRegistry.CatalogMaterializationDuration</c>.</para>
         /// </summary>
         private static MaterializedCatalog MaterializeTimed() =>
             // A SPAN as well as the histogram, and through the one seam that records both. The histogram says
-            // how long first use cost; only the span says which operation paid it — materialization happens
-            // inside whatever touched the catalog first, so without a child span that operation simply reads
-            // slow, once per process, for no visible reason. The core also measures it on the same monotonic
-            // clock the hand-rolled Stopwatch here used, so the recorded number is unchanged.
+            // how long materialization cost; only the span says WHERE it was paid, and the two answers differ by
+            // host: warmed from a launch there is no ambient operation, so the span is a trace ROOT, while an
+            // unwarmed host pays inside whichever operation touched the catalog first — which without a span of
+            // its own simply reads slow, once per process, for no visible reason. The core also measures it on
+            // the same monotonic clock the hand-rolled Stopwatch here used, so the recorded number is unchanged.
             Telemetry.Run("Materialize", _ => new BuiltInCatalog().Materialize(), MaterializationMetrics);
 
         /// <summary>The catalog's entry point into the instrumentation core.</summary>
@@ -102,27 +143,27 @@ namespace Ihc.Vis.Catalog
             };
 
         /// <inheritdoc/>
-        public ProductDefinition Product(string productIdentifier) => materialized.Value.Product(productIdentifier);
+        public ProductDefinition Product(string productIdentifier) => Materialized.Product(productIdentifier);
 
         /// <inheritdoc/>
-        public FunctionBlockDefinition FunctionBlock(string masterType) => materialized.Value.FunctionBlock(masterType);
+        public FunctionBlockDefinition FunctionBlock(string masterType) => Materialized.FunctionBlock(masterType);
 
         /// <inheritdoc/>
-        public FunctionBlockDefinition FunctionBlockByName(string name) => materialized.Value.FunctionBlockByName(name);
+        public FunctionBlockDefinition FunctionBlockByName(string name) => Materialized.FunctionBlockByName(name);
 
         /// <inheritdoc/>
-        public IReadOnlyList<ProductDefinition> Products => materialized.Value.Products;
+        public IReadOnlyList<ProductDefinition> Products => Materialized.Products;
 
         /// <inheritdoc/>
-        public IReadOnlyList<FunctionBlockDefinition> FunctionBlocks => materialized.Value.FunctionBlocks;
+        public IReadOnlyList<FunctionBlockDefinition> FunctionBlocks => Materialized.FunctionBlocks;
 
         /// <inheritdoc/>
-        public ProjectElement NewProjectSkeleton => materialized.Value.NewProjectSkeleton;
+        public ProjectElement NewProjectSkeleton => Materialized.NewProjectSkeleton;
 
         /// <inheritdoc/>
-        public ProjectElement BuiltInEnumerators => materialized.Value.BuiltInEnumerators;
+        public ProjectElement BuiltInEnumerators => Materialized.BuiltInEnumerators;
 
         /// <inheritdoc/>
-        public FunctionBlockDefinition EmptyFunctionBlockTemplate => materialized.Value.EmptyFunctionBlockTemplate;
+        public FunctionBlockDefinition EmptyFunctionBlockTemplate => Materialized.EmptyFunctionBlockTemplate;
     }
 }

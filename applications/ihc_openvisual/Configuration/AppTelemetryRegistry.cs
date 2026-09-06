@@ -40,7 +40,9 @@ internal static class AppTelemetryRegistry
     /// <para>A factory rather than a line per owner, because binding a port that names the owner is exactly the
     /// kind of wiring one owner forgets — and a forgotten one is invisible, being the absence of a report.</para>
     /// </remarks>
-    /// <param name="owner">The owning type's name; spans become <c>&lt;owner&gt;.&lt;operation&gt;</c>.</param>
+    /// <param name="owner">The owning type's name — or, where the spans have no owning type, the prefix that
+    /// groups them (<c>Program</c>'s launch phases are the one such case). Spans become
+    /// <c>&lt;owner&gt;.&lt;operation&gt;</c> either way.</param>
     internal static OperationTelemetry For(string owner) =>
         new(Surface, owner,
             (operation, failure) => Services.TaskSupervisor.Report(failure, $"{owner}.{operation}"));

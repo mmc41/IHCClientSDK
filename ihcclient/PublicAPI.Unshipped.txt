@@ -1176,3 +1176,5 @@ static Ihc.Vis.Problems.InternalError.ClaimReport(System.Exception! failure) -> 
 static Ihc.Vis.Problems.InternalError.Describe(System.Exception! failure) -> string!
 static Ihc.Vis.Problems.InternalError.DescribeFully(System.Exception! failure) -> string!
 const Ihc.IhcSettings.ConfigurationSectionName = "ihcclient" -> string!
+static Ihc.Vis.ProjectAppService.Warmup() -> void
+Ihc.OperationTelemetry.Record(string! operation, System.DateTimeOffset startedAt, System.DateTimeOffset endedAt) -> void

@@ -44,11 +44,13 @@ namespace Ihc
                 description: "Duration of applying one edit to a project document.");
 
         /// <summary>
-        /// How long the built-in catalog took to materialize on first use.
+        /// How long the built-in catalog took to materialize.
         ///
-        /// A HISTOGRAM rather than a once-only counter, because the Lazy guarding it is
-        /// <c>PublicationOnly</c>: a rare concurrent double-run is legal and is exactly the event worth
-        /// seeing. A counter asserting "one" would either be wrong or hide it.
+        /// A HISTOGRAM rather than a once-only counter. The publication guarding it does now run the factory
+        /// once, so "one" would usually be right — but not always, and the exceptions are the interesting
+        /// ones: a first touch that FAILS is not cached, so the retry materializes again, and
+        /// <c>ProjectAppService.Warmup</c> moves which thread and which operation pays for it. A counter
+        /// asserting "one" would hide both.
         /// </summary>
         internal static Histogram<double> CatalogMaterializationDuration { get; } =
             Surface.Meter.CreateHistogram<double>(

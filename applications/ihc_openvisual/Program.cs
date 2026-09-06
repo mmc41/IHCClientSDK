@@ -73,14 +73,26 @@ internal sealed class Program
     {
         try
         {
+            // The stamp goes first so Launch.Host means what it says — everything before Main, and nothing Main
+            // itself did. StartMulticoreJit follows immediately, still ahead of the launch it is meant to cover,
+            // and gets a stamp of its OWN: it creates a directory under local application data and starts the
+            // profile recorder, which is file IO on a cold or redirected profile folder. Folded into the next
+            // phase it would arrive as time spent reading settings, which is the exact misattribution these
+            // phases exist to remove.
+            DateTime entered = DateTime.UtcNow;
+            StartMulticoreJit();
+            DateTime accelerated = DateTime.UtcNow;
             // Order matters: config and the telemetry pipeline first, then hook the ILogger-backed unhandled-error
             // handler (A-25). Startup exceptions before this point are caught by Main's catch below.
             StartupProjectPath = ParseStartupProjectPath(args);
             TestSurfaceEnabled = ParseTestSurfaceEnabled(args);
             Config = new AppConfiguration();
+            DateTime configured = DateTime.UtcNow;
             LoggerFactory = TelemetryBootstrap.SetupTelemetryAndLogging(
                 Telemetry.AppServiceName, Telemetry.AppServiceNamespace, Telemetry.ActivitySourceName,
                 Config.TelemetryConfig, Config.LoggingConfig);
+            RecordPreTelemetryPhases(entered, accelerated, configured,
+                LoggerFactory.CreateLogger("Ihc.OpenVisual.LaunchPhases"));
             // All four documented exception layers, because each catches faults the others cannot see (Avalonia
             // logging review BP-09/QC-03): the DISPATCHER layer for faults inside a dispatcher operation, the
             // UNOBSERVED-TASK layer for dropped tasks, the APPDOMAIN layer for everything else on any thread, and
@@ -111,6 +123,8 @@ internal sealed class Program
                         .LogWarning(t.Exception, "Telemetry self-check faulted"),
                     TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
 
+            StartCatalogWarmup(LoggerFactory.CreateLogger("Ihc.OpenVisual.CatalogWarmup"));
+
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         catch (Exception ex)
@@ -121,9 +135,256 @@ internal sealed class Program
         }
         finally
         {
+            // Before BOTH of the below, because the warm-up reports through them from a pool thread. A launch
+            // that fails early exits here while the catalog is still materializing, and tearing the pipeline
+            // down under it loses the Materialize span and points that thread's own fault handler at a disposed
+            // logger. On a normal exit the warm-up finished long ago and this costs nothing.
+            AwaitCatalogWarmup(CatalogWarmupShutdownLimit);
             // Before the LoggerFactory below, for the reason Shutdown documents.
             TelemetryBootstrap.Shutdown();
             LoggerFactory?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Where the runtime keeps the JIT profile <see cref="StartMulticoreJit"/> records — LOCAL application data,
+    /// because the profile is keyed to this machine's hardware and to these exact binaries. See
+    /// <see cref="Constants.LocalAppDataPath"/> for why that distinction has its own door.
+    /// </summary>
+    internal static string JitProfileDirectory() => Constants.LocalAppDataPath("jit");
+
+    /// <summary>
+    /// Turns on multicore JIT: the runtime records which methods this launch compiles, and on every later launch
+    /// compiles them on a background thread ahead of the thread that will call them.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Why a desktop shell wants it.</b> Most of a launch is first-call compilation — of Avalonia, of the
+    /// SDK, of this application — and it is serialized behind the one thread doing the work. The recorded profile
+    /// lets a spare core do it in parallel instead. Nothing is precompiled or cached across versions: the profile
+    /// names methods, the runtime compiles them itself, and a profile that no longer matches the binaries simply
+    /// stops matching and costs nothing.</para>
+    /// <para><b>It changes no behaviour.</b> Compiling a method earlier cannot change what the method does, and
+    /// the first launch after an install (or with the profile missing, unreadable or stale) merely records a new
+    /// one and runs exactly as it did before.</para>
+    /// <para>Contained, because a startup accelerator must never be the reason a launch fails: the profile lives
+    /// under the user's application data, which can be read-only, full or absent, and none of that is worth an
+    /// exit. There is nowhere to report it yet either — this runs before the logging pipeline exists, which is
+    /// the whole point of running it here.</para>
+    /// <para><b>The catch is UNFILTERED, and that is the point.</b> A filtered one delivers "never fails, for the
+    /// types I thought of" — which is not the contract above. The types are not enumerable in advance: a
+    /// redirected or policy-restricted application-data folder raises <c>SecurityException</c>, and a future
+    /// runtime is free to introduce its own. And the failure class most likely to escape a whitelist is the one
+    /// that resolves the path, which is also the one that would break the fallback reporter: <c>Main</c>'s catch
+    /// evaluates <see cref="DefaultLastResortPath"/> — the same <see cref="Constants"/> lookup — as an argument,
+    /// before <see cref="ReportFatalStartup"/>'s own try, so an escape here would exit the process with no window,
+    /// no telemetry, and no breadcrumb either. Nothing this method can throw is worth that.</para>
+    /// </remarks>
+    internal static void StartMulticoreJit()
+    {
+        try
+        {
+            string root = JitProfileDirectory();
+            Directory.CreateDirectory(root);
+            System.Runtime.ProfileOptimization.SetProfileRoot(root);
+            System.Runtime.ProfileOptimization.StartProfile("startup.jitprofile");
+        }
+#pragma warning disable CA1031 // See the remarks: a startup accelerator may not fail the launch, for ANY reason.
+        catch (Exception fault)
+#pragma warning restore CA1031
+        {
+            Trace.WriteLine("Multicore JIT not started: " + fault);
+        }
+    }
+
+    /// <summary>
+    /// Exports the launch phases that ran BEFORE the telemetry pipeline existed, backdated to when they
+    /// actually ran.
+    /// </summary>
+    /// <remarks>
+    /// <para>These cannot be recorded as they happen — there is no listener until the pipeline is built — so each
+    /// is recorded afterwards with the explicit start and end time of the phase it describes, through
+    /// <see cref="Ihc.OperationTelemetry.Record"/>, whose remarks carry why a backdated phase is a root. The
+    /// phase before <c>Main</c> is measured from the operating system's own process-start clock, which is the
+    /// only record that it happened at all.</para>
+    /// <para>Contained for the reason <see cref="StartMulticoreJit"/> is: a measurement may not be the reason the
+    /// launch it measures fails. Unlike that one it reports through the pipeline, which exists by now — the
+    /// structured door this application takes everywhere else. Contained PER PHASE rather than once around all
+    /// four, for the reason given at the calls.</para>
+    /// </remarks>
+    /// <param name="entered">When <see cref="Main"/>'s first statement ran.</param>
+    /// <param name="accelerated">When <see cref="StartMulticoreJit"/> had returned.</param>
+    /// <param name="configured">When <c>AppConfiguration</c> had been built.</param>
+    /// <param name="logger">Where a failure to record is reported.</param>
+    internal static void RecordPreTelemetryPhases(DateTime entered, DateTime accelerated, DateTime configured,
+                                                  ILogger logger)
+    {
+        DateTime ready = DateTime.UtcNow;
+        // One contiguous partition of the wall clock, so the four read in order at one indent — but each
+        // CONTAINED SEPARATELY, because they do not share a failure mode and one of them can fail alone.
+        // Only Host mixes clocks: the operating system's process start against Main's own UtcNow. Its round
+        // trip through local time resolves an ambiguous hour — the repeat after a daylight-saving fall back —
+        // to standard time, which can date the process start an HOUR AFTER Main was entered. The core rejects
+        // a reversed pair, correctly, and recorded together that one refusal would take the three phases that
+        // are stamped from a single clock and cannot be wrong down with it.
+        RecordPhase(logger, "Host", ReadProcessStartUtc, entered);
+        RecordPhase(logger, "Jit", () => entered, accelerated);
+        RecordPhase(logger, "Config", () => accelerated, configured);
+        RecordPhase(logger, "Telemetry", () => configured, ready);
+    }
+
+    /// <summary>Records one launch phase, containing whatever that one phase costs.</summary>
+    /// <remarks>
+    /// The start is a FUNCTION rather than a value so that reading it is inside the same containment as
+    /// recording it: <see cref="ReadProcessStartUtc"/> asks the operating system and can fail on its own, and
+    /// a measurement may not be the reason the launch it measures fails.
+    /// </remarks>
+    private static void RecordPhase(ILogger logger, string phase, Func<DateTime> startedAt, DateTime endedAt)
+    {
+        try
+        {
+            AppTelemetryRegistry.For(LaunchPhaseOwner).Record(phase, startedAt(), endedAt);
+        }
+#pragma warning disable CA1031 // See the remarks: a measurement may not fail the launch, for ANY reason.
+        catch (Exception fault)
+#pragma warning restore CA1031
+        {
+            logger.LogWarning(fault, "Launch phase {Phase} not recorded", phase);
+        }
+    }
+
+    /// <summary>When this process was started, by the operating system's own record of it — the only evidence
+    /// that anything happened before <see cref="Main"/>.</summary>
+    private static DateTime ReadProcessStartUtc()
+    {
+        using Process self = Process.GetCurrentProcess();
+        return self.StartTime.ToUniversalTime();
+    }
+
+    /// <summary>The span-name prefix the pre-telemetry phases share, so they group as one phase of the launch
+    /// rather than reading as three unrelated roots.</summary>
+    private const string LaunchPhaseOwner = "Launch";
+
+    /// <summary>
+    /// Asks the SDK to build what it defers, on a background thread, through the facade's own door.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Why here.</b> The shell cannot show a menu bar without the component catalog — the composition
+    /// root's very first act is to build the product and function-block menus from it — so the ~0.5 s
+    /// materialization used to sit squarely on the launch's critical path. Everything between this line and that
+    /// first query is work the catalog does not participate in: Avalonia's platform detection, the XAML load,
+    /// font registration. Started here it runs alongside them, and the shell's first query finds it built.</para>
+    /// <para>WHAT gets built is deliberately not this file's business — it calls
+    /// <c>ProjectAppService.Warmup</c> and the SDK decides what that covers. <c>Ihc.Vis.Catalog</c> is banned
+    /// in this project for the same reason <c>Ihc.Vis.Io</c> and <c>Ihc.Vis.Editing</c> are, so the door is the
+    /// facade's or there is no door.</para>
+    /// <para><b>Which work may be forked here at all, and why only work the launch WAITS for is worth forking,</b>
+    /// are one rule with one measurement behind it: see the forkability rule in <c>ARCHITECTURE.md</c> ("What may
+    /// be forked to overlap Avalonia's start-up"). What is local to this file is the ordering below.</para>
+    /// <para><b>It must be started AFTER the telemetry pipeline, and the ordering in <see cref="Main"/> is load
+    /// bearing.</b> An <c>ActivitySource</c> with no listener returns a null activity and a histogram with no
+    /// collecting <c>MeterProvider</c> records nothing, so a warm-up moved above
+    /// <c>SetupTelemetryAndLogging</c> would silently discard both the <c>BuiltInCatalog.Materialize</c> span and
+    /// its duration point — leaving the largest single item in a launch unmeasured, and looking exactly like a
+    /// launch that never built the catalog. Under the old lazy this could not go wrong, because materialization
+    /// necessarily happened later, on the first UI catalog query.</para>
+    /// <para><b>The flow suppression is what makes the span a trace ROOT, rather than where this line sits.</b>
+    /// <c>Task.Run</c> captures the execution context, <c>Activity.Current</c> with it, and the SDK's spans take
+    /// an implicit parent — so a fork moved below anything that opens a scope would silently re-parent half a
+    /// second of background work into an operation it outlives, a defect this repository has met before and
+    /// cannot see from a passing test. Suppressing the flow makes the answer the same wherever the call moves.
+    /// A reader of the launch tree should know the materialization span exists elsewhere under the same run id
+    /// rather than conclude the catalog was free.</para>
+    /// <para>The fault is caught INSIDE the work item rather than through a continuation, because
+    /// <c>ContinueWith(..., OnlyOnFaulted)</c> CANCELS the continuation when the antecedent succeeds — the trap
+    /// <c>TaskSupervisor.Fire</c> documents avoiding, one assembly away. Catching in the body also keeps the
+    /// work off <c>TaskScheduler.Current</c>, which such a continuation would have bound.</para>
+    /// </remarks>
+    internal static void StartCatalogWarmup(ILogger logger)
+    {
+        try
+        {
+            // Around the FORK only: the flow control must be disposed on the thread that opened it, and the work
+            // item has captured its (empty) context by the time Run returns.
+            using (System.Threading.ExecutionContext.SuppressFlow())
+            {
+                // KEPT rather than discarded, and the reason is a lifetime one: this work item reports through
+                // the telemetry pipeline and the logger factory, and Main's finally tears both down. A launch
+                // that fails early reaches that finally while the catalog is still materializing, so without a
+                // handle to wait on there is no way to order the two. AwaitCatalogWarmup below is the other half.
+                catalogWarmup = Task.Run(() =>
+                {
+                    try
+                    {
+                        Ihc.Vis.ProjectAppService.Warmup();
+                    }
+#pragma warning disable CA1031 // A warm-up fault is not a user-facing failure; see the remarks for what it is.
+                    catch (Exception fault)
+#pragma warning restore CA1031
+                    {
+                        logger.LogWarning(fault, "Catalog warm-up faulted on a background thread");
+                    }
+                });
+            }
+        }
+        // The FORK ITSELF failing, which is a different thing from the work failing: SuppressFlow throws when
+        // flow is already suppressed, and Task.Run allocates. Contained for the reason StartMulticoreJit is —
+        // a start-up accelerator must never be why a launch has no window.
+#pragma warning disable CA1031 // See above: for ANY reason, per the same contract as the two helpers above.
+        catch (Exception fault)
+#pragma warning restore CA1031
+        {
+            logger.LogWarning(fault, "Catalog warm-up could not be started; the catalog builds on first use");
+        }
+    }
+
+    /// <summary>The warm-up while it is outstanding, so <see cref="AwaitCatalogWarmup"/> can order it against
+    /// the pipeline it reports through. Null until one is started, and left set afterwards — a completed task
+    /// is what makes the wait a no-op rather than a special case.</summary>
+    private static Task? catalogWarmup;
+
+    /// <summary>Test seam: the warm-up handle itself, because a wait that found nothing outstanding cannot
+    /// tell a warm-up that finished from one nobody kept.</summary>
+    internal static Task? OutstandingCatalogWarmup => catalogWarmup;
+
+    /// <summary>How long a shutdown waits for the warm-up. Generously above the ~550 ms materialization it is
+    /// waiting for: the bound is there so a pathological warm-up cannot hold a closing application open, not to
+    /// race the normal one.</summary>
+    internal static readonly TimeSpan CatalogWarmupShutdownLimit = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// Waits for a started catalog warm-up to finish, so it cannot outlive the telemetry pipeline and logger
+    /// factory it reports through.
+    /// </summary>
+    /// <remarks>
+    /// <para>On a normal exit there is nothing to wait for — the shell queried the catalog long ago. This is for
+    /// the launch that FAILS: <c>Main</c>'s catch runs while a pool thread is still inside the materialization,
+    /// and shutting the pipeline down under it would drop the <c>BuiltInCatalog.Materialize</c> span and point
+    /// that thread's own fault handler at a disposed logger factory — turning a contained warm-up fault into an
+    /// unobserved second exception on the way out.</para>
+    /// <para>Reported to <c>Trace</c> and nowhere else, deliberately: this is the last thing that runs before the
+    /// pipeline goes down, and on the path it exists for the factory may never have come up at all.</para>
+    /// </remarks>
+    /// <param name="limit">How long to wait before giving up on it.</param>
+    /// <returns>Whether nothing is left outstanding — false only if the wait ran out.</returns>
+    internal static bool AwaitCatalogWarmup(TimeSpan limit)
+    {
+        Task? warmup = catalogWarmup;
+        if (warmup is null)
+        {
+            return true;
+        }
+        try
+        {
+            return warmup.Wait(limit);
+        }
+#pragma warning disable CA1031 // A wait on the way out may not become the failure that gets reported.
+        catch (Exception fault)
+#pragma warning restore CA1031
+        {
+            // Only reachable if the work item's own logging threw, which is the case this whole ordering
+            // exists to make rare. Waiting is what OBSERVES it either way.
+            Trace.WriteLine("Catalog warm-up faulted: " + fault);
+            return true;
         }
     }
 

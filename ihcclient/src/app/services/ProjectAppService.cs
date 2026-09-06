@@ -251,6 +251,35 @@ namespace Ihc.Vis
             this.authService = authService;
         }
 
+        /// <summary>
+        /// Builds the process-wide state this service defers to first use, NOW — so a host that knows it will
+        /// need it can pay for it somewhere it does not show.
+        /// </summary>
+        /// <remarks>
+        /// <para><b>Optional by construction.</b> Every operation still materializes what it needs on first use,
+        /// so a caller that never calls this behaves exactly as before; what it changes is WHEN, and on which
+        /// thread. It is idempotent, and safe to call from several threads or after the work has already
+        /// happened — the second caller takes the first's result rather than repeating it.</para>
+        /// <para><b>It BLOCKS for the whole build</b> — it is the ordinary first touch, merely made explicit —
+        /// so call it from a background thread. From a UI thread it is a freeze, which is the one way to make
+        /// this slower than not calling it at all. It is <c>static</c> for the same reason: the state it warms is
+        /// process-wide, and a host wanting the overlap has to start it before it has a service instance, or
+        /// before its own UI framework has started.</para>
+        /// <para><b>What it warms today is the embedded component catalog</b>, which is the only deferred item
+        /// measured large enough to matter (~550 ms) AND on a launch's critical path — a shell cannot draw its
+        /// product menus without it. It deliberately does NOT warm the validation rule registry or the problem
+        /// catalogue: both are pure and compiled-in, both look like obvious candidates, and forking them was
+        /// tried and measured COSTING 55-90 ms of end-to-end launch time because nothing was waiting on them.
+        /// See the forkability rule in <c>ARCHITECTURE.md</c>. The list is this method's to change, which is the
+        /// point of the door: a host asks the SDK to get ready and does not track what that means.</para>
+        /// <para><b>A failure is not swallowed here, and not cached either.</b> Whatever the build throws
+        /// propagates to this caller; the underlying publication leaves its field unset on a throw, so the real
+        /// first use retries and reports on the user's own operation. A host calling this off the launch path
+        /// should contain it — the warm-up is an accelerator, and an accelerator may not be why a launch fails.
+        /// </para>
+        /// </remarks>
+        public static void Warmup() => BuiltInCatalog.Warmup();
+
         /// <summary>Test seam: the auth the controller bridge authenticates (null for a file-only service).</summary>
         internal IAuthenticationService? BridgeAuthentication => authService;
 

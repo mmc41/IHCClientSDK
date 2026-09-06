@@ -29,8 +29,24 @@ public static class Constants
     /// </remarks>
     /// <param name="name">The file or folder name inside the application's app-data folder.</param>
     public static string AppDataPath(string name) =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            AppName,
-            name);
+        UnderAppFolder(Environment.SpecialFolder.ApplicationData, name);
+
+    /// <summary>
+    /// One of the application's own files or folders under the user's LOCAL application data — the folder for
+    /// what must not follow the user to another machine.
+    /// </summary>
+    /// <remarks>
+    /// The distinction is roaming, and it is the whole reason this exists beside <see cref="AppDataPath"/>: a
+    /// preference the user set belongs to the user and should follow them, while a cache keyed to this machine's
+    /// hardware or to these exact binaries belongs to the installation and must not. Putting the second kind in
+    /// the roaming folder syncs it at every logon to be discarded on arrival.
+    /// </remarks>
+    /// <param name="name">The file or folder name inside the application's local app-data folder.</param>
+    public static string LocalAppDataPath(string name) =>
+        UnderAppFolder(Environment.SpecialFolder.LocalApplicationData, name);
+
+    // The AppName segment lives here alone, for the reason AppDataPath's remarks give: retyped per door, it is
+    // the one string a typo silently forks into a folder nothing else reads.
+    private static string UnderAppFolder(Environment.SpecialFolder folder, string name) =>
+        Path.Combine(Environment.GetFolderPath(folder), AppName, name);
 }

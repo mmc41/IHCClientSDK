@@ -72,16 +72,15 @@ namespace Ihc.Vis.Tests
         }
 
         /// <summary>
-        /// Materialization is timed as a histogram because the guarding Lazy is PublicationOnly - a rare
-        /// concurrent double-run is legal, and a counter asserting "once" would either be wrong or hide it.
-        /// The catalog is process-wide and may already be materialized, so this asserts the instrument
-        /// EXISTS and is recordable rather than that it fired during this test.
+        /// Materialization is timed as a histogram rather than a once-only counter, for the reasons given on
+        /// <c>SdkTelemetryRegistry.CatalogMaterializationDuration</c>. The catalog is process-wide and may
+        /// already be materialized, so this asserts the instrument EXISTS and is recordable rather than that
+        /// it fired during this test.
         /// <para>
-        /// The same process-wide Lazy is why the <c>BuiltInCatalog.Materialize</c> SPAN that now accompanies
+        /// That same process-wide publication is why the <c>BuiltInCatalog.Materialize</c> SPAN accompanying
         /// this histogram is not pinned here: whether it fires during any given test depends on which test ran
         /// first, and a conditional assertion pins nothing. It is verified against the live backend instead -
-        /// on a launch it appears under the operation that first touched the catalog, which is what the span
-        /// exists to reveal - and §11 of the OpenVisual telemetry-points document carries that check.
+        /// and §11 of the OpenVisual telemetry-points document carries that check.
         /// </para>
         /// </summary>
         [Test]

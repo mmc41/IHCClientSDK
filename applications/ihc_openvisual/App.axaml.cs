@@ -25,7 +25,8 @@ public partial class App : Application
 
     /// <summary>
     /// The composition root's entry point into the instrumentation core. A span from here is named
-    /// <c>App.&lt;operation&gt;</c>, and this layer opens exactly one of them: the launch.
+    /// <c>App.&lt;operation&gt;</c>, and this layer opens two: <c>Startup</c>, the launch as one operation, and
+    /// <c>BuildShell</c> inside it for the shell's own construction.
     /// </summary>
     private static readonly Ihc.OperationTelemetry Telemetry =
         AppTelemetryRegistry.For(nameof(App));
@@ -108,7 +109,14 @@ public partial class App : Application
             var viewModel = new MainWindowViewModel(session, dialogs, recent, themeService, config, loggerFactory,
                 internalErrors);
 
-            var window = new MainWindow { DataContext = viewModel };
+            // The shell's own WORK, named — for the same reason the view-model's Compose above is named. What is
+            // NOT in here is what Avalonia does AFTER this method returns: showing the window and its first
+            // layout/render pass, which is why the launch span covers more than its children add up to.
+            //
+            // Run rather than Start, because a scope reports SUCCESS unless something tells it otherwise: a
+            // throw out of the window constructor would have closed this span Ok underneath a launch reported
+            // Failed, which is the one reading a person opening a failed launch must not be given.
+            MainWindow window = Telemetry.Run("BuildShell", _ => new MainWindow { DataContext = viewModel });
             dialogs.Owner = window;
             desktop.MainWindow = window;
 

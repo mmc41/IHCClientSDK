@@ -200,7 +200,7 @@ any of the metric proposals can collect at all.
 | 10 | The problem-display surface | `AvaloniaDialogService.ShowProblemAsync` (3 overloads) | 2 | every coded problem shown to the user — exception-borne or not | **none** |
 | 11 | UI refresh | `MainWindowViewModel.Refresh` → `TreePaneCoordinator` | 2 | every document transition's UI cost | **none** |
 | 12 | Findings → rows | `ProblemsPanelViewModel.Bind` | 2 | every panel refresh, on the UI thread | **none** |
-| 13 | Deep engines | `ProjectReader.Read`, `ProjectSerializer.Serialize`, `ProjectIndex.Build`, `ProjectChangeSet.Diff`, `WholeProjectValidator.Validate`, `ReportGenerator.Generate`, `BuiltInCatalog` lazy | 3 | the phases inside the above | **none** |
+| 13 | Deep engines | `ProjectReader.Read`, `ProjectSerializer.Serialize`, `ProjectIndex.Build`, `ProjectChangeSet.Diff`, `WholeProjectValidator.Validate`, `ReportGenerator.Generate`, `BuiltInCatalog` materialization | 3 | the phases inside the above | **none** |
 
 ### Tier 0 — the process anchor
 
@@ -534,7 +534,7 @@ Child spans here are what turn a slow load into a *diagnosed* slow load. They ar
 | Diff | `ProjectChangeSet.Diff` | per commit | added/removed/changed counts |
 | Validate | `WholeProjectValidator.Validate` | per validation run | rules run, findings emitted; per-rule timing **behind a switch** |
 | Report | `ReportGenerator.Generate` | per report | kind, mode, mime type, bytes |
-| Catalog | `BuiltInCatalog`'s `Lazy<MaterializedCatalog>` | **once**, on first catalog use | first-use latency — deliberately deferred, so its cost lands inside whichever user operation touches the catalog first |
+| Catalog | `BuiltInCatalog`'s static publish-once | **once**, on the earlier of the host's warm-up and first catalog use | first-use latency. OpenVisual now warms it on a pool thread from `Main`, so its cost lands OUTSIDE any user operation — and, having no ambient operation to parent to, its span is a trace ROOT rather than a child |
 | Edit analysis | `EditAnalysisCache` | per edit | already counts misses in `FullAnalysisCount` for a test — promote to a real Counter rather than adding a second mechanism |
 
 **Layering check.** Adding spans in `Ihc.Vis.Io` and `Ihc.Vis.Validation` does not breach an invariant:
@@ -623,7 +623,7 @@ StateChanged
 | Was the wait *my* code or the user staring at a save prompt? | `ConfirmSaveIfDirtyAsync` as its own child span |
 | Did the open fail, and on which file? | outcome on `ihc.project.open` + `error.type`. Note this must be set from the **caught** exception inside `ProjectWorkflow.OpenAsync`, not inferred from a propagating throw: that method swallows the failure and returns `false`, so nothing above it can see one |
 | Was the first paint delayed by validation? | validation span is **linked**, not nested — so the open span's duration stays honest |
-| Did the catalog materialize during this open? | the `BuiltInCatalog` lazy child span appears only on the first catalog-touching operation |
+| Did the catalog materialize during this open? | the `BuiltInCatalog.Materialize` span appears once per process. In OpenVisual it is a ROOT span of the launch's run, not a child of the operation that first needed the catalog — the host warms it before any operation exists |
 
 ### The three separations that make the numbers honest
 
@@ -1290,20 +1290,31 @@ Three readings that were not available before, and are the audit's actual payoff
 is materializing the component catalog**; **5071 of a 5158 ms open is the file picker**, leaving 83 ms of
 work; and an insert's mutation is 1.9 ms of its 7.8 ms apply.
 
+> **Superseded for the catalog reading, 2026-09-06 — the tree above is kept as the record that produced it.**
+> The first of those three readings was acted on: `Program.Main` now warms the catalog on a pool thread
+> before Avalonia starts, so `BuiltInCatalog.Materialize` no longer runs inside `Compose` and, having no
+> ambient operation to parent to, is no longer in the launch tree at all — it is a ROOT of its own trace under
+> the same run id. Re-measured on the same rig, empty project: `MainWindowViewModel.Compose` 599.7 -> ~20 ms,
+> `ProjectAppService.GetAvailableProducts` 561.0 -> ~1.4 ms, and `App.Startup` 1477.7 -> ~730 ms. Read the
+> tree above for the shape of a launch and for the other two readings, which are unchanged; do not read its
+> catalog row as current. A launch also carries `App.BuildShell` now, which did not exist when this was taken.
+
 ### 11.5 What is still true, and deliberately so
 
 - **`ProblemsPanelViewModel.Bind` can outlast the run that parents it** (12.2 ms under a 4.6 ms run). The
   bind is posted to the UI thread and the run must not wait for it — ADR-001. The parentage is causally true
   and the two durations measure different things. Unlike finding 1, this parent could NOT have awaited.
-- **`BuiltInCatalog.Materialize` is not pinned by a test.** The guarding `Lazy` is process-wide, so whether
+- **`BuiltInCatalog.Materialize` is not pinned by a test.** The publication is process-wide, so whether
   the span fires during any given test depends on which test ran first; a conditional assertion pins nothing.
   It is verified live, in 11.4, and `Tier3TelemetryTests` records why the unit test is absent.
 - **The controller bridge is unexercised from OpenVisual.** `SendProject`/`RetrieveProject` refuse without a
   controller (E10), so no host trace reaches `DownloadFrom`/`UploadTo`. Those app-service operations and the
   SOAP + HTTP spans beneath them are instrumented and will nest when the transfer is wired; nothing here
   measures that.
-- **`App.Startup` is lost if composition throws.** The scope closes in the `Opened` handler, which such a
-  launch never reaches. That launch ends in `Main`'s catch and process exit.
+- **`App.Startup` used to be lost if composition threw**, because the scope closes in the `Opened` handler,
+  which such a launch never reaches — measured as a Critical log record and zero spans for the whole run. The
+  scope is published as `App.LaunchScope` now, and `Main`'s catch closes it through `ReportFatalStartup` as
+  the failure it was, so the launch an operator most needs to find is the one that does export a span.
 
 ### 11.6 Re-running the audit
 
@@ -1430,3 +1441,64 @@ left, and the reason each is left:
 | `AvaloniaDialogService.ConfirmSaveChangesAsync`'s body | Needs an owner window and a dismissal; the headless suite covers the same funnel through `ConfirmAsync`, and the workflow suite drives the fake dialog rather than this one. |
 | `OperationOutcome`'s `Equals`/`GetHashCode`/operators | Structural equality nobody calls; unchanged by this pass. |
 | `App.axaml.cs`'s launch span | The composition root, which no controller-free suite can reach — §11.5 already says so, and the ExecutionContext behaviour it turns on is pinned by the probe in §12.3 rather than by a test. |
+
+## 13. The launch phases that ran before the pipeline existed
+
+§11's audit answers *what ran inside what*. It cannot answer *what did the launch spend its first second on*,
+and that is not an oversight in the audit: the largest phases of a launch happen **before there is an
+`ActivitySource` listener to record them**, so they were never spans that could be nested. Reading them used
+to need machinery outside the application — a launcher that captured the operating system's process-start
+clock to a side file, and a script that subtracted it from a span's end time.
+
+`Program.RecordPreTelemetryPhases` puts them in the trace instead. Four spans are minted *after*
+`SetupTelemetryAndLogging` returns, each with the explicit start and end time of the phase it describes.
+They go through `OperationTelemetry.Record` — the core's backdating door, added for exactly this — and not
+through a raw `ActivitySource`: §10.4's core is only a standard if it cannot be bypassed, and
+`OnlyTheCoreStartsSpans` enforces that with an empty exemption roster. The owner prefix is `Launch`, so the
+core's own naming policy produces the four names below.
+
+| Span | Covers | Measured (Debug, warm JIT profile) |
+| --- | --- | --- |
+| `Launch.Host` | Process start → the first statement of `Main`, taken from the OS's own `Process.StartTime` | 42–44 ms |
+| `Launch.Jit` | `StartMulticoreJit` — creating the profile directory under local app data and starting the recorder | 4–5 ms |
+| `Launch.Config` | argument parsing and `new AppConfiguration()` — the settings files and the whole configuration graph | 78–84 ms |
+| `Launch.Telemetry` | `SetupTelemetryAndLogging` — the OTel pipeline and the logger factory | 57–58 ms |
+
+Measured together over three warm launches on 2026-09-06; the whole column moves as a set, so do not mix a
+row from here with a number taken on another day.
+
+**`Launch.Jit` is split out rather than folded into `Launch.Config`, and that is the point of the split.**
+`StartMulticoreJit` runs before configuration and touches local application data for the first time in the
+process — 4–5 ms warm, and **9.9 ms on the cold launch measured alongside these**, where `Launch.Config`
+itself was 400 ms. Charged to configuration it would read as time spent loading settings, on the one folder
+most likely to be cold, redirected or policy-restricted. Attributing work to whatever phase happened to
+enclose it is exactly what this section exists to stop doing.
+
+They are **roots**, and `Record` is where that comes from rather than the accident of nothing being current at
+that line. Why a backdated phase must be a root, why the door refuses a reversed or an unset time, and why it
+takes no `MetricBinding` are all stated on `OperationTelemetry.Record` itself — read them there, so there is
+one copy to correct when the door changes.
+
+**Each phase is recorded under its own `try`, and only one of them can actually fail.** `Launch.Host` is the
+only phase whose two ends come from different clocks — the operating system's process-start record against
+`Main`'s own `UtcNow` — and `DateTime`'s round trip through local time resolves an ambiguous local hour (the
+repeat after a daylight-saving fall back) to standard time, which can date the process start an hour *after*
+`Main` was entered. `Record` refuses that pair, correctly. Under one shared `try` the refusal took the whole
+partition with it, including the three phases stamped from a single clock that cannot be wrong; per phase, it
+costs only `Launch.Host` and says so in a warning that names it.
+
+Two numbers now fall out of the trace that no query could previously produce, both by subtraction:
+
+* **Avalonia's own initialisation** = `App.Startup`.start − `Launch.Telemetry`.end → **855–875 ms**. It is
+  the single largest phase of a launch — larger than `App.Startup` itself — and it was invisible.
+* **Process → window ready** = `App.Startup`.end − `Launch.Host`.start → **~1750 ms**, against the ~720 ms
+  that `App.Startup` reports on its own. Quote both, or the faster number reads as the whole wait.
+
+Both are **gaps between spans, not spans**, so the first also contains whatever the launch does between the
+pipeline coming up and Avalonia starting — the `Record` calls among them, including the
+`Process.StartTime` read that anchors `Launch.Host` and pays a few milliseconds of first-touch time-zone
+initialisation. Read 855–875 ms as an upper bound on Avalonia rather than a measurement of Avalonia alone.
+
+What carrying this costs the launch is four activities, four `DateTime.UtcNow` reads and that one
+`Process.StartTime`. It is contained for the reason `StartMulticoreJit` is: a measurement must never be why
+the launch it measures fails.

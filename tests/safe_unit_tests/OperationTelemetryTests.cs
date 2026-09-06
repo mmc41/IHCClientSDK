@@ -351,5 +351,109 @@ namespace Ihc.Tests
 
             Assert.That(h.Point("ihc.test.duration").Tags["ihc.service"], Is.EqualTo("ControllerService"));
         }
+
+        /// <summary>
+        /// The point of the backdating door is the DURATION: a phase that finished before this surface had a
+        /// listener has to arrive with the time it actually took, or it arrives as a zero-length marker that
+        /// says only that it happened. A span cannot be opened in the past, so the times are supplied.
+        /// </summary>
+        [Test]
+        public void Record_ReportsAPhaseThatEndedBeforeTheSpanWasCreated()
+        {
+            using var h = new Harness();
+            DateTimeOffset began = DateTimeOffset.UtcNow.AddSeconds(-3);
+
+            h.Telemetry.Record("Bootstrap", began, began.AddMilliseconds(750));
+
+            Activity span = h.Spans.Single();
+            Assert.Multiple(() =>
+            {
+                Assert.That(span.OperationName, Is.EqualTo("TestOwner.Bootstrap"),
+                    "a recorded phase is named by the core's own owner-prefix policy, like every other span");
+                Assert.That(span.Duration, Is.EqualTo(TimeSpan.FromMilliseconds(750)).Within(TimeSpan.FromMilliseconds(1)),
+                    "the duration is the caller's measurement, not the time the call itself took");
+                Assert.That(span.StartTimeUtc, Is.EqualTo(began.UtcDateTime).Within(TimeSpan.FromMilliseconds(1)),
+                    "backdated, so the phase sits where it ran on a timeline rather than where it was reported");
+                Assert.That(span.Parent, Is.Null, "a recorded phase is a root");
+            });
+        }
+
+        /// <summary>
+        /// The root-ness must not rest on nothing happening to be ambient — that is exactly the shape this
+        /// repository has been bitten by. A backdated phase under an ambient parent would be a child that
+        /// started before its own parent, which is not a tree.
+        /// </summary>
+        [Test]
+        public void Record_IsARootEvenWithAnAmbientActivity_AndLeavesTheAmbientOneCurrent()
+        {
+            using var h = new Harness();
+            using OperationScope outer = h.Telemetry.Start("Outer");
+
+            h.Telemetry.Record("Bootstrap", DateTimeOffset.UtcNow.AddSeconds(-5), DateTimeOffset.UtcNow.AddSeconds(-4));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(h.Spans.Single(s => s.OperationName == "TestOwner.Bootstrap").Parent, Is.Null);
+                Assert.That(Activity.Current, Is.SameAs(outer.Activity),
+                    "the caller's operation is still the current one when the recording returns");
+            });
+        }
+
+        /// <summary>
+        /// Both mistakes have a plausible-looking rendering, which is why neither may be recorded: the
+        /// framework clamps a reversed pair to one tick — an instantaneous span at the start time, which reads
+        /// as a phase that was fast — and ignores a default start time, so the span begins at the wall clock,
+        /// the exact opposite of backdating. A wrong number nobody can spot is worse than a missing one.
+        /// </summary>
+        [Test]
+        public void Record_RefusesTimesThatCannotBeRenderedHonestly()
+        {
+            using var h = new Harness();
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(() => h.Telemetry.Record("Backwards", now, now.AddSeconds(-1)),
+                    Throws.InstanceOf<ArgumentOutOfRangeException>());
+                Assert.That(() => h.Telemetry.Record("Unset", default, now),
+                    Throws.InstanceOf<ArgumentOutOfRangeException>());
+                Assert.That(() => h.Telemetry.Record("UnsetDateTime", default(DateTime), now),
+                    Throws.InstanceOf<ArgumentOutOfRangeException>(),
+                    "an unset DateTime is the spelling a host actually reaches this door with, and it is NOT "
+                    + "default(DateTimeOffset): the conversion applies the local offset, so west of UTC it "
+                    + "arrives as year 1 at some hour and an equality guard would have waved it through");
+                Assert.That(h.Spans, Is.Empty, "and none of them leaves a misleading span behind");
+            });
+        }
+
+        /// <summary>
+        /// A zero-length phase is legitimate — something genuinely took no measurable time — so only a
+        /// REVERSED pair is a mistake. Pinned separately because the guard is a `&lt;` and an off-by-one to
+        /// `&lt;=` would silently start dropping real phases.
+        /// </summary>
+        [Test]
+        public void Record_AcceptsAnInstantaneousPhase()
+        {
+            using var h = new Harness();
+            DateTimeOffset instant = DateTimeOffset.UtcNow.AddSeconds(-5);
+
+            h.Telemetry.Record("Instant", instant, instant);
+
+            Assert.That(h.Spans.Single().OperationName, Is.EqualTo("TestOwner.Instant"));
+        }
+
+        /// <summary>
+        /// Recording is a report, not a measurement the core takes, so it must not feed an instrument — a point
+        /// timed by someone else's clock would not be comparable with the rest of its own series.
+        /// </summary>
+        [Test]
+        public void Record_DoesNotTouchTheInstruments()
+        {
+            using var h = new Harness();
+
+            h.Telemetry.Record("Bootstrap", DateTimeOffset.UtcNow.AddSeconds(-1), DateTimeOffset.UtcNow);
+
+            Assert.That(h.Points, Is.Empty);
+        }
     }
 }

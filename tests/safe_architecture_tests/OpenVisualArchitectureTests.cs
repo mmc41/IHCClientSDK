@@ -741,6 +741,10 @@ namespace Ihc.Tests
                 Assert.That(typeof(global::Ihc.Vis.Session.ProjectDocumentSession).FullName,
                     Is.EqualTo("Ihc.Vis.Session.ProjectDocumentSession"),
                     "the engine command-runner named by the GUI's banned-symbol entry");
+                Assert.That(typeof(global::Ihc.Vis.Catalog.BuiltInCatalog).Namespace,
+                    Is.EqualTo("Ihc.Vis.Catalog"),
+                    $"{nameof(global::Ihc.Vis.Catalog.BuiltInCatalog)} anchors the catalog namespace the GUI's "
+                    + "banned-symbol entry names; renaming it would empty that ban");
             });
 
         /// <summary>How many types the SDK's internal report pipeline declares. The pipeline is internal, so no

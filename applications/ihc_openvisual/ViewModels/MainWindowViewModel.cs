@@ -897,10 +897,9 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         _onValidationChanged = (_, _) => RebuildContext();
         _session.Validation.BlockingChanged += _onValidationChanged;
         // The constructor's own WORK, named. What follows reads the whole component catalog to build the
-        // catalog menus, builds both trees for the first time and sweeps every command row's gate — the bulk
-        // of the time between launching the application and having a window to look at. Unnamed it was not
-        // untraced: each piece opened a span with nothing above it, so a launch left several single-span
-        // traces and no operation a reader could open to ask why it was slow.
+        // catalog menus, builds both trees for the first time and sweeps every command row's gate. Unnamed it
+        // was not untraced: each piece opened a span with nothing above it, so a launch left several
+        // single-span traces and no operation a reader could open to ask why it was slow.
         using (Ihc.OperationScope compose = _telemetry.Start("Compose"))
         {
             BuildProductMenu();
