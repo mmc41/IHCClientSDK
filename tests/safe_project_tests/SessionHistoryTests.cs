@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Ihc.Vis.Session;
 
@@ -184,5 +185,54 @@ namespace Ihc.Vis.Tests
 
         private static int CountFlags(ProjectDocumentSession session, ElementId fbId) =>
             session.Current!.FindById(fbId)!.FindChild("settings")!.Children.Count(c => c.Tag == "resource_flag");
+
+        /// <summary>
+        /// History depth must not multiply index memory. A snapshot holds its lookup index WEAKLY and the session
+        /// pins only the current one, so an unbounded undo stack costs its path-copied trees and nothing per-entry
+        /// on the order of an index (739 KB on a large project).
+        /// <para>The undo at the end is the point of the test, not a coda: it runs the rebuild-after-collection
+        /// branch on a snapshot whose index was just proven gone, which is what says a lost pin costs a walk and
+        /// never an answer.</para>
+        /// </summary>
+        [Test]
+        public async Task HistorySnapshots_DoNotRetainTheirIndex()
+        {
+            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+
+            (WeakReference<ProjectIndex> before, WeakReference<ProjectIndex> after) = EditOnce(session);
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(before.TryGetTarget(out _), Is.False,
+                    "the pre-edit snapshot is still in the undo history, but its index is not");
+                Assert.That(after.TryGetTarget(out _), Is.True,
+                    "the session pins the current snapshot's index, so the open document keeps answering in O(1)");
+            });
+
+            EditOutcome undone = session.Undo();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(undone.Status, Is.EqualTo(EditStatus.Committed), "the edit was a reversible history entry");
+                Assert.That(session.Current!.FindById(session.Current.Root.Descendants()
+                    .First(e => e.Id is not null).Id!.Value), Is.Not.Null,
+                    "the restored snapshot rebuilds its index and answers — a released index costs time, not correctness");
+            });
+        }
+
+        // Minted in a NON-INLINED helper: a Debug JIT keeps locals alive to the end of the method they are declared
+        // in, so a strong reference taken in the asserting frame would still be rooted at the collection and the
+        // test would read "retained" whatever the code does.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static (WeakReference<ProjectIndex> Before, WeakReference<ProjectIndex> After) EditOnce(
+            ProjectDocumentSession session)
+        {
+            var before = new WeakReference<ProjectIndex>(session.Current!.ElementIndex);
+            session.Apply(new AddLocality("Ny lokalitet"));
+            return (before, new WeakReference<ProjectIndex>(session.Current!.ElementIndex));
+        }
     }
 }

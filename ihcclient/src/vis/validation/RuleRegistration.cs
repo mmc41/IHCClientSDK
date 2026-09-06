@@ -199,7 +199,7 @@ namespace Ihc.Vis.Validation
             Codes = rules.Select(r => r.Entry.Code).ToImmutableArray();
 
             // The three views below are derived ONCE, here, for the reason the set itself is: it is built at
-            // composition and never changes. Re-filtering per call re-walked all ~112 rules and allocated a fresh
+            // composition and never changes. Re-filtering per call re-walked the whole rule set and allocated a fresh
             // array on every Validate and every DescribeField — the field face asks per dialog field.
             byFace = new Dictionary<RuleFaces, ImmutableArray<RuleDefinition>>
             {

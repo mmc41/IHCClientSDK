@@ -785,9 +785,11 @@ namespace Ihc.Vis.Editing
         /// child of a product device root) and any node inside a LOCKED function block are owned by the
         /// catalog/library, not the installer, so deleting them on their own is refused — the returned reason names
         /// why, or <c>null</c> when the delete is allowed. Only the direct target is inspected, so a subtree delete
-        /// that removes such a node with its product or block (or after the block is unlocked) still works. Shared by
-        /// the engine (<see cref="DeleteById(ElementId, DeleteReferencePolicy)"/>), the <c>DeleteNode</c> command's
-        /// legality check and <c>PreviewDelete</c> so one owner decides deletability across every surface.
+        /// that removes such a node with its product or block (or after the block is unlocked) still works.
+        /// This is the ENGINE's door onto the rule — <see cref="DeleteById(ElementId, DeleteReferencePolicy)"/> has
+        /// a root and nothing else, so it walks. The session's gate resolves the same three inputs off the
+        /// snapshot's index (<c>ProjectCommands.ClassifyDeletionRefusal(Project, ElementId)</c>); both hand them to
+        /// the overload below, so one owner decides deletability across every surface.
         /// </summary>
         internal static DeletionRefusal ClassifyDeletionRefusal(ProjectElement root, ElementId id)
         {
@@ -797,9 +799,23 @@ namespace Ihc.Vis.Editing
                 return DeletionRefusal.Allowed;
             }
 
-            ProjectElement target = chain[^1];
-            ProjectElement? parent = chain.Count >= 2 ? chain[^2] : null;
+            // The ancestor scope IsWithinLockedBlock(root, id, inclusive: false) would rebuild is already in
+            // `chain` — read it rather than paying a second BuildPath walk.
+            return ClassifyDeletionRefusal(
+                target: chain[^1],
+                parent: chain.Count >= 2 ? chain[^2] : null,
+                withinLockedBlock: chain.Take(chain.Count - 1).Any(IsLockedBlock));
+        }
 
+        /// <summary>The ownership rule itself, over a target already resolved: the three clauses in the order that
+        /// decides them — wiring is never owned, a pin under a product is the catalog's, a node under a locked block
+        /// is the library's. Shared by the engine's door above and the session's index door, so the two lookups
+        /// cannot classify a node differently. <paramref name="withinLockedBlock"/> is the STRICT-ancestor answer
+        /// (<c>inclusive: false</c> — deleting the whole block is not this rule's refusal), computed by the caller
+        /// from whatever it resolved: the chain, or the index.</summary>
+        internal static DeletionRefusal ClassifyDeletionRefusal(
+            ProjectElement target, ProjectElement? parent, bool withinLockedBlock)
+        {
             // Link halves / scene members are wiring, removed via the link operations (US-057) — legitimate even
             // on a locked block's pins — so the catalog/lock ownership rule never applies to them.
             if (IsWiringNode(target.Tag))
@@ -812,9 +828,7 @@ namespace Ihc.Vis.Editing
                 return new DeletionRefusal(DeletionRefusalKind.CatalogPin, target.GetAttribute("name") ?? target.Tag);
             }
 
-            // The ancestor scope IsWithinLockedBlock(root, id, inclusive: false) would rebuild is already in
-            // `chain` — reuse it rather than paying a second BuildPath walk on the menu-gate path.
-            return chain.Take(chain.Count - 1).Any(IsLockedBlock)
+            return withinLockedBlock
                 ? new DeletionRefusal(DeletionRefusalKind.LockedBlock, null)
                 : DeletionRefusal.Allowed;
         }
@@ -842,8 +856,9 @@ namespace Ihc.Vis.Editing
             element.Tag == "functionblock" && element.GetAttribute("locked") == "yes";
 
         /// <summary>
-        /// T003 — the ONE central locked-ancestor authorization (generalising <see cref="ClassifyDeletionRefusal"/>'s
-        /// locked clause): whether a STRUCTURAL mutation whose subtree/target is <paramref name="id"/> must be refused
+        /// T003 — the ONE central locked-ancestor authorization (generalising the locked clause of
+        /// <see cref="ClassifyDeletionRefusal(ProjectElement, ProjectElement?, bool)"/>): whether a STRUCTURAL
+        /// mutation whose subtree/target is <paramref name="id"/> must be refused
         /// because <paramref name="id"/> lies within a locked (<c>locked="yes"</c>) function block — the library owns
         /// that subtree until it is unlocked. <paramref name="inclusive"/> counts <paramref name="id"/> itself being
         /// the locked block: inserting/moving/copying a child INTO the block (inclusive) is refused, while reordering

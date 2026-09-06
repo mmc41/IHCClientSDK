@@ -1667,7 +1667,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             Execute: ctx => Delete(ResolveNode(ctx)),
             // One classification, not two: DeleteNode.Evaluate allows exactly the set CanDelete accepts (both read
             // ClassifyDelete, G7) and otherwise carries the SDK's specific protected-element reason, so asking
-            // CanDelete first only re-ran the same walk on the refusal path. cascade:false keeps deletable
+            // CanDelete first only re-ran the same lookups on the refusal path. cascade:false keeps deletable
             // containers offered — the gate is about deletability, and the confirm flow decides cascade.
             Gate: ctx => ctx.Node is { } node && CutOrDeleteAllowed(ctx, node)
                 && node.Id is { } id && _session.Current is { } project

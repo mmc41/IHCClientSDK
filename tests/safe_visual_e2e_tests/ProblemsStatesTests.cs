@@ -37,6 +37,42 @@ public class ProblemsStatesTests
             $"'{state}' is a result for the document as it now stands");
 
     /// <summary>
+    /// Every tier has a count key, and no two share one.
+    /// </summary>
+    /// <remarks>
+    /// The keys are derived from the tier names, which is what stops a driver binding a count to the wrong
+    /// one — but derivation is only safe while it stays INJECTIVE. Two tiers whose names differed by a trailing
+    /// <c>s</c> would collapse onto one key, and the block would then publish whichever the walk wrote last
+    /// while a scenario read it as the other. That is not a hypothetical property of the rule; it is the one
+    /// assumption the rule makes, so it is checked rather than assumed.
+    /// </remarks>
+    [Test]
+    public void EveryTierHasItsOwnCountKey()
+    {
+        var keys = Enum.GetValues<ProblemsTier>().Select(ProblemsStates.CountKey).ToList();
+
+        Assert.That(keys, Is.Unique,
+            "two tiers share a count key, so one of them is unreadable and the other reports the wrong number: "
+            + string.Join(", ", keys));
+    }
+
+    /// <summary>
+    /// The keys scenarios actually read are among them.
+    /// </summary>
+    /// <remarks>
+    /// The two the corpus sweep asserts on, named as literals here on purpose. Derived at both ends, the rule
+    /// and its readers would agree with each other no matter what either said — a tier renamed in the
+    /// view-model would silently rename the key, and the sweep would fail on a missing count rather than say
+    /// which name moved. These two literals are what makes that a sentence.
+    /// </remarks>
+    [TestCase(ProblemsTier.Internal, "internals")]
+    [TestCase(ProblemsTier.Fatal, "fatals")]
+    public void TheKeysTheSweepReadsAreTheOnesTheDriversPublish(ProblemsTier tier, string key) =>
+        Assert.That(ProblemsStates.CountKey(tier), Is.EqualTo(key),
+            $"the corpus sweep reads '{key}' from a problems state envelope; the drivers now publish "
+            + $"{tier} under '{ProblemsStates.CountKey(tier)}'");
+
+    /// <summary>
     /// The headless driver names a state by lower-casing the view-model's own enum, so a member added there
     /// would silently become a word no driver, scenario or rule above knows.
     /// </summary>

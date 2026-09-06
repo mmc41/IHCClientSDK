@@ -134,7 +134,7 @@ namespace Ihc.Vis.Validation
         /// Every data-line product under the project's localities, in document order — the report body's scope,
         /// reached by descent so a nested locality or a product two containers down is still visited exactly once.
         /// <para>
-        /// Off the shared analyses, not off a fresh subtree walk: all eight rules in this file ask for the same
+        /// Off the shared analyses, not off a fresh subtree walk: every check generated below asks for the same
         /// list, and this was the one module still opening its own <c>Descendants()</c> per rule.
         /// </para>
         /// </summary>

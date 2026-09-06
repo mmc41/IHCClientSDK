@@ -209,6 +209,7 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
             ("view", "configuration") => await InvokeAsync(Sync(vm => vm.LeaveProgrammingModeCommand.Execute(null))),
             ("edit", "undo") => await InvokeAsync(vm => vm.UndoCommand.ExecuteAsync(null)),
             ("project", "new") => await InvokeAsync(vm => vm.NewCommand.ExecuteAsync(null)),
+            ("project", "open") => await ProjectOpenAsync(Option(args, "--path")),
             ("tree", "dump") => TreeDump(),
             ("capture", "window") => CaptureWindow(),
             ("dialog", "cancel") => DialogCancel(),
@@ -295,6 +296,85 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
     }
 
     /// <summary>
+    /// Opens a project INTO the running session, so a scenario can load one document after another without
+    /// relaunching.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Through the shell's own command, not the workflow beneath it.</b>
+    /// <c>OpenRecentCommand</c> is the shell's open-a-known-path gesture: it takes the same
+    /// <c>ProjectWorkflow.OpenAsync</c> door <i>Filer ▸ Åbn</i> takes, and differs from it only by the picker
+    /// that supplies the path. Reaching past it into the workflow would skip the shell's operation boundary —
+    /// the one that turns an escaped exception into an <i>Intern fejl</i> row and a dialog — which is precisely
+    /// the boundary a sweep over the corpus is here to watch.</para>
+    ///
+    /// <para><b>A refusal is a failed OPEN, never a failed load</b> — see <see cref="ProjectOpenPolicy"/>, which
+    /// is where that contract and the one both drivers settle by are written down. What went wrong is in the
+    /// context block's <c>openModals</c> and <c>document</c>, which is where a scenario asserts it.</para>
+    ///
+    /// <para><b>The activation is NOT awaited</b>, for the reason <c>problems click --double</c> is not:
+    /// a failed open reports itself through a modal, and in-process <c>ShowDialog</c> does not return until
+    /// something closes it — so awaiting here blocks this verb against a dialog only a LATER verb could dismiss,
+    /// and the run hangs with the corpus sweep's own modal assertion never reached. The task is kept rather than
+    /// discarded so a fault inside it surfaces on the next verb instead of vanishing.</para>
+    /// </remarks>
+    private async Task<E2E.Envelope> ProjectOpenAsync(string? path)
+    {
+        if (path is not { Length: > 0 })
+        {
+            return Refuse("BadRequest", ProjectOpenPolicy.MissingPathRefusal);
+        }
+
+        if (!File.Exists(path))
+        {
+            return Refuse("PreconditionMissing", ProjectOpenPolicy.MissingFileRefusal(path));
+        }
+
+        int generationBefore = ProjectOpenPolicy.GenerationOf(AutomationSnapshot.Read(snapshot));
+        pendingActivation = shell!.OpenRecentCommand.ExecuteAsync(path);
+        Dispatcher.UIThread.RunJobs();
+        return await SettleOnDocumentAsync(Path.GetFileName(path), generationBefore);
+    }
+
+    /// <summary>
+    /// Waits until the PUBLISHED snapshot says the open has arrived, and reports what the application ended up
+    /// naming.
+    /// </summary>
+    /// <remarks>
+    /// On the same surface the desktop driver settles on — <c>--test</c>'s <c>doc</c> and <c>gen</c> fields —
+    /// rather than on the activation. That the command completed would not say the state notification behind it
+    /// has been announced and republished, and the verb after this one reads exactly that. Settling here rather
+    /// than in each scenario is what keeps the two drivers answering one contract.
+    ///
+    /// <para>A standing modal ends the wait early, and says the open FAILED: the application reports a file it
+    /// cannot read that way and leaves the previous document bound, so there is nothing left to wait for and the
+    /// remaining ceiling would be spent per broken fixture.</para>
+    ///
+    /// <para>It does NOT wait for validation. That is <c>problems state --wait</c>'s job, and a scenario asks
+    /// for it by name — a verb that waited for both would make the panel's own currency unobservable.</para>
+    /// </remarks>
+    private async Task<E2E.Envelope> SettleOnDocumentAsync(string fileName, int generationBefore)
+    {
+        DateTime deadline = DateTime.UtcNow + ProjectOpenPolicy.SettleTimeout;
+        SnapshotRead read = default;
+        while (DateTime.UtcNow < deadline)
+        {
+            Dispatcher.UIThread.RunJobs();
+            read = AutomationSnapshot.Read(snapshot);
+            if (ProjectOpenPolicy.HasArrived(read, fileName, generationBefore) || OpenModalWindows().Any())
+            {
+                break;
+            }
+
+            await Task.Delay(25);
+        }
+
+        // OK, not a refusal, and for the reason ProjectOpenPolicy gives: a document that did not change is what a
+        // failed open LOOKS like, and the scenario asserts on it. The field carries what the application is
+        // actually showing, so that assertion can name it.
+        return Ok(new Dictionary<string, object?> { ["document"] = ProjectOpenPolicy.DocumentOf(read) });
+    }
+
+    /// <summary>
     /// The application's own fault record: how many faults it has appended since it started, and the last
     /// one's code.
     /// </summary>
@@ -355,25 +435,63 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
         }
 
         ProblemsPanelViewModel panel = vm.Problems;
-        return Ok(new Dictionary<string, object?>
+
+        // The PUBLISHED currency, read exactly as the desktop driver reads it: the snapshot may WITHHOLD
+        // boundness, never grant it. Without this the two modes answered the same question differently — this
+        // one trusted the panel's own state alone, which says "a result is bound" and not "bound to THIS
+        // document". A scenario that opens a project and reads the panel before the new run has been folded in
+        // therefore got the PREVIOUS document's counts, labelled bound, and could not tell.
+        //
+        // It matters most where it is least visible. A sweep asserting a tier is EMPTY passes just as happily
+        // on the wrong document's empty tier, so the wrong answer and the right one are the same number.
+        SnapshotRead published = AutomationSnapshot.Read(snapshot);
+        if (published.Rejection is { } rejection)
+        {
+            // The same word the desktop driver refuses with, for the same reason: a surface that is on and
+            // unreadable is not the absent surface, and reading past it would hand the decision back to the
+            // state this parser just declined to vouch for.
+            return Refuse("SnapshotRejected", rejection);
+        }
+
+        string rendered = ProblemsStates.Of(panel.State);
+        // `is not false` and not `== true`: null is the ABSENT surface, which withholds nothing.
+        bool bound = ProblemsStates.IsBound(panel.State) && published.Value?.IsValidationCurrent is not false;
+        Dictionary<string, object?> state = new()
         {
             // Always true on this path: the guard above refuses when the panel is hidden. The key stays because
             // the envelope's shape is the contract, and the real driver reports it too.
             ["visible"] = true,
-            ["state"] = ProblemsStates.Of(panel.State),
-            ["bound"] = ProblemsStates.IsBound(panel.State),
-            ["warnings"] = panel.Warnings.Count,
-            ["errors"] = panel.Errors.Count,
-            ["infos"] = panel.Infos.Count,
-            ["fatals"] = panel.Fatals.Count,
-        });
+            ["state"] = ProblemsStates.IsBound(rendered) && !bound ? ProblemsStates.Stale : rendered,
+            ["bound"] = bound,
+        };
+
+        // Walked, not spelled out per tier: see ProblemsStates.CountKey. The panel's own tier list is the
+        // source, so the count published under a key is by construction the count of the tier that key names.
+        foreach (ProblemsTierViewModel tier in panel.Tiers)
+        {
+            state[ProblemsStates.CountKey(tier.Tier)] = tier.Count;
+        }
+
+        return Ok(state);
     }
 
     /// <summary>
     /// Waits until a result is bound. Polls the panel's own <c>Idle</c> and its state rather than sleeping a
     /// fixed span: the debounce plus a whole-project run is not a duration the driver gets to guess.
     /// </summary>
-    private static async Task WaitForBoundAsync(MainWindowViewModel vm, TimeSpan timeout)
+    /// <summary>
+    /// The condition <c>problems state</c> reports as <c>bound</c>, so the WAIT and the ANSWER cannot disagree.
+    /// </summary>
+    /// <remarks>
+    /// Written once because a wait that stopped on a weaker condition than the answer applies would return, be
+    /// told the panel is stale by the very next line, and fail the scenario at its assertion instead of waiting
+    /// the moment longer it needed.
+    /// </remarks>
+    private bool IsBoundToTheCurrentDocument(MainWindowViewModel vm) =>
+        ProblemsStates.IsBound(vm.Problems.State)
+        && AutomationSnapshot.Read(snapshot).Value?.IsValidationCurrent is not false;
+
+    private async Task WaitForBoundAsync(MainWindowViewModel vm, TimeSpan timeout)
     {
         DateTime deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
@@ -394,7 +512,7 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
             }
 
             Dispatcher.UIThread.RunJobs();
-            if (ProblemsStates.IsBound(vm.Problems.State))
+            if (IsBoundToTheCurrentDocument(vm))
             {
                 return;
             }

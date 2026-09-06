@@ -184,5 +184,119 @@ namespace Ihc.Vis.Tests
                 Assert.That(session.CanReorder(a, 1), Is.False, "and it agrees with the menu gate");
             });
         }
+
+        // ---- The two doors onto the locked-ancestor rule ----
+
+        // The backdrop the two shapes below hang off: a well-formed root, a Localities container and one room.
+        // Written once because what those tests are ABOUT is the branch under the room, and a root spelled out
+        // per test is both a copy to keep in step and three lines between the reader and the subject.
+        private static Project InStue(params ProjectElement[] contents) =>
+            WithRoot(Node("groups", "_0x2031", new[] { ("name", "L") },
+                Node("group", "_0x2132", new[] { ("name", "Stue") }, contents)));
+
+        /// <summary>
+        /// The gates ask T003 per pointer event, so they answer it by walking the snapshot's index UPWARD instead
+        /// of running the engine's whole-tree <c>BuildPath</c>. The two must answer alike for every id and both
+        /// senses of <c>inclusive</c>: a gate that diverged would offer an edit the engine then throws on, which
+        /// reaches a caller as a Failed operation rather than the clean refusal the whole gate exists to give.
+        /// The peer of <c>CatalogPinDeleteGuardTests.IndexDoor_AgreesWithTheEngineWalk_ForEveryId</c>, which pins
+        /// the same equivalence for the ownership rule the locked clause sits inside.
+        /// </summary>
+        [Test]
+        public async Task IndexWalk_AgreesWithTheEngineWalk_ForEveryId()
+        {
+            Project project = await LoadOracle();
+            ProjectIndex index = project.ElementIndex;
+            var ids = project.Root.DescendantsAndSelf()
+                .Where(e => e.Id is not null).Select(e => e.Id!.Value).Distinct().ToList();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ids.Any(id => ProjectEditor.IsWithinLockedBlock(project.Root, id, inclusive: false)),
+                    Is.True, "the oracle really does hold a locked block with something inside it");
+
+                foreach (ElementId id in ids)
+                {
+                    foreach (bool inclusive in new[] { false, true })
+                    {
+                        Assert.That(index.IsWithinLockedBlock(id, inclusive),
+                            Is.EqualTo(ProjectEditor.IsWithinLockedBlock(project.Root, id, inclusive)),
+                            $"{id.ToToken()} inclusive:{inclusive}");
+                    }
+                }
+
+                var absent = new ElementId(0x7FFFFF, 0x99);
+                Assert.That(index.IsWithinLockedBlock(absent, inclusive: false), Is.False,
+                    "an absent id is nobody's refusal to make, as on the engine's door");
+            });
+        }
+
+        /// <summary>
+        /// The upward walk steps by ELEMENT, so an id-less container between the locked block and its descendant
+        /// does not end it.
+        /// </summary>
+        /// <remarks>
+        /// An id-less element inside a project is an ordinary open-world shape — the engine admits element types a
+        /// project's own DTD declares, the edit-open guard skips id-less elements rather than refusing them, and
+        /// <c>ProjectChangeSet</c> rolls an id-less descendant's change up into its nearest id-bearing ancestor. A
+        /// walk keyed on ids reports the ancestors above such a container as absent, which here means allowing an
+        /// edit inside a locked block and then throwing from the engine.
+        /// </remarks>
+        [Test]
+        public void BothDoors_RefuseThroughAnIdlessContainer()
+        {
+            Project project = InStue(
+                Node("functionblock", "_0x5228", new[] { ("name", "Locked"), ("locked", "yes") },
+                    Node("imported_container", null, [],
+                        Node("resource_output", "_0x6312", new[] { ("name", "A") }))));
+            ElementId.TryParse("_0x6312", out ElementId inside);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ProjectEditor.IsWithinLockedBlock(project.Root, inside, inclusive: false), Is.True,
+                    "the engine's chain reaches the locked block through the id-less container");
+                Assert.That(project.ElementIndex.IsWithinLockedBlock(inside, inclusive: false), Is.True,
+                    "and so does the index walk the gates use");
+                Assert.That(ProjectCommands.ClassifyDeletionRefusal(project, inside).Kind,
+                    Is.EqualTo(ProjectEditor.ClassifyDeletionRefusal(project.Root, inside).Kind),
+                    "so the delete gate classifies it exactly as the engine's door does");
+            });
+        }
+
+        /// <summary>
+        /// A duplicated id names two elements; both doors then have to be about the SAME one.
+        /// </summary>
+        /// <remarks>
+        /// The tree below is the shape where an independently-filled parent map goes wrong: the first element
+        /// carrying the id sits inside the locked block, while a later twin hangs directly off a shallower holder
+        /// that the walk reaches first. Read as "the first element whose CHILDREN carry the id", the parent is the
+        /// unlocked holder and the gate allows a delete the engine refuses. Read as "the parent of the element the
+        /// id resolved to", it is the locked block's own <c>outputs</c>, and the two doors agree. A duplicated id
+        /// is itself a validation finding, but the gates still have to be coherent on a project carrying one.
+        /// </remarks>
+        [Test]
+        public void BothDoors_RefuseTheFirstCarrierOfADuplicatedId()
+        {
+            Project project = InStue(
+                Node("holder", "_0x3000", new[] { ("name", "Holder") },
+                    Node("functionblock", "_0x5228", new[] { ("name", "Locked"), ("locked", "yes") },
+                        Node("outputs", "_0x5424", new[] { ("name", "Output") },
+                            Node("resource_output", "_0x6312", new[] { ("name", "A") }))),
+                    Node("resource_output", "_0x6312", new[] { ("name", "Twin") })));
+            ElementId.TryParse("_0x6312", out ElementId duplicated);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(project.FindParent(duplicated)?.Tag, Is.EqualTo("outputs"),
+                    "non-vacuity: the id really does resolve into the locked branch, not to the shallower twin");
+                Assert.That(ProjectEditor.IsWithinLockedBlock(project.Root, duplicated, inclusive: false), Is.True,
+                    "the engine's chain runs through the locked block");
+                Assert.That(project.ElementIndex.IsWithinLockedBlock(duplicated, inclusive: false), Is.True,
+                    "and the index walk follows the same branch rather than the twin's");
+                Assert.That(ProjectCommands.ClassifyDeletionRefusal(project, duplicated).Kind,
+                    Is.EqualTo(ProjectEditor.ClassifyDeletionRefusal(project.Root, duplicated).Kind),
+                    "so both delete doors name the same rule");
+            });
+        }
     }
 }

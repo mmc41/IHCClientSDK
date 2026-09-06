@@ -32,14 +32,15 @@ namespace Ihc.Vis.Session
         /// and a root whose only diff is the <c>last_unique_id</c> counter reports nothing (its allocations already
         /// show as <see cref="Added"/>). Correct on id+content comparison alone; sharing is not relied upon.
         /// </summary>
-        /// <remarks><paramref name="oldById"/>/<paramref name="newById"/> let a caller that has already indexed
-        /// either side hand it over — the session builds a <c>ProjectIndex</c> per commit anyway, and re-walking the
-        /// same tree here made it three whole-tree walks per edit. Omit either to have it built on demand; both must
-        /// carry the same first-wins, id-less-skipping shape <see cref="BuildIdMap"/> produces.</remarks>
+        /// <remarks><paramref name="oldIndex"/>/<paramref name="newIndex"/> let a caller that already HOLDS either
+        /// side's index hand it over: a <see cref="Project"/> holds its own weakly, so a session mid-transition is
+        /// the only thing keeping the pre-edit one alive, and passing it is what stops the diff re-walking a tree
+        /// that was indexed a moment ago. Omit either and it is taken from the project, building if nothing holds
+        /// one. Each index is checked against the project it is handed beside; an index of another tree is
+        /// refused, not diffed.</remarks>
         internal static ProjectChangeSet Diff(
             Project old, Project updated, int baseVersion, int newVersion, string origin, string label,
-            IReadOnlyDictionary<ElementId, ProjectElement>? oldById = null,
-            IReadOnlyDictionary<ElementId, ProjectElement>? newById = null)
+            ProjectIndex? oldIndex = null, ProjectIndex? newIndex = null)
         {
             // The diff walks both sides and is run per commit, so its cost tracks the project size. Its four
             // set counts are also the shape of the edit - an ordinary edit touching hundreds of elements is
@@ -48,17 +49,27 @@ namespace Ihc.Vis.Session
             // be a commit that silently produced no change set.
             return Telemetry.Run(nameof(Diff), scope =>
             {
-                oldById ??= BuildIdMap(old.Root);
-                newById ??= BuildIdMap(updated.Root);
+                oldIndex ??= old.ElementIndex;
+                newIndex ??= updated.ElementIndex;
+                // The one place in the engine where an index is still PAIRED with a project rather than
+                // resolved through it, so the one place the wrong two can be paired. Diffing another tree's
+                // maps against this one's elements yields a plausible-looking change set describing a
+                // document that never existed, which a reconciler would then apply.
+                const string Mispaired = "An index handed to the diff was built from a different tree than "
+                    + "the project it was handed beside.";
+                oldIndex.RequireBuiltFor(old, Mispaired);
+                newIndex.RequireBuiltFor(updated, Mispaired);
 
-                FrozenSet<ElementId> added = newById.Keys.Where(id => !oldById.ContainsKey(id)).ToFrozenSet();
-                FrozenSet<ElementId> removed = oldById.Keys.Where(id => !newById.ContainsKey(id)).ToFrozenSet();
+                FrozenSet<ElementId> added = newIndex.Ids.Where(id => oldIndex.FindById(id) is null).ToFrozenSet();
+                FrozenSet<ElementId> removed = oldIndex.Ids.Where(id => newIndex.FindById(id) is null).ToFrozenSet();
 
                 var changed = new HashSet<ElementId>();
                 var childListChanged = new HashSet<ElementId>();
-                foreach ((ElementId id, ProjectElement oldEl) in oldById)
+                foreach (ElementId id in oldIndex.Ids)
                 {
-                    if (!newById.TryGetValue(id, out ProjectElement? newEl))
+                    // The old side always resolves — an id is only a key because some element carries it — so this
+                    // reads as one condition with the case that does occur: an id the new side no longer has.
+                    if (oldIndex.FindById(id) is not { } oldEl || newIndex.FindById(id) is not { } newEl)
                     {
                         continue;
                     }
@@ -99,25 +110,6 @@ namespace Ihc.Vis.Session
         /// <summary>This diff's entry point into the instrumentation core.</summary>
         private static readonly OperationTelemetry Telemetry =
             new OperationTelemetry(SdkTelemetryRegistry.Surface, nameof(ProjectChangeSet));
-
-        private static Dictionary<ElementId, ProjectElement> BuildIdMap(ProjectElement root)
-        {
-            var map = new Dictionary<ElementId, ProjectElement>();
-            Walk(root, map);
-            return map;
-        }
-
-        private static void Walk(ProjectElement element, Dictionary<ElementId, ProjectElement> map)
-        {
-            if (element.Id is { } id)
-            {
-                map.TryAdd(id, element);
-            }
-            foreach (ProjectElement child in element.Children)
-            {
-                Walk(child, map);
-            }
-        }
 
         // Equal on the element's own tag+attributes and its id-LESS subtree (recursing into id-less children only,
         // stopping at id-bearing descendants, which carry their own ids). An inequality here is the roll-up: an

@@ -296,25 +296,24 @@ namespace Ihc.Vis
             new Session.DeleteNode(id, cascade);
 
         /// <summary>Command to reorder a node <paramref name="delta"/> positions among its same-tag siblings (US-055),
-        /// or null at the list ends / for a rootless node. One rule, two entry points (review F02): this
-        /// Project-walking factory and the index-backed overload below share <see cref="ResolveReorderTarget"/>.</summary>
+        /// or null at the list ends / for a rootless node. The public door onto
+        /// <see cref="ResolveReorderNode"/>.</summary>
         public Session.ReorderNode? ReorderNode(Project project, ElementId id, int delta)
         {
             ArgumentNullException.ThrowIfNull(project);
-            return ResolveReorderTarget(project.FindById(id), project.FindParent(id), id, delta) is { } there
-                ? new Session.ReorderNode(id, there)
-                : null;
+            return ResolveReorderNode(project, id, delta);
         }
 
-        // The index-backed entry point of the delta move (review F02): the same US-055 boundary rule answered from a
-        // per-commit ProjectIndex, for the per-selection MENU gate — IProjectDocument.CanReorder forwards here, so
-        // Move up/down stops paying two full-tree walks and a sibling-list allocation per arrow-key press.
-        internal static Session.ReorderNode? ReorderNode(Session.ProjectIndex index, ElementId id, int delta) =>
-            ResolveReorderTarget(index.FindById(id), index.FindParent(id), id, delta) is { } there
+        // The ONE entry point of the delta move (review F02), reachable without a gateway instance so the session's
+        // per-selection MENU gate reads the very rule the factory mints from — IProjectDocument.CanReorder calls it
+        // directly. There is no index-typed peer any more: Project.FindById/FindParent ARE the snapshot's index, so
+        // a second entry point taking one would resolve through the identical dictionary.
+        internal static Session.ReorderNode? ResolveReorderNode(Project project, ElementId id, int delta) =>
+            ResolveReorderTarget(project.FindById(id), project.FindParent(id), id, delta) is { } there
                 ? new Session.ReorderNode(id, there)
                 : null;
 
-        // The one delta-move rule (US-055) both entry points share: the same-tag sibling position `delta` steps from
+        // The delta-move boundary rule (US-055) itself: the same-tag sibling position `delta` steps from
         // the node's own, or null for a no-op delta, a rootless/absent node, or a step off either end. Counts in one
         // pass rather than materializing the sibling list — this runs per pointer event and per selection change.
         private static int? ResolveReorderTarget(
@@ -359,26 +358,23 @@ namespace Ihc.Vis
 
         /// <summary>Whether <paramref name="dragged"/> and <paramref name="target"/> are distinct <b>same-parent,
         /// same-tag siblings</b> — a reorder drop (US-055), the drag-over hint peer of
-        /// <see cref="ReorderNodeToSibling"/>. One rule, two entry points (review F5): this Project-walking query
-        /// and the index-backed overload below share <see cref="IsReorderablePair"/>.</summary>
+        /// <see cref="ReorderNodeToSibling"/>. The public door onto <see cref="IsReorderableNodePair"/>.</summary>
         public bool CanReorderNode(Project project, ElementId dragged, ElementId target)
         {
             ArgumentNullException.ThrowIfNull(project);
-            return dragged != target && IsReorderablePair(
-                project.FindById(dragged), project.FindById(target),
-                project.FindParent(dragged), project.FindParent(target));
+            return IsReorderableNodePair(project, dragged, target);
         }
 
-        // The index-backed entry point (review F5): the same US-055 rule answered from a per-commit ProjectIndex,
-        // for the drag-over pointer path — IProjectDocument.CanReorderNode forwards here, so the probe stops
-        // paying full-tree FindById/FindParent walks per pointer event.
-        internal static bool CanReorderNode(Session.ProjectIndex index, ElementId dragged, ElementId target) =>
+        // The ONE entry point of the reorder-drop question (review F5), reachable without a gateway instance for the
+        // drag-over pointer path — IProjectDocument.CanReorderNode calls it directly, and the four lookups it makes
+        // are the open snapshot's own index, so the probe pays dictionary reads rather than full-tree walks.
+        internal static bool IsReorderableNodePair(Project project, ElementId dragged, ElementId target) =>
             dragged != target && IsReorderablePair(
-                index.FindById(dragged), index.FindById(target),
-                index.FindParent(dragged), index.FindParent(target));
+                project.FindById(dragged), project.FindById(target),
+                project.FindParent(dragged), project.FindParent(target));
 
-        // The one reorder-drop rule (US-055) both entry points share: resolved, same-tag elements under the same
-        // id-bearing parent.
+        // The reorder-drop rule (US-055) itself, stated over elements already resolved: same-tag, under the same
+        // id-bearing parent. Kept apart from the four lookups above so the rule reads as the rule.
         private static bool IsReorderablePair(
             ProjectElement? dragged, ProjectElement? target,
             ProjectElement? draggedParent, ProjectElement? targetParent) =>
@@ -386,15 +382,42 @@ namespace Ihc.Vis
             && draggedParent is { Id: { } parentId }
             && targetParent?.Id == parentId;
 
+        // The session's door onto the engine's ownership rule: the same three inputs
+        // ProjectEditor.ClassifyDeletionRefusal(root, id) resolves by walking the tree from the root — the target,
+        // its parent for the catalog-pin clause, its strict ancestors for the locked clause — resolved off the
+        // snapshot's index instead. This is what the menu gate pays per selection change, so it reads dictionaries.
+        // The index is taken ONCE as a local: a Project holds it weakly, and the consumer rule is to hold what you
+        // were handed for as long as the lookups should agree with each other. An absent id is nobody's refusal to
+        // make, as on the engine's door. The three inputs describe ONE position in the tree because the index
+        // derives the parent and the ancestors from the element it resolved, rather than answering each
+        // independently — see ProjectIndex's "one resolution, then its parentage".
+        internal static DeletionRefusal ClassifyDeletionRefusal(Project project, ElementId id)
+        {
+            ProjectIndex index = project.ElementIndex;
+            return ClassifyDeletionRefusal(index, index.FindById(id));
+        }
+
+        // The classification over an element the caller has already resolved from `index`, so the gate below pays
+        // one dictionary read for the target rather than one per question asked about it.
+        private static DeletionRefusal ClassifyDeletionRefusal(ProjectIndex index, ProjectElement? target) =>
+            target is { } element
+                ? ProjectEditor.ClassifyDeletionRefusal(element, index.ParentOf(element),
+                    Session.ProjectIndexLockedBlockExtensions.IsWithinLockedBlock(index, element, inclusive: false))
+                : DeletionRefusal.Allowed;
+
         // The cheap delete classification shared by CanDelete, PreviewDelete AND Session.DeleteNode.Evaluate (G7: the
         // command must refuse exactly what the gate forbids, so both read this one chokepoint): which DeleteKind a node
         // needs, WITHOUT the (potentially expensive) strict-cascade simulation the confirm flag needs. Resolves the
-        // element once and hands it back so PreviewDelete can compute the confirm without a second lookup.
-        internal static (DeleteKind Kind, ProjectElement? Element) ClassifyDelete(Project project, ElementId id)
+        // element AND the ownership refusal once and hands both back, so PreviewDelete computes the confirm, and both
+        // refusing surfaces name their code, without a second lookup or a second classification.
+        internal static (DeleteKind Kind, ProjectElement? Element, DeletionRefusal Refusal) ClassifyDelete(
+            Project project, ElementId id)
         {
-            ProjectElement? element = project.FindById(id);
+            ProjectIndex index = project.ElementIndex;
+            ProjectElement? element = index.FindById(id);
+            DeletionRefusal refusal = ClassifyDeletionRefusal(index, element);
             DeleteKind kind;
-            if (element is null || ProjectEditor.ClassifyDeletionRefusal(project.Root, id).Refused)
+            if (element is null || refusal.Refused)
             {
                 kind = DeleteKind.NotDeletable;   // missing, or a catalog pin / locked-block node (review3 H1)
             }
@@ -410,12 +433,13 @@ namespace Ihc.Vis
             {
                 kind = IsDeletableNode(element.Tag) ? DeleteKind.General : DeleteKind.NotDeletable;
             }
-            return (kind, element);
+            return (kind, element, refusal);
         }
 
         /// <summary>Whether <paramref name="id"/> can be deleted at all (US-053) — the SDK verdict the GUI's Delete gate
         /// (context menu / Edit ▸ Delete / Delete key) reads. Unlike <see cref="PreviewDelete"/> this skips the strict
-        /// cascade simulation, so it stays cheap to re-evaluate on every selection, menu-open and post-edit refresh.</summary>
+        /// cascade simulation, and its classification resolves through the snapshot's index rather than a tree walk,
+        /// so it stays cheap to re-evaluate on every selection, menu-open and post-edit refresh.</summary>
         public bool CanDelete(Project project, ElementId id)
         {
             ArgumentNullException.ThrowIfNull(project);
@@ -434,7 +458,7 @@ namespace Ihc.Vis
         public DeleteImpact PreviewDelete(Project project, ElementId id)
         {
             ArgumentNullException.ThrowIfNull(project);
-            (DeleteKind kind, ProjectElement? element) = ClassifyDelete(project, id);
+            (DeleteKind kind, ProjectElement? element, DeletionRefusal refusal) = ClassifyDelete(project, id);
             bool needsConfirm = kind switch
             {
                 DeleteKind.Locality => !element!.Children.IsEmpty,   // US-009: confirm only when it still holds contents
@@ -446,13 +470,13 @@ namespace Ihc.Vis
             // catalog-declared pin, a locked block, a node type that is structure rather than content, or an id
             // that no longer resolves. Each is its OWN code (D5), carried as a whole problem rather than as a bare
             // sentence — so the shell forwards a refusal it can filter on instead of re-deciding which one it is.
-            Problem? refusal = deletable
+            Problem? problem = deletable
                 ? null
                 : element is null
                     ? new Problem(Session.EditRefusalCodes.TargetMissing, "Noden findes ikke længere.",
                         EquatableArray<ProblemArgument>.Empty)
-                    : DeleteRefusal(ProjectEditor.ClassifyDeletionRefusal(project.Root, id));
-            return new DeleteImpact(deletable, needsConfirm, kind, refusal);
+                    : DeleteRefusal(refusal);
+            return new DeleteImpact(deletable, needsConfirm, kind, problem);
         }
 
         /// <summary>
@@ -700,7 +724,8 @@ namespace Ihc.Vis
                 || variable.Kind != ElementKind.EnumResource
                 // T004: withdraw the enum-state edit when its entry-point variable is inside a locked block (the enum
                 // TYPE it would edit is project-global, so the lock is checked on the variable acted upon, not the def).
-                || ProjectEditor.IsWithinLockedBlock(project.Root, enumVariableId, inclusive: true)
+                || Session.ProjectIndexLockedBlockExtensions.IsWithinLockedBlock(
+                    project.ElementIndex, enumVariableId, inclusive: true)
                 || !ElementId.TryParse(project.View(variable).Effective("typedef"), out ElementId defId)
                 || project.FindById(defId) is not { } def || project.View(def).Name is not { } defName)
             {

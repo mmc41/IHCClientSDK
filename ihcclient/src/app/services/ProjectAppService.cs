@@ -356,10 +356,11 @@ namespace Ihc.Vis
         /// validation scan), for drag-over probes and menu gates (D02). Runs the command's own <c>Evaluate</c> on a
         /// fresh single-use session.
         /// <para>"No additional validation scan" is the honest qualifier and not the stronger "no scan": this
-        /// overload OPENS a scratch session per call, and opening builds a <c>ProjectIndex</c>, which is a full
-        /// pre-order walk of the document. That is fine for a one-shot caller — a console tool, a test — and it is
-        /// why an interactive frontend uses <c>IProjectDocument.CanApply</c> on the open document instead, where
-        /// the index is already built and shared.</para>
+        /// overload OPENS a scratch session per call, and opening PINS the project's lookup index — which a project
+        /// holds weakly, so a one-shot caller building nothing else pays a full pre-order walk of the document per
+        /// call. That is fine for a console tool or a test, and it is why an interactive frontend uses
+        /// <c>IProjectDocument.CanApply</c> on the open document instead, where the open session's pin keeps one
+        /// index serving every gate.</para>
         /// </summary>
         public EditVerdict CanApply(Project project, ProjectCommand command)
         {
@@ -495,9 +496,9 @@ namespace Ihc.Vis
                 // CHANGE during normalization would each be anomalous on a file the vendor just wrote,
                 // and neither is visible in a total.
                 //
-                // Guarded, because the diff exists ONLY to answer those three tags: it walks the whole project
-                // twice to build its id maps and compares every id-bearing element, which is real work to do on
-                // every open for numbers nobody reads when no listener is attached.
+                // Guarded, because the diff exists ONLY to answer those three tags: it indexes both sides and
+                // compares every id-bearing element, which is real work to do on every open for numbers nobody
+                // reads when no listener is attached.
                 if (activity is not null)
                 {
                     ProjectChangeSet diff = ProjectChangeSet.Diff(

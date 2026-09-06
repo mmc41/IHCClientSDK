@@ -64,19 +64,18 @@ namespace Ihc.Vis.Session
     public sealed record DeleteNode(ElementId Id, bool Cascade) : ProjectCommand
     {
         internal override string Describe(Project project) => "Slet";
-        // The classifier resolves the element as well as the kind precisely so a caller needs no second lookup —
-        // so read BOTH halves: deletable → allow; not deletable because it is gone → the shared "no longer exists"
-        // guard; otherwise the engine's precise reason (review F06).
+        // The classifier resolves the element AND the ownership refusal beside the kind precisely so a caller needs
+        // no second lookup or second classification — so read all three: deletable → allow; not deletable because
+        // it is gone → the shared "no longer exists" guard; otherwise the engine's precise reason (review F06).
         internal override EditVerdict Evaluate(EditContext context) =>
             ProjectCommands.ClassifyDelete(context.Project, Id) switch
             {
-                (not DeleteKind.NotDeletable, _) => EditVerdict.Allow,
-                (_, null) => context.RequireExists(Id, "Noden"),
+                (not DeleteKind.NotDeletable, _, _) => EditVerdict.Allow,
+                (_, null, _) => context.RequireExists(Id, "Noden"),
                 // ONE CODE PER RULE (D5), so the refusal a caller filters on says WHICH rule refused rather than
                 // only that something did. The sentence comes off the same value as the code, so the two cannot
                 // come apart.
-                _ => Refuse(ProjectCommands.DeleteRefusal(
-                    ProjectEditor.ClassifyDeletionRefusal(context.Project.Root, Id))),
+                (_, _, var refusal) => Refuse(ProjectCommands.DeleteRefusal(refusal)),
             };
         internal override void Execute(ProjectEditor editor) =>
             editor.DeleteById(Id, Cascade ? DeleteReferencePolicy.CascadeReferences : DeleteReferencePolicy.Strict);

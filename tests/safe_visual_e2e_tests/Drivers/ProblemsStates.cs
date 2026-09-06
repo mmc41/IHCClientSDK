@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 using ihc_openvisual.ViewModels;
 
 namespace safe_visual_e2e_tests;
@@ -33,6 +36,28 @@ internal static class ProblemsStates
     /// The word for a view-model state, which is how the headless driver names what it reads directly.
     /// </summary>
     internal static string Of(ProblemsState state) => state.ToString().ToLowerInvariant();
+
+    /// <summary>
+    /// The key a tier's count is published under — <c>internals</c>, <c>fatals</c>, <c>errors</c>,
+    /// <c>warnings</c>, <c>infos</c>.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Derived from the tier, so a driver cannot mis-map one.</b> Both drivers used to spell the five
+    /// pairs out by hand — <c>["fatals"] = …Fatals.Count</c> and its four siblings, twice — which is a shape
+    /// with a silent failure in it: a key bound to the WRONG tier's count reads as a perfectly ordinary number,
+    /// and an assertion that a tier is empty then passes over a tier that is not. Building the block by walking
+    /// the tiers through this leaves nothing to get wrong, and a tier added later gets its key rather than
+    /// being quietly unreadable.</para>
+    ///
+    /// <para>What the tier's count MEANS is pinned one level down, where a finding can be synthesized on
+    /// demand: <c>ProblemsFilterTests</c> holds the panel to counting a refusing finding under Fatale fejl and
+    /// not under Fejl, and pins the <c>problems.count.*</c> ids the desktop driver reads. This is only the name
+    /// the two drivers agree to publish it under.</para>
+    /// </remarks>
+    internal static string CountKey(ProblemsTier tier) => tier.ToString().ToLowerInvariant() + "s";
+
+    /// <summary>Every tier's count key, in tier order — the block both drivers publish.</summary>
+    internal static IEnumerable<ProblemsTier> Tiers => Enum.GetValues<ProblemsTier>();
 
     /// <summary>Whether the counts beside this state describe the CURRENT document.</summary>
     internal static bool IsBound(string state) => state is not (Validating or Stale);

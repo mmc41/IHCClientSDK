@@ -141,6 +141,7 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
             ("problems", "state") => ProblemsState(args),
             ("problems", "rows") => ProblemsRows(),
             ("problems", "click") => ProblemsClick(args),
+            ("project", "open") => ProjectOpen(DriverArguments.Option(args, "--path")),
             ("view", "problems-toggle") => ToggleProblemsPanel(),
             ("tree", "dump") => TreeDump(args),
             ("node", "select") => NodeSelect(args),
@@ -240,6 +241,154 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
         return envelopes.Build(true, "OK", path, new Dictionary<string, object?> { ["path"] = path });
     }
 
+    /// <summary>
+    /// Opens a project INTO the running application, the way a person does: the toolbar's <i>Åbn projekt</i>
+    /// button, the picker it raises, and the path typed into it.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Why the picker at all.</b> This is the only route the real application has. It takes a start-up
+    /// path on its command line and nothing after that, so a driver that wanted to avoid the picker could only
+    /// relaunch — which is a different scenario from the one this verb exists for, where a SESSION opens one
+    /// document after another.</para>
+    ///
+    /// <para><b>Typed, not set through a control.</b> The picker is a modern <c>IFileDialog</c> hosted in the
+    /// application's own process, and its control ids are not the classic Win32 ones — measured: <c>1148</c> is
+    /// a Pane with no Edit under it, and <c>1</c>/<c>2</c> collide with the file list's items. What is reliable
+    /// is that it opens with keyboard focus already in the file-name field, so typing the path and pressing
+    /// Enter works whatever the shell's internal layout. <see cref="Keyboard.SendText"/> sends the characters
+    /// themselves rather than keys, so the path is not re-spelled by the machine's keyboard layout.</para>
+    ///
+    /// <para><b>Identified by ARRIVAL, not by class or caption.</b> The picker is one of the application's
+    /// top-level windows like any dialog, and both its class name and its title are things this driver would be
+    /// guessing at — the caption is localized. Taking the dialog handles before the gesture and looking for one
+    /// that was not there is an identity test that needs neither.</para>
+    ///
+    /// <para><b>It reports BY EFFECT, and it must.</b> If focus were not in the file-name field the path would
+    /// go to the file list, whose incremental search would select something else and Enter would open THAT — a
+    /// wrong document, opened successfully, with every later assertion reading a real and completely wrong
+    /// panel. Publishing what the application ENDED UP showing, rather than that the gesture was delivered, is
+    /// what lets a scenario tell those apart — and the assertion it makes there is the same one it makes in
+    /// headless mode, because <see cref="ProjectOpenPolicy"/> is one contract rather than two.</para>
+    /// </remarks>
+    private E2E.Envelope ProjectOpen(string? path)
+    {
+        if (mainWindow is not { } shell)
+        {
+            return NotRunning();
+        }
+
+        if (path is not { Length: > 0 })
+        {
+            return Refuse("InvalidInput", ProjectOpenPolicy.MissingPathRefusal);
+        }
+
+        if (!File.Exists(path))
+        {
+            return Refuse("PreconditionMissing", ProjectOpenPolicy.MissingFileRefusal(path));
+        }
+
+        int generationBefore = ProjectOpenPolicy.GenerationOf(Snapshot());
+        HashSet<nint> before = [.. AppDialogs().Select(dialog => dialog.NativeWindowHandle)];
+        if (before.Count > 0)
+        {
+            return Refuse("DialogBlocked",
+                "a dialog is already open, so the picker could not be told apart from it; close it first");
+        }
+
+        if (shell.FindFirstById(AutomationIds.ToolbarOpen) is not { } open || !open.Invoke())
+        {
+            return Refuse("ControlNotFound",
+                $"the shell publishes no invokable {AutomationIds.ToolbarOpen}");
+        }
+
+        UiaWaitResult<UiaElement> picker = UiaWait.Until(
+            () => AppDialogs().FirstOrDefault(d => !before.Contains(d.NativeWindowHandle)),
+            _ => true,
+            PickerTimeout,
+            describe: found => found?.Name ?? "no new dialog",
+            giveUp: () => app is { HasExited: true } ? "the application exited" : null);
+
+        if (picker.Value is not { } dialog)
+        {
+            return Refuse("DialogNotFound", $"the file picker never appeared — {picker}");
+        }
+
+        if (!Foreground.Acquire(dialog.NativeWindowHandle))
+        {
+            return NotForeground();
+        }
+
+        // The picker has to have settled its focus before the first character lands; typed into a dialog still
+        // arranging itself, the leading characters of the path are simply lost and the rest names no file.
+        Thread.Sleep(ClickSettle);
+
+        if (!Keyboard.SendText(path))
+        {
+            return NotInjected($"the path '{path}'");
+        }
+
+        if (!Keyboard.Send(new UiaGesture(UiaKey.Enter)))
+        {
+            return NotInjected("Enter");
+        }
+
+        // The picker closing says the path was ACCEPTED. It is not the same event as the document changing —
+        // reading and normalizing a large oracle takes measurably longer — so both are waited for, in order,
+        // and a failure names which of the two never happened.
+        UiaWaitResult<string> closed = UiaWait.Until(
+            () => AppDialogs().Any(d => d.NativeWindowHandle == dialog.NativeWindowHandle) ? null : "closed",
+            _ => true,
+            PickerTimeout,
+            giveUp: () => app is { HasExited: true } ? "the application exited" : null);
+
+        if (!closed.Satisfied)
+        {
+            return Refuse("DialogBlocked",
+                $"the picker stayed open after the path was typed, so it did not accept '{path}' — {closed}");
+        }
+
+        return SettleOnDocument(Path.GetFileName(path), generationBefore);
+    }
+
+    /// <summary>
+    /// Waits until the PUBLISHED snapshot says the open has arrived, and reports what the application ended up
+    /// naming.
+    /// </summary>
+    /// <remarks>
+    /// The <c>--test</c> surface's <c>doc</c> and <c>gen</c> fields, settled by exactly the condition the
+    /// headless driver settles by, so a scenario gets one contract from either mode. Not the title bar: that
+    /// carries the dirty bullet and the application's own name beside a BASE name, so reading a document out of
+    /// it is an inference — and it cannot tell this file from another of the same name in another folder.
+    ///
+    /// <para>A document that never arrives is reported, not refused: see <see cref="ProjectOpenPolicy"/>. The
+    /// snapshot being UNREADABLE is different and still refuses — a surface that is on and cannot be parsed is
+    /// not an application showing something else, and reading past it would hand the decision back to the state
+    /// this parser just declined to vouch for.</para>
+    ///
+    /// <para>It does NOT wait for validation. That is <c>problems state --wait</c>'s job and a scenario asks
+    /// for it by name; a verb that waited for both would make the panel's own currency unobservable.</para>
+    /// </remarks>
+    private E2E.Envelope SettleOnDocument(string fileName, int generationBefore)
+    {
+        SnapshotRead read = default;
+        UiaWait.Until(
+            () =>
+            {
+                read = Snapshot();
+                return ProjectOpenPolicy.HasArrived(read, fileName, generationBefore);
+            },
+            ProjectOpenPolicy.SettleTimeout,
+            poll: TimeSpan.FromMilliseconds(50),
+            giveUp: () => read.Rejection ?? (app is { HasExited: true } ? "the application exited" : null));
+
+        return read.Rejection is { } rejection
+            ? SnapshotRejected(rejection)
+            : Ok(new Dictionary<string, object?> { ["document"] = ProjectOpenPolicy.DocumentOf(read) });
+    }
+
+    /// <summary>How long the file picker has to appear, and then to close again once the path is committed.</summary>
+    private static readonly TimeSpan PickerTimeout = TimeSpan.FromSeconds(20);
+
     // ---- the Problemer panel -----------------------------------------------------------------------------
 
     /// <summary>
@@ -270,7 +419,7 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
         }
 
         // The published currency BEFORE the counts and again AFTER them. Each tier count is a separate
-        // cross-process search and property read, so the four of them are not read at one instant — and an
+        // cross-process search and property read, so they are not read at one instant — and an
         // envelope reporting a state derived from one moment beside counts from another is not a coherent
         // snapshot of anything. Asked twice, a move underneath is visible instead of merely happening.
         SnapshotRead before = Snapshot();
@@ -284,11 +433,15 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
         {
             // Always true on this path: the guard above refuses when the panel cannot be found at all.
             ["visible"] = true,
-            ["warnings"] = TierCount(panel, ProblemsTier.Warning),
-            ["errors"] = TierCount(panel, ProblemsTier.Error),
-            ["infos"] = TierCount(panel, ProblemsTier.Info),
-            ["fatals"] = TierCount(panel, ProblemsTier.Fatal),
         };
+
+        // Walked, not spelled out per tier: see ProblemsStates.CountKey. The id searched for and the key it is
+        // published under are then derived from ONE tier value, so neither driver can bind a count to the wrong
+        // name.
+        foreach (ProblemsTier tier in ProblemsStates.Tiers)
+        {
+            counts[ProblemsStates.CountKey(tier)] = TierCount(panel, tier);
+        }
         SnapshotRead after = Snapshot();
         if (after.Rejection is { } rejectedAfter)
         {

@@ -54,6 +54,37 @@ namespace Ihc.Vis.Seeded
             return local.Length;
         }
     }
+
+    // Controls for the element-model immutability detector (ValueCollectionArchitectureTests). Same reason as
+    // above: the production scan is anchored to the ihcclient assembly's model namespace, so these can never
+    // reach it, while the predicate they are run through is the very one that scan uses.
+
+    /// <summary>
+    /// Positive control: both ways an instance can change after construction — a settable property and a
+    /// writable field. Must be flagged, twice.
+    /// </summary>
+    public sealed record SeededMutableRecord(string Name)
+    {
+        public string Label { get; set; } = Name;
+
+        // Internal rather than public only to satisfy CA1051, which bans an externally visible instance field.
+        // The detector scans public AND non-public members, so this is the same shape it must catch in the model.
+        internal int Counter = 1;
+    }
+
+    /// <summary>
+    /// Negative control: the immutable forms the model actually uses. A positional parameter, an <c>init</c>
+    /// property and a computed one are all closed after construction, so an over-broad "has a setter" rule
+    /// would false-positive here on every record in the model.
+    /// </summary>
+    public sealed record SeededImmutableRecord(string Name)
+    {
+        public string? Label { get; init; }
+
+        public int Length => Name.Length;
+
+        public static int Shared { get; set; }
+    }
 }
 
 namespace Ihc.Telemetry.Seeded

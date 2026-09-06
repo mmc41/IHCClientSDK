@@ -58,7 +58,7 @@ namespace Ihc.Vis.Reporting
         private static ImmutableArray<ImmutableArray<ReportCell>> FindingRows(Project project, TreeIndex index)
         {
             var rows = ImmutableArray.CreateBuilder<ImmutableArray<ReportCell>>();
-            foreach ((ValidationFinding finding, ProjectElement subject) in DocumentationFindings(project, index))
+            foreach ((ValidationFinding finding, ProjectElement subject) in DocumentationFindings(project))
             {
                 // Resolved by ANCESTRY, not by immediate parent: a terminal's product may be a container or
                 // two above it (the vendor's sensors nest their terminals inside a settings container), and a
@@ -88,7 +88,7 @@ namespace Ihc.Vis.Reporting
         /// </para>
         /// </summary>
         private static ImmutableArray<(ValidationFinding Finding, ProjectElement Subject)> DocumentationFindings(
-            Project project, TreeIndex index)
+            Project project)
         {
             ImmutableArray<ProblemCode> order =
                 [.. DocumentationRules.ProductChecksInReportOrder, .. DocumentationRules.TerminalChecksInReportOrder];
@@ -101,12 +101,16 @@ namespace Ihc.Vis.Reporting
 
             var subjects = ImmutableArray.CreateBuilder<(ValidationFinding, ProjectElement, int)>();
             int arrival = 0;
+            // Held for the whole loop, which resolves the subject of EVERY documentation finding — hundreds on a
+            // large project. A Project holds its index weakly, so this local is what keeps one build serving the
+            // loop instead of a collection mid-way costing another walk of the tree.
+            ProjectIndex elements = project.ElementIndex;
             foreach (ValidationFinding finding in ProjectRules.Validator
                 .Validate(project, ValidationProfile.Categorized)
                 .Findings
                 .Where(f => f.Category == ValidationCategory.Documentation))
             {
-                if (Subject(project, index, finding) is { } subject)
+                if (Subject(elements, finding) is { } subject)
                 {
                     subjects.Add((finding, subject, arrival));
                 }
@@ -129,8 +133,8 @@ namespace Ihc.Vis.Reporting
         }
 
         /// <summary>The element a documentation finding is about, resolved from its primary location.</summary>
-        private static ProjectElement? Subject(Project project, TreeIndex index, ValidationFinding finding) =>
-            finding.Primary?.Element is { } id ? project.FindById(id) : null;
+        private static ProjectElement? Subject(ProjectIndex elements, ValidationFinding finding) =>
+            finding.Primary?.Element is { } id ? elements.FindById(id) : null;
 
     }
 }

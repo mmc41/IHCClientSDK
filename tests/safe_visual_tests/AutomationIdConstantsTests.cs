@@ -36,6 +36,7 @@ public class AutomationIdConstantsTests : AvaloniaTestBase
         AutomationIds.InstallationTree,
         AutomationIds.FunctionsTree,
         AutomationIds.MenuBar,
+        AutomationIds.ToolbarOpen,
         AutomationIds.MenuEdit,
         AutomationIds.MenuView,
         AutomationIds.MenuDocumentation,

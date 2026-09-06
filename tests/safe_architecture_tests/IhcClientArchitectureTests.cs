@@ -139,6 +139,33 @@ namespace Ihc.Tests
         }
 
         /// <summary>
+        /// The project model sits BELOW both mutation layers and must keep sitting there. <c>Ihc.Vis.Projects</c>
+        /// holds <see cref="Project"/> and its lookup index; <c>Ihc.Vis.Editing</c> and <c>Ihc.Vis.Session</c> are
+        /// built on top of it, and both already name it freely.
+        /// <para>The rule earns its place because the index makes the downward pull concrete: the locked-block
+        /// question is answered by walking that index upward, and its definition of "locked" lives on
+        /// <see cref="ProjectEditor"/> — so the walk is kept in the session as an extension rather than folded into
+        /// the index, and this is what fails if a later edit folds it in anyway.</para>
+        /// <para>Asserted over the actual edges rather than as a ban, so the failure names the type that reached
+        /// down. If it ever goes red, the layer order assumed here is wrong and the rule is recast from the edges
+        /// — not weakened with an exemption.</para>
+        /// </summary>
+        [Test]
+        public void ProjectsLayer_ReachesNeitherEditingNorSession()
+        {
+            var reached = DependencyEdges(Sdk, ProjectsNs)
+                .Where(edge => edge.Target.StartsWith(Editing + ".", StringComparison.Ordinal)
+                            || edge.Target.StartsWith(Session + ".", StringComparison.Ordinal))
+                .Select(edge => $"{OutermostTypeName(edge.Origin)} -> {OutermostTypeName(edge.Target)}")
+                .Distinct()
+                .ToList();
+
+            Assert.That(reached, Is.Empty,
+                $"'{ProjectsNs}' is the model both '{Editing}' and '{Session}' are built on, so an edge the other "
+                + "way makes the layering a cycle — offenders: " + string.Join("; ", reached));
+        }
+
+        /// <summary>
         /// A command's <c>Execute</c> may raise exactly one exception type of its own: <see cref="EditRefusedException"/>.
         ///
         /// <para>The two statuses are decided by the exception type — the session maps

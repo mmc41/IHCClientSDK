@@ -390,6 +390,19 @@ public static class E2E
     /// </summary>
     public static IReadOnlyList<string> OpenModalIds() => ModalIdsIn(RunOk("session", "status"));
 
+    /// <summary>
+    /// Which document an envelope reports open — the file name the application itself publishes, empty when it
+    /// publishes none.
+    /// </summary>
+    /// <remarks>
+    /// Off the ENVELOPE the caller already has, rather than asking again: a scenario that read the document
+    /// from a second command would be comparing it against counts from a different moment. The application's
+    /// own answer and never the title bar, for the reason <see cref="WaitForDocument"/> gives — a title carries
+    /// the dirty bullet and the application's name beside a base name, so reading a document out of one is an
+    /// inference that has already sent this harness to assert about the wrong project.
+    /// </remarks>
+    public static string DocumentOf(Envelope envelope) => ContextText(envelope, "document");
+
     /// <summary>The modal stack an envelope ALREADY reports — every envelope carries the context block.</summary>
     private static IReadOnlyList<string> ModalIdsIn(Envelope envelope) =>
         ContextArray(envelope, "openModals").Select(m => m.GetProperty("id").GetString() ?? string.Empty).ToList();
@@ -448,6 +461,30 @@ public static class E2E
     /// waited on is a 300 ms debounce plus one whole-project validation pass.
     /// </remarks>
     private const string BoundTimeoutMs = "10000";
+
+    /// <summary>
+    /// One tier's count off a <c>problems state</c> envelope — of the WHOLE bound result, never of the rows on
+    /// screen.
+    /// </summary>
+    /// <remarks>
+    /// <para>Not <see cref="Envelope.Number"/>, and the difference is the point. The desktop driver reads each
+    /// count by finding its element and parsing its text, and publishes <c>null</c> when it finds neither — a
+    /// panel it could not read, which is the same observer failure <see cref="AssertNoNewFaults"/> refuses to
+    /// treat as an absence of faults. <c>GetInt32</c> over that null throws an exception naming JSON, so the
+    /// one thing the reader would not learn is that the count is missing. Here it fails naming the tier.</para>
+    ///
+    /// <para>It is also why a sweep may not read a tier off <c>problems rows</c>: those are the rows the
+    /// virtualizing list has REALIZED, so a fixture with more findings than fit the panel reports a window into
+    /// its result and nothing about the rest.</para>
+    /// </remarks>
+    public static int TierCount(Envelope state, string tier)
+    {
+        JsonElement value = state.Field(tier);
+        Assert.That(value.ValueKind, Is.EqualTo(JsonValueKind.Number),
+            $"the panel published no '{tier}' count, so nothing can say what that tier holds — read it as the "
+            + $"observer being broken rather than the tier being empty: {state.Raw}");
+        return value.GetInt32();
+    }
 
     /// <summary>The realized rows, as the driver reports them.</summary>
     public static IReadOnlyList<Row> Rows()

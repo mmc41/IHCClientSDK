@@ -530,7 +530,7 @@ Child spans here are what turn a slow load into a *diagnosed* slow load. They ar
 |---|---|---|---|
 | Parse | `ProjectReader.Read` | per load | bytes in, elements out, DTD capture |
 | Serialize | `ProjectSerializer.Serialize` | per save/upload | bytes out |
-| Index | `ProjectIndex.Build` | per **commit** and per session open | element count |
+| Index | `ProjectIndex.Build` | once per **commit**, plus once per snapshot an open queries — measured on the startup route as two, both under `NormalizeOnOpen`'s diff, with the session's open reusing the second | element count |
 | Diff | `ProjectChangeSet.Diff` | per commit | added/removed/changed counts |
 | Validate | `WholeProjectValidator.Validate` | per validation run | rules run, findings emitted; per-rule timing **behind a switch** |
 | Report | `ReportGenerator.Generate` | per report | kind, mode, mime type, bytes |
@@ -567,11 +567,13 @@ Window.Opened
          │  ├─ File.ReadAllBytesAsync
          │  └─ ProjectReader.Read(bytes)                     [+] child: parse + InlineDtd.Capture + SchemaView
          ├─ ProjectAppService.NormalizeOnOpen(project)    [span]
-         │  └─ Edit().NormalizeCatalogEnums().ToProject()
+         │  ├─ Edit().NormalizeCatalogEnums().ToProject()
+         │  └─ ProjectChangeSet.Diff                      [span] only when a listener is attached
+         │     ├─ ProjectIndex.Build                          [+] the pre-normalize tree
+         │     └─ ProjectIndex.Build                          [+] the normalized tree — reused below
          ├─ ProjectWorkflow.SetProject
          │  ├─ ProjectAppService.OpenDocument            [span]
-         │  │  └─ ProjectDocumentSession.Open
-         │  │     └─ ProjectIndex.Build                      [+] child: full pre-order walk
+         │  │  └─ ProjectDocumentSession.Open                 pins the index the diff just built; no walk here
          │  └─ RaiseChanged → StateChanged                        ─────► fans out; see Part 2
          └─ RecentProjectsStore.Add(path)
 ```
@@ -581,6 +583,12 @@ the same `ProjectWorkflow.OpenAsync` from `MainWindowViewModel.OpenAsync` / `Ope
 `RunAsync` — so there the proposed `ihc.project.open` span becomes a child of an existing (but attribute-less)
 `MainWindowViewModel.<op>` span rather than a new root. Its value is the same either way: the attributes and the
 outcome, which no span carries today.
+
+The two builds under `NormalizeOnOpen` are what an **exporter-attached** run looks like: the open-normalization
+diff is guarded on a live listener, and when it runs it is the first thing to ask either tree for its index, so
+both builds land there and `OpenDocument` reuses the second. With no listener the diff does not run and the first
+build happens wherever the document is first queried instead. Read this drawing as one measured shape, not as the
+place the walk belongs.
 
 **Part 2 — what `StateChanged` fans out to.** Two independent subscribers, one of which leaves the UI thread.
 

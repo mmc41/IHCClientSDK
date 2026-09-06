@@ -38,7 +38,12 @@ namespace Ihc.Vis.Session
 
         private Project? _current;
         private Project? _savePoint;
-        private ProjectIndex? _index;
+        // The session's ONE strong reference to a lookup index — a lifetime pin, so the open document's lookups
+        // stay O(1) between gestures, and the witness RequirePinnedIndex checks. Nothing ANSWERS from it: every
+        // gate, probe and diff resolves the index through the snapshot it holds. It is also what keeps history
+        // depth from costing an index per entry, since the snapshots it moves off are then held by nothing but
+        // the undo stack, which holds a Project rather than its maps.
+        private ProjectIndex? _pinnedIndex;
         private int _version;
 
         /// <summary>Where a fault this session mints is reported, or null when nothing collects them.</summary>
@@ -121,9 +126,8 @@ namespace Ihc.Vis.Session
         {
             lock (_sync)
             {
-                _current = project;
+                SetCurrent(project);
                 _savePoint = startClean ? project : null;
-                _index = ProjectIndex.Build(project);
                 _undo.Clear();
                 _redo.Clear();
                 _version++;
@@ -148,9 +152,8 @@ namespace Ihc.Vis.Session
         {
             lock (_sync)
             {
-                _current = null;
+                SetCurrent(null);
                 _savePoint = null;
-                _index = null;
                 _undo.Clear();
                 _redo.Clear();
                 _version++;
@@ -276,6 +279,7 @@ namespace Ihc.Vis.Session
                 return new EditOutcome(EditStatus.Refused, command.GetType().Name, EditRefusals.NoProjectOpenRefusal,
                     null, EditRefusalCodes.NoProjectOpen);
             }
+            RequirePinnedIndex();
             // Label resolves against the pre-edit project (D10): a rename shows the old name, a delete the doomed target.
             string label = command.Describe(current);
             if (baseVersion is { } expected && expected != _version)
@@ -285,7 +289,7 @@ namespace Ihc.Vis.Session
                 return new EditOutcome(EditStatus.Refused, label, EditRefusals.StaleBaseVersionRefusal,
                     null, EditRefusalCodes.StaleBaseVersion);
             }
-            EditVerdict verdict = command.Evaluate(new EditContext(current, _index!));
+            EditVerdict verdict = command.Evaluate(new EditContext(current));
             if (!verdict.Ok)
             {
                 // The verdict's OWN code, carried through unchanged: this is what makes "what the gate refuses,
@@ -478,6 +482,7 @@ namespace Ihc.Vis.Session
             EditOutcome outcome;
             lock (_sync)
             {
+                RequirePinnedIndex();
                 outcome = _current is { } current && step(current) is { } taken
                     ? new EditOutcome(EditStatus.Committed, taken.Label, null,
                         Transition(current, taken.Restored, taken.Label, origin))
@@ -503,7 +508,7 @@ namespace Ihc.Vis.Session
                 {
                     return PreviewOutcome.Refused(EditRefusals.NoProjectOpenRefusal, EditRefusalCodes.NoProjectOpen);
                 }
-                EditVerdict verdict = command.Evaluate(new EditContext(current, _index!));
+                EditVerdict verdict = command.Evaluate(new EditContext(current));
                 if (!verdict.Ok)
                 {
                     return PreviewOutcome.Refused(verdict);
@@ -570,14 +575,14 @@ namespace Ihc.Vis.Session
             lock (_sync)
             {
                 return _current is { } current
-                    ? command.Evaluate(new EditContext(current, _index!))
+                    ? command.Evaluate(new EditContext(current))
                     : EditVerdict.Refuse(EditRefusalCodes.NoProjectOpen, EditRefusals.NoProjectOpenRefusal);
             }
         }
 
-        /// <summary>Whether the pair is a reorderable same-tag sibling pair (US-055) — the index-backed drag-over
-        /// probe (review F5): forwards to the gateway's shared rule against the per-commit index, so the pointer
-        /// path pays dictionary lookups instead of full-tree walks. False when no project is open.</summary>
+        /// <summary>Whether the pair is a reorderable same-tag sibling pair (US-055) — the drag-over probe (review
+        /// F5): forwards to the gateway's shared rule, whose lookups are the open snapshot's own index, so the
+        /// pointer path pays dictionary lookups instead of full-tree walks. False when no project is open.</summary>
         public bool CanReorderNode(ElementId dragged, ElementId target)
         {
             lock (_sync)
@@ -585,24 +590,23 @@ namespace Ihc.Vis.Session
                 // The reorderable-pair rule PLUS the locked-block gate the ReorderNode command enforces (review F02/A1):
                 // a node strictly inside a locked block cannot be reordered, so the drag-over hint must agree with the
                 // Apply it previews — the same IsWithinLockedBlock the command's Evaluate reads, so the two never diverge.
-                return _index is { } index
-                    && ProjectCommands.CanReorderNode(index, dragged, target)
-                    && !index.IsWithinLockedBlock(dragged, inclusive: false);
+                return _current is { } current
+                    && ProjectCommands.IsReorderableNodePair(current, dragged, target)
+                    && !current.ElementIndex.IsWithinLockedBlock(dragged, inclusive: false);
             }
         }
 
         /// <summary>Whether <paramref name="id"/> can move <paramref name="delta"/> positions among its same-tag
-        /// siblings (US-055) — the index-backed MENU-gate peer of <see cref="CanReorderNode"/> (review F02): the
-        /// gateway's own boundary rule resolved from the per-commit index, then the reorder command's own verdict,
-        /// so the gate can never disagree with the Apply it guards and the caller mints nothing until Execute.
-        /// False when no project is open.</summary>
+        /// siblings (US-055) — the MENU-gate peer of <see cref="CanReorderNode"/> (review F02): the gateway's own
+        /// boundary rule, then the reorder command's own verdict, so the gate can never disagree with the Apply it
+        /// guards and the caller mints nothing until Execute. False when no project is open.</summary>
         public bool CanReorder(ElementId id, int delta)
         {
             lock (_sync)
             {
-                return _current is { } current && _index is { } index
-                    && ProjectCommands.ReorderNode(index, id, delta) is { } command
-                    && command.Evaluate(new EditContext(current, index)).Ok;
+                return _current is { } current
+                    && ProjectCommands.ResolveReorderNode(current, id, delta) is { } command
+                    && command.Evaluate(new EditContext(current)).Ok;
             }
         }
 
@@ -654,12 +658,48 @@ namespace Ihc.Vis.Session
         private ProjectChangeSet Transition(Project from, Project to, string label, string origin)
         {
             int baseVersion = _version;
-            ProjectIndex? fromIndex = _index;   // built for `from` (Open/the previous Transition) — reuse, don't re-walk
-            _current = to;
-            _index = ProjectIndex.Build(to);
+            // THROUGH the snapshot, captured BEFORE the pin moves off it: `from` holds its index weakly, so this
+            // local — never the pin — is what keeps the diff from re-walking a tree that was indexed a moment ago.
+            ProjectIndex fromIndex = from.ElementIndex;
+            SetCurrent(to);
             _version++;
-            return ProjectChangeSet.Diff(from, to, baseVersion, _version, origin, label,
-                fromIndex?.ById, _index.ById);
+            // `to.ElementIndex` after the swap is the instance SetCurrent just pinned — a memo hit, not a build.
+            return ProjectChangeSet.Diff(from, to, baseVersion, _version, origin, label, fromIndex, to.ElementIndex);
+        }
+
+        // The pin's ONE writer: the snapshot and the index it belongs to are set together, which is what makes
+        // RequirePinnedIndex's disagreement mean "replaced behind this method's back" rather than "set out of step".
+        private void SetCurrent(Project? project)
+        {
+            _current = project;
+            _pinnedIndex = project?.ElementIndex;
+        }
+
+        /// <summary>
+        /// The session's bookkeeping invariant, checked at the top of every door that will MOVE the session: the
+        /// pinned index is the open snapshot's own. No gate depends on the pin — every guard, probe and diff
+        /// resolves the index through the snapshot it holds — so a drift here cannot make a gate answer wrongly.
+        /// What it says is that the snapshot was replaced behind <see cref="SetCurrent"/>'s back, and a session
+        /// whose bookkeeping has drifted refuses to move rather than pay a rebuild per gesture in silence. It runs
+        /// before anything moves, so the throw leaves the document, the history and the version exactly as they
+        /// were, and it escapes the door as the programming error it is — the path that records it on the door's
+        /// span and files it in the host's internal-error log.
+        /// <para>The comparison is <see cref="ProjectIndex.RequireBuiltFor"/>'s, which compares by ROOT rather
+        /// than by index instance: a background reader may build a second index of the same root while the
+        /// session pins the first, and two indexes of one root are interchangeable — so nobody should "tighten"
+        /// this to a reference check on the index itself. A MISSING pin beside an open document is the same
+        /// defect and is refused the same way, which is why the check goes through
+        /// <see cref="ProjectIndex.RequirePinnedFor"/> rather than dereferencing the field conditionally: the two
+        /// are written together, so a null here says they were written apart.</para>
+        /// </summary>
+        private void RequirePinnedIndex()
+        {
+            if (_current is { } current)
+            {
+                ProjectIndex.RequirePinnedFor(_pinnedIndex, current,
+                    "The session's pinned index was built for a different tree than the open snapshot: "
+                    + "the snapshot was replaced without SetCurrent.");
+            }
         }
 
         // D04: raises Changed for a committed transition — outside the lock, synchronously on the thread that

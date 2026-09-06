@@ -144,5 +144,73 @@ namespace Ihc.Vis.Tests
 
             Assert.That(editor.ToProject(), Is.EqualTo(project), "resolution is side-effect free");
         }
+
+        // The two gates below pin what the lookup maps behind FindById/FindParent must reproduce. Both describe
+        // situations the oracle corpus cannot produce — a duplicated id is a validation error, and a re-rooted
+        // project is built rather than loaded — so they are the only cover the maps' ordering and invalidation have.
+
+        // A shallower candidate and a deeper one, arranged so the two lookups CAN disagree: the first element
+        // carrying the id sits deep, while a later twin hangs directly off a shallower parent. A parent map filled
+        // independently of the element map answers with that shallower parent — which is not the parent of the
+        // element the id resolves to, and is the pair a delete or locked-block gate would then classify from.
+        private static Project WithDuplicatedId(out ElementId duplicated)
+        {
+            var twinId = new ElementId(0x4242, 0x28);
+            duplicated = twinId;
+            ProjectElement Leaf(string tag) => ProjectElement.Create(tag, twinId, [], []);
+            ProjectElement deepBranch = ProjectElement.Create("deep_parent", new ElementId(0x11, 0x28), [],
+                [Leaf("deep_twin")]);
+            ProjectElement shallowParent = ProjectElement.Create("shallow_parent", new ElementId(0x10, 0x28), [],
+                [deepBranch, Leaf("shallow_twin")]);
+            return new Project(ProjectElement.Create("utcs_project", null, [], [shallowParent]));
+        }
+
+        /// <summary>
+        /// The two lookups describe ONE position in the tree, even where an id names more than one element: the id
+        /// resolves to the first element carrying it, and the parent is THAT element's parent.
+        /// </summary>
+        /// <remarks>
+        /// It matters beyond tidiness because the session's ownership gate reads both — the target for the wiring
+        /// and pin clauses, its parent for the catalog clause, its ancestors for the locked one — and classifies a
+        /// delete from the three together. Answered independently, the pair can name a branch the target does not
+        /// sit in, and the gate then allows what <c>ProjectEditor.ClassifyDeletionRefusal</c>'s single chain
+        /// refuses. A duplicated id is itself a validation finding, but a project carrying one still has to be
+        /// safe to open and edit.
+        /// </remarks>
+        [Test]
+        public void DuplicatedId_ResolvesToTheFirstMatchAndToThatMatchsParent()
+        {
+            Project project = WithDuplicatedId(out ElementId duplicated);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(project.FindById(duplicated)?.Tag, Is.EqualTo("deep_twin"),
+                    "FindById answers with the first element carrying the id in document order");
+                Assert.That(project.FindParent(duplicated)?.Tag, Is.EqualTo("deep_parent"),
+                    "and FindParent with the parent of THAT element, not with the shallower element whose "
+                    + "children also happen to carry the id");
+            });
+        }
+
+        [Test]
+        public void ReRootedProject_ResolvesAgainstTheNewTree()
+        {
+            Project project = WithDuplicatedId(out ElementId duplicated);
+            _ = project.FindById(duplicated);   // resolve first, so a stale answer is available to be given
+
+            var movedId = new ElementId(0x99, 0x28);
+            Project moved = project with
+            {
+                Root = ProjectElement.Create("utcs_project", null, [],
+                    [ProjectElement.Create("relocated", movedId, [], [])]),
+            };
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(moved.FindById(movedId)?.Tag, Is.EqualTo("relocated"), "the new tree's element resolves");
+                Assert.That(moved.FindById(duplicated), Is.Null, "the replaced tree's element no longer does");
+                Assert.That(project.FindById(duplicated)?.Tag, Is.EqualTo("deep_twin"), "the original is unaffected");
+            });
+        }
     }
 }

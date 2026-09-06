@@ -176,6 +176,48 @@ public static class Keyboard
     }
 
     /// <summary>
+    /// Types literal text into whatever currently has focus — for the fields no control pattern reaches.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Each character is sent as a UNICODE code unit, never as a key.</b> A key is looked up in the
+    /// active KEYBOARD LAYOUT, so the same virtual key types a different character on a Danish layout than on a
+    /// US one — and a Windows path is made of exactly the characters the two layouts disagree about. Sent this
+    /// way, what arrives is the string that was passed, on any layout. This is also why it takes a string and
+    /// <see cref="Send(UiaGesture)"/> takes a gesture: text and chords are different things, and a caller that
+    /// wants Enter after a path presses it as a gesture.</para>
+    ///
+    /// <para><b>Where it lands is the FOCUS's business, not this method's</b> — see <see cref="Foreground"/>.
+    /// A caller that types without first confirming what is in front types into whatever the person left there.
+    /// The whole string goes in ONE call so no other process's input can interleave halfway through it.</para>
+    ///
+    /// <para>Characters outside the Basic Multilingual Plane are sent as their two surrogate code units, which
+    /// is what the API expects — so an emoji in a path types as one character rather than two mistakes.</para>
+    /// </remarks>
+    /// <param name="text">The text to type. Empty types nothing and succeeds.</param>
+    /// <returns><see langword="false"/> if the system refused to inject it — see <c>SynthesizedInput</c>.</returns>
+    public static bool SendText(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        if (text.Length == 0)
+        {
+            return true;
+        }
+
+        using DpiScope scope = DpiScope.Enter();
+
+        // Two events per code unit: a unicode "key" still has to go down and come up.
+        Span<INPUT> strokes = new INPUT[text.Length * 2];
+        int at = 0;
+        foreach (char unit in text)
+        {
+            strokes[at++] = SynthesizedInput.Unicode(unit, down: true);
+            strokes[at++] = SynthesizedInput.Unicode(unit, down: false);
+        }
+
+        return SynthesizedInput.Send(strokes) == strokes.Length;
+    }
+
+    /// <summary>
     /// The modifiers, in the order they are pressed. Reversed on the way up, so this order is the chord.
     /// </summary>
     private static readonly (UiaModifiers Flag, VIRTUAL_KEY Key)[] ModifierKeys =
@@ -285,6 +327,24 @@ internal static class SynthesizedInput
         INPUT input = new() { type = INPUT_TYPE.INPUT_KEYBOARD };
         input.Anonymous.ki.wVk = key;
         input.Anonymous.ki.dwFlags = down ? 0 : KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP;
+        return input;
+    }
+
+    /// <summary>
+    /// One UTF-16 code unit as a keyboard event that carries the CHARACTER rather than a key.
+    /// </summary>
+    /// <remarks>
+    /// <c>wVk</c> must be zero: with <c>KEYEVENTF_UNICODE</c> the system reads <c>wScan</c> as the character
+    /// and a non-zero virtual key makes the event ambiguous. That is the whole difference from
+    /// <see cref="Key"/>, and it is what makes the result layout-independent.
+    /// </remarks>
+    internal static INPUT Unicode(char unit, bool down)
+    {
+        INPUT input = new() { type = INPUT_TYPE.INPUT_KEYBOARD };
+        input.Anonymous.ki.wVk = 0;
+        input.Anonymous.ki.wScan = unit;
+        input.Anonymous.ki.dwFlags = KEYBD_EVENT_FLAGS.KEYEVENTF_UNICODE
+            | (down ? 0 : KEYBD_EVENT_FLAGS.KEYEVENTF_KEYUP);
         return input;
     }
 

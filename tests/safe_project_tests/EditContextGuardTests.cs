@@ -26,7 +26,7 @@ namespace Ihc.Vis.Tests
         private static async Task<EditContext> Context()
         {
             Project project = await App.Load("testdata/projects/project3-KompleksWired.vis");
-            return new EditContext(project, ProjectIndex.Build(project));
+            return new EditContext(project);
         }
 
         /// <summary>An id no element carries. Well outside the oracle's allocated range.</summary>
@@ -58,7 +58,7 @@ namespace Ihc.Vis.Tests
         public async Task RequireTag_OnAnIdOfAnotherTag_RefusesAsTheWrongKind()
         {
             Project project = await App.Load("testdata/projects/project3-KompleksWired.vis");
-            EditContext context = new(project, ProjectIndex.Build(project));
+            EditContext context = new(project);
 
             EditVerdict verdict = context.RequireTag(
                 PresentButNotAFunctionBlock(project), "en funktionsblok", "functionblock");
@@ -70,6 +70,22 @@ namespace Ihc.Vis.Tests
                 Assert.That(verdict.Reason, Is.EqualTo("Målet er ikke en funktionsblok."),
                     "the noun the command named is spliced into the wrong-kind sentence");
             });
+        }
+
+        /// <summary>
+        /// The context resolves its maps THROUGH the snapshot instead of taking them beside it, which is what
+        /// makes a context over one project and another tree's index unconstructible rather than merely unwise.
+        /// It holds the instance for its own lifetime, so every guard on one context reads one index.
+        /// </summary>
+        [Test]
+        public async Task Context_HoldsTheSnapshotsOwnIndex()
+        {
+            Project project = await App.Load("testdata/projects/project3-KompleksWired.vis");
+
+            EditContext context = new(project);
+
+            Assert.That(context.Index, Is.SameAs(project.ElementIndex),
+                "the maps a guard reads are the open snapshot's own");
         }
 
         /// <summary>

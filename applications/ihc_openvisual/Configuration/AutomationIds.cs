@@ -32,6 +32,17 @@ public static class AutomationIds
     /// <summary>The shell's menu bar.</summary>
     public const string MenuBar = "MenuBar";
 
+    /// <summary>
+    /// The toolbar's <c>Åbn projekt</c> button — the gesture that raises the file picker.
+    /// </summary>
+    /// <remarks>
+    /// Promoted from a literal in the markup because the end-to-end suite's corpus sweep addresses it: an id a
+    /// driver depends on is a contract, and a contract belongs where <c>AutomationIdConstantsTests</c> can hold
+    /// the window to it. Its toolbar siblings stay literals until something addresses them too — a constant per
+    /// button with no reader would be an inventory rather than a contract.
+    /// </remarks>
+    public const string ToolbarOpen = "ToolbarOpen";
+
     /// <summary>The <c>Rediger</c> menu title.</summary>
     public const string MenuEdit = "MenuEdit";
 

@@ -653,7 +653,8 @@
                 </Button>
                 <Button Classes="tool" Command="{Binding OpenCommand}" ToolTip.Tip="Åbn projekt (Ctrl+O)"
                         IsEnabled="{Binding Registry.Toolbar[file.open].Enabled}"
-                        a:AutomationProperties.Name="Åbn projekt" a:AutomationProperties.AutomationId="ToolbarOpen">
+                        a:AutomationProperties.Name="Åbn projekt"
+                        a:AutomationProperties.AutomationId="{x:Static cfg:AutomationIds.ToolbarOpen}">
                     <svg:Svg Classes="toolicon" Path="/Assets/toolbar_open.svg"/>
                 </Button>
                 <Button Classes="tool" Command="{Binding SaveCommand}" ToolTip.Tip="Gem projekt (Ctrl+S)"

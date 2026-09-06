@@ -185,5 +185,46 @@ namespace Ihc.Vis.Tests
                 || cs.ChildListChanged.Count > 0 || cs.MetadataChanged;
             Assert.That(anyChange, Is.True, "the full-document diff detects the oracle mutation");
         }
+
+        /// <summary>
+        /// The optional index parameters are the one place in the engine where an index is still PAIRED with a
+        /// project rather than resolved through it, so they are the one place a caller can pair the wrong two.
+        /// The index says which tree it was built from, so the diff refuses the mismatch instead of reporting a
+        /// delta between one tree's ids and another tree's elements — which would read as a plausible change
+        /// set and reconcile the GUI to a document that never existed.
+        /// </summary>
+        [Test]
+        public void Diff_RefusesAnIndexOfAnotherTree()
+        {
+            Project a = Build(Product("P", Pin("dataline_input", PinA)));
+            Project b = Build(Product("Q", Pin("dataline_input", PinA)));
+
+            Assert.That(
+                () => ProjectChangeSet.Diff(a, b, baseVersion: 1, newVersion: 2, origin: "test", label: "Test edit",
+                    oldIndex: b.ElementIndex),
+                Throws.InvalidOperationException,
+                "an index of another tree is refused, not diffed");
+        }
+
+        /// <summary>The positive control for the check above: handed the RIGHT two, the fast path answers exactly
+        /// as the path that resolves both itself, so the stamp refuses only a genuine mismatch.</summary>
+        [Test]
+        public void Diff_HandedBothIndexes_AnswersAsWithoutThem()
+        {
+            Project a = Build(Product("P", Pin("dataline_input", PinA)));
+            Project b = Build(Product("Q", Pin("dataline_input", PinA), Pin("dataline_output", PinB)));
+
+            ProjectChangeSet handed = ProjectChangeSet.Diff(a, b, 1, 2, "test", "Test edit",
+                a.ElementIndex, b.ElementIndex);
+            ProjectChangeSet resolved = Diff(a, b);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(handed.Added, Is.EquivalentTo(resolved.Added));
+                Assert.That(handed.Removed, Is.EquivalentTo(resolved.Removed));
+                Assert.That(handed.Changed, Is.EquivalentTo(resolved.Changed));
+                Assert.That(handed.ChildListChanged, Is.EquivalentTo(resolved.ChildListChanged));
+            });
+        }
     }
 }

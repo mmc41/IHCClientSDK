@@ -68,6 +68,37 @@ namespace Ihc.Vis.Projects
             }
         }
 
+        // Memoized on exactly the same terms as the schema view above, and for the same tearing reason: ONE
+        // reference pairing the source with what was built from it, keyed here on the Root the maps index. A `with
+        // { Root = ... }` carries this field verbatim, so the reference check is what rebuilds the maps for the new
+        // tree instead of answering from the old one. Built lazily — a project nobody looks anything up in (a
+        // serialize-only path) never pays for it.
+        //
+        // Held WEAKLY, unlike the schema view: the editing session retains every snapshot it has passed through,
+        // and each of those WAS queried while it was current, so a strong memo would cost one index per history
+        // entry rather than one per open document. Whoever needs the lookups to stay O(1) between calls holds the
+        // instance it was handed — the session pins the current snapshot's, a report pins one for its own loop —
+        // and a caller that holds nothing pays a rebuild, never a wrong answer.
+        private sealed record ElementIndexMemo(ProjectElement Source, WeakReference<ProjectIndex> Index);
+        private ElementIndexMemo? elementIndexMemo;
+
+        /// <summary>This tree's id→element / id→parent lookup maps. Built on first use and reused for as long as the
+        /// caller keeps what it was handed — see the lifetime contract on <see cref="ProjectIndex"/>.</summary>
+        internal ProjectIndex ElementIndex
+        {
+            get
+            {
+                ElementIndexMemo? memo = elementIndexMemo;   // snapshot the single reference before comparing/using
+                if (memo is not null && ReferenceEquals(memo.Source, Root) && memo.Index.TryGetTarget(out ProjectIndex? index))
+                {
+                    return index;
+                }
+                index = ProjectIndex.Build(Root);
+                elementIndexMemo = new ElementIndexMemo(Root, new WeakReference<ProjectIndex>(index));
+                return index;
+            }
+        }
+
         /// <summary>
         /// The <c>version_major.version_minor</c> of the project format (4.0 for every known file), or
         /// <c>null</c> when the root does not declare both attributes — never a fabricated default.
@@ -189,18 +220,14 @@ namespace Ihc.Vis.Projects
         /// all descendants), or <c>null</c> when no element carries that id. This is the id-addressable read
         /// primitive a GUI selection model resolves against — unambiguous even where several elements share a name.
         /// </summary>
-        public ProjectElement? FindById(ElementId id) => Root.FindDescendantOrSelf(e => e.Id == id);
+        public ProjectElement? FindById(ElementId id) => ElementIndex.FindById(id);
 
         /// <summary>
         /// Returns the immediate parent of the element carrying the given id, or <c>null</c> when the id is the
         /// root or is absent. <see cref="ProjectElement"/> is an immutable value with no parent pointer, so parent
         /// navigation is resolved here against the tree (the read side of link navigation and far-end paths).
         /// </summary>
-        public ProjectElement? FindParent(ElementId id) =>
-            // The predicate runs once per node of a whole-tree walk, and this walk itself runs per node in a tree
-            // projection — so the inner scan goes through AsImmutableArray to reach the allocation-free
-            // ImmutableArray overload of Any rather than the boxing IEnumerable one.
-            Root.FindDescendantOrSelf(e => e.Children.AsImmutableArray().Any(c => c.Id == id));
+        public ProjectElement? FindParent(ElementId id) => ElementIndex.FindParent(id);
 
         /// <summary>The <c>group</c> localities declared under <c>groups</c>.</summary>
         public IReadOnlyList<ProjectElement> Groups =>

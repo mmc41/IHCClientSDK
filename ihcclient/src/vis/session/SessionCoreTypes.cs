@@ -209,10 +209,24 @@ namespace Ihc.Vis.Session
             new(PreviewStatus.Faulted, null, reason, default, fault);
     }
 
-    /// <summary>The read-only context a command's legality check runs against: the pre-edit project and its
-    /// <see cref="ProjectIndex"/>. Internal — only the session builds and passes it.</summary>
-    internal readonly record struct EditContext(Project Project, ProjectIndex Index)
+    /// <summary>The read-only context a command's legality check runs against: the pre-edit project and ITS index,
+    /// resolved here from the snapshot rather than handed in beside it — so a context cannot be built over one
+    /// project and another tree's maps. Internal — only the session builds and passes it.</summary>
+    /// <remarks>
+    /// A plain struct rather than a record struct, and that is the whole of what makes the sentence above true: a
+    /// record's <c>with</c> copies the stored index verbatim and does not re-run the initializer beside it, so
+    /// <c>context with { Project = other }</c> would mint exactly the mispaired context the type exists to
+    /// foreclose. Nothing here needs value equality or a copy expression, so the one construction door is the
+    /// constructor.
+    /// </remarks>
+    internal readonly struct EditContext(Project project)
     {
+        /// <summary>The snapshot the legality check reads.</summary>
+        public Project Project { get; } = project;
+
+        /// <summary>The snapshot's own maps, held for the context's lifetime so every guard reads one instance.</summary>
+        public ProjectIndex Index { get; } = project.ElementIndex;
+
         /// <summary>Allow when <paramref name="id"/> still resolves in the pre-edit index, else Refuse naming the
         /// <paramref name="noun"/> — the single "does the target still exist?" legality guard the command Evaluate
         /// checks route through, preserving each command's per-noun refusal message (review theme 2).

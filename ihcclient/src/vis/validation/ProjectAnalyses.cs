@@ -34,12 +34,12 @@ namespace Ihc.Vis.Validation
     }
 
     /// <summary>
-    /// What ONE walk over the ids establishes, read by eight rules.
+    /// What ONE walk over the ids establishes, read by every rule that asks.
     /// <para>
     /// This is the case that justifies a shared analysis at all. The shipped validator computes a token-to-element
-    /// map, a counter set and a maximum in a single pass feeding four id rules, then threads the same map into the
+    /// map, a counter set and a maximum in a single pass feeding the id rules, then threads the same map into the
     /// per-attribute pass for the dangling-reference rule and the maximum into the high-water-mark rules. Without
-    /// a shared home each of those eight rules would re-walk the document, and the two that need the walk's
+    /// a shared home each of those rules would re-walk the document, and the ones that need the walk's
     /// ORDER — first holder wins — would each have to re-derive it identically.
     /// </para>
     /// <para>
@@ -93,7 +93,7 @@ namespace Ihc.Vis.Validation
     /// Where an element SITS: its parent, its nearest ancestor of a given tag, and the element an id token names.
     /// <para>
     /// The project tree is immutable and carries no parent pointers, so any rule that has to answer "which
-    /// locality is this pin in" or "which block owns this half" needs a map. Eight wiring rules need exactly that,
+    /// locality is this pin in" or "which block owns this half" needs a map. The wiring rules need exactly that,
     /// which is what makes it a shared analysis rather than a helper inside one of them.
     /// </para>
     /// </summary>
@@ -131,10 +131,10 @@ namespace Ihc.Vis.Validation
     /// </summary>
     public interface IProjectAnalyses
     {
-        /// <summary>Id tokens, counters, the high-water mark and its fault — one walk, feeding eight rules.</summary>
+        /// <summary>Id tokens, counters, the high-water mark and its fault — one walk, feeding every rule that asks.</summary>
         IIdAnalysis Ids { get; }
 
-        /// <summary>Parent pointers, ancestor walks and id resolution — one walk, feeding the eight wiring rules.</summary>
+        /// <summary>Parent pointers, ancestor walks and id resolution — one walk, feeding the wiring rules.</summary>
         ITopologyAnalysis Topology { get; }
 
         /// <summary>
