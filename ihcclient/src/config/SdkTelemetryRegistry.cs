@@ -136,8 +136,15 @@ namespace Ihc
             /// <summary>How many findings a validation run emitted.</summary>
             public const string ValidationFindingsEmitted = "ihc.validation.findings_emitted";
 
-            /// <summary>Which rule a per-rule timing span is about.</summary>
+            /// <summary>Which rule a per-rule timing span, or a crashed-rule event, is about.</summary>
             public const string ValidationRuleCode = "ihc.validation.rule.code";
+
+            /// <summary>
+            /// How many rules a validation run LOST to a crash. Absent when none did, so its presence alone is
+            /// the signal — and it is what stops a run that lost a rule from reading, in the trace, exactly like
+            /// a run that found nothing.
+            /// </summary>
+            public const string ValidationRulesFaulted = "ihc.validation.rules_faulted";
 
             /// <summary>How many id-bearing elements the project holds.</summary>
             public const string ProjectElementCount = "ihc.project.element_count";

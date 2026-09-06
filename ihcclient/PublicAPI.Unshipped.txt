@@ -1173,3 +1173,6 @@ Ihc.App.AuthenticatedAppServiceBase.DisposeAsync() -> System.Threading.Tasks.Val
 *REMOVED*~readonly Ihc.App.InformationAppService.authService -> Ihc.IAuthenticationService
 const Ihc.Vis.Problems.InternalError.ReportedKey = "ihc.internal-error.reported" -> string!
 static Ihc.Vis.Problems.InternalError.ClaimReport(System.Exception! failure) -> bool
+static Ihc.Vis.Problems.InternalError.Describe(System.Exception! failure) -> string!
+static Ihc.Vis.Problems.InternalError.DescribeFully(System.Exception! failure) -> string!
+const Ihc.IhcSettings.ConfigurationSectionName = "ihcclient" -> string!

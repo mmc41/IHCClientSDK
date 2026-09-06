@@ -29,7 +29,7 @@ internal sealed class CatalogImportWorkflow(
 {
     /// <summary>This type's entry point into the instrumentation core.</summary>
     private readonly OperationTelemetry _telemetry =
-        new(AppTelemetryRegistry.Surface, nameof(CatalogImportWorkflow));
+        AppTelemetryRegistry.For(nameof(CatalogImportWorkflow));
 
     /// <summary>Raised after a catalog import changes the available products/function blocks (US-059/US-060).</summary>
     public event EventHandler? CatalogChanged;

@@ -101,8 +101,12 @@ namespace Ihc.App
             }
             try
             {
-                Problem problem = Problem.Unexpected(operationName, failure.Message, failure);
-                port(InternalError.From(problem, InternalErrorOrigin.Sdk, failure.ToString()));
+                // Described through the guarded readers, not the properties. The fail-open catch below keeps a
+                // broken port from becoming the reported failure, but it would keep a fault that cannot describe
+                // ITSELF from being reported at all — a row silently dropped by the machinery whose whole job is
+                // to leave one.
+                Problem problem = Problem.Unexpected(operationName, InternalError.Describe(failure), failure);
+                port(InternalError.From(problem, InternalErrorOrigin.Sdk, InternalError.DescribeFully(failure)));
             }
             catch (Exception)
             {

@@ -307,12 +307,21 @@ namespace Ihc
         private OperationOutcome outcome = OperationOutcome.Ok;
         private bool disposed;
 
-        internal OperationScope(Activity? activity, MetricBinding metrics)
+        internal OperationScope(Activity? activity, MetricBinding metrics, Action<Exception>? onFault = null)
         {
             Activity = activity;
             this.metrics = metrics;
+            this.onFault = onFault;
             startTimestamp = Stopwatch.GetTimestamp();
         }
+
+        /// <summary>
+        /// Where a fault in the RECORDING goes. Bound by the owner to the same port an operation's own exception
+        /// reports through, because the alternative measured worse than it sounds: disposal is fail-open, and
+        /// failing open into nothing meant the one mechanism whose job is to make failures visible was the one
+        /// that could fail invisibly.
+        /// </summary>
+        private readonly Action<Exception>? onFault;
 
         /// <summary>The span, or null when nothing is listening. Callers must tolerate null.</summary>
         public Activity? Activity { get; }
@@ -367,9 +376,20 @@ namespace Ihc
                 ApplyOutcomeToSpan();
                 RecordInstruments(elapsedSeconds);
             }
-            catch (Exception)
+            catch (Exception failure)
             {
-                // Deliberately swallowed. A broken tag or a disposed meter must not fail the caller's work.
+                // Deliberately swallowed. A broken tag or a disposed meter must not fail the caller's work —
+                // but it is REPORTED, because failing open into nothing is how a session reads clean while the
+                // machinery that would have said otherwise is broken. Guarded in turn: a sink that throws must
+                // not become the failure reported on top of the one being reported.
+                try
+                {
+                    onFault?.Invoke(failure);
+                }
+                catch (Exception)
+                {
+                    // See above.
+                }
             }
             finally
             {
@@ -533,7 +553,10 @@ namespace Ihc
         /// <param name="links">Links, which can only be supplied when the span is created.</param>
         public OperationScope Start(string operation, ActivityKind kind = ActivityKind.Internal,
             MetricBinding? metrics = null, IEnumerable<ActivityLink>? links = null) =>
-            new(StartSpan(operation, kind, links), metrics ?? MetricBinding.None);
+            // The recording's own fault port, bound to the operation it belongs to — the owner is the only
+            // party that knows both the name and where a fault goes.
+            new(StartSpan(operation, kind, links), metrics ?? MetricBinding.None,
+                onFault is null ? null : failure => Report(operation, failure));
 
         /// <summary>
         /// Mints the span and NOTHING else, for a legacy helper whose shipped signature returns a bare
@@ -563,7 +586,7 @@ namespace Ihc
             try
             {
                 T result = body(scope);
-                Classify(scope, result, classify);
+                Classify(operation, scope, result, classify);
                 return result;
             }
             catch (Exception ex)
@@ -600,7 +623,7 @@ namespace Ihc
             try
             {
                 T result = await body(scope).ConfigureAwait(false);
-                Classify(scope, result, classify);
+                Classify(operation, scope, result, classify);
                 return result;
             }
             catch (Exception ex)
@@ -630,7 +653,12 @@ namespace Ihc
 
         // Fail-open: a classifier is caller code, and a fault in it must not turn a successful operation
         // into a thrown one. The operation then reports as Ok, which is what it was before classification.
-        private static void Classify<T>(OperationScope scope, T result, Func<T, OperationOutcome>? classify)
+        //
+        // But REPORTED, for the reason disposal's own guard gives: an operation whose outcome could not be
+        // derived reports Ok, which is indistinguishable from one that genuinely succeeded — so failing open
+        // into nothing here is another way for the machinery that records failures to fail invisibly.
+        private void Classify<T>(string operation, OperationScope scope, T result,
+            Func<T, OperationOutcome>? classify)
         {
             if (classify is null)
             {
@@ -640,9 +668,9 @@ namespace Ihc
             {
                 scope.SetOutcome(classify(result));
             }
-            catch (Exception)
+            catch (Exception failure)
             {
-                // Deliberately swallowed; see above.
+                Report(operation, failure);
             }
         }
     }

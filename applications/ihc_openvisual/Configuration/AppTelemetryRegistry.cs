@@ -25,6 +25,26 @@ internal static class AppTelemetryRegistry
         new(Telemetry.ActivitySource,
             new Meter(Telemetry.ActivitySourceName, TelemetryBootstrap.GetAppVersionStr()));
 
+    /// <summary>
+    /// One host owner's entry point into the instrumentation core, WITH the shell's fault port bound.
+    /// </summary>
+    /// <remarks>
+    /// <para>The port is what the SDK's application services already do for themselves, and it answers two
+    /// questions a bare surface leaves silent. A fault escaping an instrumented operation is reported with the
+    /// operation's name, which is the one fact the nets above cannot recover — the dispatcher sees a click and
+    /// the unobserved-task layer sees a continuation. And a fault in the RECORDING — a broken tag, a disposed
+    /// meter — is reported at all: disposal is fail-open by design, and until this was bound it failed open
+    /// into nothing, so the span an operator most needs could lose its status with no record anywhere.</para>
+    /// <para>Through <see cref="Services.TaskSupervisor"/>, so a fault two nets both see is still one row: the
+    /// supervisor's first-sighting claim is what decides which of them files it.</para>
+    /// <para>A factory rather than a line per owner, because binding a port that names the owner is exactly the
+    /// kind of wiring one owner forgets — and a forgotten one is invisible, being the absence of a report.</para>
+    /// </remarks>
+    /// <param name="owner">The owning type's name; spans become <c>&lt;owner&gt;.&lt;operation&gt;</c>.</param>
+    internal static OperationTelemetry For(string owner) =>
+        new(Surface, owner,
+            (operation, failure) => Services.TaskSupervisor.Report(failure, $"{owner}.{operation}"));
+
     /// <summary>Duration of loading a project, from the shell's point of view.</summary>
     internal static Histogram<double> ProjectLoadDuration { get; } =
         Surface.Meter.CreateHistogram<double>(

@@ -126,6 +126,14 @@ internal static class TaskSupervisor
     /// STATIC-CONTEXT fault port — the one for layers with no constructor a port could be injected through — and
     /// the guard is another such layer. One port means one composition-root line and one fail-open guard; a
     /// second port beside it would be two copies of each, free to drift.
+    /// <para>
+    /// <b>It does not throw</b>, and that is a contract its callers depend on rather than a courtesy. The sites
+    /// that reach it are LAST RESORTS — a timer callback whose exception would end the process, a shutdown loop
+    /// whose remaining teardowns would be skipped, a command funnel that owes its caller the row's own exception —
+    /// and each of them has this call as the only statement in its catch. A throw from here would be the very
+    /// failure each of those guards exists to prevent, so the exception is described through the SDK's guarded
+    /// readers, which answer with the type name when a fault cannot describe itself.
+    /// </para>
     /// </remarks>
     /// <param name="fault">The exception to report.</param>
     /// <param name="origin">Where it was observed, as <c>Type.Member</c> — the fault cannot say this itself.</param>
@@ -137,9 +145,10 @@ internal static class TaskSupervisor
         }
         // The payload is built even with no port attached, and that is the price of the buffer: a report made
         // before the composition root arrives has to be KEPT, and it cannot be kept without being formed. The
-        // interpolation calls Exception.ToString(), so an unattached run pays for a stack trace it may never
+        // description calls Exception.ToString(), so an unattached run pays for a stack trace it may never
         // show — bounded by BufferCapacity, and cheap beside losing the start-up faults altogether.
-        Report(HostProblems.Unexpected(fault), InternalErrorOrigin.Host, $"{origin}: {fault}");
+        Report(HostProblems.Unexpected(fault), InternalErrorOrigin.Host,
+            $"{origin}: {InternalError.DescribeFully(fault)}");
     }
 
     /// <summary>

@@ -326,8 +326,8 @@ public sealed class ProjectWorkflow : IDisposable
         // They used to share the guard above, so a broken subscriber answered FALSE for a project that had opened
         // perfectly well; and because StartAsync falls through to the empty starter project on a false, a
         // double-clicked .vis was silently replaced by an empty one behind a dialog saying it could not be opened.
-        Contain(() => RaiseChanged(), $"{nameof(OpenAsync)} state notification");
-        Contain(() => _recent.Add(path), $"{nameof(OpenAsync)} recent list");
+        Contain(scope, () => RaiseChanged(), $"{nameof(OpenAsync)} state notification");
+        Contain(scope, () => _recent.Add(path), $"{nameof(OpenAsync)} recent list");
         scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectFileSize, FileSizeOrNull(path));
         return Ihc.OperationOutcome.Ok;
     }
@@ -801,7 +801,7 @@ public sealed class ProjectWorkflow : IDisposable
     /// <c>ProjectWorkflow.&lt;operation&gt;</c>.
     /// </summary>
     private readonly OperationTelemetry _telemetry =
-        new(AppTelemetryRegistry.Surface, nameof(ProjectWorkflow));
+        AppTelemetryRegistry.For(nameof(ProjectWorkflow));
 
     /// <summary>The binding is IMMUTABLE and its instruments are static, so it is built once rather than per operation.</summary>
     private static readonly Ihc.MetricBinding LoadMetrics =
@@ -871,10 +871,10 @@ public sealed class ProjectWorkflow : IDisposable
         //
         // The exact written snapshot becomes the save point — the document computes dirty by reference, so an
         // edit that slipped in during the write stays dirty (the race fix).
-        Contain(() => _document!.MarkSaved(snapshot), $"{nameof(SaveToAsync)} save point");
-        Contain(() => FilePath = path, $"{nameof(SaveToAsync)} path adoption");
-        Contain(() => _recent.Add(path), $"{nameof(SaveToAsync)} recent list");
-        Contain(() => RaiseChanged(), $"{nameof(SaveToAsync)} state notification");
+        Contain(scope, () => _document!.MarkSaved(snapshot), $"{nameof(SaveToAsync)} save point");
+        Contain(scope, () => FilePath = path, $"{nameof(SaveToAsync)} path adoption");
+        Contain(scope, () => _recent.Add(path), $"{nameof(SaveToAsync)} recent list");
+        Contain(scope, () => RaiseChanged(), $"{nameof(SaveToAsync)} state notification");
         scope.Activity?.SetTag(AppTelemetryRegistry.Attributes.ProjectFileSize, FileSizeOrNull(path));
         return Ihc.OperationOutcome.Ok;
     }
@@ -926,11 +926,44 @@ public sealed class ProjectWorkflow : IDisposable
         }
     }
 
-    private void ReportInternalFault(Exception failure, string origin)
+    /// <summary>
+    /// The shape for a caller that has no scope in hand — the delegate handed to the catalog workflow, which runs
+    /// under whatever operation invoked it. <see cref="Activity.Current"/> is then the closest true answer to
+    /// "which operation was this inside", and the only one available.
+    /// </summary>
+    private void ReportInternalFault(Exception failure, string origin) =>
+        ReportInternalFault(failure, origin, Activity.Current);
+
+    /// <param name="span">
+    /// The span the fault happened INSIDE, which the caller passes when it owns the operation. Passed rather than
+    /// read from <see cref="Activity.Current"/> because those are not the same question: an ambient activity is
+    /// not scoped by whoever started it, so a child span still current — or a cleared one — would put the event
+    /// on the wrong operation, or on none, while the comment below claimed otherwise.
+    /// </param>
+    private void ReportInternalFault(Exception failure, string origin, Activity? span)
     {
         // The exception itself, and no {Message} beside it: the pipeline already renders it whole, and reading
         // Exception.Message here is the shell's one banned door onto English diagnostic text (ADR-004).
         _logger.LogError(failure, "Internal fault in {Origin}", origin);
+        // ON THE OPERATION'S SPAN, and deliberately WITHOUT touching its status. Contained means the operation
+        // succeeded, so `failed` would be a lie; leaving the span untouched was the other lie, because a reader
+        // opening the trace of a save whose bookkeeping broke saw a flawless save and had to already suspect
+        // something to go looking in the log stream instead. An exception EVENT says both at once, and it is
+        // what a collector already reads as "something went wrong inside this operation".
+        //
+        // Guarded ON ITS OWN, ahead of the sink's guard and not inside it. Recording an exception READS the
+        // exception — the event carries its message and stack — so this frame, which is only ever reached from a
+        // catch that has already CONTAINED a fault, can throw while describing what it contained. Unguarded it
+        // would leave through Contain, un-contain the fault after the bytes were on disk, and skip the durable
+        // row below into the bargain.
+        try
+        {
+            span?.AddException(failure);
+        }
+        catch (Exception)
+        {
+            // See above. The row below is the record that has to survive.
+        }
         if (_faultSink is not { } sink)
         {
             return;
@@ -939,7 +972,7 @@ public sealed class ProjectWorkflow : IDisposable
         {
             sink(InternalError.From(
                 HostProblems.Unexpected(failure), InternalErrorOrigin.Host,
-                $"{nameof(ProjectWorkflow)}.{origin}: {failure}"));
+                $"{nameof(ProjectWorkflow)}.{origin}: {InternalError.DescribeFully(failure)}"));
         }
         catch (Exception)
         {
@@ -1021,7 +1054,8 @@ public sealed class ProjectWorkflow : IDisposable
     /// one guard, a fault in the store left the window title showing the old document over a save that had
     /// succeeded.
     /// </remarks>
-    private void Contain(Action step, string origin)
+    /// <param name="scope">The operation the step belongs to, so the fault is recorded on ITS span.</param>
+    private void Contain(Ihc.OperationScope scope, Action step, string origin)
     {
         try
         {
@@ -1029,7 +1063,7 @@ public sealed class ProjectWorkflow : IDisposable
         }
         catch (Exception ex)
         {
-            ReportInternalFault(ex, origin);
+            ReportInternalFault(ex, origin, scope.Activity);
         }
     }
 

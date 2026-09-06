@@ -102,9 +102,16 @@ public class WorkflowFailureScopeTests
     /// What "the scope was marked" MEANS, in one place: the installer was told, the span ended Error, and it
     /// carries the code. Shared because the defect these tests reproduce is a site that satisfied the first of
     /// those and none of the rest — so a per-test copy is a copy that can quietly drop the half that matters.
+    /// <para>
+    /// <c>internal</c> rather than private, because a fixture driving the same operation through a DIFFERENT
+    /// path — the gesture rather than the workflow door — is asserting the same thing and must not restate it
+    /// more weakly. See <see cref="ReportGestureFailureTests"/>.
+    /// </para>
     /// </summary>
+    /// <param name="harness">The shell whose dialog record is read.</param>
+    /// <param name="span">The operation's span.</param>
     /// <param name="expectedCode">The <c>error.type</c> the span must carry — the only part that differs.</param>
-    private static void AssertRefusedScope(ShellHarness harness, Activity? span, string expectedCode)
+    internal static void AssertRefusedScope(ShellHarness harness, Activity? span, string expectedCode)
     {
         Assert.That(harness.Dialogs.LastProblem, Is.Not.Null, "the installer was told, as before");
         Assert.That(span, Is.Not.Null);

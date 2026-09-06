@@ -157,8 +157,9 @@ namespace Ihc.Vis.Validation
                     catch (Exception ex) when (ex is not RuleRegistrationException
                         && profile.FailurePolicy == RuleFailurePolicy.ReportAndContinue)
                     {
-                        // The RUN still succeeds here, so the run's span cannot carry this: the rule's own span
-                        // is the only place that names which rule misbehaved.
+                        // The RUN still succeeds here, so its OUTCOME cannot carry this. The rule's own span
+                        // names which rule misbehaved when per-rule timing is on; when it is off — the default —
+                        // the run's span carries it as an event instead, recorded where the fault list is built.
                         ruleScope?.SetOutcome(OperationOutcome.Failed(ex));
                         emitted.Add(new Emission(
                             rule.Entry,
@@ -195,11 +196,18 @@ namespace Ihc.Vis.Validation
                     else
                     {
                         (faults ??= []).Add(Fault(emission));
+                        RecordCrashOnRun(scope, emission);
                     }
                 }
 
                 scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.ValidationRulesRun, rulesRun);
                 scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.ValidationFindingsEmitted, reported.Count);
+                // Only when there is something to say. An always-present zero would cost every healthy run a tag
+                // and would make "did this run lose anything" a comparison rather than a presence check.
+                if (faults is { Count: > 0 })
+                {
+                    scope.Activity?.SetTag(SdkTelemetryRegistry.Attributes.ValidationRulesFaulted, faults.Count);
+                }
 
                 EquatableArray<ValidationFinding> findings = reported
                     .Select(e => (Finding: Build(paths, e, profile), Key: SortKey(e, scanOrder)))
@@ -424,8 +432,39 @@ namespace Ihc.Vis.Validation
                 entry.BindTemplate(problem),
                 entry.BindDiagnostic(problem),
                 InternalErrorOrigin.Sdk,
-                failure.ToString(),
+                // Through the guarded reader: this whole path is what ReportAndContinue PROMISES, so a rule whose
+                // exception cannot describe itself must not be the one that takes the run down instead.
+                InternalError.DescribeFully(failure),
                 DateTimeOffset.UtcNow);
+        }
+
+        /// <summary>
+        /// Puts the crash on the RUN's span as an exception event, naming the rule, and deliberately without
+        /// touching the run's status: the run really did succeed, so <c>failed</c> would be a lie — while leaving
+        /// the span untouched was the other one, because with per-rule timing off (the default) a run that lost a
+        /// rule and a run that ran cleanly produced identical traces. An exception event says both at once, and
+        /// is what a collector already reads as "something went wrong inside this operation".
+        /// </summary>
+        /// <remarks>
+        /// FAIL-OPEN, and that is the point of it being a member. Recording an exception READS the exception —
+        /// <see cref="System.Diagnostics.Activity.AddException"/> puts its message and stack on the event — so
+        /// the act of reporting a crashed rule can itself throw. Out of here that throw would leave through
+        /// <c>Telemetry.Run</c>, which would mark the run Failed and rethrow: a rule crash contained by policy
+        /// would fail the validation, which is exactly the opposite of what the policy says.
+        /// </remarks>
+        private static void RecordCrashOnRun(OperationScope scope, Emission emission)
+        {
+            try
+            {
+                scope.Activity?.AddException(emission.Failure!, new System.Diagnostics.TagList
+                {
+                    { SdkTelemetryRegistry.Attributes.ValidationRuleCode, emission.Entry.Code.Value },
+                });
+            }
+            catch (Exception)
+            {
+                // See above. The fault channel already carries this crash; the event is the second telling.
+            }
         }
 
         /// <summary>One reported violation, before it becomes a finding. Carries its emission order as a tiebreak.</summary>

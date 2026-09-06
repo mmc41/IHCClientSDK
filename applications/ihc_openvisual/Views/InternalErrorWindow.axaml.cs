@@ -127,7 +127,7 @@ public partial class InternalErrorWindow : Window
 
     /// <summary>This type's entry point into the instrumentation core.</summary>
     private readonly OperationTelemetry _telemetry =
-        new(AppTelemetryRegistry.Surface, nameof(InternalErrorWindow));
+        AppTelemetryRegistry.For(nameof(InternalErrorWindow));
 
     private void OnCloseClick(object? sender, RoutedEventArgs e) => Close();
 }

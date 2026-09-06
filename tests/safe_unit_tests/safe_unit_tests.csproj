@@ -17,6 +17,10 @@
   <ItemGroup>
     <Compile Include="..\shared\TelemetryRegistryContract.cs" Link="shared\TelemetryRegistryContract.cs" />
     <Compile Include="..\shared\TelemetryCapture.cs" Link="shared\TelemetryCapture.cs" />
+    <!-- The exception that cannot describe itself. Shared because the same claim — that recording a fault does
+         not become the fault — is made about the instrumentation core here and about the validator's
+         report-and-continue policy in the project suite. -->
+    <Compile Include="..\shared\UnreadableException.cs" Link="shared\UnreadableException.cs" />
   </ItemGroup>
 
     <ItemGroup>

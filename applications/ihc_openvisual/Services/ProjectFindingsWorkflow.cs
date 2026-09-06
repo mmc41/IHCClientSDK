@@ -61,7 +61,7 @@ internal sealed class ProjectFindingsWorkflow(
 {
     /// <summary>This type's entry point into the instrumentation core.</summary>
     private readonly OperationTelemetry _telemetry =
-        new(AppTelemetryRegistry.Surface, nameof(ProjectFindingsWorkflow));
+        AppTelemetryRegistry.For(nameof(ProjectFindingsWorkflow));
 
     /// <summary>The ONE title over a findings list that could not be written.</summary>
     internal const string ExportFailedTitle = "Eksport mislykkedes";

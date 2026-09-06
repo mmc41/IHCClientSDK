@@ -606,7 +606,29 @@ internal static class HostProblems
     /// bans the read carries one named exemption instead of a growing list.
     /// </summary>
     /// <param name="cause">The exception whose English text becomes diagnostic detail.</param>
-    private static string Detail(Exception cause) => cause.Message;
+    /// <remarks>
+    /// <para>GUARDED, because the read is not always safe: <see cref="Exception.Message"/> is virtual, so a type
+    /// is free to compute it and free to throw doing so. The site that most needs this — the catch-all below —
+    /// is reached from catches that have ALREADY contained a fault (the workflow's bookkeeping steps, the
+    /// shutdown loop, the timer callback), and an unguarded read there replaces the contained fault with the
+    /// reporting one, out of the very frame that was containing it.</para>
+    /// <para>Spelled out here rather than delegated to the SDK's identical <c>InternalError.Describe</c>,
+    /// deliberately: this read is the one the architecture ban exempts BY NAME, and moving it behind an SDK call
+    /// would take it out of the scan's reach — leaving a door onto English diagnostic text that no per-site
+    /// triage covers. The five lines are the price of the ban keeping its reach.</para>
+    /// </remarks>
+    private static string Detail(Exception cause)
+    {
+        try
+        {
+            return cause.Message;
+        }
+        catch (Exception)
+        {
+            // The type name is the one thing an exception cannot refuse to answer.
+            return cause.GetType().FullName ?? nameof(Exception);
+        }
+    }
 
     /// <summary>
     /// Builds the problem for an entry: the entry's template bound with its arguments, the English detail in the

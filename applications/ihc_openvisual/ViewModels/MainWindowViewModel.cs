@@ -2479,7 +2479,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <c>MainWindowViewModel.&lt;operation&gt;</c> exactly as they did.
     /// </summary>
     private readonly Ihc.OperationTelemetry _telemetry =
-        new(AppTelemetryRegistry.Surface, nameof(MainWindowViewModel));
+        AppTelemetryRegistry.For(nameof(MainWindowViewModel));
 
     /// <summary>
     /// The application's fault sink, or none. Held rather than reached for: it outlives every document and is

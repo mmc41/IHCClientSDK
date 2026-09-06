@@ -278,5 +278,56 @@ namespace Ihc.Vis.Problems
             }
             return true;
         }
+
+        /// <summary>
+        /// The exception's own English sentence, or its type name when the exception cannot produce one.
+        /// </summary>
+        /// <remarks>
+        /// <para><see cref="Exception.Message"/> is VIRTUAL, so a type is free to compute it — and free to throw
+        /// while doing so. Every reporting path reads it, and every one of those reads happens inside a catch
+        /// that has already contained something: a throw there does not merely lose the row, it replaces the
+        /// fault being reported with a worse one raised by the machinery that was recording it.</para>
+        /// <para>The TYPE NAME is the fallback because it is the one thing an exception cannot refuse to answer,
+        /// and it is what a reader needs first in any case.</para>
+        /// </remarks>
+        /// <param name="failure">The exception to describe.</param>
+        /// <returns>The message, or the type name.</returns>
+        public static string Describe(Exception failure)
+        {
+            ArgumentNullException.ThrowIfNull(failure);
+            try
+            {
+                return failure.Message;
+            }
+            catch (Exception)
+            {
+                return TypeNameOf(failure);
+            }
+        }
+
+        /// <summary>
+        /// The exception's whole captured text — message, type and stack — or its type name when it cannot
+        /// produce one.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="Exception.ToString"/> reads <see cref="Exception.Message"/>, so it carries the hazard
+        /// <see cref="Describe"/> documents; this is that guard for the sites capturing the full text.
+        /// </remarks>
+        /// <param name="failure">The exception to describe.</param>
+        /// <returns>The full text, or the type name.</returns>
+        public static string DescribeFully(Exception failure)
+        {
+            ArgumentNullException.ThrowIfNull(failure);
+            try
+            {
+                return failure.ToString();
+            }
+            catch (Exception)
+            {
+                return TypeNameOf(failure);
+            }
+        }
+
+        private static string TypeNameOf(Exception failure) => failure.GetType().FullName ?? nameof(Exception);
     }
 }

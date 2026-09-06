@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Reflection;
+using Ihc.Tests.Shared;
 using Ihc.Vis.Problems;
 
 namespace Ihc.Vis.Tests
@@ -106,6 +107,41 @@ namespace Ihc.Vis.Tests
                 InternalErrorOrigin.Platform, "detail", DateTimeOffset.UnixEpoch);
 
             Assert.That(error.Diagnostic, Is.Null);
+        }
+
+        /// <summary>
+        /// The two guarded readers every reporting path forms its <c>Detail</c> with. Their whole reason for
+        /// existing is the second case below: <see cref="Exception.Message"/> is virtual, and every reporting
+        /// path is reached from a catch that has already contained something — so an unguarded read there does
+        /// not lose a row, it replaces the contained fault with the one raised while describing it.
+        /// </summary>
+        [Test]
+        public void AnExceptionThatDescribesItself_IsQuotedAsItIs()
+        {
+            InvalidOperationException failure = new("the rule read something that was not there");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(InternalError.Describe(failure), Is.EqualTo(failure.Message));
+                Assert.That(InternalError.DescribeFully(failure), Does.Contain(failure.Message),
+                    "the full text still carries the message it is built from");
+            });
+        }
+
+        [Test]
+        public void AnExceptionThatCannotDescribeItself_IsNamedByItsType()
+        {
+            UnreadableException failure = new();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(InternalError.Describe(failure),
+                    Is.EqualTo(typeof(UnreadableException).FullName),
+                    "the type name is the one thing an exception cannot refuse to answer");
+                Assert.That(InternalError.DescribeFully(failure),
+                    Is.EqualTo(typeof(UnreadableException).FullName),
+                    "ToString reads Message, so it carries the same hazard and needs the same fallback");
+            });
         }
     }
 }

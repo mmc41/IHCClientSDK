@@ -28,7 +28,17 @@ public partial class App : Application
     /// <c>App.&lt;operation&gt;</c>, and this layer opens exactly one of them: the launch.
     /// </summary>
     private static readonly Ihc.OperationTelemetry Telemetry =
-        new(AppTelemetryRegistry.Surface, nameof(App));
+        AppTelemetryRegistry.For(nameof(App));
+
+    /// <summary>
+    /// The launch operation while it is open, for the ONE reader that needs it: <c>Program.Main</c>'s catch,
+    /// which is where a start-up failure is reported and which has no other way to reach a scope this layer
+    /// opened. Static because the composition root is reached once per process and <c>Main</c> is not in a
+    /// position to be handed anything.
+    /// <para>Left set after a normal launch closes it: <c>OperationScope.Dispose</c> is idempotent, so a fault
+    /// arriving later cannot re-open, re-time or re-report a launch that already exported its span.</para>
+    /// </summary>
+    internal static Ihc.OperationScope? LaunchScope { get; private set; }
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -41,11 +51,13 @@ public partial class App : Application
             // operation to open, only fragments.
             //
             // Held in a local rather than a `using`: the last phase runs in the Opened handler below, which is
-            // where this is disposed. The cost of that shape, stated: a launch that throws before reaching the
-            // handler never disposes the scope and exports no span — which is what happens today anyway, and
-            // Main's catch is what reports such a failure.
+            // where this is disposed. The cost of that shape used to be that a launch which threw before
+            // reaching the handler never disposed the scope and exported no span at all — measured on a live
+            // launch: a Critical log record and zero spans for the whole run. Published below instead, so
+            // Main's catch can close it as the failure it was.
             System.Diagnostics.Activity? ambient = System.Diagnostics.Activity.Current;
             Ihc.OperationScope startup = Telemetry.Start("Startup");
+            LaunchScope = startup;
             // Composition root: one shared logging/telemetry pipeline, one ProjectAppService and one
             // ProjectWorkflow for the whole window (US-063). The app is file-only: no controller is passed, so
             // the SDK service runs against its embedded catalog with no network/install needed.
@@ -176,11 +188,31 @@ public partial class App : Application
     /// </remarks>
     private static void DisposeOnShutdown(
         IClassicDesktopStyleApplicationLifetime desktop, params IDisposable[] owned) =>
-        desktop.ShutdownRequested += (_, _) =>
+        desktop.ShutdownRequested += (_, _) => DisposeAll(owned);
+
+    /// <summary>
+    /// Releases each item, and does not let one failure stop the rest.
+    /// </summary>
+    /// <remarks>
+    /// Contained PER ITEM, for the reason the ORDER exists at all: a subscriber that cannot let go must not keep
+    /// the ones after it attached. And a fault raised straight off the shutdown event has no caller to catch it,
+    /// so before this it left no record anywhere and silently skipped every remaining teardown.
+    /// <para>A member rather than a lambda body because this is the decision, and a test can reach a member.</para>
+    /// </remarks>
+    /// <param name="owned">What to release, in teardown order.</param>
+    internal static void DisposeAll(params IDisposable[] owned)
+    {
+        ArgumentNullException.ThrowIfNull(owned);
+        foreach (IDisposable item in owned)
         {
-            foreach (IDisposable item in owned)
+            try
             {
                 item.Dispose();
             }
-        };
+            catch (Exception fault)
+            {
+                TaskSupervisor.Report(fault, $"{nameof(DisposeAll)}: {item.GetType().Name}");
+            }
+        }
+    }
 }

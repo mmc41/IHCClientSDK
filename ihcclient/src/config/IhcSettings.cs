@@ -100,6 +100,14 @@ namespace Ihc
         }
 
         /// <summary>
+        /// The configuration section these settings are read from. Named here because a host that has to ask
+        /// whether the section is PRESENT — a file-only editor, for which an absent controller section is an
+        /// ordinary configuration rather than a fault — would otherwise keep a second copy of the key, free to
+        /// drift from the one this method reads.
+        /// </summary>
+        public const string ConfigurationSectionName = "ihcclient";
+
+        /// <summary>
         /// Reads IHC client settings from a IConfiguration (usually built from ihcsettings.json file).
         /// Will decrypt sensitive data if encryption is enabled (using SimpleSecret).
         /// </summary>
@@ -108,7 +116,7 @@ namespace Ihc
         public static IhcSettings GetFromConfiguration(IConfigurationRoot config)
         {
             ArgumentNullException.ThrowIfNull(config);
-            var settings = config.GetSection("ihcclient").Get<IhcSettings>();
+            var settings = config.GetSection(ConfigurationSectionName).Get<IhcSettings>();
             if (settings == null)
             {
                 throw new InvalidOperationException("Could not read IHC client settings from configuration");

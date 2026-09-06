@@ -15,7 +15,7 @@ public partial class AboutWindow : Window
 {
     /// <summary>This type's entry point into the instrumentation core.</summary>
     private readonly OperationTelemetry _telemetry =
-        new(AppTelemetryRegistry.Surface, nameof(AboutWindow));
+        AppTelemetryRegistry.For(nameof(AboutWindow));
 
     private readonly ILogger<AboutWindow> _logger;
     private readonly IDialogService? _dialogs;

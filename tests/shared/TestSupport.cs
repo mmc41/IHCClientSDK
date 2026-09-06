@@ -476,11 +476,20 @@ public sealed class FakeDialogService : IDialogService
 
     public ihc_openvisual.ViewModels.ReportPickerViewModel? LastReportPickerViewModel { get; private set; }
     public int ShowReportPickerCalls { get; private set; }
+    /// <summary>
+    /// What the picker "does" while it is up. A test that only wants to know the picker was raised leaves this
+    /// null; one that wants the whole report gesture — picker, choice, generation — sets it, and the work then
+    /// happens INSIDE the shell command's scope, the way it does when a person presses the button.
+    /// </summary>
+    public Func<ihc_openvisual.ViewModels.ReportPickerViewModel, Task>? ReportPickerResponder { get; set; }
+
     public Task ShowReportPickerAsync(IReportPickerViewModel viewModel)
     {
         ShowReportPickerCalls++;
         LastReportPickerViewModel = viewModel as ihc_openvisual.ViewModels.ReportPickerViewModel;   // tests use the concrete VM (T015 seam)
-        return Task.CompletedTask;
+        return ReportPickerResponder is { } respond && LastReportPickerViewModel is { } picker
+            ? respond(picker)
+            : Task.CompletedTask;
     }
 
     public DatalineModuleMap? LastModuleMap { get; private set; }

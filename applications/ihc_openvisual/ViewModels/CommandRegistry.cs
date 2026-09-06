@@ -138,7 +138,7 @@ public sealed class CommandRegistry : ObservableObject
 
     /// <summary>The registry's entry point into the instrumentation core.</summary>
     private readonly Ihc.OperationTelemetry _telemetry =
-        new(ihc_openvisual.Configuration.AppTelemetryRegistry.Surface, nameof(CommandRegistry));
+        ihc_openvisual.Configuration.AppTelemetryRegistry.For(nameof(CommandRegistry));
 
     /// <summary>The binding is IMMUTABLE and its instruments are static, so it is built once rather than per operation.</summary>
     private static readonly Ihc.MetricBinding InvokeMetrics =
@@ -203,6 +203,13 @@ public sealed class CommandRegistry : ObservableObject
                 // it is the only record there would be: a row that faults past the view-model's error boundary
                 // is by definition one that boundary did not handle.
                 scope.SetOutcome(Ihc.OperationOutcome.Failed(ex));
+                // AND a durable row, named for the gesture. What the rethrow reaches is the dispatcher net,
+                // which files one naming the dispatcher — because that is all it can see. This frame is the
+                // only one that holds the command id, and losing it left a fault storm reading as N identical
+                // "unexpected error" rows for N different gestures. Reported BEFORE the rethrow, for the
+                // ordering FailureReport documents; the supervisor's first-sighting claim is what stops the
+                // net below from filing the same exception a second time.
+                Services.TaskSupervisor.Report(ex, row.Id);
                 throw;
             }
         }

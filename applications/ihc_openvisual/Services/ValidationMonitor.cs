@@ -271,7 +271,7 @@ public sealed class ValidationMonitor : IDisposable
 
     /// <summary>The monitor's entry point into the instrumentation core.</summary>
     private readonly Ihc.OperationTelemetry _telemetry =
-        new(ihc_openvisual.Configuration.AppTelemetryRegistry.Surface, nameof(ValidationMonitor));
+        ihc_openvisual.Configuration.AppTelemetryRegistry.For(nameof(ValidationMonitor));
 
     private void Publish()
     {

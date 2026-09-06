@@ -43,6 +43,9 @@
     <Compile Include="..\shared\FindingOracleHarness.cs" Link="shared\FindingOracleHarness.cs" />
     <Compile Include="..\shared\FindingOracleRows.cs" Link="shared\FindingOracleRows.cs" />
     <Compile Include="..\shared\TelemetryCapture.cs" Link="shared\TelemetryCapture.cs" />
+    <!-- The exception that cannot describe itself; see the SDK suite, which makes the same claim about the
+         instrumentation core that this one makes about the validator and the shell's contained bookkeeping. -->
+    <Compile Include="..\shared\UnreadableException.cs" Link="shared\UnreadableException.cs" />
     <!-- The registry contract the app's telemetry registration is asserted against, shared with the suites
          that hold such a registration. -->
     <Compile Include="..\shared\TelemetryRegistryContract.cs" Link="shared\TelemetryRegistryContract.cs" />

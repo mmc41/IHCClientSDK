@@ -24,7 +24,7 @@ internal sealed class ProjectReportWorkflow(
 {
     /// <summary>This type's entry point into the instrumentation core.</summary>
     private readonly OperationTelemetry _telemetry =
-        new(AppTelemetryRegistry.Surface, nameof(ProjectReportWorkflow));
+        AppTelemetryRegistry.For(nameof(ProjectReportWorkflow));
 
     private string? _viewDirectory;
 

@@ -556,7 +556,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
 
     /// <summary>The panel's entry point into the instrumentation core.</summary>
     private readonly Ihc.OperationTelemetry _telemetry =
-        new(ihc_openvisual.Configuration.AppTelemetryRegistry.Surface, nameof(ProblemsPanelViewModel));
+        ihc_openvisual.Configuration.AppTelemetryRegistry.For(nameof(ProblemsPanelViewModel));
 
     /// <summary>
     /// Every element in the snapshot that carries an id, keyed by it — <b>with a null value against an id that

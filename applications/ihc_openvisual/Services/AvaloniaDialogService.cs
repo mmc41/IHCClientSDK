@@ -30,7 +30,7 @@ public sealed class AvaloniaDialogService : IDialogService
 
     /// <summary>This service's entry point into the instrumentation core.</summary>
     private readonly Ihc.OperationTelemetry _telemetry =
-        new(AppTelemetryRegistry.Surface, nameof(AvaloniaDialogService));
+        AppTelemetryRegistry.For(nameof(AvaloniaDialogService));
 
     /// <summary>
     /// One modal's span, covering the whole wait — from raising the dialog to the person answering it.

@@ -117,7 +117,7 @@ internal sealed class Program
         {
             // Main is void, so this is the only way a windowed application can tell its launcher that the run
             // failed. Everything the report DECIDES lives in the member below, where a test can reach it.
-            Environment.ExitCode = ReportFatalStartup(ex, LoggerFactory, DefaultLastResortPath());
+            Environment.ExitCode = ReportFatalStartup(ex, LoggerFactory, DefaultLastResortPath(), App.LaunchScope);
         }
         finally
         {
@@ -146,9 +146,23 @@ internal sealed class Program
     /// <param name="error">The fault that stopped start-up.</param>
     /// <param name="loggerFactory">The pipeline, or null when it never came up.</param>
     /// <param name="lastResortPath">Where the breadcrumb goes when there is no pipeline.</param>
+    /// <param name="launch">
+    /// The launch scope, when composition had already opened one. It is normally closed by the window's
+    /// <c>Opened</c> handler, which a start-up that failed never reaches — so without this the launch an
+    /// operator most needs to find is the only one that exports no span at all. Measured: a fault in the
+    /// composition root produced a Critical log record and zero spans for the whole run.
+    /// </param>
     /// <returns>The exit code to report.</returns>
-    internal static int ReportFatalStartup(Exception error, ILoggerFactory? loggerFactory, string lastResortPath)
+    internal static int ReportFatalStartup(Exception error, ILoggerFactory? loggerFactory, string lastResortPath,
+                                           Ihc.OperationScope? launch = null)
     {
+        // BEFORE the log record, for the reason FailureReport gives about ordering: the outcome first, because
+        // what comes after it can be slow, can fail on its own, or can be the thing that is broken.
+        if (launch is not null)
+        {
+            launch.SetOutcome(Ihc.OperationOutcome.Failed(error));
+            launch.Dispose();   // Idempotent, so a launch that had already closed keeps the span it exported.
+        }
         if (loggerFactory is { } factory)
         {
             factory.CreateLogger("Ihc.OpenVisual.Startup").LogCritical(error, "Fatal startup error");

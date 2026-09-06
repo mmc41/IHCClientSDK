@@ -99,14 +99,27 @@ public sealed class AppConfiguration
         {
             return settingsFileFound ? IhcSettings.GetFromConfiguration(config) : new IhcSettings();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // NOT reported as a fault, unlike the outer guard, and the difference is measured rather than
-            // stylistic: this editor is file-only, so a settings file carrying just a telemetry section is an
-            // ORDINARY configuration — and GetFromConfiguration throws on the absent ihcclient section every
-            // time. Reporting here would put an internal-error row in front of every installer who configured
-            // telemetry and no controller. A malformed section arrives as the same exception from the same call,
-            // so the two cannot be told apart at this layer; the common one wins.
+            // Reported only when the section is THERE, and that distinction is the whole of this guard. This
+            // editor is file-only, so a settings file carrying just a telemetry section is an ORDINARY
+            // configuration — and GetFromConfiguration throws on the absent ihcclient section every time, so
+            // reporting unconditionally would put an internal-error row in front of every installer who
+            // configured telemetry and no controller.
+            //
+            // The two WERE indistinguishable while only the exception was looked at; they are not, because
+            // whether the section exists is a different question from whether reading it worked, and the
+            // configuration root answers the first one directly. Measured across the settings and encryption
+            // chain — the section read, the encryption switch, the secret, the decrypt, the base64 decode —
+            // every failure produced an editor that started blank with no record of any kind, so an installer
+            // whose encrypted password is one character short got exactly what an installer with no controller
+            // gets. Buffered by the supervisor until the composition root attaches, like the outer guard's.
+            // The SDK's own key, not a copy of the literal: the question asked here is whether the section THAT
+            // CALL reads is present, so the two have to be the same string by construction.
+            if (config.GetSection(IhcSettings.ConfigurationSectionName).Exists())
+            {
+                Services.TaskSupervisor.Report(ex, $"{nameof(AppConfiguration)}.{nameof(ControllerSettings)}");
+            }
             return new IhcSettings();
         }
     }

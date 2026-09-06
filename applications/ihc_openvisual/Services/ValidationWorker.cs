@@ -218,7 +218,48 @@ public sealed class ValidationWorker : IDisposable
         abandoned.Dispose();
     }
 
+    /// <summary>
+    /// The timer's callback. Guarded, because it is the ONE frame in this loop that nothing else observes: an
+    /// exception raised here leaves through <see cref="System.Threading.Timer"/> onto a pool thread with no
+    /// caller, which on .NET ends the process. The run it starts is observed twice over (see
+    /// <see cref="RunAsync"/>); until this guard existed, the few statements BEFORE that run were observed by
+    /// nothing at all.
+    /// </summary>
     private void OnQuietPeriodElapsed()
+    {
+        try
+        {
+            StartQuietPeriodRun();
+        }
+        catch (Exception fault)
+        {
+            // The supervisor, not a rethrow: there is nobody above this to catch it, and a timer callback that
+            // throws takes the application with it.
+            TaskSupervisor.Report(fault, $"{nameof(ValidationWorker)}.{nameof(OnQuietPeriodElapsed)}");
+            // AND the latch released, because reporting alone would trade a dead process for a dead loop: the
+            // in-flight flag is raised before the run is started, so a fault between the two leaves it raised
+            // with no run to lower it, and every later quiet period then coalesces into a run that never comes.
+            ReleaseAbandonedRun();
+        }
+    }
+
+    /// <summary>Lowers the in-flight flag for a run that was claimed but never started.</summary>
+    /// <remarks>
+    /// Not <see cref="StartFollowUpOrGoIdle"/>: that lowers the flag in order to start the NEXT run, and starting
+    /// one from the frame that just failed to start one is how a fault becomes a loop. This gives the worker back
+    /// to the timer instead — the next edit gets a normal debounce, and a waiter on idle is released.
+    /// </remarks>
+    private void ReleaseAbandonedRun()
+    {
+        lock (_gate)
+        {
+            _running = false;
+            if (_pending is null)
+                _idle.TrySetResult();
+        }
+    }
+
+    private void StartQuietPeriodRun()
     {
         ValidationRequest request;
         CancellationToken token;
@@ -323,7 +364,7 @@ public sealed class ValidationWorker : IDisposable
 
     /// <summary>The worker's entry point into the instrumentation core.</summary>
     private readonly Ihc.OperationTelemetry _telemetry =
-        new(ihc_openvisual.Configuration.AppTelemetryRegistry.Surface, nameof(ValidationWorker));
+        ihc_openvisual.Configuration.AppTelemetryRegistry.For(nameof(ValidationWorker));
 
     /// <summary>The binding is IMMUTABLE and its instruments are static, so it is built once rather than per operation.</summary>
     private static readonly Ihc.MetricBinding RunMetrics =
