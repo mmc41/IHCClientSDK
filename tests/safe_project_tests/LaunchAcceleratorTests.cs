@@ -32,10 +32,17 @@ public class LaunchAcceleratorTests
         string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         string roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
+        // macOS resolves BOTH special folders to ~/Library/Application Support, so there is no roaming folder to
+        // stay out of and the door a caller took leaves no trace: the assertions below would hold whichever one
+        // it was. Nothing here is platform-specific — both paths come from the same source on every platform —
+        // so the Windows and Linux runs, where the folders differ, pin the distinction for all three.
+        if (local == roaming)
+        {
+            Assert.Ignore("this platform has one application-data folder, so local and roaming cannot be told apart");
+        }
+
         Assert.Multiple(() =>
         {
-            Assert.That(local, Is.Not.EqualTo(roaming),
-                "the distinction the assertions below rest on has to exist on this platform");
             Assert.That(Program.JitProfileDirectory(), Does.StartWith(local + Path.DirectorySeparatorChar),
                 "a profile keyed to this machine's binaries must not follow the user to another machine");
             Assert.That(Program.DefaultLastResortPath(), Does.StartWith(roaming + Path.DirectorySeparatorChar),
