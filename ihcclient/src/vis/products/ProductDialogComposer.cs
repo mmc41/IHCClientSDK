@@ -228,48 +228,31 @@ namespace Ihc.Vis.Products
         /// the work rather than of the workstation, and makes it reproducible in a test.</para>
         /// <para>Always an open combo: the list is a typing aid, never a constraint. A value used nowhere yet is
         /// still typeable, which is what keeps a suggestion list from silently becoming an enumeration.</para>
-        /// <para>Gathered in ONE pass over the project for ALL of the preset's suggesting attributes at once, keyed
-        /// by attribute. The modem offers seven such fields and a project walk materializes the whole tree, so
-        /// asking per field re-walked a 1300-element project seven times to open one dialog.</para>
+        /// <para>Gathered for ALL of the preset's suggesting attributes at once, keyed by attribute, and by the
+        /// PROJECT rather than here: the walk is over the whole tree and its answer is the same for every product
+        /// in one snapshot, so <see cref="Project.DistinctAttributeValues"/> memoizes it on the tree. Composed per
+        /// element, this used to re-walk an 18 000-element project once per product dialog — which the problems
+        /// panel does hundreds of times per validation run.</para>
         /// </summary>
         private static FrozenDictionary<string, EquatableArray<string>> GatherSuggestions(
             Project project, ProductDialogModel preset)
         {
-            var wanted = new Dictionary<string, SortedSet<string>>(StringComparer.Ordinal);
+            var wanted = new HashSet<string>(StringComparer.Ordinal);
             foreach (DialogGroupModel group in preset.Groups)
             {
                 foreach (DialogPartModel part in group.Parts)
                 {
                     if (part is DialogFieldModel { Control: DialogControlKind.ComboSuggest } field)
                     {
-                        wanted[field.Binding.AttributeName] = new SortedSet<string>(StringComparer.Ordinal);
+                        wanted.Add(field.Binding.AttributeName);
                     }
                 }
             }
 
-            // No suggesting field in the preset — four of the five families — so the project walk never starts.
-            if (wanted.Count == 0)
-            {
-                return FrozenDictionary<string, EquatableArray<string>>.Empty;
-            }
-
-            // Attribute-bag-outer, wanted-inner: GetAttribute is a linear scan of the bag, so asking it once per
-            // wanted attribute re-scanned each element's bag N times. One pass per element regardless of N.
-            foreach (ProjectElement element in project.Root.DescendantsAndSelf())
-            {
-                foreach ((string name, string value) in element.Attrs)
-                {
-                    if (wanted.TryGetValue(name, out SortedSet<string>? values) && !string.IsNullOrWhiteSpace(value))
-                    {
-                        values.Add(value);
-                    }
-                }
-            }
-
-            return wanted.ToFrozenDictionary(
-                entry => entry.Key,
-                entry => (EquatableArray<string>)ImmutableArray.CreateRange(entry.Value),
-                StringComparer.Ordinal);
+            // No suggesting field in the preset, so nothing is asked of the project at all.
+            return wanted.Count == 0
+                ? FrozenDictionary<string, EquatableArray<string>>.Empty
+                : project.DistinctAttributeValues(wanted);
         }
 
         /// <summary>

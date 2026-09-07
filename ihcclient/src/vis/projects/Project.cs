@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
@@ -98,6 +99,89 @@ namespace Ihc.Vis.Projects
                 return index;
             }
         }
+
+        // Memoized on exactly the same terms as the two above: ONE reference pairing the tree that was walked
+        // with what the walk produced, keyed on Root, so an edit — which always yields a new tree — rebuilds
+        // instead of answering for the previous file.
+        //
+        // The NAMES are part of the memo because the walk only collects the attributes it was asked for. A
+        // request naming one the memo does not hold rebuilds over the UNION of the two, so callers wanting
+        // different attributes settle into a single walk rather than evicting each other's.
+        //
+        // Held STRONGLY, unlike the element index: the values are the very string instances the tree already
+        // holds, so what this adds is a few hundred references rather than a copy of anything.
+        private sealed record AttributeValueMemo(
+            ProjectElement Source,
+            FrozenSet<string> Names,
+            FrozenDictionary<string, EquatableArray<string>> Values);
+        private AttributeValueMemo? attributeValueMemo;
+
+        /// <summary>
+        /// The distinct, non-blank values each of <paramref name="names"/> is given ANYWHERE in this tree, in
+        /// ordinal order, with an empty entry for a name no element carries.
+        /// </summary>
+        /// <remarks>
+        /// One walk of the whole tree, memoized on it, because the caller is a per-element composition that asks
+        /// the same question of the same snapshot once per element — so a walk per ask is a walk of the project
+        /// per product.
+        /// <para>A SET, and the parameter type says so rather than leaving it to a caller's discretion: the memo
+        /// is compared by subset and the result is keyed by name, so a repeated name would both defeat the
+        /// count comparison below and collide when the result is keyed.</para>
+        /// </remarks>
+        internal FrozenDictionary<string, EquatableArray<string>> DistinctAttributeValues(
+            IReadOnlySet<string> names)
+        {
+            AttributeValueMemo? memo = attributeValueMemo;   // snapshot the single reference before comparing/using
+            bool sameTree = memo is not null && ReferenceEquals(memo.Source, Root);
+            if (sameTree && memo!.Names.IsSupersetOf(names))
+            {
+                return Only(memo.Values, names);
+            }
+
+            var collected = new Dictionary<string, SortedSet<string>>(StringComparer.Ordinal);
+            foreach (string name in names)
+            {
+                collected[name] = new SortedSet<string>(StringComparer.Ordinal);
+            }
+            if (sameTree)
+            {
+                foreach (string name in memo!.Names)
+                {
+                    collected.TryAdd(name, new SortedSet<string>(StringComparer.Ordinal));
+                }
+            }
+
+            // Attribute-bag-outer, wanted-inner: the bag is a linear scan, so asking it once per wanted attribute
+            // re-scans each element's bag once per name. One pass per element regardless of how many are wanted.
+            foreach (ProjectElement element in Root.DescendantsAndSelf())
+            {
+                foreach ((string name, string value) in element.Attrs)
+                {
+                    if (collected.TryGetValue(name, out SortedSet<string>? values)
+                        && !string.IsNullOrWhiteSpace(value))
+                    {
+                        values.Add(value);
+                    }
+                }
+            }
+
+            FrozenDictionary<string, EquatableArray<string>> built = collected.ToFrozenDictionary(
+                entry => entry.Key,
+                entry => (EquatableArray<string>)ImmutableArray.CreateRange(entry.Value),
+                StringComparer.Ordinal);
+            attributeValueMemo =
+                new AttributeValueMemo(Root, collected.Keys.ToFrozenSet(StringComparer.Ordinal), built);
+            return Only(built, names);
+        }
+
+        /// <summary>The asked-for names alone, so no caller can read an attribute another caller's walk added.
+        /// Equal counts mean equal sets here, because <paramref name="all"/> is always a superset of
+        /// <paramref name="names"/> and neither repeats a name.</summary>
+        private static FrozenDictionary<string, EquatableArray<string>> Only(
+            FrozenDictionary<string, EquatableArray<string>> all, IReadOnlySet<string> names) =>
+            all.Count == names.Count
+                ? all
+                : names.ToFrozenDictionary(name => name, name => all[name], StringComparer.Ordinal);
 
         /// <summary>
         /// The <c>version_major.version_minor</c> of the project format (4.0 for every known file), or

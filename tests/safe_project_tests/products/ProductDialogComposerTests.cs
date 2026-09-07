@@ -31,6 +31,27 @@ namespace Ihc.Vis.Tests
         private static DialogDescriptorField Field(ProductDialogDescriptor d, string automationIdSuffix) =>
             d.AllFields.Single(f => f.AutomationId.EndsWith(automationIdSuffix, System.StringComparison.Ordinal));
 
+        /// <summary>An open session over a project with one wired product placed, and that product's id.</summary>
+        private static async Task<(ProjectDocumentSession Session, ElementId Subject)> OneProduct()
+        {
+            (Project project, ElementId subject) = await Placed("_0x2101");
+            var session = new ProjectDocumentSession();
+            session.Open(project);
+            return (session, subject);
+        }
+
+        /// <summary>
+        /// <see cref="OneProduct"/> plus the id of another product already in the file — the two ends a
+        /// suggestion test needs: one product to write a value on, and a second whose dialog must then offer it.
+        /// </summary>
+        private static async Task<(ProjectDocumentSession Session, ElementId Subject, ElementId Other)> TwoProducts()
+        {
+            (ProjectDocumentSession session, ElementId subject) = await OneProduct();
+            ElementId other = session.Current!.Root.Descendants()
+                .First(e => ProductClassifier.IsProduct(e.Tag) && e.Id is not null && e.Id.Value != subject).Id!.Value;
+            return (session, subject, other);
+        }
+
         // ── the repeat expansion (the gate) ─────────────────────────────────────────────────────────
 
         /// <summary>
@@ -260,9 +281,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task AComboSuggestField_OffersTheProjectsOwnValuesForThatAttribute()
         {
-            (Project project, ElementId id) = await Placed("_0x2101");
-            var session = new ProjectDocumentSession();
-            session.Open(project);
+            (ProjectDocumentSession session, ElementId id) = await OneProduct();
             // Two other products get positions; a third repeats one of them.
             ElementId[] others = [.. session.Current!.Root.Descendants()
                 .Where(e => ProductClassifier.IsProduct(e.Tag) && e.Id is not null && e.Id.Value != id)
@@ -293,6 +312,115 @@ namespace Ihc.Vis.Tests
                 Field(App.GetProductDialog(session.Current!, productId), "identitet.placering");
             session.Apply(new ApplyProductDialog(productId,
                 [new ProductDialogEdit(field.Target, field.Attribute, position)]));
+        }
+
+        /// <summary>
+        /// A suggestion list is a fact about the CURRENT snapshot, so an edit that introduces a new value has to
+        /// show up in the very next compose. The list is derived from a whole-project walk that is memoized per
+        /// tree; this is the test that a memo cannot answer for a project it was not built from.
+        /// </summary>
+        [Test]
+        public async Task AComboSuggestField_SeesAValueIntroducedSinceTheLastCompose()
+        {
+            (ProjectDocumentSession session, ElementId id, ElementId other) = await TwoProducts();
+
+            // Composed BEFORE the edit, so a memo exists for the pre-edit tree when the second compose runs.
+            Assert.That(Field(App.GetProductDialog(session.Current!, id), "identitet.placering").Suggestions,
+                Does.Not.Contain("Under trappen"));
+
+            SetPosition(session, other, "Under trappen");
+
+            Assert.That(Field(App.GetProductDialog(session.Current!, id), "identitet.placering").Suggestions,
+                Does.Contain("Under trappen"));
+        }
+
+        /// <summary>
+        /// The suggestion walk is memoized on the TREE it walked, and <c>Project</c> is a record whose <c>Root</c>
+        /// a <c>with</c> can replace while every other field — the memo included — is carried verbatim. Two
+        /// production sites do exactly that (the save stamper and the undo allocator patch); neither happens to
+        /// touch a suggesting attribute today, so only a direct test pins the guard that keeps them honest.
+        /// </summary>
+        [Test]
+        public async Task AProjectGivenADifferentRoot_DoesNotAnswerFromTheTreeItNoLongerHas()
+        {
+            (ProjectDocumentSession session, ElementId id, ElementId other) = await TwoProducts();
+
+            SetPosition(session, other, "Kun her");
+            Project before = session.Current!;
+            // Composed HERE, so `before` is carrying a memo built over its own tree when it is re-rooted below.
+            Assert.That(Field(App.GetProductDialog(before, id), "identitet.placering").Suggestions,
+                Does.Contain("Kun her"), "precondition");
+
+            SetPosition(session, other, "Flyttet");
+            Project carried = before with { Root = session.Current!.Root };
+
+            Assert.That(Field(App.GetProductDialog(carried, id), "identitet.placering").Suggestions,
+                Does.Contain("Flyttet").And.Not.Contain("Kun her"));
+        }
+
+        /// <summary>
+        /// The direction a stale memo gets wrong: a value that STOPS being used must stop being offered. The
+        /// added-value test above passes for a memo that merely appends; only a memo that cannot answer for a
+        /// tree it was not built from passes this one.
+        /// </summary>
+        [Test]
+        public async Task AComboSuggestField_StopsOfferingAValueThatIsNoLongerUsedAnywhere()
+        {
+            (ProjectDocumentSession session, ElementId id, ElementId other) = await TwoProducts();
+
+            SetPosition(session, other, "Kun her");
+            Assert.That(Field(App.GetProductDialog(session.Current!, id), "identitet.placering").Suggestions,
+                Does.Contain("Kun her"), "precondition: the sole holder of the value makes it offerable");
+
+            // The SOLE holder is moved off it, so nothing in the project carries the value any more.
+            SetPosition(session, other, "Flyttet");
+
+            Assert.That(Field(App.GetProductDialog(session.Current!, id), "identitet.placering").Suggestions,
+                Does.Contain("Flyttet").And.Not.Contain("Kun her"));
+        }
+
+        /// <summary>
+        /// A SECOND family asks the same snapshot for an attribute the first family never suggests on, so the
+        /// hoisted walk has to widen rather than answer from what it already holds. The wired product suggests on
+        /// <c>position</c>, <c>note</c>, <c>cabletype</c> and friends and never on the S0 meter's wire colours; a
+        /// derivation that reused the first family's attribute set would hand the S0 dialog an EMPTY list for a
+        /// value the project demonstrably carries.
+        /// </summary>
+        /// <remarks>
+        /// The assertion is deliberately on an attribute only ONE family suggests on. An earlier version of this
+        /// test asserted <c>position</c>, which every family shares — so it exercised the widening without being
+        /// able to observe whether it worked.
+        /// </remarks>
+        [Test]
+        public async Task ASecondFamily_IsOfferedItsOwnAttributesValues_NotTheFirstFamilys()
+        {
+            (ProjectDocumentSession session, ElementId wired) = await OneProduct();
+            ProductDefinition s0Device = App.GetAvailableProducts().First(p => p.Body.Tag == "s0_device");
+            ElementId s0 = session.Apply(
+                new AddProduct(session.Current!.Groups.First().Id!.Value, s0Device)).Value;
+
+            // Both values written through the dialog's own write-back, so they got there the way an installer's
+            // would: one attribute each family suggests on, one only the S0 family does.
+            SetPosition(session, wired, "I loft");
+            DialogDescriptorField wire = Field(App.GetProductDialog(session.Current!, s0), "lfs0min");
+            session.Apply(new ApplyProductDialog(s0, [new ProductDialogEdit(wire.Target, wire.Attribute, "Brun")]));
+
+            // ORDER IS THE POINT. The wired product is composed FIRST off the post-edit snapshot, so the walk
+            // memoized on that tree holds the wired family's attributes and NOT cable_colour_minus. The S0
+            // dialog composed next is what forces the widening.
+            Project current = session.Current!;
+            Assert.That(Field(App.GetProductDialog(current, wired), "identitet.placering").Suggestions,
+                Does.Contain("I loft"), "precondition: the first family composed is the one with a position list");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(Field(App.GetProductDialog(current, s0), "lfs0min").Suggestions,
+                    Does.Contain("Brun"),
+                    "the S0 dialog must be offered the project's own cable_colour_minus value");
+                Assert.That(Field(App.GetProductDialog(current, wired), "identitet.placering").Suggestions,
+                    Does.Contain("I loft"),
+                    "and widening for the second family must not cost the first family its own list");
+            });
         }
 
         /// <summary>A plain text field offers nothing — suggestions belong to the combo kind, not to every field.</summary>
