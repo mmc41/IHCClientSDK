@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     private PointerPressedEventArgs? _dragTrigger;
     private Point _dragStart;
 
+
     /// <summary>Source-side probe surface, read only by A-P0's <c>DragDropPocTests.Poc3</c>: whether the drag-source
     /// path armed and initiated under simulated pointer input (a regression guard for the <c>handledEventsToo</c>
     /// wiring below — without it a TreeViewItem eats the press and the drag never starts), and any error from
@@ -59,6 +60,23 @@ public partial class MainWindow : Window
         // (CanDropOn / PerformDropAsync / HighlightDropTarget).
         WireTreeDragDrop(InstallationTree);
         WireTreeDragDrop(FunctionsTree);
+
+        // US-089: the arrow overlay resolves each wire's two ends against the realized rows of these two trees.
+        // Handed over here rather than bound in markup because the panes are what it measures, not what it shows —
+        // a binding would put a control reference in a DataContext-typed expression for no gain.
+        LinkArrowsOverlay.InstallationTree = InstallationTree;
+        LinkArrowsOverlay.FunctionsTree = FunctionsTree;
+        // …and the splitter it must not cover: every cross-pane wire crosses that strip, and a press there is the
+        // start of a resize drag rather than a click at a line.
+        LinkArrowsOverlay.PaneSplitter = PaneSplitter;
+
+        // Selecting a wire (US-089). On the TUNNEL above both panes rather than on the overlay, because this same
+        // handler has to see the presses that MISS every line too — those are the ones it must leave alone.
+        WorkspacePanes.AddHandler(PointerPressedEvent, OnWorkspacePointerPressed, RoutingStrategies.Tunnel);
+        // Delete on a selected wire. It has to be here rather than in the trees' own key handler: a selected
+        // arrow means NO row is selected (the two are one selection), so that handler returns before it looks at
+        // the key. Tunnel, like the gesture-explaining handler above, so the panes never see the press.
+        AddHandler(KeyDownEvent, OnWindowKeyDownDeleteArrow, RoutingStrategies.Tunnel);
 
         // Home/End are handled at the WINDOW on the TUNNEL, scoped to whichever tree holds focus. A handler on the
         // TreeView never fired for them (uxparity S-29) — the keys are consumed below it — while Delete/F2/F4,
@@ -163,7 +181,18 @@ public partial class MainWindow : Window
             if (TreeDragData.BuildDragData(node) is not { } data)
                 return;
             DragInitiatedForTest = true;   // the source path was entered (Poc3 guards this — proves the handledEventsToo wiring)
-            await DragDrop.DoDragDropAsync(trigger, data, DragDropEffects.Move | DragDropEffects.Link);
+            // Hand the arrows' clickable band back to the panes for the duration (US-089): hit testing cannot tell
+            // a click from a drop, so a drop that landed on a line would otherwise reach a control that is not a
+            // drop target, and fail with nothing on screen to explain it.
+            LinkArrowsOverlay.PassThroughPointer = true;
+            try
+            {
+                await DragDrop.DoDragDropAsync(trigger, data, DragDropEffects.Move | DragDropEffects.Link);
+            }
+            finally
+            {
+                LinkArrowsOverlay.PassThroughPointer = false;
+            }
         }, Logger, nameof(OnTreeSourcePointerMoved));
         if (fault is not null)
             DragSourceError = fault.GetType().Name;
@@ -239,6 +268,43 @@ public partial class MainWindow : Window
             flyout.ItemsSource = choice.Items;
             flyout.ShowAt(anchor);
         }
+    }
+
+    // US-089 — selecting a wire. Asked on the way DOWN, over both panes at once, because a wire's two ends can be
+    // in either: the overlay answers with every arrow drawn within reach of the pointer, and the view-model
+    // decides what that means (one selects, several refuse). A click that reached no line is left entirely alone,
+    // so the panes behave exactly as they do in Etiketter mode everywhere but on a line. The overlay is the hit
+    // element over a line, so this runs on its own tunnel route and the panes never see the press.
+    private void OnWorkspacePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_viewModel is not { } vm || !e.GetCurrentPoint(LinkArrowsOverlay).Properties.IsLeftButtonPressed)
+            return;
+        // The same question the hit test asked on the way in — a press the overlay would not have been given
+        // is one the panes must keep, twisty included.
+        IReadOnlyList<LinkArrowEdge> hits =
+            LinkArrowsOverlay.WiresClaimingPointer(e.GetPosition(LinkArrowsOverlay));
+        if (hits.Count == 0)
+            return;
+        e.Handled = true;
+        vm.SelectLinkArrowAt(hits);
+        // Only once a wire is actually selected: an ambiguous click selects nothing, and taking focus off a pane
+        // to hold a selection that does not exist would cost the installer their place for nothing.
+        if (vm.SelectedLinkArrow is not null)
+            LinkArrowsOverlay.Focus();
+    }
+
+    // Delete on a selected wire (US-089), routed through the SAME bar-gated registry row a selected row's Delete
+    // takes — so the SDK's verdict, not this handler, decides whether it happens. The key is consumed either way:
+    // with an arrow selected there is no row for it to mean instead, and a refusal has already been explained in
+    // the status bar by the gesture handler that runs before this one.
+    private void OnWindowKeyDownDeleteArrow(object? sender, KeyEventArgs e)
+    {
+        if (e.Handled || e.Key != Key.Delete || _viewModel is not { SelectedLinkArrow: not null } vm)
+            return;
+        var command = vm.Registry.GestureCommands["edit.delete"];
+        if (command.CanExecute(null))
+            command.Execute(null);
+        e.Handled = true;
     }
 
     private void OnTreePointerPressed(object? sender, PointerPressedEventArgs e)

@@ -1,6 +1,6 @@
 ---
-version: 0.4.0
-last-updated: 2026-08-02
+version: 0.5.0
+last-updated: 2026-09-08
 status: draft
 ---
 
@@ -12,7 +12,8 @@ between the two ends of any link, so the installation's inputs drive its outputs
 blocks.
 
 **Scope:** drag-and-drop linking across the two panes (product pin ↔ function-block pin), the automatic
-dialog for scenario links (light level / ramp time or ON/OFF), how a link is rendered under each pin,
+dialog for scenario links (light level / ramp time or ON/OFF), how a link is rendered under each pin —
+and the alternative rendering that draws it as an arrow between the pins instead (US-089) —
 `F4` navigation to the opposite end, removing an existing link, and editing a scenario link's stored
 value. **Scope excludes:** the internal program logic of a block (E7) and
 function-block-to-function-block variable links (covered in E7's programming story); deleting the
@@ -32,6 +33,9 @@ function-block-to-function-block variable links (covered in E7's programming sto
 - SHOULD: Dragging onto a scenario output opens a dialog to set the scene's level/ramp (dimmer) or state
   (relay/socket), the value of an existing scenario link can be **edited** later (US-058), and `F4` jumps
   between the two ends of a link.
+- SHOULD: The installer can switch the trees to draw each link as **one directed arrow** between the two
+  pins instead of listing it under each (US-089), so the wiring is readable as a picture. The row
+  rendering stays the default and is the one the editing commands act on.
 
 **Readiness:** Ready.
 
@@ -435,6 +439,154 @@ Scenario: Re-open a relay/socket scene state
 
 - Verification method — **Demonstration** that an existing scene link's value can be re-opened, changed,
   confirmed and undone.
+
+**Readiness:** Ready.
+
+**Implementation status:** ✅ Implemented.
+
+---
+
+## US-089 — Show wires as arrows instead of as rows
+
+**As an** IHC installer, **I want** to switch the trees from listing each wire as a row under its pin
+to drawing it as one arrow between the two pins, **so that** I can see at a glance which of an
+installation's terminals drive which block inputs, without reading a path on every row.
+
+> The rendering US-022 specifies — a child row under each pin naming the opposite end — is exact but
+> local: it says where a wire goes only if you read it, one row at a time, and a wire is two rows in two
+> panes that never appear together. An arrow says the same thing positionally.
+
+**Scope excludes:** creating, removing or navigating a wire (US-022–025, US-057), all of which are
+unchanged and all of which act on the link ROW; programming mode, whose two panes hold one block.
+
+### Acceptance criteria (Given-When-Then)
+
+```gherkin
+Scenario: The choice is offered, and Etiketter is what a fresh shell starts in
+  Given a newly started application
+  Then "Vis" offers "Links" with "Etiketter" and "Pile" as a radio pair, directly above "Tema"
+  And "Etiketter" is the checked one, so nothing about the trees has changed
+
+Scenario: Choosing Pile replaces both halves of a wire with one arrow
+  Given a product input linked to a function-block input, shown as two reciprocal link rows (US-022)
+  When I choose "Vis" > "Links" > "Pile"
+  Then neither link row is listed under its pin any more
+  And ONE arrow is drawn from the producing pin's row to the row it drives, across the two panes
+  And its head is at the driven end, so the direction is readable without any label
+
+Scenario: A wire inside one pane
+  Given a function-block output linked to another block's input, both in the Funktioner pane
+  When "Pile" is chosen
+  Then the arrow attaches to the right of both rows and bows into the space beside the labels
+
+Scenario: A wire into a closed subtree still says where it goes
+  Given "Pile" is chosen and a wire runs into a function block whose row is collapsed
+  Then the arrow ends on the nearest ancestor row that IS shown — the block, or its locality
+  And a wire whose two ends fall on that SAME row draws nothing, rather than a loop
+
+Scenario: The choice survives editing, and is undone by choosing Etiketter
+  Given "Pile" is chosen
+  When I create a further link
+  Then it arrives as an arrow, not as a row
+  When I choose "Etiketter" again
+  Then every wire is a row under its pin again, with the trees' expansion unchanged
+
+Scenario: Select a wire by clicking its arrow
+  Given "Pile" is chosen
+  When I click on an arrow
+  Then that wire is selected and drawn at double width
+  And nothing in either tree is selected any more
+  And the status bar says the link is selected and can be removed with Delete
+
+Scenario: Only an unambiguous click selects
+  Given two arrows overlap where I click — two wires leaving one pin, say
+  When I click there
+  Then neither is selected, and the status bar says the links lie on top of each other
+  When I click where the two have separated
+  Then the one I clicked is selected
+
+Scenario: Delete removes the connection
+  Given a wire is selected as an arrow
+  When I press Delete (or choose "Rediger" > "Slet")
+  Then both halves of that link are removed together, exactly as deleting its row does (US-057)
+  And the arrow is gone, the selection with it, and Ctrl+Z restores both
+
+Scenario: One selection, not two
+  Given a wire is selected as an arrow
+  When I select a node in either tree
+  Then the wire is no longer selected, so Delete is never ambiguous about what it means
+```
+
+### Business rules (which wires become arrows, and which way they point)
+
+- MUST: An arrow's direction is the FILE's orientation, not the panes' geometry: it leaves the pin that
+  owns the `link_from_resource` half — the producer — and points at the one owning `link_to_resource`
+  (US-022's *which half is which*). A scenario link leaves the block's scene output and points at the
+  product's *Scenarier* container, which is the row its label named.
+- MUST: **One wire, one arrow.** Both halves of a pair resolve to the same ordered pair of rows and the
+  second is dropped; a wire is one thing however many halves the file writes it in.
+- MUST: A half is only taken away when the arrow that replaces it has a ROW at each end. A wire pointing
+  at nothing, or into an element the tree does not draw, keeps its label — otherwise the fact would be
+  lost from both renderings.
+- MUST: **Programming mode is unaffected.** Both of its panes hold one function block, so a wire's far
+  end (a product pin) is on neither and an arrow would point at nothing; its link rows stay rows whatever
+  the menu says.
+- MUST: The choice is **session-only**, like *Tema* and *Tekststørrelse* beside it — nothing is written
+  to the project or to a preference file, and a fresh shell starts at *Etiketter*.
+
+### Business rules (selecting a wire, and removing it)
+
+- MUST: A wire is selected by **clicking its arrow**, and a selected wire is drawn at **double width** — a cue
+  that carries in every palette, including high contrast, because it is not a colour.
+- MUST: **Only an unambiguous click selects.** Every wire drawn within the pointer's reach is considered; one
+  selects it, and *more than one refuses* and says so. Picking the nearest of two overlapping lines would let
+  the next Delete remove a wire the installer never pointed at, which is the one outcome worth refusing for.
+- MUST: An arrow and a tree row are **one selection**: selecting either releases the other, so `Delete` is
+  never ambiguous about which it means.
+- MUST: `Delete` on a selected wire removes it through **exactly the US-057 route its row would take** — the
+  same SDK verdict, the same reciprocal pair, the same undo entry. The row still exists in the document; the
+  mode only decides whether it is on screen. *Rediger ▸ Slet* is enabled and does the same thing.
+- MUST: The selection is released when the wire is deleted, when the mode returns to *Etiketter*, and whenever
+  the wire stops being drawn — a selection nothing renders would act on something the installer cannot see.
+- MUST: The pointer over a line belongs to the **line**, not to the row beneath it: a wire's clickable band is
+  the geometry actually drawn, and the row underneath must not light its hover highlight there.
+- MUST: …**except where the pane has something of its own there** — a row's expand/collapse twisty, or its icon
+  and label. Those keep the pointer, so a line drawn across a parent row is never what stops it opening. This is
+  not a corner case: the head of every arrow into a CLOSED subtree lands beside that row's twisty, so the rows a
+  person most wants to open are the ones an arrow reaches for. It costs the wires nothing they need — they run
+  through free space, and one always leaves its pin past the label, so every wire keeps a stretch to grab.
+- MUST: A drag in flight is a further exception — the whole band is handed back for its duration, because hit
+  testing cannot tell a click from a drop, and a drop swallowed by a line would fail with nothing on screen to
+  explain it.
+
+### Constraints
+
+- **Etiketter stays the default, and is the accessible rendering.** A link row is announced by a screen
+  reader and reachable by keyboard; an arrow is a drawing, reachable only by pointing at it. Removing a wire
+  works in both modes (above), but **`F4` — *Hop til modsat link* — does not apply while *Pile* is chosen**:
+  it jumps from one link row to the other, and an arrow already shows both ends at once. A keyboard-only
+  installer, and any screen-reader user, therefore works in *Etiketter*, which is why it is the default.
+- The overlay is **focusable but never a tab stop**. A selected wire needs a keyboard-focus owner or the
+  `Delete` that follows is delivered to nothing; focus arrives only by clicking a line, so the shell's tab
+  order is unchanged.
+- The arrow ink is a theme token in all three palettes (light, dark, high-contrast), drawn over a casing
+  in the surface colour so a line crossing a label leaves both readable; a scenario link is dashed, since
+  it drives a whole scene rather than one terminal.
+- An end scrolled out of its pane is clamped to that pane's edge rather than drawn over the neighbouring
+  panel.
+- Verification method — **Test**, at two levels:
+  - *Projection*: assert that choosing *Pile* removes exactly the halves an arrow accounts for and no
+    others, over a corpus project rather than a two-element fixture — a wire that fell between the two
+    renderings is the one failure a per-fixture test cannot see.
+  - *Geometry*: assert the two ends over a shown window — inside the right pane, past the producing row,
+    at the row driven — and the ancestor fallback when a subtree is closed.
+  - *Selection and removal*: drive the whole gesture as a person does — click the line, press `Delete` — over a
+    shown window, and assert the connection left the document. A test that calls the command instead would not
+    have caught any of the three defects this behaviour actually had: the row underneath hovering through the
+    line, `Delete` reaching no handler because nothing held keyboard focus, and a wire swallowing the twisty of
+    a row it crossed.
+  - *Who owns the pointer*: assert BOTH halves at a point where a wire and a twisty meet — that the geometry
+    really does put a line there, and that the press goes to the twisty anyway. Either alone passes vacuously.
 
 **Readiness:** Ready.
 

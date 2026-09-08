@@ -47,8 +47,15 @@ internal static class TreeLabelFormatter
         {
             return Array.Empty<ProjectElement>();
         }
+        return AncestorChain(project, oppositePin);
+    }
+
+    // An element and each of its ancestors, innermost first. The walk LinkPartnerChain ends with, shared because
+    // the arrow planner (US-089) needs the same chain for the NEAR end of a wire — the pin that owns the half.
+    public static IReadOnlyList<ProjectElement> AncestorChain(Project project, ProjectElement element)
+    {
         var chain = new List<ProjectElement>();
-        for (ProjectElement? current = oppositePin; current is not null;
+        for (ProjectElement? current = element; current is not null;
              current = current.Id is { } cid ? project.FindParent(cid) : null)
         {
             chain.Add(current);

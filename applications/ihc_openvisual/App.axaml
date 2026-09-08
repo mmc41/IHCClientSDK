@@ -34,6 +34,13 @@
                          clear WCAG 4.5:1 on the light window background — and never the ONLY carrier of the
                          message: the text says what is wrong. -->
                     <SolidColorBrush x:Key="ErrorBrush" Color="#FFB91C1C"/>
+                    <!-- The wire ink of Vis ▸ Links ▸ Pile (US-089). Deliberately the darkest, most saturated
+                         value in the light palette: an arrow is a thin line crossing tree labels and a selected
+                         row's tint, so it has to out-contrast both, not merely clear a text minimum. -->
+                    <SolidColorBrush x:Key="LinkArrowBrush" Color="#FF0B3D91"/>
+                    <!-- The casing drawn under that ink. The window's own background, near-opaque, so a line
+                         crossing a label separates from it instead of merging into the text. -->
+                    <SolidColorBrush x:Key="LinkArrowHaloBrush" Color="#F2FFFFFF"/>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <Color x:Key="IconColor">#FFE0E0E0</Color>
@@ -45,6 +52,10 @@
                     <SolidColorBrush x:Key="WarningBrush" Color="#FFFBBF24"/>
                     <!-- Lighter red for the dark surfaces, same 4.5:1 requirement. -->
                     <SolidColorBrush x:Key="ErrorBrush" Color="#FFF87171"/>
+                    <!-- The same wire ink inverted for the dark surfaces: a light cyan reads as a drawn line
+                         against dark grey without competing with the amber and red status inks above. -->
+                    <SolidColorBrush x:Key="LinkArrowBrush" Color="#FF7DD3FC"/>
+                    <SolidColorBrush x:Key="LinkArrowHaloBrush" Color="#F2202020"/>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 

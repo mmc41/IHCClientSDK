@@ -37,6 +37,11 @@ public sealed class ThemeService : IThemeService
     private static readonly Color HighContrastWarning = Color.FromRgb(0xFF, 0xFF, 0x00);
     private static readonly Color HighContrastSecondaryText = Colors.White;
     private static readonly Color HighContrastLink = Color.FromRgb(0x00, 0xFF, 0xFF);
+    // The Vis ▸ Links ▸ Pile wire ink (US-089) and its casing. Pure cyan on pure black is the maximal-contrast
+    // pair for a thin line, and the casing must be the OPAQUE surface colour here rather than the near-opaque
+    // white/grey of the ordinary palettes — a translucent casing on a maximal-contrast ground is a grey halo.
+    private static readonly Color HighContrastArrow = Color.FromRgb(0x00, 0xFF, 0xFF);
+    private static readonly Color HighContrastArrowHalo = Colors.Black;
 
     public AppTheme Current { get; private set; } = AppTheme.System;
 
@@ -103,13 +108,19 @@ public sealed class ThemeService : IThemeService
             app.Resources["WarningBrush"] = new SolidColorBrush(HighContrastWarning);
             app.Resources["SecondaryTextBrush"] = new SolidColorBrush(HighContrastSecondaryText);
             app.Resources["LinkBrush"] = new SolidColorBrush(HighContrastLink);
+            app.Resources["LinkArrowBrush"] = new SolidColorBrush(HighContrastArrow);
+            app.Resources["LinkArrowHaloBrush"] = new SolidColorBrush(HighContrastArrowHalo);
         }
         else
         {
             // Removing the overrides — rather than writing the ordinary values back — hands the tokens back to
             // App.axaml's ThemeDictionaries, so the light/dark pair keeps working. Writing literals here would
             // pin one variant's colours over both.
-            foreach (string token in new[] { "IconColor", "DisabledIconColor", "WarningBrush", "SecondaryTextBrush", "LinkBrush" })
+            foreach (string token in new[]
+                     {
+                         "IconColor", "DisabledIconColor", "WarningBrush", "SecondaryTextBrush", "LinkBrush",
+                         "LinkArrowBrush", "LinkArrowHaloBrush",
+                     })
                 app.Resources.Remove(token);
         }
     }

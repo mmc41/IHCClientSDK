@@ -2,7 +2,7 @@
 scope: Navigation hub for the IHC OpenVisual behavioural specification — epics E1–E18 and their user stories (US-NNN) with Given-When-Then acceptance criteria
 exclusions: No spec content lives here; behaviour is defined only in the story files. Excludes product.md and the reference docs (see ../INDEX.md)
 research_date: 2026-08-11
-latest_update: 2026-08-30 — E18 US-088: the program's own failures are reported in the Problemer panel
+latest_update: 2026-09-08 — E6 US-089: wires can be drawn as arrows between the pins, selected on the drawing and removed with Delete
 ---
 
 # OpenVisual User Stories (Epics E1–E18) Index
@@ -53,7 +53,7 @@ partly in scope, or out of scope.
 | Document | Description | Key Topics | Lines |
 | --- | --- | --- | --- |
 | [05-function-blocks.md](05-function-blocks.md) | E5 inserting library or empty function blocks, unlocking library blocks, organising folders | US-018–021, *Funktioner* pane, library blocks, unlock, own/favourite folders | 350 |
-| [06-product-fb-links.md](06-product-fb-links.md) | E6 wiring product pins to function-block pins by dragging, scenario links, link navigation | US-022–025, US-057/058, pin links, scenario links, drag legality | 441 |
+| [06-product-fb-links.md](06-product-fb-links.md) | E6 wiring product pins to function-block pins by dragging, scenario links, link navigation, and the arrow rendering of a wire | US-022–025, US-057/058, US-089, pin links, scenario links, drag legality, link arrows | 593 |
 | [07-fb-programming.md](07-fb-programming.md) | E7 authoring control logic inside a block: variables, events, conditions, enumerators, arithmetic | US-026–033b, programming mode, logic groups, case statements, power-up events | 775 |
 
 ### Outputs, controller & catalog exchange
@@ -100,7 +100,7 @@ owned elsewhere. Ids in the files use U+2011 non-breaking hyphens — copy, don'
 | [03-datalinie-products.md](03-datalinie-products.md) | US-010–013, US-087 |
 | [04-wireless-products.md](04-wireless-products.md) | US-014–017 |
 | [05-function-blocks.md](05-function-blocks.md) | US-018–021 |
-| [06-product-fb-links.md](06-product-fb-links.md) | US-022–025, US-057, US-058 |
+| [06-product-fb-links.md](06-product-fb-links.md) | US-022–025, US-057, US-058, US-089 |
 | [07-fb-programming.md](07-fb-programming.md) | US-026–033, US-033b |
 | [08-simulation.md](08-simulation.md) | US-034–038 |
 | [09-documentation.md](09-documentation.md) | US-039–041, US-050, US-071 (retired), US-072–074 |

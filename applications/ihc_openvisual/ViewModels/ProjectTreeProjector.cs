@@ -15,7 +15,12 @@ namespace ihc_openvisual.ViewModels;
 /// the full-rebuild fallback share one row-rendering path. Constructed per render over the open <paramref name="project"/>;
 /// pure (project in, nodes out). Row-rendering logic is moved verbatim from the view-model.
 /// </summary>
-public sealed class ProjectTreeProjector(Project project)
+/// <param name="project">The open project to project.</param>
+/// <param name="linkDisplay">How a wire is rendered (US-089). Under <see cref="LinkDisplay.Arrows"/> a link half
+/// whose far end has a row is left OUT of the projection, because the overlay draws it as an arrow between the
+/// two pin rows instead; every other half keeps its label. Programming mode builds always pass the default —
+/// both of its panes hold one block, so a wire's far end is on neither and only a label can still name it.</param>
+public sealed class ProjectTreeProjector(Project project, LinkDisplay linkDisplay = LinkDisplay.Labels)
 {
     // Reads go through the SDK read surface (project.View, Ihc.Vis) and the shared project.NameOr projection
     // (ProjectReadExtensions), not raw GetAttribute (W1-6). The projected element always belongs to `project`.
@@ -511,11 +516,15 @@ public sealed class ProjectTreeProjector(Project project)
                 IsLogMarkPin = resource.IsLogRow(project),
                 KindDetail = resource.Tag, Kind = TreeNodeKind.Pin,
             };
-        // A linked pin reveals its follow-link / scene-link rows (US-022/025).
+        // A linked pin reveals its follow-link / scene-link rows (US-022/025) — unless the installer chose to see
+        // wires drawn between the pins instead (US-089), in which case the halves the overlay can draw are left out.
         foreach (ProjectElement child in resource.Children)
         {
-            if (child.IsLinkHalf)
+            if (child.IsLinkHalf
+                && !(linkDisplay == LinkDisplay.Arrows && LinkArrowPlanner.DrawsAsArrow(project, child)))
+            {
                 node.Children.Add(BuildLinkNode(child));
+            }
         }
         return node;
     }

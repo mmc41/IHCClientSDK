@@ -31,6 +31,9 @@ public class RegistryXamlConsistencyTests : AvaloniaTestBase
         // Tekststørrelse radio items. Presentation-only — no SDK edit verdict, no per-surface availability
         // policy — so it is not a CommandSpec row.
         nameof(MainWindowViewModel.SetTextScaleCommand),
+        // And the third of the same shape: one parameterized item command backs the two Vis ▸ Links radio items
+        // (US-089). It chooses how a wire is DRAWN — no SDK edit verdict, no per-surface availability policy.
+        nameof(MainWindowViewModel.SetLinkDisplayCommand),
     };
 
     private static readonly Regex CommandBinding = new(@"Command=""\{Binding (?<prop>[A-Za-z0-9_]+)\}""", RegexOptions.Compiled);

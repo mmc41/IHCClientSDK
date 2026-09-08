@@ -21,14 +21,17 @@ internal sealed class TreePaneCoordinator(
     ObservableCollection<TreeNodeViewModel> functionNodes,
     Func<Project?> currentProject,
     Func<ProjectChangeSet?> lastChange,
-    Action<string, string> setHeaders)
+    Action<string, string> setHeaders,
+    Func<LinkDisplay> linkDisplay)
 {
     // One reconciler per pane. It reconciles in place from a ProjectChangeSet, preserving node identity; a fallback
     // (or a reconcile that falls back) rebuilds through the same reconciler, which re-seeds it.
+    // The link display is read PER PROJECTION rather than captured, so a mode switch (US-089) reaches the next
+    // reconcile as well as the rebuild that follows the switch itself.
     private readonly ProjectTreeReconciler _installationReconciler =
-        new(p => new ProjectTreeProjector(p).BuildLocalitiesRoot(functions: false));
+        new(p => new ProjectTreeProjector(p, linkDisplay()).BuildLocalitiesRoot(functions: false));
     private readonly ProjectTreeReconciler _functionsReconciler =
-        new(p => new ProjectTreeProjector(p).BuildLocalitiesRoot(functions: true));
+        new(p => new ProjectTreeProjector(p, linkDisplay()).BuildLocalitiesRoot(functions: true));
 
     private string? _lastBuiltViewKey;
 

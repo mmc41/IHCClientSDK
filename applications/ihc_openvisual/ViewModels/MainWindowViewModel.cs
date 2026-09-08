@@ -195,6 +195,55 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>The active workspace text-size step (US-001) — what the <i>Vis ▸ Tekststørrelse</i> radio items check.</summary>
     [ObservableProperty] private TextScale _currentTextScale;
 
+    /// <summary>How wires are rendered in the trees (US-089) — what the <i>Vis ▸ Links</i> radio items check.</summary>
+    [ObservableProperty] private LinkDisplay _currentLinkDisplay;
+
+    /// <summary>
+    /// The wires the arrow overlay draws over the two panes (US-089). Empty in <see cref="LinkDisplay.Labels"/> and
+    /// in programming mode, where every wire is a row instead — so the overlay draws exactly what the projection
+    /// left out, and the two can never both render (or both drop) the same wire.
+    /// </summary>
+    [ObservableProperty] private IReadOnlyList<LinkArrowEdge> _linkArrows = Array.Empty<LinkArrowEdge>();
+
+    /// <summary>
+    /// The wire the installer has selected by clicking its arrow (US-089), identified by the link ROW the arrow
+    /// stands in for — which is also what <i>Slet</i> removes, so an arrow deletes through exactly the US-057
+    /// route its row would.
+    /// <para>A row and a wire are ONE selection: selecting either lets go of the other, so <c>Delete</c> is never
+    /// ambiguous about which it means. The overlay renders the selected arrow at double width.</para>
+    /// </summary>
+    [ObservableProperty] private ElementId? _selectedLinkArrow;
+
+    // The selected wire is an availability trigger like the tree selection beside it: edit.delete gates on it.
+    partial void OnSelectedLinkArrowChanged(ElementId? value) => RebuildContext();
+
+    /// <summary>
+    /// Selects the wire an arrow click landed on (US-089). <paramref name="candidates"/> is every wire drawn
+    /// within the pointer's reach: exactly one selects it, none clears, and MORE than one refuses — picking the
+    /// nearest of two overlapping lines would let the next <c>Delete</c> remove a wire the installer never
+    /// pointed at, so the refusal says so instead of reading as a click that did not register.
+    /// </summary>
+    public void SelectLinkArrowAt(IReadOnlyList<LinkArrowEdge> candidates)
+    {
+        ArgumentNullException.ThrowIfNull(candidates);
+
+        if (candidates.Count > 1)
+        {
+            StatusText = "Flere links ligger oven i hinanden her. Udvid eller fold panelerne, så kun ét vises.";
+        }
+        // The tree lets go FIRST: its clearing runs OnSelectedNodeChanged, which is the half of the rule that
+        // clears the wire — doing it after would take the new selection straight back off again.
+        SelectedInstallationNode = null;
+        SelectedFunctionsNode = null;
+        if (candidates.Count != 1)
+        {
+            SelectedLinkArrow = null;
+            return;
+        }
+        SelectedLinkArrow = candidates[0].Half;
+        StatusText = "Link valgt — tryk Delete for at fjerne det.";
+    }
+
     /// <summary>The active tree node — whichever pane the installer last selected in. Context-menu commands, F2 and
     /// the insert target all read this. Not bound directly to a tree (each pane binds its own selection below), so a
     /// Functions-pane node (a function block) can be the active node without fighting the Installation tree.</summary>
@@ -333,6 +382,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
     partial void OnSelectedNodeChanged(TreeNodeViewModel? value)
     {
+        if (value is not null)
+            SelectedLinkArrow = null;   // a row and a wire are ONE selection (US-089)
         RebuildContext();   // T010: selection is a context trigger (first, so the early return below cannot skip it)
         _programAuthoring.Rebuild(value);
         VariablePaletteMenu.Clear();
@@ -847,7 +898,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             status => StatusText = status, () => SelectedNode, () => _programmingBlockId, NotifyProgramMenuGates);
         _treePanes = new TreePaneCoordinator(
             InstallationNodes, FunctionNodes, () => _session.Current, () => _session.LastChange,
-            (installHeader, functionsHeader) => { InstallationPaneHeader = installHeader; FunctionsPaneHeader = functionsHeader; });
+            (installHeader, functionsHeader) => { InstallationPaneHeader = installHeader; FunctionsPaneHeader = functionsHeader; },
+            () => CurrentLinkDisplay);
         DragDrop = new TreeDragDropController(
             _session,
             FindInEitherPane,
@@ -1194,6 +1246,42 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         StatusText = $"Tekststørrelse: {scale}.";
     }
 
+    /// <summary>Vis ▸ Links (US-089): show each wire as a labelled row under its pin, or as one directed arrow
+    /// drawn between the two pin rows. Same shape and same registry exemption as <see cref="SetThemeCommand"/> and
+    /// <see cref="SetTextScaleCommand"/> — presentation-only, with no SDK edit verdict and no per-surface policy.
+    /// <para>Whether a wire is a row or an arrow is decided during PROJECTION, so the panes are rebuilt here rather
+    /// than merely repainted; expansion is carried across, since this is a change of rendering and not of view.</para></summary>
+    [RelayCommand]
+    private void SetLinkDisplay(LinkDisplay display)
+    {
+        if (CurrentLinkDisplay == display)
+            return;   // the radio items re-invoke on every click; a no-op switch must not tear the panes down
+
+        AsOneContextRebuild(() =>
+        {
+            CurrentLinkDisplay = display;
+            if (!IsProgrammingMode && _session.Current is not null)
+                RebuildPreservingSelection(() => _treePanes.RebuildConfig(preserve: true));
+            UpdateLinkArrows();
+        });
+        StatusText = display == LinkDisplay.Arrows ? "Links: pile." : "Links: etiketter.";
+    }
+
+    /// <summary>Re-plans the overlay's arrows for what the panes now hold. Called from the one tree funnel
+    /// (<see cref="Refresh"/>) and from the mode switch, so the arrows and the rows they replace are always
+    /// derived from the same project state.</summary>
+    private void UpdateLinkArrows()
+    {
+        LinkArrows = CurrentLinkDisplay == LinkDisplay.Arrows && !IsProgrammingMode && _session.Current is { } project
+            ? LinkArrowPlanner.Plan(project)
+            : Array.Empty<LinkArrowEdge>();
+        // A selection outlives only the wire it was made on: deleting it, undoing the edit that created it,
+        // leaving arrows mode or opening another project all end with it drawn nowhere, and a selection nothing
+        // renders is one whose Delete would act on something the installer can no longer see.
+        if (SelectedLinkArrow is { } selected && !LinkArrows.Any(edge => edge.Half == selected))
+            SelectedLinkArrow = null;
+    }
+
     /// <summary>Inserts a new locality under <i>Localities</i> (US-008), then selects it in the Installation pane.
     /// Invoked from the right-click <i>Insert locality</i> item on the Localities root.</summary>
     private Task<Ihc.OperationOutcome> InsertLocality() => RunAsync(nameof(InsertLocality), async scope =>
@@ -1264,12 +1352,18 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// uses the general confirm-and-cascade delete. Reachable from the right-click item, Edit ▸ Delete, and the
     /// Delete key (US-044) — all three routes run the registry's "edit.delete" command, gated by the row's ONE
     /// SDK-backed gate (the engine's <c>CanDelete</c>), so none can bypass the guard.</summary>
-    private Task<Ihc.OperationOutcome> Delete(TreeNodeViewModel? node) => RunAsync(nameof(Delete), async scope =>
+    private Task<Ihc.OperationOutcome> Delete(TreeNodeViewModel? node, ElementId? arrowRow) => RunAsync(nameof(Delete), async scope =>
     {
         // The localities root is structure, not content: it holds the localities but is not itself a node the
         // installer can remove. It carries no element id (see the projector), so the ElementId guard below already
         // stops it — IsLocalitiesRoot is stated too, to keep that intent explicit on a destructive path.
-        if (node is null || node.IsLocalitiesRoot || node.ElementId is not { } id || _session.Current is not { } project)
+        //
+        // A wire selected as an ARROW (US-089) enters here as its own link ROW's id, so it runs the same preview,
+        // the same refusal report and the same reciprocal-pair removal a selected link row would — the row is in
+        // the document either way, it is only the mode that decides whether it is on screen. The two selections are
+        // mutually exclusive (see SelectLinkArrowAt), so the node arm winning here is a tie that cannot arise.
+        ElementId? target = node is null ? arrowRow : node.IsLocalitiesRoot ? null : node.ElementId;
+        if (target is not { } id || _session.Current is not { } project)
             return;
         // Preview → dispatch → confirm → apply (W2-13): the SDK decides the delete KIND (sliver #9); the
         // confirmation lives here in the GUI, never below the session.
@@ -1290,6 +1384,10 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             await ApplyAsync(scope, _session.Commands.RemoveLink(project, id), "Link fjernet.");
             return;
         }
+        // An arrow stands for a link row and nothing else, so every kind below is a node's. The mode cannot hide a
+        // product or a locality, and there is no name to put in a confirmation or a status line without one.
+        if (node is null)
+            return;
         string name = node.DisplayName;
         // Prompt for what a node CONTAINS, never for what merely points at it — the vendor's rule, measured:
         // deleting a locality holding function blocks asks (S-09), while deleting a product that other logic links
@@ -1663,15 +1761,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
 
         Registry.Register(new CommandSpec("edit.delete", "Delete",
             Surfaces.MenuBar | Surfaces.ContextMenu,
-            Execute: ctx => Delete(ResolveNode(ctx)),
-            // One classification, not two: DeleteNode.Evaluate allows exactly the set CanDelete accepts (both read
-            // ClassifyDelete, G7) and otherwise carries the SDK's specific protected-element reason, so asking
-            // CanDelete first only re-ran the same lookups on the refusal path. cascade:false keeps deletable
-            // containers offered — the gate is about deletability, and the confirm flow decides cascade.
-            Gate: ctx => ctx.Node is { } node && CutOrDeleteAllowed(ctx, node)
-                && node.Id is { } id && _session.Current is { } project
-                ? _session.CanApply(_session.Commands.DeleteNode(project, id, cascade: false))
-                : EditVerdict.Refuse("Vælg et element, der skal slettes.")));
+            Execute: ctx => Delete(ResolveNode(ctx), ctx.SelectedLinkArrow),
+            Gate: DeleteGate));
 
         Registry.Register(new CommandSpec("view.showProgram", "F3",
             Surfaces.MenuBar | Surfaces.ContextMenu,
@@ -2055,6 +2146,22 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         return _session.CanApply(clipboard.IsCut
             ? _session.Commands.MoveNode(project, clipboard.SourceId, target)
             : _session.Commands.CopyNode(project, clipboard.SourceId, target));
+    }
+
+    // Delete is offered on a selected NODE, and — since US-089 — on a selected ARROW, which is the same question
+    // asked about a link row that the mode is not listing. Both arms end in ONE probe of the SDK's own verdict, so
+    // a wire cannot be deletable as a row and refused as an arrow.
+    //
+    // One classification, not two: DeleteNode.Evaluate allows exactly the set CanDelete accepts (both read
+    // ClassifyDelete, G7) and otherwise carries the SDK's specific protected-element reason, so asking CanDelete
+    // first only re-ran the same lookups on the refusal path. cascade:false keeps deletable containers offered —
+    // the gate is about deletability, and the confirm flow decides cascade.
+    private EditVerdict DeleteGate(ShellContext ctx)
+    {
+        ElementId? target = ctx.Node is { } node && CutOrDeleteAllowed(ctx, node) ? node.Id : ctx.SelectedLinkArrow;
+        return target is { } id && _session.Current is { } project
+            ? _session.CanApply(_session.Commands.DeleteNode(project, id, cascade: false))
+            : EditVerdict.Refuse("Vælg et element, der skal slettes.");
     }
 
     // The SAME target resolution the Paste body uses, so the gate and the body cannot disagree about where a paste
@@ -2548,7 +2655,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             CanUndo: _session.CanUndo, CanRedo: _session.CanRedo,
             ControllerConnected: IsControllerConnected,
             ProjectHasValidationErrors: _session.Validation.HasBlockingFindings,
-            ProjectValidationIncomplete: _session.Validation.HasIncompleteRun);
+            ProjectValidationIncomplete: _session.Validation.HasIncompleteRun,
+            SelectedLinkArrow: SelectedLinkArrow);
         // The generated catalog leaves are gated on the same selection/pane inputs the registry rows are, but
         // they are ICommands rather than registry rows, so the sweep above does not reach them (alignment F-8).
         // Here, in the ONE funnel every availability trigger already passes through, rather than at each of the
@@ -2614,6 +2722,8 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                     RebuildPreservingSelection(() => _treePanes.RebuildConfig(preserve: sameView));
                 }
             }
+            // Last, so the arrows are planned over the mode the branches above just settled on (US-089).
+            UpdateLinkArrows();
         });
 
     /// <summary>

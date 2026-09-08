@@ -118,6 +118,23 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   *Pinned by:* `DragRouteAlternativesParityTests`.
 - Unavailable commands explain themselves: pressing the keyboard shortcut of a greyed menu command shows the reason in the status bar.
   *Pinned by:* `DisabledReasonStatusBarTests`.
+- *Vis* ▸ *Links* offers a second rendering of a wire — **one directed arrow drawn between the two pins**
+  instead of a labelled row under each — which the original has no equivalent for at all (US-089). The
+  row rendering says where a wire goes only if you read it, one row at a time, and a wire's two halves
+  live in two panes that never appear together; an arrow says the same thing positionally. An arrow is
+  clicked to select the wire — drawn at double width, refusing where two lines overlap rather than guessing
+  — and `Delete` then removes it through exactly the same route its row takes, so wiring stays editable in
+  both renderings. **It is deliberately not the default** all the same: a link row is announced by a screen
+  reader and reachable by keyboard, an arrow is reachable only by pointing at it, and `F4` (*Hop til modsat
+  link*) has no meaning once both ends are drawn at once. *Etiketter* is therefore what a fresh shell starts
+  in and what a keyboard-only installer works in.
+  *Pinned by:* `LinkArrowModeTests`
+  (`ChoosingArrows_ReplacesBothLinkRowsWithOneArrow`,
+  `OverTheCorpus_EveryRowArrowsModeTakesAway_IsCoveredByAnArrow`,
+  `ProgrammingMode_KeepsLinkRows_BecauseTheFarEndIsOnNeitherPane`,
+  `DeleteOnASelectedArrow_RemovesBothHalvesOfTheWire`),
+  `LinkArrowOverlayTests` (the menu's place, the drawn geometry, and the click-then-Delete gesture — another
+  suite, so this file's own gate accepts the name as written).
 - The *Rediger* ▸ *Fortryd* / *Gentag* items name the action they would reverse or re-apply
   (e.g. "Fortryd Indsæt lokalitet"), where the original shows a bare "Fortryd" / "Gentag". A screen
   reader thus announces *what* will be undone, and the reader sees it before choosing — an

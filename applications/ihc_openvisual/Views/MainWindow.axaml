@@ -407,6 +407,22 @@
                           a:AutomationProperties.AutomationId="link.jumpOpposite"
                           IsEnabled="{Binding Registry.Bar[link.jumpOpposite].Enabled}"
                           ToolTip.Tip="{Binding Registry.Bar[link.jumpOpposite].Reason}"/>
+                <!-- Links (US-089): how a wire is DRAWN, not whether it exists. Same shape as the two submenus
+                     below it — a parameterized item command, one of the narrow registry exemptions — and
+                     session-only like them. Etiketter is the default and stays the reference application's
+                     rendering; Pile trades the per-pin rows for one arrow drawn between the two pins, which is
+                     also why it is opt-in: a row is announced by a screen reader and reachable by keyboard, and
+                     an arrow is neither. -->
+                <controls:AccessibleMenuItem Header="Links" a:AutomationProperties.AutomationId="menu.links">
+                    <controls:AccessibleMenuItem Header="Etiketter" ToggleType="Radio"
+                              a:AutomationProperties.AutomationId="links.labels"
+                              Command="{Binding SetLinkDisplayCommand}" CommandParameter="{x:Static vm:LinkDisplay.Labels}"
+                              IsChecked="{Binding CurrentLinkDisplay, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Labels}"/>
+                    <controls:AccessibleMenuItem Header="Pile" ToggleType="Radio"
+                              a:AutomationProperties.AutomationId="links.arrows"
+                              Command="{Binding SetLinkDisplayCommand}" CommandParameter="{x:Static vm:LinkDisplay.Arrows}"
+                              IsChecked="{Binding CurrentLinkDisplay, Converter={x:Static conv:EnumMatchConverter.Instance}, ConverterParameter=Arrows}"/>
+                </controls:AccessibleMenuItem>
                 <controls:AccessibleMenuItem Header="Tema" a:AutomationProperties.AutomationId="menu.theme">
                     <controls:AccessibleMenuItem Header="System" ToggleType="Radio"
                               a:AutomationProperties.AutomationId="theme.system"
@@ -769,7 +785,12 @@
             </Grid.RowDefinitions>
 
         <!-- ============ Two tree panes with a splitter ============ -->
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,*">
+        <!-- The panes and the arrow overlay share ONE coordinate space, which is what the Panel is for: a wire
+             (US-089) runs from a row in either pane to a row in either pane, so its two ends can only be resolved
+             against a surface that spans both. The overlay is declared last so it paints over the trees, and is
+             hit-test-transparent so it changes nothing about reaching them. -->
+        <Panel x:Name="WorkspacePanes" Grid.Row="0">
+        <Grid ColumnDefinitions="*,Auto,*">
             <!-- Both panes are Region landmarks rather than Main/Complementary: they carry equal weight in this
                  shell, and Main is singular. A Region is only navigable if it is NAMED, so each takes its pane
                  header as its accessible name — which also keeps the two apart in a landmark list. -->
@@ -796,7 +817,7 @@
                  Automation on any platform, so a driver (and a screen-reader user) reaches it the only other way
                  there is: focus it and use the arrow keys — which GridSplitter supports, and which needs the
                  control to be findable and announced. -->
-            <GridSplitter Grid.Column="1" Width="4" ResizeDirection="Columns"
+            <GridSplitter x:Name="PaneSplitter" Grid.Column="1" Width="4" ResizeDirection="Columns"
                           a:AutomationProperties.AutomationId="PaneSplitter"
                           a:AutomationProperties.Name="Panelopdeler"
                           a:AutomationProperties.HelpText="Brug venstre og højre piletast til at ændre panelernes bredde"
@@ -819,6 +840,20 @@
                           ItemTemplate="{StaticResource TreeNodeTemplate}"/>
             </DockPanel>
         </Grid>
+
+            <!-- Empty in Etiketter mode: LinkArrows is the projection's own leftover — exactly the halves the
+                 trees did NOT render as rows — so the two can never both draw, or both drop, the same wire.
+                 It is pointer-transparent everywhere except along a line, and named rather than hidden from
+                 accessibility because a wire selected on it is a real selection that Slet acts on. -->
+            <controls:LinkArrowOverlay x:Name="LinkArrowsOverlay"
+                          Edges="{Binding LinkArrows}"
+                          SelectedArrow="{Binding SelectedLinkArrow}"
+                          Stroke="{DynamicResource LinkArrowBrush}"
+                          Halo="{DynamicResource LinkArrowHaloBrush}"
+                          a:AutomationProperties.AutomationId="LinkArrows"
+                          a:AutomationProperties.Name="Links vist som pile"
+                          a:AutomationProperties.HelpText="Klik på en pil for at vælge linket og fjerne det med Delete. Vælg Vis &gt; Links &gt; Etiketter for at læse links som rækker i træet."/>
+        </Panel>
 
         <!-- Same reasoning as the vertical PaneSplitter above: Avalonia exposes no drag pattern to UI Automation,
              so this control is reached by focusing it and using the arrow keys — which needs it findable and

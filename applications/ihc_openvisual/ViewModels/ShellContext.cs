@@ -36,7 +36,12 @@ public sealed record ShellContext(
     // missing and the run reached no verdict. A second flag beside the one above rather than a widening of it:
     // "the project has defects" and "the check never finished" ask the user for different things, and the
     // gate words them differently. False while nothing is bound, for the same reason its neighbour is.
-    bool ProjectValidationIncomplete = false)
+    bool ProjectValidationIncomplete = false,
+    // The link ROW of the wire selected as an ARROW (US-089), or null. A second selection beside Node rather than
+    // a widening of it, because it selects something the tree is NOT listing — there is no row to project a
+    // NodeContext from. Only edit.delete reads it, which is exactly the point: a wire selected as an arrow is
+    // removed through the same route its row would take. Never set while Node is, and vice versa.
+    ElementId? SelectedLinkArrow = null)
 {
     /// <summary>The closed-shell context (no project, nothing selected) — the pre-initialization value.</summary>
     public static ShellContext Empty { get; } = new(
@@ -47,7 +52,8 @@ public sealed record ShellContext(
         CanUndo: false, CanRedo: false,
         ControllerConnected: false,
         ProjectHasValidationErrors: false,
-        ProjectValidationIncomplete: false);
+        ProjectValidationIncomplete: false,
+        SelectedLinkArrow: null);
 }
 
 /// <summary>A VALUE snapshot of the active tree row, projected from <see cref="TreeNodeViewModel"/> at rebuild
