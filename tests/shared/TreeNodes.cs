@@ -24,6 +24,18 @@ internal static class TreeNodes
     /// any rendered value suffix.</summary>
     public static TreeNodeViewModel? FindPin(IEnumerable<TreeNodeViewModel> roots, string name) =>
         FindFirst(roots, n => n.IsPin && NameOf(n) == name);
+    /// <summary>EVERY node in <paramref name="roots"/> (depth-first, the roots themselves included) matching
+    /// <paramref name="match"/> — for the sweeps that must judge all rows of a kind, not the first one.</summary>
+    public static IEnumerable<TreeNodeViewModel> FindAll(IEnumerable<TreeNodeViewModel> roots, Func<TreeNodeViewModel, bool> match)
+    {
+        foreach (TreeNodeViewModel node in roots)
+        {
+            if (match(node))
+                yield return node;
+            foreach (TreeNodeViewModel found in FindAll(node.Children, match))
+                yield return found;
+        }
+    }
     /// <summary>The first node in <paramref name="roots"/> (depth-first) matching <paramref name="match"/>, or null.</summary>
     public static TreeNodeViewModel? FindFirst(IEnumerable<TreeNodeViewModel> roots, Func<TreeNodeViewModel, bool> match)
     {

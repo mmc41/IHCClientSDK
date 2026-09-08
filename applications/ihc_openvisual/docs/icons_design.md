@@ -94,7 +94,13 @@ render time and don't scale predictably). Keep them bold and centered so they ho
 
 New icons must respect the conventions the set already encodes:
 
-- **Direction: `→` = IN, `←` = OUT.** Everywhere. Never flip this.
+- **Direction on a CATEGORY marker: `→` = IN, `←` = OUT.** Everywhere. Never flip this. It is what
+  `section-input`/`section-output` and `pin-in`/`pin-out` say: which side of its owner a pin is on.
+- **Direction on a LINK row is travel, and answers a different question.** A link row already names its opposite
+  end in the label, and the arrow says which way the signal runs between the two: `link-from`, the half on the
+  resource the signal departs from, points **right** at the end it names; `link-to`, on the receiving resource,
+  points **left** back from it. Reading the category rule onto a link is how they came to be drawn backwards
+  once; `ArrowIconDirectionTests` now measures both families off the artwork.
 - **Three arrow weights, kept visually distinct:**
   - **section** = a bold arrow **framed inside a box** (a section of a block),
   - **pin** = a **bare bold arrow** with a solid filled head (heaviest), no frame,

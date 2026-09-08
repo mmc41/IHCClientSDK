@@ -57,9 +57,10 @@ namespace Ihc.Vis.Reporting
             ["var-light-level"] = "☼%",
             ["scenario"] = "⧈",
             ["var-energy"] = "↯",
-            // §4 links
-            ["link-from"] = "⇠",
-            ["link-to"] = "⇢",
+            // §4 links — the half on the SOURCE points at the opposite end it names, so link-from is the
+            // rightwards one. The direction is travel, not the pins' IN/OUT category grammar.
+            ["link-from"] = "⇢",
+            ["link-to"] = "⇠",
             // §5 products
             ["product-button"] = "☟",
             ["product-lamp"] = "▽",

@@ -145,9 +145,18 @@ No `icon` is written; render the type's glyph from the element tag.
 
 | Vendor element | `icon` | Our key | Notes |
 |---|---|---|---|
-| `link_from_resource` | `_0x47` | `link-from` | |
-| `link_to_resource` | `_0x4a` | `link-to` | |
+| `link_from_resource` | `_0x47` | `link-from` | points **right** — see below |
+| `link_to_resource` | `_0x4a` | `link-to` | points **left** |
 | `scene_link` | `_0x47` | `link-from` | shares `_0x47` with `link_from_resource` |
+
+**A link arrow shows travel, not the pins' IN/OUT category.** The element names read the wrong way round in
+English: `link_from_resource` is the half sitting on the resource the signal departs *from* — a product input
+such as `Tryk (venstre)`, or a block `Output` pin — and IHC Visual draws it pointing **right**, at the opposite
+end the row's label names. `link_to_resource` sits on the receiving resource and points **left**, back from the
+end it names. That is the reverse of the §4 weight's neighbours: `pin-in`/`section-input` point right because
+`→` marks the IN *category* (§4 of [`icons_design.md`](./icons_design.md)), which is a different question from
+which way a signal runs. `scene_link` shares `_0x47`, sits under the driving `resource_scene`, and points right
+with it.
 
 ## 5. Products — code is **not** a reliable discriminator
 
@@ -289,8 +298,8 @@ differently; `tag`: a mnemonic that only reads with the legend (§7.4).
 | `scenario` | square inside a square | `⧈` | | exact (U+29C8 *squared square*) |
 | `var-energy` | filled lightning bolt | `↯` | `⚡` | close (Text) / exact (Emoji) |
 | **§4 Links** | | | | |
-| `link-from` | short left arrow, outline head | `⇠` | | close — see §7.3 on arrows |
-| `link-to` | short right arrow, outline head | `⇢` | | close — see §7.3 on arrows |
+| `link-from` | short right arrow, outline head | `⇢` | | close — see §7.3 on arrows |
+| `link-to` | short left arrow, outline head | `⇠` | | close — see §7.3 on arrows |
 | **§5 Products** | | | | |
 | `product-button` | hand pressing a button | `☟` | `👆` | close |
 | `product-lamp` | pendant lamp (cord, shade, glow) | `▽` | `💡` | **tag** (Text) / close (Emoji) |
