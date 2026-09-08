@@ -5,8 +5,9 @@
 Decided — 2026-07-19. Records the standing architecture, in force since the SDK's early versions; documented
 retrospectively.
 
-Amended — 2026-07-20 (facade single-door rulings), 2026-08-02 (crudarch: two execution doors) and
-2026-08-24 (validation folded in as question B, renaming this file) — the substance of each is in the Decision.
+Amended — 2026-07-20 (facade single-door rulings), 2026-08-02 (crudarch: two execution doors),
+2026-08-24 (validation folded in as question B, renaming this file) and 2026-09-07 (sole facade: the visible
+lower-level engine surfaces stop being a supported entry level) — the substance of each is in the Decision.
 
 Revisit triggers: (a) a vendor firmware/WSDL revision changing the controller's service surface — re-price the 1-1
 mirror; (b) a frontend that cannot reference the SDK in-process (non-.NET or remote) — that calls for a hosted
@@ -311,8 +312,8 @@ Keep and formalize the standing structure (A1), and place validation inside it (
   in a declarative registry (`CommandRegistry`) — presentation policy over SDK legality.
 - **Frontends** — applications, utilities, examples — contain presentation and wiring only; logic worth testing or
   reusing is pushed down into the SDK. Consumers choose their entry level: the API tier for direct controller
-  access, the application tier for ready-made behavior; selected lower-level engine surfaces stay public for
-  advanced use.
+  access, the application tier for ready-made behavior. Lower-level engine surfaces that remain visible are
+  implementation rather than a third choice (amended 2026-09-07).
 
 **Validation — one rule set behind the same doors:**
 
@@ -390,8 +391,10 @@ re-binding them to the merged metadata is future work, not a gap in the door.
 
 ### Neutral
 
-- Lower-level `Ihc.Vis` surfaces stay public for advanced non-GUI consumers — the application tier is the normal
-  door, not the only one, and the GUI's only one.
+- Lower-level `Ihc.Vis` surfaces are implementation for every consumer, not only for the GUI: the service tiers
+  are the SOLE door, and a type no facade signature hands the caller belongs behind `internal` (amended
+  2026-09-07). Visibility today is wider than that rule; the rule, its mechanical test and its named exceptions
+  are in ARCHITECTURE.md under *Public vs internal surface*.
 - Generated SOAP types remain technically `public` though out of contract (invariant 9's documented gap).
 - Where a fact serves both a gesture gate and a rule (a capacity cap, a declared bound), it lives below both in
   the shared model, so neither side copies the other.

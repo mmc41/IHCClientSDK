@@ -580,6 +580,287 @@ largest single contributor to the findings recorded under `validation/`, in its 
 `fixture-Project6-Errors.xml` — named `fixture/…` rather than `authentic/…` precisely because its defects are
 intended.
 
+### project7-All.vis (3.2 MB, 28,074 lines) — full catalog census
+
+Every product and every function block the installed catalog offers, present exactly once: the **100**
+catalog products and the **68** distinct FB templates. The FB catalog lists 72 entries, but the four under
+`Indsæt ▸ FunktionsBlokke ▸ Foretrukne` are menu aliases of entries in other categories, so inserting all 72
+would duplicate four blocks; this fixture inserts each distinct template once. They are split across **36**
+rooms — 19 by product line/category, 17 by FB family — so one room is one catalog branch and a diff localises
+to the branch that moved. `last_unique_id _0x4a84`.
+
+Everything else each element carries is present, because the vendor materialises it on insert — the resource
+palette from each `.def`, the 23 `scenes` containers and 48 `resource_scene`s the scene-capable products
+bring, and the complete programs inside the 68 templates (3,416 `action`s, 2,437 `condition`s, 1,242
+`program_sub`s, 38 `program_case`s). The body reaches **91 distinct element types**, and the internal DTD
+subset declares exactly those 91 with nothing declared that the body does not use — the widest element
+coverage in the corpus, and the only fixture holding all five product roots at once (`product_dataline` ×73,
+`product_airlink` ×24, `product_rs485_led_dimmer`, `product_rs485_sms_modem`, `s0_device`). Four types the
+format defines are still absent, each for want of a product that carries one: `kW`, `Wh`,
+`resource_floating_point` and `resource_holiday`.
+
+It is also the fixture where the product side is *authored* rather than merely materialised, which is what
+makes those shapes visible to a round-trip test: an attribute the vendor left at its default is a byte the
+reader and writer never have to agree on. All 100 products carry a distinct `position` and `note`, 99 a
+distinct `documentation_tag` and 97 a `power_group`, and the 73 wired ones a distinct `cablenumber` over 10
+repeating `cabletype`s. Every one of the 263 dataline terminals carries a distinct `note` and one of the
+vendor's 16 `cable_colour`s, and every dimmer, shutter and modem setting holds an authored value — including
+all 30 `sms_modem_phonenumber`s. The two attributes short of 100 are short for a vendor reason, not an
+omission: the LED-dimmer product dialog offers only *Navn*, *Placering* and *Note*, and neither it nor the
+SMS-modem and S0 dialogs offer *Lysgruppe*, so there is no field through which the application could author
+the missing one `documentation_tag` and three `power_group`s.
+
+The function-block side is authored on the same rule and by the same route — one dialog per node, never by
+editing the file. All **68** blocks stay `locked="yes"`: none was unlocked, because *Oplås* is irreversible
+and strips the `master_schneider_electric`/`master_type`/`master_version` trio this fixture exists to carry.
+What a locked block still offers is exactly two fields per row — *Tekst til funktionsdokumentation* (`note`)
+and *Noter for hjælpetekst* (`note-2`) — and every row the vendor renders now holds both: the **68** block
+`note`s, all distinct, and both attributes on all **1,139** resources under `inputs`, `outputs` and
+`settings`, with none left blank. Only blanks were authored (3 block `note`s, 235 resource `note`s and 1,124
+`note-2`s); a catalogue-supplied sentence was left as the vendor wrote it, which is why `note` still repeats
+where the templates repeat themselves while every authored line is distinct. Each authored line carries a
+`Ref.` tag built from the block's `master_type` and the row's position — `1.1.01.e-IN02`, `4.1.04-IS01` —
+so a value seen in a diff names the element it came from.
+
+`Indstillinger` is the only container whose values the vendor lets an authored project move: a pin's
+*Initial værdi* and its *Ved strømsvigt* box are greyed on a locked block, and so is an internal variable's.
+All **317** of its resources now carry an authored value, each shifted from the template default rather than
+invented, so a three-minute stairway timer reads 3 min 20 s and not eight hours. Within a type they are
+distinct wherever the type allows: `resource_time` 74/74, `resource_timer` 71/71, `resource_temperature`
+24/24, `resource_timertime` 18/18, `resource_date` 17/17, `resource_integer` 13/13, `resource_counter` 11/11.
+The three that fall short are bounded by their own value sets and not by the authoring — `resource_enum`
+reaches 55 distinct over 67 rows, `resource_weekday` 7 over 8, and `resource_flag` has only ON and OFF for 7.
+
+Three vendor bounds shaped that pass and none of them is visible in the file. A timer picker's millisecond
+segment is app-formatted through a `DTN_FORMAT` callback, so `DTM_SETSYSTEMTIME` cannot write it and the
+times are authored to the second — the twelve settings whose template carries a sub-second remainder keep
+it (150, 200, 300, 400, 500 and 700 ms), and the other 77 stay at zero. The date pin
+renders *day month* and hides the year, so those 17 rows keep `year="2000"` and differ in month and day
+alone. And the three section nodes carry **no properties dialog at all** — their context menu holds only
+*Vis program* — so 9 empty container `note`s stay empty for want of a field to write them through, the same
+kind of vendor-side gap as the product dialogs' missing *Lysgruppe*. `Interne variable` is not rendered in
+configuration mode either; that container is reached by entering programming mode per block, where a locked
+block's two documentation fields are still writable even though every value on the same dialog is greyed.
+**24** of the 60 blocks that have internal variables were authored that way, as a worked sample of the shape
+rather than a sweep — 42 rows, leaving the remaining 197 carrying whatever the template gave them.
+
+The connection side is authored on the same rule and by the same route, in a third pass: **122**
+`link_to_resource`/`link_from_resource` pairs and **8** scene memberships, every one created by the vendor's
+drag — the only gesture that makes a link, since the keyboard, the menus and the clipboard have all been
+swept and none of them creates one. Coverage is deliberately *partial* where the rest of the fixture is
+exhaustive: **46** of the 100 products and **30** of the 68 blocks carry a link, so most families hold a
+wired *and* an unwired instance and a reader that mishandles either shape is caught by the same file. The
+wiring is a plausible house rather than a matrix — wall switches onto `1.1.01 Kip tænd sluk` and its lamp
+outlet, sensors onto the alarm and climate blocks, a keypad onto the door lock, `5.4.03` → `5.4.01` →
+`5.4.02` as the ventilation chain the vendor's own templates are shaped for — which is what makes the pin
+names and the notes either side of a link read as a connection instead of a pairing.
+
+What the pass is *for* is the containment matrix — which element may hold a link half, and which element the
+other half may sit under. Every other wired fixture in this directory *combined* reaches **4** such rows over
+its 49 link pairs, because they all wire the same two shapes: a button into a block, and a block into a lamp
+outlet. This one reaches **20**, and **16** of them appear in no other fixture here. They are the rows a
+third-party reader is most likely to have guessed at rather than seen — an analog match on each of
+`resource_temperature`, `resource_light` and `resource_humidity_level`; `resource_enum` on both a
+product→block and a block→block edge, which the vendor permits only between enums of the *same* type;
+`resource_light_level` ↔ `airlink_dimming` in **both** directions; the four `rs485_led_dimmer_error_state_*`
+pins and `light_indication` as link *sources*; a product-side `resource_input` and `dataline_output` as
+sources; and `resource_output` into `airlink_relay` and `airlink_dimmer_increase`. Three destinations — two
+`dataline_output`s and an `airlink_relay` — carry **both** halves at once, driven by one block and read by
+another, which is the vendor's rule that a product output is a legal source *and* a legal target.
+
+Its cardinality is the deliberate opposite of the other fixtures': every pin here carries exactly one link
+half. Fan-in and fan-out are both legal, and `project3-KompleksWired.vis`, `project5-Dokumentation.vis` and
+`Project6-Errors.vis` already hold them (fan-out to 3, fan-in to 2), so this one leaves those to them and
+pins the one-to-one case across all 20 shapes instead.
+
+The 8 scene memberships are the first in the corpus to cover all three member elements at once — **5**
+`scene_relay` (3 on a `product_dataline`, 2 on a `product_airlink`), **2** `scene_dimmer` (one on a
+`product_airlink`, one on an `rs485_led_dimmer_channel`) and **1** `scene_shutter`. Their values are
+authored rather than left on the chooser's default, because the value attribute is the whole reason the
+member element exists: `relay_value` holds both `on` and `off`, and the two dimmers differ in both fields
+(`dimming_value` 65 with `ramptime_ms` 10000, and 85 with 90000) so neither attribute can be read as a
+constant. The member row keeps an enabled *Egenskaber…*, which is what lets a committed membership be
+re-opened and moved off the default at all.
+
+Two vendor bounds shaped this pass, and neither is visible in the file. The legality rule is not the
+recreation's guess but the application's own: `Data\insertSimpleLink.ihccmd` carries one ruleset per source
+type code, naming the destination codes it accepts plus the clauses that refuse a function block's input as
+a source, its output as a destination and a setting as either end. An illegal pair raises no modal — it
+answers on the cursor and the status bar while the drop is held, and leaves no trace once released — so
+every pair here was checked against those rulesets before it was driven, rather than offered to the
+application to see what stuck. The second bound is the gesture rather than the rule: a *same-pane* link —
+one block's output onto another block's input — is a single drag with both ends in the Funktioner pane, so
+both rows have to be on screen at the same moment. A row scrolled out of view has no rectangle, and the drag
+then lands on whichever row the pane clamps to. That is why the block-to-block edges here are the ones whose
+two blocks fit on one screen together, and it is a property of the editor, not of the format.
+
+Its address map is deliberately *over-subscribed*, which is the honest shape for a census: 8 input modules ×
+16 ports and 16 output modules × 8 ports give 128 addresses each, against 171 dataline inputs and 92
+outputs. All 92 outputs and 126 of the inputs carry a distinct `address_dataline`; the 45 that cannot are
+the five IR and mini-module products whose 16- and 8-input blocks exhaust the controller. A product occupies
+a *contiguous* port block, so addressing its first terminal is what assigns the rest.
+
+Two element types here appear in no other fixture: the 24 `dataline_input_module`/`dataline_output_module`
+rows carrying each module's `module_type`, `location` and `note`. They also pin a fact a third-party writer
+has to match — **the internal DTD subset is a census of the document, not a fixed schema**. Before these rows
+existed the subset declared only the plural containers; writing them made the vendor add `<!ELEMENT
+dataline_input_module ANY>` and its `ATTLIST`, growing the subset by 536 bytes. A writer that emits a
+constant DTD will not byte-match the vendor on a document whose element set differs. The wiring pass
+demonstrates the same rule a second time and at a larger scale: the six element types the links and scene
+memberships introduced brought their own declarations with them, growing the subset by a further **1,710**
+bytes from 85 declarations to 91.
+
+Holding the whole catalog at once also makes it the fixture where `product_identifier` collisions are all
+visible together: 100 products carry only 91 distinct identifiers, and each of the eight collision groups
+pairs *differently named* products — `LK FUGA Tryk 4 tast` with `LK OPUS Tryk 4 tast`, `Dimmer
+350LR/600CR/1000LR` with `Velux KLF-100`, each `1-10v converter -` variant with the wireless dimmer it
+converts, and `_0x4408` spanning three products across both a `product_airlink` and two `product_dataline`
+roots. That is the standing evidence that an identifier alone does not select a `.def`, and that two
+products may share a display name (`Stikkontakt`, `Lampeudtag`) while differing in both root element and
+identifier.
+
+Designed as the breadth fixture for reader/writer and catalog work: the long tail of product, resource and
+dimmer/shutter/modem setting shapes that the small wired oracles never instantiate, and a byte-round-trip
+subject an order of magnitude larger than `project3-KompleksWired.vis`. For the *breadth* of link shapes it
+is now the corpus's widest fixture too, but it is still not a behaviour fixture — for edits, link navigation
+and the fan-in/fan-out cases use Project1/project3, and for defects use Project6.
+
+Authored live in LK IHC Visual, one insert per element, then configured through the same application in
+three further passes — one dialog per product, terminal and child node, then one per function block, pin,
+setting and internal variable, then one drag per connection, never by editing the file — and reopened in the
+vendor afterwards to confirm it loads clean. The two configuration passes allocated no id: they write
+attributes only. The wiring pass does allocate, because a link is a pair of elements and a scene membership
+another pair, which is why `last_unique_id`, the line count and the DTD subset all moved with it.
+
+Two further bounds were measured on the product side while authoring, and both are invisible in the file:
+*Manuel rampetid* is a one-digit spinner, so 10 cannot be typed, and the vendor silently clamps anything
+below 2 s up to `2000` on commit — the field displays the 1 it accepted and stores 2000 anyway. Nine dimmers
+over the eight legal values therefore cannot all differ, and `dimmer_setting_dimming_rate` holds 8 distinct
+values by necessity. `inivalue` is likewise only ever written as `on`; *OFF* has no representation, so the
+45 outputs carrying it are the whole of what that attribute can show.
+
+### Project8-Scenarios.vis (233 KB, 2,498 lines) — scene-subsystem oracle
+
+Authentic IHC Visual (03.04.72.03) output authored **from scratch** on 2026-09-07 by driving the vendor app
+through the `IHCVisualAutomation` CLI — every element inserted through the application and the last write
+the vendor's own *Gem som*, no byte hand-edited and no SDK write path involved. Its subject is the **scene
+subsystem**, and it is the corpus's only dense population of it: where `project3-KompleksWired.vis` carries
+6 `<scenes>` containers, 10 `resource_scene`s and **zero** memberships, this file inverts the ratio —
+**17 containers, 9 scenes and 20 memberships**, 7 `scene_relay` / 11 `scene_dimmer` / 2 `scene_shutter`.
+
+Shape: 1,334 element instances (74 distinct types), 1,329 ids, `last_unique_id="_0x56f"` (1391); ISO-8859-1
+without a BOM, CRLF on every one of its 2,498 lines. **12 localities**, **19 products** over three roots
+(`product_airlink` ×10, `product_dataline` ×8, `product_rs485_led_dimmer`), **5 function blocks** — four
+locked vendor templates keeping their `master_*` identity (`1.1.01` *Kip tænd sluk*, `1.1.03` *Fremkald /
+gem scenarie*, `1.2.04` *Trådløs / Bus lysdæmper*, `3.1.03` *Persiennestyring (Wireless)*) beside one
+user-editable *Tom blok* — and **3 ordinary link pairs**.
+
+One room per scene role, so a byte diff localises. `Stue` holds relay targets, `Køkken` the two products
+that *refuse* a membership, `Soveværelse` the *Dimmer Universal* that is the fan-in target, `Vindue` the two
+jalousi products that are the only shutter members, `Teknik` the *IHC LED Dimmer 2 kanaler* whose two
+`rs485_led_dimmer_channel`s are the third kind of container parent, and `Entré` the input-side button and the
+two products that exist to be negatives. `Værelse "ö"` carries the escaping edge text (`"` →
+`&quot;`, Latin-1 `ö`) and is the only room that does — escaping breadth is `project3`'s job, not this
+file's — while `Bryggers`, `Garage` and `Kælder` stay empty.
+
+The nine scenes divide the same way. Six are template-supplied and arrive with their locked block:
+*Scenarie Tænd* and *Scenarie Sluk* on `1.1.01`, *Scenarie* on `1.1.03`, *Højt niveau* and *Lavt niveau* on
+`1.2.04`, *Regulering* on `3.1.03`. The other three — *Aftenscenarie*, *Natscenarie* and *Ubenyttet
+scenarie* — are **user-authored** on *Tom blok*, which is what puts an authored `resource_scene` beside
+template-supplied ones in one file. *Ubenyttet scenarie* is deliberately memberless, and *Natscenarie* is
+the corpus's only `resource_scene` carrying **both** `note` and `note-2`.
+
+The three ordinary link pairs cover the input side a scene does **not** replace, since a scene replaces only
+the FB-output→product-output half: *LK FUGA Tryk 4 tast* → `1.1.01` *Kip* and *Kombi relæ 4 tast* → `1.1.03`
+*Fremkald / Gem scenarie* on the way in, and `1.1.01` *Udgang* → *Lampeudtag* *Udgang* on the way out. That
+last one is deliberately on *Lampeudtag*, which also carries two scene memberships — one product driven both
+ways, so a reader that treats the two mechanisms as alternatives is caught by this file.
+
+What it witnesses that nothing else does. **Fan-out**: *Scenarie Tænd* holds 6 `scene_link` children of
+mixed member kind (3 relay, 2 dimmer, 1 shutter). **Fan-in**: *Dimmer Universal*'s single `<scenes>` holds
+4 members belonging to 4 different scenes. All three container parents carry members — `product_dataline`
+(3 of its 5 containers), `product_airlink` (9 of 10) and both `rs485_led_dimmer_channel`s — and every
+container's `scene_resource` resolves to a sibling output whose kind matches its members': `dataline_output`
+and `airlink_relay` take relay members, `airlink_dimming` dimmer members, and the jalousi products'
+`resource_enum` *Tilstand* the two shutter members. Every value attribute appears in **both** its written
+and its elided form, which is what makes the DTD defaults testable rather than assumed — `relay_value="on"`
+×3 against 4 elided (default `off`), `shutter_position="down"` ×1 against 1 elided (default `up`), and one
+`scene_dimmer` with **every** value attribute elided (`dimming_value`/`ramptime_ms`/`delay_ms` all default
+`0`) beside ten that write them, `dimming_value` over 5/10/25/50/70/80/85/100 % and `ramptime_ms` over
+1000/3000/5000/10000/30000 and **90000**, the last reachable only through the chooser's *minutes* field.
+Three memberships were made onto a `hide_dialog="yes"` scene, which raises **no chooser at all**: the member
+lands carrying the dialog's own defaults, which is why one of the three writes `100`/`1000` explicitly.
+
+All five scene-activation methods occur, each with `link1` → a `resource_scene` and **never** a `link2`:
+`_0xa` *Fremkald*, `_0x14` *Gem*, `_0x32` *Regulér op*, `_0x3c` *Regulér ned*, `_0x46` *Stop regulering*.
+65 `action` rows reference a scene; 60 come with the locked templates and the last five are authored on
+*Tom blok*, one per method. That authored `Gem` row is the corpus's only one outside a locked vendor
+template — `project3` and `project7` carry `_0x14` scene rows too, but every one of theirs sits inside
+`1.1.03`, `1.2.04` or `1.2.05`.
+
+**The gesture order is part of the oracle.** The 20 memberships were authored in a recorded sequence and
+each consumes exactly two ids, **the member first and then its `scene_link`**, so the whole run is
+contiguous from counter 1342 to 1381 with no gap — nothing was allocated and abandoned mid-run. That is what
+makes the +2-per-membership, member-first, no-burn allocation law checkable at n=20 rather than at the n=2
+of `project3-KompleksWired-scenelinks.vis`. Counters 1382–1391 were allocated *after* the run, by the last
+product and the authored program rows, which is why the membership run does not end at `last_unique_id`.
+Fourteen memberships were dragged FB→product and six product→FB, and the direction is **not** recoverable
+from the bytes: two of them sit in the *same* container with the *same* values, were authored in *opposite*
+directions, and are byte-identical apart from their ids. That pair is the bidirectionality pin.
+
+⚠ **Three of the 17 containers are deliberately unpopulatable.** *Ventilator* (`220c`), *Cirkulationspumpe*
+(`220b`) and *Mod. kombi Wireless relæ* (`4407`) ship a `<scenes>` container that the application **refuses**
+to let you populate, while *Lampeudtag* (`2202`), *Stikkontakt* (`2201`), *Brugerdefineret udgangsprodukt
+med scenarie* (`2702`), *Kombi relæ 4 tast* (`4404`) and every jalousi/dimmer target accept one. The refusal
+is reproducible, direction-independent and scene-independent — measured from two different scenes, in both a
+same-room and a cross-room drop, with the target row visible and highlighted — and the status bar reads
+*«Ikke muligt at indsætte link mellem &lt;scene&gt; og Scenarier»*, the **unconditional catch-all** at the
+end of `Data\insertSimpleLink.ihccmd`, meaning the drop was never classified as a scene insert at all.
+Nothing in the file or the catalog distinguishes the two groups: `product2202.def` (accepted) and
+`product220c.def` (refused) are structurally identical, differing only in `product_identifier`, `name` and
+`icon`, and both instantiate to a `<scenes>` over a `<dataline_output backup="yes"/>`. So the capability
+lives in the application, keyed on something other than the container, and the tempting inference that *a
+catalog template shipping a `<scenes>` element is scene-capable* is **wrong**: shipping one is necessary but
+not sufficient, and the accepted set has to be measured rather than inferred. Do not "fix" those three empty
+containers; they are the evidence. They also explain a shape in the run — two memberships the authoring plan
+aimed at *Ventilator* and *Cirkulationspumpe* went to *Kombi relæ 4 tast* instead, which is why that one
+product carries two members belonging to two different scenes.
+
+Four further negatives were probed and contribute no bytes. **Repeating** an existing (scene,
+product-output) drag is refused with no modal and no status message, and leaves the element count and
+`last_unique_id` unchanged — a refused gesture burns no id. Dragging a scene onto a plain `dataline_output`
+(*Diode*) is refused silently, because `Data\insertScene.ihccmd`'s only rule is source `74`
+(`resource_scene`) → target `73` (`scenes`) and an output is neither. A **wired** dimmer (*Dimmer touch*)
+has no `Scenarier` row at all — its only children are two `dataline_output`s — which witnesses live the "no
+scene-capable wired dimmer in the catalog" law. And the `resource_scene` properties dialog **cannot** set
+`hide_dialog`: *Rediger Scenarie egenskaber* offers `Navn`, `Tekst til funktionsdokumentation` (`note`) and
+`Noter for hjælpetekst` (`note-2`) and nothing else, so a `hide_dialog` scene is template-supplied only and
+the no-chooser case above is reachable only through `1.2.04`/`3.1.03`.
+
+What it deliberately does **not** witness. `delay_ms` is **unauthorable through the UI** — none of the three
+chooser variants carries a delay field — so every member here elides it and the attribute stays unwitnessed
+rather than untested. Ramp time is entered as minutes + seconds, so `ramptime_ms` is always a whole number
+of seconds and the templates' sub-second ramps (150/200/300 ms) cannot be authored here. The four locked
+blocks take memberships and notes but no new scenes, so the authored-scene case rests entirely on *Tom
+blok*. And the file pins the activation `action` **bytes**, not controller behaviour: what `Gem` does at
+runtime stays unverified.
+
+Verified against the saved bytes: every member ↔ `scene_link` reference is reciprocal with no orphan on
+either side, every `scene_link`'s parent is a `resource_scene` and every member's parent a `<scenes>`; the
+id type-code suffixes hold on every instance (`49` `4a` `4b` `4c` `4d` `4e`); every `scene_link` carries
+`icon="_0x47"` where the DTD default is `_0x0`, and no `resource_scene` carries an `icon` at all; every
+element type the body uses is declared in the internal DTD subset in first-occurrence order; and the SDK
+round-trips the file byte-identically once the save-time stamps (`id1`, `id2`, `<modified>`) are masked,
+which is why the suites pin the clock with `FakeTimeProvider(SaveClock)`. The corpus-wide
+`EveryOracle_PreservesItsHelpNotesExactly` now reads *Natscenarie*'s `note-2`.
+
+**Never re-save this file.** It is unmodified IHC Visual output and that is the whole of its value; a resave
+through any other writer, this SDK included, makes it the thing under test rather than its oracle. If it
+must change, re-author the affected phase in the application and let the vendor write it: insert products
+and blocks by catalog **name** (never by a `24xxx` id, which drifts per install), author every membership
+through the chooser with its value set explicitly rather than accepted, and record the new gesture order
+here — the order is what makes the allocation law checkable.
+
 ## Authentic oracles (`projects/LiveAuthored/`)
 
 Minimal single-purpose projects captured live in IHC Visual during experiment B3, each isolating

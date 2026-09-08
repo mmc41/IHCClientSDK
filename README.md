@@ -159,9 +159,13 @@ finally
 Editing an IHC Visual project file — no controller connection or IHC Visual installation required:
 
 ```csharp
-var projectService = new ProjectAppService(settings);        // Ihc.App namespace
+var projectService = new ProjectAppService(settings);        // Ihc.Vis namespace
 var project = await projectService.Load("MyHouse.vis");     // or CreateNew(...) / DownloadFrom()
-// Browse the immutable project model, or modify it through a project.Edit() session...
+// Browse the immutable project model; to change it, open a document, apply commands, and take the
+// new snapshot back — an edit REPLACES the object, it does not mutate the one you hold:
+//   var doc = projectService.OpenDocument(project);
+//   doc.Apply(projectService.Commands.RenameLocality(project, id, "Stue", note: ""));
+//   project = doc.Current!;   // otherwise the lines below validate and save the pre-edit snapshot
 var validation = projectService.Validate(project);
 await projectService.Save(project, "MyHouse-updated.vis");  // unchanged content saves byte-identically
 ```
