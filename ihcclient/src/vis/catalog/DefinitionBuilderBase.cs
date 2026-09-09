@@ -16,7 +16,7 @@ namespace Ihc.Vis.Catalog
     /// builders (in the same assembly) read the <c>private protected</c> state directly and add their own
     /// definition-specific authoring surface (resources, program graph, root attributes, Build).
     /// </summary>
-    public abstract class DefinitionBuilderBase<TSelf> where TSelf : DefinitionBuilderBase<TSelf>
+    internal abstract class DefinitionBuilderBase<TSelf> where TSelf : DefinitionBuilderBase<TSelf>
     {
         private protected IdAllocator ids = new(0);
         private protected string categoryPath = string.Empty;

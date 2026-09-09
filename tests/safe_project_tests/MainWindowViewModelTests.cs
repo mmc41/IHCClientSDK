@@ -15,7 +15,6 @@ using Ihc.Vis.Schema;
 using Ihc.Vis.Editing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
-using Ihc.Vis.Programs;
 using Ihc.Vis.Projects;
 
 namespace Ihc.Vis.Tests;
@@ -2519,27 +2518,33 @@ public class MainWindowViewModelTests
         });
     }
 
-    // T024: menu verbs are keyed by (Category, Token), not by a positional index parallel to the catalog. A reordered
-    // and resized method list (here with an extra unknown-token method) still labels each item by its token and drops
-    // the unknown one — where the pre-T024 verbs[i] would have mis-labelled every row or thrown IndexOutOfRange.
+    // T024: menu verbs are keyed by the offer's (Family, Kind, Method) identity, not by a positional index parallel
+    // to any SDK list. A reordered and resized offer list (here with an extra unknown-token offer) still labels each
+    // item by its own identity and drops the unknown one — where the pre-T024 verbs[i] would have mis-labelled every
+    // row or thrown IndexOutOfRange.
     [Test]
-    public void MethodMenuItems_LabelByCategoryToken_ToleratesReorderAndResize()
+    public void MethodMenuItems_LabelByOfferIdentity_ToleratesReorderAndResize()
     {
         var reorderedResized = new[]
         {
-            new ProgramMethod(ProgramMethodCategory.Event, "_0x9b", "%P tildeles", "", 1, null),   // moved to front
-            new ProgramMethod(ProgramMethodCategory.Event, "_0xa", "%P -> ON", "", 1, null),
-            new ProgramMethod(ProgramMethodCategory.Event, "_0xZZ", "unknown", "", 1, null),           // no verb → dropped
+            Offer("_0x9b", "%P tildeles"),   // moved to front
+            Offer("_0xa", "%P -> ON"),
+            Offer("_0xZZ", "unknown"),       // no verb → dropped
         };
 
-        var items = ProgramAuthoringCoordinator.MethodMenuItems(reorderedResized, "Kip", ProgramPinType.Bool).ToList();
+        var items = ProgramAuthoringCoordinator.MethodMenuItems(reorderedResized, "Kip").ToList();
 
         Assert.Multiple(() =>
         {
             Assert.That(items.Select(i => i.Label), Is.EqualTo(new[] { "Kip tildeles", "Kip skifter til ON" }),
-                "labels follow the method's token in the given order, not a fixed positional verb");
-            Assert.That(items.Select(i => i.Method.Token), Does.Not.Contain("_0xZZ"), "an unverbed method is dropped, not thrown on");
+                "labels follow the offer's own method in the given order, not a fixed positional verb");
+            Assert.That(items.Select(i => i.Offer.Method), Does.Not.Contain("_0xZZ"),
+                "an unverbed offer is dropped, not thrown on");
         });
+
+        static ProgramOperationOffer Offer(string method, string template) =>
+            new(ProgramOperationKind.Event, ProgramPinFamily.Bool, method, template, "", NeedsOperand: false, null,
+                EquatableArray<ProgramOperandOffer>.Empty);
     }
 
     // US-028: a command authored on the Commands node drives the armed variable and renders under Commands.

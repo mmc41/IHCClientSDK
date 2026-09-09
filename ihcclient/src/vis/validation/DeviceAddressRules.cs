@@ -34,7 +34,7 @@ namespace Ihc.Vis.Validation
     /// bounds anywhere in this codebase while the vendor refuses one outside 1–10000, so the range lands where
     /// T023 put every other bound: on the catalogue entry, as data the rule reads.</para>
     /// </summary>
-    public static class DeviceAddressRules
+    internal static class DeviceAddressRules
     {
         /// <summary>The wireless pin families that carry an <c>address_channel</c>.</summary>
         private const string ChannelAttribute = "address_channel";

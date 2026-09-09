@@ -35,7 +35,7 @@ namespace Ihc.Vis.Validation
     /// developer text moved one slot over.
     /// </para>
     /// </summary>
-    public static class SchemaConformanceRules
+    internal static class SchemaConformanceRules
     {
         /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>

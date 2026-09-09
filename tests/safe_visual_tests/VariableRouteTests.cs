@@ -37,17 +37,16 @@ public class VariableRouteTests : AvaloniaTestBase
     {
         var app = new ProjectAppService(new IhcSettings());
         Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
-        var session = new ProjectDocumentSession();
-        session.Open(project);
+        IProjectDocument document = app.OpenDocument(project);
         ElementId locality = project.Groups.First().Id!.Value;
-        ElementId block = session.Apply(
-            app.Commands.AddEmptyFunctionBlock(session.Current!, locality, "Blok")).Value;
-        ElementId section = session.Current!.FindById(block)!.Children
+        ElementId block = document.Apply(
+            app.Commands.AddEmptyFunctionBlock(document.Current!, locality, "Blok")).Value;
+        ElementId section = document.Current!.FindById(block)!.Children
             .First(c => c.Tag is "settings" or "variables").Id!.Value;
-        session.Apply(app.Commands.AddVariable(session.Current!, section, tag, "Måler")!);
-        ElementId variable = session.Current!.FindById(block)!.Descendants()
+        document.Apply(app.Commands.AddVariable(document.Current!, section, tag, "Måler")!);
+        ElementId variable = document.Current!.FindById(block)!.Descendants()
             .First(e => e.Tag == tag && e.GetAttribute("name") == "Måler").Id!.Value;
-        return (session.Current!, variable);
+        return (document.Current!, variable);
     }
 
     private static ProblemNavigationPlanner Planner() =>

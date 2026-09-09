@@ -27,7 +27,7 @@ namespace Ihc.Vis.Catalog
     /// separate equality oracle, not the body self-verify. Nothing here is definition-kind-specific: the document
     /// shape and the sibling naming convention are the same for a block and a product, so one reader serves both.
     /// </remarks>
-    public static class CatalogDocReader
+    internal static class CatalogDocReader
     {
         // The characters a bullet uses to separate the bold resource name from its help text, tried longest/most
         // specific first: em dash and en dash (the syn_en convention), then a spaced ASCII hyphen (a lenient fallback).

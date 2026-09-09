@@ -28,7 +28,7 @@ namespace Ihc.Vis.Validation
     /// notes (32 of 32 in <c>project3</c>), so <c>name-note-missing</c> reports hand-authored blocks and nothing
     /// else; and one light group in the whole corpus is spelled two ways, in the error fixture, on purpose.</para>
     /// </summary>
-    public static class DocumentationCompletenessRules
+    internal static class DocumentationCompletenessRules
     {
         /// <summary>The attribute a product's light group is stored in.</summary>
         private const string LightGroupAttribute = "power_group";

@@ -13,7 +13,7 @@ namespace Ihc.Vis.Editing
     /// settings) arrive whole from the catalog deep-copy; this handle mutates instance-level fields, overrides
     /// individual catalog default settings, and exposes its catalog-sourced resources by name for linking.
     /// </summary>
-    public sealed class FunctionBlockRef
+    internal sealed class FunctionBlockRef
     {
         private readonly ProjectEditor editor;
 
@@ -427,7 +427,7 @@ namespace Ihc.Vis.Editing
     }
 
     /// <summary>Fluent configurator for a single function-block setting value.</summary>
-    public sealed class SettingBuilder
+    internal sealed class SettingBuilder
     {
         private readonly List<(string, string)> attributes = new();
 

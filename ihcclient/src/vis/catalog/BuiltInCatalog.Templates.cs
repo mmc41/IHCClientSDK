@@ -31,7 +31,7 @@ namespace Ihc.Vis.Catalog
     /// parses every file uniformly); that difference is dead data, so the differential test compares Body + identity,
     /// not the grammar.</para>
     /// </remarks>
-    public sealed partial class BuiltInCatalog
+    internal sealed partial class BuiltInCatalog
     {
         partial void AuthorTemplates()
         {

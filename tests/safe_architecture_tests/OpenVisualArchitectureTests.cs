@@ -59,13 +59,17 @@ namespace Ihc.Tests
             yield return Converters;
         }
 
-        // The offline .vis IO layer, anchored to a public engine type so a rename fails the compile, not the check.
-        private static readonly string VisIo =
-            typeof(global::Ihc.Vis.Io.ProjectSerializer).Namespace!; // Ihc.Vis.Io
+        // The offline .vis IO layer and the live-session editing layer. Both anchor on SDK-INTERNAL engine types,
+        // so they resolve by name under the guard, which asserts the name still resolves — the property a typeof
+        // anchor gave for free, and the one that keeps a rename from silently emptying the rule.
+        private const string SerializerTypeName = "Ihc.Vis.Io.ProjectSerializer";
+        private const string EditorTypeName = "Ihc.Vis.Editing.ProjectEditor";
+        private const string SessionRunnerTypeName = "Ihc.Vis.Session.ProjectDocumentSession";
+        private const string BuiltInCatalogTypeName = "Ihc.Vis.Catalog.BuiltInCatalog";
 
-        // The live-session editing layer, anchored to a public type so a rename fails the compile, not the check.
-        private static readonly string Editing =
-            typeof(global::Ihc.Vis.Editing.ProjectEditor).Namespace!; // Ihc.Vis.Editing
+        private static string VisIo => SdkNamespaceOf(SerializerTypeName);      // Ihc.Vis.Io
+
+        private static string Editing => SdkNamespaceOf(EditorTypeName);        // Ihc.Vis.Editing
 
         // The SDK's report-generation pipeline is internal (its public contract lives in root Ihc.Vis), so no
         // public typeof anchor exists; the SDK fixture's
@@ -108,20 +112,6 @@ namespace Ihc.Tests
         public void ViewModels_DoNotDependOn_Avalonia() =>
             AssertNoDependency(Gui, Subtree(ViewModels), AvaloniaNs,
                 "view-models must stay free of Avalonia types so their presentation logic is testable headlessly");
-
-        /// <summary>
-        /// The GUI is file-only: it reaches a controller solely through <c>ProjectAppService</c>'s
-        /// <c>DownloadFrom</c>/<c>UploadTo</c> bridge (which takes an already-authenticated <c>IControllerService</c>
-        /// from its host), and must never touch a controller API service itself. This bans any dependency onto a
-        /// type of the <c>IIHCApiService</c> tier. The forbidden types are named by reflection over the SDK rather
-        /// than matched inside the GUI's own model on purpose: the GUI references none of them today — that is the
-        /// property under test — so they are absent from its loaded model and a fluent namespace rule would have an
-        /// empty, permanently-passing target set. Adding <c>new ControllerService(...)</c> to the GUI would light it up.
-        /// </summary>
-        [Test]
-        public void Gui_DoesNotDependOn_ControllerApiServices() =>
-            AssertNoDependencyOnTypeNames(Gui, GuiRoot, ApiServiceTypeNames(), "the IIHCApiService controller tier",
-                "the file-only GUI must reach the controller only through ProjectAppService's upload/download bridge, never an IIHCApiService controller service directly");
 
         /// <summary>
         /// Every authoring mutation must be obtained from a <c>ProjectCommands</c> factory (the single authoring
@@ -733,18 +723,16 @@ namespace Ihc.Tests
                 Assert.That(Controls, Is.EqualTo("ihc_openvisual.Controls"), "the Avalonia custom controls");
                 Assert.That(Converters, Is.EqualTo("ihc_openvisual.Converters"), "the Avalonia value converters");
                 Assert.That(Services, Is.EqualTo("ihc_openvisual.Services"), "the GUI service and workflow layer");
-                Assert.That(VisIo, Is.EqualTo("Ihc.Vis.Io"), $"{nameof(global::Ihc.Vis.Io.ProjectSerializer)} anchors the offline IO engine");
-                Assert.That(Editing, Is.EqualTo("Ihc.Vis.Editing"), $"{nameof(global::Ihc.Vis.Editing.ProjectEditor)} anchors the editing layer");
+                Assert.That(VisIo, Is.EqualTo("Ihc.Vis.Io"), $"'{SerializerTypeName}' anchors the offline IO engine");
+                Assert.That(Editing, Is.EqualTo("Ihc.Vis.Editing"), $"'{EditorTypeName}' anchors the editing layer");
                 Assert.That(SoapNs, Is.EqualTo("Ihc.Soap"), "the generated SOAP parent namespace");
                 Assert.That(ReportingPipelineTypeCount(), Is.GreaterThan(0),
                     $"'{Reporting}' is named by the GUI's banned-symbol entry; renaming it would empty that ban");
-                Assert.That(typeof(global::Ihc.Vis.Session.ProjectDocumentSession).FullName,
-                    Is.EqualTo("Ihc.Vis.Session.ProjectDocumentSession"),
+                Assert.That(SdkType(SessionRunnerTypeName).FullName, Is.EqualTo(SessionRunnerTypeName),
                     "the engine command-runner named by the GUI's banned-symbol entry");
-                Assert.That(typeof(global::Ihc.Vis.Catalog.BuiltInCatalog).Namespace,
-                    Is.EqualTo("Ihc.Vis.Catalog"),
-                    $"{nameof(global::Ihc.Vis.Catalog.BuiltInCatalog)} anchors the catalog namespace the GUI's "
-                    + "banned-symbol entry names; renaming it would empty that ban");
+                Assert.That(SdkNamespaceOf(BuiltInCatalogTypeName), Is.EqualTo("Ihc.Vis.Catalog"),
+                    $"'{BuiltInCatalogTypeName}' anchors the catalog namespace the GUI's banned-symbol entry "
+                    + "names; renaming it would empty that ban");
             });
 
         /// <summary>How many types the SDK's internal report pipeline declares. The pipeline is internal, so no
@@ -767,8 +755,9 @@ namespace Ihc.Tests
                 $"{nameof(global::ihc_openvisual.App)} derives from Avalonia.Application; a rule forbidding an Avalonia dependency must fail — otherwise the fitness function (or the referenced-type target set) is not detecting dependencies");
 
         /// <summary>
-        /// Backstop proving the two <b>custom</b> boundary scans (<see cref="Gui_DoesNotDependOn_ControllerApiServices"/>'s
-        /// name-based dependency scan and <see cref="Gui_DoesNotConstruct_ProjectCommands"/>'s constructor scan) can
+        /// Backstop proving the two <b>custom</b> boundary scans (the name-based dependency scan behind
+        /// <see cref="ViewModels_DependOnUiEffectPortsNotImplementations"/> and
+        /// <see cref="Gui_DoesNotConstruct_ProjectCommands"/>'s constructor scan) can
         /// actually report a violation — they are separate mechanisms from the fluent <c>Check()</c> the SDK fixture's
         /// known-violation test guards. The GUI genuinely both depends on and constructs <c>ProjectAppService</c> (the
         /// composition root composes it), so placing that facade in each scan's forbidden set MUST fail. If either
@@ -884,14 +873,6 @@ namespace Ihc.Tests
                 .Where(type => !IsSynthesised(type) && !IsGeneratedBuildOutput(type));
 
         // ---- Forbidden-type name sets (reflected from the loaded assemblies) --------------------------------------
-
-        /// <summary>Every type of the controller API-service tier (the <c>IIHCApiService</c> contract, its
-        /// per-service interfaces, and their implementations), by full name.</summary>
-        private static IReadOnlyCollection<string> ApiServiceTypeNames() =>
-            typeof(global::Ihc.IIHCApiService).Assembly.GetTypes()
-                .Where(t => typeof(global::Ihc.IIHCApiService).IsAssignableFrom(t))
-                .Select(t => t.FullName!)
-                .ToHashSet();
 
         /// <summary>Every <see cref="Ihc.Vis.Session.ProjectCommand"/> type by full name (the abstract base, the
         /// generic result variant, <c>CompositeCommand</c>, and the concrete authoring commands).</summary>

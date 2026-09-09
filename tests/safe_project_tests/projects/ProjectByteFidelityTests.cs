@@ -1,6 +1,5 @@
 using System.IO;
 using System.Threading.Tasks;
-using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Ihc.Vis.Tests
@@ -61,7 +60,7 @@ namespace Ihc.Vis.Tests
 
             // Pin the save clock to the 28th, 09:07:53 → id2 packs day/hour/minute/second.
             var clock = new FakeTimeProvider(new System.DateTimeOffset(2026, 6, 28, 9, 7, 53, System.TimeSpan.Zero));
-            var app = new ProjectAppService(Settings, A.Fake<ICatalog>(), clock);
+            var app = new ProjectAppService(Settings, StubCatalog.Empty(), clock);
 
             using var ms = new MemoryStream();
             await app.Save(before, ms, ProjectSaveOptions.Default);

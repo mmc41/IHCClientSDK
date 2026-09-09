@@ -21,7 +21,7 @@ namespace Ihc.Vis.Validation
     /// same run without the flattening and without naming the executor port.
     /// </para>
     /// </summary>
-    public static class ProjectVerification
+    internal static class ProjectVerification
     {
         /// <summary>The pre-serialize structural checklist.</summary>
         /// <param name="project">The project to verify.</param>
@@ -56,7 +56,7 @@ namespace Ihc.Vis.Validation
         /// <param name="project">The project to verify.</param>
         /// <param name="profile">Which rules run, and at what severity.</param>
         /// <param name="validator">The executor to run.</param>
-        public static StructuredValidationResult RunStructured(
+        internal static StructuredValidationResult RunStructured(
             Project project, ValidationProfile profile, IWholeProjectValidator validator)
         {
             ArgumentNullException.ThrowIfNull(project);
@@ -75,7 +75,7 @@ namespace Ihc.Vis.Validation
         /// <param name="project">The project to verify.</param>
         /// <param name="profile">Which rules run, and at what severity.</param>
         /// <param name="validator">The executor to run.</param>
-        public static ProjectValidationResult Run(
+        internal static ProjectValidationResult Run(
             Project project, ValidationProfile profile, IWholeProjectValidator validator) =>
             Flatten(RunStructured(project, profile, validator));
 

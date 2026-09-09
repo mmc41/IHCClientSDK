@@ -28,6 +28,12 @@ namespace Ihc.Tests
             .LoadAssemblies(typeof(global::Ihc.Bootstrap.AppTelemetryBootstrap).Assembly)
             .Build());
 
+        // The Lab utility, loaded so the retained friend grant can be BOUNDED by a member-level check rather than
+        // left blanket.
+        private static readonly Lazy<Architecture> LabModel = new(() => new ArchLoader()
+            .LoadAssemblies(typeof(global::IhcLab.App).Assembly)
+            .Build());
+
         public static Architecture Sdk => SdkModel.Value;
 
         public static Architecture Gui => GuiModel.Value;
@@ -37,6 +43,9 @@ namespace Ihc.Tests
 
         /// <summary>The Avalonia-only bootstrap half.</summary>
         public static Architecture AppBootstrap => AppBootstrapModel.Value;
+
+        /// <summary>The Lab utility, the one non-test holder of an SDK friend grant.</summary>
+        public static Architecture Lab => LabModel.Value;
 
         public static readonly Lazy<Architecture> ArchitectureTests = new(() =>
             new ArchLoader().LoadAssemblies(typeof(ArchitectureModels).Assembly).Build());

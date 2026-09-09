@@ -29,8 +29,16 @@ namespace Ihc.Vis.Projects
         /// the file itself, so a project using element types the static registry never declared (custom
         /// products/function blocks copied in by IHC Visual) still saves byte-identically. Preserved across
         /// <c>with</c> re-stamping; <see cref="ProjectSchemaRegistry"/> is the fallback for types not in the file.
+        /// <para>
+        /// INTERNAL, on both halves and for different reasons. The WRITE would let a caller decide how the file
+        /// re-emits its own grammar -- a commitment to the serializer's representation that no supported operation
+        /// asks for, and the one thing that could make a byte-identical round trip stop being byte-identical. The
+        /// READ carries no domain fact: it is provenance about the source file, deliberately excluded from this
+        /// record's own equality for exactly that reason, and nothing outside the engine acts on it. What a caller
+        /// relies on is the round trip itself, which is the engine's promise rather than this dictionary's.
+        /// </para>
         /// </summary>
-        public ImmutableDictionary<string, string> InlineDtdBlocks { get; init; } = ImmutableDictionary<string, string>.Empty;
+        internal ImmutableDictionary<string, string> InlineDtdBlocks { get; init; } = ImmutableDictionary<string, string>.Empty;
 
         /// <summary>
         /// Value equality over the project <see cref="Root"/> tree only. <see cref="InlineDtdBlocks"/> is captured

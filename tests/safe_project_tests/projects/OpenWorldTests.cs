@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Ihc.Vis.Tests
@@ -56,7 +55,7 @@ namespace Ihc.Vis.Tests
 
             // A real edit: the default save re-stamps id2/modified from the clock.
             var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 28, 9, 7, 53, TimeSpan.Zero));
-            var app = new ProjectAppService(Settings, A.Fake<ICatalog>(), clock);
+            var app = new ProjectAppService(Settings, StubCatalog.Empty(), clock);
 
             using var ms = new MemoryStream();
             await app.Save(before, ms, ProjectSaveOptions.Default);

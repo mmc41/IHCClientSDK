@@ -35,9 +35,9 @@ namespace Ihc.Vis.Tests
                 A.CallTo(() => auth.IsAuthenticated()).Returns(true);
             }
             return validator is null
-                ? new ProjectAppService(TestSetup.Settings, A.Fake<ICatalog>(), Clock(clock), controller, auth)
+                ? new ProjectAppService(TestSetup.Settings, StubCatalog.Empty(), Clock(clock), controller, auth)
                 : ProjectAppService.CreateComposed(
-                    TestSetup.Settings, A.Fake<ICatalog>(), Clock(clock), validator, controller, auth);
+                    TestSetup.Settings, StubCatalog.Empty(), Clock(clock), validator, controller, auth);
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace Ihc.Vis.Tests
         /// <paramref name="validator"/> — see <see cref="BridgeService"/>.
         /// </summary>
         public static ProjectAppService FileService(IWholeProjectValidator validator, TimeProvider? clock = null) =>
-            ProjectAppService.CreateComposed(TestSetup.Settings, A.Fake<ICatalog>(), Clock(clock), validator);
+            ProjectAppService.CreateComposed(TestSetup.Settings, StubCatalog.Empty(), Clock(clock), validator);
 
         /// <summary>A file-only service whose every validation reports <paramref name="run"/>, whatever it is handed.</summary>
         public static ProjectAppService FileServiceOver(StructuredValidationResult run) =>

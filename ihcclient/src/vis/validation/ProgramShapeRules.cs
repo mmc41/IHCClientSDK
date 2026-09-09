@@ -31,7 +31,7 @@ namespace Ihc.Vis.Validation
     /// still <c>logic-block-empty</c>'s. Measured: one program in the whole corpus has events and no commands, in
     /// the error fixture.</para>
     /// </summary>
-    public static class ProgramShapeRules
+    internal static class ProgramShapeRules
     {
         private const string SimpleProgramTag = "program_simple";
 

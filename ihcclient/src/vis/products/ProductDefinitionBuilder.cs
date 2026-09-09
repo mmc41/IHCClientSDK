@@ -48,7 +48,7 @@ namespace Ihc.Vis.Products
     /// (<c>project.Edit().Group(..).AddProduct(def)</c> via <see cref="Ihc.Vis.ProjectAppService"/>), which owns the
     /// telemetry, IO and the single project-mutation entry point — the builder deliberately owns none of that.</para>
     /// </remarks>
-    public sealed class ProductDefinitionBuilder : DefinitionBuilderBase<ProductDefinitionBuilder>
+    internal sealed class ProductDefinitionBuilder : DefinitionBuilderBase<ProductDefinitionBuilder>
     {
         /// <summary>The vendor default display name of a product's <c>scenes</c> container — a user-facing,
         /// user-editable label (it varies per catalog family, e.g. "Scenarier/regulering" on dimmers), not fixed

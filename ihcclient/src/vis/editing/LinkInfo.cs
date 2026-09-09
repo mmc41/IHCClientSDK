@@ -8,5 +8,5 @@ namespace Ihc.Vis.Editing
     /// <see cref="Tag"/> (the direction: <c>link_from_resource</c> = this resource is the source, <c>link_to_resource</c>
     /// = the sink), and the <see cref="PartnerLinkId"/> the row's <c>link</c> IDREF points at (the reciprocal row).
     /// </summary>
-    public sealed record LinkInfo(ElementId LinkRowId, string Tag, ElementId PartnerLinkId);
+    internal sealed record LinkInfo(ElementId LinkRowId, string Tag, ElementId PartnerLinkId);
 }

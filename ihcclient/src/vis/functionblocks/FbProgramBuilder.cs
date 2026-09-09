@@ -24,7 +24,7 @@ namespace Ihc.Vis.FunctionBlocks
     /// <see cref="FunctionBlockDefinitionBuilder.Build"/>, allocating structural ids off the block's shared allocator;
     /// the leaf IDREFs already carry each resource's placeholder id, so nothing needs deferred resolution.
     /// </remarks>
-    public sealed class FbProgramBuilder
+    internal sealed class FbProgramBuilder
     {
         private readonly IdAllocator ids;
         private readonly string name;
@@ -299,7 +299,7 @@ namespace Ihc.Vis.FunctionBlocks
     /// <see cref="FbBranchRef.AddSubProgram"/>): exposes its conditions list, its two action branches
     /// (<see cref="WhenTrue"/>/<see cref="WhenFalse"/>) and its per-node note overrides.
     /// </summary>
-    public sealed class FbSubProgramRef
+    internal sealed class FbSubProgramRef
     {
         private readonly IdAllocator ids;
         private readonly PlannedSub sub;
@@ -367,7 +367,7 @@ namespace Ihc.Vis.FunctionBlocks
     /// <c>condition</c> leaves and, recursively, nested condition groups (<see cref="AddConditionGroup"/>). A
     /// sub-program's <see cref="FbSubProgramRef.Conditions"/> is its top-level group.
     /// </summary>
-    public sealed class FbConditionsGroupRef
+    internal sealed class FbConditionsGroupRef
     {
         private readonly IdAllocator ids;
         private readonly PlannedConditionsGroup group;
@@ -444,7 +444,7 @@ namespace Ihc.Vis.FunctionBlocks
     /// <c>action</c> commands, nested <c>program_sub</c> logic and <c>program_case</c> switches, and (for a program_sub
     /// branch) overrides the container name/note.
     /// </summary>
-    public sealed class FbBranchRef
+    internal sealed class FbBranchRef
     {
         private readonly IdAllocator ids;
         private readonly PlannedBranch? decor;
@@ -535,7 +535,7 @@ namespace Ihc.Vis.FunctionBlocks
     /// branches (each embedding a bare <c>resource_enum</c> match operand) and the trailing <see cref="Default"/>
     /// branch. The switch variable was fixed when the case was added.
     /// </summary>
-    public sealed class FbCaseRef
+    internal sealed class FbCaseRef
     {
         private readonly IdAllocator ids;
         private readonly PlannedCase plan;
@@ -577,7 +577,7 @@ namespace Ihc.Vis.FunctionBlocks
     /// <see cref="FbSubProgramRef.AddCondition(string, FbResourceHandle, string, FbResourceHandle, string)"/>, for
     /// attaching an embedded literal enum operand.
     /// </summary>
-    public sealed class FbConditionRef
+    internal sealed class FbConditionRef
     {
         private readonly IdAllocator ids;
         private readonly PlannedLeaf leaf;
@@ -622,7 +622,7 @@ namespace Ihc.Vis.FunctionBlocks
     /// (<see cref="Enum(FbEnumDefRef, string, string, string)"/>) or a value-type constant
     /// (<see cref="Literal(string, string, Action{FbResourceDefBuilder})"/>).
     /// </summary>
-    public sealed class FbOperand
+    internal sealed class FbOperand
     {
         private readonly string tag;
         private readonly string? name;

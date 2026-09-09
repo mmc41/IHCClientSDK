@@ -31,7 +31,7 @@ namespace Ihc.Vis.Validation
     /// with its derivation and its unconfirmed status, never a literal here — the row says "unusually long" and
     /// names no figure, so the figure has to be citable.</para>
     /// </summary>
-    public static class ScenarioRules
+    internal static class ScenarioRules
     {
         /// <summary>The scene pin — a function block's scenario output.</summary>
         private const string ScenePinTag = "resource_scene";

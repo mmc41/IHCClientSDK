@@ -39,7 +39,7 @@ namespace Ihc.Vis.Validation
     /// Divergence from the library is answered where it can actually be measured: by
     /// <c>logic-block-locked-content</c>, which compares against the library body.</para>
     /// </summary>
-    public static class FunctionBlockShapeRules
+    internal static class FunctionBlockShapeRules
     {
         /// <summary>The container holding a block's programs, and the only child tag that is one.</summary>
         private const string ProgramsContainer = "programs";

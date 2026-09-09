@@ -35,7 +35,7 @@ namespace Ihc.Vis.Validation
     /// incomplete, and only the person doing the commissioning can say whether that matters yet.
     /// </para>
     /// </summary>
-    public static class DocumentationRules
+    internal static class DocumentationRules
     {
         /// <summary>
         /// The five product-level checks, in the order the vendor's documentation appendix witnesses them. The

@@ -41,12 +41,12 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(offered, Does.Contain("resource_input"), "an Input section offers its own signal type");
+                Assert.That(offered.Select(o => o.Tag), Does.Contain("resource_input"), "an Input section offers its own signal type");
                 foreach (string tag in VariableTypeRegistry.ValueTypeTags)
-                    Assert.That(offered, Does.Contain(tag), $"the vendor offers every value type here, including {tag}");
+                    Assert.That(offered.Select(o => o.Tag), Does.Contain(tag), $"the vendor offers every value type here, including {tag}");
                 Assert.That(offered, Has.Count.EqualTo(1 + VariableTypeRegistry.ValueTypeTags.Length),
                     "exactly the signal type plus the 19 value types — no more");
-                Assert.That(offered, Does.Not.Contain("resource_output"), "the OTHER signal type is not insertable here");
+                Assert.That(offered.Select(o => o.Tag), Does.Not.Contain("resource_output"), "the OTHER signal type is not insertable here");
             });
         }
 
@@ -59,9 +59,9 @@ namespace Ihc.Vis.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(offered, Does.Contain("resource_output"));
-                Assert.That(offered, Does.Not.Contain("resource_input"));
-                Assert.That(offered, Does.Not.Contain("resource_scene"),
+                Assert.That(offered.Select(o => o.Tag), Does.Contain("resource_output"));
+                Assert.That(offered.Select(o => o.Tag), Does.Not.Contain("resource_input"));
+                Assert.That(offered.Select(o => o.Tag), Does.Not.Contain("resource_scene"),
                     "a scene is not a variable type — US-024 owns that route (uxparity2 V3 scope guard)");
                 Assert.That(offered, Has.Count.EqualTo(1 + VariableTypeRegistry.ValueTypeTags.Length));
             });
@@ -80,8 +80,8 @@ namespace Ihc.Vis.Tests
                     var offered = app.GetInsertableVariableTypes(project, section);
                     Assert.That(offered, Has.Count.EqualTo(VariableTypeRegistry.ValueTypeTags.Length),
                         "19 value types, no signal type");
-                    Assert.That(offered, Does.Not.Contain("resource_input"));
-                    Assert.That(offered, Does.Not.Contain("resource_output"));
+                    Assert.That(offered.Select(o => o.Tag), Does.Not.Contain("resource_input"));
+                    Assert.That(offered.Select(o => o.Tag), Does.Not.Contain("resource_output"));
                 }
             });
         }

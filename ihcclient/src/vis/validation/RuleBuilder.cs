@@ -27,7 +27,7 @@ namespace Ihc.Vis.Validation
     /// Neither is true; (a) is the one to watch, since the declarative population is about one row in five.
     /// </para>
     /// </summary>
-    public sealed class RuleBuilder
+    internal sealed class RuleBuilder
     {
         private readonly ProblemCatalogEntry entry;
         private ConstraintSequence? constraints;

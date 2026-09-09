@@ -30,7 +30,7 @@ namespace Ihc.Vis.Catalog
     /// <c>void</c> partial methods: absent until an implementing file exists, so an as-yet-ungenerated catalog
     /// materializes empty/partial rather than failing to compile.</para>
     /// </remarks>
-    public sealed partial class BuiltInCatalog : ICatalog
+    internal sealed partial class BuiltInCatalog : ICatalog
     {
         // The materialized value; null means "not built yet". One process-wide materialization: every
         // BuiltInCatalog instance forwards to this same immutable value.

@@ -39,10 +39,10 @@ namespace Ihc.Vis.Products
         /// authored without any grammar (the writer then rejects it — such a definition has no on-disk form —
         /// while insert still resolves against the registry).
         /// </summary>
-        public CatalogGrammar Grammar { get; init; } = CatalogGrammar.Empty;
+        internal CatalogGrammar Grammar { get; init; } = CatalogGrammar.Empty;
 
         /// <summary>The source file's on-disk text encoding, reproduced verbatim on write (see <see cref="CatalogTextEncoding"/>).</summary>
-        public CatalogTextEncoding SourceEncoding { get; init; } = CatalogTextEncoding.Utf8Bom;
+        internal CatalogTextEncoding SourceEncoding { get; init; } = CatalogTextEncoding.Utf8Bom;
 
         /// <summary>
         /// Human-readable help metadata for this product and its resources — <b>programmatic-lookup only</b>, and

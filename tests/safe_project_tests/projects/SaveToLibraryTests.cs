@@ -26,7 +26,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await LoadOracle();
             ElementId id = Fb(project, "Custom blok").Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new SaveFunctionBlockToLibrary(id, "MyLib", "Author", new DateOnly(2026, 7, 11), "A note"));
 
@@ -59,7 +59,7 @@ namespace Ihc.Vis.Tests
             ProjectElement library = project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("master_type") == "1.1.01");
             ElementId id = library.Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             session.Apply(new SaveFunctionBlockToLibrary(id, "MyLib", "Author", new DateOnly(2026, 7, 11), null));
 
@@ -81,7 +81,7 @@ namespace Ihc.Vis.Tests
             ElementId id = before.Id!.Value;
             string priorName = before.GetAttribute("name")!;
             string? priorLocked = before.GetAttribute("locked");   // unlocked: absent
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             session.Apply(new SaveFunctionBlockToLibrary(id, "MyLib", "Author", new DateOnly(2026, 7, 11), null));
             session.Undo();
@@ -99,7 +99,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await LoadOracle();
             ElementId id = Fb(project, "Custom blok").Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             session.Apply(new SaveFunctionBlockToLibrary(id, "MyLib", "Author", new DateOnly(2026, 7, 11), null));
 
             using var ms = new MemoryStream();

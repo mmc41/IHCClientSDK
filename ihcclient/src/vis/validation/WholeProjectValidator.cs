@@ -51,7 +51,7 @@ namespace Ihc.Vis.Validation
     /// pipeline with its own rules.
     /// </para>
     /// </summary>
-    public interface IWholeProjectValidator
+    internal interface IWholeProjectValidator
     {
         /// <summary>Runs every rule the profile selects over the project.</summary>
         /// <param name="project">The project to validate.</param>
@@ -73,7 +73,7 @@ namespace Ihc.Vis.Validation
     /// Immutable and safe to share: it holds the rule set and nothing per-run. Every run's state lives in locals.
     /// </para>
     /// </summary>
-    public sealed class WholeProjectValidator : IWholeProjectValidator
+    internal sealed class WholeProjectValidator : IWholeProjectValidator
     {
         private readonly RuleSet rules;
         private readonly bool perRuleTiming;

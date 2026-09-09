@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using Ihc.Vis;
 using Ihc.Vis.Model;
-using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 
 namespace ihc_openvisual.ViewModels;
@@ -71,9 +70,10 @@ internal static class TreeLabelFormatter
         bool leaf = true;
         foreach (ProjectElement current in LinkPartnerChain(project, linkRow))
         {
-            bool significant = leaf || current.IsLocalityGroup || current.Kind is ElementKind.FunctionBlock || ProductClassifier.IsProduct(current.Tag);
+            bool significant = leaf || current.IsLocalityGroup
+                               || current.Kind is ElementKind.FunctionBlock or ElementKind.Product;
             if (significant && project.View(current).Name is { Length: > 0 } partName)
-                parts.Insert(0, ProductClassifier.IsProduct(current.Tag)
+                parts.Insert(0, current.Kind is ElementKind.Product
                     ? ProductLabel(partName, project.View(current).Position)
                     : partName);
             leaf = false;

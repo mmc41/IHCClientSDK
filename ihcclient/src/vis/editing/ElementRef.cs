@@ -18,7 +18,7 @@ namespace Ihc.Vis.Editing
     /// access, so it survives the session's per-mutation tree rebuilds and reflects edits made through it. Later
     /// backlog items hang the remaining generic mutators (delete, copy, move) off this same handle.
     /// </remarks>
-    public sealed class ElementRef
+    internal sealed class ElementRef
     {
         private readonly ProjectEditor editor;
 

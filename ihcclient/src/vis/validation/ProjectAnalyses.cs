@@ -18,7 +18,7 @@ namespace Ihc.Vis.Validation
     /// the chain here, once, is what stops three independently-written rules from all firing.
     /// </para>
     /// </summary>
-    public enum LastUniqueIdFault
+    internal enum LastUniqueIdFault
     {
         /// <summary>The high-water mark is well-formed and at least the highest counter present.</summary>
         None,
@@ -54,9 +54,9 @@ namespace Ihc.Vis.Validation
     /// </summary>
     /// <param name="Primary">The first holder — the site a finding is anchored to.</param>
     /// <param name="Related">The other holders, in document order. Never empty for a real collision.</param>
-    public sealed record DuplicateIdGroup(ProjectElement Primary, EquatableArray<ProjectElement> Related);
+    internal sealed record DuplicateIdGroup(ProjectElement Primary, EquatableArray<ProjectElement> Related);
 
-    public interface IIdAnalysis
+    internal interface IIdAnalysis
     {
         /// <summary>Whether any element carries this id token. The dangling-reference rule's whole question.</summary>
         /// <param name="token">The raw <c>_0x</c> token an IDREF attribute names.</param>
@@ -97,7 +97,7 @@ namespace Ihc.Vis.Validation
     /// which is what makes it a shared analysis rather than a helper inside one of them.
     /// </para>
     /// </summary>
-    public interface ITopologyAnalysis
+    internal interface ITopologyAnalysis
     {
         /// <summary>The element's parent, or null for the root.</summary>
         /// <param name="element">The element to look up.</param>
@@ -129,7 +129,7 @@ namespace Ihc.Vis.Validation
     /// analysis with no reader is a walk nobody asked for.
     /// </para>
     /// </summary>
-    public interface IProjectAnalyses
+    internal interface IProjectAnalyses
     {
         /// <summary>Id tokens, counters, the high-water mark and its fault — one walk, feeding every rule that asks.</summary>
         IIdAnalysis Ids { get; }

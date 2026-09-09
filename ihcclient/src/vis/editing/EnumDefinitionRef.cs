@@ -11,7 +11,7 @@ namespace Ihc.Vis.Editing
     /// Its <see cref="Typedef"/> token wires a <c>resource_enum</c>'s <c>typedef</c>; <see cref="InitialValue"/>
     /// wires its <c>inivalue</c> to one of the definition's values by name.
     /// </summary>
-    public sealed class EnumDefinitionRef
+    internal sealed class EnumDefinitionRef
     {
         private readonly string name;
         private readonly ImmutableArray<(string Name, ElementId Id)> values;

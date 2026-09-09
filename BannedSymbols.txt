@@ -11,3 +11,11 @@
 // SDK models in Ihc.Soap's place. The ban is namespace-wide, so a SOAP service added later is covered
 // on arrival without editing this file.
 N:Ihc.Soap;Use the high-level Ihc service interfaces and SDK models instead of the generated SOAP layer.
+
+// The SOAP ENVELOPE roots are public for the same reason the layer above is, and for no other: an
+// XmlSerializer binds public types and fails at RUNTIME otherwise, which neither XmlAttributeOverrides nor a
+// friend assembly lifts (ADR-003). So they carry the same consumer prohibition rather than the accessibility
+// one they cannot have. Nothing outside the transport builds or reads an envelope: a caller that does is
+// working at the wire's framing rather than at the SDK's models, which is precisely what the API-service tier
+// exists to spare it. The exceptions opt out the same greppable way, with UsesGeneratedSoapLayer.
+N:Ihc.Envelope;Call the Ihc service interfaces — an envelope is the transport's framing, not an SDK model.

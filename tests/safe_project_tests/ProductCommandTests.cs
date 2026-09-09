@@ -20,7 +20,7 @@ namespace Ihc.Vis.Tests
             // Failed the engine's FunctionBlock(id) throw would produce — matching the sibling SaveFunctionBlockToLibrary.
             Project project = await Load("project3-KompleksWired.vis");
             ElementId localityId = project.Groups.First().Id!.Value;   // a locality, not a function block
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new UnlockFunctionBlock(localityId, "me", new DateOnly(2026, 1, 1)));
 
@@ -33,7 +33,7 @@ namespace Ihc.Vis.Tests
             Project project = await Load("project3-KompleksWired.vis");
             ElementId loc = project.Groups.First().Id!.Value;
             ProductDefinition def = App.GetAvailableProducts().First(p => p.Body.Tag == "product_dataline");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome<ElementId> outcome = session.Apply(new AddProduct(loc, def));
 
@@ -54,7 +54,7 @@ namespace Ihc.Vis.Tests
             Project project = await Load("project3-KompleksWired.vis");
             ElementId loc = project.Groups.First().Id!.Value;
             ProductDefinition def = App.GetAvailableProducts().First(p => p.Body.Tag == "product_dataline");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome<ElementId> outcome = session.Apply(new AddProduct(loc, def));
 
@@ -75,7 +75,7 @@ namespace Ihc.Vis.Tests
             ProjectElement product = project.Root.Descendants()
                 .First(e => ProductClassifier.IsProduct(e.Tag) && !ProductClassifier.IsWireless(e.Tag) && e.Id is not null);
             ElementId id = product.Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new ApplyProductDialog(id, DialogEdits(session, id,
                 ("Note", "the note"), ("Placering", "pos"), ("Kabeltype", "CT"), ("Kabelnummer", "CN"),
@@ -95,7 +95,7 @@ namespace Ihc.Vis.Tests
         /// <summary>Resolves dialog edits BY CAPTION against the product's own composed dialog — the same
         /// resolution the GUI does, so a caption no family offers cannot be smuggled into a write.</summary>
         private static ImmutableArray<ProductDialogEdit> DialogEdits(
-            ProjectDocumentSession session, ElementId productId, params (string Caption, string Value)[] edits)
+            IProjectDocument session, ElementId productId, params (string Caption, string Value)[] edits)
         {
             var byCaption = App.GetProductDialog(session.Current!, productId)
                 .Groups.SelectMany(g => g.Fields).ToDictionary(f => f.Caption);
@@ -124,7 +124,7 @@ namespace Ihc.Vis.Tests
                 .First(e => ProductClassifier.IsProduct(e.Tag) && e.Id is not null);
             ElementId productId = product.Id!.Value;
             ElementId currentGroup = project.FindParent(productId)!.Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new ApplyProductDialog(productId,
                 DialogEdits(session, productId, ("Placering", "flyttet?"))));
@@ -147,7 +147,7 @@ namespace Ihc.Vis.Tests
             ElementId loc = project.Groups.First().Id!.Value;
             ProductDefinition modemDef = App.GetAvailableProducts()
                 .First(p => ProductClassifier.IsModem(p.Body.Tag));
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ElementId modemId = session.Apply(new AddProduct(loc, modemDef)).Value;
 
             EditOutcome outcome = session.Apply(new ApplyProductDialog(modemId,
@@ -177,7 +177,7 @@ namespace Ihc.Vis.Tests
             ElementId loc = project.Groups.First().Id!.Value;
             ProductDefinition dimmer = App.GetAvailableProducts()
                 .First(p => p.Body.Tag == "product_rs485_led_dimmer");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ElementId id = session.Apply(new AddProduct(loc, dimmer)).Value;
 
             // No Navn: this product inserts locked, and the dialog offers its name read-only.
@@ -209,7 +209,7 @@ namespace Ihc.Vis.Tests
             Project project = await Load("project3-KompleksWired.vis");
             ElementId loc = project.Groups.First().Id!.Value;
             ProductDefinition wired = App.GetAvailableProducts().First(p => p.Body.Tag == "product_dataline");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ElementId id = session.Apply(new AddProduct(loc, wired)).Value;
 
             session.Apply(new ApplyProductDialog(id, DialogEdits(session, id,
@@ -230,7 +230,7 @@ namespace Ihc.Vis.Tests
         public async Task StaleId_Command_StillRefusesWithItsNoun()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ElementId.TryParse("_0xdead01", out ElementId absent);
 
             EditOutcome outcome = session.Apply(new RenameLocality(absent, "X", ""));
@@ -249,7 +249,7 @@ namespace Ihc.Vis.Tests
             Project project = await Load("project3-KompleksWired.vis");
             ProjectElement pin = project.Root.Descendants().First(e => e.Tag == "dataline_output");
             ElementId id = pin.Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             var r = new PinPropertiesResult(DataLine: 1, Terminal: 1, CableColour: "red", Note: "n", InitialValueOn: true);
 
             EditOutcome outcome = session.Apply(new UpdatePin(id, r));
@@ -271,7 +271,7 @@ namespace Ihc.Vis.Tests
             ProjectElement fb = project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("locked") == "yes");
             ElementId id = fb.Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             session.Apply(new UnlockFunctionBlock(id, "Test Installer", new DateOnly(2026, 1, 1)));
             Assert.That(session.Current!.FindById(id)!.GetAttribute("locked"), Is.Not.EqualTo("yes"), "unlocked");

@@ -28,7 +28,7 @@ namespace Ihc.Vis.Catalog
     /// recomposes once. Until the first read or import, the base is not touched at all — so wrapping a
     /// lazily-materializing <see cref="BuiltInCatalog"/> does not force it to materialize.</para>
     /// </remarks>
-    public sealed class CompositeCatalog : ICatalog
+    internal sealed class CompositeCatalog : ICatalog
     {
         private readonly ICatalog @base;
         private readonly object gate = new();

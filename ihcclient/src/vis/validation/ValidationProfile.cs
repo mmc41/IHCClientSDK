@@ -23,7 +23,7 @@ namespace Ihc.Vis.Validation
     }
 
     /// <summary>What happens when a RULE ITSELF throws.</summary>
-    public enum RuleFailurePolicy
+    internal enum RuleFailurePolicy
     {
         /// <summary>
         /// THE DEFAULT. The failing rule contributes one <c>internal.unexpected</c> finding carrying the exception
@@ -86,7 +86,7 @@ namespace Ihc.Vis.Validation
     /// <param name="Audience">Structural or categorized.</param>
     /// <param name="Controller">The target controller's limits, or null — the evaluability axis.</param>
     /// <param name="Overrides">Per-rule severity overrides, the one strictness lever.</param>
-    public sealed record ValidationProfile(
+    internal sealed record ValidationProfile(
         string Name,
         ProfileAudience Audience,
         ControllerCapabilityLimits? Controller,

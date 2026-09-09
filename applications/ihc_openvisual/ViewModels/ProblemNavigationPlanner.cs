@@ -4,7 +4,6 @@ using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
-using Ihc.Vis.Schema;
 using Ihc.Vis.Validation;
 
 namespace ihc_openvisual.ViewModels;
@@ -156,7 +155,7 @@ public sealed class ProblemNavigationPlanner(
                 PropertiesDialogCoordinator.PinFieldFor(targetAttribute) is not null);
         }
 
-        if (ProductClassifier.IsProduct(element.Tag))
+        if (element.Kind is ElementKind.Product)
         {
             return ProductRoute(project, id, id, targetAttribute);
         }
@@ -182,8 +181,7 @@ public sealed class ProblemNavigationPlanner(
         // generic class below, and for exactly the reason the terminals needed their own class — a setting is a
         // grid ROW, not a descriptor field, so asking the product dialog whether it offers `inivalue` answers no
         // and every settings route degraded to dialog-level. The capability question is the editor's.
-        if (ProductRows.IsSetting(element.GetAttribute(ProductRows.SettingAttribute))
-            && OwningProduct(project, id) is { } settingOwner)
+        if (project.View(element).IsSetting && OwningProduct(project, id) is { } settingOwner)
         {
             return DialogRoute(
                 settingOwner, settingOwner, id, targetAttribute,
@@ -295,7 +293,7 @@ public sealed class ProblemNavigationPlanner(
     {
         for (ElementId current = id; project.FindParent(current) is { } parent;)
         {
-            if (ProductClassifier.IsProduct(parent.Tag))
+            if (parent.Kind is ElementKind.Product)
             {
                 return parent.Id;
             }

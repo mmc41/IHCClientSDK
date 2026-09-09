@@ -22,7 +22,7 @@ namespace Ihc.Vis.Editing
     /// for free text). This is the public projection of the internal schema model, so the wire-grammar types stay
     /// encapsulated; it is what <see cref="ElementRef.EditableAttributes"/> returns to drive the F2 properties panel.
     /// </summary>
-    public sealed record AttrInfo(
+    internal sealed record AttrInfo(
         string Name,
         AttrRequirement Kind,
         string? Default,

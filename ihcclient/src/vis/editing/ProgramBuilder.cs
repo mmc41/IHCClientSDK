@@ -20,7 +20,7 @@ namespace Ihc.Vis.Editing
     /// vendor "add sub-program" gesture. Structural decorations (container names/notes/icons and the branch
     /// <c>type</c>) are the fixed vendor strings; the leaf <c>note</c> is caller-supplied (method-specific).
     /// </remarks>
-    public sealed class ProgramBuilder
+    internal sealed class ProgramBuilder
     {
         private readonly ProjectEditor editor;
         private readonly ElementId eventsId;
@@ -90,7 +90,7 @@ namespace Ihc.Vis.Editing
     /// <see cref="BranchRef.AddSubProgram"/>): exposes its conditions list and its two action branches
     /// (<see cref="WhenTrue"/>/<see cref="WhenFalse"/>) for further authoring.
     /// </summary>
-    public sealed class SubProgramRef
+    internal sealed class SubProgramRef
     {
         internal SubProgramRef(ProjectEditor editor, ElementId subId, ElementId conditionsId,
             ElementId trueActionsId, ElementId falseActionsId)
@@ -130,7 +130,7 @@ namespace Ihc.Vis.Editing
     /// "Logik gruppe", US-029). A sub-program's <see cref="SubProgramRef.Conditions"/> is its top-level group; an
     /// existing group loaded from file is addressed by id via <see cref="ProjectEditor.ConditionsGroup"/>.
     /// </summary>
-    public sealed class ConditionsGroupRef
+    internal sealed class ConditionsGroupRef
     {
         private readonly ProjectEditor editor;
 
@@ -197,7 +197,7 @@ namespace Ihc.Vis.Editing
     /// A live handle to one action branch of a <see cref="SubProgramRef"/> (its true or false <c>actions</c>
     /// container): adds leaf <c>action</c> commands and further nested <c>program_sub</c> logic.
     /// </summary>
-    public sealed class BranchRef
+    internal sealed class BranchRef
     {
         private readonly ProjectEditor editor;
         private readonly ElementId actionsId;
@@ -238,7 +238,7 @@ namespace Ihc.Vis.Editing
     /// child) inserts before it. Switch-type eligibility is deliberately open-world: no tag guard is applied (the
     /// validators flag genuinely broken wiring later).
     /// </summary>
-    public sealed class CaseRef
+    internal sealed class CaseRef
     {
         private readonly ProjectEditor editor;
         private readonly ElementId defaultActionsId;
@@ -318,7 +318,7 @@ namespace Ihc.Vis.Editing
     /// A live handle to a <c>condition</c> authored via <see cref="SubProgramRef.AddCondition"/>, for attaching an
     /// embedded literal enum operand.
     /// </summary>
-    public sealed class ConditionRef
+    internal sealed class ConditionRef
     {
         private readonly ProjectEditor editor;
         private readonly ElementId conditionId;

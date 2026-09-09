@@ -10,7 +10,7 @@ namespace Ihc.Vis.Validation
     /// </summary>
     /// <param name="Satisfied">Whether the value is acceptable.</param>
     /// <param name="Arguments">The declared argument bindings for the rule's Danish template. Empty when satisfied.</param>
-    public readonly record struct ValueConstraintVerdict(
+    internal readonly record struct ValueConstraintVerdict(
         bool Satisfied,
         EquatableArray<ProblemArgument> Arguments)
     {
@@ -115,7 +115,7 @@ namespace Ihc.Vis.Validation
     /// it is not a general property of the catalogue, and nothing should be designed as though it were.
     /// </para>
     /// </summary>
-    public interface IValueConstraint
+    internal interface IValueConstraint
     {
         /// <summary>The rule this constraint realises.</summary>
         ProblemCode Code { get; }
@@ -151,5 +151,5 @@ namespace Ihc.Vis.Validation
     /// </para>
     /// </summary>
     /// <param name="Ordered">The constraints, most fundamental first. Evaluation stops at the first failure.</param>
-    public sealed record ConstraintSequence(EquatableArray<IValueConstraint> Ordered);
+    internal sealed record ConstraintSequence(EquatableArray<IValueConstraint> Ordered);
 }

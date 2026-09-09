@@ -73,7 +73,6 @@ namespace Ihc.download_upload_example
             // Create client for IHC services that this utility use:
             using var authService = new AuthenticationService(settings);
             var controllerService = new ControllerService(authService);
-            var ressourceService = new ResourceInteractionService(authService);
             var configService = new ConfigurationService(authService);
 
             int exitCode = ExitOk;

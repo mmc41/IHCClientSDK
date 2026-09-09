@@ -6,6 +6,13 @@ namespace Ihc
 {
     /// <summary>
     /// Attribute to mark sensitive data fields that should be redacted in telemetry/logs and optinally encrypted/decrypted when serialized to files.
+    /// <para>
+    /// PUBLIC deliberately, though nothing outside the SDK reads it today: it is metadata ON PUBLIC MODEL
+    /// PROPERTIES (a settings key, a password), so it is already observable by any caller that reflects over those
+    /// models -- and redacting sensitive values when logging one is the very thing a caller would reflect for.
+    /// Hiding the type would leave the marks in place but make them unreadable, which states nothing and removes a
+    /// legitimate use.
+    /// </para>
     /// </summary>
     [System.AttributeUsage(System.AttributeTargets.Property)]
     public class SensitiveDataAttribute: System.Attribute {

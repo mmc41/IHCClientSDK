@@ -176,7 +176,7 @@ namespace Ihc.Vis.Validation
     /// addition" — was already false, since renames are forbidden and a retirement is recorded on the entry.
     /// </para>
     /// </summary>
-    public static class CatalogInvariants
+    internal static class CatalogInvariants
     {
         /// <summary>Every violation in this catalogue. Empty is the passing state.</summary>
         /// <param name="catalog">The catalogue to check.</param>

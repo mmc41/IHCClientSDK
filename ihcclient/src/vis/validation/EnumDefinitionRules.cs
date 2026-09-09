@@ -32,7 +32,7 @@ namespace Ihc.Vis.Validation
     /// data-tables definition is skipped for the same reason: it is a TABLE of user-defined texts, not a type, and
     /// no variable is ever declared of it.</para>
     /// </summary>
-    public static class EnumDefinitionRules
+    internal static class EnumDefinitionRules
     {
         private const string DefinitionTag = "enum_definition";
 

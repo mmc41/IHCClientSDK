@@ -15,13 +15,13 @@ namespace Ihc.Vis.Tests
     /// </summary>
     public class SessionHistoryTests : SessionCommandFixture
     {
-        private static bool IsLocked(ProjectDocumentSession session, ElementId id) =>
+        private static bool IsLocked(IProjectDocument session, ElementId id) =>
             session.Current!.FindById(id)!.GetAttribute("locked") == "yes";
 
         [Test]   // from EditHistoryTests.Undo_EmptyHistory_IsNoOp
         public async Task Undo_EmptyHistory_IsNoOp()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             Project before = session.Current!;
 
             EditOutcome undone = session.Undo();
@@ -43,7 +43,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task Undo_DoesNotRollBackTheIdAllocator()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             EditOutcome<ElementId> first = session.Apply(new AddLocality("Alpha"));
             string? raisedLuid = session.Current!.LastUniqueId;
 
@@ -65,7 +65,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task Rollback_RestoresTheAllocatorVerbatim_AndIsNotRedoable()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             string? luidBefore = session.Current!.LastUniqueId;
 
             session.Apply(new AddLocality("Alpha"));
@@ -84,7 +84,7 @@ namespace Ihc.Vis.Tests
         [Test]   // from EditHistoryTests.NewEdit_AfterUndo_ClearsRedo
         public async Task NewEdit_AfterUndo_ClearsRedo()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             session.Apply(new AddLocality("Alpha"));
             session.Undo();
             Assert.That(session.CanRedo, Is.True);
@@ -102,7 +102,7 @@ namespace Ihc.Vis.Tests
             // call in this one synchronous run rather than hopping threads via resumed await continuations.
             Project first = await Load("project3-KompleksWired.vis");
             Project second = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(first);
+            IProjectDocument session = Session(first);
             session.Apply(new AddLocality("Alpha"));
             Assert.That(session.CanUndo, Is.True);
 
@@ -118,7 +118,7 @@ namespace Ihc.Vis.Tests
             ProjectElement group = project.Groups.First(g => g.Children.Count > 0);
             ElementId loc = group.Id!.Value;
             int contentBefore = group.Children.Count;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             session.Apply(new DeleteLocality(loc));
             Assert.That(session.Current!.FindById(loc), Is.Null, "the locality and its contents are gone");
@@ -139,7 +139,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             ElementId fbId = project.Root.Descendants().First(e => e.Tag == "functionblock" && e.Id is not null).Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             session.Apply(new UnlockFunctionBlock(fbId, "Test Installer", new DateOnly(2026, 1, 1)));   // setup: project3's blocks are locked; unlock to author
 
             session.Apply(new AddVariable(fbId, "settings", "resource_flag", "Away"));
@@ -164,7 +164,7 @@ namespace Ihc.Vis.Tests
             Project project = await Load("project3-KompleksWired.vis");
             ElementId fbId = project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("locked") == "yes" && e.Id is not null).Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             Assert.That(IsLocked(session, fbId), Is.True, "precondition: a library function block starts locked");
 
             session.Apply(new UnlockFunctionBlock(fbId, "Test Installer", new DateOnly(2026, 1, 1)));
@@ -183,7 +183,7 @@ namespace Ihc.Vis.Tests
             Assert.That(session.CanUndo, Is.True, "the session still commits edits after the unlock-undo");
         }
 
-        private static int CountFlags(ProjectDocumentSession session, ElementId fbId) =>
+        private static int CountFlags(IProjectDocument session, ElementId fbId) =>
             session.Current!.FindById(fbId)!.FindChild("settings")!.Children.Count(c => c.Tag == "resource_flag");
 
         /// <summary>
@@ -197,7 +197,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task HistorySnapshots_DoNotRetainTheirIndex()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
 
             (WeakReference<ProjectIndex> before, WeakReference<ProjectIndex> after) = EditOnce(session);
             GC.Collect();
@@ -228,7 +228,7 @@ namespace Ihc.Vis.Tests
         // test would read "retained" whatever the code does.
         [MethodImpl(MethodImplOptions.NoInlining)]
         private static (WeakReference<ProjectIndex> Before, WeakReference<ProjectIndex> After) EditOnce(
-            ProjectDocumentSession session)
+            IProjectDocument session)
         {
             var before = new WeakReference<ProjectIndex>(session.Current!.ElementIndex);
             session.Apply(new AddLocality("Ny lokalitet"));

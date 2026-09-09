@@ -35,7 +35,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project2-CustomBlock.vis");
             var app = App;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ElementId programs = ProgramsOf(project, "Custom blok");
             int before = project.FindById(programs)!.Children.Count(c => c.Tag == "program_simple");
 
@@ -65,7 +65,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project2-CustomBlock.vis");
             var app = App;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             session.Apply(app.Commands.AddProgram(session.Current!, ProgramsOf(project, "Custom blok"), "Nyt program"));
             Project reloaded = await RoundTrip(session.Current!);
 

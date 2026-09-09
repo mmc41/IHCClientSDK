@@ -27,7 +27,7 @@ namespace Ihc.Vis.Validation
     /// <param name="Row">The <c>event</c>/<c>condition</c>/<c>action</c>/<c>case_action</c> row itself.</param>
     /// <param name="Variable">The variable the row names.</param>
     /// <param name="Kind">Whether the row triggers on, reads or writes it.</param>
-    public sealed record VariableUsage(
+    internal sealed record VariableUsage(
         ProjectElement Program,
         ProjectElement Row,
         ProjectElement Variable,
@@ -41,7 +41,7 @@ namespace Ihc.Vis.Validation
     /// <param name="Switch">The switch variable, when its reference resolves.</param>
     /// <param name="Operand">The inline element the branch's <c>value</c> names, when it resolves.</param>
     /// <param name="ValueToken">The value the operand stores — an <c>enum_value</c> token, or a literal.</param>
-    public sealed record CaseTest(
+    internal sealed record CaseTest(
         ProjectElement Branch,
         ProjectElement? Switch,
         ProjectElement? Operand,
@@ -76,7 +76,7 @@ namespace Ihc.Vis.Validation
     /// block's own state variables, and no corpus variable is touched only by a relative command — measured, not
     /// assumed.</para>
     /// </summary>
-    public interface IProgramUsageAnalysis
+    internal interface IProgramUsageAnalysis
     {
         /// <summary>Every usage in the project, in document order.</summary>
         EquatableArray<VariableUsage> Usages { get; }

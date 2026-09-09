@@ -44,7 +44,7 @@ namespace Ihc.Vis.Validation
     /// Scenarios one wireless RECEIVER may take part in. Vendor help states 32. A recommendation like the two
     /// above, and the row reading it is a Warning for the same reason.
     /// </param>
-    public sealed record ControllerCapabilityLimits(
+    internal sealed record ControllerCapabilityLimits(
         int InputModules,
         int OutputModules,
         int AddressesPerDirection,

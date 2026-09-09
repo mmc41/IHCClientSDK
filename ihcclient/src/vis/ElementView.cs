@@ -40,6 +40,49 @@ namespace Ihc.Vis
         public string? Note => Effective("note");
 
         /// <summary>
+        /// Whether this placed resource is a configurable SETTING -- the row a product dialog offers under
+        /// <i>Indstillinger</i> rather than a plain pin. Read from the catalog's own mark through
+        /// <see cref="Effective"/>, so an absent attribute takes its declared default (<c>no</c>) instead of the
+        /// caller re-encoding what blank means.
+        /// </summary>
+        public bool IsSetting => ProductRows.IsSetting(Effective(ProductRows.SettingAttribute));
+
+        /// <summary>
+        /// Whether this direct child of a product body is a STRUCTURAL block rather than a resource row: the scenes
+        /// container, an embedded <c>enum_definition</c> typedef, or a settings/config container of any family. A
+        /// nested sub-product container that is itself a family resource is deliberately not structural.
+        /// </summary>
+        public bool IsStructural => ProductRows.IsStructuralChild(Element.Tag);
+
+        /// <summary>
+        /// The variable sections this function block declares, in the order the format stores them -- each with the
+        /// container tag a caller addresses it by, the caption it falls back to when the file names none, and
+        /// whether it is internal to the block. Empty for any element that is not a function block.
+        /// <para>
+        /// A section's own stored name still wins where it has one: a name in the file is data, not a caption the
+        /// SDK owns, and <see cref="Name"/> on the section's own view is where that comes from.
+        /// </para>
+        /// </summary>
+        public EquatableArray<FunctionBlockSectionInfo> BlockSections =>
+            Element.Kind is ElementKind.FunctionBlock
+                ? FunctionBlockSections.Descriptions
+                : EquatableArray<FunctionBlockSectionInfo>.Empty;
+
+        /// <summary>
+        /// Whether the VENDOR's project tree suppresses this row -- a display convention of the format, stated here
+        /// so a frontend does not re-derive it. Two disjoint criteria, neither of which catches the other's case: a
+        /// shutter product's Op/Ned pins, which only their tag identifies because they are structurally identical
+        /// to their visible siblings, and any row marked as a setting, which only the mark identifies because its
+        /// tag is shared with visible rows of the same product.
+        /// <para>
+        /// It states what the vendor DOES, not what a frontend must do: whether a suppressed row is reachable some
+        /// other way -- a dialog, a search result, a problem route -- stays the frontend's own policy.
+        /// </para>
+        /// </summary>
+        public bool IsHiddenFromTree =>
+            ProductRows.IsHiddenFromTree(Element.Tag, Effective(ProductRows.SettingAttribute));
+
+        /// <summary>
         /// The element's effective SECOND documentation field, <c>note-2</c> (US-027/W5) — the installer-facing help
         /// text, distinct from <see cref="Note"/>'s function documentation. The reference application's properties
         /// dialog offers both (<i>Tekst til funktionsdokumentation</i> and <i>Noter for hjælpetekst</i>).

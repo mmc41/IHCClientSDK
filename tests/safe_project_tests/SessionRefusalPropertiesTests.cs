@@ -45,7 +45,7 @@ namespace Ihc.Vis.Tests
             Project project = await LoadFixture();
             ProjectCommand refused = RefusedCommand();
             ProjectCommand allowed = AllowedCommand(project);
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             Assert.Multiple(() =>
             {
@@ -71,7 +71,7 @@ namespace Ihc.Vis.Tests
         public async Task ARefusedApplyAndPreviewCarryTheSameCodeTheGateReturns()
         {
             Project project = await LoadFixture();
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ProjectCommand refused = RefusedCommand();
 
             EditVerdict verdict = session.CanApply(refused);
@@ -94,7 +94,7 @@ namespace Ihc.Vis.Tests
         public async Task ACommittedOutcomeCarriesNoRefusalCode()
         {
             Project project = await LoadFixture();
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(AllowedCommand(project));
 
@@ -111,7 +111,7 @@ namespace Ihc.Vis.Tests
         public async Task ARefusedApplyLeavesNoUndoEntryNoVersionBumpAndNoDirtyFlag()
         {
             Project project = await LoadFixture();
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             int versionBefore = session.Version;
             bool dirtyBefore = session.IsDirty;
             bool canUndoBefore = session.CanUndo;

@@ -39,14 +39,16 @@ namespace Ihc.Tests
         private const string VisRoot = "Ihc.Vis";
 
         /// <summary>
-        /// The definition layer: builders that REPORT findings and must never run an executor. Anchored to a public
-        /// type per namespace so a rename breaks the compile rather than the rule.
+        /// The definition layer: builders that REPORT findings and must never run an executor. Anchored to one
+        /// representative type per namespace, resolved by name through <see cref="ArchRuleHelpers.SdkType"/> --
+        /// the types themselves are SDK-internal, and the guard is what makes a rename fail loudly instead of
+        /// emptying the rule.
         /// </summary>
         private static IEnumerable<string> DefinitionNamespaces() =>
         [
-            typeof(Ihc.Vis.Products.ProductDefinitionBuilder).Namespace!,
-            typeof(Ihc.Vis.FunctionBlocks.FunctionBlockDefinitionBuilder).Namespace!,
-            typeof(Ihc.Vis.Catalog.CatalogReader).Namespace!,
+            SdkNamespaceOf("Ihc.Vis.Products.ProductDefinitionBuilder"),
+            SdkNamespaceOf("Ihc.Vis.FunctionBlocks.FunctionBlockDefinitionBuilder"),
+            SdkNamespaceOf("Ihc.Vis.Catalog.CatalogReader"),
         ];
 
         /// <summary>
@@ -63,8 +65,8 @@ namespace Ihc.Tests
         /// </summary>
         private static IReadOnlyCollection<string> ExecutorPortNames() =>
         [
-            typeof(IWholeProjectValidator).FullName!,
-            typeof(FieldMetadataFace).FullName!,
+            SdkType("Ihc.Vis.Validation.IWholeProjectValidator").FullName!,
+            SdkType("Ihc.Vis.Validation.FieldMetadataFace").FullName!,
         ];
 
         /// <summary>
@@ -80,8 +82,8 @@ namespace Ihc.Tests
         /// </summary>
         private static IReadOnlyCollection<string> RuleRegistryNames() =>
         [
-            typeof(ProjectRules).FullName!,
-            typeof(RuleSet).FullName!,
+            SdkType("Ihc.Vis.Validation.ProjectRules").FullName!,
+            SdkType("Ihc.Vis.Validation.RuleSet").FullName!,
         ];
 
         /// <summary>The SDK catalogue's access point — the members that hand out the SDK's own rows.</summary>
@@ -143,7 +145,7 @@ namespace Ihc.Tests
         /// </summary>
         [Test]
         public void L3_TheIoLayer_DoesNotDependOnTheValidationEngine() =>
-            AssertNoDependency(ArchitectureModels.Sdk, Subtree(typeof(Ihc.Vis.Io.ProjectSerializer).Namespace!),
+            AssertNoDependency(ArchitectureModels.Sdk, Subtree(SdkNamespaceOf("Ihc.Vis.Io.ProjectSerializer")),
                 Validation,
                 "a refusing reader or writer carries a coded problem from Ihc.Vis.Problems; reaching the engine "
                 + "would invert the layering and let the IO layer read the catalogue");
@@ -213,7 +215,7 @@ namespace Ihc.Tests
                 AssertDependencyIsDetected(ArchitectureModels.Sdk, Validation + ".ProblemCatalogEntries", Session,
                     "the edit-refusal catalogue entries really do depend on the session layer — if this comes out "
                     + "clean, the dependency mechanism is broken and L2 is passing vacuously");
-                AssertDependencyIsDetected(ArchitectureModels.Sdk, typeof(ProjectRules), Validation,
+                AssertDependencyIsDetected(ArchitectureModels.Sdk, SdkType("Ihc.Vis.Validation.ProjectRules").FullName!, Validation,
                     "and a type inside the engine depends on the engine, which is the other end of the same "
                     + "mechanism");
             });

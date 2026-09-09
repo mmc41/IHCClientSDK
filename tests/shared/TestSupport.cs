@@ -583,11 +583,13 @@ public sealed class ShellHarness : IDisposable
         // A test that genuinely wants wall-clock behaviour asks for it: Create(System.TimeProvider.System).
         Time = timeProvider ?? new FakeTimeProvider();
         // The facade shares that clock, so metadata and report generation timestamps (T022) are deterministic too.
-        // No fault port on it, and not for want of wanting one: the constructor that takes a catalog, a clock AND
-        // a port is internal to the SDK, and this assembly is deliberately not an InternalsVisibleTo of it (L5).
-        // A fixture that needs a service reporting into its own sink builds one from the public two-argument
-        // constructor instead, as ValidationFaultRoutingCompositionTests does.
-        ProjectService = new ProjectAppService(new IhcSettings(), new Ihc.Vis.Catalog.BuiltInCatalog(), Time);
+        // Through the supported clock seam, which hands over no catalog: the service builds the SDK's own, lazily,
+        // exactly as the settings-only constructor does. No fault port on it, and not for want of wanting one --
+        // the constructor taking a clock AND a port is internal to the SDK, and this file is compiled into a suite
+        // that is deliberately not an InternalsVisibleTo of it (L5). A fixture that needs a service reporting into
+        // its own sink builds one from the public fault-port constructor instead, as
+        // ValidationFaultRoutingCompositionTests does.
+        ProjectService = new ProjectAppService(new IhcSettings(), Time);
         // The catalog dir is a subfolder of TempDir so Restart(dir) reuses it (US-061).
         // The marshal is SYNCHRONOUS here, which is what makes an inline post safe: nothing may reach bound state
         // off the caller's thread, so the clock above must never fire on its own.

@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Ihc.Vis.Tests
@@ -125,7 +124,7 @@ namespace Ihc.Vis.Tests
         public async Task ExportFunctionBlock_DefaultsCreatedDateFromTheServiceClock()
         {
             var clock = new FakeTimeProvider(new DateTimeOffset(2030, 5, 6, 7, 8, 9, TimeSpan.Zero));
-            var app = new ProjectAppService(TestSetup.Settings, A.Fake<ICatalog>(), clock);
+            var app = new ProjectAppService(TestSetup.Settings, StubCatalog.Empty(), clock);
             Project project = await app.Load(Original);
             ElementId fbId = KipBlockId(project);
 

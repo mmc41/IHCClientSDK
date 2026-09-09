@@ -225,7 +225,12 @@ namespace Ihc.Vis.Tests
         [Test]
         public void ThereIsNoEnablingFlagForFirmware()
         {
-            string[] properties = [.. typeof(ProblemCatalogEntry).GetProperties().Select(p => p.Name)];
+            // Public AND non-public: the shape being pinned is the MODEL's, and the firmware bound is declared
+            // evidence behind an SDK rule rather than part of the entry's host-authoring surface, so it is internal.
+            string[] properties = [.. typeof(ProblemCatalogEntry)
+                .GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic
+                               | System.Reflection.BindingFlags.Instance)
+                .Select(p => p.Name)];
 
             Assert.Multiple(() =>
             {

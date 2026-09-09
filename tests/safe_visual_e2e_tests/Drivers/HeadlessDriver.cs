@@ -243,8 +243,8 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
         // nothing faulted would have read a counter nothing increments and gone green on every CI run, which is
         // a worse outcome than not asserting at all.
         internalErrors = new InternalErrorLog(post);
-        // The two-argument overload is the composition root's own: a lazy BuiltInCatalog on the system clock,
-        // which is what this driver was already building by hand, plus the SDK's fault port.
+        // The fault-port overload is the composition root's own: the SDK's built-in catalog, built lazily, on the
+        // system clock -- which is what this driver was already composing by hand -- plus the SDK's fault port.
         ProjectAppService service = new(new IhcSettings(), internalErrors.Append);
         RecentProjectsStore recent = new(Path.Combine(scratchDir, "recent.json"));
         // The REAL clock: the panel's debounce is part of what a scenario waits on, and `problems state --wait`

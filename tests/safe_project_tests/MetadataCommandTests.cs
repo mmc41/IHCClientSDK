@@ -27,7 +27,7 @@ namespace Ihc.Vis.Tests
         public async Task UpdateProjectInfo_RoundTripsThroughProjection_AndBurnsNoIds()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             var data = new ProjectInfoData("desc-A1", "num-A1", "prog-A1", "type-A1", "draw-A1",
                 new ContactInfo("kName", "kAddr", "kCity", "kZip", "kCountry", "kPhone", "kMob", "kEmail"),
                 new ContactInfo("iName", "iAddr", "iCity", "iZip", "iCountry", "iPhone", "iMob", "iEmail"));
@@ -55,7 +55,7 @@ namespace Ihc.Vis.Tests
         public async Task UpdateProjectInfo_WritesTypeAndDrawing_ToTheirDeclaredAttributes()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             var data = new ProjectInfoData("d", "n", "p", "Villa", "Tegning 4b", ContactInfo.Empty, ContactInfo.Empty);
 
             session.Apply(new UpdateProjectInfo(data));
@@ -78,7 +78,7 @@ namespace Ihc.Vis.Tests
         public async Task GetProjectInfo_ReadsTypeAndDrawing_FromAnExistingProject()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             session.Apply(new UpdateProjectInfo(
                 new ProjectInfoData("d", "n", "p", "Rækkehus", "T-99", ContactInfo.Empty, ContactInfo.Empty)));
 
@@ -96,7 +96,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             string name = EmptyEditableEnumName(project);
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             Project before = session.Current!;
 
             EditOutcome outcome = session.Apply(new UpdateEnumStates(name, []));
@@ -114,7 +114,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             string name = EmptyEditableEnumName(project);
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new UpdateEnumStates(name, ["AppendA", "AppendB", "AppendC"]));
 
@@ -138,7 +138,7 @@ namespace Ihc.Vis.Tests
                 && e.GetAttribute("typeid") is null && e.Children.Any(v => v.IsEnumValue));
             string name = project.View(def).Name!;
             ElementId valueId = def.Children.First(v => v.IsEnumValue).Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new UpdateEnumStates(name, []) { Relabels = [(valueId, "Relabeled")] });
 

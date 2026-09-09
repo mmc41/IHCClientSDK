@@ -10,7 +10,7 @@ namespace Ihc.Vis.Products
     /// vendor oracle (2026-08-11, all 100 catalog products), not from a reading of the DTD: the DTD says which
     /// attributes exist, the dialog says which of them the installer is offered, and those are different sets.</para>
     /// </summary>
-    public static class ProductDialogPresets
+    internal static class ProductDialogPresets
     {
         // Declared FIRST because static initializers run in textual order: a preset below that referenced this
         // group from above it would compose against a null.

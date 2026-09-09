@@ -1,7 +1,6 @@
 using Ihc.Vis.Problems;
 using System.Text;
 using System.Xml;
-using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
 
 using static Ihc.Vis.Tests.Tree;
@@ -287,13 +286,8 @@ namespace Ihc.Vis.Tests
 
         // ----- File→New seeding -----
 
-        private static ICatalog FakeCatalog(ProjectElement skeleton, ProjectElement enumTemplate)
-        {
-            var catalog = A.Fake<ICatalog>();
-            A.CallTo(() => catalog.NewProjectSkeleton).Returns(skeleton);
-            A.CallTo(() => catalog.BuiltInEnumerators).Returns(enumTemplate);
-            return catalog;
-        }
+        private static ICatalog FakeCatalog(ProjectElement skeleton, ProjectElement enumTemplate) =>
+            StubCatalog.With(newProjectSkeleton: skeleton, builtInEnumerators: enumTemplate);
 
         private static ProjectElement Skeleton(string lastUniqueId, int groupCounter) =>
             Node("utcs_project", null, new[] { ("last_unique_id", lastUniqueId) },

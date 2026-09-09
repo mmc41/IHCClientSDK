@@ -29,7 +29,7 @@ namespace Ihc.Vis.Validation
     /// and reads the EFFECTIVE value, because there the default IS what the device does and what the dialog shows:
     /// a dimmer with no stored mode runs on automatic detection.</para>
     /// </summary>
-    public static class DeviceSettingRules
+    internal static class DeviceSettingRules
     {
         private const string FadeUpTag = "dimmer_setting_fade_rate_up";
         private const string FadeDownTag = "dimmer_setting_fade_rate_down";

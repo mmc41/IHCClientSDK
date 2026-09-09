@@ -9,7 +9,6 @@ using Ihc.Vis.Addressing;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
-using Ihc.Vis.Schema;
 using Ihc.Vis.Session;
 using Ihc.Vis.Validation;
 
@@ -72,7 +71,7 @@ internal sealed class PropertiesDialogCoordinator(
         string? focus = hop?.Attribute;
         // EVERY product family — wired, wireless, modem, LED dimmer, S0 — opens the same dialog on its own
         // composed descriptor (T030). There is no per-family branch left to get wrong.
-        if (ProductClassifier.IsProduct(element.Tag))
+        if (element.Kind is ElementKind.Product)
             await OpenComposedDialogAsync(scope, id, hop);
         else if (element.Kind == ElementKind.DatalinePin)
             await OpenPinAsync(scope, id, element, focus);
@@ -473,8 +472,7 @@ internal sealed class PropertiesDialogCoordinator(
         // WHICH grid depends on what the sub-item IS. A setting and a terminal are both rows of the same dialog
         // and both reached by stepping into them, but they are different lists with different selections, so a
         // single "sub-item" answer would have pointed a constant's route at the terminal grid.
-        if (project.FindById(hop.Site) is { } site
-            && ProductRows.IsSetting(site.GetAttribute(ProductRows.SettingAttribute)))
+        if (project.FindById(hop.Site) is { } site && project.View(site).IsSetting)
         {
             return new ProductDialogShowOptions(
                 SelectSettingId: hop.Site.ToToken(),

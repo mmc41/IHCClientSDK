@@ -36,7 +36,7 @@ namespace Ihc.Vis.Tests
         /// Swaps the session's snapshot for a re-rooted copy the pin does not cover — the bookkeeping drift the
         /// belt exists for, which nothing on the public surface can produce.
         /// </summary>
-        private static void ReplaceCurrentBehindTheSession(ProjectDocumentSession session)
+        private static void ReplaceCurrentBehindTheSession(IProjectDocument session)
         {
             FieldInfo field = typeof(ProjectDocumentSession)
                 .GetField("_current", BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -59,7 +59,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task Apply_BuildsTheNewSnapshotsIndexExactlyOnce()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
 
             // Started AFTER the open, so the opening snapshot's own build stays outside the window.
             using TelemetryCapture capture = TelemetryCapture.Listen(
@@ -88,7 +88,7 @@ namespace Ihc.Vis.Tests
             (ProjectElement product, ProjectElement pin) =
                 CatalogPinDeleteGuardTests.PickProductAndCatalogPin(project);
             ProjectElement inner = CatalogPinDeleteGuardTests.PickNodeInsideLockedBlock(project);
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             // Started AFTER the open and after the picks, so the opening snapshot's own build stays outside the window.
             using TelemetryCapture capture = TelemetryCapture.Listen(
@@ -119,7 +119,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task Apply_WhenTheSnapshotWasReplacedBehindTheSession_RefusesBeforeAnythingMoves()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             session.Apply(new AddLocality("Første lokalitet"));
             int versionBefore = session.Version;
             ReplaceCurrentBehindTheSession(session);
@@ -159,7 +159,7 @@ namespace Ihc.Vis.Tests
         [Test]
         public async Task Undo_WhenTheSnapshotWasReplacedBehindTheSession_RefusesWithTheHistoryUntouched()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             session.Apply(new AddLocality("Ny lokalitet"));
             string? undoLabel = session.UndoLabel;
             int versionBefore = session.Version;

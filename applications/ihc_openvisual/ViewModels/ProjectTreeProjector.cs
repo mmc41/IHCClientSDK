@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Ihc.Vis;
 using Ihc.Vis.Model;
-using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
-using Ihc.Vis.Schema;
 
 namespace ihc_openvisual.ViewModels;
 
@@ -291,8 +289,7 @@ public sealed class ProjectTreeProjector(Project project, LinkDisplay linkDispla
     /// </summary>
     private static bool DrawsProductChild(Project project, ProjectElement resource) =>
         resource.IsScenesContainer
-        || (!ProductRows.IsStructuralChild(resource.Tag)
-            && !ProductRows.IsHiddenFromTree(resource.Tag, project.View(resource).Effective("setting")));
+        || project.View(resource) is { IsStructural: false, IsHiddenFromTree: false };
 
     /// <summary>
     /// Whether the tree carries a row for this element — the question the <i>Problemer</i> reveal asks before it
@@ -313,7 +310,7 @@ public sealed class ProjectTreeProjector(Project project, LinkDisplay linkDispla
         {
             if (node.Id is not { } id || project.FindParent(id) is not { } parent)
                 return false;   // no way up: the element is not in this project's tree
-            if (ProductClassifier.IsProduct(parent.Tag) && !DrawsProductChild(project, node))
+            if (parent.Kind is ElementKind.Product && !DrawsProductChild(project, node))
                 return false;
             // A GRANDCHILD of a product is drawn only where the projector actually recurses: scene members under
             // a scenes container, link halves under a pin. Nothing else below a product row exists in the tree.
@@ -323,7 +320,7 @@ public sealed class ProjectTreeProjector(Project project, LinkDisplay linkDispla
             // is where the catalog puts it) was reported as drawn when the tree has no node for it at all. A
             // reveal aimed there is a dead end, which is the one thing this predicate exists to prevent.
             if (parent.Id is { } parentId && project.FindParent(parentId) is { } grandparent
-                && ProductClassifier.IsProduct(grandparent.Tag)
+                && grandparent.Kind is ElementKind.Product
                 && !(parent.IsScenesContainer ? node.IsSceneMember : node.IsLinkHalf))
             {
                 return false;
@@ -428,9 +425,10 @@ public sealed class ProjectTreeProjector(Project project, LinkDisplay linkDispla
             Tooltip = BuildTooltip(fb),
             Kind = TreeNodeKind.FunctionBlock,
         };
-        foreach ((string container, string label) in FunctionBlockSections.All)
+        foreach (FunctionBlockSectionInfo section in project.View(fb).BlockSections)
         {
-            if (!programmingMode && container == "internalsettings")
+            string container = section.Container;
+            if (!programmingMode && section.IsInternal)
                 continue;   // Internal variables is programming-mode-only (A-17)
             ProjectElement? holder = fb.FindChild(container);
             if (!programmingMode && (holder is null || holder.Children.IsEmpty))
@@ -438,8 +436,8 @@ public sealed class ProjectTreeProjector(Project project, LinkDisplay linkDispla
             // The caption is the container's own stored name when it has one (the standard blocks name their
             // settings section "Indstillinger"); the table's label is the fallback for a container that leaves it
             // unset. Same rule as the locality root: a name in the file is data, not a caption the app owns.
-            string sectionLabel = holder is not null ? project.NameOr(holder, label) : label;
-            var section = new TreeNodeViewModel(sectionLabel, NodeIcons.For(container, null),
+            string sectionLabel = holder is not null ? project.NameOr(holder, section.Caption) : section.Caption;
+            var sectionNode = new TreeNodeViewModel(sectionLabel, NodeIcons.For(container, null),
                 isExpanded: programmingMode, elementId: holder?.Id)
             {
                 KindDetail = container,
@@ -448,9 +446,9 @@ public sealed class ProjectTreeProjector(Project project, LinkDisplay linkDispla
             if (holder is not null)
             {
                 foreach (ProjectElement pin in holder.Children)
-                    section.Children.Add(BuildPinNode(pin, inFunctionBlockVariableSection: true));
+                    sectionNode.Children.Add(BuildPinNode(pin, inFunctionBlockVariableSection: true));
             }
-            node.Children.Add(section);
+            node.Children.Add(sectionNode);
         }
         return node;
     }

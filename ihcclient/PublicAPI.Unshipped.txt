@@ -1,23 +1,94 @@
 #nullable enable
-Ihc.Vis.Validation.ILibraryBlockSource
-Ihc.Vis.Validation.ILibraryBlockSource.TryGetBody(string! masterType, string! masterVersion, out Ihc.Vis.Model.ProjectElement! body) -> bool
-Ihc.Vis.Validation.ILibraryBlockSource.TryGetVersions(string! masterType, out Ihc.Vis.Model.EquatableArray<string!> versions) -> bool
-Ihc.Vis.Validation.FieldConstraintMetadata.Blank.get -> Ihc.Vis.Validation.BlankPolicy
-Ihc.Vis.Validation.FieldConstraintMetadata.Blank.init -> void
-Ihc.Vis.Validation.IProgramUsageAnalysis.IsSelfModifying(Ihc.Vis.Model.ProjectElement! row) -> bool
-Ihc.Vis.Validation.IProjectAnalyses.Elements.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Model.ProjectElement!>
-Ihc.Vis.Validation.IProjectAnalyses.WithTag(string! tag) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Model.ProjectElement!>
-Ihc.Vis.Validation.IProjectInspection.Library.get -> Ihc.Vis.Validation.ILibraryBlockSource?
-Ihc.Vis.Validation.ProblemCatalogEntry.RequiresLibrary.get -> bool
-Ihc.Vis.Validation.ProblemCatalogEntry.RequiresLibrary.init -> void
-Ihc.Vis.Validation.ValidationProfile.Library.get -> Ihc.Vis.Validation.ILibraryBlockSource?
-Ihc.Vis.Validation.ValidationProfile.Library.init -> void
-static Ihc.Vis.Validation.FieldMetadataFace.Stricter(Ihc.Vis.Validation.FieldConstraintMetadata into, Ihc.Vis.Validation.FieldConstraintMetadata from) -> Ihc.Vis.Validation.FieldConstraintMetadata
-static Ihc.Vis.Session.EditRefusalCodes.FieldPhonenumberMalformed.get -> Ihc.Vis.Problems.ProblemCode
+Ihc.App.AppServiceBase.AppServiceBase(System.Action<Ihc.Vis.Problems.InternalError!>? faultPort) -> void
+Ihc.App.AppServiceBase.RunTraced(string! operationName, System.Action<System.Diagnostics.Activity?>! body, Ihc.MetricBinding? metrics) -> void
+Ihc.App.AppServiceBase.RunTraced<T>(string! operationName, System.Func<System.Diagnostics.Activity?, T>! body, Ihc.MetricBinding? metrics) -> T
+Ihc.App.AppServiceBase.RunTracedAsync(string! operationName, System.Func<System.Diagnostics.Activity?, System.Threading.Tasks.Task!>! body, Ihc.MetricBinding? metrics) -> System.Threading.Tasks.Task!
+Ihc.App.AppServiceBase.RunTracedAsync<T>(string! operationName, System.Func<System.Diagnostics.Activity?, System.Threading.Tasks.Task<T>!>! body, Ihc.MetricBinding? metrics) -> System.Threading.Tasks.Task<T>!
+Ihc.App.AuthenticatedAppServiceBase
+Ihc.App.AuthenticatedAppServiceBase.AuthenticatedAppServiceBase(Ihc.IhcSettings! settings, Ihc.IAuthenticationService! authService, bool ownsAuthService) -> void
+Ihc.App.AuthenticatedAppServiceBase.Dispose() -> void
+Ihc.App.AuthenticatedAppServiceBase.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Ihc.App.BridgeRefusalCodes
+Ihc.IhcConfiguration
+Ihc.MetricBinding
+Ihc.OperationOutcome
+Ihc.OperationOutcome.Equals(Ihc.OperationOutcome other) -> bool
+Ihc.OperationOutcome.Exception.get -> System.Exception?
+Ihc.OperationOutcome.IsOk.get -> bool
+Ihc.OperationOutcome.OperationOutcome() -> void
+Ihc.OperationOutcome.ProblemCode.get -> string?
+Ihc.OperationOutcome.Status.get -> Ihc.OperationStatus
+Ihc.OperationScope
+Ihc.OperationScope.Activity.get -> System.Diagnostics.Activity?
+Ihc.OperationScope.AddMetricTag(string! key, object? value) -> void
+Ihc.OperationScope.AddSharedTag(string! key, object? value) -> void
+Ihc.OperationScope.Dispose() -> void
+Ihc.OperationScope.Outcome.get -> Ihc.OperationOutcome
+Ihc.OperationScope.SetOutcome(Ihc.OperationOutcome value) -> void
+Ihc.OperationStatus
+Ihc.OperationStatus.Cancelled = 2 -> Ihc.OperationStatus
+Ihc.OperationStatus.Failed = 3 -> Ihc.OperationStatus
+Ihc.OperationStatus.Ok = 0 -> Ihc.OperationStatus
+Ihc.OperationStatus.Refused = 1 -> Ihc.OperationStatus
+Ihc.OperationTelemetry
+Ihc.OperationTelemetry.OperationTelemetry(Ihc.TelemetrySurface! surface, string! owner) -> void
+Ihc.OperationTelemetry.OperationTelemetry(Ihc.TelemetrySurface! surface, string! owner, System.Action<string!, System.Exception!>? onFault) -> void
+Ihc.OperationTelemetry.Record(string! operation, System.DateTimeOffset startedAt, System.DateTimeOffset endedAt) -> void
+Ihc.OperationTelemetry.Run(string! operation, System.Action<Ihc.OperationScope!>! body, Ihc.MetricBinding? metrics = null) -> void
+Ihc.OperationTelemetry.Run<T>(string! operation, System.Func<Ihc.OperationScope!, T>! body, Ihc.MetricBinding? metrics = null, System.Func<T, Ihc.OperationOutcome>? classify = null) -> T
+Ihc.OperationTelemetry.RunAsync(string! operation, System.Func<Ihc.OperationScope!, System.Threading.Tasks.Task!>! body, Ihc.MetricBinding? metrics = null) -> System.Threading.Tasks.Task!
+Ihc.OperationTelemetry.RunAsync<T>(string! operation, System.Func<Ihc.OperationScope!, System.Threading.Tasks.Task<T>!>! body, Ihc.MetricBinding? metrics = null, System.Func<T, Ihc.OperationOutcome>? classify = null) -> System.Threading.Tasks.Task<T>!
+Ihc.OperationTelemetry.Start(string! operation, System.Diagnostics.ActivityKind kind = System.Diagnostics.ActivityKind.Internal, Ihc.MetricBinding? metrics = null, System.Collections.Generic.IEnumerable<System.Diagnostics.ActivityLink>? links = null) -> Ihc.OperationScope!
+Ihc.TelemetryConfiguration.Environment.get -> string!
+Ihc.TelemetryConfiguration.Environment.set -> void
+Ihc.TelemetryConfiguration.Metrics.get -> string!
+Ihc.TelemetryConfiguration.Metrics.set -> void
+Ihc.TelemetryConfiguration.PerRuleValidationTiming.get -> bool
+Ihc.TelemetryConfiguration.PerRuleValidationTiming.set -> void
+Ihc.TelemetrySurface
+Ihc.TelemetrySurface.ActivitySource.get -> System.Diagnostics.ActivitySource!
+Ihc.TelemetrySurface.Dispose() -> void
+Ihc.TelemetrySurface.Meter.get -> System.Diagnostics.Metrics.Meter!
+Ihc.TelemetrySurface.TelemetrySurface(System.Diagnostics.ActivitySource! activitySource, System.Diagnostics.Metrics.Meter! meter) -> void
+Ihc.TelemetrySurface.TelemetrySurface(string! name, string? version = null) -> void
+Ihc.Vis.Catalog.ImportRefusalCodes
+Ihc.Vis.DeclaredNumericBounds
+Ihc.Vis.DeclaredNumericBounds.DeclaredNumericBounds() -> void
+Ihc.Vis.DeclaredNumericBounds.DeclaredNumericBounds(int? Minimum, int? Maximum, bool Unreadable) -> void
+Ihc.Vis.DeclaredNumericBounds.Deconstruct(out int? Minimum, out int? Maximum, out bool Unreadable) -> void
+Ihc.Vis.DeclaredNumericBounds.Equals(Ihc.Vis.DeclaredNumericBounds other) -> bool
+Ihc.Vis.DeclaredNumericBounds.Maximum.get -> int?
+Ihc.Vis.DeclaredNumericBounds.Maximum.init -> void
+Ihc.Vis.DeclaredNumericBounds.Minimum.get -> int?
+Ihc.Vis.DeclaredNumericBounds.Minimum.init -> void
+Ihc.Vis.DeclaredNumericBounds.Unreadable.get -> bool
+Ihc.Vis.DeclaredNumericBounds.Unreadable.init -> void
+Ihc.Vis.DeleteImpact.Deconstruct(out bool Deletable, out bool NeedsConfirm, out Ihc.Vis.DeleteKind Kind, out Ihc.Vis.Problems.Problem? Refusal) -> void
+Ihc.Vis.DeleteImpact.DeleteImpact(bool Deletable, bool NeedsConfirm, Ihc.Vis.DeleteKind Kind, Ihc.Vis.Problems.Problem? Refusal = null) -> void
+Ihc.Vis.DeleteImpact.Refusal.get -> Ihc.Vis.Problems.Problem?
+Ihc.Vis.DeleteImpact.Refusal.init -> void
+Ihc.Vis.DimmerView.SettingConstraint(string! settingTag) -> Ihc.Vis.Validation.FieldConstraintMetadata
+Ihc.Vis.Editing.EditOpenRefusalCodes
+Ihc.Vis.ElementView.BlockSections.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.FunctionBlockSectionInfo!>
+Ihc.Vis.ElementView.DeclaredBounds.get -> Ihc.Vis.DeclaredNumericBounds
+Ihc.Vis.ElementView.IsHiddenFromTree.get -> bool
+Ihc.Vis.ElementView.IsSetting.get -> bool
+Ihc.Vis.ElementView.IsStructural.get -> bool
+Ihc.Vis.ErrorTierFilter
+Ihc.Vis.ErrorTierFilter.Deconstruct(out bool Refusing, out bool Ordinary) -> void
+Ihc.Vis.ErrorTierFilter.Equals(Ihc.Vis.ErrorTierFilter other) -> bool
+Ihc.Vis.ErrorTierFilter.ErrorTierFilter() -> void
+Ihc.Vis.ErrorTierFilter.ErrorTierFilter(bool Refusing, bool Ordinary) -> void
+Ihc.Vis.ErrorTierFilter.Ordinary.get -> bool
+Ihc.Vis.ErrorTierFilter.Ordinary.init -> void
+Ihc.Vis.ErrorTierFilter.Refusing.get -> bool
+Ihc.Vis.ErrorTierFilter.Refusing.init -> void
 Ihc.Vis.FindingExportFormat
 Ihc.Vis.FindingExportOptions
 Ihc.Vis.FindingExportOptions.<Clone>$() -> Ihc.Vis.FindingExportOptions!
 Ihc.Vis.FindingExportOptions.Equals(Ihc.Vis.FindingExportOptions? other) -> bool
+Ihc.Vis.FindingExportOptions.ErrorTiers.get -> Ihc.Vis.ErrorTierFilter?
+Ihc.Vis.FindingExportOptions.ErrorTiers.init -> void
 Ihc.Vis.FindingExportOptions.FindingExportOptions() -> void
 Ihc.Vis.FindingExportOptions.Order.get -> string!
 Ihc.Vis.FindingExportOptions.Order.init -> void
@@ -25,53 +96,34 @@ Ihc.Vis.FindingExportOptions.Severities.get -> Ihc.Vis.Model.EquatableArray<Ihc.
 Ihc.Vis.FindingExportOptions.Severities.init -> void
 Ihc.Vis.FindingExportOptions.SourceName.get -> string?
 Ihc.Vis.FindingExportOptions.SourceName.init -> void
-Ihc.Vis.ProjectAppService.ExportFindings(Ihc.Vis.Projects.Project! project, string! path, Ihc.Vis.FindingExportOptions? options = null) -> System.Threading.Tasks.Task!
-Ihc.Vis.ProjectAppService.ExportFindings(Ihc.Vis.Projects.Project! project, System.Collections.Generic.IReadOnlyList<Ihc.Vis.Validation.ValidationFinding!>! findings, string! path, Ihc.Vis.FindingExportOptions? options = null) -> System.Threading.Tasks.Task!
-Ihc.Vis.ProjectAppService.ExportFindings(Ihc.Vis.Projects.Project! project, System.Collections.Generic.IReadOnlyList<Ihc.Vis.Validation.ValidationFinding!>! findings, System.IO.Stream! output, Ihc.Vis.FindingExportOptions? options = null) -> System.Threading.Tasks.Task!
-Ihc.Vis.ProjectAppService.ExportFindings(Ihc.Vis.Projects.Project! project, System.IO.Stream! output, Ihc.Vis.FindingExportOptions? options = null) -> System.Threading.Tasks.Task!
-Ihc.Vis.ProjectAppService.DescribeField(Ihc.Vis.Validation.RuleTarget target) -> Ihc.Vis.Validation.FieldConstraintMetadata
-Ihc.Vis.ProjectAppService.MissingRequiredField(string? value) -> Ihc.Vis.Problems.Problem?
-Ihc.Vis.Session.EditOutcome.Code.get -> Ihc.Vis.Problems.ProblemCode
-Ihc.Vis.Session.EditOutcome.Code.init -> void
-Ihc.Vis.Session.EditOutcome.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes, out Ihc.Vis.Problems.ProblemCode Code, out Ihc.Vis.Problems.InternalError? Fault) -> void
-Ihc.Vis.Session.EditOutcome.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode), Ihc.Vis.Problems.InternalError? Fault = null) -> void
-Ihc.Vis.Session.EditOutcome<T>.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes, out T? Value, out Ihc.Vis.Problems.ProblemCode Code, out Ihc.Vis.Problems.InternalError? Fault) -> void
-Ihc.Vis.Session.EditOutcome<T>.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes, T? Value, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode), Ihc.Vis.Problems.InternalError? Fault = null) -> void
-Ihc.Vis.Session.PreviewOutcome.Code.get -> Ihc.Vis.Problems.ProblemCode
-Ihc.Vis.Session.PreviewOutcome.Code.init -> void
-Ihc.Vis.Session.PreviewOutcome.Deconstruct(out Ihc.Vis.Session.PreviewStatus Status, out Ihc.Vis.Session.ProjectChangeSet? Changes, out string? Reason, out Ihc.Vis.Problems.ProblemCode Code, out Ihc.Vis.Problems.InternalError? Fault) -> void
-static Ihc.Vis.Session.PreviewOutcome.Refused(string? reason, Ihc.Vis.Problems.ProblemCode code = default(Ihc.Vis.Problems.ProblemCode)) -> Ihc.Vis.Session.PreviewOutcome!
-Ihc.App.BridgeRefusalCodes
-Ihc.Vis.Catalog.ImportRefusalCodes
-Ihc.Vis.DeleteImpact.Deconstruct(out bool Deletable, out bool NeedsConfirm, out Ihc.Vis.DeleteKind Kind, out Ihc.Vis.Problems.Problem? Refusal) -> void
-Ihc.Vis.DeleteImpact.DeleteImpact(bool Deletable, bool NeedsConfirm, Ihc.Vis.DeleteKind Kind, Ihc.Vis.Problems.Problem? Refusal = null) -> void
-Ihc.Vis.DeleteImpact.Refusal.get -> Ihc.Vis.Problems.Problem?
-Ihc.Vis.DeleteImpact.Refusal.init -> void
-Ihc.Vis.DimmerView.SettingConstraint(string! settingTag) -> Ihc.Vis.Validation.FieldConstraintMetadata
-Ihc.Vis.ElementView.DeclaredBounds.get -> Ihc.Vis.DeclaredNumericBounds
-Ihc.Vis.DeclaredNumericBounds
-Ihc.Vis.DeclaredNumericBounds.DeclaredNumericBounds() -> void
-Ihc.Vis.DeclaredNumericBounds.DeclaredNumericBounds(int? Minimum, int? Maximum, bool Unreadable) -> void
-Ihc.Vis.DeclaredNumericBounds.Deconstruct(out int? Minimum, out int? Maximum, out bool Unreadable) -> void
-Ihc.Vis.DeclaredNumericBounds.Maximum.get -> int?
-Ihc.Vis.DeclaredNumericBounds.Maximum.init -> void
-Ihc.Vis.DeclaredNumericBounds.Minimum.get -> int?
-Ihc.Vis.DeclaredNumericBounds.Minimum.init -> void
-Ihc.Vis.DeclaredNumericBounds.Equals(Ihc.Vis.DeclaredNumericBounds other) -> bool
-Ihc.Vis.DeclaredNumericBounds.Unreadable.get -> bool
-Ihc.Vis.DeclaredNumericBounds.Unreadable.init -> void
-override Ihc.Vis.DeclaredNumericBounds.GetHashCode() -> int
-static Ihc.Vis.DeclaredNumericBounds.operator !=(Ihc.Vis.DeclaredNumericBounds left, Ihc.Vis.DeclaredNumericBounds right) -> bool
-static Ihc.Vis.DeclaredNumericBounds.operator ==(Ihc.Vis.DeclaredNumericBounds left, Ihc.Vis.DeclaredNumericBounds right) -> bool
-~override Ihc.Vis.DeclaredNumericBounds.Equals(object obj) -> bool
-~override Ihc.Vis.DeclaredNumericBounds.ToString() -> string
+Ihc.Vis.FunctionBlockSectionInfo
+Ihc.Vis.FunctionBlockSectionInfo.<Clone>$() -> Ihc.Vis.FunctionBlockSectionInfo!
+Ihc.Vis.FunctionBlockSectionInfo.Caption.get -> string!
+Ihc.Vis.FunctionBlockSectionInfo.Caption.init -> void
+Ihc.Vis.FunctionBlockSectionInfo.Container.get -> string!
+Ihc.Vis.FunctionBlockSectionInfo.Container.init -> void
+Ihc.Vis.FunctionBlockSectionInfo.Deconstruct(out string! Container, out string! Caption, out bool IsInternal) -> void
+Ihc.Vis.FunctionBlockSectionInfo.Equals(Ihc.Vis.FunctionBlockSectionInfo? other) -> bool
+Ihc.Vis.FunctionBlockSectionInfo.FunctionBlockSectionInfo(string! Container, string! Caption, bool IsInternal) -> void
+Ihc.Vis.FunctionBlockSectionInfo.IsInternal.get -> bool
+Ihc.Vis.FunctionBlockSectionInfo.IsInternal.init -> void
+Ihc.Vis.InsertableVariableType
+Ihc.Vis.InsertableVariableType.<Clone>$() -> Ihc.Vis.InsertableVariableType!
+Ihc.Vis.InsertableVariableType.Deconstruct(out string! Tag, out Ihc.Vis.Schema.VariableRole Role) -> void
+Ihc.Vis.InsertableVariableType.Equals(Ihc.Vis.InsertableVariableType? other) -> bool
+Ihc.Vis.InsertableVariableType.InsertableVariableType(string! Tag, Ihc.Vis.Schema.VariableRole Role) -> void
+Ihc.Vis.InsertableVariableType.IsSignal.get -> bool
+Ihc.Vis.InsertableVariableType.Role.get -> Ihc.Vis.Schema.VariableRole
+Ihc.Vis.InsertableVariableType.Role.init -> void
+Ihc.Vis.InsertableVariableType.Tag.get -> string!
+Ihc.Vis.InsertableVariableType.Tag.init -> void
 Ihc.Vis.Io.LoadRefusalCodes
 Ihc.Vis.Io.ProjectFormatException.Problems.get -> Ihc.Vis.Problems.ProblemChain?
 Ihc.Vis.Io.ProjectFormatException.ProjectFormatException(Ihc.Vis.Problems.RefusalIdentity refusal, string! diagnostic, System.Exception? innerException = null) -> void
 Ihc.Vis.Io.SaveRefusalCodes
 Ihc.Vis.Problems.IProblemCarrier
+Ihc.Vis.Problems.IProblemCarrier.Aggregate.get -> Ihc.Vis.Problems.ProblemAggregate?
 Ihc.Vis.Problems.IProblemCarrier.Problems.get -> Ihc.Vis.Problems.ProblemChain?
-Ihc.Vis.Problems.OperationCodes
 Ihc.Vis.Problems.InternalError
 Ihc.Vis.Problems.InternalError.<Clone>$() -> Ihc.Vis.Problems.InternalError!
 Ihc.Vis.Problems.InternalError.Code.get -> Ihc.Vis.Problems.ProblemCode
@@ -93,12 +145,7 @@ Ihc.Vis.Problems.InternalErrorOrigin
 Ihc.Vis.Problems.InternalErrorOrigin.Host = 1 -> Ihc.Vis.Problems.InternalErrorOrigin
 Ihc.Vis.Problems.InternalErrorOrigin.Platform = 2 -> Ihc.Vis.Problems.InternalErrorOrigin
 Ihc.Vis.Problems.InternalErrorOrigin.Sdk = 0 -> Ihc.Vis.Problems.InternalErrorOrigin
-override Ihc.Vis.Problems.InternalError.Equals(object? obj) -> bool
-override Ihc.Vis.Problems.InternalError.GetHashCode() -> int
-override Ihc.Vis.Problems.InternalError.ToString() -> string!
-static Ihc.Vis.Problems.InternalError.From(Ihc.Vis.Problems.Problem! problem, Ihc.Vis.Problems.InternalErrorOrigin origin, string! detail) -> Ihc.Vis.Problems.InternalError!
-static Ihc.Vis.Problems.InternalError.operator !=(Ihc.Vis.Problems.InternalError? left, Ihc.Vis.Problems.InternalError? right) -> bool
-static Ihc.Vis.Problems.InternalError.operator ==(Ihc.Vis.Problems.InternalError? left, Ihc.Vis.Problems.InternalError? right) -> bool
+Ihc.Vis.Problems.OperationCodes
 Ihc.Vis.Problems.Problem
 Ihc.Vis.Problems.Problem.<Clone>$() -> Ihc.Vis.Problems.Problem!
 Ihc.Vis.Problems.Problem.Arguments.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgument>
@@ -149,6 +196,7 @@ Ihc.Vis.Problems.ProblemArgumentType.ElementIdentity = 0 -> Ihc.Vis.Problems.Pro
 Ihc.Vis.Problems.ProblemArgumentType.Integer = 3 -> Ihc.Vis.Problems.ProblemArgumentType
 Ihc.Vis.Problems.ProblemArgumentType.Number = 4 -> Ihc.Vis.Problems.ProblemArgumentType
 Ihc.Vis.Problems.ProblemArgumentType.Path = 6 -> Ihc.Vis.Problems.ProblemArgumentType
+Ihc.Vis.Problems.ProblemArgumentType.ProblemIdentity = 7 -> Ihc.Vis.Problems.ProblemArgumentType
 Ihc.Vis.Problems.ProblemArgumentType.SchemaName = 1 -> Ihc.Vis.Problems.ProblemArgumentType
 Ihc.Vis.Problems.ProblemChain
 Ihc.Vis.Problems.ProblemChain.<Clone>$() -> Ihc.Vis.Problems.ProblemChain!
@@ -183,6 +231,7 @@ Ihc.Vis.Problems.ProblemFamily.Io = 3 -> Ihc.Vis.Problems.ProblemFamily
 Ihc.Vis.Problems.ProblemFamily.Unknown = 0 -> Ihc.Vis.Problems.ProblemFamily
 Ihc.Vis.Problems.ProblemFamily.Validation = 1 -> Ihc.Vis.Problems.ProblemFamily
 Ihc.Vis.Problems.RefusalIdentity
+Ihc.Vis.Problems.RefusalIdentity.Binding(params Ihc.Vis.Problems.ProblemArgument[]! arguments) -> Ihc.Vis.Problems.RefusalIdentity
 Ihc.Vis.Problems.RefusalIdentity.Cause.get -> Ihc.Vis.Problems.ProblemCode
 Ihc.Vis.Problems.RefusalIdentity.Cause.init -> void
 Ihc.Vis.Problems.RefusalIdentity.CauseLabel.get -> string!
@@ -204,36 +253,130 @@ Ihc.Vis.Problems.RefusedOperationException.RefusedOperationException(Ihc.Vis.Pro
 Ihc.Vis.Problems.RefusedWriteException
 Ihc.Vis.Problems.RefusedWriteException.Problems.get -> Ihc.Vis.Problems.ProblemChain?
 Ihc.Vis.Problems.RefusedWriteException.RefusedWriteException(Ihc.Vis.Problems.RefusalIdentity identity, string! diagnostic, System.Exception? innerException = null) -> void
+Ihc.Vis.Products.DialogControlKind.ComboFixed = 5 -> Ihc.Vis.Products.DialogControlKind
+Ihc.Vis.Products.DialogDescriptorField.DisplayDivisor.get -> int
+Ihc.Vis.Products.DialogDescriptorField.DisplayDivisor.init -> void
+Ihc.Vis.Products.DialogDescriptorGroup.Collapsible.get -> bool
+Ihc.Vis.Products.DialogDescriptorGroup.Collapsible.init -> void
+Ihc.Vis.Products.DialogFieldModel.DisplayDivisor.get -> int
+Ihc.Vis.Products.DialogFieldModel.DisplayDivisor.init -> void
+Ihc.Vis.Products.DialogGroupModel.Collapsible.get -> bool
+Ihc.Vis.Products.DialogGroupModel.Collapsible.init -> void
+Ihc.Vis.ProgramOperandOffer
+Ihc.Vis.ProgramOperandOffer.<Clone>$() -> Ihc.Vis.ProgramOperandOffer!
+Ihc.Vis.ProgramOperandOffer.Deconstruct(out Ihc.Vis.Model.ElementId VariableId, out string! Name, out string! Method, out string! Note) -> void
+Ihc.Vis.ProgramOperandOffer.Equals(Ihc.Vis.ProgramOperandOffer? other) -> bool
+Ihc.Vis.ProgramOperandOffer.Method.get -> string!
+Ihc.Vis.ProgramOperandOffer.Method.init -> void
+Ihc.Vis.ProgramOperandOffer.Name.get -> string!
+Ihc.Vis.ProgramOperandOffer.Name.init -> void
+Ihc.Vis.ProgramOperandOffer.Note.get -> string!
+Ihc.Vis.ProgramOperandOffer.Note.init -> void
+Ihc.Vis.ProgramOperandOffer.ProgramOperandOffer(Ihc.Vis.Model.ElementId VariableId, string! Name, string! Method, string! Note) -> void
+Ihc.Vis.ProgramOperandOffer.VariableId.get -> Ihc.Vis.Model.ElementId
+Ihc.Vis.ProgramOperandOffer.VariableId.init -> void
+Ihc.Vis.ProgramOperationKind
+Ihc.Vis.ProgramOperationKind.Arithmetic = 4 -> Ihc.Vis.ProgramOperationKind
+Ihc.Vis.ProgramOperationKind.Case = 3 -> Ihc.Vis.ProgramOperationKind
+Ihc.Vis.ProgramOperationKind.Command = 1 -> Ihc.Vis.ProgramOperationKind
+Ihc.Vis.ProgramOperationKind.Condition = 2 -> Ihc.Vis.ProgramOperationKind
+Ihc.Vis.ProgramOperationKind.Event = 0 -> Ihc.Vis.ProgramOperationKind
+Ihc.Vis.ProgramOperationOffer
+Ihc.Vis.ProgramOperationOffer.<Clone>$() -> Ihc.Vis.ProgramOperationOffer!
+Ihc.Vis.ProgramOperationOffer.Deconstruct(out Ihc.Vis.ProgramOperationKind Kind, out Ihc.Vis.ProgramPinFamily Family, out string! Method, out string! NameTemplate, out string! Note, out bool NeedsOperand, out string? OperatorSymbol, out Ihc.Vis.Model.EquatableArray<Ihc.Vis.ProgramOperandOffer!> Operands) -> void
+Ihc.Vis.ProgramOperationOffer.Equals(Ihc.Vis.ProgramOperationOffer? other) -> bool
+Ihc.Vis.ProgramOperationOffer.Family.get -> Ihc.Vis.ProgramPinFamily
+Ihc.Vis.ProgramOperationOffer.Family.init -> void
+Ihc.Vis.ProgramOperationOffer.Id.get -> string!
+Ihc.Vis.ProgramOperationOffer.Kind.get -> Ihc.Vis.ProgramOperationKind
+Ihc.Vis.ProgramOperationOffer.Kind.init -> void
+Ihc.Vis.ProgramOperationOffer.Method.get -> string!
+Ihc.Vis.ProgramOperationOffer.Method.init -> void
+Ihc.Vis.ProgramOperationOffer.NameTemplate.get -> string!
+Ihc.Vis.ProgramOperationOffer.NameTemplate.init -> void
+Ihc.Vis.ProgramOperationOffer.NeedsOperand.get -> bool
+Ihc.Vis.ProgramOperationOffer.NeedsOperand.init -> void
+Ihc.Vis.ProgramOperationOffer.Note.get -> string!
+Ihc.Vis.ProgramOperationOffer.Note.init -> void
+Ihc.Vis.ProgramOperationOffer.Operands.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.ProgramOperandOffer!>
+Ihc.Vis.ProgramOperationOffer.Operands.init -> void
+Ihc.Vis.ProgramOperationOffer.OperatorSymbol.get -> string?
+Ihc.Vis.ProgramOperationOffer.OperatorSymbol.init -> void
+Ihc.Vis.ProgramOperationOffer.ProgramOperationOffer(Ihc.Vis.ProgramOperationKind Kind, Ihc.Vis.ProgramPinFamily Family, string! Method, string! NameTemplate, string! Note, bool NeedsOperand, string? OperatorSymbol, Ihc.Vis.Model.EquatableArray<Ihc.Vis.ProgramOperandOffer!> Operands) -> void
+Ihc.Vis.ProgramPinFamily
+Ihc.Vis.ProgramPinFamily.Analog = 1 -> Ihc.Vis.ProgramPinFamily
+Ihc.Vis.ProgramPinFamily.Bool = 0 -> Ihc.Vis.ProgramPinFamily
+Ihc.Vis.ProgramPinFamily.Enum = 4 -> Ihc.Vis.ProgramPinFamily
+Ihc.Vis.ProgramPinFamily.Numeric = 5 -> Ihc.Vis.ProgramPinFamily
+Ihc.Vis.ProgramPinFamily.Timer = 3 -> Ihc.Vis.ProgramPinFamily
+Ihc.Vis.ProgramPinFamily.Weekday = 2 -> Ihc.Vis.ProgramPinFamily
+Ihc.Vis.ProjectAppService.DescribeField(Ihc.Vis.Validation.RuleTarget target) -> Ihc.Vis.Validation.FieldConstraintMetadata
+Ihc.Vis.ProjectAppService.ExportFindings(Ihc.Vis.Projects.Project! project, System.Collections.Generic.IReadOnlyList<Ihc.Vis.Validation.ValidationFinding!>! findings, System.IO.Stream! output, Ihc.Vis.FindingExportOptions? options = null) -> System.Threading.Tasks.Task!
+Ihc.Vis.ProjectAppService.ExportFindings(Ihc.Vis.Projects.Project! project, System.Collections.Generic.IReadOnlyList<Ihc.Vis.Validation.ValidationFinding!>! findings, string! path, Ihc.Vis.FindingExportOptions? options = null) -> System.Threading.Tasks.Task!
+Ihc.Vis.ProjectAppService.ExportFindings(Ihc.Vis.Projects.Project! project, System.IO.Stream! output, Ihc.Vis.FindingExportOptions? options = null) -> System.Threading.Tasks.Task!
+Ihc.Vis.ProjectAppService.ExportFindings(Ihc.Vis.Projects.Project! project, string! path, Ihc.Vis.FindingExportOptions? options = null) -> System.Threading.Tasks.Task!
+Ihc.Vis.ProjectAppService.GetInsertableVariableTypes(Ihc.Vis.Projects.Project! project, Ihc.Vis.Model.ElementId containerId) -> System.Collections.Generic.IReadOnlyList<Ihc.Vis.InsertableVariableType!>!
+Ihc.Vis.ProjectAppService.GetProgramOperations(Ihc.Vis.Projects.Project! project, Ihc.Vis.Model.ElementId containerId, Ihc.Vis.Model.ElementId variableId) -> System.Collections.Generic.IReadOnlyList<Ihc.Vis.ProgramOperationOffer!>!
+Ihc.Vis.ProjectAppService.MissingRequiredField(string? value) -> Ihc.Vis.Problems.Problem?
+Ihc.Vis.ProjectAppService.ProjectAppService(Ihc.IhcSettings! settings, Ihc.TelemetryConfiguration! telemetry) -> void
+Ihc.Vis.ProjectAppService.ProjectAppService(Ihc.IhcSettings! settings, System.Action<Ihc.Vis.Problems.InternalError!>? faultPort) -> void
+Ihc.Vis.ProjectAppService.ProjectAppService(Ihc.IhcSettings! settings, System.TimeProvider! timeProvider) -> void
 Ihc.Vis.ProjectAppService.TryResolveProduct(string? productIdentifier, string? displayName, out Ihc.Vis.Products.ProductDefinition? product, out Ihc.Vis.Problems.Problem? refusal) -> bool
+Ihc.Vis.ProjectAppService.ValidateStructured(Ihc.Vis.Projects.Project! project) -> Ihc.Vis.Validation.StructuredValidationResult!
+Ihc.Vis.ProjectCommands.ApplyProductDialogVisit(Ihc.Vis.Projects.Project! project, Ihc.Vis.Model.ElementId productId, System.Collections.Immutable.ImmutableArray<Ihc.Vis.Session.ProductDialogEdit> edits, System.Collections.Immutable.ImmutableArray<Ihc.Vis.Session.ProductDialogTerminalEdit> terminalEdits, System.Collections.Immutable.ImmutableArray<Ihc.Vis.Session.ProductDialogSettingEdit> settingEdits = default(System.Collections.Immutable.ImmutableArray<Ihc.Vis.Session.ProductDialogSettingEdit>)) -> Ihc.Vis.Session.ApplyProductDialog!
 Ihc.Vis.ProjectCommands.ModemLimitRefusal(Ihc.Vis.Projects.Project! project, string! productIdentifier) -> Ihc.Vis.Problems.Problem?
 Ihc.Vis.ProjectCommands.TryAddCaseValue(Ihc.Vis.Projects.Project! project, Ihc.Vis.Model.ElementId caseId, string! criterion, out Ihc.Vis.Session.AddCaseValue? command, out Ihc.Vis.Problems.Problem? refusal) -> bool
 Ihc.Vis.ProjectCommands.TryAddFunctionBlock(Ihc.Vis.Projects.Project! project, Ihc.Vis.Model.ElementId localityId, string! masterType, out Ihc.Vis.Session.AddFunctionBlock? command, out Ihc.Vis.Problems.Problem? refusal) -> bool
 Ihc.Vis.ProjectUploadException.Problems.get -> Ihc.Vis.Problems.ProblemChain?
 Ihc.Vis.ProjectUploadException.ProjectUploadException(Ihc.Vis.Problems.RefusalIdentity identity, string! diagnostic) -> void
+Ihc.Vis.Session.ApplyProductDialog.SettingEdits.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Session.ProductDialogSettingEdit>
+Ihc.Vis.Session.ApplyProductDialog.SettingEdits.init -> void
+Ihc.Vis.Session.ApplyProductDialog.TerminalEdits.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Session.ProductDialogTerminalEdit>
+Ihc.Vis.Session.ApplyProductDialog.TerminalEdits.init -> void
+Ihc.Vis.Session.EditOutcome.Code.get -> Ihc.Vis.Problems.ProblemCode
+Ihc.Vis.Session.EditOutcome.Code.init -> void
+Ihc.Vis.Session.EditOutcome.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes, out Ihc.Vis.Problems.ProblemCode Code, out Ihc.Vis.Problems.InternalError? Fault) -> void
+Ihc.Vis.Session.EditOutcome.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode), Ihc.Vis.Problems.InternalError? Fault = null) -> void
+Ihc.Vis.Session.EditOutcome.Fault.get -> Ihc.Vis.Problems.InternalError?
+Ihc.Vis.Session.EditOutcome.Fault.init -> void
+Ihc.Vis.Session.EditOutcome<T>.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes, out T? Value, out Ihc.Vis.Problems.ProblemCode Code, out Ihc.Vis.Problems.InternalError? Fault) -> void
+Ihc.Vis.Session.EditOutcome<T>.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes, T? Value, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode), Ihc.Vis.Problems.InternalError? Fault = null) -> void
 Ihc.Vis.Session.EditRefusalCodes
 Ihc.Vis.Session.EditRefusalProblems
 Ihc.Vis.Session.EditRefusals
+Ihc.Vis.Session.EditRefusedException.Code.get -> Ihc.Vis.Problems.ProblemCode
+Ihc.Vis.Session.EditRefusedException.EditRefusedException(Ihc.Vis.Problems.ProblemCode code, string! message) -> void
 Ihc.Vis.Session.EditVerdict.Code.get -> Ihc.Vis.Problems.ProblemCode
 Ihc.Vis.Session.EditVerdict.Code.init -> void
 Ihc.Vis.Session.EditVerdict.Deconstruct(out bool Ok, out string? Reason, out Ihc.Vis.Problems.ProblemCode Code) -> void
 Ihc.Vis.Session.EditVerdict.EditVerdict(bool Ok, string? Reason, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode)) -> void
+Ihc.Vis.Session.PreviewOutcome.Code.get -> Ihc.Vis.Problems.ProblemCode
+Ihc.Vis.Session.PreviewOutcome.Code.init -> void
+Ihc.Vis.Session.PreviewOutcome.Deconstruct(out Ihc.Vis.Session.PreviewStatus Status, out Ihc.Vis.Session.ProjectChangeSet? Changes, out string? Reason, out Ihc.Vis.Problems.ProblemCode Code, out Ihc.Vis.Problems.InternalError? Fault) -> void
+Ihc.Vis.Session.PreviewOutcome.Fault.get -> Ihc.Vis.Problems.InternalError?
+Ihc.Vis.Session.PreviewOutcome.Fault.init -> void
+Ihc.Vis.Session.PreviewOutcome.PreviewOutcome(Ihc.Vis.Session.PreviewStatus Status, Ihc.Vis.Session.ProjectChangeSet? Changes, string? Reason, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode), Ihc.Vis.Problems.InternalError? Fault = null) -> void
+Ihc.Vis.Session.ProductDialogSettingEdit
+Ihc.Vis.Session.ProductDialogSettingEdit.Deconstruct(out Ihc.Vis.Model.ElementId SettingId, out Ihc.Vis.Session.ResourceInitialValue! Value) -> void
+Ihc.Vis.Session.ProductDialogSettingEdit.Equals(Ihc.Vis.Session.ProductDialogSettingEdit other) -> bool
+Ihc.Vis.Session.ProductDialogSettingEdit.ProductDialogSettingEdit() -> void
+Ihc.Vis.Session.ProductDialogSettingEdit.ProductDialogSettingEdit(Ihc.Vis.Model.ElementId SettingId, Ihc.Vis.Session.ResourceInitialValue! Value) -> void
+Ihc.Vis.Session.ProductDialogSettingEdit.SettingId.get -> Ihc.Vis.Model.ElementId
+Ihc.Vis.Session.ProductDialogSettingEdit.SettingId.init -> void
+Ihc.Vis.Session.ProductDialogSettingEdit.Value.get -> Ihc.Vis.Session.ResourceInitialValue!
+Ihc.Vis.Session.ProductDialogSettingEdit.Value.init -> void
+Ihc.Vis.Session.ProductDialogTerminalEdit
+Ihc.Vis.Session.ProductDialogTerminalEdit.Deconstruct(out Ihc.Vis.Model.ElementId PinId, out Ihc.Vis.Session.PinPropertiesResult! Values) -> void
+Ihc.Vis.Session.ProductDialogTerminalEdit.Equals(Ihc.Vis.Session.ProductDialogTerminalEdit other) -> bool
+Ihc.Vis.Session.ProductDialogTerminalEdit.PinId.get -> Ihc.Vis.Model.ElementId
+Ihc.Vis.Session.ProductDialogTerminalEdit.PinId.init -> void
+Ihc.Vis.Session.ProductDialogTerminalEdit.ProductDialogTerminalEdit() -> void
+Ihc.Vis.Session.ProductDialogTerminalEdit.ProductDialogTerminalEdit(Ihc.Vis.Model.ElementId PinId, Ihc.Vis.Session.PinPropertiesResult! Values) -> void
+Ihc.Vis.Session.ProductDialogTerminalEdit.Values.get -> Ihc.Vis.Session.PinPropertiesResult!
+Ihc.Vis.Session.ProductDialogTerminalEdit.Values.init -> void
 Ihc.Vis.Validation.BlankPolicy
 Ihc.Vis.Validation.BlankPolicy.EmptyOnly = 0 -> Ihc.Vis.Validation.BlankPolicy
 Ihc.Vis.Validation.BlankPolicy.WhitespaceIsBlank = 1 -> Ihc.Vis.Validation.BlankPolicy
-Ihc.Vis.Validation.CapacityRules
-Ihc.Vis.Validation.CaseTest
-Ihc.Vis.Validation.CaseTest.<Clone>$() -> Ihc.Vis.Validation.CaseTest!
-Ihc.Vis.Validation.CaseTest.Branch.get -> Ihc.Vis.Model.ProjectElement!
-Ihc.Vis.Validation.CaseTest.Branch.init -> void
-Ihc.Vis.Validation.CaseTest.CaseTest(Ihc.Vis.Model.ProjectElement! Branch, Ihc.Vis.Model.ProjectElement? Switch, Ihc.Vis.Model.ProjectElement? Operand, string? ValueToken) -> void
-Ihc.Vis.Validation.CaseTest.Deconstruct(out Ihc.Vis.Model.ProjectElement! Branch, out Ihc.Vis.Model.ProjectElement? Switch, out Ihc.Vis.Model.ProjectElement? Operand, out string? ValueToken) -> void
-Ihc.Vis.Validation.CaseTest.Equals(Ihc.Vis.Validation.CaseTest? other) -> bool
-Ihc.Vis.Validation.CaseTest.Operand.get -> Ihc.Vis.Model.ProjectElement?
-Ihc.Vis.Validation.CaseTest.Operand.init -> void
-Ihc.Vis.Validation.CaseTest.Switch.get -> Ihc.Vis.Model.ProjectElement?
-Ihc.Vis.Validation.CaseTest.Switch.init -> void
-Ihc.Vis.Validation.CaseTest.ValueToken.get -> string?
-Ihc.Vis.Validation.CaseTest.ValueToken.init -> void
 Ihc.Vis.Validation.CatalogDefect
 Ihc.Vis.Validation.CatalogDefect.CatalogDefect() -> void
 Ihc.Vis.Validation.CatalogDefect.CatalogDefect(Ihc.Vis.Problems.ProblemCode Code, Ihc.Vis.Validation.CatalogViolation Violation) -> void
@@ -249,66 +392,15 @@ Ihc.Vis.Validation.CatalogDisposition.Info = 3 -> Ihc.Vis.Validation.CatalogDisp
 Ihc.Vis.Validation.CatalogDisposition.NotApplicable = 4 -> Ihc.Vis.Validation.CatalogDisposition
 Ihc.Vis.Validation.CatalogDisposition.Refusal = 2 -> Ihc.Vis.Validation.CatalogDisposition
 Ihc.Vis.Validation.CatalogDisposition.Warning = 1 -> Ihc.Vis.Validation.CatalogDisposition
-Ihc.Vis.Validation.CatalogInvariants
 Ihc.Vis.Validation.CatalogViolation
 Ihc.Vis.Validation.CatalogViolation.CategoryMisplaced = 3 -> Ihc.Vis.Validation.CatalogViolation
 Ihc.Vis.Validation.CatalogViolation.DuplicateCode = 0 -> Ihc.Vis.Validation.CatalogViolation
 Ihc.Vis.Validation.CatalogViolation.EntryWithoutRule = 1 -> Ihc.Vis.Validation.CatalogViolation
+Ihc.Vis.Validation.CatalogViolation.InternalFaultMisdeclared = 7 -> Ihc.Vis.Validation.CatalogViolation
 Ihc.Vis.Validation.CatalogViolation.RefusalWithoutRefusedOperation = 6 -> Ihc.Vis.Validation.CatalogViolation
 Ihc.Vis.Validation.CatalogViolation.RefusedOperationNotAnOperationHead = 4 -> Ihc.Vis.Validation.CatalogViolation
 Ihc.Vis.Validation.CatalogViolation.RefusedOperationOnAdvisoryDisposition = 5 -> Ihc.Vis.Validation.CatalogViolation
 Ihc.Vis.Validation.CatalogViolation.RuleWithoutEntry = 2 -> Ihc.Vis.Validation.CatalogViolation
-Ihc.Vis.Validation.CategoryExtensions
-Ihc.Vis.Validation.CategoryExtensions.extension(Ihc.Vis.Validation.ValidationCategory)
-Ihc.Vis.Validation.CategoryExtensions.extension(Ihc.Vis.Validation.ValidationCategory).ShortCode.get -> string!
-Ihc.Vis.Validation.ConstraintSequence
-Ihc.Vis.Validation.ConstraintSequence.<Clone>$() -> Ihc.Vis.Validation.ConstraintSequence!
-Ihc.Vis.Validation.ConstraintSequence.ConstraintSequence(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.IValueConstraint!> Ordered) -> void
-Ihc.Vis.Validation.ConstraintSequence.Deconstruct(out Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.IValueConstraint!> Ordered) -> void
-Ihc.Vis.Validation.ConstraintSequence.Equals(Ihc.Vis.Validation.ConstraintSequence? other) -> bool
-Ihc.Vis.Validation.ConstraintSequence.Ordered.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.IValueConstraint!>
-Ihc.Vis.Validation.ConstraintSequence.Ordered.init -> void
-Ihc.Vis.Validation.ControllerCapabilityLimits
-Ihc.Vis.Validation.ControllerCapabilityLimits.<Clone>$() -> Ihc.Vis.Validation.ControllerCapabilityLimits!
-Ihc.Vis.Validation.ControllerCapabilityLimits.AddressesPerDirection.get -> int
-Ihc.Vis.Validation.ControllerCapabilityLimits.AddressesPerDirection.init -> void
-Ihc.Vis.Validation.ControllerCapabilityLimits.ControllerCapabilityLimits(int InputModules, int OutputModules, int AddressesPerDirection, int WirelessDevices, int Resources, int LinksPerWirelessUnit, int LinksPerCombiUnit, int ScenariosPerReceiver) -> void
-Ihc.Vis.Validation.ControllerCapabilityLimits.Deconstruct(out int InputModules, out int OutputModules, out int AddressesPerDirection, out int WirelessDevices, out int Resources, out int LinksPerWirelessUnit, out int LinksPerCombiUnit, out int ScenariosPerReceiver) -> void
-Ihc.Vis.Validation.ControllerCapabilityLimits.Equals(Ihc.Vis.Validation.ControllerCapabilityLimits? other) -> bool
-Ihc.Vis.Validation.ControllerCapabilityLimits.InputModules.get -> int
-Ihc.Vis.Validation.ControllerCapabilityLimits.InputModules.init -> void
-Ihc.Vis.Validation.ControllerCapabilityLimits.LinksPerCombiUnit.get -> int
-Ihc.Vis.Validation.ControllerCapabilityLimits.LinksPerCombiUnit.init -> void
-Ihc.Vis.Validation.ControllerCapabilityLimits.LinksPerWirelessUnit.get -> int
-Ihc.Vis.Validation.ControllerCapabilityLimits.LinksPerWirelessUnit.init -> void
-Ihc.Vis.Validation.ControllerCapabilityLimits.OutputModules.get -> int
-Ihc.Vis.Validation.ControllerCapabilityLimits.OutputModules.init -> void
-Ihc.Vis.Validation.ControllerCapabilityLimits.Resources.get -> int
-Ihc.Vis.Validation.ControllerCapabilityLimits.Resources.init -> void
-Ihc.Vis.Validation.ControllerCapabilityLimits.ScenariosPerReceiver.get -> int
-Ihc.Vis.Validation.ControllerCapabilityLimits.ScenariosPerReceiver.init -> void
-Ihc.Vis.Validation.ControllerCapabilityLimits.WirelessDevices.get -> int
-Ihc.Vis.Validation.ControllerCapabilityLimits.WirelessDevices.init -> void
-Ihc.Vis.Validation.DatalineAddressRules
-Ihc.Vis.Validation.DeclaredThreshold
-Ihc.Vis.Validation.DeclaredThreshold.<Clone>$() -> Ihc.Vis.Validation.DeclaredThreshold!
-Ihc.Vis.Validation.DeclaredThreshold.Confidence.get -> Ihc.Vis.Validation.ThresholdConfidence
-Ihc.Vis.Validation.DeclaredThreshold.Confidence.init -> void
-Ihc.Vis.Validation.DeclaredThreshold.DeclaredThreshold(string! Name, double Value, Ihc.Vis.Validation.ThresholdConfidence Confidence, string! Evidence) -> void
-Ihc.Vis.Validation.DeclaredThreshold.Deconstruct(out string! Name, out double Value, out Ihc.Vis.Validation.ThresholdConfidence Confidence, out string! Evidence) -> void
-Ihc.Vis.Validation.DeclaredThreshold.Equals(Ihc.Vis.Validation.DeclaredThreshold? other) -> bool
-Ihc.Vis.Validation.DeclaredThreshold.Evidence.get -> string!
-Ihc.Vis.Validation.DeclaredThreshold.Evidence.init -> void
-Ihc.Vis.Validation.DeclaredThreshold.Name.get -> string!
-Ihc.Vis.Validation.DeclaredThreshold.Name.init -> void
-Ihc.Vis.Validation.DeclaredThreshold.Value.get -> double
-Ihc.Vis.Validation.DeclaredThreshold.Value.init -> void
-Ihc.Vis.Validation.DeviceAddressRules
-Ihc.Vis.Validation.DeviceSettingRules
-Ihc.Vis.Validation.DeviceStateRules
-Ihc.Vis.Validation.DocumentationCompletenessRules
-Ihc.Vis.Validation.DocumentationRules
-Ihc.Vis.Validation.EnumDefinitionRules
 Ihc.Vis.Validation.EvidenceMark
 Ihc.Vis.Validation.EvidenceMark.Authored = 1 -> Ihc.Vis.Validation.EvidenceMark
 Ihc.Vis.Validation.EvidenceMark.Refused = 2 -> Ihc.Vis.Validation.EvidenceMark
@@ -316,6 +408,8 @@ Ihc.Vis.Validation.EvidenceMark.Unknown = 0 -> Ihc.Vis.Validation.EvidenceMark
 Ihc.Vis.Validation.FieldConstraintMetadata
 Ihc.Vis.Validation.FieldConstraintMetadata.AllowedValues.get -> Ihc.Vis.Model.EquatableArray<string!>
 Ihc.Vis.Validation.FieldConstraintMetadata.AllowedValues.init -> void
+Ihc.Vis.Validation.FieldConstraintMetadata.Blank.get -> Ihc.Vis.Validation.BlankPolicy
+Ihc.Vis.Validation.FieldConstraintMetadata.Blank.init -> void
 Ihc.Vis.Validation.FieldConstraintMetadata.Deconstruct(out bool Required, out double? Minimum, out double? Maximum, out int? MinimumLength, out int? MaximumLength, out bool WhitespaceForbidden, out Ihc.Vis.Model.EquatableArray<string!> AllowedValues) -> void
 Ihc.Vis.Validation.FieldConstraintMetadata.Equals(Ihc.Vis.Validation.FieldConstraintMetadata other) -> bool
 Ihc.Vis.Validation.FieldConstraintMetadata.FieldConstraintMetadata() -> void
@@ -333,10 +427,6 @@ Ihc.Vis.Validation.FieldConstraintMetadata.Required.init -> void
 Ihc.Vis.Validation.FieldConstraintMetadata.WhitespaceAllowed.get -> bool
 Ihc.Vis.Validation.FieldConstraintMetadata.WhitespaceForbidden.get -> bool
 Ihc.Vis.Validation.FieldConstraintMetadata.WhitespaceForbidden.init -> void
-Ihc.Vis.Validation.FieldMetadataFace
-Ihc.Vis.Validation.FieldMetadataFace.extension(Ihc.Vis.Validation.RuleSet!)
-Ihc.Vis.Validation.FieldMetadataFace.extension(Ihc.Vis.Validation.RuleSet!).ConstraintsOn(Ihc.Vis.Validation.RuleTarget target) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemCode>
-Ihc.Vis.Validation.FieldMetadataFace.extension(Ihc.Vis.Validation.RuleSet!).DescribeField(Ihc.Vis.Validation.RuleTarget target) -> Ihc.Vis.Validation.FieldConstraintMetadata
 Ihc.Vis.Validation.FindingLocation
 Ihc.Vis.Validation.FindingLocation.<Clone>$() -> Ihc.Vis.Validation.FindingLocation!
 Ihc.Vis.Validation.FindingLocation.Deconstruct(out string? Locator, out Ihc.Vis.Model.ElementId? Element, out string? Message, out string? Xpath) -> void
@@ -354,49 +444,18 @@ Ihc.Vis.Validation.FindingShape
 Ihc.Vis.Validation.FindingShape.OneFinding = 0 -> Ihc.Vis.Validation.FindingShape
 Ihc.Vis.Validation.FindingShape.OnePerOccurrence = 1 -> Ihc.Vis.Validation.FindingShape
 Ihc.Vis.Validation.FindingShape.PrimaryWithRelated = 2 -> Ihc.Vis.Validation.FindingShape
-Ihc.Vis.Validation.FunctionBlockShapeRules
-Ihc.Vis.Validation.IIdAnalysis
-Ihc.Vis.Validation.IIdAnalysis.DuplicateCounterHolders.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Model.ProjectElement!>
-Ihc.Vis.Validation.IIdAnalysis.DuplicateTokenHolders.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Model.ProjectElement!>
-Ihc.Vis.Validation.IIdAnalysis.IsKnownToken(string! token) -> bool
-Ihc.Vis.Validation.IIdAnalysis.LastUniqueId.get -> Ihc.Vis.Validation.LastUniqueIdFault
-Ihc.Vis.Validation.IIdAnalysis.MaxCounter.get -> long
-Ihc.Vis.Validation.IProgramUsageAnalysis
-Ihc.Vis.Validation.IProgramUsageAnalysis.CaseTests.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.CaseTest!>
-Ihc.Vis.Validation.IProgramUsageAnalysis.IsLinked(Ihc.Vis.Model.ProjectElement! variable) -> bool
-Ihc.Vis.Validation.IProgramUsageAnalysis.IsRead(Ihc.Vis.Model.ProjectElement! variable) -> bool
-Ihc.Vis.Validation.IProgramUsageAnalysis.IsTriggeredOn(Ihc.Vis.Model.ProjectElement! variable) -> bool
-Ihc.Vis.Validation.IProgramUsageAnalysis.IsWritten(Ihc.Vis.Model.ProjectElement! variable) -> bool
-Ihc.Vis.Validation.IProgramUsageAnalysis.Of(Ihc.Vis.Model.ProjectElement! program) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.VariableUsage!>
-Ihc.Vis.Validation.IProgramUsageAnalysis.Usages.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.VariableUsage!>
-Ihc.Vis.Validation.IProjectAnalyses
-Ihc.Vis.Validation.IProjectAnalyses.Ids.get -> Ihc.Vis.Validation.IIdAnalysis!
-Ihc.Vis.Validation.IProjectAnalyses.Topology.get -> Ihc.Vis.Validation.ITopologyAnalysis!
-Ihc.Vis.Validation.IProjectAnalyses.Usage.get -> Ihc.Vis.Validation.IProgramUsageAnalysis!
-Ihc.Vis.Validation.IProjectInspection
-Ihc.Vis.Validation.IProjectInspection.Analyses.get -> Ihc.Vis.Validation.IProjectAnalyses!
-Ihc.Vis.Validation.IProjectInspection.Controller.get -> Ihc.Vis.Validation.ControllerCapabilityLimits?
-Ihc.Vis.Validation.IProjectInspection.Project.get -> Ihc.Vis.Projects.Project!
-Ihc.Vis.Validation.IProjectInspection.Report(Ihc.Vis.Model.ProjectElement? element, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgument> arguments) -> void
-Ihc.Vis.Validation.IProjectInspection.ReportGroup(Ihc.Vis.Model.ProjectElement! primary, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Model.ProjectElement!> related, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgument> arguments) -> void
-Ihc.Vis.Validation.ITopologyAnalysis
-Ihc.Vis.Validation.ITopologyAnalysis.ByToken(string? idToken) -> Ihc.Vis.Model.ProjectElement?
-Ihc.Vis.Validation.ITopologyAnalysis.NearestAncestorOrSelf(Ihc.Vis.Model.ProjectElement! element, string! tag) -> Ihc.Vis.Model.ProjectElement?
-Ihc.Vis.Validation.ITopologyAnalysis.Parent(Ihc.Vis.Model.ProjectElement! element) -> Ihc.Vis.Model.ProjectElement?
-Ihc.Vis.Validation.IValueConstraint
-Ihc.Vis.Validation.IValueConstraint.Check(string? rawValue) -> Ihc.Vis.Validation.ValueConstraintVerdict
-Ihc.Vis.Validation.IValueConstraint.Code.get -> Ihc.Vis.Problems.ProblemCode
-Ihc.Vis.Validation.IValueConstraint.Describe() -> Ihc.Vis.Validation.FieldConstraintMetadata
-Ihc.Vis.Validation.IWholeProjectValidator
-Ihc.Vis.Validation.IWholeProjectValidator.Validate(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile) -> Ihc.Vis.Validation.StructuredValidationResult!
-Ihc.Vis.Validation.IdentityRules
-Ihc.Vis.Validation.LastUniqueIdFault
-Ihc.Vis.Validation.LastUniqueIdFault.AboveCeiling = 3 -> Ihc.Vis.Validation.LastUniqueIdFault
-Ihc.Vis.Validation.LastUniqueIdFault.BelowHighWaterMark = 1 -> Ihc.Vis.Validation.LastUniqueIdFault
-Ihc.Vis.Validation.LastUniqueIdFault.Malformed = 2 -> Ihc.Vis.Validation.LastUniqueIdFault
-Ihc.Vis.Validation.LastUniqueIdFault.None = 0 -> Ihc.Vis.Validation.LastUniqueIdFault
-Ihc.Vis.Validation.ModuleAddressRules
-Ihc.Vis.Validation.NamingRules
+Ihc.Vis.Validation.FixLocation
+Ihc.Vis.Validation.FixLocation.Attribute.get -> string?
+Ihc.Vis.Validation.FixLocation.Attribute.init -> void
+Ihc.Vis.Validation.FixLocation.Deconstruct(out Ihc.Vis.Model.ElementId Element, out string? Attribute) -> void
+Ihc.Vis.Validation.FixLocation.Element.get -> Ihc.Vis.Model.ElementId
+Ihc.Vis.Validation.FixLocation.Element.init -> void
+Ihc.Vis.Validation.FixLocation.Equals(Ihc.Vis.Validation.FixLocation other) -> bool
+Ihc.Vis.Validation.FixLocation.FixLocation() -> void
+Ihc.Vis.Validation.FixLocation.FixLocation(Ihc.Vis.Model.ElementId Element, string? Attribute) -> void
+Ihc.Vis.Validation.ILibraryBlockSource
+Ihc.Vis.Validation.ILibraryBlockSource.TryGetBody(string! masterType, string! masterVersion, out Ihc.Vis.Model.ProjectElement! body) -> bool
+Ihc.Vis.Validation.ILibraryBlockSource.TryGetVersions(string! masterType, out Ihc.Vis.Model.EquatableArray<string!> versions) -> bool
 Ihc.Vis.Validation.ProblemCatalog
 Ihc.Vis.Validation.ProblemCatalog.Entries.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ProblemCatalogEntry!>
 Ihc.Vis.Validation.ProblemCatalog.InSection(Ihc.Vis.Validation.ProblemCatalogSection section) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ProblemCatalogEntry!>
@@ -404,6 +463,7 @@ Ihc.Vis.Validation.ProblemCatalog.Total.get -> int
 Ihc.Vis.Validation.ProblemCatalog.TryGet(Ihc.Vis.Problems.ProblemCode code, out Ihc.Vis.Validation.ProblemCatalogEntry! entry) -> bool
 Ihc.Vis.Validation.ProblemCatalogEntry
 Ihc.Vis.Validation.ProblemCatalogEntry.<Clone>$() -> Ihc.Vis.Validation.ProblemCatalogEntry!
+Ihc.Vis.Validation.ProblemCatalogEntry.BindDiagnostic(Ihc.Vis.Problems.Problem! problem) -> string?
 Ihc.Vis.Validation.ProblemCatalogEntry.BindTemplate(Ihc.Vis.Problems.Problem! problem) -> string!
 Ihc.Vis.Validation.ProblemCatalogEntry.Category.get -> Ihc.Vis.Validation.ValidationCategory?
 Ihc.Vis.Validation.ProblemCatalogEntry.Category.init -> void
@@ -428,6 +488,8 @@ Ihc.Vis.Validation.ProblemCatalogEntry.RefusedOperations.get -> Ihc.Vis.Model.Eq
 Ihc.Vis.Validation.ProblemCatalogEntry.RefusedOperations.init -> void
 Ihc.Vis.Validation.ProblemCatalogEntry.RequiresControllerLimits.get -> bool
 Ihc.Vis.Validation.ProblemCatalogEntry.RequiresControllerLimits.init -> void
+Ihc.Vis.Validation.ProblemCatalogEntry.RequiresLibrary.get -> bool
+Ihc.Vis.Validation.ProblemCatalogEntry.RequiresLibrary.init -> void
 Ihc.Vis.Validation.ProblemCatalogEntry.Section.get -> Ihc.Vis.Validation.ProblemCatalogSection
 Ihc.Vis.Validation.ProblemCatalogEntry.Section.init -> void
 Ihc.Vis.Validation.ProblemCatalogEntry.Severity.get -> Ihc.Vis.Validation.ValidationSeverity?
@@ -439,8 +501,6 @@ Ihc.Vis.Validation.ProblemCatalogEntry.Status.get -> Ihc.Vis.Problems.ProblemCod
 Ihc.Vis.Validation.ProblemCatalogEntry.Status.init -> void
 Ihc.Vis.Validation.ProblemCatalogEntry.Target.get -> Ihc.Vis.Validation.RuleTarget
 Ihc.Vis.Validation.ProblemCatalogEntry.Target.init -> void
-Ihc.Vis.Validation.ProblemCatalogEntry.Thresholds.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.DeclaredThreshold!>
-Ihc.Vis.Validation.ProblemCatalogEntry.Thresholds.init -> void
 Ihc.Vis.Validation.ProblemCatalogSection
 Ihc.Vis.Validation.ProblemCatalogSection.CatalogDefinitionFindings = 1 -> Ihc.Vis.Validation.ProblemCatalogSection
 Ihc.Vis.Validation.ProblemCatalogSection.OperationOutcomes = 2 -> Ihc.Vis.Validation.ProblemCatalogSection
@@ -448,73 +508,34 @@ Ihc.Vis.Validation.ProblemCatalogSection.ProjectFindings = 0 -> Ihc.Vis.Validati
 Ihc.Vis.Validation.ProfileAudience
 Ihc.Vis.Validation.ProfileAudience.Categorized = 1 -> Ihc.Vis.Validation.ProfileAudience
 Ihc.Vis.Validation.ProfileAudience.Structural = 0 -> Ihc.Vis.Validation.ProfileAudience
-Ihc.Vis.Validation.ProductAdvisoryRules
-Ihc.Vis.Validation.ProgramDataflowRules
-Ihc.Vis.Validation.ProgramShapeRules
-Ihc.Vis.Validation.ProjectInspection
-Ihc.Vis.Validation.ProjectRules
-Ihc.Vis.Validation.ProjectStructureRules
 Ihc.Vis.Validation.ProjectValidationException.Operation.get -> Ihc.Vis.Problems.ProblemCode
 Ihc.Vis.Validation.ProjectValidationException.Problems.get -> Ihc.Vis.Problems.ProblemAggregate!
 Ihc.Vis.Validation.ProjectValidationException.ProjectValidationException(Ihc.Vis.Problems.ProblemCode operation, Ihc.Vis.Validation.ProjectValidationResult! result) -> void
+Ihc.Vis.Validation.ProjectValidationFinding.Diagnostic.get -> string?
+Ihc.Vis.Validation.ProjectValidationFinding.Diagnostic.init -> void
 Ihc.Vis.Validation.ProjectValidationResult.Faults.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!>
 Ihc.Vis.Validation.ProjectValidationResult.Faults.init -> void
 Ihc.Vis.Validation.ProjectValidationResult.Infos.get -> System.Collections.Immutable.ImmutableArray<string!>
 Ihc.Vis.Validation.ProjectValidationResult.IsComplete.get -> bool
-Ihc.Vis.Validation.ProjectVerification
-Ihc.Vis.Validation.ReciprocityAndEnumRules
-Ihc.Vis.Validation.RequiredFieldConstraint
-Ihc.Vis.Validation.RequiredFieldConstraint.Check(string? rawValue) -> Ihc.Vis.Validation.ValueConstraintVerdict
-Ihc.Vis.Validation.RequiredFieldConstraint.Code.get -> Ihc.Vis.Problems.ProblemCode
-Ihc.Vis.Validation.RequiredFieldConstraint.Describe() -> Ihc.Vis.Validation.FieldConstraintMetadata
-Ihc.Vis.Validation.RequiredFieldConstraint.Policy.get -> Ihc.Vis.Validation.BlankPolicy
-Ihc.Vis.Validation.RuleBuilder
-Ihc.Vis.Validation.RuleBuilder.Build() -> Ihc.Vis.Validation.RuleDefinition!
-Ihc.Vis.Validation.RuleBuilder.Constrain(Ihc.Vis.Validation.ConstraintSequence! sequence) -> Ihc.Vis.Validation.RuleBuilder!
-Ihc.Vis.Validation.RuleBuilder.Constrain(Ihc.Vis.Validation.IValueConstraint! constraint) -> Ihc.Vis.Validation.RuleBuilder!
-Ihc.Vis.Validation.RuleBuilder.Inspect(Ihc.Vis.Validation.ProjectInspection! body) -> Ihc.Vis.Validation.RuleBuilder!
-Ihc.Vis.Validation.RuleBuilder.RuleBuilder(Ihc.Vis.Validation.ProblemCatalogEntry! entry) -> void
-Ihc.Vis.Validation.RuleDefinition
-Ihc.Vis.Validation.RuleDefinition.<Clone>$() -> Ihc.Vis.Validation.RuleDefinition!
-Ihc.Vis.Validation.RuleDefinition.Constraints.get -> Ihc.Vis.Validation.ConstraintSequence?
-Ihc.Vis.Validation.RuleDefinition.Constraints.init -> void
-Ihc.Vis.Validation.RuleDefinition.Deconstruct(out Ihc.Vis.Validation.ProblemCatalogEntry! Entry, out Ihc.Vis.Validation.ConstraintSequence? Constraints, out Ihc.Vis.Validation.ProjectInspection? Inspection) -> void
-Ihc.Vis.Validation.RuleDefinition.Entry.get -> Ihc.Vis.Validation.ProblemCatalogEntry!
-Ihc.Vis.Validation.RuleDefinition.Entry.init -> void
-Ihc.Vis.Validation.RuleDefinition.Equals(Ihc.Vis.Validation.RuleDefinition? other) -> bool
-Ihc.Vis.Validation.RuleDefinition.Inspection.get -> Ihc.Vis.Validation.ProjectInspection?
-Ihc.Vis.Validation.RuleDefinition.Inspection.init -> void
-Ihc.Vis.Validation.RuleDefinition.RuleDefinition(Ihc.Vis.Validation.ProblemCatalogEntry! Entry, Ihc.Vis.Validation.ConstraintSequence? Constraints, Ihc.Vis.Validation.ProjectInspection? Inspection) -> void
 Ihc.Vis.Validation.RuleFaces
 Ihc.Vis.Validation.RuleFaces.DialogMetadata = 2 -> Ihc.Vis.Validation.RuleFaces
 Ihc.Vis.Validation.RuleFaces.None = 0 -> Ihc.Vis.Validation.RuleFaces
 Ihc.Vis.Validation.RuleFaces.WholeProject = 1 -> Ihc.Vis.Validation.RuleFaces
-Ihc.Vis.Validation.RuleFailurePolicy
-Ihc.Vis.Validation.RuleFailurePolicy.ReportAndContinue = 0 -> Ihc.Vis.Validation.RuleFailurePolicy
-Ihc.Vis.Validation.RuleFailurePolicy.Rethrow = 1 -> Ihc.Vis.Validation.RuleFailurePolicy
 Ihc.Vis.Validation.RuleKind
 Ihc.Vis.Validation.RuleKind.EditPrecondition = 1 -> Ihc.Vis.Validation.RuleKind
+Ihc.Vis.Validation.RuleKind.InternalFault = 4 -> Ihc.Vis.Validation.RuleKind
 Ihc.Vis.Validation.RuleKind.OperationOutcome = 3 -> Ihc.Vis.Validation.RuleKind
 Ihc.Vis.Validation.RuleKind.SchemaSerializationGuard = 2 -> Ihc.Vis.Validation.RuleKind
 Ihc.Vis.Validation.RuleKind.UserContentRule = 0 -> Ihc.Vis.Validation.RuleKind
-Ihc.Vis.Validation.RuleRegistrationException
-Ihc.Vis.Validation.RuleRegistrationException.Code.get -> Ihc.Vis.Problems.ProblemCode
-Ihc.Vis.Validation.RuleRegistrationException.Fault.get -> Ihc.Vis.Validation.RuleRegistrationFault
-Ihc.Vis.Validation.RuleRegistrationException.RuleRegistrationException(Ihc.Vis.Problems.ProblemCode code, Ihc.Vis.Validation.RuleRegistrationFault fault) -> void
 Ihc.Vis.Validation.RuleRegistrationFault
 Ihc.Vis.Validation.RuleRegistrationFault.BodyCount = 3 -> Ihc.Vis.Validation.RuleRegistrationFault
 Ihc.Vis.Validation.RuleRegistrationFault.CodeNotActive = 6 -> Ihc.Vis.Validation.RuleRegistrationFault
 Ihc.Vis.Validation.RuleRegistrationFault.DuplicateCode = 0 -> Ihc.Vis.Validation.RuleRegistrationFault
 Ihc.Vis.Validation.RuleRegistrationFault.NoCatalogueEntry = 1 -> Ihc.Vis.Validation.RuleRegistrationFault
 Ihc.Vis.Validation.RuleRegistrationFault.NoFaceDeclared = 2 -> Ihc.Vis.Validation.RuleRegistrationFault
+Ihc.Vis.Validation.RuleRegistrationFault.ShapeContradictsDeclaration = 7 -> Ihc.Vis.Validation.RuleRegistrationFault
 Ihc.Vis.Validation.RuleRegistrationFault.TraversalCannotServeFace = 4 -> Ihc.Vis.Validation.RuleRegistrationFault
 Ihc.Vis.Validation.RuleRegistrationFault.UnknownTarget = 5 -> Ihc.Vis.Validation.RuleRegistrationFault
-Ihc.Vis.Validation.RuleSet
-Ihc.Vis.Validation.RuleSet.Codes.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemCode>
-Ihc.Vis.Validation.RuleSet.ForFace(Ihc.Vis.Validation.RuleFaces face) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-Ihc.Vis.Validation.RuleSet.ForTarget(Ihc.Vis.Validation.RuleTarget target) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-Ihc.Vis.Validation.RuleSet.Rules.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-Ihc.Vis.Validation.RuleSet.TryGet(Ihc.Vis.Problems.ProblemCode code, out Ihc.Vis.Validation.RuleDefinition! rule) -> bool
 Ihc.Vis.Validation.RuleTarget
 Ihc.Vis.Validation.RuleTarget.Attribute.get -> string?
 Ihc.Vis.Validation.RuleTarget.Attribute.init -> void
@@ -526,8 +547,6 @@ Ihc.Vis.Validation.RuleTarget.RuleTarget() -> void
 Ihc.Vis.Validation.RuleTarget.RuleTarget(string? Tag, string? Attribute) -> void
 Ihc.Vis.Validation.RuleTarget.Tag.get -> string?
 Ihc.Vis.Validation.RuleTarget.Tag.init -> void
-Ihc.Vis.Validation.ScenarioRules
-Ihc.Vis.Validation.SchemaConformanceRules
 Ihc.Vis.Validation.SeverityOverride
 Ihc.Vis.Validation.SeverityOverride.Code.get -> Ihc.Vis.Problems.ProblemCode
 Ihc.Vis.Validation.SeverityOverride.Code.init -> void
@@ -537,11 +556,16 @@ Ihc.Vis.Validation.SeverityOverride.Severity.get -> Ihc.Vis.Validation.Validatio
 Ihc.Vis.Validation.SeverityOverride.Severity.init -> void
 Ihc.Vis.Validation.SeverityOverride.SeverityOverride() -> void
 Ihc.Vis.Validation.SeverityOverride.SeverityOverride(Ihc.Vis.Problems.ProblemCode Code, Ihc.Vis.Validation.ValidationSeverity Severity) -> void
-Ihc.Vis.Validation.StructureRules
-Ihc.Vis.Validation.ThresholdConfidence
-Ihc.Vis.Validation.ThresholdConfidence.Authored = 2 -> Ihc.Vis.Validation.ThresholdConfidence
-Ihc.Vis.Validation.ThresholdConfidence.VendorDocumented = 0 -> Ihc.Vis.Validation.ThresholdConfidence
-Ihc.Vis.Validation.ThresholdConfidence.VendorRecommendation = 1 -> Ihc.Vis.Validation.ThresholdConfidence
+Ihc.Vis.Validation.StructuredValidationResult
+Ihc.Vis.Validation.StructuredValidationResult.<Clone>$() -> Ihc.Vis.Validation.StructuredValidationResult!
+Ihc.Vis.Validation.StructuredValidationResult.Deconstruct(out Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> Findings, out Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!> Faults) -> void
+Ihc.Vis.Validation.StructuredValidationResult.Equals(Ihc.Vis.Validation.StructuredValidationResult? other) -> bool
+Ihc.Vis.Validation.StructuredValidationResult.Faults.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!>
+Ihc.Vis.Validation.StructuredValidationResult.Faults.init -> void
+Ihc.Vis.Validation.StructuredValidationResult.Findings.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
+Ihc.Vis.Validation.StructuredValidationResult.Findings.init -> void
+Ihc.Vis.Validation.StructuredValidationResult.IsComplete.get -> bool
+Ihc.Vis.Validation.StructuredValidationResult.StructuredValidationResult(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> Findings, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!> Faults) -> void
 Ihc.Vis.Validation.ValidationCategory.Addressing = 4 -> Ihc.Vis.Validation.ValidationCategory
 Ihc.Vis.Validation.ValidationCategory.DeviceSettings = 5 -> Ihc.Vis.Validation.ValidationCategory
 Ihc.Vis.Validation.ValidationCategory.Documentation = 6 -> Ihc.Vis.Validation.ValidationCategory
@@ -557,88 +581,66 @@ Ihc.Vis.Validation.ValidationFinding.Category.init -> void
 Ihc.Vis.Validation.ValidationFinding.Code.get -> Ihc.Vis.Problems.ProblemCode
 Ihc.Vis.Validation.ValidationFinding.Deconstruct(out Ihc.Vis.Problems.Problem! Problem, out Ihc.Vis.Validation.ValidationSeverity Severity, out Ihc.Vis.Validation.ValidationCategory Category, out Ihc.Vis.Validation.FindingLocation? Primary, out Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.FindingLocation!> Related) -> void
 Ihc.Vis.Validation.ValidationFinding.Equals(Ihc.Vis.Validation.ValidationFinding? other) -> bool
+Ihc.Vis.Validation.ValidationFinding.Fix.get -> Ihc.Vis.Validation.FixLocation?
+Ihc.Vis.Validation.ValidationFinding.Fix.init -> void
 Ihc.Vis.Validation.ValidationFinding.Primary.get -> Ihc.Vis.Validation.FindingLocation?
 Ihc.Vis.Validation.ValidationFinding.Primary.init -> void
 Ihc.Vis.Validation.ValidationFinding.Problem.get -> Ihc.Vis.Problems.Problem!
 Ihc.Vis.Validation.ValidationFinding.Problem.init -> void
 Ihc.Vis.Validation.ValidationFinding.RefusedOperations.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemCode>
 Ihc.Vis.Validation.ValidationFinding.RefusedOperations.init -> void
-Ihc.Vis.Validation.ValidationFinding.TargetAttribute.get -> string?
-Ihc.Vis.Validation.ValidationFinding.TargetAttribute.init -> void
 Ihc.Vis.Validation.ValidationFinding.Related.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.FindingLocation!>
 Ihc.Vis.Validation.ValidationFinding.Related.init -> void
 Ihc.Vis.Validation.ValidationFinding.Severity.get -> Ihc.Vis.Validation.ValidationSeverity
 Ihc.Vis.Validation.ValidationFinding.Severity.init -> void
+Ihc.Vis.Validation.ValidationFinding.TargetAttribute.get -> string?
+Ihc.Vis.Validation.ValidationFinding.TargetAttribute.init -> void
 Ihc.Vis.Validation.ValidationFinding.ValidationFinding(Ihc.Vis.Problems.Problem! Problem, Ihc.Vis.Validation.ValidationSeverity Severity, Ihc.Vis.Validation.ValidationCategory Category, Ihc.Vis.Validation.FindingLocation? Primary, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.FindingLocation!> Related) -> void
 Ihc.Vis.Validation.ValidationGate
+Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!>)
+Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!>).IsComplete.get -> bool
 Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>)
 Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>).Errors.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
 Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>).Infos.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
 Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>).IsValid.get -> bool
 Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>).Warnings.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
-Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!>)
-Ihc.Vis.Validation.ValidationGate.extension(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!>).IsComplete.get -> bool
-Ihc.Vis.Validation.ValidationProfile
-Ihc.Vis.Validation.ValidationProfile.<Clone>$() -> Ihc.Vis.Validation.ValidationProfile!
-Ihc.Vis.Validation.ValidationProfile.Audience.get -> Ihc.Vis.Validation.ProfileAudience
-Ihc.Vis.Validation.ValidationProfile.Audience.init -> void
-Ihc.Vis.Validation.ValidationProfile.Controller.get -> Ihc.Vis.Validation.ControllerCapabilityLimits?
-Ihc.Vis.Validation.ValidationProfile.Controller.init -> void
-Ihc.Vis.Validation.ValidationProfile.Deconstruct(out string! Name, out Ihc.Vis.Validation.ProfileAudience Audience, out Ihc.Vis.Validation.ControllerCapabilityLimits? Controller, out Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.SeverityOverride> Overrides) -> void
-Ihc.Vis.Validation.ValidationProfile.Equals(Ihc.Vis.Validation.ValidationProfile? other) -> bool
-Ihc.Vis.Validation.ValidationProfile.FailurePolicy.get -> Ihc.Vis.Validation.RuleFailurePolicy
-Ihc.Vis.Validation.ValidationProfile.FailurePolicy.init -> void
-Ihc.Vis.Validation.ValidationProfile.Includes(Ihc.Vis.Validation.ProblemCatalogEntry! entry) -> bool
-Ihc.Vis.Validation.ValidationProfile.Name.get -> string!
-Ihc.Vis.Validation.ValidationProfile.Name.init -> void
-Ihc.Vis.Validation.ValidationProfile.Overrides.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.SeverityOverride>
-Ihc.Vis.Validation.ValidationProfile.Overrides.init -> void
-Ihc.Vis.Validation.ValidationProfile.SeverityFor(Ihc.Vis.Validation.ProblemCatalogEntry! entry) -> Ihc.Vis.Validation.ValidationSeverity
-Ihc.Vis.Validation.ValidationProfile.ValidationProfile(string! Name, Ihc.Vis.Validation.ProfileAudience Audience, Ihc.Vis.Validation.ControllerCapabilityLimits? Controller, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.SeverityOverride> Overrides) -> void
 Ihc.Vis.Validation.ValidationSeverity.Info = 2 -> Ihc.Vis.Validation.ValidationSeverity
-Ihc.Vis.Validation.ValueConstraintVerdict
-Ihc.Vis.Validation.ValueConstraintVerdict.Arguments.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgument>
-Ihc.Vis.Validation.ValueConstraintVerdict.Arguments.init -> void
-Ihc.Vis.Validation.ValueConstraintVerdict.Deconstruct(out bool Satisfied, out Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgument> Arguments) -> void
-Ihc.Vis.Validation.ValueConstraintVerdict.Equals(Ihc.Vis.Validation.ValueConstraintVerdict other) -> bool
-Ihc.Vis.Validation.ValueConstraintVerdict.Satisfied.get -> bool
-Ihc.Vis.Validation.ValueConstraintVerdict.Satisfied.init -> void
-Ihc.Vis.Validation.ValueConstraintVerdict.ValueConstraintVerdict() -> void
-Ihc.Vis.Validation.ValueConstraintVerdict.ValueConstraintVerdict(bool Satisfied, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgument> Arguments) -> void
-Ihc.Vis.Validation.VariableUsage
-Ihc.Vis.Validation.VariableUsage.<Clone>$() -> Ihc.Vis.Validation.VariableUsage!
-Ihc.Vis.Validation.VariableUsage.Deconstruct(out Ihc.Vis.Model.ProjectElement! Program, out Ihc.Vis.Model.ProjectElement! Row, out Ihc.Vis.Model.ProjectElement! Variable, out Ihc.Vis.Validation.VariableUsageKind Kind) -> void
-Ihc.Vis.Validation.VariableUsage.Equals(Ihc.Vis.Validation.VariableUsage? other) -> bool
-Ihc.Vis.Validation.VariableUsage.Kind.get -> Ihc.Vis.Validation.VariableUsageKind
-Ihc.Vis.Validation.VariableUsage.Kind.init -> void
-Ihc.Vis.Validation.VariableUsage.Program.get -> Ihc.Vis.Model.ProjectElement!
-Ihc.Vis.Validation.VariableUsage.Program.init -> void
-Ihc.Vis.Validation.VariableUsage.Row.get -> Ihc.Vis.Model.ProjectElement!
-Ihc.Vis.Validation.VariableUsage.Row.init -> void
-Ihc.Vis.Validation.VariableUsage.Variable.get -> Ihc.Vis.Model.ProjectElement!
-Ihc.Vis.Validation.VariableUsage.Variable.init -> void
-Ihc.Vis.Validation.VariableUsage.VariableUsage(Ihc.Vis.Model.ProjectElement! Program, Ihc.Vis.Model.ProjectElement! Row, Ihc.Vis.Model.ProjectElement! Variable, Ihc.Vis.Validation.VariableUsageKind Kind) -> void
 Ihc.Vis.Validation.VariableUsageKind
 Ihc.Vis.Validation.VariableUsageKind.Read = 1 -> Ihc.Vis.Validation.VariableUsageKind
 Ihc.Vis.Validation.VariableUsageKind.Trigger = 0 -> Ihc.Vis.Validation.VariableUsageKind
 Ihc.Vis.Validation.VariableUsageKind.Write = 2 -> Ihc.Vis.Validation.VariableUsageKind
-Ihc.Vis.Validation.VariableUsageRules
-Ihc.Vis.Validation.WholeProjectValidator
-Ihc.Vis.Validation.WholeProjectValidator.WholeProjectValidator(Ihc.Vis.Validation.RuleSet! rules) -> void
-Ihc.Vis.Validation.WiringRules
+const Ihc.IhcConfiguration.SettingsFileName = "ihcsettings.json" -> string!
+const Ihc.IhcSettings.ConfigurationSectionName = "ihcclient" -> string!
+const Ihc.Telemetry.MeterName = "ihcclient" -> string!
 const Ihc.Vis.FindingExportFormat.FileExtension = "xml" -> string!
 const Ihc.Vis.FindingExportFormat.MimeType = "application/xml" -> string!
+const Ihc.Vis.Problems.InternalError.ReportedKey = "ihc.internal-error.reported" -> string!
 const Ihc.Vis.Problems.OperationCodes.BridgeDownloadLabel = "Projektet kunne ikke hentes fra controlleren" -> string!
 const Ihc.Vis.Problems.OperationCodes.BridgeUploadLabel = "Projektet kunne ikke sendes til controlleren" -> string!
+const Ihc.Vis.Problems.OperationCodes.EditOpenLabel = "Projektet kunne ikke åbnes til redigering" -> string!
 const Ihc.Vis.Problems.OperationCodes.ImportCatalogLabel = "Katalogfilen kunne ikke indlæses" -> string!
 const Ihc.Vis.Problems.OperationCodes.LoadLabel = "Projektet kunne ikke åbnes" -> string!
 const Ihc.Vis.Problems.OperationCodes.SaveLabel = "Projektet kunne ikke gemmes: {count} fejl skal rettes først." -> string!
+const Ihc.Vis.Session.EditRefusals.EditFailedMessage = "Redigeringen kunne ikke gennemføres på grund af en intern fejl. Ændringen blev ikke gemt." -> string!
 const Ihc.Vis.Session.EditRefusals.NoProjectOpenRefusal = "Der er ikke åbnet et projekt." -> string!
+const Ihc.Vis.Session.EditRefusals.PreviewFailedMessage = "Handlingen kunne ikke vurderes på grund af en intern fejl. Projektet er uændret." -> string!
 const Ihc.Vis.Session.EditRefusals.StaleBaseVersionRefusal = "Projektet er ændret, siden denne redigering blev forberedt." -> string!
-const Ihc.Vis.Validation.ControllerCapabilityLimits.AuthoredResourceCeiling = 2000 -> int
+override Ihc.OperationOutcome.Equals(object? obj) -> bool
+override Ihc.OperationOutcome.GetHashCode() -> int
+override Ihc.Vis.DeclaredNumericBounds.GetHashCode() -> int
+override Ihc.Vis.ErrorTierFilter.GetHashCode() -> int
 override Ihc.Vis.FindingExportOptions.Equals(object? obj) -> bool
 override Ihc.Vis.FindingExportOptions.GetHashCode() -> int
 override Ihc.Vis.FindingExportOptions.ToString() -> string!
+override Ihc.Vis.FunctionBlockSectionInfo.Equals(object? obj) -> bool
+override Ihc.Vis.FunctionBlockSectionInfo.GetHashCode() -> int
+override Ihc.Vis.FunctionBlockSectionInfo.ToString() -> string!
+override Ihc.Vis.InsertableVariableType.Equals(object? obj) -> bool
+override Ihc.Vis.InsertableVariableType.GetHashCode() -> int
+override Ihc.Vis.InsertableVariableType.ToString() -> string!
+override Ihc.Vis.Problems.InternalError.Equals(object? obj) -> bool
+override Ihc.Vis.Problems.InternalError.GetHashCode() -> int
+override Ihc.Vis.Problems.InternalError.ToString() -> string!
 override Ihc.Vis.Problems.Problem.Equals(object? obj) -> bool
 override Ihc.Vis.Problems.Problem.GetHashCode() -> int
 override Ihc.Vis.Problems.Problem.ToString() -> string!
@@ -653,48 +655,60 @@ override Ihc.Vis.Problems.ProblemChain.ToString() -> string!
 override Ihc.Vis.Problems.ProblemCode.GetHashCode() -> int
 override Ihc.Vis.Problems.ProblemCode.ToString() -> string!
 override Ihc.Vis.Problems.RefusalIdentity.GetHashCode() -> int
-override Ihc.Vis.Validation.CaseTest.Equals(object? obj) -> bool
-override Ihc.Vis.Validation.CaseTest.GetHashCode() -> int
-override Ihc.Vis.Validation.CaseTest.ToString() -> string!
+override Ihc.Vis.ProgramOperandOffer.Equals(object? obj) -> bool
+override Ihc.Vis.ProgramOperandOffer.GetHashCode() -> int
+override Ihc.Vis.ProgramOperandOffer.ToString() -> string!
+override Ihc.Vis.ProgramOperationOffer.Equals(object? obj) -> bool
+override Ihc.Vis.ProgramOperationOffer.GetHashCode() -> int
+override Ihc.Vis.ProgramOperationOffer.ToString() -> string!
+override Ihc.Vis.Session.ProductDialogSettingEdit.GetHashCode() -> int
+override Ihc.Vis.Session.ProductDialogTerminalEdit.GetHashCode() -> int
 override Ihc.Vis.Validation.CatalogDefect.GetHashCode() -> int
-override Ihc.Vis.Validation.ConstraintSequence.Equals(object? obj) -> bool
-override Ihc.Vis.Validation.ConstraintSequence.GetHashCode() -> int
-override Ihc.Vis.Validation.ConstraintSequence.ToString() -> string!
-override Ihc.Vis.Validation.ControllerCapabilityLimits.Equals(object? obj) -> bool
-override Ihc.Vis.Validation.ControllerCapabilityLimits.GetHashCode() -> int
-override Ihc.Vis.Validation.ControllerCapabilityLimits.ToString() -> string!
-override Ihc.Vis.Validation.DeclaredThreshold.Equals(object? obj) -> bool
-override Ihc.Vis.Validation.DeclaredThreshold.GetHashCode() -> int
-override Ihc.Vis.Validation.DeclaredThreshold.ToString() -> string!
 override Ihc.Vis.Validation.FieldConstraintMetadata.GetHashCode() -> int
 override Ihc.Vis.Validation.FindingLocation.Equals(object? obj) -> bool
 override Ihc.Vis.Validation.FindingLocation.GetHashCode() -> int
 override Ihc.Vis.Validation.FindingLocation.ToString() -> string!
+override Ihc.Vis.Validation.FixLocation.GetHashCode() -> int
 override Ihc.Vis.Validation.ProblemCatalogEntry.Equals(object? obj) -> bool
 override Ihc.Vis.Validation.ProblemCatalogEntry.GetHashCode() -> int
 override Ihc.Vis.Validation.ProblemCatalogEntry.ToString() -> string!
-override Ihc.Vis.Validation.RuleDefinition.Equals(object? obj) -> bool
-override Ihc.Vis.Validation.RuleDefinition.GetHashCode() -> int
-override Ihc.Vis.Validation.RuleDefinition.ToString() -> string!
 override Ihc.Vis.Validation.RuleTarget.GetHashCode() -> int
 override Ihc.Vis.Validation.SeverityOverride.GetHashCode() -> int
+override Ihc.Vis.Validation.StructuredValidationResult.Equals(object? obj) -> bool
+override Ihc.Vis.Validation.StructuredValidationResult.GetHashCode() -> int
+override Ihc.Vis.Validation.StructuredValidationResult.ToString() -> string!
 override Ihc.Vis.Validation.ValidationFinding.Equals(object? obj) -> bool
 override Ihc.Vis.Validation.ValidationFinding.GetHashCode() -> int
 override Ihc.Vis.Validation.ValidationFinding.ToString() -> string!
-override Ihc.Vis.Validation.ValidationProfile.Equals(object? obj) -> bool
-override Ihc.Vis.Validation.ValidationProfile.GetHashCode() -> int
-override Ihc.Vis.Validation.ValidationProfile.ToString() -> string!
-override Ihc.Vis.Validation.ValueConstraintVerdict.GetHashCode() -> int
-override Ihc.Vis.Validation.VariableUsage.Equals(object? obj) -> bool
-override Ihc.Vis.Validation.VariableUsage.GetHashCode() -> int
-override Ihc.Vis.Validation.VariableUsage.ToString() -> string!
+readonly Ihc.App.AuthenticatedAppServiceBase.authService -> Ihc.IAuthenticationService!
 static Ihc.App.BridgeRefusalCodes.ControllerDeclined.get -> Ihc.Vis.Problems.RefusalIdentity
 static Ihc.App.BridgeRefusalCodes.ControllerNoProject.get -> Ihc.Vis.Problems.RefusalIdentity
+static Ihc.IhcConfiguration.FromAppDirectory() -> Microsoft.Extensions.Configuration.IConfigurationRoot!
+static Ihc.MetricBinding.For(System.Diagnostics.Metrics.Histogram<double>? duration = null, System.Diagnostics.Metrics.Counter<long>? occurrences = null) -> Ihc.MetricBinding!
+static Ihc.MetricBinding.None.get -> Ihc.MetricBinding!
+static Ihc.OperationOutcome.Cancelled.get -> Ihc.OperationOutcome
+static Ihc.OperationOutcome.Failed(System.Exception! exception) -> Ihc.OperationOutcome
+static Ihc.OperationOutcome.FailedWith(string! problemCode) -> Ihc.OperationOutcome
+static Ihc.OperationOutcome.Ok.get -> Ihc.OperationOutcome
+static Ihc.OperationOutcome.Refused(string! problemCode) -> Ihc.OperationOutcome
+static Ihc.OperationOutcome.operator !=(Ihc.OperationOutcome left, Ihc.OperationOutcome right) -> bool
+static Ihc.OperationOutcome.operator ==(Ihc.OperationOutcome left, Ihc.OperationOutcome right) -> bool
+static Ihc.Vis.Catalog.ImportRefusalCodes.CatalogUnparsable.get -> Ihc.Vis.Problems.RefusalIdentity
+static Ihc.Vis.DeclaredNumericBounds.operator !=(Ihc.Vis.DeclaredNumericBounds left, Ihc.Vis.DeclaredNumericBounds right) -> bool
+static Ihc.Vis.DeclaredNumericBounds.operator ==(Ihc.Vis.DeclaredNumericBounds left, Ihc.Vis.DeclaredNumericBounds right) -> bool
+static Ihc.Vis.Editing.EditOpenRefusalCodes.All.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.RefusalIdentity>
+static Ihc.Vis.Editing.EditOpenRefusalCodes.AttrUndeclared.get -> Ihc.Vis.Problems.RefusalIdentity
+static Ihc.Vis.Editing.EditOpenRefusalCodes.IdDuplicateToken.get -> Ihc.Vis.Problems.RefusalIdentity
+static Ihc.Vis.ErrorTierFilter.operator !=(Ihc.Vis.ErrorTierFilter left, Ihc.Vis.ErrorTierFilter right) -> bool
+static Ihc.Vis.ErrorTierFilter.operator ==(Ihc.Vis.ErrorTierFilter left, Ihc.Vis.ErrorTierFilter right) -> bool
 static Ihc.Vis.FindingExportOptions.AllSeverities.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationSeverity>
 static Ihc.Vis.FindingExportOptions.Default.get -> Ihc.Vis.FindingExportOptions!
 static Ihc.Vis.FindingExportOptions.operator !=(Ihc.Vis.FindingExportOptions? left, Ihc.Vis.FindingExportOptions? right) -> bool
 static Ihc.Vis.FindingExportOptions.operator ==(Ihc.Vis.FindingExportOptions? left, Ihc.Vis.FindingExportOptions? right) -> bool
-static Ihc.Vis.Catalog.ImportRefusalCodes.CatalogUnparsable.get -> Ihc.Vis.Problems.RefusalIdentity
+static Ihc.Vis.FunctionBlockSectionInfo.operator !=(Ihc.Vis.FunctionBlockSectionInfo? left, Ihc.Vis.FunctionBlockSectionInfo? right) -> bool
+static Ihc.Vis.FunctionBlockSectionInfo.operator ==(Ihc.Vis.FunctionBlockSectionInfo? left, Ihc.Vis.FunctionBlockSectionInfo? right) -> bool
+static Ihc.Vis.InsertableVariableType.operator !=(Ihc.Vis.InsertableVariableType? left, Ihc.Vis.InsertableVariableType? right) -> bool
+static Ihc.Vis.InsertableVariableType.operator ==(Ihc.Vis.InsertableVariableType? left, Ihc.Vis.InsertableVariableType? right) -> bool
 static Ihc.Vis.Io.LoadRefusalCodes.All.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.RefusalIdentity>
 static Ihc.Vis.Io.LoadRefusalCodes.CharacterData.get -> Ihc.Vis.Problems.RefusalIdentity
 static Ihc.Vis.Io.LoadRefusalCodes.DeclaredEncoding.get -> Ihc.Vis.Problems.RefusalIdentity
@@ -716,9 +730,16 @@ static Ihc.Vis.Io.SaveRefusalCodes.ElementUndeclared.get -> Ihc.Vis.Problems.Ref
 static Ihc.Vis.Io.SaveRefusalCodes.RoundTripMismatch.get -> Ihc.Vis.Problems.RefusalIdentity
 static Ihc.Vis.Io.SaveRefusalCodes.TargetUnwritable.get -> Ihc.Vis.Problems.RefusalIdentity
 static Ihc.Vis.Io.SaveRefusalCodes.ValidationIncomplete.get -> Ihc.Vis.Problems.RefusalIdentity
+static Ihc.Vis.Problems.InternalError.ClaimReport(System.Exception! failure) -> bool
+static Ihc.Vis.Problems.InternalError.Describe(System.Exception! failure) -> string!
+static Ihc.Vis.Problems.InternalError.DescribeFully(System.Exception! failure) -> string!
+static Ihc.Vis.Problems.InternalError.From(Ihc.Vis.Problems.Problem! problem, Ihc.Vis.Problems.InternalErrorOrigin origin, string! detail) -> Ihc.Vis.Problems.InternalError!
+static Ihc.Vis.Problems.InternalError.operator !=(Ihc.Vis.Problems.InternalError? left, Ihc.Vis.Problems.InternalError? right) -> bool
+static Ihc.Vis.Problems.InternalError.operator ==(Ihc.Vis.Problems.InternalError? left, Ihc.Vis.Problems.InternalError? right) -> bool
 static Ihc.Vis.Problems.OperationCodes.All.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemCode>
 static Ihc.Vis.Problems.OperationCodes.BridgeDownload.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Problems.OperationCodes.BridgeUpload.get -> Ihc.Vis.Problems.ProblemCode
+static Ihc.Vis.Problems.OperationCodes.EditOpen.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Problems.OperationCodes.ImportCatalog.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Problems.OperationCodes.Load.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Problems.OperationCodes.Save.get -> Ihc.Vis.Problems.ProblemCode
@@ -739,6 +760,11 @@ static Ihc.Vis.Problems.ProblemCode.operator !=(Ihc.Vis.Problems.ProblemCode lef
 static Ihc.Vis.Problems.ProblemCode.operator ==(Ihc.Vis.Problems.ProblemCode left, Ihc.Vis.Problems.ProblemCode right) -> bool
 static Ihc.Vis.Problems.RefusalIdentity.operator !=(Ihc.Vis.Problems.RefusalIdentity left, Ihc.Vis.Problems.RefusalIdentity right) -> bool
 static Ihc.Vis.Problems.RefusalIdentity.operator ==(Ihc.Vis.Problems.RefusalIdentity left, Ihc.Vis.Problems.RefusalIdentity right) -> bool
+static Ihc.Vis.ProgramOperandOffer.operator !=(Ihc.Vis.ProgramOperandOffer? left, Ihc.Vis.ProgramOperandOffer? right) -> bool
+static Ihc.Vis.ProgramOperandOffer.operator ==(Ihc.Vis.ProgramOperandOffer? left, Ihc.Vis.ProgramOperandOffer? right) -> bool
+static Ihc.Vis.ProgramOperationOffer.operator !=(Ihc.Vis.ProgramOperationOffer? left, Ihc.Vis.ProgramOperationOffer? right) -> bool
+static Ihc.Vis.ProgramOperationOffer.operator ==(Ihc.Vis.ProgramOperationOffer? left, Ihc.Vis.ProgramOperationOffer? right) -> bool
+static Ihc.Vis.ProjectAppService.Warmup() -> void
 static Ihc.Vis.SceneValue.LevelConstraint.get -> Ihc.Vis.Validation.FieldConstraintMetadata
 static Ihc.Vis.SceneValue.RampPartConstraint.get -> Ihc.Vis.Validation.FieldConstraintMetadata
 static Ihc.Vis.Session.EditRefusalCodes.All.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemCode>
@@ -754,9 +780,13 @@ static Ihc.Vis.Session.EditRefusalCodes.EnumTypeInUse.get -> Ihc.Vis.Problems.Pr
 static Ihc.Vis.Session.EditRefusalCodes.EnumTypeMissing.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Session.EditRefusalCodes.EnumTypeReadOnly.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Session.EditRefusalCodes.EnumValueMissing.get -> Ihc.Vis.Problems.ProblemCode
+static Ihc.Vis.Session.EditRefusalCodes.FieldAboveMaximum.get -> Ihc.Vis.Problems.ProblemCode
+static Ihc.Vis.Session.EditRefusalCodes.FieldBelowMinimum.get -> Ihc.Vis.Problems.ProblemCode
+static Ihc.Vis.Session.EditRefusalCodes.FieldNotANumber.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Session.EditRefusalCodes.FieldNotOffered.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Session.EditRefusalCodes.FieldOutOfRange.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Session.EditRefusalCodes.FieldOutsideProduct.get -> Ihc.Vis.Problems.ProblemCode
+static Ihc.Vis.Session.EditRefusalCodes.FieldPhonenumberMalformed.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Session.EditRefusalCodes.FieldReadOnly.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Session.EditRefusalCodes.FieldTargetMissing.get -> Ihc.Vis.Problems.ProblemCode
 static Ihc.Vis.Session.EditRefusalCodes.FieldValueRule.get -> Ihc.Vis.Problems.ProblemCode
@@ -785,94 +815,49 @@ static Ihc.Vis.Session.EditRefusalProblems.LibraryBlockMissing(string! masterTyp
 static Ihc.Vis.Session.EditRefusalProblems.ModemLimit() -> Ihc.Vis.Problems.Problem!
 static Ihc.Vis.Session.EditRefusalProblems.TargetWrongKind(string! noun) -> Ihc.Vis.Problems.Problem!
 static Ihc.Vis.Session.EditRefusalProblems.ValueRequired() -> Ihc.Vis.Problems.Problem!
+static Ihc.Vis.Session.EditRefusedException.TargetMissing(string! noun) -> Ihc.Vis.Session.EditRefusedException!
 static Ihc.Vis.Session.EditVerdict.Refuse(Ihc.Vis.Problems.ProblemCode code, string! reason) -> Ihc.Vis.Session.EditVerdict
+static Ihc.Vis.Session.PreviewOutcome.Faulted(string? reason, Ihc.Vis.Problems.InternalError? fault = null) -> Ihc.Vis.Session.PreviewOutcome!
 static Ihc.Vis.Session.PreviewOutcome.Refused(Ihc.Vis.Session.EditVerdict verdict) -> Ihc.Vis.Session.PreviewOutcome!
-static Ihc.Vis.Validation.CapacityRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.CaseTest.operator !=(Ihc.Vis.Validation.CaseTest? left, Ihc.Vis.Validation.CaseTest? right) -> bool
-static Ihc.Vis.Validation.CaseTest.operator ==(Ihc.Vis.Validation.CaseTest? left, Ihc.Vis.Validation.CaseTest? right) -> bool
+static Ihc.Vis.Session.PreviewOutcome.Refused(string? reason, Ihc.Vis.Problems.ProblemCode code = default(Ihc.Vis.Problems.ProblemCode)) -> Ihc.Vis.Session.PreviewOutcome!
+static Ihc.Vis.Session.ProductDialogSettingEdit.operator !=(Ihc.Vis.Session.ProductDialogSettingEdit left, Ihc.Vis.Session.ProductDialogSettingEdit right) -> bool
+static Ihc.Vis.Session.ProductDialogSettingEdit.operator ==(Ihc.Vis.Session.ProductDialogSettingEdit left, Ihc.Vis.Session.ProductDialogSettingEdit right) -> bool
+static Ihc.Vis.Session.ProductDialogTerminalEdit.operator !=(Ihc.Vis.Session.ProductDialogTerminalEdit left, Ihc.Vis.Session.ProductDialogTerminalEdit right) -> bool
+static Ihc.Vis.Session.ProductDialogTerminalEdit.operator ==(Ihc.Vis.Session.ProductDialogTerminalEdit left, Ihc.Vis.Session.ProductDialogTerminalEdit right) -> bool
 static Ihc.Vis.Validation.CatalogDefect.operator !=(Ihc.Vis.Validation.CatalogDefect left, Ihc.Vis.Validation.CatalogDefect right) -> bool
 static Ihc.Vis.Validation.CatalogDefect.operator ==(Ihc.Vis.Validation.CatalogDefect left, Ihc.Vis.Validation.CatalogDefect right) -> bool
-static Ihc.Vis.Validation.CatalogInvariants.Check(Ihc.Vis.Validation.ProblemCatalog! catalog, System.Collections.Generic.IReadOnlyCollection<Ihc.Vis.Problems.ProblemCode>! implementedCodes) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.CatalogDefect>
-static Ihc.Vis.Validation.CatalogInvariants.CheckEntries(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.CatalogDefect>
-static Ihc.Vis.Validation.CategoryExtensions.TryParseShortCode(string! shortCode, out Ihc.Vis.Validation.ValidationCategory category) -> bool
-static Ihc.Vis.Validation.CategoryExtensions.extension(Ihc.Vis.Validation.ValidationCategory).TryParseShortCode(string! shortCode, out Ihc.Vis.Validation.ValidationCategory category) -> bool
-static Ihc.Vis.Validation.CategoryExtensions.get_ShortCode(Ihc.Vis.Validation.ValidationCategory category) -> string!
-static Ihc.Vis.Validation.ConstraintSequence.operator !=(Ihc.Vis.Validation.ConstraintSequence? left, Ihc.Vis.Validation.ConstraintSequence? right) -> bool
-static Ihc.Vis.Validation.ConstraintSequence.operator ==(Ihc.Vis.Validation.ConstraintSequence? left, Ihc.Vis.Validation.ConstraintSequence? right) -> bool
-static Ihc.Vis.Validation.ControllerCapabilityLimits.VendorDocumented.get -> Ihc.Vis.Validation.ControllerCapabilityLimits!
-static Ihc.Vis.Validation.ControllerCapabilityLimits.operator !=(Ihc.Vis.Validation.ControllerCapabilityLimits? left, Ihc.Vis.Validation.ControllerCapabilityLimits? right) -> bool
-static Ihc.Vis.Validation.ControllerCapabilityLimits.operator ==(Ihc.Vis.Validation.ControllerCapabilityLimits? left, Ihc.Vis.Validation.ControllerCapabilityLimits? right) -> bool
-static Ihc.Vis.Validation.DatalineAddressRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.DatalineAddressRules.RetiredPredecessor.get -> Ihc.Vis.Problems.ProblemCode
-static Ihc.Vis.Validation.DeclaredThreshold.operator !=(Ihc.Vis.Validation.DeclaredThreshold? left, Ihc.Vis.Validation.DeclaredThreshold? right) -> bool
-static Ihc.Vis.Validation.DeclaredThreshold.operator ==(Ihc.Vis.Validation.DeclaredThreshold? left, Ihc.Vis.Validation.DeclaredThreshold? right) -> bool
-static Ihc.Vis.Validation.DeviceAddressRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.DeviceSettingRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.DeviceStateRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.DocumentationCompletenessRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.DocumentationRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.DocumentationRules.ProductChecksInReportOrder.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemCode>
-static Ihc.Vis.Validation.DocumentationRules.TerminalChecksInReportOrder.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemCode>
-static Ihc.Vis.Validation.EnumDefinitionRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
 static Ihc.Vis.Validation.FieldConstraintMetadata.Unconstrained.get -> Ihc.Vis.Validation.FieldConstraintMetadata
 static Ihc.Vis.Validation.FieldConstraintMetadata.operator !=(Ihc.Vis.Validation.FieldConstraintMetadata left, Ihc.Vis.Validation.FieldConstraintMetadata right) -> bool
 static Ihc.Vis.Validation.FieldConstraintMetadata.operator ==(Ihc.Vis.Validation.FieldConstraintMetadata left, Ihc.Vis.Validation.FieldConstraintMetadata right) -> bool
-static Ihc.Vis.Validation.FieldMetadataFace.ConstraintsOn(this Ihc.Vis.Validation.RuleSet! rules, Ihc.Vis.Validation.RuleTarget target) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemCode>
-static Ihc.Vis.Validation.FieldMetadataFace.DescribeField(this Ihc.Vis.Validation.RuleSet! rules, Ihc.Vis.Validation.RuleTarget target) -> Ihc.Vis.Validation.FieldConstraintMetadata
 static Ihc.Vis.Validation.FindingLocation.operator !=(Ihc.Vis.Validation.FindingLocation? left, Ihc.Vis.Validation.FindingLocation? right) -> bool
 static Ihc.Vis.Validation.FindingLocation.operator ==(Ihc.Vis.Validation.FindingLocation? left, Ihc.Vis.Validation.FindingLocation? right) -> bool
-static Ihc.Vis.Validation.FunctionBlockShapeRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.IdentityRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.ModuleAddressRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.NamingRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
+static Ihc.Vis.Validation.FixLocation.operator !=(Ihc.Vis.Validation.FixLocation left, Ihc.Vis.Validation.FixLocation right) -> bool
+static Ihc.Vis.Validation.FixLocation.operator ==(Ihc.Vis.Validation.FixLocation left, Ihc.Vis.Validation.FixLocation right) -> bool
 static Ihc.Vis.Validation.ProblemCatalog.Current.get -> Ihc.Vis.Validation.ProblemCatalog!
 static Ihc.Vis.Validation.ProblemCatalog.From(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ProblemCatalogEntry!> entries) -> Ihc.Vis.Validation.ProblemCatalog!
 static Ihc.Vis.Validation.ProblemCatalog.Validated(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ProblemCatalogEntry!> entries) -> Ihc.Vis.Validation.ProblemCatalog!
 static Ihc.Vis.Validation.ProblemCatalogEntry.operator !=(Ihc.Vis.Validation.ProblemCatalogEntry? left, Ihc.Vis.Validation.ProblemCatalogEntry? right) -> bool
 static Ihc.Vis.Validation.ProblemCatalogEntry.operator ==(Ihc.Vis.Validation.ProblemCatalogEntry? left, Ihc.Vis.Validation.ProblemCatalogEntry? right) -> bool
-static Ihc.Vis.Validation.ProductAdvisoryRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.ProgramDataflowRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.ProgramShapeRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.ProjectRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.ProjectRules.Registered.get -> Ihc.Vis.Validation.RuleSet!
-static Ihc.Vis.Validation.ProjectRules.Validator.get -> Ihc.Vis.Validation.IWholeProjectValidator!
-static Ihc.Vis.Validation.ProjectStructureRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.ProjectVerification.Categorized(Ihc.Vis.Projects.Project! project) -> Ihc.Vis.Validation.ProjectValidationResult!
-static Ihc.Vis.Validation.ProjectVerification.Run(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile) -> Ihc.Vis.Validation.ProjectValidationResult!
-static Ihc.Vis.Validation.ProjectVerification.Structural(Ihc.Vis.Projects.Project! project) -> Ihc.Vis.Validation.ProjectValidationResult!
-static Ihc.Vis.Validation.ReciprocityAndEnumRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.RequiredFieldConstraint.For(Ihc.Vis.Problems.ProblemCode code, Ihc.Vis.Validation.BlankPolicy policy = Ihc.Vis.Validation.BlankPolicy.WhitespaceIsBlank) -> Ihc.Vis.Validation.RequiredFieldConstraint!
-static Ihc.Vis.Validation.RuleDefinition.operator !=(Ihc.Vis.Validation.RuleDefinition? left, Ihc.Vis.Validation.RuleDefinition? right) -> bool
-static Ihc.Vis.Validation.RuleDefinition.operator ==(Ihc.Vis.Validation.RuleDefinition? left, Ihc.Vis.Validation.RuleDefinition? right) -> bool
-static Ihc.Vis.Validation.RuleSet.Create(Ihc.Vis.Validation.ProblemCatalog! catalog, System.Collections.Generic.IEnumerable<Ihc.Vis.Validation.RuleDefinition!>! definitions) -> Ihc.Vis.Validation.RuleSet!
 static Ihc.Vis.Validation.RuleTarget.operator !=(Ihc.Vis.Validation.RuleTarget left, Ihc.Vis.Validation.RuleTarget right) -> bool
 static Ihc.Vis.Validation.RuleTarget.operator ==(Ihc.Vis.Validation.RuleTarget left, Ihc.Vis.Validation.RuleTarget right) -> bool
-static Ihc.Vis.Validation.ScenarioRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.SchemaConformanceRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
 static Ihc.Vis.Validation.SeverityOverride.operator !=(Ihc.Vis.Validation.SeverityOverride left, Ihc.Vis.Validation.SeverityOverride right) -> bool
 static Ihc.Vis.Validation.SeverityOverride.operator ==(Ihc.Vis.Validation.SeverityOverride left, Ihc.Vis.Validation.SeverityOverride right) -> bool
-static Ihc.Vis.Validation.StructureRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
+static Ihc.Vis.Validation.StructuredValidationResult.Empty.get -> Ihc.Vis.Validation.StructuredValidationResult!
+static Ihc.Vis.Validation.StructuredValidationResult.operator !=(Ihc.Vis.Validation.StructuredValidationResult? left, Ihc.Vis.Validation.StructuredValidationResult? right) -> bool
+static Ihc.Vis.Validation.StructuredValidationResult.operator ==(Ihc.Vis.Validation.StructuredValidationResult? left, Ihc.Vis.Validation.StructuredValidationResult? right) -> bool
 static Ihc.Vis.Validation.ValidationFinding.operator !=(Ihc.Vis.Validation.ValidationFinding? left, Ihc.Vis.Validation.ValidationFinding? right) -> bool
 static Ihc.Vis.Validation.ValidationFinding.operator ==(Ihc.Vis.Validation.ValidationFinding? left, Ihc.Vis.Validation.ValidationFinding? right) -> bool
 static Ihc.Vis.Validation.ValidationGate.get_Errors(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> findings) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
 static Ihc.Vis.Validation.ValidationGate.get_Infos(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> findings) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
+static Ihc.Vis.Validation.ValidationGate.get_IsComplete(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!> faults) -> bool
 static Ihc.Vis.Validation.ValidationGate.get_IsValid(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> findings) -> bool
 static Ihc.Vis.Validation.ValidationGate.get_Warnings(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> findings) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
-static Ihc.Vis.Validation.ValidationGate.get_IsComplete(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!> faults) -> bool
-static Ihc.Vis.Validation.ValidationProfile.Categorized.get -> Ihc.Vis.Validation.ValidationProfile!
-static Ihc.Vis.Validation.ValidationProfile.ProjectOnly.get -> Ihc.Vis.Validation.ValidationProfile!
-static Ihc.Vis.Validation.ValidationProfile.operator !=(Ihc.Vis.Validation.ValidationProfile? left, Ihc.Vis.Validation.ValidationProfile? right) -> bool
-static Ihc.Vis.Validation.ValidationProfile.operator ==(Ihc.Vis.Validation.ValidationProfile? left, Ihc.Vis.Validation.ValidationProfile? right) -> bool
-static Ihc.Vis.Validation.ValueConstraintVerdict.Failed(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgument> arguments) -> Ihc.Vis.Validation.ValueConstraintVerdict
-static Ihc.Vis.Validation.ValueConstraintVerdict.Ok.get -> Ihc.Vis.Validation.ValueConstraintVerdict
-static Ihc.Vis.Validation.ValueConstraintVerdict.operator !=(Ihc.Vis.Validation.ValueConstraintVerdict left, Ihc.Vis.Validation.ValueConstraintVerdict right) -> bool
-static Ihc.Vis.Validation.ValueConstraintVerdict.operator ==(Ihc.Vis.Validation.ValueConstraintVerdict left, Ihc.Vis.Validation.ValueConstraintVerdict right) -> bool
-static Ihc.Vis.Validation.VariableUsage.operator !=(Ihc.Vis.Validation.VariableUsage? left, Ihc.Vis.Validation.VariableUsage? right) -> bool
-static Ihc.Vis.Validation.VariableUsage.operator ==(Ihc.Vis.Validation.VariableUsage? left, Ihc.Vis.Validation.VariableUsage? right) -> bool
-static Ihc.Vis.Validation.VariableUsageRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
-static Ihc.Vis.Validation.WiringRules.All(Ihc.Vis.Validation.ProblemCatalog! catalog) -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.RuleDefinition!>
+virtual Ihc.App.AuthenticatedAppServiceBase.Dispose(bool disposing) -> void
 virtual Ihc.AuthenticationService.Dispose(bool disposing) -> void
-virtual Ihc.Vis.Validation.ProjectInspection.Invoke(Ihc.Vis.Validation.IProjectInspection! inspection) -> void
+~override Ihc.Vis.DeclaredNumericBounds.Equals(object obj) -> bool
+~override Ihc.Vis.DeclaredNumericBounds.ToString() -> string
+~override Ihc.Vis.ErrorTierFilter.Equals(object obj) -> bool
+~override Ihc.Vis.ErrorTierFilter.ToString() -> string
 ~override Ihc.Vis.Problems.ProblemArgument.Equals(object obj) -> bool
 ~override Ihc.Vis.Problems.ProblemArgument.ToString() -> string
 ~override Ihc.Vis.Problems.ProblemArgumentSlot.Equals(object obj) -> bool
@@ -880,301 +865,17 @@ virtual Ihc.Vis.Validation.ProjectInspection.Invoke(Ihc.Vis.Validation.IProjectI
 ~override Ihc.Vis.Problems.ProblemCode.Equals(object obj) -> bool
 ~override Ihc.Vis.Problems.RefusalIdentity.Equals(object obj) -> bool
 ~override Ihc.Vis.Problems.RefusalIdentity.ToString() -> string
+~override Ihc.Vis.Session.ProductDialogSettingEdit.Equals(object obj) -> bool
+~override Ihc.Vis.Session.ProductDialogSettingEdit.ToString() -> string
+~override Ihc.Vis.Session.ProductDialogTerminalEdit.Equals(object obj) -> bool
+~override Ihc.Vis.Session.ProductDialogTerminalEdit.ToString() -> string
 ~override Ihc.Vis.Validation.CatalogDefect.Equals(object obj) -> bool
 ~override Ihc.Vis.Validation.CatalogDefect.ToString() -> string
 ~override Ihc.Vis.Validation.FieldConstraintMetadata.Equals(object obj) -> bool
 ~override Ihc.Vis.Validation.FieldConstraintMetadata.ToString() -> string
+~override Ihc.Vis.Validation.FixLocation.Equals(object obj) -> bool
+~override Ihc.Vis.Validation.FixLocation.ToString() -> string
 ~override Ihc.Vis.Validation.RuleTarget.Equals(object obj) -> bool
 ~override Ihc.Vis.Validation.RuleTarget.ToString() -> string
 ~override Ihc.Vis.Validation.SeverityOverride.Equals(object obj) -> bool
 ~override Ihc.Vis.Validation.SeverityOverride.ToString() -> string
-~override Ihc.Vis.Validation.ValueConstraintVerdict.Equals(object obj) -> bool
-~override Ihc.Vis.Validation.ValueConstraintVerdict.ToString() -> string
-Ihc.Vis.Problems.RefusalIdentity.Binding(params Ihc.Vis.Problems.ProblemArgument[]! arguments) -> Ihc.Vis.Problems.RefusalIdentity
-static Ihc.Vis.Session.EditRefusalCodes.FieldBelowMinimum.get -> Ihc.Vis.Problems.ProblemCode
-static Ihc.Vis.Session.EditRefusalCodes.FieldAboveMaximum.get -> Ihc.Vis.Problems.ProblemCode
-static Ihc.Vis.Session.EditRefusalCodes.FieldNotANumber.get -> Ihc.Vis.Problems.ProblemCode
-Ihc.Vis.Session.EditRefusedException.Code.get -> Ihc.Vis.Problems.ProblemCode
-Ihc.Vis.Session.EditRefusedException.EditRefusedException(Ihc.Vis.Problems.ProblemCode code, string! message) -> void
-Ihc.Vis.Editing.EditOpenRefusalCodes
-static Ihc.Vis.Editing.EditOpenRefusalCodes.AttrUndeclared.get -> Ihc.Vis.Problems.RefusalIdentity
-static Ihc.Vis.Editing.EditOpenRefusalCodes.IdDuplicateToken.get -> Ihc.Vis.Problems.RefusalIdentity
-static Ihc.Vis.Editing.EditOpenRefusalCodes.All.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.RefusalIdentity>
-static Ihc.Vis.Problems.OperationCodes.EditOpen.get -> Ihc.Vis.Problems.ProblemCode
-const Ihc.Vis.Problems.OperationCodes.EditOpenLabel = "Projektet kunne ikke åbnes til redigering" -> string!
-static Ihc.Vis.Session.EditRefusedException.TargetMissing(string! noun) -> Ihc.Vis.Session.EditRefusedException!
-Ihc.Vis.ProjectAppService.ValidateStructured(Ihc.Vis.Projects.Project! project) -> Ihc.Vis.Validation.StructuredValidationResult!
-static Ihc.Vis.Validation.ProjectVerification.RunStructured(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile) -> Ihc.Vis.Validation.StructuredValidationResult!
-Ihc.Vis.Problems.IProblemCarrier.Aggregate.get -> Ihc.Vis.Problems.ProblemAggregate?
-Ihc.Vis.Validation.DuplicateIdGroup
-Ihc.Vis.Validation.DuplicateIdGroup.DuplicateIdGroup(Ihc.Vis.Model.ProjectElement! Primary, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Model.ProjectElement!> Related) -> void
-Ihc.Vis.Validation.DuplicateIdGroup.Primary.get -> Ihc.Vis.Model.ProjectElement!
-Ihc.Vis.Validation.DuplicateIdGroup.Primary.init -> void
-Ihc.Vis.Validation.DuplicateIdGroup.Related.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Model.ProjectElement!>
-Ihc.Vis.Validation.DuplicateIdGroup.Related.init -> void
-Ihc.Vis.Validation.DuplicateIdGroup.Deconstruct(out Ihc.Vis.Model.ProjectElement! Primary, out Ihc.Vis.Model.EquatableArray<Ihc.Vis.Model.ProjectElement!> Related) -> void
-Ihc.Vis.Validation.DuplicateIdGroup.Equals(Ihc.Vis.Validation.DuplicateIdGroup? other) -> bool
-Ihc.Vis.Validation.DuplicateIdGroup.<Clone>$() -> Ihc.Vis.Validation.DuplicateIdGroup!
-Ihc.Vis.Validation.IIdAnalysis.DuplicateTokenGroups.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.DuplicateIdGroup!>
-Ihc.Vis.Validation.IIdAnalysis.DuplicateCounterGroups.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.DuplicateIdGroup!>
-override Ihc.Vis.Validation.DuplicateIdGroup.Equals(object? obj) -> bool
-override Ihc.Vis.Validation.DuplicateIdGroup.GetHashCode() -> int
-override Ihc.Vis.Validation.DuplicateIdGroup.ToString() -> string!
-static Ihc.Vis.Validation.DuplicateIdGroup.operator ==(Ihc.Vis.Validation.DuplicateIdGroup? left, Ihc.Vis.Validation.DuplicateIdGroup? right) -> bool
-static Ihc.Vis.Validation.DuplicateIdGroup.operator !=(Ihc.Vis.Validation.DuplicateIdGroup? left, Ihc.Vis.Validation.DuplicateIdGroup? right) -> bool
-Ihc.Vis.Validation.RuleRegistrationFault.ShapeContradictsDeclaration = 7 -> Ihc.Vis.Validation.RuleRegistrationFault
-*REMOVED*Ihc.Vis.DeleteImpact.Deconstruct(out bool Deletable, out bool NeedsConfirm, out Ihc.Vis.DeleteKind Kind, out string? Reason) -> void
-*REMOVED*Ihc.Vis.DeleteImpact.DeleteImpact(bool Deletable, bool NeedsConfirm, Ihc.Vis.DeleteKind Kind, string? Reason = null) -> void
-*REMOVED*Ihc.Vis.DeleteImpact.Reason.init -> void
-*REMOVED*Ihc.Vis.ProjectCommands.WouldExceedModemLimit(Ihc.Vis.Projects.Project! project, string! productIdentifier) -> bool
-*REMOVED*Ihc.Vis.Session.EditVerdict.Deconstruct(out bool Ok, out string? Reason) -> void
-*REMOVED*Ihc.Vis.Session.EditVerdict.EditVerdict(bool Ok, string? Reason) -> void
-*REMOVED*Ihc.Vis.Session.PreviewOutcome.Deconstruct(out Ihc.Vis.Session.PreviewStatus Status, out Ihc.Vis.Session.ProjectChangeSet? Changes, out string? Reason) -> void
-*REMOVED*Ihc.Vis.Session.PreviewOutcome.PreviewOutcome(Ihc.Vis.Session.PreviewStatus Status, Ihc.Vis.Session.ProjectChangeSet? Changes, string? Reason) -> void
-*REMOVED*Ihc.Vis.Validation.ProjectValidationException.ProjectValidationException(Ihc.Vis.Validation.ProjectValidationResult! result) -> void
-*REMOVED*Ihc.Vis.Validation.ValidationCategory.Documentation = 1 -> Ihc.Vis.Validation.ValidationCategory
-*REMOVED*Ihc.Vis.Validation.ValidationCategory.Structural = 0 -> Ihc.Vis.Validation.ValidationCategory
-*REMOVED*static Ihc.Vis.Session.PreviewOutcome.Refused(string? reason) -> Ihc.Vis.Session.PreviewOutcome!
-Ihc.Vis.Validation.ProblemCatalogEntry.BindDiagnostic(Ihc.Vis.Problems.Problem! problem) -> string?
-Ihc.Vis.ErrorTierFilter
-Ihc.Vis.ErrorTierFilter.Deconstruct(out bool Refusing, out bool Ordinary) -> void
-Ihc.Vis.ErrorTierFilter.Equals(Ihc.Vis.ErrorTierFilter other) -> bool
-Ihc.Vis.ErrorTierFilter.ErrorTierFilter() -> void
-Ihc.Vis.ErrorTierFilter.ErrorTierFilter(bool Refusing, bool Ordinary) -> void
-Ihc.Vis.ErrorTierFilter.Ordinary.get -> bool
-Ihc.Vis.ErrorTierFilter.Ordinary.init -> void
-Ihc.Vis.ErrorTierFilter.Refusing.get -> bool
-Ihc.Vis.ErrorTierFilter.Refusing.init -> void
-Ihc.Vis.FindingExportOptions.ErrorTiers.get -> Ihc.Vis.ErrorTierFilter?
-Ihc.Vis.FindingExportOptions.ErrorTiers.init -> void
-~override Ihc.Vis.ErrorTierFilter.Equals(object obj) -> bool
-override Ihc.Vis.ErrorTierFilter.GetHashCode() -> int
-~override Ihc.Vis.ErrorTierFilter.ToString() -> string
-static Ihc.Vis.ErrorTierFilter.operator !=(Ihc.Vis.ErrorTierFilter left, Ihc.Vis.ErrorTierFilter right) -> bool
-static Ihc.Vis.ErrorTierFilter.operator ==(Ihc.Vis.ErrorTierFilter left, Ihc.Vis.ErrorTierFilter right) -> bool
-Ihc.Vis.Validation.ProjectValidationFinding.Diagnostic.get -> string?
-Ihc.Vis.Validation.ProjectValidationFinding.Diagnostic.init -> void
-~override Ihc.Vis.Validation.ControllerFirmwareVersion.Equals(object obj) -> bool
-Ihc.Vis.Validation.ControllerFirmwareVersion
-Ihc.Vis.Validation.ControllerFirmwareVersion.Build.get -> int
-Ihc.Vis.Validation.ControllerFirmwareVersion.Build.init -> void
-Ihc.Vis.Validation.ControllerFirmwareVersion.CompareTo(Ihc.Vis.Validation.ControllerFirmwareVersion other) -> int
-Ihc.Vis.Validation.ControllerFirmwareVersion.ControllerFirmwareVersion() -> void
-Ihc.Vis.Validation.ControllerFirmwareVersion.ControllerFirmwareVersion(int major, int minor, int patch) -> void
-Ihc.Vis.Validation.ControllerFirmwareVersion.ControllerFirmwareVersion(int Major, int Minor, int Patch, int Build) -> void
-Ihc.Vis.Validation.ControllerFirmwareVersion.Deconstruct(out int Major, out int Minor, out int Patch, out int Build) -> void
-Ihc.Vis.Validation.ControllerFirmwareVersion.Equals(Ihc.Vis.Validation.ControllerFirmwareVersion other) -> bool
-Ihc.Vis.Validation.ControllerFirmwareVersion.Major.get -> int
-Ihc.Vis.Validation.ControllerFirmwareVersion.Major.init -> void
-Ihc.Vis.Validation.ControllerFirmwareVersion.Minor.get -> int
-Ihc.Vis.Validation.ControllerFirmwareVersion.Minor.init -> void
-Ihc.Vis.Validation.ControllerFirmwareVersion.Patch.get -> int
-Ihc.Vis.Validation.ControllerFirmwareVersion.Patch.init -> void
-Ihc.Vis.Validation.DeclaredFirmwareBound
-Ihc.Vis.Validation.DeclaredFirmwareBound.<Clone>$() -> Ihc.Vis.Validation.DeclaredFirmwareBound!
-Ihc.Vis.Validation.DeclaredFirmwareBound.Confidence.get -> Ihc.Vis.Validation.ThresholdConfidence
-Ihc.Vis.Validation.DeclaredFirmwareBound.Confidence.init -> void
-Ihc.Vis.Validation.DeclaredFirmwareBound.DeclaredFirmwareBound(string! Name, Ihc.Vis.Validation.ControllerFirmwareVersion? FixedIn, Ihc.Vis.Validation.ThresholdConfidence Confidence, string! Evidence) -> void
-Ihc.Vis.Validation.DeclaredFirmwareBound.Deconstruct(out string! Name, out Ihc.Vis.Validation.ControllerFirmwareVersion? FixedIn, out Ihc.Vis.Validation.ThresholdConfidence Confidence, out string! Evidence) -> void
-Ihc.Vis.Validation.DeclaredFirmwareBound.Equals(Ihc.Vis.Validation.DeclaredFirmwareBound? other) -> bool
-Ihc.Vis.Validation.DeclaredFirmwareBound.Evidence.get -> string!
-Ihc.Vis.Validation.DeclaredFirmwareBound.Evidence.init -> void
-Ihc.Vis.Validation.DeclaredFirmwareBound.FixedIn.get -> Ihc.Vis.Validation.ControllerFirmwareVersion?
-Ihc.Vis.Validation.DeclaredFirmwareBound.FixedIn.init -> void
-Ihc.Vis.Validation.DeclaredFirmwareBound.Name.get -> string!
-Ihc.Vis.Validation.DeclaredFirmwareBound.Name.init -> void
-Ihc.Vis.Validation.ProblemCatalogEntry.FirmwareBound.get -> Ihc.Vis.Validation.DeclaredFirmwareBound?
-Ihc.Vis.Validation.ProblemCatalogEntry.FirmwareBound.init -> void
-Ihc.Vis.Validation.ValidationProfile.Firmware.get -> Ihc.Vis.Validation.ControllerFirmwareVersion?
-Ihc.Vis.Validation.ValidationProfile.Firmware.init -> void
-override Ihc.Vis.Validation.ControllerFirmwareVersion.GetHashCode() -> int
-override Ihc.Vis.Validation.ControllerFirmwareVersion.ToString() -> string!
-override Ihc.Vis.Validation.DeclaredFirmwareBound.Equals(object? obj) -> bool
-override Ihc.Vis.Validation.DeclaredFirmwareBound.GetHashCode() -> int
-override Ihc.Vis.Validation.DeclaredFirmwareBound.ToString() -> string!
-static Ihc.Vis.Validation.ControllerFirmwareVersion.operator !=(Ihc.Vis.Validation.ControllerFirmwareVersion left, Ihc.Vis.Validation.ControllerFirmwareVersion right) -> bool
-static Ihc.Vis.Validation.ControllerFirmwareVersion.operator <(Ihc.Vis.Validation.ControllerFirmwareVersion left, Ihc.Vis.Validation.ControllerFirmwareVersion right) -> bool
-static Ihc.Vis.Validation.ControllerFirmwareVersion.operator <=(Ihc.Vis.Validation.ControllerFirmwareVersion left, Ihc.Vis.Validation.ControllerFirmwareVersion right) -> bool
-static Ihc.Vis.Validation.ControllerFirmwareVersion.operator ==(Ihc.Vis.Validation.ControllerFirmwareVersion left, Ihc.Vis.Validation.ControllerFirmwareVersion right) -> bool
-static Ihc.Vis.Validation.ControllerFirmwareVersion.operator >(Ihc.Vis.Validation.ControllerFirmwareVersion left, Ihc.Vis.Validation.ControllerFirmwareVersion right) -> bool
-static Ihc.Vis.Validation.ControllerFirmwareVersion.operator >=(Ihc.Vis.Validation.ControllerFirmwareVersion left, Ihc.Vis.Validation.ControllerFirmwareVersion right) -> bool
-static Ihc.Vis.Validation.ControllerFirmwareVersion.TryParse(string? text, out Ihc.Vis.Validation.ControllerFirmwareVersion version) -> bool
-static Ihc.Vis.Validation.DeclaredFirmwareBound.operator !=(Ihc.Vis.Validation.DeclaredFirmwareBound? left, Ihc.Vis.Validation.DeclaredFirmwareBound? right) -> bool
-static Ihc.Vis.Validation.DeclaredFirmwareBound.operator ==(Ihc.Vis.Validation.DeclaredFirmwareBound? left, Ihc.Vis.Validation.DeclaredFirmwareBound? right) -> bool
-Ihc.Vis.Session.ProductDialogTerminalEdit
-Ihc.Vis.Session.ProductDialogTerminalEdit.PinId.get -> Ihc.Vis.Model.ElementId
-Ihc.Vis.Session.ProductDialogTerminalEdit.PinId.init -> void
-Ihc.Vis.Session.ProductDialogTerminalEdit.ProductDialogTerminalEdit() -> void
-Ihc.Vis.Session.ProductDialogTerminalEdit.ProductDialogTerminalEdit(Ihc.Vis.Model.ElementId PinId, Ihc.Vis.Session.PinPropertiesResult! Values) -> void
-Ihc.Vis.Session.ProductDialogTerminalEdit.Values.get -> Ihc.Vis.Session.PinPropertiesResult!
-Ihc.Vis.Session.ProductDialogTerminalEdit.Values.init -> void
-~override Ihc.Vis.Session.ProductDialogTerminalEdit.ToString() -> string
-static Ihc.Vis.Session.ProductDialogTerminalEdit.operator !=(Ihc.Vis.Session.ProductDialogTerminalEdit left, Ihc.Vis.Session.ProductDialogTerminalEdit right) -> bool
-static Ihc.Vis.Session.ProductDialogTerminalEdit.operator ==(Ihc.Vis.Session.ProductDialogTerminalEdit left, Ihc.Vis.Session.ProductDialogTerminalEdit right) -> bool
-override Ihc.Vis.Session.ProductDialogTerminalEdit.GetHashCode() -> int
-Ihc.Vis.Session.ApplyProductDialog.TerminalEdits.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Session.ProductDialogTerminalEdit>
-Ihc.Vis.Session.ApplyProductDialog.TerminalEdits.init -> void
-~override Ihc.Vis.Session.ProductDialogTerminalEdit.Equals(object obj) -> bool
-Ihc.Vis.Session.ProductDialogTerminalEdit.Equals(Ihc.Vis.Session.ProductDialogTerminalEdit other) -> bool
-Ihc.Vis.Session.ProductDialogTerminalEdit.Deconstruct(out Ihc.Vis.Model.ElementId PinId, out Ihc.Vis.Session.PinPropertiesResult! Values) -> void
-Ihc.Vis.ProjectCommands.ApplyProductDialogVisit(Ihc.Vis.Projects.Project! project, Ihc.Vis.Model.ElementId productId, System.Collections.Immutable.ImmutableArray<Ihc.Vis.Session.ProductDialogEdit> edits, System.Collections.Immutable.ImmutableArray<Ihc.Vis.Session.ProductDialogTerminalEdit> terminalEdits, System.Collections.Immutable.ImmutableArray<Ihc.Vis.Session.ProductDialogSettingEdit> settingEdits = default(System.Collections.Immutable.ImmutableArray<Ihc.Vis.Session.ProductDialogSettingEdit>)) -> Ihc.Vis.Session.ApplyProductDialog!
-Ihc.Vis.Products.DialogControlKind.ComboFixed = 5 -> Ihc.Vis.Products.DialogControlKind
-Ihc.Vis.Products.DialogDescriptorField.DisplayDivisor.get -> int
-Ihc.Vis.Products.DialogDescriptorField.DisplayDivisor.init -> void
-Ihc.Vis.Products.DialogDescriptorGroup.Collapsible.get -> bool
-Ihc.Vis.Products.DialogDescriptorGroup.Collapsible.init -> void
-Ihc.Vis.Products.DialogFieldModel.DisplayDivisor.get -> int
-Ihc.Vis.Products.DialogFieldModel.DisplayDivisor.init -> void
-Ihc.Vis.Products.DialogGroupModel.Collapsible.get -> bool
-Ihc.Vis.Products.DialogGroupModel.Collapsible.init -> void
-Ihc.Vis.Session.ProductDialogSettingEdit
-Ihc.Vis.Session.ProductDialogSettingEdit.SettingId.get -> Ihc.Vis.Model.ElementId
-Ihc.Vis.Session.ProductDialogSettingEdit.SettingId.init -> void
-Ihc.Vis.Session.ProductDialogSettingEdit.Value.get -> Ihc.Vis.Session.ResourceInitialValue!
-Ihc.Vis.Session.ProductDialogSettingEdit.Value.init -> void
-Ihc.Vis.Session.ProductDialogSettingEdit.ProductDialogSettingEdit() -> void
-Ihc.Vis.Session.ProductDialogSettingEdit.ProductDialogSettingEdit(Ihc.Vis.Model.ElementId SettingId, Ihc.Vis.Session.ResourceInitialValue! Value) -> void
-Ihc.Vis.Session.ProductDialogSettingEdit.Deconstruct(out Ihc.Vis.Model.ElementId SettingId, out Ihc.Vis.Session.ResourceInitialValue! Value) -> void
-Ihc.Vis.Session.ProductDialogSettingEdit.Equals(Ihc.Vis.Session.ProductDialogSettingEdit other) -> bool
-~override Ihc.Vis.Session.ProductDialogSettingEdit.Equals(object obj) -> bool
-~override Ihc.Vis.Session.ProductDialogSettingEdit.ToString() -> string
-override Ihc.Vis.Session.ProductDialogSettingEdit.GetHashCode() -> int
-static Ihc.Vis.Session.ProductDialogSettingEdit.operator !=(Ihc.Vis.Session.ProductDialogSettingEdit left, Ihc.Vis.Session.ProductDialogSettingEdit right) -> bool
-static Ihc.Vis.Session.ProductDialogSettingEdit.operator ==(Ihc.Vis.Session.ProductDialogSettingEdit left, Ihc.Vis.Session.ProductDialogSettingEdit right) -> bool
-Ihc.Vis.Session.ApplyProductDialog.SettingEdits.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Session.ProductDialogSettingEdit>
-Ihc.Vis.Session.ApplyProductDialog.SettingEdits.init -> void
-Ihc.Vis.Validation.FixLocation
-Ihc.Vis.Validation.FixLocation.FixLocation() -> void
-Ihc.Vis.Validation.FixLocation.FixLocation(Ihc.Vis.Model.ElementId Element, string? Attribute) -> void
-Ihc.Vis.Validation.FixLocation.Element.get -> Ihc.Vis.Model.ElementId
-Ihc.Vis.Validation.FixLocation.Element.init -> void
-Ihc.Vis.Validation.FixLocation.Attribute.get -> string?
-Ihc.Vis.Validation.FixLocation.Attribute.init -> void
-Ihc.Vis.Validation.FixLocation.Deconstruct(out Ihc.Vis.Model.ElementId Element, out string? Attribute) -> void
-Ihc.Vis.Validation.FixLocation.Equals(Ihc.Vis.Validation.FixLocation other) -> bool
-~override Ihc.Vis.Validation.FixLocation.Equals(object obj) -> bool
-~override Ihc.Vis.Validation.FixLocation.ToString() -> string
-override Ihc.Vis.Validation.FixLocation.GetHashCode() -> int
-static Ihc.Vis.Validation.FixLocation.operator !=(Ihc.Vis.Validation.FixLocation left, Ihc.Vis.Validation.FixLocation right) -> bool
-static Ihc.Vis.Validation.FixLocation.operator ==(Ihc.Vis.Validation.FixLocation left, Ihc.Vis.Validation.FixLocation right) -> bool
-Ihc.Vis.Validation.IProjectInspection.Report(Ihc.Vis.Model.ProjectElement? element, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.ProblemArgument> arguments, Ihc.Vis.Validation.FixLocation? fix) -> void
-Ihc.Vis.Validation.ValidationFinding.Fix.get -> Ihc.Vis.Validation.FixLocation?
-Ihc.Vis.Validation.ValidationFinding.Fix.init -> void
-Ihc.TelemetryConfiguration.Metrics.get -> string!
-Ihc.TelemetryConfiguration.Metrics.set -> void
-const Ihc.Telemetry.MeterName = "ihcclient" -> string!
-Ihc.TelemetryConfiguration.Environment.get -> string!
-Ihc.TelemetryConfiguration.Environment.set -> void
-Ihc.MetricBinding
-Ihc.OperationOutcome
-Ihc.OperationOutcome.Equals(Ihc.OperationOutcome other) -> bool
-Ihc.OperationOutcome.Exception.get -> System.Exception?
-Ihc.OperationOutcome.IsOk.get -> bool
-Ihc.OperationOutcome.OperationOutcome() -> void
-Ihc.OperationOutcome.ProblemCode.get -> string?
-Ihc.OperationOutcome.Status.get -> Ihc.OperationStatus
-Ihc.OperationScope
-Ihc.OperationScope.Activity.get -> System.Diagnostics.Activity?
-Ihc.OperationScope.AddMetricTag(string! key, object? value) -> void
-Ihc.OperationScope.AddSharedTag(string! key, object? value) -> void
-Ihc.OperationScope.Dispose() -> void
-Ihc.OperationScope.Outcome.get -> Ihc.OperationOutcome
-Ihc.OperationScope.SetOutcome(Ihc.OperationOutcome value) -> void
-Ihc.OperationStatus
-Ihc.OperationStatus.Cancelled = 2 -> Ihc.OperationStatus
-Ihc.OperationStatus.Failed = 3 -> Ihc.OperationStatus
-Ihc.OperationStatus.Ok = 0 -> Ihc.OperationStatus
-Ihc.OperationStatus.Refused = 1 -> Ihc.OperationStatus
-Ihc.OperationTelemetry
-Ihc.OperationTelemetry.OperationTelemetry(Ihc.TelemetrySurface! surface, string! owner) -> void
-Ihc.OperationTelemetry.OperationTelemetry(Ihc.TelemetrySurface! surface, string! owner, System.Action<string!, System.Exception!>? onFault) -> void
-Ihc.OperationTelemetry.Run(string! operation, System.Action<Ihc.OperationScope!>! body, Ihc.MetricBinding? metrics = null) -> void
-Ihc.OperationTelemetry.Run<T>(string! operation, System.Func<Ihc.OperationScope!, T>! body, Ihc.MetricBinding? metrics = null, System.Func<T, Ihc.OperationOutcome>? classify = null) -> T
-Ihc.OperationTelemetry.RunAsync(string! operation, System.Func<Ihc.OperationScope!, System.Threading.Tasks.Task!>! body, Ihc.MetricBinding? metrics = null) -> System.Threading.Tasks.Task!
-Ihc.OperationTelemetry.RunAsync<T>(string! operation, System.Func<Ihc.OperationScope!, System.Threading.Tasks.Task<T>!>! body, Ihc.MetricBinding? metrics = null, System.Func<T, Ihc.OperationOutcome>? classify = null) -> System.Threading.Tasks.Task<T>!
-Ihc.OperationTelemetry.Start(string! operation, System.Diagnostics.ActivityKind kind = System.Diagnostics.ActivityKind.Internal, Ihc.MetricBinding? metrics = null, System.Collections.Generic.IEnumerable<System.Diagnostics.ActivityLink>? links = null) -> Ihc.OperationScope!
-Ihc.TelemetrySurface
-Ihc.TelemetrySurface.ActivitySource.get -> System.Diagnostics.ActivitySource!
-Ihc.TelemetrySurface.Dispose() -> void
-Ihc.TelemetrySurface.Meter.get -> System.Diagnostics.Metrics.Meter!
-Ihc.TelemetrySurface.TelemetrySurface(string! name, string? version = null) -> void
-override Ihc.OperationOutcome.Equals(object? obj) -> bool
-override Ihc.OperationOutcome.GetHashCode() -> int
-static Ihc.MetricBinding.For(System.Diagnostics.Metrics.Histogram<double>? duration = null, System.Diagnostics.Metrics.Counter<long>? occurrences = null) -> Ihc.MetricBinding!
-static Ihc.MetricBinding.None.get -> Ihc.MetricBinding!
-static Ihc.OperationOutcome.Cancelled.get -> Ihc.OperationOutcome
-static Ihc.OperationOutcome.Failed(System.Exception! exception) -> Ihc.OperationOutcome
-static Ihc.OperationOutcome.FailedWith(string! problemCode) -> Ihc.OperationOutcome
-static Ihc.OperationOutcome.Ok.get -> Ihc.OperationOutcome
-static Ihc.OperationOutcome.operator !=(Ihc.OperationOutcome left, Ihc.OperationOutcome right) -> bool
-static Ihc.OperationOutcome.operator ==(Ihc.OperationOutcome left, Ihc.OperationOutcome right) -> bool
-static Ihc.OperationOutcome.Refused(string! problemCode) -> Ihc.OperationOutcome
-Ihc.TelemetrySurface.TelemetrySurface(System.Diagnostics.ActivitySource! activitySource, System.Diagnostics.Metrics.Meter! meter) -> void
-Ihc.App.AppServiceBase.RunTraced(string! operationName, System.Action<System.Diagnostics.Activity?>! body, Ihc.MetricBinding? metrics) -> void
-Ihc.App.AppServiceBase.RunTraced<T>(string! operationName, System.Func<System.Diagnostics.Activity?, T>! body, Ihc.MetricBinding? metrics) -> T
-Ihc.App.AppServiceBase.RunTracedAsync(string! operationName, System.Func<System.Diagnostics.Activity?, System.Threading.Tasks.Task!>! body, Ihc.MetricBinding? metrics) -> System.Threading.Tasks.Task!
-Ihc.App.AppServiceBase.RunTracedAsync<T>(string! operationName, System.Func<System.Diagnostics.Activity?, System.Threading.Tasks.Task<T>!>! body, Ihc.MetricBinding? metrics) -> System.Threading.Tasks.Task<T>!
-Ihc.TelemetryConfiguration.PerRuleValidationTiming.get -> bool
-Ihc.TelemetryConfiguration.PerRuleValidationTiming.set -> void
-Ihc.Vis.Validation.WholeProjectValidator.WholeProjectValidator(Ihc.Vis.Validation.RuleSet! rules, bool perRuleTiming) -> void
-Ihc.Vis.Validation.WholeProjectValidator.Validate(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile) -> Ihc.Vis.Validation.StructuredValidationResult!
-static Ihc.Vis.Validation.ProjectVerification.Run(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile, Ihc.Vis.Validation.IWholeProjectValidator! validator) -> Ihc.Vis.Validation.ProjectValidationResult!
-static Ihc.Vis.Validation.ProjectVerification.RunStructured(Ihc.Vis.Projects.Project! project, Ihc.Vis.Validation.ValidationProfile! profile, Ihc.Vis.Validation.IWholeProjectValidator! validator) -> Ihc.Vis.Validation.StructuredValidationResult!
-Ihc.Vis.ProjectAppService.ProjectAppService(Ihc.IhcSettings! settings, Ihc.TelemetryConfiguration! telemetry) -> void
-Ihc.Vis.ProjectAppService.ProjectAppService(Ihc.IhcSettings! settings, System.Action<Ihc.Vis.Problems.InternalError!>? faultPort) -> void
-
-Ihc.Vis.Validation.CatalogViolation.InternalFaultMisdeclared = 7 -> Ihc.Vis.Validation.CatalogViolation
-Ihc.Vis.Validation.RuleKind.InternalFault = 4 -> Ihc.Vis.Validation.RuleKind
-Ihc.Vis.Validation.StructuredValidationResult
-Ihc.Vis.Validation.StructuredValidationResult.<Clone>$() -> Ihc.Vis.Validation.StructuredValidationResult!
-Ihc.Vis.Validation.StructuredValidationResult.Deconstruct(out Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> Findings, out Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!> Faults) -> void
-Ihc.Vis.Validation.StructuredValidationResult.Equals(Ihc.Vis.Validation.StructuredValidationResult? other) -> bool
-Ihc.Vis.Problems.ProblemArgumentType.ProblemIdentity = 7 -> Ihc.Vis.Problems.ProblemArgumentType
-Ihc.Vis.Validation.StructuredValidationResult.Faults.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!>
-Ihc.Vis.Validation.StructuredValidationResult.Faults.init -> void
-Ihc.Vis.Validation.StructuredValidationResult.IsComplete.get -> bool
-Ihc.Vis.Validation.StructuredValidationResult.Findings.get -> Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!>
-Ihc.Vis.Validation.StructuredValidationResult.Findings.init -> void
-Ihc.Vis.Validation.StructuredValidationResult.StructuredValidationResult(Ihc.Vis.Model.EquatableArray<Ihc.Vis.Validation.ValidationFinding!> Findings, Ihc.Vis.Model.EquatableArray<Ihc.Vis.Problems.InternalError!> Faults) -> void
-static Ihc.Vis.Validation.StructuredValidationResult.operator ==(Ihc.Vis.Validation.StructuredValidationResult? left, Ihc.Vis.Validation.StructuredValidationResult? right) -> bool
-static Ihc.Vis.Validation.StructuredValidationResult.operator !=(Ihc.Vis.Validation.StructuredValidationResult? left, Ihc.Vis.Validation.StructuredValidationResult? right) -> bool
-override Ihc.Vis.Validation.StructuredValidationResult.ToString() -> string!
-override Ihc.Vis.Validation.StructuredValidationResult.GetHashCode() -> int
-override Ihc.Vis.Validation.StructuredValidationResult.Equals(object? obj) -> bool
-static Ihc.Vis.Validation.StructuredValidationResult.Empty.get -> Ihc.Vis.Validation.StructuredValidationResult!
-const Ihc.Vis.Session.EditRefusals.EditFailedMessage = "Redigeringen kunne ikke gennemføres på grund af en intern fejl. Ændringen blev ikke gemt." -> string!
-Ihc.Vis.Session.EditOutcome.Fault.get -> Ihc.Vis.Problems.InternalError?
-Ihc.Vis.Session.EditOutcome.Fault.init -> void
-*REMOVED*Ihc.Vis.Session.EditOutcome.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes) -> void
-*REMOVED*Ihc.Vis.Session.EditOutcome.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes) -> void
-*REMOVED*Ihc.Vis.Session.EditOutcome<T>.Deconstruct(out Ihc.Vis.Session.EditStatus Status, out string! Label, out string? Reason, out Ihc.Vis.Session.ProjectChangeSet? Changes, out T? Value) -> void
-*REMOVED*Ihc.Vis.Session.EditOutcome<T>.EditOutcome(Ihc.Vis.Session.EditStatus Status, string! Label, string? Reason, Ihc.Vis.Session.ProjectChangeSet? Changes, T? Value) -> void
-const Ihc.Vis.Session.EditRefusals.PreviewFailedMessage = "Handlingen kunne ikke vurderes på grund af en intern fejl. Projektet er uændret." -> string!
-Ihc.Vis.Session.PreviewOutcome.Fault.get -> Ihc.Vis.Problems.InternalError?
-Ihc.Vis.Session.PreviewOutcome.Fault.init -> void
-Ihc.Vis.Session.PreviewOutcome.PreviewOutcome(Ihc.Vis.Session.PreviewStatus Status, Ihc.Vis.Session.ProjectChangeSet? Changes, string? Reason, Ihc.Vis.Problems.ProblemCode Code = default(Ihc.Vis.Problems.ProblemCode), Ihc.Vis.Problems.InternalError? Fault = null) -> void
-static Ihc.Vis.Session.PreviewOutcome.Faulted(string? reason, Ihc.Vis.Problems.InternalError? fault = null) -> Ihc.Vis.Session.PreviewOutcome!
-*REMOVED*static Ihc.Vis.Session.PreviewOutcome.Faulted(string? reason) -> Ihc.Vis.Session.PreviewOutcome!
-Ihc.App.AppServiceBase.AppServiceBase(System.Action<Ihc.Vis.Problems.InternalError!>? faultPort) -> void
-Ihc.IhcConfiguration
-const Ihc.IhcConfiguration.SettingsFileName = "ihcsettings.json" -> string!
-static Ihc.IhcConfiguration.FromAppDirectory() -> Microsoft.Extensions.Configuration.IConfigurationRoot!
-Ihc.App.AuthenticatedAppServiceBase
-Ihc.App.AuthenticatedAppServiceBase.AuthenticatedAppServiceBase(Ihc.IhcSettings! settings, Ihc.IAuthenticationService! authService, bool ownsAuthService) -> void
-readonly Ihc.App.AuthenticatedAppServiceBase.authService -> Ihc.IAuthenticationService!
-Ihc.App.AuthenticatedAppServiceBase.Dispose() -> void
-virtual Ihc.App.AuthenticatedAppServiceBase.Dispose(bool disposing) -> void
-Ihc.App.AuthenticatedAppServiceBase.DisposeAsync() -> System.Threading.Tasks.ValueTask
-*REMOVED*Ihc.App.AdminAppService.Dispose() -> void
-*REMOVED*Ihc.App.AdminAppService.DisposeAsync() -> System.Threading.Tasks.ValueTask
-*REMOVED*Ihc.App.InformationAppService.Dispose() -> void
-*REMOVED*Ihc.App.InformationAppService.DisposeAsync() -> System.Threading.Tasks.ValueTask
-*REMOVED*~readonly Ihc.App.AdminAppService.authService -> Ihc.IAuthenticationService
-*REMOVED*~readonly Ihc.App.InformationAppService.authService -> Ihc.IAuthenticationService
-const Ihc.Vis.Problems.InternalError.ReportedKey = "ihc.internal-error.reported" -> string!
-static Ihc.Vis.Problems.InternalError.ClaimReport(System.Exception! failure) -> bool
-static Ihc.Vis.Problems.InternalError.Describe(System.Exception! failure) -> string!
-static Ihc.Vis.Problems.InternalError.DescribeFully(System.Exception! failure) -> string!
-const Ihc.IhcSettings.ConfigurationSectionName = "ihcclient" -> string!
-static Ihc.Vis.ProjectAppService.Warmup() -> void
-Ihc.OperationTelemetry.Record(string! operation, System.DateTimeOffset startedAt, System.DateTimeOffset endedAt) -> void

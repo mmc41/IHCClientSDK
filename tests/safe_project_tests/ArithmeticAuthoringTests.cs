@@ -30,7 +30,7 @@ namespace Ihc.Vis.Tests
         public async Task ArithmeticCommand_WritesTheVendorActionElement_WithTheGridOpcode()
         {
             Project project = await App.Load("testdata/projects/project2-CustomBlock.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ElementId commands = project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("name") == "Custom blok")
                 .Descendants().First(e => e.Tag == "actions").Id!.Value;

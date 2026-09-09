@@ -48,11 +48,6 @@ namespace Ihc.Vis.Tests
         /// Opens a session on <paramref name="project"/>. The opened snapshot is the session's save point, so a
         /// fixture that measures dirtiness starts clean.
         /// </summary>
-        protected static ProjectDocumentSession Session(Project project)
-        {
-            var session = new ProjectDocumentSession();
-            session.Open(project);
-            return session;
-        }
+        protected static IProjectDocument Session(Project project) => App.OpenDocument(project);
     }
 }

@@ -9,7 +9,7 @@ namespace Ihc.Vis.Editing
     /// clears a field — it is dropped as the DTD default on commit, matching the vendor's blank ⇒
     /// attribute-omitted semantics. <c>udf</c> is DTD-declared but has no dialog field and is never written.
     /// </summary>
-    public sealed class ProjectInfoBuilder
+    internal sealed class ProjectInfoBuilder
     {
         private readonly List<(string, string)> attributes = new();
 
@@ -47,7 +47,7 @@ namespace Ihc.Vis.Editing
     /// metadata blocks (the Dokumentation ▸ Projektinfo dialog's two party halves). Same upsert / blank-clears
     /// semantics as <see cref="ProjectInfoBuilder"/>; <c>udf</c> is never written.
     /// </summary>
-    public sealed class PartyInfoBuilder
+    internal sealed class PartyInfoBuilder
     {
         private readonly List<(string, string)> attributes = new();
 

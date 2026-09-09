@@ -30,7 +30,7 @@ namespace Ihc.Vis.Validation
     /// number is <c>doc-cablenumber</c>'s, so two blanks are not a collision — they are two missing fields, each
     /// already reported by its own row.</para>
     /// </summary>
-    public static class NamingRules
+    internal static class NamingRules
     {
         /// <summary>The empty-function-block template's name, as the catalog's own <c>fb.def</c> writes it.</summary>
         private const string EmptyBlockTemplateName = "Tom blok";

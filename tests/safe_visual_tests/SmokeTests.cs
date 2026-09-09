@@ -694,12 +694,11 @@ public class SmokeTests : AvaloniaTestBase
         var app = new ProjectAppService(new IhcSettings());
         Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
         ElementId locality = project.Groups.First().Id!.Value;
-        var session = new ProjectDocumentSession();
-        session.Open(project);
-        ElementId placed = session.Apply(new AddProduct(locality,
+        IProjectDocument document = app.OpenDocument(project);
+        ElementId placed = document.Apply(new AddProduct(locality,
             app.GetAvailableProducts().First(p => p.ProductIdentifier == "_0x2101"))).Value;
 
-        var viewModel = new ProductDialogViewModel(app.GetProductDialog(session.Current!, placed));
+        var viewModel = new ProductDialogViewModel(app.GetProductDialog(document.Current!, placed));
         var window = new ProductDialogWindow();
         window.Populate(viewModel);
         CurrentTestWindow = window;
@@ -760,12 +759,11 @@ public class SmokeTests : AvaloniaTestBase
         var app = new ProjectAppService(new IhcSettings());
         Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
         ElementId locality = project.Groups.First().Id!.Value;
-        var session = new ProjectDocumentSession();
-        session.Open(project);
-        ElementId modem = session.Apply(new AddProduct(locality,
+        IProjectDocument document = app.OpenDocument(project);
+        ElementId modem = document.Apply(new AddProduct(locality,
             app.GetAvailableProducts().First(p => p.ProductIdentifier == "_0x3103"))).Value;
 
-        var viewModel = new ProductDialogViewModel(app.GetProductDialog(session.Current!, modem));
+        var viewModel = new ProductDialogViewModel(app.GetProductDialog(document.Current!, modem));
         var window = new ProductDialogWindow();
         window.Populate(viewModel);
         CurrentTestWindow = window;

@@ -62,7 +62,7 @@ namespace Ihc.Vis.Tests
         public async Task TheValueList_IsInIndexOrder_EvenWhenTheFileStoresThemScrambled()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             session.Apply(new AddStandaloneEnumType("Scrambled", ["Nul", "En", "To"]));
             // Re-write the middle two indexes so document order and index order disagree, as the vendor's file does.
             Project scrambled = Scramble(session.Current!, "Scrambled");
@@ -78,7 +78,7 @@ namespace Ihc.Vis.Tests
         public async Task DeletingAValue_RenumbersInIndexOrder_NotDocumentOrder()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             session.Apply(new AddStandaloneEnumType("Scrambled", ["Nul", "En", "To"]));
             var reopened = new ProjectDocumentSession();
             reopened.Open(Scramble(session.Current!, "Scrambled"));
@@ -110,7 +110,7 @@ namespace Ihc.Vis.Tests
         public async Task RenameEnumType_RenamesInPlace_AndKeepsReferencesValid()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             EnumTypeView target = EditableTypeWithValues(project);
 
             EditOutcome outcome = session.Apply(new RenameEnumType(target.Name, "OmdøbtType"));
@@ -132,7 +132,7 @@ namespace Ihc.Vis.Tests
         public async Task RenameEnumType_OnABuiltIn_IsRefused_NotFailed()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             EnumTypeView builtIn = project.GetEnumeratorTypeViews().First(t => t.IsReadOnly);
 
             EditOutcome outcome = session.Apply(new RenameEnumType(builtIn.Name, "ShouldNotStick"));
@@ -149,7 +149,7 @@ namespace Ihc.Vis.Tests
         public async Task DeleteEnumType_RemovesAnUnreferencedType()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             session.Apply(new AddStandaloneEnumType("KunTilSletning", ["A", "B"]));
             int before = session.Current!.GetEnumeratorTypes().Count;
 
@@ -168,7 +168,7 @@ namespace Ihc.Vis.Tests
         public async Task DeleteEnumType_StillReferenced_IsRefused()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             EnumTypeView inUse = project.GetEnumeratorTypeViews()
                 .First(t => !t.IsReadOnly && IsReferenced(project, t.Name));
 
@@ -186,7 +186,7 @@ namespace Ihc.Vis.Tests
         public async Task AddEnumValue_AppendsOneValue()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             EnumTypeView target = EditableTypeWithValues(project);
 
             EditOutcome outcome = session.Apply(new AddEnumValue(target.Name, "NyVærdi"));
@@ -203,7 +203,7 @@ namespace Ihc.Vis.Tests
         public async Task RenameEnumValue_RelabelsByPosition()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             EnumTypeView target = EditableTypeWithValues(project);
 
             EditOutcome outcome = session.Apply(new RenameEnumValue(target.Name, 0, "FørsteOmdøbt"));
@@ -225,7 +225,7 @@ namespace Ihc.Vis.Tests
         public async Task DeleteEnumValue_RemovesIt_AndTheNextAppendStillNumbersContiguously()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             session.Apply(new AddStandaloneEnumType("TreVærdier", ["En", "To", "Tre"]));
 
             EditOutcome outcome = session.Apply(new DeleteEnumValue("TreVærdier", 1));
@@ -244,7 +244,7 @@ namespace Ihc.Vis.Tests
         public async Task ValueCommands_OnAnOutOfRangePosition_AreRefused()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             EnumTypeView target = EditableTypeWithValues(project);
 
             EditOutcome outcome = session.Apply(new DeleteEnumValue(target.Name, target.Values.Length));
@@ -260,7 +260,7 @@ namespace Ihc.Vis.Tests
         public async Task ValueCommands_OnABuiltIn_AreRefused()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             EnumTypeView builtIn = project.GetEnumeratorTypeViews().First(t => t.IsReadOnly);
 
             Assert.Multiple(() =>
@@ -271,10 +271,10 @@ namespace Ihc.Vis.Tests
             });
         }
 
-        private static System.Collections.Generic.IReadOnlyList<string> Values(ProjectDocumentSession session, string typeName) =>
+        private static System.Collections.Generic.IReadOnlyList<string> Values(IProjectDocument session, string typeName) =>
             session.Current!.GetEnumeratorTypeViews().First(t => t.Name == typeName).Values.ToList();
 
-        private static System.Collections.Generic.IEnumerable<string> Indexes(ProjectDocumentSession session, string typeName) =>
+        private static System.Collections.Generic.IEnumerable<string> Indexes(IProjectDocument session, string typeName) =>
             session.Current!.Child("enum_definitions")!.Children
                 .First(c => c.Tag == "enum_definition" && c.GetAttribute("name") == typeName)
                 .Children.Where(v => v.Tag == "enum_value")

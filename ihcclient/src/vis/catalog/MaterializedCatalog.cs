@@ -23,7 +23,7 @@ namespace Ihc.Vis.Catalog
     /// Keyless definitions (user-saved blocks without a <c>master_type</c>) are not addressable by that key but are
     /// still listed and, for function blocks, reachable via <see cref="FunctionBlockByName"/>.
     /// </remarks>
-    public sealed class MaterializedCatalog : ICatalog
+    internal sealed class MaterializedCatalog : ICatalog
     {
         private readonly ImmutableArray<ProductDefinition> products;
         private readonly ImmutableArray<FunctionBlockDefinition> functionBlocks;

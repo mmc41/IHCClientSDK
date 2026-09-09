@@ -3,7 +3,6 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using FakeItEasy;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Ihc.Vis.Tests
@@ -42,9 +41,7 @@ namespace Ihc.Vis.Tests
             {
                 new FunctionBlockDefinition("1.1.01", "e", "Kip tænd sluk", "1.1.01.e. Kip tænd sluk", "Cat", EmptyBody("functionblock")),
             };
-            var catalog = A.Fake<ICatalog>();
-            A.CallTo(() => catalog.Products).Returns(products);
-            A.CallTo(() => catalog.FunctionBlocks).Returns(functionBlocks);
+            var catalog = StubCatalog.With(products, functionBlocks);
 
             var app = new ProjectAppService(Settings, catalog, Clock());
 
@@ -68,9 +65,7 @@ namespace Ihc.Vis.Tests
             {
                 new FunctionBlockDefinition("1.1.01", "e", "Kip tænd sluk", "1.1.01.e. Kip tænd sluk", "01. Lysstyring", EmptyBody("functionblock")),
             };
-            var catalog = A.Fake<ICatalog>();
-            A.CallTo(() => catalog.Products).Returns(products);
-            A.CallTo(() => catalog.FunctionBlocks).Returns(functionBlocks);
+            var catalog = StubCatalog.With(products, functionBlocks);
 
             var app = new ProjectAppService(Settings, catalog, Clock());
             var productItems = app.GetProductCatalogItems();

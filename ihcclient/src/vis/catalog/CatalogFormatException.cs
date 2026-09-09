@@ -9,7 +9,7 @@ namespace Ihc.Vis.Catalog
     /// (<see cref="CatalogFileWriter"/>'s well-formedness gate — the typed refusal that provably leaves the
     /// destination stream untouched). One typed catch for a caller's "this is not a writable catalog file" path.
     /// </summary>
-    public sealed class CatalogFormatException : FormatException
+    internal sealed class CatalogFormatException : FormatException
     {
         public CatalogFormatException(string message) : base(message)
         {

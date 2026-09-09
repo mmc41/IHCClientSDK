@@ -7,6 +7,14 @@ namespace Ihc.Vis.Editing.Seeded
     internal sealed class NestedEngineType : INestedEngineContract { }
 }
 
+namespace Ihc.Vis.Io.Seeded
+{
+    // Test-only type in a nested IO namespace, the sibling of the editing pair above. It arms the port-surface
+    // control's IO half on a type the SDK does not own, which is what lets that control keep expressing the leak
+    // once the real IO implementation types are internal.
+    internal sealed class NestedIoType { }
+}
+
 namespace Ihc.Vis.Seeded
 {
     using System.Collections.Generic;

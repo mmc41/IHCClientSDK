@@ -14,7 +14,7 @@ namespace Ihc.Vis.Schema
     /// second into <c>ProductDefinition.Resources</c> would wrongly hide these rows from the product menu and
     /// every definition-model consumer, and would put a display concern in the engine.</para>
     /// </summary>
-    public static class ProductRows
+    internal static class ProductRows
     {
         /// <summary>
         /// A product body's direct children are its I/O pins and family resources plus a few STRUCTURAL blocks that

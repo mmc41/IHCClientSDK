@@ -74,7 +74,7 @@ namespace Ihc.Vis.Editing
     /// rebuild. Read/browse from the generic <see cref="Project"/>/<see cref="ProjectElement"/> model (via
     /// <see cref="ToProject"/>), not these write-only handles.
     /// </remarks>
-    public sealed class ProjectEditor
+    internal sealed class ProjectEditor
     {
         internal const string FollowLinkName = "Følg Link";
         internal const string SceneLinkName = "Scenarie link";
@@ -1794,7 +1794,7 @@ namespace Ihc.Vis.Editing
     /// <summary>
     /// Authoring entry points layered over <see cref="Project"/>.
     /// </summary>
-    public static class ProjectEditingExtensions
+    internal static class ProjectEditingExtensions
     {
         /// <summary>
         /// Opens a mutable edit session over a project (just loaded or created) — the deliberate read-to-write

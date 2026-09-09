@@ -52,9 +52,11 @@ operations against a live controller, `LogSensitiveData` turns redaction off, an
 endpoint swaps its whole service stack. What separates them is not that one ships and the other does not:
 plenty of seams ship, and only the debug-gated developer tools are genuinely compiled out. The distinction
 that matters is **what a released binary can be talked into doing** — which is why the safety rule covers
-both. The test side of that is now a gate; whether one settings flag is enough to hold back the product side
-is an open product and security-design question, recorded in
-[ARCHITECTURE.md](ARCHITECTURE.md) under *Testing what you are not allowed to touch*.
+both. The test side is enforced by the construction guard. For dangerous diagnostics and sensitive telemetry,
+the accepted product policy is explicit opt-in with strong documentation discouraging use. The manufacturing
+operations are retained mainly for completeness and documentation, and are not intended for real use at this
+stage; both flags should remain false. This policy requires no additional runtime authorization gate and is
+recorded in [ARCHITECTURE.md](ARCHITECTURE.md#8-testing-what-you-are-not-allowed-to-touch).
 
 What the seam does not buy is **fidelity**. The fakes are hand-written and nothing pins them to a real
 controller: `tests/testdata/` holds no recorded controller traffic, and `safe_integration_tests` is compiled

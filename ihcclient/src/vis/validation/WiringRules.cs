@@ -37,7 +37,7 @@ namespace Ihc.Vis.Validation
     /// <para><b>The multi-driven row is the exception, and legitimately.</b> Two sources on ONE pin is a fault of
     /// that pin, not of the device carrying it, and the repair is to remove one of them.</para>
     /// </summary>
-    public static class WiringRules
+    internal static class WiringRules
     {
         /// <summary>
         /// PRODUCT INPUT pins — the world drives them, software cannot: a wired terminal and its wireless

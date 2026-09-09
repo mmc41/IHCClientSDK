@@ -22,17 +22,16 @@ namespace safe_visual_tests;
 /// </summary>
 public class AdvancedDimmerGroupTests : AvaloniaTestBase
 {
-    private static (ProjectDocumentSession Session, ElementId Product, ProductDialogDescriptor Descriptor) Dimmer()
+    private static (IProjectDocument Document, ElementId Product, ProductDialogDescriptor Descriptor) Dimmer()
     {
         var app = new ProjectAppService(new IhcSettings());
         Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
         ElementId locality = project.Groups.First().Id!.Value;
         ProductDefinition definition = app.GetAvailableProducts()
             .First(p => p.CategoryPath.StartsWith("LK IHC Wireless", StringComparison.Ordinal) && p.CategoryPath.Contains("Dimmer"));
-        var session = new ProjectDocumentSession();
-        session.Open(project);
-        ElementId id = session.Apply(new AddProduct(locality, definition)).Value;
-        return (session, id, app.GetProductDialog(session.Current!, id));
+        IProjectDocument document = app.OpenDocument(project);
+        ElementId id = document.Apply(new AddProduct(locality, definition)).Value;
+        return (document, id, app.GetProductDialog(document.Current!, id));
     }
 
     [Test]
@@ -61,20 +60,20 @@ public class AdvancedDimmerGroupTests : AvaloniaTestBase
     [Test]
     public void TheManualRampRoundTripsBetweenSecondsAndMilliseconds()
     {
-        (ProjectDocumentSession session, ElementId product, ProductDialogDescriptor descriptor) = Dimmer();
+        (IProjectDocument document, ElementId product, ProductDialogDescriptor descriptor) = Dimmer();
         var app = new ProjectAppService(new IhcSettings());
         DialogDescriptorField ramp = descriptor.AllFields
             .Single(f => f.AutomationId == "dlg.avanceret.manuel");
 
-        EditOutcome outcome = session.Apply(app.Commands.ApplyProductDialog(
-            session.Current!, product, [new ProductDialogEdit(ramp.Target, ramp.Attribute, "7")]));
+        EditOutcome outcome = document.Apply(app.Commands.ApplyProductDialog(
+            document.Current!, product, [new ProductDialogEdit(ramp.Target, ramp.Attribute, "7")]));
 
         Assert.Multiple(() =>
         {
             Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
-            Assert.That(session.Current!.FindById(ramp.Target)!.GetAttribute("value"), Is.EqualTo("7000"),
+            Assert.That(document.Current!.FindById(ramp.Target)!.GetAttribute("value"), Is.EqualTo("7000"),
                 "7 s committed → 7000 ms stored");
-            Assert.That(app.GetProductDialog(session.Current!, product).AllFields
+            Assert.That(app.GetProductDialog(document.Current!, product).AllFields
                     .Single(f => f.AutomationId == "dlg.avanceret.manuel").Value,
                 Is.EqualTo("7"),
                 "and 7000 ms stored → 7 s shown, or the value changes every time the dialog is reopened");
@@ -103,19 +102,19 @@ public class AdvancedDimmerGroupTests : AvaloniaTestBase
     [Test]
     public void AnEditToASettingCommitsThroughTheProductDialogsOwnCommand()
     {
-        (ProjectDocumentSession session, ElementId product, ProductDialogDescriptor descriptor) = Dimmer();
+        (IProjectDocument document, ElementId product, ProductDialogDescriptor descriptor) = Dimmer();
         var app = new ProjectAppService(new IhcSettings());
         DialogDescriptorField maximum = descriptor.AllFields
             .Single(f => f.AutomationId == "dlg.avanceret.maksimum");
 
-        EditOutcome outcome = session.Apply(app.Commands.ApplyProductDialogVisit(
-            session.Current!, product,
+        EditOutcome outcome = document.Apply(app.Commands.ApplyProductDialogVisit(
+            document.Current!, product,
             [new ProductDialogEdit(maximum.Target, maximum.Attribute, "90")], []));
 
         Assert.Multiple(() =>
         {
             Assert.That(outcome.Status, Is.EqualTo(EditStatus.Committed));
-            Assert.That(session.Current!.FindById(maximum.Target)!.GetAttribute("value"), Is.EqualTo("90"),
+            Assert.That(document.Current!.FindById(maximum.Target)!.GetAttribute("value"), Is.EqualTo("90"),
                 "written by the one visit command, like every other field of this dialog");
         });
     }

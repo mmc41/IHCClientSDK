@@ -39,14 +39,13 @@ public class SettingsGridTests : AvaloniaTestBase
         var app = new ProjectAppService(new IhcSettings());
         Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
         ElementId locality = project.Groups.First().Id!.Value;
-        var session = new ProjectDocumentSession();
-        session.Open(project);
-        ElementId placed = session.Apply(new AddProduct(locality,
+        IProjectDocument document = app.OpenDocument(project);
+        ElementId placed = document.Apply(new AddProduct(locality,
             app.GetAvailableProducts().First(p => p.ProductIdentifier == productIdentifier))).Value;
 
         // Built the way the coordinator builds them — from SettingElements, with the value through the app's own
         // per-type formatter. Projecting the raw attributes instead would assert a row the dialog never renders.
-        Project current = session.Current!;
+        Project current = document.Current!;
         ProjectElement element = current.FindById(placed)!;
         ProductSetting[] settings = [.. PropertiesDialogCoordinator.BuildSettings(
             current, new ProductView(current, element))];

@@ -17,7 +17,7 @@ namespace Ihc.Vis.Catalog
     /// <see cref="CatalogTextCompare"/> compares it normalized. An exported block is compared against a file the
     /// vendor's writer produced seconds earlier, which is perfectly regular — so that one is held to the byte.</para>
     /// </summary>
-    public enum CatalogLayout
+    internal enum CatalogLayout
     {
         /// <summary>The shipped-catalog shape; the default, since reading and round-tripping the corpus is the
         /// common case.</summary>

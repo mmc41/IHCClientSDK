@@ -34,7 +34,7 @@ namespace Ihc.Vis.Validation
     /// agree by construction.
     /// </para>
     /// </summary>
-    public static class DatalineAddressRules
+    internal static class DatalineAddressRules
     {
         /// <summary>The id these three replace. Retired, reserved, and never re-pointed.</summary>
         public static ProblemCode RetiredPredecessor { get; } = new("dataline-address");

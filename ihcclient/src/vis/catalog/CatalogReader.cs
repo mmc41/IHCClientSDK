@@ -32,7 +32,7 @@ namespace Ihc.Vis.Catalog
     /// hands <c>XmlReader</c> a <c>TextReader</c>. Attribute values are returned unescaped (logical), in the order
     /// the reader surfaces them.
     /// </remarks>
-    public static class CatalogReader
+    internal static class CatalogReader
     {
         /// <summary>
         /// Reads a product catalog file (<c>Products\*.def</c>) into a <see cref="ProductDefinition"/> — the public

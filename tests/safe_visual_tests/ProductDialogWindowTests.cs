@@ -33,11 +33,10 @@ public class ProductDialogWindowTests : AvaloniaTestBase
         ElementId locality = project.Groups.First().Id!.Value;
         ProductDefinition definition = app.GetAvailableProducts()
             .First(p => p.ProductIdentifier == productIdentifier);
-        var session = new ProjectDocumentSession();
-        session.Open(project);
-        ElementId id = session.Apply(new AddProduct(locality, definition)).Value;
+        IProjectDocument document = app.OpenDocument(project);
+        ElementId id = document.Apply(new AddProduct(locality, definition)).Value;
         await Task.CompletedTask;
-        return new ProductDialogViewModel(app.GetProductDialog(session.Current!, id));
+        return new ProductDialogViewModel(app.GetProductDialog(document.Current!, id));
     }
 
     private static ProductDialogWindow Shown(ProductDialogViewModel vm)
@@ -369,12 +368,11 @@ public class ProductDialogWindowTests : AvaloniaTestBase
         var app = new ProjectAppService(new IhcSettings());
         Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
         ElementId locality = project.Groups.First().Id!.Value;
-        var session = new ProjectDocumentSession();
-        session.Open(project);
-        ElementId placed = session.Apply(new AddProduct(locality,
+        IProjectDocument document = app.OpenDocument(project);
+        ElementId placed = document.Apply(new AddProduct(locality,
             app.GetAvailableProducts().First(p => p.ProductIdentifier == productIdentifier))).Value;
         await Task.CompletedTask;
-        return app.GetProductDialog(session.Current!, placed);
+        return app.GetProductDialog(document.Current!, placed);
     }
 
     /// <summary>The selector the shipping window actually uses, read out of its resource dictionary.</summary>

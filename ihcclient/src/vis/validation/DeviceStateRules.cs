@@ -31,7 +31,7 @@ namespace Ihc.Vis.Validation
     /// rule reports the ordinary state of every project, which is the failure mode this whole phase keeps meeting.
     /// </para>
     /// </summary>
-    public static class DeviceStateRules
+    internal static class DeviceStateRules
     {
         /// <summary>
         /// The block-variable kinds that HOLD STATE across a restart, taken from the four that declare a

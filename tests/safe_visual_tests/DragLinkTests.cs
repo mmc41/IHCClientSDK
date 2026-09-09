@@ -16,7 +16,8 @@ namespace safe_visual_tests;
 /// <summary>
 /// A-33 (US-022 + US-023) — dragging one pin onto another creates a link, reaching the identical result as the
 /// two-step <i>Link from here / Link to here</i> supplement, under the SDK's shipped legality and orientation
-/// (<c>Ihc.Vis.Schema.LinkRoles</c> / <see cref="ProjectEditor.CanLink"/> — A-16's 15-cell matrix, A-16amd's self-link,
+/// (the SDK's own link legality, reached through <c>ProjectCommands.LinkPins</c> and the document's
+/// <c>CanApply</c> — A-16's 15-cell matrix, A-16amd's self-link,
 /// F-066's orientation). The view-model asks the SDK; it never re-encodes the matrix.
 /// </summary>
 public class DragLinkTests : AvaloniaTestBase

@@ -64,7 +64,7 @@ namespace Ihc.Vis.Tests
             Project project = prep.ToProject();
             ProjectElement actions = project.Root.Descendants().First(e => e.Tag == "actions" && e.Id is not null);
             ElementId id = actions.Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new AddSubProgram(id));
 
@@ -84,7 +84,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             ElementId locality = project.Groups.First().Id!.Value;   // not an "actions" container
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new AddSubProgram(locality));
 
@@ -98,7 +98,7 @@ namespace Ihc.Vis.Tests
             ProjectElement logRow = project.Root.Descendants()
                 .First(e => e.Id is not null && e.IsLogRow(project));
             ElementId id = logRow.Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             Project before = session.Current!;
 
             EditOutcome toggled = session.Apply(new ToggleLogMark(id));

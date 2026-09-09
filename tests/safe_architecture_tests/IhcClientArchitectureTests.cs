@@ -5,13 +5,11 @@ using System.Reflection;
 using ArchUnitNET.Domain;
 using Ihc.App;
 using Ihc.Vis;
-using Ihc.Vis.Catalog;
 using Ihc.Vis.Editing;
 using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Io;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
-using Ihc.Vis.Programs;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
 using Ihc.Vis.Validation;
@@ -49,9 +47,24 @@ namespace Ihc.Tests
         private static readonly string AppLayer = typeof(AppServiceBase).Namespace!;      // Ihc.App
         private static readonly string ApiRoot = typeof(AuthenticationService).Namespace!;// Ihc (controller API-service tier)
         private static readonly string VisRoot = typeof(ProjectAppService).Namespace!;    // Ihc.Vis (engine + its facade)
-        private static readonly string Editing = typeof(ProjectEditor).Namespace!;        // Ihc.Vis.Editing
-        private static readonly string Session = typeof(ProjectDocumentSession).Namespace!;// Ihc.Vis.Session (command runner)
-        private static readonly string Io = typeof(ProjectSerializer).Namespace!;         // Ihc.Vis.Io
+        // These three anchor on SDK-INTERNAL types, so they resolve by name through the guard rather than by
+        // typeof: the guard asserts the name still resolves, which is what a typeof gave for free.
+        // Resolved ONCE each, not per read: these are read inside per-edge LINQ predicates, and the guard behind
+        // SdkNamespaceOf performs an assembly lookup and an assertion every time it runs.
+        private static readonly Lazy<string> EditingNs = new(() => SdkNamespaceOf(EditorTypeName));
+        private static readonly Lazy<string> SessionNs = new(() => SdkNamespaceOf(SessionRunnerTypeName));
+        private static readonly Lazy<string> IoNs = new(() => SdkNamespaceOf(SerializerTypeName));
+        private static readonly Lazy<string> EditRefusedName = new(() => SdkType(EditRefusedTypeName).FullName!);
+        private static readonly Lazy<string> SessionRunnerName = new(() => SdkType(SessionRunnerTypeName).FullName!);
+
+        private static string Editing => EditingNs.Value;                                 // Ihc.Vis.Editing
+        private static string Session => SessionNs.Value;                                 // Ihc.Vis.Session (command runner)
+        private static string Io => IoNs.Value;                                           // Ihc.Vis.Io
+
+        private const string EditorTypeName = "Ihc.Vis.Editing.ProjectEditor";
+        private const string SessionRunnerTypeName = "Ihc.Vis.Session.ProjectDocumentSession";
+        private const string SerializerTypeName = "Ihc.Vis.Io.ProjectSerializer";
+        private const string EditRefusedTypeName = "Ihc.Vis.Session.EditRefusedException";
         // The report pipeline is internal (its public contract lives in root Ihc.Vis), so no public typeof anchor
         // exists. The string is kept honest by
         // ReportingPipelineTypes_AreInternal (the subtree must be populated and internal-only)
@@ -68,15 +81,15 @@ namespace Ihc.Tests
 
         private readonly record struct LayerAnchor(string Actual, string Expected, string Description);
 
-        private static readonly IReadOnlyList<LayerAnchor> DefinitionLayerAnchors = new[]
+        private static IReadOnlyList<LayerAnchor> DefinitionLayerAnchors => new[]
         {
-            new LayerAnchor(typeof(FunctionBlockDefinitionBuilder).Namespace!, "Ihc.Vis.FunctionBlocks", "function-block definitions"),
-            new LayerAnchor(typeof(ProductDefinitionBuilder).Namespace!, "Ihc.Vis.Products", "product definitions"),
-            new LayerAnchor(typeof(CatalogReader).Namespace!, "Ihc.Vis.Catalog", "catalog definitions"),
-            new LayerAnchor(typeof(ProgramMethodCatalog).Namespace!, "Ihc.Vis.Programs", "program definitions"),
+            new LayerAnchor(SdkNamespaceOf("Ihc.Vis.FunctionBlocks.FunctionBlockDefinitionBuilder"), "Ihc.Vis.FunctionBlocks", "function-block definitions"),
+            new LayerAnchor(SdkNamespaceOf("Ihc.Vis.Products.ProductDefinitionBuilder"), "Ihc.Vis.Products", "product definitions"),
+            new LayerAnchor(SdkNamespaceOf("Ihc.Vis.Catalog.CatalogReader"), "Ihc.Vis.Catalog", "catalog definitions"),
+            new LayerAnchor(SdkNamespaceOf("Ihc.Vis.Programs.ProgramMethodCatalog"), "Ihc.Vis.Programs", "program definitions"),
         };
 
-        private static readonly IReadOnlyList<LayerAnchor> LayerAnchors = new[]
+        private static IReadOnlyList<LayerAnchor> LayerAnchors => new[]
         {
             new LayerAnchor(AppLayer, "Ihc.App", "application-service tier"),
             new LayerAnchor(ApiRoot, "Ihc", "controller API-service tier"),
@@ -132,7 +145,7 @@ namespace Ihc.Tests
                 .Distinct()
                 .ToList();
 
-            Assert.That(reached, Is.EquivalentTo(new[] { typeof(EditRefusedException).FullName }),
+            Assert.That(reached, Is.EquivalentTo(new[] { EditRefusedName.Value }),
                 $"'{Editing}' may name exactly one type from '{Session}' — {nameof(EditRefusedException)}, which "
                 + "makes a deep guard's stale-id miss a refusal instead of a failure. Any other edge is the "
                 + "editing/session cycle widening unnoticed; if the edge is gone, move this assertion rather than delete it");
@@ -189,16 +202,16 @@ namespace Ihc.Tests
         {
             var raised = ExceptionsConstructedInExecuteBodies(Sdk, Session).ToList();
 
-            Assert.That(raised.Select(edge => edge.TargetType), Does.Contain(typeof(EditRefusedException).FullName),
+            Assert.That(raised.Select(edge => edge.TargetType), Does.Contain(EditRefusedName.Value),
                 "the scan must observe the sanctioned refusal raised from a command's Execute — otherwise it is "
                 + "seeing no constructions at all and its verdict is meaningless");
 
-            Assert.That(raised.Where(edge => edge.TargetType != typeof(EditRefusedException).FullName), Is.Empty,
+            Assert.That(raised.Where(edge => edge.TargetType != EditRefusedName.Value), Is.Empty,
                 "an Execute body may only refuse: any other exception maps the miss to Failed, which answers the "
                 + "installer with an English engine diagnostic instead of the Danish sentence the same mistake gets "
                 + "when the command is applied on its own — offenders: "
                 + string.Join("; ", raised
-                    .Where(edge => edge.TargetType != typeof(EditRefusedException).FullName)
+                    .Where(edge => edge.TargetType != EditRefusedName.Value)
                     .Select(edge => $"{edge.Origin}.{edge.OriginMember} -> {edge.TargetType}")));
         }
 
@@ -240,9 +253,9 @@ namespace Ihc.Tests
         /// </summary>
         private static IEnumerable<string> MutatingAndIoLayers()
         {
-            yield return typeof(ProjectEditor).Namespace!;          // Ihc.Vis.Editing
-            yield return typeof(ProjectDocumentSession).Namespace!; // Ihc.Vis.Session
-            yield return typeof(ProjectSerializer).Namespace!;      // Ihc.Vis.Io
+            yield return Editing;   // Ihc.Vis.Editing
+            yield return Session;   // Ihc.Vis.Session
+            yield return Io;        // Ihc.Vis.Io
         }
 
         /// <summary>
@@ -393,27 +406,48 @@ namespace Ihc.Tests
         }
 
         /// <summary>Positive control for <see cref="DocumentPort_ExposesNoEngineTypes"/>: the same checker, pointed at
-        /// a synthetic port that leaks an editing type through a return and an IO type through a parameter, must
-        /// report both — proving the scan inspects returns AND parameters rather than passing because it looked at
-        /// neither.</summary>
+        /// a synthetic port that leaks engine types through a delegate payload, a generic constraint, a property
+        /// return and an inherited property, must report every one — proving the scan traverses all four rather
+        /// than passing because it looked at none.
+        /// <para>
+        /// The seeds are TEST-OWNED types declared in the engine's namespace subtrees, not the SDK's own
+        /// implementation types. That is deliberate: the implementation types are internal to the SDK and this
+        /// assembly is not a friend of it, so a control built on them could not compile — while a leak's SHAPE is
+        /// a matter of which namespace a signature names, which a test-owned type in that namespace expresses
+        /// exactly as well.
+        /// </para>
+        /// <para>
+        /// The one clause this cannot arm is the concrete session runner, which the predicate matches by full name
+        /// and no test-owned type can therefore stand in for. It is guarded instead by the name resolving at all —
+        /// the assertion below — and note that a leak of that particular type has also become structurally
+        /// impossible: a public port member cannot expose an internal type without failing to compile.
+        /// </para>
+        /// </summary>
         [Test]
         public void PortSurfaceScan_IsArmed()
         {
-            Assert.That(EngineTypesOn(typeof(ISeededLeakyPort<>)),
-                Is.SupersetOf(new[]
-                {
-                    typeof(ProjectEditor).FullName!,
-                    typeof(ProjectSaveOptions).FullName!,
-                    typeof(ProjectDocumentSession).FullName!,
-                    typeof(global::Ihc.Vis.Editing.Seeded.INestedEngineContract).FullName!,
-                }),
-                "the port scan must traverse inherited interfaces, custom delegate signatures, generic constraints and nested engine namespaces");
+            Assert.Multiple(() =>
+            {
+                Assert.That(EngineTypesOn(typeof(ISeededLeakyPort<>)),
+                    Is.SupersetOf(new[]
+                    {
+                        typeof(global::Ihc.Vis.Editing.Seeded.INestedEngineContract).FullName!,
+                        typeof(global::Ihc.Vis.Editing.Seeded.NestedEngineType).FullName!,
+                        typeof(ProjectSaveOptions).FullName!,
+                        typeof(global::Ihc.Vis.Io.Seeded.NestedIoType).FullName!,
+                    }),
+                    "the port scan must traverse inherited interfaces, custom delegate signatures, generic constraints and nested engine namespaces");
+
+                Assert.That(SessionRunnerName.Value, Is.EqualTo(SessionRunnerTypeName),
+                    "the concrete-session clause is matched by name, so the name must still be the runner's");
+            });
         }
 
-        // Synthetic violator for the control: the two leak shapes a real port regression would take. (The IO leak
-        // uses ProjectSaveOptions rather than the ProjectSerializer anchor — the latter is a static class, which C#
-        // permits neither as a parameter nor as a return type, so it cannot express a leak at all.)
-        private delegate void SeededEngineEvent(ProjectEditor editor);
+        // Synthetic violator for the control: the leak shapes a real port regression would take, each expressed by a
+        // test-owned type in the engine namespace it belongs to. (The IO leak uses ProjectSaveOptions and a seeded
+        // IO type rather than the ProjectSerializer anchor — the latter is a static class, which C# permits neither
+        // as a parameter nor as a return type, so it cannot express a leak at all.)
+        private delegate void SeededEngineEvent(global::Ihc.Vis.Editing.Seeded.INestedEngineContract engine);
 
         private interface ISeededLeakyPort<T> : ISeededLeakyBasePort
             where T : global::Ihc.Vis.Editing.Seeded.INestedEngineContract
@@ -425,7 +459,7 @@ namespace Ihc.Tests
         private interface ISeededLeakyBasePort
         {
             ProjectSaveOptions Options { get; }
-            ProjectDocumentSession Session { get; }
+            global::Ihc.Vis.Io.Seeded.NestedIoType Nested { get; }
         }
 
         // Every type named on the inherited public contract surface, recursively expanded by TypeAndArguments.
@@ -435,51 +469,11 @@ namespace Ihc.Tests
                 .SelectMany(TypeAndArguments)
                 .Distinct();
 
-        private static IEnumerable<Type> ContractHierarchy(Type contract)
-        {
-            var seen = new HashSet<Type>();
-            for (Type? current = contract; current is not null && seen.Add(current); current = current.BaseType)
-                yield return current;
-            foreach (Type inherited in contract.GetInterfaces())
-                if (seen.Add(inherited))
-                    yield return inherited;
-        }
-
-        private static IEnumerable<Type> DeclaredContractTypes(Type contract) =>
-            contract.GetGenericArguments()
-                .Where(argument => argument.IsGenericParameter)
-                .SelectMany(argument => argument.GetGenericParameterConstraints())
-                .Concat(contract.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static
-                                             | BindingFlags.DeclaredOnly)
-                    .SelectMany(DeclaredSignatureTypes))
-                .Concat(contract.GetConstructors(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static
-                                                 | BindingFlags.DeclaredOnly)
-                    .SelectMany(DeclaredSignatureTypes));
-
-        private static IEnumerable<Type> DeclaredSignatureTypes(MemberInfo member) => member switch
-        {
-            PropertyInfo property => property.GetIndexParameters().Select(parameter => parameter.ParameterType)
-                .Append(property.PropertyType),
-            EventInfo declaredEvent => new[] { declaredEvent.EventHandlerType! },
-            MethodInfo method => MethodSignatureTypes(method).Append(method.ReturnType),
-            ConstructorInfo constructor => MethodSignatureTypes(constructor),
-            FieldInfo field => new[] { field.FieldType },
-            _ => Enumerable.Empty<Type>(),
-        };
-
-        private static IEnumerable<Type> MethodSignatureTypes(MethodBase method) =>
-            method.GetParameters().Select(parameter => parameter.ParameterType)
-                .Concat((method is MethodInfo genericMethod
-                        ? genericMethod.GetGenericArguments()
-                        : Array.Empty<Type>())
-                    .Where(argument => argument.IsGenericParameter)
-                    .SelectMany(argument => argument.GetGenericParameterConstraints()));
-
         private static IReadOnlyList<string> EngineTypesOn(Type port) =>
             PortSurfaceTypes(port)
                 .Where(type => IsInNamespaceSubtree(type, Editing)
                                || IsInNamespaceSubtree(type, Io)
-                               || type == typeof(ProjectDocumentSession))
+                               || type.FullName == SessionRunnerName.Value)
                 .Select(type => type.FullName!)
                 .Distinct()
                 .ToList();
@@ -601,7 +595,21 @@ namespace Ihc.Tests
                 foreach (LayerAnchor anchor in LayerAnchors)
                     Assert.That(anchor.Actual, Is.EqualTo(anchor.Expected),
                         $"{anchor.Description} must remain in its documented namespace");
+
+                // The repository's two consumer bans name namespaces, and a namespace nothing declares is a ban
+                // that forbids nothing. `Ihc.Soap` is pinned by the SoapNs anchor above; this is the other one.
+                Assert.That(EnvelopeNamespaceTypeCount(), Is.GreaterThan(0),
+                    $"'{EnvelopeNs}' is named by the repository's banned-symbol entry; renaming it would empty "
+                    + "that ban without any rule going red");
             });
+
+        /// <summary>The envelope namespace named by the repository ban, and how many types it declares. Counted
+        /// rather than anchored by <c>typeof</c> because the point is that the NAMESPACE still exists: a ban on a
+        /// namespace nothing declares is silently vacuous.</summary>
+        private const string EnvelopeNs = "Ihc.Envelope";
+
+        private static int EnvelopeNamespaceTypeCount() =>
+            SdkAssembly.GetTypes().Count(type => IsInNamespaceSubtree(type, EnvelopeNs));
 
         /// <summary>
         /// A backstop against the whole suite being green because the mechanism is broken rather than because the

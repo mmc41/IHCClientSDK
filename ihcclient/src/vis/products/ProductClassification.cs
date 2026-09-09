@@ -4,7 +4,7 @@ namespace Ihc.Vis.Products
 {
     /// <summary>The product family a device-root tag belongs to (US-012/US-013/US-014). The six known catalog
     /// families plus <see cref="Other"/> — an open-world product whose family is not one the SDK recognises.</summary>
-    public enum ProductFamily
+    internal enum ProductFamily
     {
         Dataline,
         Airlink,
@@ -27,7 +27,7 @@ namespace Ihc.Vis.Products
     /// (open-world: an undocumented <c>product_x_modem</c> still reads as a modem for the UI), while
     /// <see cref="Classify"/> matches the known catalog tags exactly before falling back to a stated precedence.
     /// </summary>
-    public static class ProductClassifier
+    internal static class ProductClassifier
     {
         /// <summary>
         /// The product family of a device-root <paramref name="tag"/>: an <b>exact</b> match on the known catalog

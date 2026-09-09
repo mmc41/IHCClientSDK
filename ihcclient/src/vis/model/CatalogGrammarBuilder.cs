@@ -11,7 +11,7 @@ namespace Ihc.Vis.Model
     /// and standard declarations (which a wholesale <c>.Grammar(...)</c> replacement would). A replaced tag keeps
     /// its position; a new tag appends. Prolog datum and DOCTYPE root carry over unchanged.
     /// </summary>
-    public sealed class CatalogGrammarBuilder
+    internal sealed class CatalogGrammarBuilder
     {
         private readonly List<GrammarDeclaration> declarations;
         private readonly string declaredEncoding;

@@ -21,7 +21,7 @@ namespace Ihc.Vis.Validation
     /// <param name="Minor">The second component.</param>
     /// <param name="Patch">The third component; zero when the citation gives only two.</param>
     /// <param name="Build">The fourth component; zero when the citation gives only three.</param>
-    public readonly record struct ControllerFirmwareVersion(int Major, int Minor, int Patch, int Build)
+    internal readonly record struct ControllerFirmwareVersion(int Major, int Minor, int Patch, int Build)
         : IComparable<ControllerFirmwareVersion>
     {
         /// <summary>The three-component form, which is how nearly every cited release is written.</summary>

@@ -8,7 +8,7 @@ namespace Ihc.Vis.Editing
     /// preserved when a project is loaded and allocated when a resource is newly added — so a link
     /// made via <see cref="ProjectEditor.Link(ResourceRef,ResourceRef)"/> survives renames and round-trips losslessly.
     /// </summary>
-    public sealed class ResourceRef
+    internal sealed class ResourceRef
     {
         internal ResourceRef(string name, ElementId? id)
         {

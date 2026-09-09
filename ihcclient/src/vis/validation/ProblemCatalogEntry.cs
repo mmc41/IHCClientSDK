@@ -71,8 +71,15 @@ namespace Ihc.Vis.Validation
         /// <summary>The readiness mark — metadata, never a gate.</summary>
         public EvidenceMark Evidence { get; init; }
 
-        /// <summary>Every number this row's predicate needs, declared rather than written inline.</summary>
-        public EquatableArray<DeclaredThreshold> Thresholds { get; init; }
+        /// <summary>Every number this row's predicate needs, declared rather than written inline.
+        /// <para>
+        /// Internal, though the entry itself is the host catalogue-authoring contract: a threshold is EVIDENCE
+        /// behind an SDK rule's predicate, and a host declaring its own <c>app.*</c> row states no thresholds --
+        /// the two hosts' catalogues in this repository declare none. Publishing it would commit the SDK to the
+        /// declaration shape of its own rule evidence.
+        /// </para>
+        /// </summary>
+        internal EquatableArray<DeclaredThreshold> Thresholds { get; init; }
 
         /// <summary>
         /// The operations this row REFUSES, by their <see cref="OperationCodes"/> heads — empty for the rows that
@@ -137,7 +144,7 @@ namespace Ihc.Vis.Validation
         /// caller withheld context this row never needed.
         /// </para>
         /// </summary>
-        public DeclaredFirmwareBound? FirmwareBound { get; init; }
+        internal DeclaredFirmwareBound? FirmwareBound { get; init; }
 
         /// <summary>
         /// The finding severity this row reports as, or null when it refuses instead of reporting. Derived from

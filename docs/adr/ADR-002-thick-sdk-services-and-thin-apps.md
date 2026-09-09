@@ -6,8 +6,10 @@ Decided — 2026-07-19. Records the standing architecture, in force since the SD
 retrospectively.
 
 Amended — 2026-07-20 (facade single-door rulings), 2026-08-02 (crudarch: two execution doors),
-2026-08-24 (validation folded in as question B, renaming this file) and 2026-09-07 (sole facade: the visible
-lower-level engine surfaces stop being a supported entry level) — the substance of each is in the Decision.
+2026-08-24 (validation folded in as question B, renaming this file), 2026-09-07 (sole facade: the visible
+lower-level engine surfaces stop being a supported entry level) and 2026-09-08 (API boundary review: both
+service tiers are supported API, and a public signature is not itself an approval) — the substance of each
+is in the Decision.
 
 Revisit triggers: (a) a vendor firmware/WSDL revision changing the controller's service surface — re-price the 1-1
 mirror; (b) a frontend that cannot reference the SDK in-process (non-.NET or remote) — that calls for a hosted
@@ -391,10 +393,19 @@ re-binding them to the merged metadata is future work, not a gap in the door.
 
 ### Neutral
 
-- Lower-level `Ihc.Vis` surfaces are implementation for every consumer, not only for the GUI: the service tiers
-  are the SOLE door, and a type no facade signature hands the caller belongs behind `internal` (amended
-  2026-09-07). Visibility today is wider than that rule; the rule, its mechanical test and its named exceptions
-  are in ARCHITECTURE.md under *Public vs internal surface*.
+- Both service tiers, and the supporting contracts each deliberately publishes, are supported API (amended
+  2026-09-08). Clients may take application services for the ready-made use cases, API services to compose a
+  custom workflow, or both; application services own reusable workflow and policy over the API services and the
+  domain engines, and a custom client may supply its own workflow instead. Implementation beneath either tier
+  stays private except for explicitly documented technical exposure. Public contracts include inputs, results,
+  domain values, commands, events, documented exceptions, approved helpers and provider interfaces — and
+  appearing in a public signature requires contract review rather than being an approval in itself. A consumer
+  rule may still constrain lifecycle or presentation ownership, but must not remove the choice between the two
+  tiers. This withdraws the 2026-09-07 formulation that made the tiers the only door and put every type no
+  facade signature returned behind `internal`; the surviving half of that amendment — lower-level engine
+  surfaces are implementation, not a third entry level — stands. The rule and its named exceptions are in
+  ARCHITECTURE.md under *Public vs internal surface*, and the supported surface itself is specified in
+  [the API contract](../../ihcclient/docs/api-contract.md).
 - Generated SOAP types remain technically `public` though out of contract (invariant 9's documented gap).
 - Where a fact serves both a gesture gate and a rule (a capacity cap, a declared bound), it lives below both in
   the shared model, so neither side copies the other.
@@ -405,8 +416,8 @@ re-binding them to the merged metadata is future work, not a gap in the door.
   SDK ↛ Avalonia, `Ihc.Vis` ↛ `Ihc.Soap`, and the API-tier ↛ app-tier direction this record called for
   (`ApiServiceLayer_DoesNotDependOn_AppLayer`).
 - Compile-time banned symbols (ADR-004), failing the build rather than a test: the GUI may not reach `System.Xml`,
-  `Ihc.Vis.Io`, `Ihc.Vis.Editing`, `Ihc.Vis.Reporting` or the concrete `ProjectDocumentSession`, and nothing
-  outside the SDK may bind `Ihc.Soap`. An architecture test pins that each ban target still resolves.
+  `Ihc.Vis.Io`, `Ihc.Vis.Editing`, `Ihc.Vis.Reporting`, `Ihc.Vis.Catalog` or the concrete `ProjectDocumentSession`,
+  and nothing outside the SDK may bind `Ihc.Soap`. An architecture test pins that each ban target still resolves.
 - Architecture fitness tests for the validation placement: the validation-layer direction rules and the OpenVisual
   battery — no engine execution or catalogue reads in the GUI, no command construction, views never drive the
   session, no GUI call to the stateless `Apply`/`CanApply`/`Preview` facade, engine diagnostics never become

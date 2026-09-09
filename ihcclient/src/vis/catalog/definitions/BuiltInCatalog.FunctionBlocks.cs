@@ -6,7 +6,7 @@ using Ihc.Vis.Model;
 
 namespace Ihc.Vis.Catalog
 {
-    public sealed partial class BuiltInCatalog
+    internal sealed partial class BuiltInCatalog
     {
         // Registers every code-authored function block, in the same document order catalog discovery scans
         // the install dir, so last-wins lookup over the four master_type-duplicating favorites matches it.

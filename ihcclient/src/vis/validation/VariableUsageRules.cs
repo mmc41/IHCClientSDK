@@ -27,7 +27,7 @@ namespace Ihc.Vis.Validation
     /// for "the logic always sees its initial value" would report the whole point of a setting. It stays in scope
     /// for the write-only row, where a dialog-set value nothing reads really is dead.</para>
     /// </summary>
-    public static class VariableUsageRules
+    internal static class VariableUsageRules
     {
         /// <summary>The two containers holding a block's OWN state, as opposed to its interface pins.</summary>
         private static readonly ImmutableHashSet<string> StateContainers = ["settings", "internalsettings"];

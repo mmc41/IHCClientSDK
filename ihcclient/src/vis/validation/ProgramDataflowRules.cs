@@ -25,7 +25,7 @@ namespace Ihc.Vis.Validation
     /// <c>%P = %P + …</c>, a reset is a plain assignment), and <c>logic-flag-never-cleared</c> keys on the one
     /// bool-command token that only ever sets.</para>
     /// </summary>
-    public static class ProgramDataflowRules
+    internal static class ProgramDataflowRules
     {
         /// <summary>
         /// The bool command that can only SET: <c>%P = ON</c>. Its siblings can all clear — <c>%P = OFF</c>

@@ -36,7 +36,7 @@ namespace Ihc.Vis.Validation
     /// modems or it does not, and no editor will author that state — both refuse the second insert. A file with two
     /// arrived by import or by hand, which is what the whole-project face is for.</para>
     /// </summary>
-    public static class CapacityRules
+    internal static class CapacityRules
     {
         /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>

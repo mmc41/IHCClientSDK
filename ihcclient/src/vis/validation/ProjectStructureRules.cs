@@ -28,7 +28,7 @@ namespace Ihc.Vis.Validation
     /// <c>struct-icon-default</c> reports an element whose icon is the format's null token where another element of
     /// the same tag carries a real one — no committed project contains that, which is what its ⊘ mark means.</para>
     /// </summary>
-    public static class ProjectStructureRules
+    internal static class ProjectStructureRules
     {
         /// <summary>The attribute holding an element's icon, and the token that means "none".</summary>
         private const string IconAttribute = "icon";

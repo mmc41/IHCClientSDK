@@ -15,6 +15,7 @@ using Ihc.Vis.FunctionBlocks;
 using Ihc.Vis.Io;
 using Ihc.Vis.Model;
 using Ihc.Vis.Products;
+using Ihc.Vis.Programs;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Reporting;
 using Ihc.Vis.Schema;
@@ -75,12 +76,20 @@ namespace Ihc.Vis
                    // Lazy so the built-in catalog (~173 components) is not materialized until a catalog operation
                    // (CreateNew/GetAvailable*/Import) runs — file IO needs no catalog. PublicationOnly never caches
                    // a factory exception.
-                   new Lazy<ICatalog>(() => new BuiltInCatalog(), LazyThreadSafetyMode.PublicationOnly),
+                   BuiltInLazy(),
                    TimeProvider.System,
                    controller: null,
                    authService: null)
         {
         }
+
+        /// <summary>
+        /// The SDK-embedded catalog, materialized on first use. Lazy so the built-in components are not built until
+        /// a catalog operation needs them -- file IO needs none -- and <see cref="LazyThreadSafetyMode.PublicationOnly"/>
+        /// so a factory exception is never cached.
+        /// </summary>
+        private static Lazy<ICatalog> BuiltInLazy() =>
+            new(() => new BuiltInCatalog(), LazyThreadSafetyMode.PublicationOnly);
 
         /// <summary>
         /// Creates a controller-bridge service from an already-matched <paramref name="controller"/> and the
@@ -91,7 +100,7 @@ namespace Ihc.Vis
         /// </summary>
         public ProjectAppService(IhcSettings settings, IControllerService controller, IAuthenticationService authService)
             : this(settings,
-                   new Lazy<ICatalog>(() => new BuiltInCatalog(), LazyThreadSafetyMode.PublicationOnly),
+                   BuiltInLazy(),
                    TimeProvider.System,
                    controller ?? throw new ArgumentNullException(nameof(controller)),
                    authService ?? throw new ArgumentNullException(nameof(authService)))
@@ -119,13 +128,36 @@ namespace Ihc.Vis
         /// cookie session the controller rides) is <b>required</b>; the service never self-builds a foreign auth.
         /// A file-only service passes neither.
         /// </summary>
-        public ProjectAppService(IhcSettings settings, ICatalog catalog, TimeProvider timeProvider,
+        internal ProjectAppService(IhcSettings settings, ICatalog catalog, TimeProvider timeProvider,
                                  IControllerService? controller = null, IAuthenticationService? authService = null)
             : this(settings,
                    new Lazy<ICatalog>(catalog ?? throw new ArgumentNullException(nameof(catalog))),
                    timeProvider,
                    controller,
                    authService)
+        {
+        }
+
+        /// <summary>
+        /// The file-only service on a CALLER-SUPPLIED CLOCK — the supported determinism seam. Everything the
+        /// engine stamps with time comes from <paramref name="timeProvider"/>: a new project's <c>id1</c>/<c>id2</c>,
+        /// a save's re-stamped metadata, and report generation timestamps. A caller that supplies a fixed clock
+        /// therefore gets reproducible bytes out of the same input, which a service on the system clock cannot
+        /// promise.
+        /// <para>
+        /// It exposes no catalog: the built-in one is used, lazily, exactly as the settings-only constructor does.
+        /// Extending a catalog is the file-import contract's job (<see cref="ImportCatalogFile"/>), not a
+        /// construction argument.
+        /// </para>
+        /// </summary>
+        /// <param name="settings">IHC settings.</param>
+        /// <param name="timeProvider">The clock every time-derived value the service writes is taken from.</param>
+        public ProjectAppService(IhcSettings settings, TimeProvider timeProvider)
+            : this(settings,
+                   BuiltInLazy(),
+                   timeProvider ?? throw new ArgumentNullException(nameof(timeProvider)),
+                   controller: null,
+                   authService: null)
         {
         }
 
@@ -138,7 +170,7 @@ namespace Ihc.Vis
         /// <param name="telemetry">Telemetry configuration; only its engine switches are read here.</param>
         public ProjectAppService(IhcSettings settings, TelemetryConfiguration telemetry)
             : this(settings,
-                   new Lazy<ICatalog>(() => new BuiltInCatalog(), LazyThreadSafetyMode.PublicationOnly),
+                   BuiltInLazy(),
                    TimeProvider.System,
                    controller: null,
                    authService: null,
@@ -157,7 +189,7 @@ namespace Ihc.Vis
         /// <param name="faultPort">Where to report an unexpected fault, or null to report nowhere.</param>
         public ProjectAppService(IhcSettings settings, Action<Ihc.Vis.Problems.InternalError>? faultPort)
             : this(settings,
-                   new Lazy<ICatalog>(() => new BuiltInCatalog(), LazyThreadSafetyMode.PublicationOnly),
+                   BuiltInLazy(),
                    TimeProvider.System,
                    controller: null,
                    authService: null,
@@ -947,6 +979,44 @@ namespace Ihc.Vis
             });
 
         /// <summary>
+        /// Every program operation the armed <paramref name="variableId"/> may be given inside
+        /// <paramref name="containerId"/> (D-1): the pin's operator family, the commands that need a bool output,
+        /// and whether a case may switch on it, answered once, here.
+        /// <para>
+        /// The result is a set of descriptors with stable identifiers — the vendor method token, the persisted name
+        /// and note templates, and how many operands the operation takes. It decides nothing about presentation:
+        /// menu organisation, labels and gesture handling stay the caller's.
+        /// </para>
+        /// <para>
+        /// An offer is a MENU, not a promise. The rules here are the ones the session's command guards apply, so an
+        /// offered operation is one the document accepts as things stand; legality is still rechecked when the
+        /// command executes, against the document as it is then.
+        /// </para>
+        /// <para>
+        /// An unknown container or variable, or a container that holds no program operations, yields an empty list
+        /// rather than a refusal: a frontend asks this on every selection change, where "nothing to offer here" is
+        /// an ordinary answer.
+        /// </para>
+        /// </summary>
+        /// <param name="project">The project the two ids are read from.</param>
+        /// <param name="containerId">The events, commands or conditions container the operation would be authored into.</param>
+        /// <param name="variableId">The armed variable the operation would act on.</param>
+        public IReadOnlyList<ProgramOperationOffer> GetProgramOperations(
+            Project project, ElementId containerId, ElementId variableId)
+        {
+            ArgumentNullException.ThrowIfNull(project);
+            return RunTraced(nameof(GetProgramOperations), activity =>
+            {
+                IReadOnlyList<ProgramOperationOffer> result =
+                    project.FindById(containerId) is { } container && project.FindById(variableId) is { } variable
+                        ? ProgramAuthoring.OffersFor(project, container, variable)
+                        : Array.Empty<ProgramOperationOffer>();
+                activity?.SetReturnValue(result.Count);
+                return result;
+            });
+        }
+
+        /// <summary>
         /// The variable types that may be inserted directly under <paramref name="containerId"/>, as SDK tags — the
         /// engine's answer to "what does this section accept", so a caller (a GUI variable palette) never keeps a
         /// second copy of the placement rule (uxparity2 W1/RC1, D03). A function-block <c>inputs</c>/<c>outputs</c>
@@ -960,16 +1030,20 @@ namespace Ihc.Vis
         /// keeps <c>Ihc.Vis.Editing</c> off this facade's signature, which the GUI is barred from referencing.
         /// </para>
         /// </summary>
-        public IReadOnlyList<string> GetInsertableVariableTypes(Project project, ElementId containerId) =>
+        public IReadOnlyList<InsertableVariableType> GetInsertableVariableTypes(Project project, ElementId containerId) =>
             RunTraced(nameof(GetInsertableVariableTypes), activity =>
             {
                 // GetInsertableAt resolves the container's own tag AND its parent's (the grandparent context that
                 // separates a block section from a like-named product container), so the rule is asked once, here.
-                IReadOnlyList<string> result = project.FindById(containerId) is null
-                    ? Array.Empty<string>()
+                // Each offered type is DESCRIBED rather than named: its role comes from the same registry that
+                // decides it is a variable type at all, so a caller ordering or grouping by that never re-derives it
+                // from tag spellings.
+                IReadOnlyList<InsertableVariableType> result = project.FindById(containerId) is null
+                    ? Array.Empty<InsertableVariableType>()
                     : project.Edit().GetInsertableAt(containerId)
                         .Select(o => o.ChildTag)
                         .Where(VariableTypeRegistry.IsVariableType)
+                        .Select(tag => new InsertableVariableType(tag, VariableTypeRegistry.RoleOf(tag)))
                         .ToList();
                 activity?.SetReturnValue(result.Count);
                 return result;

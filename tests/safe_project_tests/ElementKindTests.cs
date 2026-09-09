@@ -57,19 +57,20 @@ public class ElementKindTests
     }
 
     // A product of each ProductFamily is the coarse Product kind; the family sub-kind is the ProductClassifier axis.
-    [TestCase("product_dataline", ProductFamily.Dataline)]
-    [TestCase("product_airlink", ProductFamily.Airlink)]
-    [TestCase("product_rs485_led_dimmer", ProductFamily.Rs485LedDimmer)]
-    [TestCase("product_rs485_modem", ProductFamily.Rs485Modem)]
-    [TestCase("product_rs485_sms_modem", ProductFamily.Rs485SmsModem)]
-    public void Kind_ForAnyProductFamily_IsProduct_WithFamilyOnTheSeparateAxis(string tag, ProductFamily family)
+    [TestCase("product_dataline", nameof(ProductFamily.Dataline))]
+    [TestCase("product_airlink", nameof(ProductFamily.Airlink))]
+    [TestCase("product_rs485_led_dimmer", nameof(ProductFamily.Rs485LedDimmer))]
+    [TestCase("product_rs485_modem", nameof(ProductFamily.Rs485Modem))]
+    [TestCase("product_rs485_sms_modem", nameof(ProductFamily.Rs485SmsModem))]
+    public void Kind_ForAnyProductFamily_IsProduct_WithFamilyOnTheSeparateAxis(string tag, string family)
     {
         ProjectElement element = ProjectElement.Create(tag, null, [], []);
 
         Assert.Multiple(() =>
         {
             Assert.That(element.Kind, Is.EqualTo(ElementKind.Product), "Kind is the coarse Product axis");
-            Assert.That(ProductClassifier.Classify(tag), Is.EqualTo(family), "the family is the ProductClassifier axis");
+            Assert.That(ProductClassifier.Classify(tag).ToString(), Is.EqualTo(family),
+                "the family is the ProductClassifier axis");
         });
     }
 

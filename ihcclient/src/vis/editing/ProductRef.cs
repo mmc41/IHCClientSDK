@@ -10,7 +10,7 @@ namespace Ihc.Vis.Editing
     /// mutate instance-level fields in place; resource methods add/configure or look up I/O children and return
     /// their live <see cref="ResourceRef"/> handles for linking.
     /// </summary>
-    public sealed class ProductRef
+    internal sealed class ProductRef
     {
         private readonly ProjectEditor editor;
 
@@ -186,7 +186,7 @@ namespace Ihc.Vis.Editing
     }
 
     /// <summary>Fluent configurator for a product input child (<c>dataline_input</c>).</summary>
-    public sealed class InputBuilder
+    internal sealed class InputBuilder
     {
         private readonly List<(string, string)> attributes = new();
 
@@ -219,7 +219,7 @@ namespace Ihc.Vis.Editing
     }
 
     /// <summary>Fluent configurator for a product output child (<c>dataline_output</c>).</summary>
-    public sealed class OutputBuilder
+    internal sealed class OutputBuilder
     {
         private readonly List<(string, string)> attributes = new();
 

@@ -34,7 +34,7 @@ namespace Ihc.Vis.Validation
     /// its values.
     /// </para>
     /// </summary>
-    public static class ReciprocityAndEnumRules
+    internal static class ReciprocityAndEnumRules
     {
         /// <summary>The complementary partner kind(s) for each reciprocal half, derived from the shared tag source
         /// rather than re-listed: a from-half pairs with a to-half and vice versa, and a scene link pairs with any

@@ -27,7 +27,7 @@ namespace Ihc.Vis.Session
     /// interactive callers must issue all MUTATIONS from one thread (the UI thread in a GUI) for handler
     /// ordering to stay meaningful; any thread may read.
     /// </remarks>
-    public sealed class ProjectDocumentSession : IProjectDocument
+    internal sealed class ProjectDocumentSession : IProjectDocument
     {
         // .NET 9+/C# 13 dedicated lock type, not an `object` monitor: the type-safe default Microsoft's
         // managed-threading guidance now names for a synchronous lock target.

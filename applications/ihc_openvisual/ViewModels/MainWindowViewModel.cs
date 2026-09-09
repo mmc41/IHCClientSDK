@@ -16,9 +16,7 @@ using Ihc.Vis.Session;
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
 using Ihc.Vis.Products;
-using Ihc.Vis.Programs;
 using Ihc.Vis.Projects;
-using Ihc.Vis.Schema;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -412,9 +410,12 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         string sectionLabel = value.DisplayName;
         // A locked block remains navigable, but its section flyout must not mint executable authoring items. The
         // engine still guards direct calls; this projection matches the vendor's view-only flyout (Properties only).
-        List<(string Label, string Tag)> accepted = IsProgrammingBlockLocked
+        IReadOnlyList<InsertableVariableType> offered = IsProgrammingBlockLocked
             ? []
-            : VariablePalette.LabelledTypes(_session.GetInsertableVariableTypes(sectionId)).ToList();
+            : _session.GetInsertableVariableTypes(sectionId);
+        List<(string Label, string Tag)> accepted =
+            VariablePalette.LabelledTypes(offered.Select(t => t.Tag)).ToList();
+        HashSet<string> signalTags = [.. offered.Where(t => t.IsSignal).Select(t => t.Tag)];
         foreach ((string label, string tag) in accepted)
             VariablePaletteMenu.Add(CreateVariableMenuItem(sectionId, label, tag, sectionLabel));
 
@@ -431,20 +432,14 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         // The value types stay in DANISH collation, which is a REGISTERED deliberate difference from the vendor's
         // æ-as-"ae" ordering (product.md, F-26) — the leading entry is a divergence, the collation is not.
         SectionFlyoutItems.Clear();
+        // Which offered types are the section's SIGNALS is the engine's answer, carried on the offer itself.
         IEnumerable<(string Label, string Tag)> ordered = accepted
-            .OrderBy(t => IsSignalVariable(t.Tag) ? 0 : 1)
+            .OrderBy(t => signalTags.Contains(t.Tag) ? 0 : 1)
             .ThenBy(t => t.Label, DisplayOrder.Danish);
         foreach ((string label, string tag) in ordered)
             SectionFlyoutItems.Add(CreateVariableMenuItem(sectionId, label, tag, sectionLabel));
         SectionFlyoutItems.Add(new ProductMenuItemViewModel("Egenskaber…", "ctx.node.properties", PropertiesCommand));
     }
-
-    /// <summary>Whether a variable type is a block's SIGNAL (its wiring in or out) rather than a value it holds —
-    /// the types the vendor sets off at the head of a section's flyout (F-20). Asked of the SDK registry rather
-    /// than re-derived from tag spellings here: which family a tag belongs to is the engine's answer, and a role
-    /// added or a tag renamed there must not leave this flyout silently mis-led.</summary>
-    private static bool IsSignalVariable(string tag) =>
-        !VariableTypeRegistry.ValueTypeTags.Contains(tag);
 
     // Builds one variable-insert menu item — a plain leaf, or (for resource_enum) the PG-4 type-picker submenu:
     // "Ny type…" (author a new type via the enumerator dialog), "Ny selvstændig type…" (PG-7/D02, a standalone
@@ -486,7 +481,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         VariableBarMenu.Clear();
         HashSet<string>? accepted = value is { IsBlockSection: true, ElementId: { } sid }
-            ? new HashSet<string>(_session.GetInsertableVariableTypes(sid), StringComparer.Ordinal)
+            ? new HashSet<string>(_session.GetInsertableVariableTypes(sid).Select(t => t.Tag), StringComparer.Ordinal)
             : null;
         ElementId? sectionId = value?.ElementId;
         string sectionLabel = value?.DisplayName ?? string.Empty;
@@ -895,7 +890,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
             status => StatusText = status, RunAsync);
         _programAuthoring = new ProgramAuthoringCoordinator(
             _session, _dialogs, RunAsync, (scope, command, status) => ApplyAsync(scope, command, status), SelectNode,
-            status => StatusText = status, () => SelectedNode, () => _programmingBlockId, NotifyProgramMenuGates);
+            status => StatusText = status, () => SelectedNode, NotifyProgramMenuGates);
         _treePanes = new TreePaneCoordinator(
             InstallationNodes, FunctionNodes, () => _session.Current, () => _session.LastChange,
             (installHeader, functionsHeader) => { InstallationPaneHeader = installHeader; FunctionsPaneHeader = functionsHeader; },
@@ -1527,7 +1522,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
         productId = default;
         if (element.Id is not { } id || project.FindParent(id) is not { } parent || parent.Id is not { } parentId
-            || !ProductClassifier.IsProduct(parent.Tag))
+            || parent.Kind is not ElementKind.Product)
         {
             return false;
         }

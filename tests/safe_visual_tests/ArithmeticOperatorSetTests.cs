@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using ihc_openvisual.ViewModels;
 using Ihc.Vis;
 using Ihc.Vis.Model;
-using Ihc.Vis.Programs;
 using NUnit.Framework;
 
 namespace safe_visual_tests;
@@ -22,8 +21,9 @@ namespace safe_visual_tests;
 public class ArithmeticOperatorSetTests : AvaloniaTestBase
 {
     // Arms a variable of `targetTag` as the arithmetic target, with one variable of every numeric type available as
-    // an operand, and returns the resulting arithmetic menu headers.
-    private static async Task<(ShellHarness harness, IReadOnlyList<string> operators)>
+    // an operand, and returns the resulting arithmetic menu headers beside the SDK offers they were built from.
+    private static async Task<(ShellHarness harness, IReadOnlyList<string> operators,
+        IReadOnlyList<ProgramOperationOffer> offers)>
         ArithmeticMenuFor(string targetTag, string targetName)
     {
         var harness = ShellHarness.Create();
@@ -36,22 +36,25 @@ public class ArithmeticOperatorSetTests : AvaloniaTestBase
         await harness.Session.AddVariableAsync(section, "resource_counter", "Cnt");
         await harness.Session.AddVariableAsync(section, targetTag, targetName);
 
-        vm.UseInProgramCommand.Execute(
-            TreeNodes.FindPin(vm.InstallationNodes, targetName)!);
-        vm.SelectNode(TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsCommandsContainer)!);
-        return (harness, vm.ProgramArithmeticMenu.Select(m => m.Header).ToList());
+        TreeNodeViewModel target = TreeNodes.FindPin(vm.InstallationNodes, targetName)!;
+        TreeNodeViewModel commands = TreeNodes.FindFirst(vm.FunctionNodes, n => n.IsCommandsContainer)!;
+        vm.UseInProgramCommand.Execute(target);
+        vm.SelectNode(commands);
+        return (harness,
+            vm.ProgramArithmeticMenu.Select(m => m.Header).ToList(),
+            harness.Session.GetProgramOperations(commands.ElementId!.Value, target.ElementId!.Value));
     }
 
-    // The operator symbols the SDK grid says are authorable for this target against ANY numeric operand — the same
-    // derivation T008 ran, so the test cannot drift from the engine it is checking.
-    private static string[] LiveOperatorsFor(string targetTag) =>
-        new[] { "+", "-", "/", "*" }
-            .Where(op => ProgramMethodCatalog.NumericVariableTags
-                .Any(operand => ProgramMethodCatalog.ArithmeticToken(op, targetTag, operand) is not null))
-            .ToArray();
+    // The operator symbols the SDK OFFERS for this target — asked of the facade, not re-derived from the method
+    // tables, which are the engine's own. What this fixture still checks is that the menu renders exactly what was
+    // offered, neither dropping a live operator nor inventing a dead one; which cells are live at all is pinned
+    // SDK-side, where the grid lives.
+    private static string[] LiveOperatorsFor(IReadOnlyList<ProgramOperationOffer> offers) =>
+        [.. offers.Where(o => o.Kind == ProgramOperationKind.Arithmetic && o.NeedsOperand)
+            .Select(o => o.OperatorSymbol!)];
 
     [Test]
-    public async Task EachNumericTarget_OffersExactlyTheGridsLiveOperators()
+    public async Task EachNumericTarget_RendersExactlyTheOperatorsTheSdkOffers()
     {
         foreach ((string tag, string name) in new[]
                  {
@@ -60,10 +63,10 @@ public class ArithmeticOperatorSetTests : AvaloniaTestBase
                      ("resource_counter", "Tæller"),
                  })
         {
-            var (harness, operators) = await ArithmeticMenuFor(tag, name);
+            var (harness, operators, offers) = await ArithmeticMenuFor(tag, name);
             using var _1 = harness;
 
-            string[] expected = LiveOperatorsFor(tag);
+            string[] expected = LiveOperatorsFor(offers);
             // The two-operand categories are labelled "<name> <op>= …"; the counter's one-operand steps are "<name> ± 1".
             var offered = operators.Where(h => h.Contains("= …")).Select(h => h[(name.Length + 1)..(name.Length + 2)]).ToList();
 
@@ -72,7 +75,9 @@ public class ArithmeticOperatorSetTests : AvaloniaTestBase
             Assert.That(expected, Is.Not.Empty, $"{tag}: the grid really has live cells for this target");
             Assert.That(offered, Is.Not.Empty, $"{tag}: the operator symbols were parsed out of the menu headers");
             Assert.That(offered, Is.EquivalentTo(expected),
-                $"{tag}: the menu offers exactly the grid's live operators ({string.Join(" ", expected)})");
+                $"{tag}: the menu renders exactly the operators the SDK offered ({string.Join(" ", expected)}); "
+                + "that those ARE the grid's live cells is pinned SDK-side by "
+                + "ProgramAuthoringQueryTests.ArithmeticOffersAreExactlyTheGridsLiveCells");
         }
     }
 
@@ -80,11 +85,11 @@ public class ArithmeticOperatorSetTests : AvaloniaTestBase
     [Test]
     public async Task Subtraction_IsOfferedOnAFloatTarget_AndNeverOnAnIntegerOrCounter()
     {
-        var (floatHarness, floatOps) = await ArithmeticMenuFor("resource_floating_point", "Kommatal");
+        var (floatHarness, floatOps, _) = await ArithmeticMenuFor("resource_floating_point", "Kommatal");
         using var _1 = floatHarness;
-        var (intHarness, intOps) = await ArithmeticMenuFor("resource_integer", "Tal");
+        var (intHarness, intOps, _) = await ArithmeticMenuFor("resource_integer", "Tal");
         using var _2 = intHarness;
-        var (cntHarness, cntOps) = await ArithmeticMenuFor("resource_counter", "Tæller");
+        var (cntHarness, cntOps, _) = await ArithmeticMenuFor("resource_counter", "Tæller");
         using var _3 = cntHarness;
 
         Assert.Multiple(() =>
@@ -109,7 +114,7 @@ public class ArithmeticOperatorSetTests : AvaloniaTestBase
                      ("resource_counter", "Tæller"),
                  })
         {
-            var (harness, operators) = await ArithmeticMenuFor(tag, name);
+            var (harness, operators, offers) = await ArithmeticMenuFor(tag, name);
             using var _1 = harness;
 
             Assert.That(operators, Is.Not.Empty, $"{tag}: the menu is populated (otherwise this proves nothing)");

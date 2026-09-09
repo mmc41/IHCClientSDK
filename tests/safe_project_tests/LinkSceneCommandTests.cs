@@ -24,7 +24,7 @@ namespace Ihc.Vis.Tests
             Project project = await Load("project3-KompleksWired.vis");
             ElementId pin = project.Root.Descendants()
                 .First(e => e.Tag is "dataline_input" or "dataline_output").Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new LinkPins(pin, pin));
 
@@ -42,7 +42,7 @@ namespace Ihc.Vis.Tests
             FunctionBlocks.FunctionBlockDefinition block =
                 App.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0 && f.Outputs.Count > 0);
             ElementId loc = project.Groups.First().Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ElementId fb1 = session.Apply(new AddFunctionBlock(loc, block)).Value;
             ElementId fb2 = session.Apply(new AddFunctionBlock(loc, block)).Value;
             ElementId output = FirstPin(session.Current!, fb1, "outputs");   // a source (produces)
@@ -69,7 +69,7 @@ namespace Ihc.Vis.Tests
             FunctionBlocks.FunctionBlockDefinition block =
                 App.GetAvailableFunctionBlocks().First(f => f.Inputs.Count > 0 && f.Outputs.Count > 0);
             ElementId loc = project.Groups.First().Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ElementId fb1 = session.Apply(new AddFunctionBlock(loc, block)).Value;
             ElementId fb2 = session.Apply(new AddFunctionBlock(loc, block)).Value;
             ElementId output = FirstPin(session.Current!, fb1, "outputs");
@@ -96,7 +96,7 @@ namespace Ihc.Vis.Tests
             Project project = await Load("project3-KompleksWired-scenelinks.vis");
             ProjectElement member = project.Root.Descendants().First(e => e.Tag is "scene_dimmer" or "scene_relay");
             ElementId id = member.Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             var r = new SceneValueResult(On: true, LevelPercent: 50, RampMinutes: 0, RampSeconds: 2);
 
             Project before = session.Current!;
@@ -134,7 +134,7 @@ namespace Ihc.Vis.Tests
                 new[] { ("version_major", "4"), ("version_minor", "0"), ("last_unique_id", "_0x7000") },
                 Node("groups", "_0x2031", new[] { ("name", "L") },
                     Node("group", "_0x2132", new[] { ("name", "Stue") }, product, block)));
-            ProjectDocumentSession session = Session(new Project(root));
+            IProjectDocument session = Session(new Project(root));
             ElementId.TryParse("_0x6312", out ElementId sceneOut);
             ElementId.TryParse("_0x5349", out ElementId scenes);
 
@@ -150,7 +150,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             ElementId id = project.Root.Descendants().First(e => e.Tag == "scenes").Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new UpdateSceneContainer(id, "my note"));
 

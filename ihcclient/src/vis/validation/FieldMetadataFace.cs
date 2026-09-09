@@ -26,7 +26,7 @@ namespace Ihc.Vis.Validation
     /// differently in another.
     /// </para>
     /// </summary>
-    public static class FieldMetadataFace
+    internal static class FieldMetadataFace
     {
         extension(RuleSet rules)
         {

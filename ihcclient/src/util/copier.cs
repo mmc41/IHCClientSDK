@@ -10,7 +10,7 @@ namespace Ihc
     /// <summary>
     /// Utilities to help to copy and transform complex objects.
     /// </summary>
-    public static class CopyUtil
+    internal static class CopyUtil
     {
         /// <summary>
         /// An exception will be thrown if the max number of recursive steps is reached.

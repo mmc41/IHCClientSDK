@@ -18,7 +18,7 @@ namespace Ihc.Vis.Catalog
     /// (spec ch. 09). The scan produces a <see cref="MaterializedCatalog"/>, the source-agnostic in-memory catalog
     /// whose lookup semantics it shares with the SDK-embedded <c>BuiltInCatalog</c>.
     /// </summary>
-    public static class CatalogDiscovery
+    internal static class CatalogDiscovery
     {
         /// <summary>Builds a catalog by scanning the given IHC Visual install directory (parsed eagerly).</summary>
         public static MaterializedCatalog FromInstallDir(string installDir)

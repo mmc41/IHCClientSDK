@@ -13,7 +13,7 @@ namespace Ihc.Vis.Editing
     /// deep-copies the definition's body (fresh project ids minted, internal IDREFs remapped) and resolves its
     /// grammar — the definition is reusable, read-only input whose placeholder ids never enter the project.
     /// </summary>
-    public sealed class GroupRef
+    internal sealed class GroupRef
     {
         private readonly ProjectEditor editor;
 

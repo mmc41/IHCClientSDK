@@ -11,7 +11,7 @@ namespace Ihc.Vis.Validation
     /// <c>Addressing</c>, and only the rendered table meets <c>ADR</c>.
     /// </para>
     /// </summary>
-    public static class CategoryExtensions
+    internal static class CategoryExtensions
     {
         private static readonly Dictionary<ValidationCategory, string> Codes = new()
         {
@@ -171,7 +171,7 @@ namespace Ihc.Vis.Validation
     }
 
     /// <summary>How well-founded a threshold is. The three answers genuinely differ, and the difference is read.</summary>
-    public enum ThresholdConfidence
+    internal enum ThresholdConfidence
     {
         /// <summary>A HARD limit from a vendor datasheet or the tool's own bounds (8 terminals, 128 addresses).</summary>
         VendorDocumented,
@@ -205,7 +205,7 @@ namespace Ihc.Vis.Validation
     /// <param name="Value">The number itself.</param>
     /// <param name="Confidence">How well-founded it is.</param>
     /// <param name="Evidence">The citation, or the explicit unconfirmed note for an authored one.</param>
-    public sealed record DeclaredThreshold(
+    internal sealed record DeclaredThreshold(
         string Name,
         double Value,
         ThresholdConfidence Confidence,
@@ -233,7 +233,7 @@ namespace Ihc.Vis.Validation
     /// <see cref="ThresholdConfidence.VendorDocumented"/>, which is for a bound this repository can check.
     /// </param>
     /// <param name="Evidence">The citation, or the explicit unconfirmed note for an authored one.</param>
-    public sealed record DeclaredFirmwareBound(
+    internal sealed record DeclaredFirmwareBound(
         string Name,
         ControllerFirmwareVersion? FixedIn,
         ThresholdConfidence Confidence,

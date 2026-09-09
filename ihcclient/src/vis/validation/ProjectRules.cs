@@ -16,7 +16,7 @@ namespace Ihc.Vis.Validation
     /// serves the process. Rebuilding them per call would re-register every rule to answer one question.
     /// </para>
     /// </summary>
-    public static class ProjectRules
+    internal static class ProjectRules
     {
         /// <summary>The registered rules, built once against <see cref="ProblemCatalog.Current"/>.</summary>
         public static RuleSet Registered { get; } = RuleSet.Create(ProblemCatalog.Current, All(ProblemCatalog.Current));

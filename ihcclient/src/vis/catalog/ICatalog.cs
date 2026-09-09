@@ -20,7 +20,7 @@ namespace Ihc.Vis.Catalog
     /// insert components without any desktop application present. Its home is this <c>Ihc.Vis.Catalog</c> namespace,
     /// alongside <see cref="CatalogDiscovery"/> and <see cref="MaterializedCatalog"/>.
     /// </remarks>
-    public interface ICatalog
+    internal interface ICatalog
     {
         /// <summary>Looks a product up by its opaque <c>product_identifier</c> token (e.g. <c>_0x2101</c>).</summary>
         ProductDefinition Product(string productIdentifier);

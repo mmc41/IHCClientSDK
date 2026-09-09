@@ -19,7 +19,7 @@ namespace Ihc.Vis.Validation
     /// A rule that could sort would make the determinism claim unprovable.
     /// </para>
     /// </summary>
-    public interface IProjectInspection
+    internal interface IProjectInspection
     {
         /// <summary>The project being validated. Immutable; a rule is a pure read.</summary>
         Project Project { get; }
@@ -79,7 +79,7 @@ namespace Ihc.Vis.Validation
 
     /// <summary>A traversal rule body: walk the project, report what is found.</summary>
     /// <param name="inspection">The project, the finding sink and the controller limits.</param>
-    public delegate void ProjectInspection(IProjectInspection inspection);
+    internal delegate void ProjectInspection(IProjectInspection inspection);
 
     /// <summary>
     /// One authored rule: the catalogue entry that classifies it, plus EXACTLY ONE of two bodies.
@@ -97,7 +97,7 @@ namespace Ihc.Vis.Validation
     /// <param name="Entry">The catalogue entry — identity and all classification.</param>
     /// <param name="Constraints">The declarative body, or null for a traversal rule.</param>
     /// <param name="Inspection">The traversal body, or null for a declarative rule.</param>
-    public sealed record RuleDefinition(
+    internal sealed record RuleDefinition(
         ProblemCatalogEntry Entry,
         ConstraintSequence? Constraints,
         ProjectInspection? Inspection);
@@ -111,7 +111,7 @@ namespace Ihc.Vis.Validation
     /// set is inconsistent.
     /// </para>
     /// </summary>
-    public sealed class RuleRegistrationException : InvalidOperationException
+    internal sealed class RuleRegistrationException : InvalidOperationException
     {
         /// <summary>Refuses a rule for a fault in the rule itself.</summary>
         /// <param name="code">The rule that was refused.</param>
@@ -186,7 +186,7 @@ namespace Ihc.Vis.Validation
     /// at composition and holds no per-run state.
     /// </para>
     /// </summary>
-    public sealed class RuleSet
+    internal sealed class RuleSet
     {
         private readonly Dictionary<string, RuleDefinition> byCode;
         private readonly Dictionary<RuleFaces, ImmutableArray<RuleDefinition>> byFace;

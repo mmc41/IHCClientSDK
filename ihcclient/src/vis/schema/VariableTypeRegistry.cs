@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Frozen;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
@@ -22,7 +23,7 @@ namespace Ihc.Vis.Schema
 
     /// <summary>An SDK-supported, user-authorable function-block variable type: its resource <see cref="Tag"/> and
     /// its <see cref="Role"/> classification (ADR-002).</summary>
-    public readonly record struct VariableTypeInfo(string Tag, VariableRole Role);
+    internal readonly record struct VariableTypeInfo(string Tag, VariableRole Role);
 
     /// <summary>
     /// The single authoritative registry of the function-block variable types a user can author into a block's
@@ -34,7 +35,7 @@ namespace Ihc.Vis.Schema
     /// suppression list. Scene links (<c>resource_scene</c>) are a separate flow (US-024), deliberately not a
     /// variable type.
     /// </summary>
-    public static class VariableTypeRegistry
+    internal static class VariableTypeRegistry
     {
         /// <summary>Every authorable variable type with its role, in palette order (input, output, then the value
         /// variables in the order they are offered under a block container).</summary>
@@ -70,6 +71,18 @@ namespace Ihc.Vis.Schema
 
         private static readonly FrozenSet<string> AllTags =
             All.Select(t => t.Tag).ToFrozenSet(StringComparer.Ordinal);
+
+        private static readonly FrozenDictionary<string, VariableRole> RolesByTag =
+            All.ToFrozenDictionary(t => t.Tag, t => t.Role, StringComparer.Ordinal);
+
+        /// <summary>
+        /// The role <paramref name="tag"/> plays in the section/type model, for a tag this registry declares. The
+        /// role is DECLARED per row above, so a reader asks for it here rather than inferring it from membership of
+        /// <see cref="ValueTypeTags"/> — which cannot tell an input from an output.
+        /// </summary>
+        /// <exception cref="KeyNotFoundException"><paramref name="tag"/> is not an authorable variable type; test
+        /// with <see cref="IsVariableType"/> first.</exception>
+        public static VariableRole RoleOf(string tag) => RolesByTag[tag];
 
         /// <summary>Whether <paramref name="tag"/> is an authorable variable type — any role, so both signal pins and
         /// the value variables. The membership test callers use to keep non-variables (notably <c>resource_scene</c>,

@@ -3,9 +3,9 @@ using ArchUnitNET.Domain;
 using ArchUnitNET.Fluent;
 using ArchUnitNET.NUnit;
 using Ihc.Vis.Catalog;
-using Ihc.Vis.Io;
 using Ihc.Vis.Products;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
+using static Ihc.Tests.ArchRuleHelpers;
 
 namespace Ihc.Tests
 {
@@ -33,9 +33,13 @@ namespace Ihc.Tests
         // OpenVisualArchitectureTests uses for its own positive controls.
         private static readonly System.Lazy<Architecture> OwnTestAssembly = ArchitectureModels.ArchitectureTests;
 
-        // Anchored by typeof, never by string: an emptied forbidden set is the classic way a rule like this stays
-        // green while checking nothing, and TheRuleHasSomethingToCheck turns that into a failure.
-        private static readonly System.Type[] DialogMetadataTypes =
+        // Anchored on resolved TYPES, never on bare strings: an emptied forbidden set is the classic way a rule
+        // like this stays green while checking nothing, and TheRuleHasSomethingToCheck turns that into a failure.
+        // The dialog descriptors are public contract, so they anchor by typeof; the preset table and the two
+        // writers are SDK-internal and resolve through the guard, which asserts the name still resolves.
+        private static System.Type[] DialogMetadataTypes => DialogTypes.Value;
+
+        private static readonly System.Lazy<System.Type[]> DialogTypes = new(() =>
         [
             typeof(ProductDialogModel),
             typeof(DialogGroupModel),
@@ -47,8 +51,18 @@ namespace Ihc.Tests
             typeof(DialogValueRule),
             typeof(DialogControlKind),
             typeof(DialogWidgetKind),
-            typeof(ProductDialogPresets),
-        ];
+            SdkType("Ihc.Vis.Products.ProductDialogPresets"),
+        ]);
+
+        // The two writers the rules protect. Both are SDK-internal, so they are resolved by name under the same
+        // guard as the preset table above.
+        private static System.Type CatalogWriter => Writer.Value;
+
+        private static System.Type Serializer => VisSerializer.Value;
+
+        private static readonly System.Lazy<System.Type> Writer = new(() => SdkType("Ihc.Vis.Catalog.CatalogFileWriter"));
+
+        private static readonly System.Lazy<System.Type> VisSerializer = new(() => SdkType("Ihc.Vis.Io.ProjectSerializer"));
 
         // includeReferenced: in the test-assembly model the dialog types are referenced rather than owned, and a
         // target set that cannot see them would make the positive control unable to fail.
@@ -71,8 +85,8 @@ namespace Ihc.Tests
             {
                 Assert.That(DialogMetadata().GetObjects(Sdk).Count(), Is.EqualTo(DialogMetadataTypes.Length),
                     "every named dialog type must resolve in the SDK model, or the forbidden set is incomplete");
-                Assert.That(Types().That().Are(typeof(CatalogFileWriter)).GetObjects(Sdk).Any(), Is.True);
-                Assert.That(Types().That().Are(typeof(ProjectSerializer)).GetObjects(Sdk).Any(), Is.True);
+                Assert.That(Types().That().Are(CatalogWriter).GetObjects(Sdk).Any(), Is.True);
+                Assert.That(Types().That().Are(Serializer).GetObjects(Sdk).Any(), Is.True);
             });
         }
 
@@ -82,7 +96,7 @@ namespace Ihc.Tests
         /// </summary>
         [Test]
         public void CatalogFileWriter_DependsOnNoDialogMetadata() =>
-            NoDialogMetadataDependency(typeof(CatalogFileWriter)).Check(Sdk);
+            NoDialogMetadataDependency(CatalogWriter).Check(Sdk);
 
         /// <summary>
         /// The project serializer emits <c>.vis</c> bytes — the subject of the whole byte-fidelity oracle corpus.
@@ -90,7 +104,7 @@ namespace Ihc.Tests
         /// </summary>
         [Test]
         public void ProjectSerializer_DependsOnNoDialogMetadata() =>
-            NoDialogMetadataDependency(typeof(ProjectSerializer)).Check(Sdk);
+            NoDialogMetadataDependency(Serializer).Check(Sdk);
 
         /// <summary>
         /// The positive control. The SAME rule, pointed at a type that DOES touch the dialog layer, must report a
@@ -111,15 +125,20 @@ namespace Ihc.Tests
             => Assert.That(Types().That().Are(typeof(SeededDialogAwareWriter)).GetObjects(OwnTestAssembly.Value).Any(),
                 Is.True);
 
-        // The synthetic violator: the two shapes a real regression would take — holding a dialog model, and calling
-        // into the preset lookup. Deliberately a WRITER-shaped class (it "serializes"), because that is the kind of
-        // type the rule protects.
+        // The synthetic violator: the two shapes a real regression would take — holding a dialog model, and taking
+        // one apart. Deliberately a WRITER-shaped class (it "serializes"), because that is the kind of type the rule
+        // protects.
+        //
+        // It reaches the dialog layer through the PUBLIC descriptor types rather than the internal preset table,
+        // for the reason every rebuilt control here shares: the preset table is SDK-internal and this assembly is
+        // not a friend of it, while what the rule forbids is a dependency on the dialog layer — which a descriptor
+        // field and a descriptor parameter express as truly as a preset call did.
         private static class SeededDialogAwareWriter
         {
-            private static readonly ProductDialogModel Cached = ProductDialogPresets.Dataline;
+            private static ProductDialogModel? Cached { get; set; }
 
-            public static string Write(ProductDefinition definition) =>
-                Cached.Groups.Length + "/" + ProductDialogPresets.ForRootTag(definition.Body.Tag).IsEmpty;
+            public static string Write(ProductDefinition definition, DialogFieldModel field) =>
+                (Cached?.Groups.Length ?? 0) + "/" + field.Caption + "/" + definition.Body.Tag;
         }
     }
 }

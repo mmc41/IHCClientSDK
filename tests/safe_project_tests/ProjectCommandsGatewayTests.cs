@@ -51,7 +51,7 @@ namespace Ihc.Vis.Tests
         {
             ProjectAppService app = App;
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             int before = session.Current!.Groups.Count;
 
             EditOutcome<ElementId> outcome = session.Apply(app.Commands.AddLocality(session.Current!, "Kitchen"));
@@ -105,7 +105,7 @@ namespace Ihc.Vis.Tests
         {
             ProjectAppService app = App;
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ElementId locality = session.Current!.Groups.First().Id!.Value;
 
             EditOutcome<ElementId> outcome =
@@ -409,7 +409,7 @@ namespace Ihc.Vis.Tests
             Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
             Assert.That(app.Commands.AddUserText(project, "hello").TableExists, Is.False, "a fresh project has no user-texts table");
 
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             session.Apply(app.Commands.AddUserText(session.Current!, "hello"));   // creates the table
             Assert.That(app.Commands.AddUserText(session.Current!, "world").TableExists, Is.True, "the table now exists");
         }

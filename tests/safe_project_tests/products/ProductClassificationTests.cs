@@ -14,13 +14,13 @@ namespace Ihc.Vis.Tests
     {
         // ----- Classify: the known catalog families (exact) -----
 
-        [TestCase("product_dataline", ProductFamily.Dataline)]
-        [TestCase("product_airlink", ProductFamily.Airlink)]
-        [TestCase("product_rs485_led_dimmer", ProductFamily.Rs485LedDimmer)]
-        [TestCase("product_rs485_modem", ProductFamily.Rs485Modem)]
-        [TestCase("product_rs485_sms_modem", ProductFamily.Rs485SmsModem)]
-        public void Classify_KnownFamilies_MatchExactly(string tag, ProductFamily expected) =>
-            Assert.That(ProductClassifier.Classify(tag), Is.EqualTo(expected));
+        [TestCase("product_dataline", nameof(ProductFamily.Dataline))]
+        [TestCase("product_airlink", nameof(ProductFamily.Airlink))]
+        [TestCase("product_rs485_led_dimmer", nameof(ProductFamily.Rs485LedDimmer))]
+        [TestCase("product_rs485_modem", nameof(ProductFamily.Rs485Modem))]
+        [TestCase("product_rs485_sms_modem", nameof(ProductFamily.Rs485SmsModem))]
+        public void Classify_KnownFamilies_MatchExactly(string tag, string expectedFamily) =>
+            Assert.That(ProductClassifier.Classify(tag).ToString(), Is.EqualTo(expectedFamily));
 
         // T043: `product_rs485_modem` (the non-SMS RS485 modem) is an INTENTIONAL open-world tag — it has no attested
         // vendor type code, so it is deliberately absent from the TypeCode registry (inventing a byte could collide),
@@ -40,13 +40,13 @@ namespace Ihc.Vis.Tests
 
         // ----- Classify: open-world fallback + precedence -----
 
-        [TestCase("product_x_airlink", ProductFamily.Airlink)]
-        [TestCase("product_x_modem", ProductFamily.Rs485Modem)]
-        [TestCase("product_x_airlink_modem", ProductFamily.Airlink)]   // airlink-before-modem tie-break
-        [TestCase("product_dataline_switch", ProductFamily.Other)]      // an unknown product with no family marker
-        [TestCase("group", ProductFamily.Other)]                         // a non-product tag
-        public void Classify_OpenWorld_FollowsStatedPrecedence(string tag, ProductFamily expected) =>
-            Assert.That(ProductClassifier.Classify(tag), Is.EqualTo(expected));
+        [TestCase("product_x_airlink", nameof(ProductFamily.Airlink))]
+        [TestCase("product_x_modem", nameof(ProductFamily.Rs485Modem))]
+        [TestCase("product_x_airlink_modem", nameof(ProductFamily.Airlink))]   // airlink-before-modem tie-break
+        [TestCase("product_dataline_switch", nameof(ProductFamily.Other))]      // an unknown product with no family marker
+        [TestCase("group", nameof(ProductFamily.Other))]                         // a non-product tag
+        public void Classify_OpenWorld_FollowsStatedPrecedence(string tag, string expectedFamily) =>
+            Assert.That(ProductClassifier.Classify(tag).ToString(), Is.EqualTo(expectedFamily));
 
         // ----- Predicates -----
 

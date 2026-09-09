@@ -51,7 +51,7 @@ namespace Ihc.Vis.Catalog
     /// <see cref="CatalogFormatException"/> and provably leaves the destination untouched.
     /// </para>
     /// </remarks>
-    public static class CatalogFileWriter
+    internal static class CatalogFileWriter
     {
         private const string Crlf = "\r\n";
         private const string IndentUnit = "  ";

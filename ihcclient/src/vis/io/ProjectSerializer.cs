@@ -17,7 +17,7 @@ namespace Ihc.Vis.Io
     /// (capped at depth 20) with one self-closing or paired tag per line; attributes in DTD ATTLIST order, written
     /// iff required / implied-and-set / differing from their default; the five XML specials and embedded CRLF escaped.
     /// </summary>
-    public static class ProjectSerializer
+    internal static class ProjectSerializer
     {
         private const string Crlf = "\r\n";
         private const string XmlDeclaration = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>";

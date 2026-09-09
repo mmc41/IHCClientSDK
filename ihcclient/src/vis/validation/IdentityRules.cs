@@ -32,7 +32,7 @@ namespace Ihc.Vis.Validation
     /// noise the chain exists to prevent.
     /// </para>
     /// </summary>
-    public static class IdentityRules
+    internal static class IdentityRules
     {
         /// <summary>The rules, ready to register against the catalogue.</summary>
         /// <param name="catalog">The catalogue the entries are declared in.</param>

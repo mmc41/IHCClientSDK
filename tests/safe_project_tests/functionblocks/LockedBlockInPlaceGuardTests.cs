@@ -32,7 +32,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             ElementId conditions = RichLockedBlock(project).Descendants().First(e => e.Tag == "conditions").Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new SetConditionsLogic(conditions, Or: true));
 
@@ -49,7 +49,7 @@ namespace Ihc.Vis.Tests
             Project project = await Load("project2-CustomBlock.vis");
             ElementId output = Fb(project, "AutoProof").FindChild("outputs")!
                 .Children.First(e => e.Tag == "resource_output").Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new SetOutputBackup(output, Save: true));
 
@@ -61,7 +61,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project2-CustomBlock.vis");
             ElementId lockedBlock = Fb(project, "AutoProof").Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new RenameLocality(lockedBlock, "Renamed instance", "Installer note"));
 
@@ -107,7 +107,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project2-CustomBlock.vis");
             ElementId locality = project.Groups.First().Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new RenameLocality(locality, "Renamed room", string.Empty));
 

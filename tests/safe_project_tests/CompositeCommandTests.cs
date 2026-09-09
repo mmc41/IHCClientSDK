@@ -14,7 +14,7 @@ namespace Ihc.Vis.Tests
         public async Task Composite_OfTwoParts_IsOneUndoStep()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             Project before = session.Current!;
 
             EditOutcome outcome = session.Apply(
@@ -41,7 +41,7 @@ namespace Ihc.Vis.Tests
         public async Task Composite_WithRefusedPart_RefusesWholeGesture()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             Project before = session.Current!;
             var missing = new ElementId(0x7FFFFF, 1);   // a counter far beyond project3's live id range
 

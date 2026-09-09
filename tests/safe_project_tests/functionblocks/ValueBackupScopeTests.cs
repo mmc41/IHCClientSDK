@@ -24,9 +24,9 @@ namespace Ihc.Vis.Tests
         /// <summary>An UNLOCKED block, plus a freshly authored variable of <paramref name="tag"/> in its settings
         /// container — the shape the vendor's dialog was read on. Authored rather than fished out of a fixture so
         /// the case is exercised rather than skipped.</summary>
-        private static (ProjectDocumentSession session, ElementId variable) BlockWithVariable(Project project, string tag)
+        private static (IProjectDocument session, ElementId variable) BlockWithVariable(Project project, string tag)
         {
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ElementId block = project.Root.Descendants()
                 .First(e => e.Tag == "functionblock" && e.GetAttribute("locked") != "yes").Id!.Value;
             session.Apply(new AddVariable(block, "settings", tag, "Probe"));
@@ -40,7 +40,7 @@ namespace Ihc.Vis.Tests
         public async Task SetBackup_OnAnInternalVariable_IsAllowedAndWritesTheAttribute(string tag)
         {
             Project project = await Load("project3-KompleksWired.vis");
-            (ProjectDocumentSession session, ElementId variable) = BlockWithVariable(project, tag);
+            (IProjectDocument session, ElementId variable) = BlockWithVariable(project, tag);
 
             EditOutcome outcome = session.Apply(new SetOutputBackup(variable, Save: true));
 
@@ -64,7 +64,7 @@ namespace Ihc.Vis.Tests
                 Assert.Ignore("no resource_scene in this fixture");
                 return;
             }
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new SetOutputBackup(scene.Id.Value, Save: true));
 

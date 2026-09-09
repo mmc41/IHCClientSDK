@@ -40,7 +40,7 @@ namespace Ihc.Vis.FunctionBlocks
     /// via <see cref="Ihc.Vis.ProjectAppService"/>), which owns telemetry, IO and the single project-mutation entry
     /// point — the builder deliberately owns none of that.</para>
     /// </remarks>
-    public sealed class FunctionBlockDefinitionBuilder : DefinitionBuilderBase<FunctionBlockDefinitionBuilder>
+    internal sealed class FunctionBlockDefinitionBuilder : DefinitionBuilderBase<FunctionBlockDefinitionBuilder>
     {
         private static readonly (string Name, string Value)[] NoAttrs = Array.Empty<(string, string)>();
         private static readonly ProjectElement[] NoChildren = Array.Empty<ProjectElement>();
@@ -722,7 +722,7 @@ namespace Ihc.Vis.FunctionBlocks
     /// placeholder id used to wire <c>link1</c>/<c>link2</c>/<c>scene_resource</c>. Deliberately not
     /// <see cref="Ihc.Vis.Editing.ResourceRef"/> — see the remarks on <see cref="FunctionBlockDefinitionBuilder"/>.
     /// </summary>
-    public sealed class FbResourceHandle
+    internal sealed class FbResourceHandle
     {
         internal FbResourceHandle(string name, ElementId placeholderId)
         {
@@ -747,7 +747,7 @@ namespace Ihc.Vis.FunctionBlocks
     /// moment): definition-layer value-ids are throwaway placeholders the insert transform re-mints, so there is
     /// nothing to allocate atomically and the incremental form reads better for GUI authoring.
     /// </summary>
-    public sealed class FbEnumDefRef
+    internal sealed class FbEnumDefRef
     {
         private readonly IdAllocator ids;
         private readonly ElementId defId;
@@ -830,7 +830,7 @@ namespace Ihc.Vis.FunctionBlocks
     /// <see cref="Ihc.Vis.Editing.SettingBuilder"/>, with a typed core plus a raw <see cref="Attribute"/> escape hatch
     /// (the ~18-type resource palette is too heterogeneous for per-type builders).
     /// </summary>
-    public sealed class FbResourceDefBuilder
+    internal sealed class FbResourceDefBuilder
     {
         private readonly List<(string Name, string Value)> attrs = new();
         // Deliberately NOT in attrs: documentation is programmatic-lookup-only help metadata, harvested by

@@ -15,7 +15,7 @@ namespace Ihc.Vis.Tests
         [Test]   // from SavePointTests.Undo_BackToSavedState_IsNotDirty
         public async Task Undo_BackToSavedState_IsNotDirty()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             session.MarkSaved(session.Current!);
             Assert.That(session.IsDirty, Is.False, "precondition: a freshly saved project is clean");
 
@@ -29,7 +29,7 @@ namespace Ihc.Vis.Tests
         [Test]   // from SavePointTests.Redo_AwayFromSavedState_IsDirtyAgain
         public async Task Redo_AwayFromSavedState_IsDirtyAgain()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             session.MarkSaved(session.Current!);
             session.Apply(new AddLocality("Alpha"));
             session.Undo();
@@ -41,7 +41,7 @@ namespace Ihc.Vis.Tests
         [Test]   // from SavePointTests.Save_MovesTheSavePoint_SoUndoingAwayFromItIsDirty
         public async Task Save_MovesTheSavePoint_SoUndoingAwayFromItIsDirty()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             session.Apply(new AddLocality("Alpha"));
             session.MarkSaved(session.Current!);   // the edited project is now what the file holds
             Assert.That(session.IsDirty, Is.False, "precondition: saving the edit made it clean");
@@ -53,7 +53,7 @@ namespace Ihc.Vis.Tests
         [Test]   // from SavePointTests.Undo_BackToInitialStateOfNeverSavedProject_IsNotDirty
         public async Task Undo_BackToInitialState_IsNotDirty()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             Assert.That(session.IsDirty, Is.False, "precondition: a freshly opened project is clean");
 
             session.Apply(new AddLocality("Alpha"));
@@ -64,7 +64,7 @@ namespace Ihc.Vis.Tests
         [Test]   // from SavePointTests.UndoPastSavePoint_IsDirty_ThenRedoBackToSavePoint_IsClean
         public async Task UndoPastSavePoint_IsDirty_ThenRedoBackToSavePoint_IsClean()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             session.Apply(new AddLocality("A"));          // → S1
             session.MarkSaved(session.Current!);          // save point = S1 (mid-history, not the initial snapshot)
             session.Apply(new AddLocality("B"));          // → S2

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Ihc.Vis.Model;
 using Ihc.Vis.Problems;
@@ -41,8 +42,20 @@ internal static class ProblemsTestData
         string locator = "Stue") =>
         Finding(ValidationSeverity.Error, code, message, category, locator) with
         {
-            RefusedOperations = ImmutableArray.Create(OperationCodes.Save, OperationCodes.EditOpen),
+            RefusedOperations = RefusingOperations,
         };
+
+    /// <summary>
+    /// The operations a REAL refusing catalogue row declares, read from the catalogue rather than named as code
+    /// constants. What <see cref="FatalFinding"/> needs is a finding that refuses something — the tier is decided
+    /// by whether the set is empty, not by which operations are in it — and taking the set from a declared row
+    /// keeps this helper on the published catalogue contract while making the values true ones.
+    /// </summary>
+    private static readonly EquatableArray<ProblemCode> RefusingOperations =
+        ProblemCatalog.Current.Entries
+            .Where(entry => entry.RefusedOperations.Length > 0)
+            .OrderBy(entry => entry.Code.Value, StringComparer.Ordinal)
+            .First().RefusedOperations;
 
     /// <summary>
     /// One constructed fault — the sibling of <see cref="Finding"/> for the panel's other row kind.

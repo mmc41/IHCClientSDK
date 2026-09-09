@@ -43,17 +43,16 @@ public class ProductDialogStepSeamTests : AvaloniaTestBase
         ElementId locality = project.Groups.First().Id!.Value;
         ProductDefinition definition = app.GetAvailableProducts()
             .First(p => p.ProductIdentifier == productIdentifier);
-        var session = new ProjectDocumentSession();
-        session.Open(project);
-        ElementId id = session.Apply(new AddProduct(locality, definition)).Value;
+        IProjectDocument document = app.OpenDocument(project);
+        ElementId id = document.Apply(new AddProduct(locality, definition)).Value;
 
-        ProjectElement product = session.Current!.FindById(id)!;
+        ProjectElement product = document.Current!.FindById(id)!;
         List<ProductTerminal> terminals = [.. product.Children
             .Where(c => c.Kind == ElementKind.DatalinePin)
             .Select(c => new ProductTerminal(
-                session.Current!.View(c).Name ?? "", "", "", "", c.IsOutputPin, c.Id!.Value.ToToken()))];
+                document.Current!.View(c).Name ?? "", "", "", "", c.IsOutputPin, c.Id!.Value.ToToken()))];
 
-        return (new ProductDialogViewModel(app.GetProductDialog(session.Current!, id), terminals), terminals);
+        return (new ProductDialogViewModel(app.GetProductDialog(document.Current!, id), terminals), terminals);
     }
 
     /// <summary>Presses <i>Konfigurer</i> on the first terminal grid, exactly as the installer would.</summary>

@@ -7,7 +7,7 @@ using Ihc.Vis.Model;
 namespace Ihc.Vis.Programs
 {
     /// <summary>The four program-method categories a <see cref="ProgramMethod"/> belongs to (US-028/029/031/032).</summary>
-    public enum ProgramMethodCategory
+    internal enum ProgramMethodCategory
     {
         Event,
         Command,
@@ -23,7 +23,7 @@ namespace Ihc.Vis.Programs
     /// pin additionally reaches the arithmetic submenu via
     /// <see cref="ProgramMethodCatalog.NumericVariableTags"/>, which is orthogonal to this family.
     /// </summary>
-    public enum ProgramPinType
+    internal enum ProgramPinType
     {
         Bool,
         Analog,
@@ -57,7 +57,7 @@ namespace Ihc.Vis.Programs
     /// </summary>
     /// <remarks>OpenVisual uses <see cref="Category"/> in the menu identity and <see cref="OperandCount"/> to choose
     /// flat versus second-operand authoring.</remarks>
-    public sealed record ProgramMethod(
+    internal sealed record ProgramMethod(
         ProgramMethodCategory Category,
         string Token,
         string NameTemplate,
@@ -72,7 +72,7 @@ namespace Ihc.Vis.Programs
     /// the values are the byte-fidelity vendor literals from the recorded oracles. Only the tokens the app uses are
     /// promoted (YAGNI); the full vendor <c>Data\mNN.def</c> vocabulary stays out of scope.
     /// </summary>
-    public static class ProgramMethodCatalog
+    internal static class ProgramMethodCatalog
     {
         // These are persisted .vis payloads, not UI labels; %LT stays live so renderers resolve the linked
         // switch's current name after renames.

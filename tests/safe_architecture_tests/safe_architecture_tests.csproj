@@ -56,6 +56,9 @@
     <!-- T044/R17 check three: the NON-GUI consumer whose rendering of an SDK problem is the measurement.
          Referenced so the check calls the real renderer and reads the real assembly's references. -->
     <ProjectReference Include="..\..\utilities\ihc_project_download_upload\ihc_ProjectDownloadUpload.csproj" />
+    <!-- The one NON-TEST holder of an SDK friend grant, referenced so LabFriendGrantArchitectureTests can
+         read its IL and bound the grant to its two documented internal reaches. -->
+    <ProjectReference Include="..\..\utilities\ihc_lab\ihc_lab.csproj" />
   </ItemGroup>
 
 </Project>

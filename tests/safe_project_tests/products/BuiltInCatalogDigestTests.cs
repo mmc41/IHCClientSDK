@@ -478,8 +478,12 @@ namespace Ihc.Vis.Tests
 
         private static void AssertSurface(Type definition, string[] hashed, string[] unhashed)
         {
+            // Public AND non-public: what this gate covers is the definition's whole MEMBER surface, and the
+            // representation members it must account for (Grammar, SourceEncoding, ExplicitCloseIds) are internal
+            // — a public-only scan would silently stop classifying exactly the members most at risk of drifting
+            // out of the digest.
             string[] declared = definition
-                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .Select(p => p.Name)
                 .Where(n => n != "EqualityContract")
                 .Order(StringComparer.Ordinal)

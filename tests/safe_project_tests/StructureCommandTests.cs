@@ -27,7 +27,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             (ElementId product, _, ElementId targetLoc) = PickProductAndTwoLocalities(project);
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new MoveNode(product, targetLoc));
 
@@ -48,7 +48,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             ElementId loc = project.Groups.First().Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             // a locality cannot be contained by a locality (and self is a descendant) — refused either way.
             EditOutcome outcome = session.Apply(new MoveNode(loc, loc));
@@ -61,7 +61,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             (ElementId product, ElementId sourceLoc, _) = PickProductAndTwoLocalities(project);
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new MoveNode(product, sourceLoc));
 
@@ -74,7 +74,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             (ElementId product, _, ElementId targetLoc) = PickProductAndTwoLocalities(project);
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome<ElementId> outcome = session.Apply(new CopyNode(product, targetLoc));
 
@@ -97,7 +97,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             (ElementId product, _, _) = PickProductAndTwoLocalities(project);
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             // a product is not a legal paste target — only a locality can hold a product/block.
             EditOutcome<ElementId> outcome = session.Apply(new CopyNode(product, product));
@@ -115,7 +115,7 @@ namespace Ihc.Vis.Tests
             ElementId product = linked.Id!.Value;
             ElementId currentParent = project.FindParent(product)!.Id!.Value;
             ElementId target = project.Groups.First(g => g.Id!.Value != currentParent).Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome<ElementId> outcome = session.Apply(new CopyNode(product, target));
 
@@ -134,7 +134,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await Load("project3-KompleksWired.vis");
             ElementId lastGroup = project.Groups.Last().Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new ReorderNode(lastGroup, SameTagIndex: 0));
 
@@ -185,7 +185,7 @@ namespace Ihc.Vis.Tests
             Project project = await Load("project3-KompleksWired.vis");
             ElementId product = project.Root.Descendants()
                 .First(e => ProductClassifier.IsProduct(e.Tag) && e.Id is not null).Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             session.Apply(new DeleteNode(product, Cascade: true));
             Assert.That(session.Current!.FindById(product), Is.Null, "the product and its subtree are gone");

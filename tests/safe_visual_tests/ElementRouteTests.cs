@@ -34,22 +34,21 @@ public class ElementRouteTests : AvaloniaTestBase
     {
         var app = new ProjectAppService(new IhcSettings());
         Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
-        var session = new ProjectDocumentSession();
-        session.Open(project);
+        IProjectDocument document = app.OpenDocument(project);
         ElementId locality = project.Groups.First().Id!.Value;
-        ElementId block = session.Apply(
-            app.Commands.AddEmptyFunctionBlock(session.Current!, locality, "Blok")).Value;
+        ElementId block = document.Apply(
+            app.Commands.AddEmptyFunctionBlock(document.Current!, locality, "Blok")).Value;
         // A Betingelser group comes with a SUB-PROGRAM, so the block needs a program and a sub-program inside it
         // before there is anything of that kind to route to.
-        ElementId programs = session.Current!.FindById(block)!.DescendantsAndSelf()
+        ElementId programs = document.Current!.FindById(block)!.DescendantsAndSelf()
             .First(e => e.Tag == "programs").Id!.Value;
-        session.Apply(app.Commands.AddProgram(session.Current!, programs, "Program"));
-        ElementId actions = session.Current!.FindById(block)!.DescendantsAndSelf()
+        document.Apply(app.Commands.AddProgram(document.Current!, programs, "Program"));
+        ElementId actions = document.Current!.FindById(block)!.DescendantsAndSelf()
             .First(e => e.Tag == "actions").Id!.Value;
-        session.Apply(app.Commands.AddSubProgram(session.Current!, actions));
-        ProjectElement conditions = session.Current!.FindById(block)!.DescendantsAndSelf()
+        document.Apply(app.Commands.AddSubProgram(document.Current!, actions));
+        ProjectElement conditions = document.Current!.FindById(block)!.DescendantsAndSelf()
             .First(e => e.Tag == "conditions");
-        return (session.Current!, locality, block, conditions.Id!.Value);
+        return (document.Current!, locality, block, conditions.Id!.Value);
     }
 
     private static ProblemNavigationPlanner Planner() =>

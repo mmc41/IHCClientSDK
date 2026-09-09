@@ -47,10 +47,10 @@ namespace Ihc.Vis.FunctionBlocks
         /// without any grammar (the writer then rejects it — such a definition has no on-disk form — while insert
         /// still resolves against the registry).
         /// </summary>
-        public CatalogGrammar Grammar { get; init; } = CatalogGrammar.Empty;
+        internal CatalogGrammar Grammar { get; init; } = CatalogGrammar.Empty;
 
         /// <summary>The source file's on-disk text encoding, reproduced verbatim on write (see <see cref="CatalogTextEncoding"/>).</summary>
-        public CatalogTextEncoding SourceEncoding { get; init; } = CatalogTextEncoding.Latin1;
+        internal CatalogTextEncoding SourceEncoding { get; init; } = CatalogTextEncoding.Latin1;
 
         /// <summary>
         /// Ids of elements the writer must close with an explicit end tag even though they now have no children
@@ -59,7 +59,7 @@ namespace Ihc.Vis.FunctionBlocks
         /// that never had children stays self-closing and one that was emptied does not (uxparity S-22). Empty for a
         /// definition read from a catalog file, where what is on disk is already the truth.
         /// </summary>
-        public EquatableSet<ElementId> ExplicitCloseIds { get; init; } = [];
+        internal EquatableSet<ElementId> ExplicitCloseIds { get; init; } = [];
 
         /// <summary>
         /// True only for the catalog's empty "Tom blok" scaffold (<c>Data\fb.def</c>).

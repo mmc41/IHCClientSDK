@@ -32,6 +32,7 @@ open source alternatives to applications and fills that gap for experienced .NET
 
 * Please notice that this project is **not** in any way affiliated with- or supported by LK / Schneider Electric. It exists only because Schneider Electric has not yet released a public SDK themselves.
 * The project is unofficial, unfinished and may contain serious bugs. Use at your own risk!
+* **Do not use the dangerous manufacturing/internal-test operations on a live installation or enable sensitive-data logging.** These operations are retained mainly for API completeness and documentation and are not intended for real use at this stage. Keep `allowDangerousInternTestCalls` and `logSensitiveData` set to `false`; sensitive logging can expose credentials and other private data. See the [diagnostic capability policy](ihcclient/docs/api-contract.md#34-diagnostic-capabilities-are-not-intended-for-real-use).
 * The project is only partially supported. You are welcome to report bugs and feature requests but don't expect quick solutions unless you supply tested pull-requests as well (or offer to pay the author(s) for support).
 * The project is intended for experienced .NET developers using C# and/or F#.
 * The SDK has been tested against v3.0 controllers using both Mac and Windows (but Linux ought to work too). More testing from users is needed. Feedback is welcome.
@@ -242,7 +243,8 @@ Note:
 * Endpoint should be the http/https baseurl for the controller. If connecting to controller over usb, use endpoint set to "<http://usb>".
 * Username and password should match user setup by controller. Ignored by controller if logging in over usb.
 * Application name can be set to 'treeview', 'openapi', 'administrator'.
-* Keep logSensitiveData and asyncContinueOnCapturedContext set to false unless you know what you are doing.
+* Keep `allowDangerousInternTestCalls` and `logSensitiveData` set to `false`. Dangerous internal-test operations and sensitive logging are not intended for real use at this stage; enabling a flag does not make their use recommended or safe.
+* Keep `asyncContinueOnCapturedContext` set to `false` unless your application specifically requires context capture.
 * The template contains additional optional settings (telemetry endpoints, test resource IDs, `allowDangerousInternTestCalls`, `ihcVisualInstallDir`) — see the comments inside the template file.
 
 ## Secure password in configuration

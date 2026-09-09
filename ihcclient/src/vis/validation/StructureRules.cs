@@ -30,7 +30,7 @@ namespace Ihc.Vis.Validation
     /// that hard-coded its own idea of legal placement would report on files the editor itself will author.
     /// </para>
     /// </summary>
-    public static class StructureRules
+    internal static class StructureRules
     {
         /// <summary>The root's seven fixed children, in the order every vendor-authored file carries them.</summary>
         private static readonly ImmutableArray<string> RootChildOrder =

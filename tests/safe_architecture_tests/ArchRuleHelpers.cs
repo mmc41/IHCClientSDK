@@ -36,6 +36,42 @@ namespace Ihc.Tests
         public static readonly string SoapNs =
             ParentNamespace(typeof(global::Ihc.Soap.Authentication.AuthenticationService).Namespace!);
 
+        /// <summary>
+        /// Resolves an SDK type the rules ANCHOR on but may not NAME, because it is internal to the SDK and this
+        /// assembly is not a friend of it.
+        /// <para>
+        /// A <c>typeof</c> anchor is compile-checked: rename the type and the fixture stops building. A bare string
+        /// is not, and that is the failure this guard exists to prevent — a renamed anchor would leave a rule
+        /// pointed at a namespace nothing declares, or a forbidden set nothing matches, and the rule would go green
+        /// while checking nothing. So every string anchor resolves through here, and a name that no longer resolves
+        /// fails the fixture loudly instead.
+        /// </para>
+        /// <para>
+        /// <see cref="System.Reflection.Assembly.GetType(string, bool)"/> finds non-public types too, which is exactly why a string
+        /// lookup can anchor on a type an accessibility change has hidden.
+        /// </para>
+        /// </summary>
+        public static Type SdkType(string fullName)
+        {
+            Type? resolved = SdkAssembly.GetType(fullName, throwOnError: false);
+            NUnit.Framework.Assert.That(resolved, NUnit.Framework.Is.Not.Null,
+                $"the architecture rules anchor on '{fullName}', which no longer resolves in "
+                + $"{SdkAssembly.GetName().Name} — a rename must move the anchor, not silently empty the rule");
+            return resolved!;
+        }
+
+        /// <summary>The namespace of <see cref="SdkType"/>'s result — the layer-anchor form, guarded the same way.</summary>
+        public static string SdkNamespaceOf(string fullName) => SdkType(fullName).Namespace!;
+
+        /// <summary>The SDK assembly every structural rule reads. Shared so the fixtures cannot drift onto two
+        /// anchors for one assembly.</summary>
+        public static System.Reflection.Assembly SdkAssembly => typeof(global::Ihc.Vis.ProjectAppService).Assembly;
+
+        /// <summary>Whether <paramref name="ns"/> is <paramref name="root"/> or a namespace beneath it — the
+        /// "starts-with at a segment boundary" rule, so <c>Ihc.Vis</c> never catches <c>Ihc.Vistas</c>.</summary>
+        public static bool IsInNamespaceSubtree(string? ns, string root) =>
+            ns is not null && (ns == root || ns.StartsWith(root + ".", StringComparison.Ordinal));
+
         // ArchUnitNET renders a nested type as "Outer+Inner", and the CLR's own metadata uses '/' for the same
         // join, so both split a rendered name back to its authored owner. Hoisted into SearchValues because the
         // splits below run once per type AND once per call edge of every scanned assembly, where a fresh
@@ -249,6 +285,73 @@ namespace Ihc.Tests
                 + string.Join("; ", offending.Select(e =>
                     $"{e.Origin}.{e.OriginMember} -> {e.TargetType}.{e.Member}")));
         }
+
+        /// <summary>
+        /// A contract's own type plus its base chain and every interface it implements — the hierarchy whose
+        /// DECLARED members make up a public surface. Shared, because two boundary scans walking a hierarchy two
+        /// slightly different ways is how their verdicts start disagreeing about the same type.
+        /// </summary>
+        public static IEnumerable<Type> ContractHierarchy(Type contract)
+        {
+            ArgumentNullException.ThrowIfNull(contract);
+            var seen = new HashSet<Type>();
+            for (Type? current = contract; current is not null && seen.Add(current); current = current.BaseType)
+                yield return current;
+            foreach (Type inherited in contract.GetInterfaces())
+                if (seen.Add(inherited))
+                    yield return inherited;
+        }
+
+        /// <summary>
+        /// Every type named on a contract's own declared public signatures: property and indexer types, event
+        /// payloads (followed into the delegate's own <c>Invoke</c>), method parameters and returns, field types,
+        /// public constructor parameters, and both type- and method-level generic constraints.
+        /// <para>
+        /// Shared by the port-surface scan and the SDK boundary scan. Two boundary scans walking a surface two
+        /// slightly different ways is how their verdicts start disagreeing about the same type -- which had already
+        /// happened once here, one copy following delegate payloads and the other method generic constraints.
+        /// </para>
+        /// </summary>
+        public static IEnumerable<Type> DeclaredContractTypes(Type contract)
+        {
+            ArgumentNullException.ThrowIfNull(contract);
+            return contract.GetGenericArguments()
+                .Where(argument => argument.IsGenericParameter)
+                .SelectMany(argument => argument.GetGenericParameterConstraints())
+                .Concat(contract.GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static
+                                             | BindingFlags.DeclaredOnly)
+                    .SelectMany(DeclaredSignatureTypes))
+                .Concat(contract.GetConstructors(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static
+                                                 | BindingFlags.DeclaredOnly)
+                    .SelectMany(DeclaredSignatureTypes));
+        }
+
+        /// <summary>Every type one declared member names. A custom delegate is followed into its <c>Invoke</c>, so an
+        /// event handing back an implementation type is seen rather than counted as one opaque handler type.</summary>
+        private static IEnumerable<Type> DeclaredSignatureTypes(MemberInfo member) => member switch
+        {
+            PropertyInfo property => property.GetIndexParameters().Select(parameter => parameter.ParameterType)
+                .Append(property.PropertyType),
+            EventInfo declaredEvent => DelegateSignatureTypes(declaredEvent.EventHandlerType!)
+                .Append(declaredEvent.EventHandlerType!),
+            MethodInfo method => MethodSignatureTypes(method).Append(method.ReturnType),
+            ConstructorInfo constructor => MethodSignatureTypes(constructor),
+            FieldInfo field => [field.FieldType],
+            _ => [],
+        };
+
+        private static IEnumerable<Type> DelegateSignatureTypes(Type handler) =>
+            handler.GetMethod("Invoke") is { } invoke
+                ? invoke.GetParameters().Select(parameter => parameter.ParameterType).Append(invoke.ReturnType)
+                : [];
+
+        private static IEnumerable<Type> MethodSignatureTypes(MethodBase method) =>
+            method.GetParameters().Select(parameter => parameter.ParameterType)
+                .Concat((method is MethodInfo genericMethod
+                        ? genericMethod.GetGenericArguments()
+                        : Array.Empty<Type>())
+                    .Where(argument => argument.IsGenericParameter)
+                    .SelectMany(argument => argument.GetGenericParameterConstraints()));
 
         /// <summary>A declared type and every type it reaches through indirection, arrays, generic arguments and
         /// constraints, custom delegate signatures, or fields of a user-defined value wrapper. Shared by the GUI

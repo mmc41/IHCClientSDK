@@ -152,16 +152,21 @@ public class AutomationCoverageTests : AvaloniaTestBase
     // ── The descriptor-driven dialog ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// One representative catalog product per product family, DISCOVERED from the catalog rather than listed. A
-    /// family whose products stop composing a dialog fails here without anyone remembering to add a case, and a
-    /// family added later joins on its own.
+    /// One representative catalog product per DEVICE ROOT, discovered from the catalog rather than listed. A device
+    /// root whose products stop composing a dialog fails here without anyone remembering to add a case, and a root
+    /// added later joins on its own.
+    /// <para>
+    /// Grouped by the device-root tag rather than by the SDK's product family: the family classification is engine
+    /// internals, and the tag is what it keys on, so this partitions the catalog the same way while naming only
+    /// what a caller can see.
+    /// </para>
     /// </summary>
     private static IEnumerable<TestCaseData> ProductDialogFamilies()
     {
         var app = new ProjectAppService(new IhcSettings());
         foreach (var family in app.GetAvailableProducts()
-                     .GroupBy(product => ProductClassifier.Classify(product.Body.Tag))
-                     .OrderBy(group => group.Key))
+                     .GroupBy(product => product.Body.Tag, StringComparer.Ordinal)
+                     .OrderBy(group => group.Key, StringComparer.Ordinal))
         {
             ProductDefinition representative = family
                 .OrderBy(product => product.ProductIdentifier, StringComparer.Ordinal).First();
@@ -264,10 +269,9 @@ public class AutomationCoverageTests : AvaloniaTestBase
         ProductDefinition definition = app.GetAvailableProducts()
             .First(product => product.ProductIdentifier == productIdentifier);
 
-        var session = new ProjectDocumentSession();
-        session.Open(project);
-        ElementId placed = session.Apply(new AddProduct(locality, definition)).Value;
-        return new ProductDialogViewModel(app.GetProductDialog(session.Current!, placed));
+        IProjectDocument document = app.OpenDocument(project);
+        ElementId placed = document.Apply(new AddProduct(locality, definition)).Value;
+        return new ProductDialogViewModel(app.GetProductDialog(document.Current!, placed));
     }
 
     /// <summary>Every control carrying a <c>dlg.</c> automation id — the prefix the composer stamps on fields and

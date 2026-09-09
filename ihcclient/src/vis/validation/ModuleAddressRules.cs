@@ -31,7 +31,7 @@ namespace Ihc.Vis.Validation
     /// condition <c>doc-address</c> already reports on the same elements. The entry carries the reasoning; there is
     /// no rule here for it, and a test pins that an unaddressed terminal produces exactly one finding.</para>
     /// </summary>
-    public static class ModuleAddressRules
+    internal static class ModuleAddressRules
     {
         /// <summary>The RS485 LED-dimmer's channel element.</summary>
         private const string DimmerChannelTag = "rs485_led_dimmer_channel";

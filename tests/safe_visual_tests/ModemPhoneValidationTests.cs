@@ -45,11 +45,10 @@ public class ModemPhoneValidationTests : AvaloniaTestBase
         Project project = app.CreateNew(new ProjectDetails("P", "I", "DK"));
         ElementId locality = project.Groups.First().Id!.Value;
         ProductDefinition modem = app.GetAvailableProducts().First(p => p.ProductIdentifier == SmsModem);
-        var session = new ProjectDocumentSession();
-        session.Open(project);
-        ElementId placed = session.Apply(new AddProduct(locality, modem)).Value;
+        IProjectDocument document = app.OpenDocument(project);
+        ElementId placed = document.Apply(new AddProduct(locality, modem)).Value;
 
-        var viewModel = new ProductDialogViewModel(app.GetProductDialog(session.Current!, placed));
+        var viewModel = new ProductDialogViewModel(app.GetProductDialog(document.Current!, placed));
         var window = new ProductDialogWindow();
         window.Populate(viewModel);
         CurrentTestWindow = window;

@@ -5,7 +5,7 @@ using Ihc.Vis.Products;
 
 namespace Ihc.Vis.Catalog
 {
-    public sealed partial class BuiltInCatalog
+    internal sealed partial class BuiltInCatalog
     {
         // Registers every code-authored product, in the same document order catalog discovery scans the
         // install dir, so last-wins lookup over duplicate product_identifiers matches the install-dir path.

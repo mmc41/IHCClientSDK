@@ -52,7 +52,7 @@ namespace Ihc.Vis.Tests
 
             // Pre-fix the service silently self-built a SECOND AuthenticationService here, authenticating a
             // session the injected controller never uses (R0). The bridge must instead demand the matching auth.
-            Assert.That(() => new ProjectAppService(settings, A.Fake<ICatalog>(),
+            Assert.That(() => new ProjectAppService(settings, StubCatalog.Empty(),
                     new FakeTimeProvider(DateTimeOffset.UnixEpoch), controller, authService: null),
                 Throws.ArgumentException.With.Message.Contains(nameof(IAuthenticationService)),
                 "a controller-injecting bridge must be given the auth the controller rides, not self-build a foreign one");

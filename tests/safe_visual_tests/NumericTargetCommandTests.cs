@@ -12,7 +12,7 @@ namespace safe_visual_tests;
 /// <c>sættes til ON</c> / <c>sættes til OFF</c> / <c>sættes til IKKE …</c>.
 /// <para>
 /// T008/T009 located the cause in the SDK rather than the GUI: <c>ClassifyPin</c> mapped <c>resource_integer</c> and
-/// <c>resource_counter</c> to <see cref="Ihc.Vis.Programs.ProgramPinType.Bool"/> — the documented default — so
+/// <c>resource_counter</c> to the bool family — the documented default — so
 /// <c>CommandsFor</c> handed them the boolean list and the GUI rendered it faithfully. The fix is a numeric pin
 /// family; no GUI-side filter could have done it.
 /// </para>

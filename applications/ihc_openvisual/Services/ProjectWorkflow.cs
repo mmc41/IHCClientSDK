@@ -428,8 +428,18 @@ public sealed class ProjectWorkflow : IDisposable
     /// rule has exactly one home — <c>PlacementRules</c> — and cannot drift between engine and UI. Empty for a
     /// container that holds no variables, and with no project open.
     /// </summary>
-    public IReadOnlyList<string> GetInsertableVariableTypes(ElementId containerId) =>
+    public IReadOnlyList<InsertableVariableType> GetInsertableVariableTypes(ElementId containerId) =>
         Current is { } project ? _service.GetInsertableVariableTypes(project, containerId) : [];
+
+    /// <summary>
+    /// Every program operation the armed <paramref name="variableId"/> may be given inside
+    /// <paramref name="containerId"/>, with the operands each may be completed with (D-1). The compatibility rules --
+    /// which operator family a pin has, which commands need a bool output, whether a case may switch on it, and
+    /// which operands an arithmetic cell accepts -- are the SDK's; the shell only renders and organises what comes
+    /// back. Empty with no project open.
+    /// </summary>
+    public IReadOnlyList<ProgramOperationOffer> GetProgramOperations(ElementId containerId, ElementId variableId) =>
+        Current is { } project ? _service.GetProgramOperations(project, containerId, variableId) : [];
 
     /// <summary>
     /// The whole-project validation run, in its STRUCTURED shape — one finding per problem, with the locations and

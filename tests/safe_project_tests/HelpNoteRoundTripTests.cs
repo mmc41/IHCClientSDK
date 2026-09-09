@@ -29,7 +29,7 @@ namespace Ihc.Vis.Tests
         public async Task BothDocumentationFields_RoundTripIndependently()
         {
             Project project = await App.Load("testdata/projects/project2-CustomBlock.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ElementId id = VariableIn(project, "Custom blok", "Tal");
 
             session.Apply(App.Commands.SetVariableProperties(session.Current!, id, "Tal",
@@ -54,7 +54,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await App.Load("testdata/projects/project2-CustomBlock.vis");
             byte[] before = await Bytes(project);
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ElementId id = VariableIn(project, "Custom blok", "Tal");
 
             // Re-apply the variable's EXISTING values, with an empty help note — a no-op edit.
@@ -81,7 +81,7 @@ namespace Ihc.Vis.Tests
         {
             Project project = await App.Load("testdata/projects/project2-CustomBlock.vis");
             byte[] pristine = await Bytes(project);
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             ElementId id = VariableIn(project, "Custom blok", "Tal");
             string name = project.FindById(id)!.GetAttribute("name") ?? "Tal";
             string note = project.FindById(id)!.GetAttribute("note") ?? string.Empty;

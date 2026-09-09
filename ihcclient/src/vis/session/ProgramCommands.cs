@@ -132,7 +132,7 @@ namespace Ihc.Vis.Session
         internal override string Describe(Project project) => "Tilføj case";
         internal override EditVerdict Evaluate(EditContext context) =>
             (Programs.IsCommandContainer(context, CommandsId)
-            && context.Index.FindById(SwitchVariableId) is { } v && ProgramMethodCatalog.EligibleCaseVariableTags.Contains(v.Tag)
+            && context.Index.FindById(SwitchVariableId) is { } v && ProgramAuthoring.IsEligibleCaseSwitch(v)
                 ? EditVerdict.Allow
                 : EditVerdict.Refuse(EditRefusalCodes.CaseBranchInvalid, "Ikke en gyldig case-forgrening på en kommandogruppe."))
             .And(context.RequireUnlockedTarget(CommandsId, inclusive: true));   // T003
@@ -201,8 +201,11 @@ namespace Ihc.Vis.Session
 
     internal static class Programs
     {
+        // The tag set is the engine's, not a copy: ProgramAuthoring owns which container takes which kind of
+        // operation, and the authoring query offers commands for exactly the containers this guard accepts them in.
         public static bool IsCommandContainer(EditContext context, ElementId id) =>
-            context.Index.FindById(id)?.Tag is "actions" or "case_action";
+            context.Index.FindById(id) is { } container
+            && ProgramAuthoring.KindOfContainer(container.Tag) == ProgramOperationKind.Command;
 
         public static EditVerdict RequireCommandContainer(EditContext context, ElementId id) =>
             IsCommandContainer(context, id)

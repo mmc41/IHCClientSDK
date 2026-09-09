@@ -40,7 +40,7 @@ namespace Ihc.Vis.Validation
     /// sentence for the same condition.
     /// </para>
     /// </summary>
-    public sealed class RequiredFieldConstraint : IValueConstraint
+    internal sealed class RequiredFieldConstraint : IValueConstraint
     {
         private RequiredFieldConstraint(ProblemCode code, BlankPolicy policy)
         {

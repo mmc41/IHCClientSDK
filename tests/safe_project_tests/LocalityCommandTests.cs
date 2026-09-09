@@ -16,7 +16,7 @@ namespace Ihc.Vis.Tests
         public async Task AddLocality_Commits_ReturnsResolvableId_MatchesEngineAddGroup()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
             int before = session.Current!.Groups.Count;
 
             EditOutcome<ElementId> outcome = session.Apply(new AddLocality("Kitchen"));
@@ -42,7 +42,7 @@ namespace Ihc.Vis.Tests
             ProjectElement group = project.Groups.First();
             ElementId id = group.Id!.Value;
             string oldName = group.GetAttribute("name") ?? "";
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new RenameLocality(id, "Renamed", "a note"));
 
@@ -63,7 +63,7 @@ namespace Ihc.Vis.Tests
             Project project = await Load("project3-KompleksWired.vis");
             ProjectElement group = project.Groups.First(g => !g.Children.IsEmpty);
             string name = group.GetAttribute("name") ?? "";
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new DeleteLocality(group.Id!.Value));
 
@@ -79,7 +79,7 @@ namespace Ihc.Vis.Tests
         public async Task RenameLocality_Evaluate_RefusesAMissingElement()
         {
             Project project = await Load("project3-KompleksWired.vis");
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new RenameLocality(new ElementId(0x7FFFFF, 0x32), "X", ""));
 
@@ -92,7 +92,7 @@ namespace Ihc.Vis.Tests
             Project project = await Load("project3-KompleksWired.vis");
             ProjectElement group = project.Groups.First(g => !g.Children.IsEmpty);
             ElementId id = group.Id!.Value;
-            ProjectDocumentSession session = Session(project);
+            IProjectDocument session = Session(project);
 
             EditOutcome outcome = session.Apply(new DeleteLocality(id));
             Assert.Multiple(() =>

@@ -21,7 +21,7 @@ namespace Ihc.Vis.Tests
         [Test]   // from DataTablesTests.AddUserText_AppendsToTheEditableList
         public async Task AddUserText_AppendsAndCreatesTableOnFirstUse()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             Assert.That(session.Current!.GetDataTables().UserTexts, Is.Empty, "precondition: project3 has no user texts");
 
             session.Apply(new AddUserText("By main door", TableExists: false));
@@ -36,7 +36,7 @@ namespace Ihc.Vis.Tests
         [Test]   // from DataTablesTests.EditUserText_ChangesTheText
         public async Task UpdateUserText_RenamesById()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             session.Apply(new AddUserText("Old text", TableExists: false));
             ElementId id = ParseId(session.Current!.GetDataTables().UserTexts.Single().Id);
 
@@ -48,7 +48,7 @@ namespace Ihc.Vis.Tests
         [Test]   // from DataTablesTests.DeleteUserText_RemovesOnlyThatText
         public async Task DeleteUserText_RemovesOnlyThatRow()
         {
-            ProjectDocumentSession session = Session(await Load("project3-KompleksWired.vis"));
+            IProjectDocument session = Session(await Load("project3-KompleksWired.vis"));
             session.Apply(new AddUserText("Keep", TableExists: false));
             session.Apply(new AddUserText("Remove", TableExists: true));
             ElementId remove = ParseId(session.Current!.GetDataTables().UserTexts.First(t => t.Text == "Remove").Id);

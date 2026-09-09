@@ -29,7 +29,7 @@ namespace Ihc.Vis.Validation
     /// about a correctly placed device is the third of those — reporting it as a Warning would put a correct meter
     /// on a punch list.</para>
     /// </summary>
-    public static class ProductAdvisoryRules
+    internal static class ProductAdvisoryRules
     {
         /// <summary>
         /// The products the vendor records as DISCONTINUED, keyed by (root element tag,

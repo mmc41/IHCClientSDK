@@ -8,7 +8,7 @@ namespace Ihc.Vis.Editing
     /// <see cref="ProjectEditor.LinkScene(ResourceRef,ScenesRef,SceneValue)"/>/<see cref="ProjectEditor.UnlinkScene(ResourceRef,ScenesRef)"/>, which append/remove the
     /// member rows inside it. Carries the container's stable identity like <see cref="ResourceRef"/>.
     /// </summary>
-    public sealed class ScenesRef
+    internal sealed class ScenesRef
     {
         internal ScenesRef(string name, ElementId id)
         {

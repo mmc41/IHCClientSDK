@@ -170,11 +170,9 @@ public class DialogBoundsFromMetadataTests : AvaloniaTestBase
             Problem? whitespace = app.MissingRequiredField("   ");
             Assert.That(whitespace, Is.Not.Null, "whitespace-only is blank — the case the three gates disagreed on");
             Assert.That(whitespace!.Code, Is.EqualTo(EditRefusalCodes.ValueRequired));
-            Assert.That(whitespace.Message, Is.EqualTo(EditRefusalProblems.ValueRequired().Message),
-                "the sentence is the SDK's, authored once");
             Assert.That(ProblemCatalog.Current.TryGet(whitespace.Code, out ProblemCatalogEntry entry), Is.True);
             Assert.That(entry.BindTemplate(whitespace), Is.EqualTo(whitespace.Message),
-                "and it agrees with its catalogue template");
+                "the sentence is the SDK's, authored once: it is this code's catalogue template, not wording the shell composed");
         });
     }
 

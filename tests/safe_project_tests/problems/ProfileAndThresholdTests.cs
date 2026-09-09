@@ -204,7 +204,9 @@ namespace Ihc.Vis.Tests
         [Test]
         public void ThereIsNoSeverityThresholdTypeBesideThePerRuleOverride()
         {
-            string[] validationTypes = [.. typeof(ValidationProfile).Assembly.GetExportedTypes()
+            // Every type the namespace DECLARES, exported or not: what is pinned is which mechanisms exist, and
+            // most of this namespace is engine internals that no longer appear in the exported set.
+            string[] validationTypes = [.. typeof(ValidationProfile).Assembly.GetTypes()
                 .Where(t => t.Namespace == typeof(ValidationProfile).Namespace)
                 .Select(t => t.Name)];
 
