@@ -56,8 +56,16 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
 
 **Enhancements**
 
-- Runs on Windows, macOS, and Linux; the original is Windows-only.
+- Portable - Runs on Windows, macOS, and Linux; the original is Windows-only.
   *No test:* a build and CI property, not app behaviour — every suite runs on all three operating systems in CI.
+- No installer needed: the application folder runs wherever it is copied, given the .NET 10 runtime. Preferences,
+  the imported catalog and the start-up log live in the user's own application-data folder.
+  *No test:* a deployment property, not app behaviour — what a copy needs is decided by the build output, not by
+  anything the application does at run time.
+- Appliction does not depend on or save state to windows registry (consequence of being portable).
+  *Pinned by:* `WindowsQuarantineArchitectureTests.OnlyAProjectNamedForWindows_ReachesAWindowsOnlyApi` — the
+  registry API is Windows-only, so a call to it from the application, the SDK or the shared bootstrap fails
+  that rule (another suite, so this file's own gate accepts the name as written).
 - Refuses to save text the `.vis` character repertoire cannot store — naming the offending element and
   character — where the original writes an unparsable file.
   *Pinned by:* `Latin1SaveRefusalTests`.
@@ -118,7 +126,7 @@ IHC OpenVisual mostly matches the original Windows authoring tool's behaviour, e
   *Pinned by:* `DragRouteAlternativesParityTests`.
 - Unavailable commands explain themselves: pressing the keyboard shortcut of a greyed menu command shows the reason in the status bar.
   *Pinned by:* `DisabledReasonStatusBarTests`.
-- *Vis* ▸ *Links* offers a second rendering of a wire — **one directed arrow drawn between the two pins**
+- *Vis* ▸ *Links* ▸ *Pile* offers a second rendering of a wire — **one directed arrow drawn between the two pins**
   instead of a labelled row under each — which the original has no equivalent for at all (US-089). The
   row rendering says where a wire goes only if you read it, one row at a time, and a wire's two halves
   live in two panes that never appear together; an arrow says the same thing positionally. An arrow is

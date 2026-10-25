@@ -43,6 +43,14 @@ namespace Ihc.Tests
         internal Dictionary<string, string> RequestHeaders { get; } = new();
         internal Dictionary<string, string> ContentHeaders { get; } = new();
 
+        /// <summary>One request's action and both of its header sets, as they reached the socket.</summary>
+        internal sealed record SentRequest(string SoapAction,
+            IReadOnlyDictionary<string, string> RequestHeaders, IReadOnlyDictionary<string, string> ContentHeaders);
+
+        /// <summary>Every request, in order, with its own header snapshots - what an exchange is asserted against
+        /// when its calls differ by HEADERS, which the last request's snapshots above cannot tell apart.</summary>
+        internal List<SentRequest> Requests { get; } = new();
+
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             // Snapshot rather than hold: the request is disposed once the send returns.
@@ -58,6 +66,8 @@ namespace Ihc.Tests
                 ContentHeaders[header.Key] = string.Join(",", header.Value);
             }
             SoapActions.Add(RequestHeaders.TryGetValue("SOAPAction", out string? action) ? action : string.Empty);
+            Requests.Add(new SentRequest(SoapActions[^1],
+                new Dictionary<string, string>(RequestHeaders), new Dictionary<string, string>(ContentHeaders)));
 
             return respond(request);
         }

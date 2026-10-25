@@ -215,11 +215,15 @@ namespace Ihc {
         /// </summary>
         /// <param name="action">SOAP action.</param>
         /// <param name="body">Request body content.</param>
+        /// <param name="sendSessionCookie">
+        /// Whether the request presents the stored session cookie. False sends no Cookie header at all and
+        /// leaves the stored cookie as it is.
+        /// </param>
         /// <returns>
         /// Task with the HTTP response message. The caller owns the returned response and must dispose it -
         /// HttpClient disposes neither the request nor the response it hands back (see HttpClient.FinishSend).
         /// </returns>
-        public async Task<HttpResponseMessage> Post(string action, string body) {
+        public async Task<HttpResponseMessage> Post(string action, string body, bool sendSessionCookie) {
             // The request (and with it the content) is ours to dispose: .NET Core dropped the .NET Framework
             // behaviour where HttpClient disposed the request message for you, and nothing has owned it since.
             // Awaiting the send rather than returning its task is what gives this a scope to dispose at -
@@ -236,7 +240,7 @@ namespace Ihc {
             request.Headers.Add("SOAPAction", action);
             request.Headers.UserAgent.ParseAdd("ihcclient");
             // Manually apply our global cookie if set:
-            string? cookie = cookieHandler.GetCookie();
+            string? cookie = sendSessionCookie ? cookieHandler.GetCookie() : null;
             if (cookie != null) {
                 request.Headers.Add(CookieHeaderName, cookie);
             }

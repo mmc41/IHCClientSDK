@@ -67,11 +67,14 @@ namespace Ihc {
             {
                 string? cookie = null;
 
+                // A login opens a new session, so it presents no cookie: a stored one names the previous session,
+                // which a controller restart leaves dead. Recorded logins by the vendor's own clients carry no
+                // Cookie either, even while those clients hold one - the first login after a restart included.
                 var result = soapPost<outputMessageName2, inputMessageName2>("authenticate", request, resp =>
                 {
                     // Use side-effect to capture cookie sice our post call only captures xml response.
                     cookie = SetCookieHeader.FirstOrNull(resp);
-                });
+                }, sendSessionCookie: false);
 
                 return result.ContinueWith((r) =>
                 {

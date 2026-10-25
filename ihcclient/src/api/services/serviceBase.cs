@@ -154,8 +154,14 @@ namespace Ihc
         /// <param name="soapAction">SOAP action name.</param>
         /// <param name="request">Request object.</param>
         /// <param name="onOkSideEffect">Optional callback for side effects on success.</param>
+        /// <param name="sendSessionCookie">
+        /// False sends the request without the stored session cookie and leaves that cookie untouched - for a
+        /// login, whose own answer then replaces or clears it. Withholding the cookie rather than clearing it
+        /// first is what keeps a login that never gets an answer from ending a session that may still be live.
+        /// </param>
         /// <returns>The response object.</returns>
-        protected Task<RESP> soapPost<RESP, REQ>(string soapAction, REQ request, OnOkCallBack? onOkSideEffect = null) =>
+        protected Task<RESP> soapPost<RESP, REQ>(string soapAction, REQ request, OnOkCallBack? onOkSideEffect = null,
+            bool sendSessionCookie = true) =>
             // The execute-around EVERY controller SOAP call passes through, which is why the duration
             // histogram lives here rather than on the StartActivity helper: that helper hands back a bare
             // Activity and its caller owns the using, so it is never present when the call ends.
@@ -163,11 +169,12 @@ namespace Ihc
             {
                 scope.AddMetricTag(SdkTelemetryRegistry.Attributes.Service, serviceName);
                 scope.AddMetricTag(SdkTelemetryRegistry.Attributes.Operation, soapAction);
-                return await SoapPostBody<RESP, REQ>(scope.Activity, soapAction, request, onOkSideEffect)
+                return await SoapPostBody<RESP, REQ>(scope.Activity, soapAction, request, onOkSideEffect, sendSessionCookie)
                     .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             }, ControllerCallMetrics);
 
-        private async Task<RESP> SoapPostBody<RESP, REQ>(Activity? activity, string soapAction, REQ request, OnOkCallBack? onOkSideEffect)
+        private async Task<RESP> SoapPostBody<RESP, REQ>(Activity? activity, string soapAction, REQ request, OnOkCallBack? onOkSideEffect,
+            bool sendSessionCookie)
         {
             var req = Serialization.SerializeXml<RequestEnvelope<REQ>>(new RequestEnvelope<REQ>(request));
 
@@ -187,7 +194,7 @@ namespace Ihc
             // The response is ours to dispose: HttpClient disposes the response it hands back only on its own
             // failure path (HttpClient.HandleFailure), and EnsureSuccessStatusCode below does not dispose the
             // content either - so a non-2xx answer would otherwise walk out of here with the response still open.
-            using var httpResp = await ihcClient.Post(soapAction, req).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            using var httpResp = await ihcClient.Post(soapAction, req, sendSessionCookie).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
             httpResp.EnsureSuccessStatusCode();
 

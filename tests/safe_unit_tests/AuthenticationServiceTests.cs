@@ -381,6 +381,37 @@ namespace Ihc.Tests
         }
 
         /// <summary>
+        /// Only the login withholds the cookie. Ping and disconnect post through the same SOAP implementation the
+        /// login posts through, right after it, so a withholding that outlived its own call - in that
+        /// implementation, or in the handler every service shares - would strip the cookie from both. Disconnect
+        /// needs it most: the cookie is what names the session to end, so the local cleanup follows the send
+        /// rather than preceding it.
+        /// </summary>
+        [Test]
+        public async Task PingAndDisconnect_PresentTheSessionCookie_AndDisconnectEndsTheLocalSessionAfterward()
+        {
+            using Login login = Login.Answering(Success());
+            AuthenticationService auth = login.Service;
+            await auth.Authenticate();
+
+            await auth.Ping();
+            await auth.Disconnect();
+
+            List<StubTransport.SentRequest> sent = login.Socket.Requests;
+            await Assert.MultipleAsync(async () =>
+            {
+                Assert.That(login.Socket.SoapActions, Is.EqualTo(new[] { "authenticate", "ping", "disconnect" }));
+                Assert.That(sent[1].RequestHeaders, Does.ContainKey("Cookie").WithValue(SessionCookie),
+                    "ping presents the session cookie");
+                Assert.That(sent[2].RequestHeaders, Does.ContainKey("Cookie").WithValue(SessionCookie),
+                    "disconnect presents the cookie of the session it ends");
+                Assert.That(await auth.IsAuthenticated(), Is.False);
+                Assert.That(auth.GetCookieHandler().GetCookie(), Is.Null,
+                    "and only once it has been sent does disconnect drop it");
+            });
+        }
+
+        /// <summary>
         /// A controller that answers <c>disconnect</c> with nothing at all has not confirmed the logout,
         /// so the call reports false - but the LOCAL session must end regardless, or a caller that
         /// checked the boolean and retried would keep posting under a session the controller may already

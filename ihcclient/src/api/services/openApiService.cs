@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Runtime.CompilerServices;
 using System.Diagnostics;
+using System.Net.Http;
 
 namespace Ihc {
     /// <summary>
@@ -169,17 +170,21 @@ namespace Ihc {
 
         private class SoapImpl : ServiceBaseImpl, Ihc.Soap.Openapi.OpenAPIService
         {
-            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings) : base(cookieHandler, settings, SoapServiceName) { }
+            public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings, HttpClient? transport)
+                : base(cookieHandler, settings, SoapServiceName, transport) { }
 
             public Task<outputMessageName13> authenticateAsync(inputMessageName13 request)
             {
                 string? cookie = null;
 
+                // Withholds the cookie as AuthenticationService's login does - by the same reasoning, not by a
+                // recording of this service: a login opens a new session, and a stored cookie may name one a
+                // controller restart has ended.
                 var result = soapPost<outputMessageName13, inputMessageName13>("authenticate", request, resp =>
                 {
                     // Use side-effect to capture cookie sice our post call only captures xml response.
                     cookie = SetCookieHeader.FirstOrNull(resp);
-                });
+                }, sendSessionCookie: false);
 
                 return result.ContinueWith<outputMessageName13>((r) =>
                 {
@@ -403,7 +408,7 @@ namespace Ihc {
             : base(settings)
         {
             this.cookieHandler = new CookieHandler(settings.LogSensitiveData);
-            this.impl = new SoapImpl(cookieHandler, settings);
+            this.impl = new SoapImpl(cookieHandler, settings, transport: null);
         }
         
         /// <summary>
@@ -416,7 +421,7 @@ namespace Ihc {
             : base(SettingsOf(authService))
         {
             this.cookieHandler = authService.GetCookieHandler();
-            this.impl = new SoapImpl(cookieHandler, settings);
+            this.impl = new SoapImpl(cookieHandler, settings, transport: null);
         }
 
         /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
@@ -425,6 +430,25 @@ namespace Ihc {
         {
             this.cookieHandler = authService.GetCookieHandler();
             this.impl = impl;
+        }
+
+        /// <summary>
+        /// Test seam: substitute the HTTP transport (used by unit tests only). The fake-SOAP seam above replaces
+        /// the whole exchange and with it the request headers; this one replaces only the socket, so the request
+        /// is built exactly as in production - which is what a test of the login's headers needs.
+        /// </summary>
+        /// <remarks>
+        /// Standalone, like the settings constructor: the service owns its login and mints its own cookie
+        /// handler. The transport is REQUIRED for the reason it is on <see cref="AuthenticationService"/>'s
+        /// seam - taking one is then a truthful claim that the caller supplied it, which the controller-reach
+        /// guard reads off the signature.
+        /// </remarks>
+        internal OpenAPIService(IhcSettings settings, HttpClient transport)
+            : base(settings)
+        {
+            ArgumentNullException.ThrowIfNull(transport);
+            this.cookieHandler = new CookieHandler(settings.LogSensitiveData);
+            this.impl = new SoapImpl(cookieHandler, settings, transport);
         }
 
         public async Task Authenticate()
