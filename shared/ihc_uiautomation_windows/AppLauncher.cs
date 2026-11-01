@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 
+using Windows.Win32;
+
 namespace Ihc.UiAutomation;
 
 /// <summary>
@@ -27,7 +29,8 @@ public sealed record LaunchedApp(Process Process, UiaWaitResult<UiaElement> Wait
 }
 
 /// <summary>
-/// Starting an application and waiting for it to be DRIVEABLE, and stopping every instance of one.
+/// Starting an application and waiting for it to be DRIVEABLE, asking one of its windows to close, and stopping
+/// every instance of one.
 /// </summary>
 public static class AppLauncher
 {
@@ -52,12 +55,15 @@ public static class AppLauncher
     /// <param name="arguments">Command-line arguments, passed one per element so nothing needs quoting.</param>
     /// <param name="isReady">What makes a window the one to drive.</param>
     /// <param name="timeout">How long to wait for such a window.</param>
+    /// <param name="environment">Variables the started process gets on top of the environment it inherits from
+    /// this one, or <see langword="null"/> for none.</param>
     public static LaunchedApp Start(
         UiaSession session,
         string executablePath,
         IEnumerable<string> arguments,
         Func<UiaElement, bool> isReady,
-        TimeSpan timeout)
+        TimeSpan timeout,
+        IReadOnlyDictionary<string, string>? environment = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(executablePath);
@@ -67,6 +73,8 @@ public static class AppLauncher
         ProcessStartInfo start = new(executablePath) { UseShellExecute = false };
         foreach (string argument in arguments)
             start.ArgumentList.Add(argument);
+        foreach ((string name, string value) in environment ?? new Dictionary<string, string>())
+            start.Environment[name] = value;
 
         Process process = Process.Start(start)
             ?? throw new InvalidOperationException($"could not start {executablePath}");
@@ -104,6 +112,23 @@ public static class AppLauncher
                 ? $"process {process.Id} exited with code {process.ExitCode}"
                 : null);
     }
+
+    /// <summary>
+    /// Asks <paramref name="window"/> to close, as its title-bar close button does, and returns at once.
+    /// </summary>
+    /// <remarks>
+    /// <para>A posted <c>WM_CLOSE</c>, which the application answers through its own closing handler: it may raise a
+    /// prompt, refuse, or shut down, and whatever it does on the way out runs as it would for a person. Whether the
+    /// process then ENDS is the caller's to wait for, because a prompt raised in between is the caller's to
+    /// answer.</para>
+    ///
+    /// <para>Not <see cref="Process.CloseMainWindow"/>, which posts to the first visible unowned window the process
+    /// lists, and that need not be the window the caller is driving.</para>
+    /// </remarks>
+    /// <param name="window">The top-level window to close.</param>
+    /// <returns>Whether the request was posted; false when the window no longer exists.</returns>
+    public static bool RequestClose(nint window) =>
+        PInvoke.PostMessage(Win32Handles.ToHwnd(window), PInvoke.WM_CLOSE, default, default);
 
     /// <summary>
     /// Stops every running instance of <paramref name="processName"/> (given WITHOUT its <c>.exe</c> suffix),

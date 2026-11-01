@@ -6,8 +6,8 @@
 
 [*.cs]
 
-# CA1707 (identifiers should not contain underscores). The findings are assembly names — ihc_appbootstrap
-# and ihc_telemetrybootstrap — which the Avalonia applications and every test suite reference by name.
+# CA1707 (identifiers should not contain underscores). The findings are assembly names — ihc_hostbootstrap
+# and ihc_hostbootstrap_avalonia — which the Avalonia applications and every test suite reference by name.
 # The rule is reported against file(1,1) of the first source in the project, so a path scope like this one is
 # the narrowest form available; there is no declaration to suppress it at.
 dotnet_diagnostic.CA1707.severity = none

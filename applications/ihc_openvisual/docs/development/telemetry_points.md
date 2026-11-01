@@ -1040,15 +1040,16 @@ what shipped. **Where a symbol here disagrees with one above, this section is th
 
 `SetupTelemetryAndLogging` is no longer on `AppTelemetryBootstrap`. It is
 `Ihc.Bootstrap.TelemetryBootstrap.SetupTelemetryAndLogging` in
-[`shared/ihc_telemetrybootstrap/`](../../../../shared/ihc_telemetrybootstrap/TelemetryBootstrap.cs), a
-toolkit-neutral project. `AppTelemetryBootstrap` still exists in
-[`shared/ihc_appbootstrap/`](../../../../shared/ihc_appbootstrap/AppTelemetryBootstrap.cs) and keeps only what
-needs Avalonia: `ChainedILoggerSink`, `LogToSink`, the dispatcher exception handler and the two level maps.
+[`shared/ihc_hostbootstrap/`](../../../../shared/ihc_hostbootstrap/TelemetryBootstrap.cs), a
+toolkit-neutral project. What needs Avalonia stayed behind, in the class now named `AvaloniaTelemetryBootstrap` in
+[`shared/ihc_hostbootstrap_avalonia/`](../../../../shared/ihc_hostbootstrap_avalonia/AvaloniaTelemetryBootstrap.cs):
+`ChainedILoggerSink`, `LogToSink`, the dispatcher exception handler and the two level maps.
 
 The split was made because the three CLI utilities each carried their own `TracerProvider` rather than reuse a
 bootstrap they could not reference without dragging in a UI toolkit. They now reference the neutral half. So
 every mention of `AppTelemetryBootstrap` in §1, §2 and §6 should be read as `TelemetryBootstrap` except for the
-four Avalonia members named above.
+four Avalonia members named above, which are on `AvaloniaTelemetryBootstrap`; and `shared/ihc_appbootstrap/`
+above is `shared/ihc_hostbootstrap_avalonia/`.
 
 ### 10.2 Tier 0 — all five parts, and the acceptance outcome behind them
 

@@ -47,7 +47,7 @@ The SDK currently supports v3.0 IHC controllers only. Support for pre-3.0 contro
 
 Definitely missing is a ready-to-consume NuGet package for the client. I expect to publish a package if there is interest. For now you will have to build the client yourself.
 
-A cross-platform replacement for the vendor's IHC Visual designer application is incubating in [applications/ihc_openvisual](applications/ihc_openvisual/), built on the SDK's project-edit engine. It is in early development, but part of the solution and its headless smoke tests run in CI (Windows).
+A cross-platform replacement for the vendor's IHC Visual designer application is incubating in [applications/ihc_openvisual](applications/ihc_openvisual/), built on the SDK's project-edit engine. It is in early development, but part of the solution and its headless smoke tests run in CI (Windows and Linux).
 
 See [ihcclient](ihcclient/README.md#status) for more details on IHC API implementation status.
 
@@ -72,9 +72,9 @@ dotnet tool restore
 dotnet build IHCClientSDK.sln
 ```
 
-`dotnet tool restore` installs the local tool that merges the code coverage the test suites collect. Skipping it leaves the tests themselves working — only the merged coverage report is missing.
+`dotnet tool restore` installs the two local tools that merge and render the code coverage the test suites collect. Skipping it leaves the tests themselves working — only the merged coverage report is missing.
 
-Before running any tests, tools or examples in this repo, create a private `ihcsettings.json` file in the repository root with information on your IHC installation (see [Configuration](#configuration) below). The file is needed by the tests/tools/examples located here, but NOT in your own projects if you only consume this SDK.
+Before running the examples, most utilities or the integration tests, create a private `ihcsettings.json` file in the repository root with information on your IHC installation (see [Configuration](#configuration) below). The controller-free test suites, OpenVisual and the controller stub run without it, and your own projects never need it if they only consume this SDK.
 
 Then try the examples and the controller-free unit tests:
 
@@ -90,10 +90,12 @@ against:
 
 ```bash
 dotnet test tests/safe_unit_tests/safe_unit_tests.csproj            # general SDK + utilities
-dotnet test tests/safe_project_tests/safe_project_tests.csproj      # the .vis engine and ProjectAppService
+dotnet test tests/safe_stub_tests/safe_stub_tests.csproj            # the controller stub and the SDK's stub seam
+dotnet test tests/safe_project_tests/safe_project_tests.csproj      # the .vis engine, ProjectAppService, OpenVisual non-GUI code
 dotnet test tests/safe_architecture_tests/safe_architecture_tests.csproj
 dotnet test tests/safe_lab_tests/safe_lab_tests.csproj              # headless Ihc Lab UI
 dotnet test tests/safe_visual_tests/safe_visual_tests.csproj        # headless OpenVisual UI
+dotnet test tests/safe_visual_stubbed_tests/safe_visual_stubbed_tests.csproj  # headless OpenVisual over a stub
 ```
 
 Two suites are deliberately left out of that list. `safe_integration_tests` is the only one allowed to talk to
@@ -109,6 +111,9 @@ dotnet test tests/safe_integration_tests/safe_integration_tests.csproj
 dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj \
   --filter "TestCategory!=DesktopOnly" \
   -- 'TestRunParameters.Parameter(name="headless",value="true")'
+
+# A single test
+dotnet test <test-project.csproj> --filter "FullyQualifiedName~TestName"
 ```
 
 Avoid a bare `dotnet test` at the repository root: it runs every project in the solution, including both of
@@ -116,9 +121,12 @@ those. What each suite is for, which one a new test belongs in, and how far to t
 pass are in [TESTSTRATEGY.md](TESTSTRATEGY.md) — along with what is at stake per subject, the risk tiers that
 decide how much testing each part of the system earns.
 
-Static checks. The script pins the ruleset to the same commit CI uses, so a local run and the
-CI run are the same scan; a bare `opengrep scan` is not, because it falls back to a mutable
-ruleset fetched from semgrep.dev. Findings are reported, not fatal — add `--error` to gate.
+Static checks. Every build runs the repository's build-time checks — today jscpd copy/paste
+detection, which reports to `artifacts/jscpd/jscpd-ai.txt` and never fails the build;
+`-p:RunStaticChecks=false` skips them. The opengrep security scan runs separately: its script pins
+the ruleset to the same commit CI uses, so a local run and the CI run are the same scan; a bare
+`opengrep scan` is not, because it falls back to a mutable ruleset fetched from semgrep.dev.
+Findings are reported, not fatal — add `--error` to gate.
 
 ```bash
 bash scripts/opengrep-scan.sh
@@ -128,6 +136,8 @@ bash scripts/opengrep-scan.sh
 solution and asks dataflow questions of the result, which the pattern matching above cannot answer.
 It needs no local tool and nothing to run here — see the Security tab for its findings, and
 [.github/workflows/codeql.yml](.github/workflows/codeql.yml) for what it covers.
+[docs/static-analysis.md](docs/static-analysis.md) lists every layer, where it is declared and what
+its verdict means.
 
 ## Usage
 
@@ -168,14 +178,15 @@ var project = await projectService.Load("MyHouse.vis");     // or CreateNew(...)
 //   doc.Apply(projectService.Commands.RenameLocality(project, id, "Stue", note: ""));
 //   project = doc.Current!;   // otherwise the lines below validate and save the pre-edit snapshot
 var validation = projectService.Validate(project);
-await projectService.Save(project, "MyHouse-updated.vis");  // unchanged content saves byte-identically
+await projectService.Save(project, "MyHouse-updated.vis");  // re-stamps id2/modified, as IHC Visual does
+// For a byte-identical save of unchanged content, pass ProjectSaveOptions.PreserveExistingMetadata (Ihc.Vis.Io).
 ```
 
 See the [ihcclient README](ihcclient/README.md) for API details and [ARCHITECTURE.md](ARCHITECTURE.md) for how the pieces fit together.
 
 ## Running from the command line
 
-All applications, utilities and examples are launched with `dotnet run --project <csproj>` from the repository root. Each needs an `ihcsettings.json` in the repo root (see [Configuration](#configuration)); the offline `.vis` and settings tools do not need a controller.
+All applications, utilities and examples are launched with `dotnet run --project <csproj>` from the repository root. The examples and most utilities read an `ihcsettings.json` in the repo root (see [Configuration](#configuration)); OpenVisual starts without one, and neither the controller stub nor the HTTP proxy recorder needs one. The offline `.vis` and settings tools do not need a controller.
 
 | Project | Kind | Command |
 | --------- | ------ | --------- |
@@ -187,8 +198,27 @@ All applications, utilities and examples are launched with `dotnet run --project
 | HTTP proxy recorder | Utility | `dotnet run --project utilities/ihc_httpproxyrecorder/ihc_httpproxyrecorder.csproj` |
 | Project download/upload | Utility | `dotnet run --project utilities/ihc_project_download_upload/ihc_ProjectDownloadUpload.csproj` |
 | Settings encrypt/decrypt | Utility | `dotnet run --project utilities/ihc_settings_encrypt/ihc_settings_encrypt.csproj -- encrypt ihcsettings.json` |
+| Controller stub (no controller needed) | Utility | `dotnet run --project ihcclient_stub/ihcclient_stub.csproj` |
 | Example 1 (read/write IO) | Example | `dotnet run --project examples/ihcclient_example1/example1.csproj` |
 | Example 2 | Example | `dotnet run --project examples/ihcclient_example2/example2.csproj` |
+
+### Running against a controller stub
+
+OpenVisual, Lab, IHC admin, IHC info and project download/upload can run against a controller stub instead of a controller. Start the stub first. Its first line is the switch to pass on:
+
+```bash
+dotnet run --project ihcclient_stub/ihcclient_stub.csproj
+# --controller-stub=http://127.0.0.1:<port>/<token>/
+
+dotnet run --project utilities/ihc_lab/ihc_lab.csproj -- --controller-stub=http://127.0.0.1:<port>/<token>/
+```
+
+* The stub answers with default values. It prints one line per call, and a line of its own for an operation it does not model or a defect in itself. It never prints a payload, a cookie or a password. Stop it with Ctrl+C.
+* The switch replaces the controller endpoint and login with stub-only values. Every other setting still comes from `ihcsettings.json`, so your own credentials never reach the stub. OpenVisual starts without the file; Lab and the console utilities still need one.
+* A stubbed run is marked. The OpenVisual and Lab titles say so, a console utility prints `CONTROLLER STUB in use (no real controller): <endpoint>` to standard error before anything else, and telemetry carries `ihc.controller.stub=true`.
+* For the rest of that run the process refuses every real endpoint, including one entered in Lab's Setup dialog. A switch value no stub answers stops the application from starting, and so does the switch spelt any other way than `--controller-stub=`, such as `--Controller-Stub=` or `--controller-stub:`.
+* A refused start says why where each program reports a failed start, and exits with code 1. A console utility prints the reason. OpenVisual and Lab have no console, so they log it as Critical through their logging, which reaches OpenObserve when telemetry is configured; OpenVisual writes `startup-error.log` in its application-data folder when its logging never came up.
+* Only the programs listed above take the switch. The SDK examples ignore it and always run against the controller their `ihcsettings.json` names.
 
 ## Content
 
@@ -211,10 +241,12 @@ This project is hosted in a mono-repo containing the following sub-projects:
   * [IHC Settings encrypt](utilities/ihc_settings_encrypt/README.md) contains a tool to encrypt/decrypt passwords in ihcsettings.json.
 * Tests — every suite is named `safe_*`, and only [safe integration tests](tests/safe_integration_tests/README.md) may reach a controller:
   * [Safe unit tests](tests/safe_unit_tests/README.md) — general SDK unit tests, plus the utilities without a suite of their own.
-  * [Safe project tests](tests/safe_project_tests/) — the `.vis` project-file engine and `ProjectAppService`, driven by committed oracle files.
+  * [Safe stub tests](tests/safe_stub_tests/) — the controller stub and the SDK's stub seam: routing, refusals, the latch, the `--controller-stub` switch and stub fidelity.
+  * [Safe project tests](tests/safe_project_tests/) — the `.vis` project-file engine and `ProjectAppService`, driven by committed oracle files, plus OpenVisual's non-GUI code (view-models, services, stores).
   * [Safe architecture tests](tests/safe_architecture_tests/) — ArchUnitNET rules enforcing the SDK's directional layering and the OpenVisual GUI's thin-shell boundary.
   * [Safe Lab tests](tests/safe_lab_tests/README.md) — headless GUI tests for the Ihc Lab utility.
   * [Safe visual tests](tests/safe_visual_tests/) — headless GUI tests for the ihc_openvisual application.
+  * [Safe visual stubbed tests](tests/safe_visual_stubbed_tests/) — headless tests of ihc_openvisual composed over a controller stub, with every request's destination checked.
   * [Safe visual E2E tests](tests/safe_visual_e2e_tests/) — whole-scenario end-to-end tests against the real OpenVisual desktop app, or the same scenarios through an in-process headless driver; CI gates only the headless mode.
   * [Safe integration tests](tests/safe_integration_tests/README.md) — system tests that can be safely run against a controller in use.
 
@@ -243,7 +275,7 @@ Note:
 * Endpoint should be the http/https baseurl for the controller. If connecting to controller over usb, use endpoint set to "<http://usb>".
 * Username and password should match user setup by controller. Ignored by controller if logging in over usb.
 * Application name can be set to 'treeview', 'openapi', 'administrator'.
-* Keep `allowDangerousInternTestCalls` and `logSensitiveData` set to `false`. Dangerous internal-test operations and sensitive logging are not intended for real use at this stage; enabling a flag does not make their use recommended or safe.
+* Keep `allowDangerousInternTestCalls` and `logSensitiveData` set to `false` — see the [disclaimers](#important-disclaimers).
 * Keep `asyncContinueOnCapturedContext` set to `false` unless your application specifically requires context capture.
 * The template contains additional optional settings (telemetry endpoints, test resource IDs, `allowDangerousInternTestCalls`, `ihcVisualInstallDir`) — see the comments inside the template file.
 
@@ -299,7 +331,7 @@ For complete documentation, see the [IHC Settings Encrypt README](utilities/ihc_
 
 ## OpenTelemetry as a logging replacement
 
-As a more powerful alternative to log files, the SDK (optionally) supports [OpenTelemetry](https://opentelemetry.io/) to view traces. To enable this change ```telemetry``` settings in the config file. The SDK should work with any OpenTel solutions. Below is listed one example.
+As a more powerful alternative to log files, the SDK (optionally) supports [OpenTelemetry](https://opentelemetry.io/) to view traces and metrics. To enable this change ```telemetry``` settings in the config file. The SDK should work with any OpenTel solutions. Below is listed one example.
 
 Note: while the SDK uses OpenTelemetry instead of logging, some utilities/applications using the SDK may still use logging. Therefore the example/template specification for ```ihcsettings.json``` files retains a logging configuration.
 
@@ -314,9 +346,12 @@ OpenObserve setup:
       "Host": "http://localhost:5080",
       "Traces": "http://localhost:5080/api/default/v1/traces",
       "Logs": "http://localhost:5080/api/default/v1/logs",
+      "Metrics": "http://localhost:5080/api/default/v1/metrics",
       "Headers": "Authorization=Basic <Authorization Key here>, stream-name=Ihc, organization=default"
     },
 ```
+
+[ihcsettings_example.json](ihcsettings_example.json) shows the remaining optional keys: `Environment` and the self-check endpoint.
 
 ## Developer skills (Claude Code)
 
@@ -354,10 +389,10 @@ pwsh .claude/skills/aui-openvisual/scripts/aui.ps1 capture window
 ## FAQ
 
 **Q**: Do I need to configure my IHC before running the examples or using the API from my own code?
-**A**: Open the standard IHC administrator app from LK, login, click access control and enable localnet or internet access + "Open for thirdparty products". Only enable internet access if you have a firewall and know how to use it securely.
+**A**: Yes: enable network and third-party access on the controller, as [Prerequisites](#prerequisites) describes.
 
-**Q**: Why do I get an error message 'The configuration file 'ihcsettings.json' was not found and is not optional' when running examples/tests/applications?
-**A**: You must create a "ihcsettings.json" file in the root folder. Copy the 'ihcsettings_example.json' file to 'ihcsettings.json' and fill out your information.
+**Q**: Why do I get an error message 'The configuration file 'ihcsettings.json' was not found and is not optional' when running examples, utilities or the integration tests?
+**A**: You must create an `ihcsettings.json` file in the root folder: copy `ihcsettings_template.json` to `ihcsettings.json` and fill in your information (see [Configuration](#configuration)).
 
 **Q**: Is there a NuGet package available?
 **A**: Not yet but might happen later if there is demand. For now, clone the repo and reference the `ihcclient` project directly.
@@ -366,10 +401,10 @@ pwsh .claude/skills/aui-openvisual/scripts/aui.ps1 capture window
 **A**: Yes. The SDK's `ProjectAppService` loads, edits, validates and saves `.vis` files using a component catalog built into the SDK, and can also download/upload projects from/to a controller.
 
 **Q**: Can I contribute to this project?
-**A**: Yes please. See <https://docs.github.com/en/get-started/quickstart/contributing-to-projects> and <https://github.com/mmc41/IHCClientSDK>
+**A**: Yes please — see [Contributing](#contributing).
 
 **Q**: How do I get support?
-**A**: There is no official support for this SDK but you can post issues on the github site. <https://github.com/mmc41/IHCClientSDK>.
+**A**: See [Support](#support).
 
 ## Contributing
 

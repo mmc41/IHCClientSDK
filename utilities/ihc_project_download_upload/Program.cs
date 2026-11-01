@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 using Ihc;
 using Microsoft.Extensions.Configuration;
 using Ihc.Bootstrap;
+using Ihc.Stubbing;
+using Ihc.Utilities;
 using Microsoft.Extensions.Logging;
 using System.Text;
 
@@ -18,9 +20,6 @@ namespace Ihc.download_upload_example
         public const string AppServiceNamespace = "Ihc";
         public const string ActivitySourceName = "IhcProjectDownLoadUpLoad";
     
-        const string CMD_GET = "GET";
-        const string CMD_STORE = "STORE";
-
         /// <summary>Everything asked for was done.</summary>
         private const int ExitOk = 0;
 
@@ -41,25 +40,10 @@ namespace Ihc.download_upload_example
         /// </remarks>
         static async Task<int> Main(string[] args)
         {
-            if (args.Length != 2)
+            // Before the settings file is read, so a command line this utility cannot use is answered with its usage
+            // whether or not that file exists. The controller-stub switch is no part of it, and is applied below.
+            if (GetStoreCommandLine.Parse(args, "project") is not { } commandLine)
             {
-                Console.WriteLine($"Expected arguments: '{CMD_GET} <destfile>' OR '{CMD_STORE} <sourcefile>'");
-                return ExitUsage;
-            }
-
-            // Invariant: the command words are ASCII, and a Turkish locale would fold 'i' to 'İ', leaving a
-            // correctly typed command unrecognized on that machine alone.
-            string command = args[0].ToUpperInvariant();
-            string path = args[1];
-            if (command != CMD_GET && command != CMD_STORE)
-            {
-                Console.WriteLine($"Illegal command. Expected {CMD_GET} or {CMD_STORE}");
-                return ExitUsage;
-            }
-
-            if (command == CMD_STORE && !File.Exists(path))
-            {
-                Console.WriteLine("Could not find source project file  " + path);
                 return ExitUsage;
             }
 
@@ -70,6 +54,42 @@ namespace Ihc.download_upload_example
             var settings = IhcSettings.GetFromConfiguration(config);
             var telemetryConfig = TelemetryConfiguration.GetFromConfiguration(config);
 
+            int exitCode;
+            try
+            {
+                // Both providers, each gated on its configured endpoint, from the one builder every IHC host
+                // shares (R7). The hand-rolled copy this replaces tested the endpoint INSIDE the exporter
+                // callback, so an unconfigured utility still built a provider and still exported - to the OTLP
+                // default endpoint. It also gains this utility metrics, which it never had.
+                using ILoggerFactory loggerFactory = TelemetryBootstrap.SetupTelemetryAndLogging(
+                    AppServiceName, AppServiceNamespace, ActivitySourceName, telemetryConfig, config,
+                    ControllerStubs.SwitchRequested(args));
+
+                // After the pipeline, so the stub's identity check is traced, and before any service is built, so every
+                // service is built from the settings it leaves. A refusal lands in the catch below.
+                (settings, _) = ControllerStubs.ApplySwitch(args, settings);
+                ControllerStubConsole.AnnounceIfStub(settings);
+
+                exitCode = await RunCommandAsync(settings, commandLine.Command, commandLine.Path);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed operation: {ProblemConsoleFormat.Describe(ex)}");
+                exitCode = ExitFailed;
+            }
+
+            // A console process exits as soon as this returns, so the flush happens here rather than in a
+            // finalizer that will not run.
+            TelemetryBootstrap.Shutdown();
+            return exitCode;
+        }
+
+        /// <summary>
+        /// Downloads or uploads the project on the controller that <paramref name="settings"/> names, and logs out
+        /// afterwards whatever happened. Answers the exit code.
+        /// </summary>
+        private static async Task<int> RunCommandAsync(IhcSettings settings, string command, string path)
+        {
             // Create client for IHC services that this utility use:
             using var authService = new AuthenticationService(settings);
             var controllerService = new ControllerService(authService);
@@ -78,24 +98,17 @@ namespace Ihc.download_upload_example
             int exitCode = ExitOk;
             try
             {
-                // Both providers, each gated on its configured endpoint, from the one builder every IHC host
-                // shares (R7). The hand-rolled copy this replaces tested the endpoint INSIDE the exporter
-                // callback, so an unconfigured utility still built a provider and still exported - to the OTLP
-                // default endpoint. It also gains this utility metrics, which it never had.
-                using ILoggerFactory loggerFactory = TelemetryBootstrap.SetupTelemetryAndLogging(
-                    AppServiceName, AppServiceNamespace, ActivitySourceName, telemetryConfig, config);
-
-                // Authenticate against IHC system. 
+                // Authenticate against IHC system.
                 var login = await authService.Authenticate();
 
-                if (command == CMD_GET)
+                if (command == GetStoreCommandLine.Get)
                 {
                     ProjectFile project = await controllerService.GetProject()
                         ?? throw new InvalidOperationException("The controller returned no project - it likely has none stored.");
                     await File.WriteAllTextAsync(path, project.Data, ProjectFile.Encoding);
                     Console.WriteLine($"Downloaded project to {path}, size {project.Data.Length} characters (Org filename was {project.Filename})");
                 }
-                else if (command == CMD_STORE)
+                else if (command == GetStoreCommandLine.Store)
                 {
                     var encoding = ProjectFile.Encoding;
                     ProjectFile project = new ProjectFile(
@@ -174,10 +187,6 @@ namespace Ihc.download_upload_example
                     Console.WriteLine($"Note: logging out of the controller failed: {ProblemConsoleFormat.Describe(ex)}");
                 }
             }
-
-            // A console process exits as soon as this returns, so the flush happens here rather than in a
-            // finalizer that will not run.
-            TelemetryBootstrap.Shutdown();
             return exitCode;
         }
     }

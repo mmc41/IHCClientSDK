@@ -26,6 +26,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="safe_integration_tests" />
     <InternalsVisibleTo Include="safe_unit_tests" />
+    <InternalsVisibleTo Include="safe_stub_tests" />
     <InternalsVisibleTo Include="safe_project_tests" />
     <InternalsVisibleTo Include="ihc_lab" />
   </ItemGroup>

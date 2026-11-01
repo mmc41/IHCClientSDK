@@ -52,12 +52,12 @@ API change has to answer before the type stays public.
 
 | Contract role | Examples | Review question |
 | --- | --- | --- |
-| Service entry points | The API-service classes and interfaces; `ProjectAppService`, `AdminAppService`, `InformationAppService`, `LabAppService` | What capability or use case does the entry own? |
+| Service entry points | The API-service classes and interfaces; `ProjectAppService`, `AdminAppService`, `InformationAppService`, `LabAppService`; `ControllerStubs` and `ControllerStubRegistration`, which route a settings endpoint to a controller stub | What capability or use case does the entry own? |
 | Client-facing ports | `IProjectDocument`, `ProjectCommands` | What state, lifetime and operations can the client rely on? |
-| Inputs and results | `ProjectSaveOptions`, the catalog item records, command outcomes, findings | Which data and members does a caller need in order to use the operation? |
+| Inputs and results | `ProjectSaveOptions`, the catalog item records, command outcomes, findings, `ControllerStubRequest` and `ControllerStubResponse` | Which data and members does a caller need in order to use the operation? |
 | Domain values and helpers | `ElementId`, `DatalineAddress`, `ProjectElement`, `ReportMimeTypes` | Does each member express a supported domain operation or a caller convenience? |
-| Failure contracts | `ProjectFormatException`, `RefusedOperationException`, `EditRefusals`, `IProblemCarrier` and the structured `Problem` values | Which failures escape an operation, and how does a client handle them? |
-| Provider contracts (SPI) | `IReportIconProvider` | May an external client implement this, and what must an implementation provide? |
+| Failure contracts | `ProjectFormatException`, `RefusedOperationException`, `EditRefusals`, `IProblemCarrier` and the structured `Problem` values; `ErrorWithCodeException` and its `Errors` codes | Which failures escape an operation, and how does a client handle them? |
+| Provider contracts (SPI) | `IReportIconProvider`, `IControllerStub` | May an external client implement this, and what must an implementation provide? |
 | Public implementation exceptions | The generated SOAP message types, the envelope roots, the cookie-handling interfaces | Why must this stay visible, and which consumers are prevented from using it? |
 
 A review covers parameters, returns, properties and fields, public and protected construction, extension
@@ -182,11 +182,27 @@ The exceptions that are part of the supported surface, each because a documented
 | `RefusedOperationException` | An operation whose precondition the current document does not meet | Catch to report the refusal; the carried problem states which precondition failed. |
 | `EditRefusedException` | A guard deep inside an edit body, after the command gate already allowed the edit | An edit applied through `IProjectDocument` does NOT see it escape: the session catches it and returns a refused outcome carrying the guard's own code. It is public because the same guards run under a direct editor call, and because its code is the identity a caller compares against `EditRefusalCodes`. |
 | `ProjectUploadException` | The controller-backed project upload path | Catch to distinguish a rejected project from a transport failure. |
+| `ErrorWithCodeException` | Controller communication, for selected controller errors, and every refusal of the controller-stub seam | Handle by `ErrorCode`, compared against the `Errors` constants. The message of each seam code starts with the code's name, so a refusal can be found by its code in telemetry, where its `error.type` stays the untyped `_OTHER` every coded error has. |
+
+The controller-stub seam's codes, all carried by `ErrorWithCodeException` (the decision is
+[ADR-005](../../docs/adr/ADR-005-controller-stub-seam.md)):
+
+| Code | Raised when |
+| --- | --- |
+| `CONTROLLER_STUB_NOT_REGISTERED` | A call targets a stub endpoint for which no stub is registered in this process. |
+| `CONTROLLER_SOCKET_REFUSED_WHILE_STUBBED` | A call targets a real controller endpoint while a stub is registered in this process. |
+| `CONTROLLER_STUB_FAULTED` | A stub threw or returned no response: a defect in the stub, never a controller's answer. |
+| `CONTROLLER_STUB_ENDPOINT_INVALID` | A chosen registration key is not a named `mock://` key, or a loopback stub address or `--controller-stub` value breaks its rules. |
+| `CONTROLLER_STUB_IDENTITY_FAILED` | A loopback stub did not prove its identity: no token echo when registered, before any controller request is sent; or a response that does not carry the stub header exactly once with the token, after its request was sent. The message says which. |
+| `CONTROLLER_STUB_ENDPOINT_IN_USE` | A `mock://` key is registered a second time in one process; a key is single-use, live or disposed. |
 
 A refusal an edit command can foresee is reported, not thrown: `IProjectDocument.CanApply` answers the
 precondition before the fact, and applying a refused command returns an outcome whose status is
 `Refused` and whose code is the gate's own. The exception rows above are the failures that escape
 instead.
+
+An awaited operation surfaces its failure as its own exception type, never wrapped in an
+`AggregateException`; the login methods of `AuthenticationService` and `OpenAPIService` included.
 
 An operation whose failure contract is not listed here does not have one: it either succeeds or reports
 through a returned result. A type in the refusal or exception area that no supported operation can hand
@@ -450,7 +466,10 @@ The seeds are enumerated explicitly, never derived from a namespace:
 - the extension holders a caller reaches WITHOUT holding a service — the read views over `Project` and
   `ProjectElement`, and the finding helpers. An extension member is reached through the type it extends,
   so a seed set of entry points alone would leave that whole surface unmeasured; and a documented failure
-  contract is thrown rather than returned, so no traversal reaches one either. Both are seeded by name.
+  contract is thrown rather than returned, so no traversal reaches one either. Both are seeded by name;
+- the controller-stub seam — its provider contract `IControllerStub` and its entry point `ControllerStubs`,
+  from which the request, response and registration are reached — with its failure contract,
+  `ErrorWithCodeException` and the `Errors` codes it carries, seeded beside the other failure contracts.
 
 An explicit list is the point. A namespace-derived seed set silently re-approves whatever is added to
 that namespace next, which is the failure mode of the calculation it replaces. Adding a seed is a

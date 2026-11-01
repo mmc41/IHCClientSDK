@@ -11,6 +11,9 @@ lower-level engine surfaces stop being a supported entry level) and 2026-09-08 (
 service tiers are supported API, and a public signature is not itself an approval) — the substance of each
 is in the Decision.
 
+Amended — 2026-11-01 (refined by ADR-005: a second test seam below the API services, at the SDK's one
+transport, where the whole SDK runs against the controller stub) — the substance is in Confirmation.
+
 Revisit triggers: (a) a vendor firmware/WSDL revision changing the controller's service surface — re-price the 1-1
 mirror; (b) a frontend that cannot reference the SDK in-process (non-.NET or remote) — that calls for a hosted
 service boundary, not more tiers, and validation then rides that same boundary rather than frontend copies; (c) a
@@ -426,10 +429,10 @@ re-binding them to the merged metadata is future work, not a gap in the door.
 - Code-review checklist: no `Ihc.Soap` types in public signatures; no business logic in view-models or
   `Program.Main` (vendor *display* interpretation is the sanctioned exception — frontend-owned by design);
   project-edit commands obtained only via the SDK command factories, never constructed in a frontend; test fakes
-  only at `IIHCApiService`/`ICatalog` — application services always real; no GUI-authored legality or validation
-  glue; new validation capability lands behind a facade door; verdict sentences rendered whole; no frontend-side
-  undo/redo stack or dirty-state bookkeeping beside the document's; an enablement gate reads an SDK legality
-  answer rather than restating the rule behind it.
+  only at `IIHCApiService`/`ICatalog`, or the controller stub at the SDK's one transport (ADR-005) — application
+  services always real; no GUI-authored legality or validation glue; new validation capability lands behind a
+  facade door; verdict sentences rendered whole; no frontend-side undo/redo stack or dirty-state bookkeeping
+  beside the document's; an enablement gate reads an SDK legality answer rather than restating the rule behind it.
 
 ## Consultation
 
@@ -450,4 +453,4 @@ it — hence the merge and the rename. Grounded in `ARCHITECTURE.md`, `CLAUDE.md
 specification, the architecture-test suites, and a code inventory of the facade doors and their GUI call sites.
 The design was also re-tested adversarially against the planned future validation population, and the outcome was
 that **every decision stands**, one normative sentence gaining a qualifier. Because the result merged into this
-record, no ADR-005 was published, so that number stays free for the next decision.
+record, no separate validation ADR was published.

@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using NUnit.Framework;
 using Ihc;
 using Ihc.Bootstrap;
+using Ihc.Stubbing;
+using Ihc.Tests.Shared;
 using IhcLab;
 using Avalonia;
 using Avalonia.Controls;
@@ -175,11 +177,25 @@ namespace Ihc.Tests
     }
 
     /// <summary>
+    /// This suite's own proof that its tests run latched; see <see cref="ControllerLatchProbe"/>. A fixture of its
+    /// own, because the reach guard names a site by type and member, and the unit suite has an
+    /// <c>Ihc.Tests.Setup</c> of its own that the guard would take this admission to describe.
+    /// </summary>
+    [SetUpFixture]
+    public class LabRunLatchProbe
+    {
+        [OneTimeSetUp]
+        public void ProveTheRunIsLatched() =>
+            ControllerLatchProbe.RequireRefused(new AuthenticationService(new IhcSettings { Endpoint = ControllerLatchProbe.Endpoint }));
+    }
+
+    /// <summary>
     /// NUnit SetUpFixture that configures global test infrastructure before any tests run.
     ///
     /// <para><strong>Configuration Responsibilities:</strong></para>
     /// <list type="bullet">
-    /// <item>Initializes <c>IhcLab.Program.config</c> with mocked IHC settings for safe testing</item>
+    /// <item>Registers a <see cref="ControllerStub"/> under the <c>mock://</c> key for the whole run, and initializes
+    /// <c>IhcLab.Program.config</c> with settings that name it, so Lab's real services reach the stub</item>
     /// <item>Configures <c>IhcLab.Program.loggerFactory</c> with <see cref="TestContextLoggerProvider"/> to route logs to test output</item>
     /// <item>Sets minimum log level to <see cref="LogLevel.Warning"/> to show errors and warnings by default</item>
     /// </list>
@@ -200,6 +216,9 @@ namespace Ihc.Tests
     [SetUpFixture]
     public class Setup
     {
+        private ControllerStub? _stub;
+        private ControllerStubRegistration? _registration;
+
         /// <summary>
         /// Initializes global test configuration and logger factory.
         /// Runs once before any tests in the assembly execute.
@@ -207,10 +226,13 @@ namespace Ihc.Tests
         [OneTimeSetUp]
         public void RunBeforeAnyTests()
         {
-            // Configure IHC settings for mocked tests
+            // Lab builds real services on these settings, so the endpoint they name is a stub this run registers
+            // for its whole length; an unregistered mock:// endpoint is refused when a service is built on it.
+            _stub = new ControllerStub();
+            _registration = ControllerStubs.Register(_stub, SpecialEndpoints.MockedPrefix + "lab");
             var settings = new IhcSettings()
             {
-                Endpoint = SpecialEndpoints.MockedPrefix,
+                Endpoint = _registration.Endpoint,
                 UserName = "test",
                 Password = "test",
                 Application = Application.administrator,
@@ -228,6 +250,14 @@ namespace Ihc.Tests
                 builder.AddProvider(new TestContextLoggerProvider());
                 builder.SetMinimumLevel(LogLevel.Warning); // Shows errors and warnings; use SuppressLogging to temporarily suppress in individual tests
             });
+        }
+
+        /// <summary>Releases the run's stub, then fails the run if the stub met a call it could not answer.</summary>
+        [OneTimeTearDown]
+        public void RunAfterAllTests()
+        {
+            _registration?.Dispose();
+            _stub?.VerifyNoFaults();
         }
     }
 }

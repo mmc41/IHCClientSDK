@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using ihc_openvisual.Configuration;
 using NUnit.Framework;
@@ -28,15 +29,36 @@ public class ProblemsGuiEditE2ETests : E2EScenario
     /// <summary>Findings, but no Errors and none about a duplicate address — a clean slate for Errors.</summary>
     private static string CleanFixture() => E2E.Fixture("Project1-SimpelWired.vis");
 
+    /// <summary>The fixture's bytes before the scenario edits it, which closing the application must not change.</summary>
+    private byte[] _fixtureBefore = [];
+
+    [OneTimeSetUp]
+    public void RecordTheFixture() => _fixtureBefore = File.ReadAllBytes(CleanFixture());
+
     /// <summary>
-    /// This fixture launches inside its test body rather than in a setup, so the kill is the fixture's rather
+    /// This fixture launches inside its test body rather than in a setup, so the close is the fixture's rather
     /// than the test's. It has to run AFTER the base class's fault assertion, and NUnit runs a derived
-    /// <c>[TearDown]</c> BEFORE the base one — which would have killed the application before anything could
+    /// <c>[TearDown]</c> BEFORE the base one — which would have closed the application before anything could
     /// ask it what faulted. A second scenario added here would still start clean: <see cref="E2E.Launch"/>
-    /// kills a survivor before it launches.
+    /// closes a survivor before it launches.
     /// </summary>
+    /// <remarks>
+    /// The scenario leaves its edit unsaved, so this close meets the save prompt, and it is held to the outcome:
+    /// the prompt is declined, the application exits by itself, and the fixture is exactly as it was. Saving would
+    /// rewrite a byte-pinned oracle.
+    /// </remarks>
     [OneTimeTearDown]
-    public void CloseApp() => E2E.KillApp();
+    public void CloseApp()
+    {
+        string? notClean = E2E.CloseApp();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(notClean, Is.Null, "the application should decline its save prompt and exit by itself");
+            Assert.That(File.ReadAllBytes(CleanFixture()), Is.EqualTo(_fixtureBefore).AsCollection,
+                "closing the application saved the edit over the fixture");
+        });
+    }
 
     /// <summary>
     /// AC2, driven through the GUI: author a duplicate address and watch an Error row appear.
@@ -48,8 +70,8 @@ public class ProblemsGuiEditE2ETests : E2EScenario
     /// asymmetry is exactly why the catalogue treats a duplicate address as a finding rather than a refusal, and
     /// it is what makes this scenario reachable at all.</para>
     ///
-    /// <para>The document is left dirty on purpose: the fixture ends in a kill, nothing saves, and undoing the
-    /// edit here would only re-assert what the view-model tests already own.</para>
+    /// <para>The document is left dirty on purpose: the fixture's close declines to save, and undoing the edit
+    /// here would only re-assert what the view-model tests already own.</para>
     /// </remarks>
     [Test]
     [Category(E2E.DesktopOnly)]

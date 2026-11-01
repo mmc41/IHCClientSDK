@@ -7,7 +7,7 @@ Unofficial cross-platform .NET 10 SDK and applications for LK/Schneider Electric
 Run commands from the repository root.
 
 ```bash
-# Once per clone: restores dotnet-coverage, which merges the coverage the test suites collect
+# Once per clone: restores dotnet-coverage and reportgenerator, which merge and render the coverage the test suites collect
 dotnet tool restore
 
 # Build
@@ -20,7 +20,7 @@ bash scripts/static_check.sh                       # pwsh -NoProfile -File scrip
 # Skip the static checks a build otherwise runs
 dotnet build IHCClientSDK.sln -p:RunStaticChecks=false
 
-# Applications and GUI E2E entry points
+# Applications; the second line opens a fixture for hand-driven GUI checks
 dotnet run --project applications/ihc_openvisual/ihc_openvisual.csproj
 dotnet run --project applications/ihc_openvisual/ihc_openvisual.csproj -- tests/testdata/projects/Project1-SimpelWired.vis
 dotnet run --project utilities/ihc_lab/ihc_lab.csproj
@@ -36,32 +36,30 @@ dotnet run --project utilities/ihc_project_io_extractor/ihc_projectextractor.csp
 dotnet run --project utilities/ihc_httpproxyrecorder/ihc_httpproxyrecorder.csproj
 dotnet run --project utilities/ihc_project_download_upload/ihc_ProjectDownloadUpload.csproj
 dotnet run --project utilities/ihc_settings_encrypt/ihc_settings_encrypt.csproj -- encrypt ihcsettings.json
+# A controller stub; start an app or utility with the --controller-stub=... line it prints first
+dotnet run --project ihcclient_stub/ihcclient_stub.csproj
 ```
 
-For OpenVisual E2E, launch it with a fixture and drive it through `aui-openvisual`. After any application, example, or utility run, use `openobserve` to inspect telemetry. Before running a controller-backed command, follow the controller boundary and configuration guidance.
+To check OpenVisual by hand, launch it with a fixture and drive it through the `aui-openvisual` skill, which is independent of `safe_visual_e2e_tests`. Before running a controller-backed command, follow the controller boundary and configuration guidance. To run an application or utility without a controller, start it under the controller-stub switch as [Running against a controller stub](README.md#running-against-a-controller-stub) describes; the SDK examples ignore that switch.
 
-Every build runs the repository's static checks once, whatever mix of projects is built. `scripts/static_check.sh` and `scripts/static_check.ps1` ARE the list -- the build files name no check, so extend a check by editing both peers and nothing else. A check whose tool is missing, or that fails to run, warns and leaves the verdict to the compiler, so never read a green build as evidence the checks ran: read the warning, or the report's timestamp. A peer exits non-zero only when a check could not RUN, never because a check found something. Opt a run out with `-p:RunStaticChecks=false`.
-
-Today that means jscpd copy/paste detection, writing `artifacts/jscpd/jscpd-ai.txt` -- one line per clone pair, then a summary. It is `.txt` because the `ai` reporter emits plain text, not markdown, whatever its name suggests. The file is written only when the scan succeeds, so a report on disk is always a report some run produced. The whole scan is declared in `.jscpd.json`: authored C# only, with the generated SOAP layer, `*.g.cs`/`*.Designer.cs` and the `tests/testdata/` oracle corpus excluded as unauthored or byte-pinned, and the reporter and output directory alongside them. `ProblemCatalogEntries.*.cs` is excluded on a third ground: those files are pure declaration tables, where a "clone" is only ever two catalogue entries passing the same constructor arguments positionally, which is the shape the data has and not something to refactor. What keeps that exclusion honest is that the files carry no control flow at all -- no `if`, `for`, `switch`, `return` or local; the day logic lands in one, it stops being a declaration table and the exclusion stops being safe. `ihcclient/src/vis/catalog/definitions/**` is excluded on a near-identical ground and needs its own entry because those files carry no `.g.cs` suffix any more: a clone there is two products or two grammar declarations passing the same builder-call chain, which is the transcribed catalogue data, and what each file evaluates to is pinned by `BuiltInCatalogDigestTests` rather than kept honest by refactoring. Naming the folder also removes a half-truth the file-size limit would otherwise leave in the report: jscpd skips a file over 1 MB silently, and one of the three is well past that, so a scanned folder would report on two of them while reading as all three. Do not add `"gitignore": true`: jscpd already respects `.gitignore` by default, so it reads as scope the config does not actually control. That file is jscpd's own config format, so `jscpd .` by hand from the repository root is the same scan; its `output` key is why a hand-run with a file reporter lands under `artifacts/jscpd/` instead of creating `report/` in the repository root.
-
-`ignorePattern` says which text is not evidence of copy/paste -- `using` directives, and the fixture plumbing every headless UI test opens with. jscpd blanks each match before matching but keeps the block's line numbers, and the surviving tokens still have to reach the threshold alone, so the effect is "fifty tokens of something other than boilerplate", not a lower bar. The test a pattern has to pass: the text it matches must be the SAME text everywhere it matches, so blanking it erases no distinction between two blocks. That is why each entry spells out a whole statement and pins it between `^[ \t]*` and `\r?$` rather than wrapping a method name in `^.*` and `.*$` -- the wrapping form also swallows whatever else shares the line, and a line is shared by the receiver and the variable the call is assigned to, by a comment that merely mentions the method, and by an `Assert.That(...)` whose subject the call happens to be. Blanked that way, `CurrentTestWindow = null;` and `CurrentTestWindow = window;` become the same line, which is the invented match. Anchor `using` at column zero, because the indented `using var x = ...;` statement is real code; use `[ \t]*` and not `\s*` for indentation, because under `(?m)` a `\s*` also eats newlines and runs the match back through the preceding blank lines; and write a line end `\r?$`, because the working tree is CRLF on Windows and LF elsewhere. Naming the variable in the pattern (`harness`, `vm`, `window`) is deliberate: it is what makes the match a fixed string instead of a hole a real name could fall into.
-
-Raising `minTokens`/`minLines` instead does not work here and has been measured -- the boilerplate and the smallest real findings share one size band, so a threshold that removes much of the first removes most of the second; `mode` is no lever either, the default `mild` already reports the fewest. `baseline` and `failOnNewClones` are valid keys, but never set `failOnNewClones`: exiting non-zero on a finding inverts the exit-code contract above, and the report gets deleted rather than written.
+Every build runs the repository's static checks once, whatever mix of projects is built. `scripts/static_check.sh` and `scripts/static_check.ps1` ARE the list -- the build files name no check, so extend a check by editing both peers and nothing else. Today that means jscpd copy/paste detection ([Dealing with duplicated code](#dealing-with-duplicated-code)). A check whose tool is missing, or that fails to run, only warns, so never read a green build as evidence the checks ran: read the warning, or the report's timestamp. Opt a run out with `-p:RunStaticChecks=false`. The exit-code contract, the scan's scope and the rules an `ignorePattern` entry must pass are in [docs/static-analysis.md](docs/static-analysis.md).
 
 ## Testing
 
 ```bash
 # Controller-free suites
 dotnet test tests/safe_unit_tests/safe_unit_tests.csproj
+dotnet test tests/safe_stub_tests/safe_stub_tests.csproj
 dotnet test tests/safe_architecture_tests/safe_architecture_tests.csproj
 dotnet test tests/safe_project_tests/safe_project_tests.csproj
 dotnet test tests/safe_lab_tests/safe_lab_tests.csproj
 dotnet test tests/safe_visual_tests/safe_visual_tests.csproj
+dotnet test tests/safe_visual_stubbed_tests/safe_visual_stubbed_tests.csproj
 
 # Controller-backed suite; may toggle only the configured test resources
 dotnet test tests/safe_integration_tests/safe_integration_tests.csproj
 
-# Desktop-bound suite; DO NOT run it by default -- see the bullets below
+# Desktop-bound suite; DO NOT run it by default -- see Ask First
 dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj
 # ...and the same scenarios headless, which is what CI runs
 dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj --filter "TestCategory!=DesktopOnly" -- 'TestRunParameters.Parameter(name="headless",value="true")'
@@ -71,28 +69,51 @@ dotnet test <test-project.csproj> --filter "FullyQualifiedName~TestName"
 ```
 
 - NUnit is the test framework. Controller-free suites need neither a live controller nor controller credentials.
-- `safe_visual_e2e_tests` is DESKTOP-BOUND and is not part of any default verification. It launches the real `ihc_openvisual.exe`, drives it through Windows UI Automation, holds the foreground for minutes, and force-kills any OpenVisual already running -- including one a person is using. Run it only when asked to, and say first that it will take over the screen. It skips itself off Windows; on Windows with no session it fails, deliberately, because a suite that ignored its way past a broken application would be worse than no suite.
-- `safe_visual_e2e_tests` runs in two modes. The DEFAULT drives the real application and is the desktop-bound one described above. `headless=true` swaps in an in-process driver over the same window, which is what CI gates -- but it is a second implementation of the verb vocabulary, so it exercises neither the real-UIA driver nor the Avalonia-to-UIA bridge. Read a headless pass as "the scenario paths still work", never as "the application is driveable". Scenarios only the real desktop can run carry `[Category(E2E.DesktopOnly)]` and are excluded by filter; the headless driver refuses those verbs rather than approximating them.
-- It is a project of its own so that the DESKTOP mode is never reached by accident: every suite is run by project path, and Verification names this one nowhere. CI does name it, but only for the headless leg and only with `TestCategory!=DesktopOnly`, so nothing on a push takes a screen. What reaches the desktop mode is an explicit run of the command above, or a bare `dotnet test` at the repository root, which runs every project in the solution -- the controller-backed suite included. Prefer the per-project commands above.
-- Run `safe_unit_tests` for SDK logic, `safe_project_tests` for `.vis` engine/session behavior AND for OpenVisual's non-GUI code (view-models, services, stores, presentation mapping), and the matching Avalonia suite for Lab or OpenVisual UI construction and interaction.
-- Only mock low-level `IIHCApiService` controller services. Exercise application-service business logic through real `IIHCAppService` instances; read the Safe Lab test documentation before changing its fakes.
+- `safe_visual_e2e_tests` is DESKTOP-BOUND and in no default verification. Run it, or a bare `dotnet test` at the repository root, only after asking (Ask First), and say first that it will take over the screen. Prefer the per-project commands above.
+- Its `headless=true` mode is what CI gates, and it is a second implementation of the verb vocabulary: read a headless pass as "the scenario paths still work", never as "the application is driveable". The two modes, the `DesktopOnly` category, how the suite behaves off a desktop and why it is a project of its own are in [TESTSTRATEGY.md](TESTSTRATEGY.md#the-end-to-end-bar).
+- Run `safe_unit_tests` for SDK logic, including SDK behaviour that merely runs over a stub and the console utilities started under the controller-stub switch; `safe_stub_tests` for the controller stub itself and the SDK's stub seam; `safe_project_tests` for `.vis` engine/session behavior AND for OpenVisual's non-GUI code (view-models, services, stores, presentation mapping); `safe_visual_stubbed_tests` for OpenVisual composed over a controller stub, its composition and its stub indicator; and the matching Avalonia suite for Lab or OpenVisual UI construction and interaction.
+- Replace the controller only below the application services: fake a low-level `IIHCApiService` controller service, or run the real SDK over the controller stub ([below](#using-the-controller-stub-in-tests)). Exercise application-service business logic through real `IIHCAppService` instances; read the Safe Lab test documentation before changing Lab's controller stub or its remaining fakes.
 - Keep default coverage focused on observable product behavior. Add null-guard, expected-exception, or multithreading tests only when the user requests that risk area.
-- Code coverage is measured on every `dotnet test` with no extra flag, and it reports rather than gates -- no percentage can fail a build, so the bullet above still decides what is worth testing. Each suite refreshes only its own slice under `artifacts/coverage/raw/<suite>/`; every run re-merges whatever slices are present into `artifacts/coverage/report/` and prints one line. A repo-wide number is therefore only current once every collecting suite has run -- and that set includes the controller-backed and the desktop-bound ones, so no CI leg produces a complete number. `Summary.txt` names any slice older than the build it was merged with. `safe_architecture_tests` is the one suite that contributes nothing, by opting out in its own project: its rules READ the product assemblies rather than running them, so the lines it would claim are type loads rather than tested behaviour -- and an uninstrumented run is also the only one in which its task-discard rule can read the IL it judges. `safe_visual_e2e_tests` does contribute, but only what the leg that ran covered: its desktop leg's child process is deliberately NOT instrumented (`CollectFromChildProcesses` is off in `.runsettings`), because an instrumented `ihc_openvisual.exe` outliving its test locks its own bin DLLs against the next build. A suite that runs without collecting -- opted out permanently or with the flag below -- takes its own slice with it, so the raw tree never holds a slice no run produced.
-- Opt a run out with `-p:CollectCoverage=false`. Passing an empty `--settings` does not work -- the `dotnet test` CLI fails with "The path is empty" before the settings are read.
-- Opt out of only the MERGE with `-p:RunCoverageMerge=false`, which still writes the suite's slice. The merge costs around four and a half seconds whatever it merges -- almost all of it starting the script and the two local tools it drives -- and it runs after EVERY suite, so a developer running the suites in sequence pays it once per suite while only the last result survives. Pass the flag on every suite but the last and the repo-wide number is identical. Do not use it for a single-suite run, which is the case where that suite's merge is the one that matters.
-- `artifacts/coverage/report/html/` holds a browsable one-page version of the same report. Add `-p:CoverageHtmlDetail=true` for the per-file drill-down that shows which lines are uncovered; it is opt-in because it writes hundreds of files. Quote `Summary.txt` for a number -- the HTML headline is computed by a different tool and differs from it slightly.
-- A new or changed validation rule moves two committed oracles, and BOTH are regenerated by their `[Explicit]` test and then diffed -- never hand-edited: `tests/testdata/validation/` (one XML file per corpus case, holding every finding that case produces in production order) and, for a DOCUMENTATION-category rule, the `full-*` report oracles under `tests/testdata/reports/`, because the Fuld report renders that category as its appendix. Adopting a diff means explaining every changed line by a rule that changed in the same edit.
+- Coverage is collected on every `dotnet test` and reports rather than gates, so the bullet above still decides what is worth testing. How the per-suite slices merge, why a repo-wide number is rarely current and which suites do not collect is in [TESTSTRATEGY.md](TESTSTRATEGY.md#coverage).
+- Coverage flags: `-p:CollectCoverage=false` opts a run out (an empty `--settings` does not work -- the CLI fails before reading it); `-p:RunCoverageMerge=false` skips only the merge -- pass it on every suite of a sequence but the last, never on a single-suite run; `-p:CoverageHtmlDetail=true` adds the per-file drill-down of uncovered lines. Quote `Summary.txt` in `artifacts/coverage/report/` for a number, never the HTML headline.
+- A new or changed validation rule moves two committed oracles, and BOTH are regenerated by their `[Explicit]` test and then diffed -- never hand-edited: `tests/testdata/validation/` and, for a DOCUMENTATION-category rule, the `full-*` report oracles under `tests/testdata/reports/`. Adopting a diff means explaining every changed line by a rule that changed in the same edit; TESTSTRATEGY's *Oracle discipline* has the procedure.
+- `[Explicit]` tests DO run when a `--filter` selects them, and some rewrite tracked files in place -- the problem-catalogue regenerators rewrite `ihcclient/docs/problem-catalogue.md`. After a broad filtered run, check `git diff --numstat`.
+
+### Using the controller stub in tests
+
+`ihcclient_stub` answers the SOAP calls the SDK sends, so a test runs the whole SDK -- wrappers, serializer, envelope guards, cookie session and telemetry -- with only the controller replaced. It plugs into the SDK's `Ihc.Stubbing` seam (`ihcclient/src/stubbing/`). [Its README](ihcclient_stub/README.md) holds the API with a worked example and the rules below in full, [the design page](ihcclient_stub/docs/stubdesign.md) shows which suite reaches the stub by which path and defines the safeguard tags (`L1`-`L12`, `O1`-`O8`), and [ADR-005](docs/adr/ADR-005-controller-stub-seam.md) records the decisions.
+
+Correct use:
+
+- The test owns the registration `ControllerStubs.Register(stub)` returns, and disposes it AFTER the services built on its `Endpoint`. Let `Register` generate that endpoint: a `mock://` key is single-use per process, so only a fixture that holds its stub for the whole run, like Lab's, names one. In `safe_stub_tests`, `StubbedSdk.Start()` builds every service on one stub, and disposing it ends the session, releases the registration and checks the stub.
+- Arrange state, failures and malformed answers in the test that needs them -- through the stub's scenario properties, `FailOn` and `OverrideRaw` -- never by changing the default controller every test shares. `FailOn` and `Journal.Calls` take the SDK's interface and method; `OverrideRaw` takes the wire names a journal entry carries (`SMSModemService`, `getIHCProject`). All three refuse a name no exchange could match, and the refusal names the one meant.
+- Call `stub.VerifyNoFaults()` at teardown. An unmodelled operation or a stub defect reaches the code under test only as an HTTP 500 or `CONTROLLER_STUB_FAULTED`, which that code may swallow, so the stub's own record is where it shows (L8).
+- Talk to the stub through its public surface, never the generated `Ihc.Soap` types, which `safe_stub_tests` and `safe_unit_tests` can compile against; only `safe_stub_tests` sees the stub's internals.
+- A launched executable reaches the stub through a `ControllerStubLoopbackHost` the test starts and the switch it passes, so the stub and its journal stay in the test. Start a console utility through `tests/shared/UtilityProcessRunner.cs` and OpenVisual only through `E2E.Launch`: both run a clean copy of the build output whose settings name a `.invalid` endpoint, so an executable that ignored the switch fails instead of reaching a controller (O8), and `LaunchGateTests` fails any second launch site (O6).
+- Assert what the test arranged, or the SDK's contract -- never whatever the default controller happens to answer. Fidelity is best effort by decision: a pass against the stub never shows that an operation works on a controller, and a shape default, the answer an operation without a typed one gets, shows only that the response maps. When a test needs a real value, add a typed answer as [the README's Maintenance section](ihcclient_stub/README.md#maintenance) describes; when a controller disproves an answer, fix it and every test that relied on it in the same change.
+
+Safe use -- a stub-backed test must never reach a controller. The guardrails are independent layers, so never weaken one to get a test green:
+
+- Every test project except `safe_integration_tests` and `safe_architecture_tests` links `tests/shared/ControllerReachGuard.cs`, and every one of those except `safe_stub_tests` also links `ControllerStubLatchFixture.cs` with `ControllerStubLatchSupport.cs`, which hold a fail-every-call registration for the whole run so the latch refuses every real endpoint (L11); `tests/safe_visual_tests/safe_visual_tests.csproj` shows the full set of links. `TestSafetyLinkPinArchitectureTests` fails a project that lacks the guard or the fixture, or links one that declares a namespace, because NUnit applies a setup fixture to the whole assembly only from the global namespace. A new latched suite proves its latch from its OWN namespace, with a probe handed to `ControllerLatchProbe.RequireRefused`.
+- Every site that builds real SDK services from settings is admitted in `ControllerReachGuard.Admitted` with the reason that is true of it: a stub endpoint (`StubEndpointReason`), a latch probe on a `.invalid` host (`LatchProbeReason`), or a service on which nothing is called. An unadmitted site stops the suite's run before any test executes, a filtered run included (L9). The key is `Namespace.Type.Member`, and `EveryAdmittedSiteInThisSuiteStillBuildsOne` judges an entry by its type name alone, so an entry whose type another guarded suite also declares fails in that suite: keep an admitted site in a type no other guarded suite declares, and after an admission run every suite that links the guard.
+- `safe_stub_tests` is the one guarded suite without the run-wide latch, because its seam tests must see the latch both released and held. Never stage `ihcsettings.json` into it (`CopyIhcSettingsToOutput`), give any non-stub endpoint there a host under `.invalid`, and never run the public `ControllerStubs.ApplySwitch` success path there: it holds its registration until the process exits and would latch every later test. Test the switch through the internal `ControllerStubSwitch.ApplySwitchCore`, which returns the registration to dispose. `safe_visual_stubbed_tests` fails its run when an `ihcsettings.json` sits beside it (L5).
+- A test builds no network transport of its own -- no bare `HttpClient`, socket handler, generated WCF client, socket or web client or `WebRequest`, nor a subclass of one; the reach guard stops the run on one (L9). A wire-level test that needs a canned HTTP answer uses `tests/shared/StubTransport.cs`, an explicit transport that `Client.Post` takes before the latch.
+- A real endpoint in a test is a host under the reserved `.invalid` domain (`http://latch-probe.invalid`, `http://no-stub-switch.invalid`): never `.local`, which mDNS answers on a LAN, and never a real address.
+- The journal (`stub.Journal`) is not a guardrail: it records only the calls that reached the stub, so it cannot see one sent to a controller. Assert interactions on it, never safety, and add no unsafe-call check over it (ADR-005, Safeguards).
+- Only the executables that apply the switch obey it: OpenVisual, Lab, `ihc_admin`, `ihc_info` and `ihc_project_download_upload`. The SDK examples ignore `--controller-stub` and run against the controller their settings file names, so running one stays a controller-connected command under Ask First.
+- A run under the switch marks its telemetry `ihc.controller.stub=true`; filter on it in `openobserve`, so a stub run's figures and errors are never read as a controller's.
 
 ## Verification
 
 - After code changes, build the affected project and run the suite mapped to that layer in Testing.
 - HOW MUCH verification a change earns scales with what is at stake in the subject it touches, and the tiers are in [TESTSTRATEGY.md](TESTSTRATEGY.md). A change to `.vis` I/O or to controller I/O sits at the top tier and earns more than one independent kind of check; a passing suite alone is not the bar there.
 - After changes that cross SDK/GUI boundaries, also run `safe_architecture_tests`.
-- After OpenVisual or Lab UI changes, also run the corresponding headless UI suite. That is `safe_visual_tests`, never `safe_visual_e2e_tests` -- the headless suite is the one that verifies a change; the desktop-bound one is run deliberately, on request.
+- After OpenVisual or Lab UI changes, also run the corresponding headless UI suite. That is `safe_visual_tests`, never `safe_visual_e2e_tests` -- the headless suite is the one that verifies a change; the desktop-bound one is run deliberately, on request. A change to OpenVisual's start-up composition, its title or its handling of the controller-stub switch also runs `safe_visual_stubbed_tests`.
+- After changing the controller stub (`ihcclient_stub/`) or the SDK's stub seam (`ihcclient/src/stubbing/`, the routing in `Client.Post`), run `safe_stub_tests` and `safe_architecture_tests`, plus the suite that uses the changed path. A change to the stub's contract updates ADR-005, the design page, the stub README and *Using the controller stub in tests* above in the same change.
 - After changing shared build/package configuration, public SDK contracts, or shared bootstrap code, run `dotnet build IHCClientSDK.sln` and every controller-free suite listed above.
 - For documentation-only changes, verify links, paths, commands, and terminology against the repository; a .NET build is unnecessary.
 - Do not run `safe_integration_tests` as a substitute for controller-free verification.
-- Check continously for unexpected errors reported via telemetry to openobserve server using openobserve skill (note openobserve server may not allways be active, warn and ignore if not).
+- After running an application, example or utility, check its telemetry for unexpected errors with the `openobserve` skill. If the server is not reachable, say so and carry on: telemetry status is then unknown, not clean.
 
 ### Coverage as a completeness check
 
@@ -104,16 +125,21 @@ dotnet test <test-project.csproj> --filter "FullyQualifiedName~TestName"
 ## Project Structure
 
 - `ihcclient/src/vis/` is the controller-free `.vis` engine behind `ProjectAppService`.
-- `tests/shared/` holds the test helpers more than one suite compiles, linked in by `<Compile Include>` rather than referenced -- the oracle harnesses, the telemetry capture, the screenshot machinery. Put a helper here when a second suite needs it; a copy is how the two drift.
-- `shared/ihc_appbootstrap/` contains application bootstrap infrastructure shared by the Avalonia apps.
+- `ihcclient/src/stubbing/` is the SDK's controller-stub seam (`Ihc.Stubbing`) and the only stub code that ships; `ihcclient_stub/` is the stub itself, which only test suites reference and a person runs by hand ([Using the controller stub in tests](#using-the-controller-stub-in-tests)).
+- `tests/shared/` holds the test helpers more than one suite compiles, linked in by `<Compile Include>` rather than referenced -- the oracle harnesses, the telemetry capture, the screenshot machinery, the controller-safety fixtures. Put a helper here when a second suite needs it; a copy is how the two drift. `utilities/shared/` is the same arrangement for source more than one utility compiles, such as the GET/STORE command line `ihc_admin` and `ihc_project_download_upload` share.
+- `shared/ihc_hostbootstrap/` is the start-up wiring every host shares -- the telemetry pipeline and the process-wide exception handlers -- with no UI dependency, so console utilities reference it directly; `shared/ihc_hostbootstrap_avalonia/` adds the Avalonia parts on top of it for the two desktop apps. Each half's README ([neutral](shared/ihc_hostbootstrap/README.md), [Avalonia](shared/ihc_hostbootstrap_avalonia/README.md)) states its scope.
+- `shared/ihc_uiautomation_windows/` is the app-agnostic Windows UI Automation toolkit the E2E desktop driver is built on; [its README](shared/ihc_uiautomation_windows/README.md) lists what it holds.
 - `tests/testdata/` contains byte-exact vendor and generated oracles consumed through `tests/TestData.props`.
 
 ## Architecture Invariants
 
 - Read `ARCHITECTURE.md` before changing service layers, `.vis` editing, OpenVisual, or dependency boundaries.
-- Keep controller SOAP artifacts behind the high-level API. Application business logic belongs in `Ihc.App`, not in the SOAP layer or a frontend.
+- Keep controller SOAP artifacts behind the high-level API. Application business logic belongs in the application-service tier -- the `Ihc.App` services and `ProjectAppService`, with `.vis` domain rules in the engine behind it -- not in the SOAP layer or a frontend.
 - Construct `AuthenticationService` from `IhcSettings`; construct authenticated services from `IAuthenticationService` so they share its settings and cookie session. `OpenAPIService` supports either form.
-- The SDK has no logging dependency. Emit SDK observability through its `ActivitySource`; host applications choose logging and exporters.
+- The SDK has no logging or OpenTelemetry dependency. A span comes only from `OperationTelemetry` and an instrument only from a registry (`SdkTelemetryRegistry`, the host's `AppTelemetryRegistry`) -- never a direct `StartActivity`, `Meter` or instrument (`TelemetryCoreArchitectureTests`); host applications choose logging and exporters.
+- No stub ships. No project outside `tests/` may reference `ihcclient_stub`, a test project or the FakeItEasy package (`StubReferenceArchitectureTests`), and an executable touches the stub seam only at the sites `StubSurfaceArchitectureTests` lists: its `Main` asking for and applying the switch, and the composition roots and titles that read `IsStubConfigured()` (O7).
+- Every controller call leaves through `Client.Post`, where stub routing and the latch sit, so a second door would bypass both. Only the SDK's named transport sites create or send on a network client (`SdkTransportArchitectureTests`); no executable or shared bootstrap opens a connection of its own (`ExecutableOutboundArchitectureTests`), and neither does the stub (`StubOutboundArchitectureTests`).
+- A testability input may change behaviour only by redirecting controller traffic to a stub, which is what `--controller-stub` does; `--test` stays observation-only, and neither may relax validation, authentication or persistence against a real controller ([ADR-005](docs/adr/ADR-005-controller-stub-seam.md)).
 - Windows is reached only from a project whose name contains `windows` (today `shared/ihc_uiautomation_windows`). No other project may reference a Windows package or call a Windows-only API -- a platform guard around the call changes nothing -- and gets Windows behaviour by referencing such a project. `WindowsQuarantineArchitectureTests` enforces it over every project file in the solution and over the neutral assemblies the architecture suite loads.
 - Keep OpenVisual a thin MVVM shell over `ProjectAppService`: obtain commands from `ProjectAppService.Commands`, execute interactive edits through `IProjectDocument`, and retain project elements by `ElementId` because immutable edits replace object instances.
 - Keep view-models free of Avalonia types. Views must not drive `ProjectAppService`, `ProjectWorkflow`, or `IProjectDocument` directly.
@@ -139,7 +165,7 @@ default: throw new ArgumentOutOfRangeException(nameof(ioType), ioType, "Unknown 
 
 ### Nullability
 
-- Every project is nullable-enabled; RS0041 guards the SDK's public surface, with the generated SOAP layer scoped out from the ROOT `.editorconfig` — a rule written inside it would be lost on regeneration.
+- Every project is nullable-enabled; RS0041 guards the SDK's public surface, with the generated SOAP layer scoped out from the ROOT `.editorconfig`, which keeps the rule beside the other repo-wide severities rather than inside a folder that is off limits to hand edits.
 - Prefer an attribute over `!`: `[NotNull]`, `[return: NotNullIfNotNull(...)]` and `[AllowNull]` bind a contract at every call site, where `!` silences one. Keep `!` for a real but inexpressible invariant, and name it in a comment.
 - CA1062 is on for every project except the test suites, so an externally visible member that dereferences a parameter needs `ArgumentNullException.ThrowIfNull` as its first statement. An expression-bodied member has nowhere to put one and must be widened to a block body; where a base initializer runs first, guard inside the helper it calls, which the rule follows. Why it is on there and off in `tests/` is in `.globalconfig` and `tests/.editorconfig`.
 - A property fed from the generated `Ihc.Soap.*` layer takes `?`, never `required`: that layer is oblivious, so a null wire value assigned to a non-nullable property compiles SILENTLY. `required` is for what the SDK guarantees, and never for a reflectively built type.
@@ -147,11 +173,11 @@ default: throw new ArgumentOutOfRangeException(nameof(ioType), ioType, "Unknown 
 
 ## Dealing with duplicated code
 
-The dotnet build automatically produce list of duplicated code in artifacts\jscpd\jscpd-ai.txt. New changes that introduce duplicated code should refactor duplications (do not touch existing duplicated code unrelated to your change unless explicitly instructed by user)
+Every build writes the duplicated-code report to `artifacts/jscpd/jscpd-ai.txt` -- one line per clone pair, then a summary. New changes that introduce duplicated code should refactor the duplication (do not touch existing duplicated code unrelated to your change unless explicitly instructed by user).
 
-Guidence for refactoring duplicated code:
+Guidance for refactoring duplicated code:
 
-- Extract function — when the duplicate is a block of logic:
+- Extract function — when the duplicate is a block of logic.
 - Extract module/utility — when the duplicate spans multiple files in different domains
 - Extract constant or config — when the duplicate is repeated data or configuration.
 - Template/base class — when the duplicate is structural (e.g., repeated class shape).
@@ -167,7 +193,7 @@ When refactoring always ensure:
   
 ## Development Tools
 
-- Use the `openobserve` skill after running an app or utility, or when diagnosing a reported exception, silent failure, or slowness. A connection failure means telemetry status is unknown, not that no errors exist.
+- Use the `openobserve` skill for the after-run check in Verification, and when diagnosing a reported exception, silent failure, or slowness.
 - Use the `aui-openvisual` skill whenever driving, functionally testing, or visually inspecting the live OpenVisual GUI on Windows.
 
 ## Boundaries
@@ -184,7 +210,7 @@ When refactoring always ensure:
 - Require explicit authorization before enabling `AllowDangerousInternTestCalls` or invoking manufacturing/internal-test operations.
 - Require explicit authorization before enabling `LogSensitiveData`; credentials and other sensitive values can then appear in traces.
 - Ask before changing any committed oracle bytes; use the documented capture or regeneration procedure rather than editing by hand.
-- Ask before running `safe_visual_e2e_tests`, and before a bare `dotnet test` at the repository root, which runs it. It seizes the desktop for minutes and force-kills a running OpenVisual; the same root command also reaches the controller-backed suite.
+- Ask before running `safe_visual_e2e_tests`, and before a bare `dotnet test` at the repository root, which runs it. It seizes the desktop for minutes and force-kills any running OpenVisual, including one a person is using; the same root command also reaches the controller-backed suite.
 
 ### Never Do
 
@@ -192,8 +218,8 @@ When refactoring always ensure:
 - Treat `ihcclient/generatedsrc/` as generated output. Use the shell scripts on macOS/Linux (`wget`) or the PowerShell ports on Windows; generation requires `dotnet-svcutil`.
 - Never re-save authentic `.vis`, `.def`, or `.ifb` oracles to make a test pass. Byte-fidelity tests and `.gitattributes` pin them; diagnose the product code instead.
 - Never commit credentials or expose `ihcsettings.json` contents. It is ignored by `.gitignore`; use the tracked templates when documentation needs an example.
-- Never link/refer fro repo files to files outside the repo or to folders that are gitignored (for example tmp files). Exception are links between gitignored files.
-- Add comments that refer to plans, have only tempoary value or does not add value compared to reading the source. Comments should generally be about WHY, not HOW or WHEN things are done.
+- Never link or refer from repo files to files outside the repo or to gitignored folders (for example tmp files). Links between gitignored files are the exception.
+- Never add comments that refer to plans, have only temporary value or add nothing to reading the source. Comments should generally be about WHY, not HOW or WHEN things are done.
 
 ## When Asking Questions
 
@@ -209,16 +235,18 @@ When refactoring always ensure:
 
 Markdown links are not auto-loaded. Explicitly open the relevant target before working in that area.
 
-- [README.md](README.md) -- read before environment setup, controller configuration, or executable-specific prerequisites.
-- [TESTSTRATEGY.md](TESTSTRATEGY.md) -- read before ADDING, MOVING or deleting a test: it defines the test levels, what each suite is for, and the routing rules that decide which suite a test belongs in. Read it also before judging a change adequately tested, because it names what is AT STAKE per subject: the risk tiers that decide how much testing a subject earns, with `.vis` I/O and controller I/O in BOTH directions at the top. It carries the standing action items where the current layout disagrees with those rules.
+- [README.md](README.md) -- read before environment setup, controller configuration, running an executable against the controller stub, or executable-specific prerequisites.
+- [TESTSTRATEGY.md](TESTSTRATEGY.md) -- read before ADDING, MOVING or deleting a test: it defines the test levels, what each suite is for, and the routing rules that decide which suite a test belongs in. Read it also before judging a change adequately tested, because it names what is AT STAKE per subject: the risk tiers that decide how much testing a subject earns, with `.vis` I/O and controller I/O in BOTH directions at the top. It is also the full account of coverage collection, the end-to-end suite's two modes and the oracle discipline that Testing above summarizes.
 - [ARCHITECTURE.md](ARCHITECTURE.md) -- read before architectural changes; it defines layers, invariants, and enforced boundaries. Challenge 5 is also the record for the validation engine: its faces, its rule bodies, and the dependency direction among the problem, catalogue, session, IO and definition layers that the architecture tests enforce.
 - [ihcclient/README.md](ihcclient/README.md) -- read when changing public SDK usage, service coverage, or generated SOAP integration.
-- [Architecture decisions](docs/adr/) -- read the relevant ADR before changing UI-thread behavior, moving work off the UI thread, service layering, where validation or other business logic sits relative to a frontend, generated SOAP visibility, or compile-time enforcement. ADR-001 covers threading and concurrency: single-UI-thread ownership, and the contract for background work (the SDK stays synchronous and thread-agnostic; the host offloads). ADR-002 covers both halves of the SDK/app seam: the service tiers and the thin applications above them, validation placement included.
+- [Architecture decisions](docs/adr/) -- read the relevant ADR before changing UI-thread behavior, moving work off the UI thread, service layering, where validation or other business logic sits relative to a frontend, generated SOAP visibility, compile-time enforcement, or the controller-stub seam and the testability switches. ADR-001 covers threading and concurrency: single-UI-thread ownership, and the contract for background work (the SDK stays synchronous and thread-agnostic; the host offloads). ADR-002 covers both halves of the SDK/app seam: the service tiers and the thin applications above them, validation placement included. ADR-005 covers the controller-stub seam: what ships where, routing and the latch in `Client.Post`, the `--controller-stub` switch and the safeguard layers.
+- [Controller stub](ihcclient_stub/README.md) and its [design page](ihcclient_stub/docs/stubdesign.md) -- read before writing a stub-backed test, adding a typed answer, or changing the stub, its loopback host or the SDK's stub seam. The README carries the test rules, the risks and the maintenance steps; the design page shows which suite uses which path and defines the safeguard tags.
 - [OpenVisual product specification](applications/ihc_openvisual/docs/product.md) and [user-story index](applications/ihc_openvisual/docs/stories/INDEX.md) -- read before implementing an OpenVisual feature. These specify WHAT; keep HOW in code/`ARCHITECTURE.md` and WHEN in planning artifacts, except story readiness/status annotations.
 - [Icon design](applications/ihc_openvisual/docs/icons_design.md) and [icon mapping](applications/ihc_openvisual/docs/icon_codes.md) -- read before creating or changing OpenVisual icons.
 - [Test data overview](tests/testdata/testdataoverview.md) -- read before using, adding, capturing, or regenerating oracle fixtures.
-- [Safe Lab test documentation](tests/safe_lab_tests/README.md) -- read before changing Lab UI tests, fakes, screenshots, or test setup.
+- [Safe Lab test documentation](tests/safe_lab_tests/README.md) -- read before changing Lab UI tests, the run's controller stub or the remaining fakes, screenshots, or test setup.
 - [Build validation workflow](.github/workflows/build-validation.yml) -- read before changing CI, analyzers, target frameworks, or the test matrix.
+- [Static analysis](docs/static-analysis.md) -- read before changing a static check, `.jscpd.json` or its `ignorePattern`, or before judging what a clean build or scan proves.
 - [Coverage scope](.runsettings) -- the single place the measured assemblies and the excluded sources are declared. Read it before adding an assembly to the measured set, and note that an assembly nobody lists is simply unmeasured rather than reported as a failure.
 - [Problem catalogue](ihcclient/docs/problem-catalogue.md) -- the SDK's master artifact for every `.vis` finding and every coded refusal: the rows, their categories and severities, the evidence behind each, and the deliberate NON-findings. Read it before adding, changing or reclassifying a code; the rendered index at its end is generated from the declarations and compared by a test, so edit the declarations and regenerate rather than editing the table.
 - [Problem catalogue authoring requirements](applications/ihc_openvisual/docs/error_catalog.md) -- read before ADDING an item to either catalogue: the data, formats and wiring a fatal error, error, warning, information item or host operation outcome needs, plus the gates and oracles it moves. It covers the SDK catalogue above and OpenVisual's reserved `app.openvisual.*` family, whose truth is `applications/ihc_openvisual/Services/HostProblemCatalog.cs`. It holds no row inventory -- the declarations do.

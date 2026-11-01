@@ -31,7 +31,7 @@ namespace Ihc.Tests
             new(typeof(global::ihc_openvisual.App).Assembly, typeof(global::ihc_openvisual.App).Namespace!),
             new(typeof(global::Ihc.IhcSettings).Assembly, "Ihc"),
             new(typeof(global::Ihc.Bootstrap.TelemetryBootstrap).Assembly, "Ihc"),
-            new(typeof(global::Ihc.Bootstrap.AppTelemetryBootstrap).Assembly, "Ihc"),
+            new(typeof(global::Ihc.Bootstrap.AvaloniaTelemetryBootstrap).Assembly, "Ihc"),
         ];
 
         /// <summary>Deliberate, permanent opt-outs. Empty, and that is the point: the ban is being written while

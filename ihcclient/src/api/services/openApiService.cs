@@ -173,33 +173,30 @@ namespace Ihc {
             public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings, HttpClient? transport)
                 : base(cookieHandler, settings, SoapServiceName, transport) { }
 
-            public Task<outputMessageName13> authenticateAsync(inputMessageName13 request)
+            public async Task<outputMessageName13> authenticateAsync(inputMessageName13 request)
             {
                 string? cookie = null;
 
                 // Withholds the cookie as AuthenticationService's login does - by the same reasoning, not by a
                 // recording of this service: a login opens a new session, and a stored cookie may name one a
-                // controller restart has ended.
-                var result = soapPost<outputMessageName13, inputMessageName13>("authenticate", request, resp =>
+                // controller restart has ended. Awaited for the same reason as that login: a continuation
+                // reading Result would wrap every fault and turn a cancellation into one.
+                var result = await soapPost<outputMessageName13, inputMessageName13>("authenticate", request, resp =>
                 {
                     // Use side-effect to capture cookie sice our post call only captures xml response.
                     cookie = SetCookieHeader.FirstOrNull(resp);
-                }, sendSessionCookie: false);
+                }, sendSessionCookie: false).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-                return result.ContinueWith<outputMessageName13>((r) =>
+                // Add cookie only on success.
+                if (result.authenticate3.HasValue && result.authenticate3.Value)
                 {
-                    var result = r.Result;
-                    // Add cookie only on success.
-                    if (result.authenticate3.HasValue && result.authenticate3.Value)
-                    {
-                        cookieHandler.SetCookie(cookie);
-                    }
-                    else
-                    {
-                        cookieHandler.SetCookie(null);
-                    }
-                    return result;
-                });
+                    cookieHandler.SetCookie(cookie);
+                }
+                else
+                {
+                    cookieHandler.SetCookie(null);
+                }
+                return result;
             }
 
             public Task<outputMessageName2> disableSubscriptionAsync(inputMessageName2 request)

@@ -53,6 +53,42 @@ namespace Ihc {
 
    public const int FEATURE_NOT_IMPLEMENTED= 1010;
 
+   /// <summary>
+   /// A call targets a controller-stub endpoint for which no stub is registered in this process. It is refused
+   /// rather than sent, so a stub endpoint never reaches a controller.
+   /// </summary>
+   public const int CONTROLLER_STUB_NOT_REGISTERED = 1011;
+
+   /// <summary>
+   /// A call targets a real controller endpoint while a controller stub is registered in this process, which
+   /// marks it as a stub process that must reach no controller.
+   /// </summary>
+   public const int CONTROLLER_SOCKET_REFUSED_WHILE_STUBBED = 1012;
+
+   /// <summary>
+   /// A controller stub threw or returned no response: a defect in the stub, never a controller's answer.
+   /// </summary>
+   public const int CONTROLLER_STUB_FAULTED = 1013;
+
+   /// <summary>
+   /// A stub endpoint or a <c>--controller-stub</c> value the rules refuse: a chosen registration key that is
+   /// not <c>mock://</c>, or a loopback address that is not plain http to a loopback IP literal with an explicit
+   /// port and a token.
+   /// </summary>
+   public const int CONTROLLER_STUB_ENDPOINT_INVALID = 1014;
+
+   /// <summary>
+   /// The process at a loopback stub address did not prove it is the stub it was registered as: no token echo
+   /// when registered, or a response without the stub header.
+   /// </summary>
+   public const int CONTROLLER_STUB_IDENTITY_FAILED = 1015;
+
+   /// <summary>
+   /// A <c>mock://</c> key was registered a second time in one process. A key is single-use, live or disposed,
+   /// so two fixtures can never swap each other's stub.
+   /// </summary>
+   public const int CONTROLLER_STUB_ENDPOINT_IN_USE = 1016;
+
    public const int WEB_EXCEPTION_ERROR_BASE = 10000;
  } 
 }

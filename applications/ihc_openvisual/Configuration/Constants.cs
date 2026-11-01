@@ -18,6 +18,10 @@ public static class Constants
     /// lowercase as the vendor displays it ("unavngivet - LK IHC Visual"; alignment F-14, measured 2026-08-09).</summary>
     public const string UntitledDocument = "unavngivet";
 
+    /// <summary>What the title adds while the controller settings target a controller stub, so no one takes a
+    /// stubbed session for a controller.</summary>
+    public const string ControllerStubTitleSuffix = " – STUB-controller (ingen rigtig controller)";
+
     /// <summary>
     /// One of the application's own files or folders under the user's application data — every preference store,
     /// the imported catalog and the last-resort start-up log land through here.

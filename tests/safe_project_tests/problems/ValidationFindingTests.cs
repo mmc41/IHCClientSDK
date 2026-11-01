@@ -327,7 +327,7 @@ namespace Ihc.Vis.Tests
         /// <summary>
         /// A finding carries the operations its row refuses, so a host can tell a FATAL error from an ordinary
         /// one without reading the SDK catalogue — which the layer rules forbid it doing
-        /// (<c>ValidationLayerArchitectureTests</c> L5 bars the app from <c>ProblemCatalog.Current</c>). The
+        /// (<c>ValidationLayerArchitectureTests</c> VL5 bars the app from <c>ProblemCatalog.Current</c>). The
         /// finding is therefore the only door, and this is what comes through it.
         /// <para>
         /// Both halves are witnessed by the corpus rather than constructed: <c>attr-undeclared</c> refuses the

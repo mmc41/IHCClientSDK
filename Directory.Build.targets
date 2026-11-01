@@ -30,7 +30,7 @@
 
     A project that legitimately uses the layer sets <UsesGeneratedSoapLayer>true</UsesGeneratedSoapLayer>
     in its own file, so each exception is visible where it is taken rather than in a list here that nothing
-    would keep honest. There are three: the SDK that owns the layer, and the two suites that white-box it.
+    would keep honest.
   -->
   <ItemGroup Condition="'$(UsesGeneratedSoapLayer)' != 'true'">
     <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" PrivateAssets="all" />

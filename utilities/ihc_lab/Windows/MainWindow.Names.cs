@@ -13,6 +13,9 @@ namespace IhcLab;
 public static class MainWindowNames
 {
     // Menu Items
+    /// <summary>MenuItem for editing the login and endpoint</summary>
+    public const string SetupMenuItem = nameof(SetupMenuItem);
+
     /// <summary>MenuItem for copying output/result to clipboard</summary>
     public const string CopyOutputMenuItem = nameof(CopyOutputMenuItem);
 

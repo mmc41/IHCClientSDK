@@ -63,7 +63,7 @@ public class ValidationFaultRoutingCompositionTests
         {
             // A service of its own rather than the harness's: giving that one a port needs the internal
             // constructor taking a catalog, a clock and a port together, and this assembly is deliberately not an
-            // InternalsVisibleTo of the SDK (L5). Both are built over the SAME sink, which is the fact under test.
+            // InternalsVisibleTo of the SDK (VL5). Both are built over the SAME sink, which is the fact under test.
             Service = new ProjectAppService(new IhcSettings(), Sink.Append);
             Harness = ShellHarness.Create(faultSink: Sink.Append);
             Validation = new ValidationMonitor(Harness.Session, Validate, onFault: Sink.Append);

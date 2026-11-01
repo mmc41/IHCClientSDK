@@ -23,6 +23,9 @@
     <Compile Include="..\shared\ControllerReachScan.cs" Link="shared\ControllerReachScan.cs" />
     <!-- The safety rule, as a gate rather than a convention: this suite may reach no controller. -->
     <Compile Include="..\shared\ControllerReachGuard.cs" Link="shared\ControllerReachGuard.cs" />
+    <!-- ...and the same rule at run time: a stub registered for the whole run latches every real endpoint. -->
+    <Compile Include="..\shared\ControllerStubLatchFixture.cs" Link="shared\ControllerStubLatchFixture.cs" />
+    <Compile Include="..\shared\ControllerStubLatchSupport.cs" Link="shared\ControllerStubLatchSupport.cs" />
     <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
   </ItemGroup>
 

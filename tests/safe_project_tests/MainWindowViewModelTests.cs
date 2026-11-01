@@ -3881,6 +3881,24 @@ public class MainWindowViewModelTests
         Assert.That(vm.Title, Is.EqualTo("house.vis - IHC OpenVisual"));
     }
 
+    /// <summary>A stubbed run says so in the title from the first moment, and keeps saying so through a save,
+    /// which rebuilds the title.</summary>
+    [Test]
+    public async Task Title_CarriesTheStubSuffix_WhenTheControllerIsAStub()
+    {
+        const string Suffix = " – STUB-controller (ingen rigtig controller)";
+        using var harness = ShellHarness.Create();
+        var vm = harness.CreateViewModel(controllerStubInUse: true);
+
+        Assert.That(vm.Title, Is.EqualTo("unavngivet - IHC OpenVisual" + Suffix), "before the shell initializes");
+        await vm.InitializeAsync();
+        Assert.That(vm.Title, Is.EqualTo("unavngivet - IHC OpenVisual" + Suffix));
+
+        harness.Dialogs.SavePath = harness.TempPath("Projekt1.vis");
+        await harness.Session.SaveAsAsync();
+        Assert.That(vm.Title, Is.EqualTo("Projekt1.vis - IHC OpenVisual" + Suffix));
+    }
+
     [Test]
     public async Task ToggleToolbar_FlipsVisibility()
     {

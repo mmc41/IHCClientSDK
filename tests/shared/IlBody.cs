@@ -20,7 +20,9 @@ namespace Ihc.Tests
     /// </summary>
     internal static class IlBody
     {
-        internal readonly record struct Instruction(OpCode Op, MethodBase? Called);
+        /// <summary>One decoded instruction: the method a call resolves to, and the string an <c>ldstr</c> loads,
+        /// which is also where a <c>const string</c> ends up, since the compiler inlines it at every use.</summary>
+        internal readonly record struct Instruction(OpCode Op, MethodBase? Called, string? Literal = null);
 
         private static readonly Dictionary<short, OpCode> ByValue = typeof(OpCodes)
             .GetFields(BindingFlags.Public | BindingFlags.Static)
@@ -60,7 +62,19 @@ namespace Ihc.Tests
                         // A token this module cannot resolve is not a call a rule can judge.
                     }
                 }
-                yield return new Instruction(op, called);
+                string? literal = null;
+                if (op.OperandType == OperandType.InlineString)
+                {
+                    try
+                    {
+                        literal = method.Module.ResolveString(BitConverter.ToInt32(il, at));
+                    }
+                    catch (ArgumentException)
+                    {
+                        // A token this module cannot resolve is not a literal a rule can judge.
+                    }
+                }
+                yield return new Instruction(op, called, literal);
                 at += OperandSize(op, il, at);
             }
         }

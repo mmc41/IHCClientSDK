@@ -4,8 +4,8 @@ using System.Reflection;
 namespace Ihc.Tests
 {
     /// <summary>
-    /// The shared host bootstrap is split in two: <c>ihc_telemetrybootstrap</c> builds the logger factory and the
-    /// tracer/meter providers and knows nothing about a UI toolkit, while <c>ihc_appbootstrap</c> adds the
+    /// The shared host bootstrap is split in two: <c>ihc_hostbootstrap</c> builds the logger factory and the
+    /// tracer/meter providers and knows nothing about a UI toolkit, while <c>ihc_hostbootstrap_avalonia</c> adds the
     /// Avalonia-only extras on top. The split exists so a CONSOLE utility can build the same telemetry pipeline
     /// without referencing a windowing toolkit (R7).
     ///
@@ -32,8 +32,8 @@ namespace Ihc.Tests
         [Test]
         public void TheSameRuleFlagsTheAvaloniaHalf()
         {
-            ArchRuleHelpers.AssertDependencyIsDetected(ArchitectureModels.AppBootstrap,
-                typeof(global::Ihc.Bootstrap.AppTelemetryBootstrap), ArchRuleHelpers.AvaloniaNs,
+            ArchRuleHelpers.AssertDependencyIsDetected(ArchitectureModels.AvaloniaBootstrap,
+                typeof(global::Ihc.Bootstrap.AvaloniaTelemetryBootstrap), ArchRuleHelpers.AvaloniaNs,
                 "the Avalonia half reported no Avalonia dependency, so the rule above is not measuring anything");
         }
 
@@ -46,7 +46,7 @@ namespace Ihc.Tests
         public void TheProviderPipelineLivesOnTheNeutralSide()
         {
             var neutral = typeof(global::Ihc.Bootstrap.TelemetryBootstrap);
-            var avalonia = typeof(global::Ihc.Bootstrap.AppTelemetryBootstrap);
+            var avalonia = typeof(global::Ihc.Bootstrap.AvaloniaTelemetryBootstrap);
 
             string[] neutralMembers = [.. neutral.GetMembers(BindingFlags.Public | BindingFlags.Static
                 | BindingFlags.DeclaredOnly).Select(m => m.Name)];

@@ -5,6 +5,8 @@ using System.Reflection;
 using ArchUnitNET.Domain;
 using NUnit.Framework;
 using static Ihc.Tests.ArchRuleHelpers;
+// ArchUnitNET.Domain also exports an `Assembly`; the constructor scan reads reflection assemblies.
+using Assembly = System.Reflection.Assembly;
 
 namespace Ihc.Tests
 {
@@ -13,10 +15,10 @@ namespace Ihc.Tests
     /// blanket by construction — it opens every internal in the SDK to one assembly — so what bounds it is not the
     /// grant but a check that says which internals Lab may actually reach.
     /// <para>
-    /// Two are documented and allowed. `ValidationHelper.ValidateDataAnnotations` is the SDK's own DataAnnotations
-    /// validation, which Lab's setup screen runs over the settings a user types; `ServiceMetadata.TryGetCollectionElementType`
-    /// is an internal MEMBER of a PUBLIC type, which is exactly the shape a type-level sweep cannot see — the type
-    /// is public, so nothing about the reference looks unusual until the member is resolved.
+    /// One is documented and allowed. `ServiceMetadata.TryGetCollectionElementType` is an internal MEMBER of a
+    /// PUBLIC type, which is exactly the shape a type-level sweep cannot see — the type is public, so nothing about
+    /// the reference looks unusual until the member is resolved. A reach into an internal TYPE is the simpler case
+    /// the same resolution reports, and none is allowed.
     /// </para>
     /// <para>
     /// Anything else Lab reaches is a finding, and the fix is a supported member on the SDK rather than a wider
@@ -35,17 +37,16 @@ namespace Ihc.Tests
         private static readonly IReadOnlySet<(string Type, string Member)> AllowedReaches =
             new HashSet<(string, string)>
             {
-                ("Ihc.ValidationHelper", "ValidateDataAnnotations"),
                 ("Ihc.ServiceMetadata", "TryGetCollectionElementType"),
             };
 
         [Test]
-        public void Lab_ReachesOnlyItsTwoDocumentedInternals()
+        public void Lab_ReachesOnlyItsDocumentedInternals()
         {
             var reaches = InternalReaches();
 
             Assert.That(reaches.Select(r => (r.TargetType, r.Member)).Distinct().Except(AllowedReaches), Is.Empty,
-                "the ihc_lab friend grant is bounded to its two documented dependencies: a new internal reach means "
+                "the ihc_lab friend grant is bounded to its documented dependencies: a new internal reach means "
                 + "the SDK is missing a supported member, not that the grant should widen — offending calls: "
                 + string.Join("; ", reaches
                     .Where(r => !AllowedReaches.Contains((r.TargetType, r.Member)))
@@ -53,7 +54,70 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// The arming control. Both documented reaches must be OBSERVED, which is what proves the scan resolves
+        /// A constructor call is judged by the overload it RESOLVES to. A public service type always has a public
+        /// constructor, so the member-name rule above can never see Lab building one through an internal overload,
+        /// such as the transport constructor tests use to substitute a socket. A service built that way would carry
+        /// its own transport, past the stub latch, which no supported constructor allows.
+        /// </summary>
+        [Test]
+        public void Lab_CallsNoInternalSdkConstructor()
+        {
+            var sdkConstructions = SdkConstructorCalls(typeof(IhcLab.App).Assembly, LabRoot, SdkAssembly).ToList();
+            Assert.That(sdkConstructions, Is.Not.Empty,
+                "Lab builds SDK types, so a scan that sees no SDK constructor call is not resolving constructors");
+
+            var offending = sdkConstructions.Where(call => IsGrantOnly(call.Called)).ToList();
+
+            Assert.That(offending, Is.Empty,
+                "the ihc_lab friend grant does not extend to non-public SDK constructors: build the type through a "
+                + "public constructor — offending calls: "
+                + string.Join("; ", offending.Select(call => $"{call.Site} -> {call.Called.DeclaringType}{call.Called}")));
+        }
+
+        /// <summary>
+        /// Arming control for <see cref="Lab_CallsNoInternalSdkConstructor"/>: over this assembly's seeds, the scan
+        /// reports the call to the internal transport overload and not the call to the public one on the same type,
+        /// which proves it resolves the overload rather than the type or the name.
+        /// </summary>
+        [Test]
+        public void TheConstructorScanResolvesTheOverload()
+        {
+            Assembly seeds = typeof(Ihc.Transport.Seeded.SeededTransportService).Assembly;
+            var reported = SdkConstructorCalls(seeds, typeof(Ihc.Transport.Seeded.SeededTransportService).Namespace!, seeds)
+                .Where(call => IsGrantOnly(call.Called))
+                .Select(call => call.Called)
+                .ToList();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(reported, Does.Contain(typeof(Ihc.Transport.Seeded.SeededTransportService).GetConstructor(
+                    BindingFlags.Instance | BindingFlags.NonPublic, [typeof(string), typeof(System.Net.Http.HttpClient)])),
+                    "the seeded call to the internal transport overload must be reported");
+                Assert.That(reported, Does.Not.Contain(typeof(Ihc.Transport.Seeded.SeededTransportService).GetConstructor(
+                    [typeof(string)])),
+                    "the seeded call to the public overload of the same type must not be");
+            });
+        }
+
+        /// <summary>Every constructor of a <paramref name="target"/> type called from the authored code under
+        /// <paramref name="callerRoot"/>, as the exact overload the call resolves to.</summary>
+        private static IEnumerable<(ContainmentSite Site, ConstructorInfo Called)> SdkConstructorCalls(
+            Assembly callers, string callerRoot, Assembly target) =>
+            AuthoredMembers.Of(callers, callerRoot)
+                .SelectMany(member => IlBody.CalledMethods(member)
+                    .OfType<ConstructorInfo>()
+                    .Where(called => called.DeclaringType?.Assembly == target)
+                    .Select(called => (ContainmentSite.For(member), called)));
+
+        /// <summary>True for a constructor only the friend grant makes callable: one on an internal type, or an
+        /// internal or private overload. A protected one is reachable by any subclass, so it says nothing about the
+        /// grant.</summary>
+        private static bool IsGrantOnly(ConstructorInfo constructor) =>
+            !constructor.DeclaringType!.IsVisible
+            || !(constructor.IsPublic || constructor.IsFamily || constructor.IsFamilyOrAssembly);
+
+        /// <summary>
+        /// The arming control. Every documented reach must be OBSERVED, which is what proves the scan resolves
         /// members and recognises non-public ones — a detector that silently resolved nothing would satisfy the rule
         /// above while checking nothing at all.
         /// </summary>
@@ -75,7 +139,7 @@ namespace Ihc.Tests
         /// <summary>
         /// Every call Lab makes into a non-public SDK member. "Non-public" is asked of the RESOLVED member, not of
         /// the declaring type: an internal member on a public type is the case a type-level sweep misses, and it is
-        /// one of the two this grant exists for.
+        /// the one this grant exists for.
         /// </summary>
         private static IReadOnlyList<(string Origin, string OriginMember, string TargetType, string Member)> InternalReaches() =>
             Reaches.Value;

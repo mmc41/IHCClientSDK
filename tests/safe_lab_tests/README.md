@@ -1,66 +1,23 @@
 # safe_lab_tests - IHC Lab Headless GUI Test Project
 
-This is a headless Avalonia UI test project for the IHC Lab application. Tests use mocked IHC services (FakeItEasy proxies) and do not require a live IHC controller or settings file.
+This is a headless Avalonia UI test project for the IHC Lab application. Lab's real IHC services run over an in-process controller stub (`ihcclient_stub`), so the tests need neither a live IHC controller nor a settings file.
 
 ## Test Infrastructure
 
-### Mocked Services Configuration
+### The controller stub
 
-All IHC API services are mocked using FakeItEasy when the endpoint starts with `SpecialEndpoints.MockedPrefix`. The mock implementations are defined in `utilities/ihc_lab/App/IhcSetup.cs` in the `IhcFakeSetup` class.
+Lab carries no fake of its own: `IhcSetup` (`utilities/ihc_lab/App/IhcSetup.cs`) builds the real SDK services for every endpoint. A `mock://` endpoint is a controller-stub endpoint, which the SDK sends only to a `ControllerStub` registered for it through `ControllerStubs.Register`, and refuses when none is.
 
-**Key Classes:**
-- `IhcSetup` - Main setup class that creates either real or mocked services based on endpoint
-- `IhcFakeSetup` - Static class containing setup methods for each mocked service
+- **The run's stub.** `Setup.RunBeforeAnyTests()` registers one `ControllerStub` under a named `mock://` key for the whole run and points `Program.config` at it, so every window a test opens reaches it. `RunAfterAllTests()` releases it and fails the run if the stub met a call it could not answer.
+- **Per-case stubs.** A test that needs state of its own registers a fresh stub without a key, which gives it a generated endpoint, and disposes the registration when it ends. `LabSmokeTests` does this for every case, and `LabSetupStubTests` shows Lab's own setup over two such stubs.
+- **Answers.** The stub answers every operation with plausible values. To change what an operation answers in a test, set the value on the stub's scenario before the call, for example `stub.UserManager.Users` or `stub.Time.Now`. The stub's own documentation starts at [its README](../../ihcclient_stub/README.md).
 
-### Configuring Mocked Service Operations
-
-To add or modify operations available in mocked services for testing, update the corresponding `Setup*Service` method in `IhcFakeSetup`:
-
-```csharp
-public static IAuthenticationService SetupAuthenticationService(IhcSettings settings)
-{
-    var service = A.Fake<IAuthenticationService>();
-
-    // Configure mock behavior for operations (note: async methods require Task.FromResult)
-    A.CallTo(() => service.Authenticate()).Returns(Task.FromResult(new IhcUser { ... }));
-    A.CallTo(() => service.Authenticate(A<string>._, A<string>._, A<Application>._))
-        .ReturnsLazily((string username, string password, Application app) =>
-            Task.FromResult(new IhcUser { ... }));
-
-    return service;
-}
-```
-
-**Example: Adding a new operation to AuthenticationService**
-```csharp
-// For async methods returning Task<T>
-A.CallTo(() => service.Logout()).Returns(Task.FromResult(true));
-
-// For async methods returning Task (void)
-A.CallTo(() => service.ClearCache()).Returns(Task.CompletedTask);
-```
-
-### Currently Mocked Services
-
-**IAuthenticationService** - Fully mocked with user authentication operations
-- `Authenticate()` - Returns mock user with credentials from settings
-- `Ping()`, `Disconnect()`, `IsAuthenticated()` - Return success values
-
-**IControllerService** - Comprehensively mocked with all 24 operations
-- Project operations: `GetProject()`, `StoreProject()`, `GetProjectInfo()`, `IsIHCProjectAvailable()`
-- State operations: `GetControllerState()`, `WaitForControllerStateChange()`, `EnterProjectChangeMode()`, `ExitProjectChangeMode()`
-- SD card operations: `IsSDCardReady()`, `GetSDCardInfo()`
-- Backup operations: `GetBackup()`, `Restore()`
-- Segmentation operations: `GetIHCProjectSegment()`, `StoreIHCProjectSegment()`, `GetIHCProjectSegmentationSize()`, `GetIHCProjectNumberOfSegments()`
-- S0 energy meter operations: `GetS0MeterValue()`, `ResetS0Values()`, `SetS0Consumption()`, `SetS0FiscalYearStart()`
-
-**Other Services** - Empty fakes (no operations configured)
-- `IResourceInteractionService`, `IConfigurationService`, `IOpenAPIService`, `INotificationManagerService`, `IMessageControlLogService`, `IModuleService`, `ITimeManagerService`, `IUserManagerService`, `IAirlinkManagementService`, `ISmsModemService`, `InternalTestService`, `ILedDimmerManagementService`
+A few tests still fake Lab's collaborators directly with FakeItEasy at the `IIHCApiService` seam, which the suite references itself.
 
 ### Test Setup Process
 
 1. `Setup.RunBeforeAnyTests()` (TestSetup.cs) - Runs once before all tests:
-   - Configures `Program.config` with mocked endpoint (`SpecialEndpoints.MockedPrefix`)
+   - Registers the run's controller stub and configures `Program.config` with its endpoint
    - Initializes logger factory with `TestContextLoggerProvider` for test output visibility
 
 2. `TestAppBuilder.BuildAvaloniaApp()` (TestSetup.cs) - Creates Avalonia test application:
@@ -71,7 +28,7 @@ A.CallTo(() => service.ClearCache()).Returns(Task.CompletedTask);
    - `[AvaloniaTest]` attribute creates headless UI session
    - `[CaptureScreenshotOnFailure]` captures PNG on test failure
    - Tests create `MainWindow` which instantiates `IhcSetup`
-   - `IhcSetup` detects mocked endpoint and uses `IhcFakeSetup` to create services
+   - `IhcSetup` builds the real services on the configured endpoint, which reaches the run's stub
 
 ### Available Test Helpers
 
@@ -120,5 +77,3 @@ dotnet test tests/safe_lab_tests/safe_lab_tests.csproj --verbosity detailed
 - Basic window lifecycle and initialization
 - Service and operation ComboBox population
 - Run button functionality
-
-

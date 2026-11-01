@@ -64,7 +64,7 @@ public class ProblemsNavigationE2ETests : E2EScenario
     [OneTimeTearDown]
     public void CloseApp()
     {
-        E2E.KillApp();
+        E2E.CloseApp();
         Assert.That(System.IO.File.ReadAllBytes(E2E.Fixture(FixtureFile)),
             Is.EqualTo(_fixtureBefore).AsCollection,
             "a scenario modified the fixture — this feature navigates, it does not autofix, so every scenario "

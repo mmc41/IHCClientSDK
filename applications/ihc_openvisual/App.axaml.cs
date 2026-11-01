@@ -106,8 +106,11 @@ public partial class App : Application
             // Adopt the platform's high-contrast preference now and keep following it (US-001): Avalonia reports
             // the preference but ships no high-contrast theme, so the palette is ours to supply (BP-13).
             themeService.FollowPlatformContrast();
+            // Decided here, once, from the settings every service of this run is built on, and handed on as a
+            // plain value so the view-model needs to know nothing about where a controller is.
+            bool controllerStubInUse = settings.IsStubConfigured();
             var viewModel = new MainWindowViewModel(session, dialogs, recent, themeService, config, loggerFactory,
-                internalErrors);
+                internalErrors, controllerStubInUse);
 
             // The shell's own WORK, named — for the same reason the view-model's Compose above is named. What is
             // NOT in here is what Avalonia does AFTER this method returns: showing the window and its first

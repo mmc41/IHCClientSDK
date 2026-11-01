@@ -1,0 +1,12 @@
+# Analyzer severity for the controller stub only.
+#
+# Scoped here rather than in /.globalconfig for the same reason as utilities/.editorconfig: the fact that
+# justifies it is a property of this project, and a global config would have applied it to the SDK too.
+
+[*.cs]
+
+# CA1707 (identifiers should not contain underscores). The finding is the assembly name, ihcclient_stub, which
+# the suites reference and a person runs by name with `dotnet run --project`. The rule is reported against
+# file(1,1) of the first source in the project, so a path scope like this one is the narrowest form available;
+# there is no declaration to suppress it at.
+dotnet_diagnostic.CA1707.severity = none

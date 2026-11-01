@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- White-boxes the generated SOAP layer on purpose: the wire-completeness, contract and seam tests write and
+         read the generated message wrappers the stub answers. Exempt from the repo-wide ban in BannedSymbols.txt. -->
+    <UsesGeneratedSoapLayer>true</UsesGeneratedSoapLayer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
+    <!-- The controller stub: its operation table, wire fidelity, answers and loopback host are tested here. -->
+    <ProjectReference Include="..\..\ihcclient_stub\ihcclient_stub.csproj" />
+    <!-- Where the process runner finds the prefix of the stub line a switched process writes first. -->
+    <ProjectReference Include="..\..\shared\ihc_hostbootstrap\ihc_hostbootstrap.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Runs the loopback identity check's five-second limit on a fake clock, so its case does not wait it out. -->
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\shared\TelemetryCapture.cs" Link="shared\TelemetryCapture.cs" />
+    <Compile Include="..\shared\RequestDestinations.cs" Link="shared\RequestDestinations.cs" />
+    <!-- One argument builder for every test that calls each SDK operation, shared with Lab's smoke tests. -->
+    <Compile Include="..\shared\SdkArguments.cs" Link="shared\SdkArguments.cs" />
+    <!-- The stub host is started as a process the way the unit suite starts the console utilities. -->
+    <Compile Include="..\shared\UtilityProcessRunner.cs" Link="shared\UtilityProcessRunner.cs" />
+    <Compile Include="..\shared\CleanCopy.cs" Link="shared\CleanCopy.cs" />
+    <!-- The socket stand-in the seam tests set beside a stub, shared with the unit suite's transport tests. -->
+    <Compile Include="..\shared\StubTransport.cs" Link="shared\StubTransport.cs" />
+    <!-- The safety rule, as a gate rather than a convention, and the IL reading it rests on. There is no run-wide
+         latch fixture: the seam tests here have to see the latch both released and held. -->
+    <Compile Include="..\shared\IlBody.cs" Link="shared\IlBody.cs" />
+    <Compile Include="..\shared\AuthoredMembers.cs" Link="shared\AuthoredMembers.cs" />
+    <Compile Include="..\shared\ControllerReachScan.cs" Link="shared\ControllerReachScan.cs" />
+    <Compile Include="..\shared\ControllerReachGuard.cs" Link="shared\ControllerReachGuard.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Where the stub host's build output is, baked in at build time so a Release test run cannot start a Debug
+         host. The shared process runner starts it from a copy, as it starts every utility; the host reads no
+         settings file, and none is staged in this folder. -->
+    <AssemblyMetadata Include="IhcClientStubOutput"
+                      Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\ihcclient_stub\bin\$(Configuration)\$(TargetFramework)\'))" />
+  </ItemGroup>
+
+</Project>

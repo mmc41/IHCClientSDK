@@ -145,6 +145,29 @@ public class LaunchPhaseTelemetryTests
     }
 
     /// <summary>
+    /// The controller-stub switch is a phase of its own, from where <c>Main</c> started it to when it was recorded:
+    /// with the switch it holds the stub's identity check, which folded into another phase would be misattributed.
+    /// </summary>
+    [Test]
+    public void TheSwitchIsAPhaseOfItsOwn_EndingWhenItIsRecorded()
+    {
+        using TelemetryCapture spans = TelemetryCapture.Listen(
+            ihc_openvisual.Configuration.Telemetry.ActivitySourceName, spanNames: ["Launch.Switch"]);
+        DateTime started = DateTime.UtcNow - TimeSpan.FromMilliseconds(50);
+
+        DateTime before = DateTime.UtcNow;
+        Program.RecordSwitchPhase(started, new CapturingLogger());
+        DateTime after = DateTime.UtcNow;
+
+        Activity phase = spans.Span("Launch.Switch");
+        Assert.Multiple(() =>
+        {
+            Assert.That(phase.StartTimeUtc, Is.EqualTo(started).Within(Tolerance));
+            Assert.That(phase.StartTimeUtc + phase.Duration, Is.InRange(before - Tolerance, after + Tolerance));
+        });
+    }
+
+    /// <summary>
     /// A phase the core refuses costs only itself. Only <c>Launch.Host</c> can be refused in production — it
     /// is the one phase whose two ends come from different clocks, and <c>DateTime</c>'s round trip through
     /// local time resolves the hour repeated at a daylight-saving fall back to standard time, which can date

@@ -13,6 +13,7 @@ using Ihc.Vis.Products;
 using Ihc.Vis.Projects;
 using Ihc.Vis.Session;
 using Ihc.Vis.Validation;
+using Ihc.Stubbing;
 using static Ihc.Tests.ArchRuleHelpers;
 // ArchUnitNET.Loader also exports a `Type`; the reflection helpers in this fixture mean System.Type throughout.
 using Type = System.Type;
@@ -511,6 +512,12 @@ namespace Ihc.Tests
             AssertNoDependency(Sdk, Subtree(AppLayer), SoapNs,
                 "application services must reach the controller through Ihc API-service interfaces, not the generated SOAP types");
 
+        /// <summary>
+        /// The controller API and the controller-stub seam speak SDK models and plain text, never the wire. The
+        /// API's subjects are its service interfaces and implementations; the seam's are every public type in the
+        /// stub namespace, because a stub written against HTTP, sockets, WCF or the SOAP envelope types would be
+        /// bound to one transport, and the same stub must answer in process and over loopback alike.
+        /// </summary>
         [Test]
         public void ControllerApiPublicContracts_ExposeNoSoapTypes()
         {
@@ -521,21 +528,33 @@ namespace Ihc.Tests
             Assert.That(apiServices, Is.Not.Empty,
                 "the public-contract scan must find the high-level controller service interfaces and implementations");
 
-            var offences = apiServices
-                .SelectMany(service => SoapTypesOn(service)
-                    .Select(soapType => $"{service.FullName} exposes {soapType}"))
+            var stubSeam = typeof(IControllerStub).Assembly.GetTypes()
+                .Where(type => (type.IsPublic || type.IsNestedPublic) && IsInNamespaceSubtree(type, StubNs))
+                .ToList();
+            Assert.That(stubSeam, Is.SupersetOf(new[] { typeof(IControllerStub), typeof(ControllerStubs) }),
+                "the public-contract scan must find the stub seam's SPI and its registration entry point");
+
+            var offences = apiServices.Concat(stubSeam)
+                .SelectMany(subject => WireTypesOn(subject)
+                    .Select(wireType => $"{subject.FullName} exposes {wireType}"))
                 .Distinct()
                 .ToList();
 
             Assert.That(offences, Is.Empty,
-                "high-level controller APIs expose SDK models; generated Ihc.Soap artifacts belong only inside private SoapImpl adapters");
+                "high-level controller APIs and the stub seam expose SDK models; generated Ihc.Soap artifacts belong "
+                + "only inside private SoapImpl adapters, and HTTP, socket, WCF and envelope types only inside the transport");
         }
 
         [Test]
         public void ControllerApiPublicContractScan_IsArmed() =>
-            Assert.That(SoapTypesOn(typeof(ISeededSoapLeakyContract<>)),
-                Does.Contain(typeof(global::Ihc.Soap.Authentication.AuthenticationService).FullName),
-                "the public-contract scan must traverse a custom delegate and a generic constraint to a generated SOAP contract");
+            Assert.That(WireTypesOn(typeof(ISeededSoapLeakyContract<>)),
+                Is.SupersetOf(new[]
+                {
+                    typeof(global::Ihc.Soap.Authentication.AuthenticationService).FullName,
+                    typeof(System.Net.Http.HttpResponseMessage).FullName,
+                }),
+                "the public-contract scan must traverse a custom delegate and a generic constraint to a generated SOAP "
+                + "contract, and see an HTTP type on a member");
 
         private delegate void SeededSoapEvent(global::Ihc.Soap.Authentication.AuthenticationService service);
 
@@ -543,11 +562,21 @@ namespace Ihc.Tests
             where T : global::Ihc.Soap.Authentication.AuthenticationService
         {
             event SeededSoapEvent? Changed;
+
+            // The HTTP leak a stub SPI would take if it handed its transport's message through.
+            System.Threading.Tasks.Task<System.Net.Http.HttpResponseMessage> AnswerAsync(string body);
         }
 
-        private static IReadOnlyList<string> SoapTypesOn(Type contract) =>
+        private static readonly string StubNs = typeof(IControllerStub).Namespace!;
+
+        /// <summary>The namespaces a public controller or stub contract may not name: the generated SOAP layer, the
+        /// network stacks, WCF and the SOAP envelope types.</summary>
+        private static readonly string[] WireNamespaces =
+            [SoapNs, "System.Net.Http", "System.Net.Sockets", "System.ServiceModel", EnvelopeNs];
+
+        private static IReadOnlyList<string> WireTypesOn(Type contract) =>
             PortSurfaceTypes(contract)
-                .Where(type => IsInNamespaceSubtree(type, SoapNs))
+                .Where(type => WireNamespaces.Any(ns => IsInNamespaceSubtree(type, ns)))
                 .Select(type => type.FullName!)
                 .Distinct()
                 .ToList();

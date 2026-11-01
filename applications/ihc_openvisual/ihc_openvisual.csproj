@@ -25,11 +25,13 @@
     <!-- The non-GUI view-models and their collaborators are internal, and this is the suite that owns them
          once they no longer sit behind a toolkit-bound one. -->
     <InternalsVisibleTo Include="safe_project_tests" />
+    <!-- The stub suite composes the configuration through the internal copying constructor start-up uses. -->
+    <InternalsVisibleTo Include="safe_visual_stubbed_tests" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj"/>
-    <ProjectReference Include="..\..\shared\ihc_appbootstrap\ihc_appbootstrap.csproj"/>
+    <ProjectReference Include="..\..\shared\ihc_hostbootstrap_avalonia\ihc_hostbootstrap_avalonia.csproj"/>
   </ItemGroup>
 
   <ItemGroup>

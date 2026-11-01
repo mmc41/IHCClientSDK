@@ -40,3 +40,7 @@ EnumWindows
 GetWindowThreadProcessId
 IsWindowVisible
 GetAncestor
+
+// ── Asking a window to close, as its title-bar button does ──────────────────────────────────────────────────
+PostMessage
+WM_CLOSE

@@ -586,7 +586,7 @@ public sealed class ShellHarness : IDisposable
         // Through the supported clock seam, which hands over no catalog: the service builds the SDK's own, lazily,
         // exactly as the settings-only constructor does. No fault port on it, and not for want of wanting one --
         // the constructor taking a clock AND a port is internal to the SDK, and this file is compiled into a suite
-        // that is deliberately not an InternalsVisibleTo of it (L5). A fixture that needs a service reporting into
+        // that is deliberately not an InternalsVisibleTo of it (VL5). A fixture that needs a service reporting into
         // its own sink builds one from the public fault-port constructor instead, as
         // ValidationFaultRoutingCompositionTests does.
         ProjectService = new ProjectAppService(new IhcSettings(), Time);
@@ -661,8 +661,10 @@ public sealed class ShellHarness : IDisposable
     /// that needs a controllable debounce passes its clock to <see cref="Create"/> rather than here.</para>
     public MainWindowViewModel CreateViewModel(ILoggerFactory? loggerFactory = null, IThemeService? theme = null,
                                                ihc_openvisual.Configuration.AppConfiguration? config = null,
-                                               InternalErrorLog? internalErrors = null) =>
-        new(Session, Dialogs, Recent, theme ?? new NullThemeService(), config, loggerFactory, internalErrors);
+                                               InternalErrorLog? internalErrors = null,
+                                               bool controllerStubInUse = false) =>
+        new(Session, Dialogs, Recent, theme ?? new NullThemeService(), config, loggerFactory, internalErrors,
+            controllerStubInUse);
 
     /// <summary>
     /// The setup every programming-mode test shares: an initialized shell with an empty (unlocked) function block

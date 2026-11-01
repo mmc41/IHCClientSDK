@@ -879,3 +879,34 @@ virtual Ihc.AuthenticationService.Dispose(bool disposing) -> void
 ~override Ihc.Vis.Validation.RuleTarget.ToString() -> string
 ~override Ihc.Vis.Validation.SeverityOverride.Equals(object obj) -> bool
 ~override Ihc.Vis.Validation.SeverityOverride.ToString() -> string
+const Ihc.Errors.CONTROLLER_SOCKET_REFUSED_WHILE_STUBBED = 1012 -> int
+const Ihc.Errors.CONTROLLER_STUB_ENDPOINT_IN_USE = 1016 -> int
+const Ihc.Errors.CONTROLLER_STUB_ENDPOINT_INVALID = 1014 -> int
+const Ihc.Errors.CONTROLLER_STUB_FAULTED = 1013 -> int
+const Ihc.Errors.CONTROLLER_STUB_IDENTITY_FAILED = 1015 -> int
+const Ihc.Errors.CONTROLLER_STUB_NOT_REGISTERED = 1011 -> int
+Ihc.IhcSettings.IsStubConfigured() -> bool
+Ihc.Stubbing.ControllerStubRegistration
+Ihc.Stubbing.ControllerStubRegistration.Dispose() -> void
+Ihc.Stubbing.ControllerStubRegistration.Endpoint.get -> string!
+Ihc.Stubbing.ControllerStubRequest
+Ihc.Stubbing.ControllerStubRequest.Body.get -> string!
+Ihc.Stubbing.ControllerStubRequest.ControllerStubRequest(string! service, string! soapAction, string! body, string? cookie) -> void
+Ihc.Stubbing.ControllerStubRequest.Cookie.get -> string?
+Ihc.Stubbing.ControllerStubRequest.Service.get -> string!
+Ihc.Stubbing.ControllerStubRequest.SoapAction.get -> string!
+Ihc.Stubbing.ControllerStubResponse
+Ihc.Stubbing.ControllerStubResponse.Body.get -> string!
+Ihc.Stubbing.ControllerStubResponse.ControllerStubResponse(int statusCode, string! body, string? setCookie = null) -> void
+Ihc.Stubbing.ControllerStubResponse.IsConnectionLost.get -> bool
+Ihc.Stubbing.ControllerStubResponse.SetCookie.get -> string?
+Ihc.Stubbing.ControllerStubResponse.StatusCode.get -> int
+Ihc.Stubbing.ControllerStubs
+Ihc.Stubbing.IControllerStub
+Ihc.Stubbing.IControllerStub.HandleAsync(Ihc.Stubbing.ControllerStubRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Ihc.Stubbing.ControllerStubResponse!>!
+static Ihc.Stubbing.ControllerStubResponse.ConnectionLost.get -> Ihc.Stubbing.ControllerStubResponse!
+static Ihc.Stubbing.ControllerStubs.Register(Ihc.Stubbing.IControllerStub! stub, string? endpoint = null) -> Ihc.Stubbing.ControllerStubRegistration!
+static Ihc.Stubbing.ControllerStubs.RegisterLoopbackAsync(System.Uri! baseAddress, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Ihc.Stubbing.ControllerStubRegistration!>!
+const Ihc.Stubbing.ControllerStubs.SwitchArgument = "--controller-stub" -> string!
+static Ihc.Stubbing.ControllerStubs.ApplySwitch(System.Collections.Generic.IReadOnlyList<string!>! args, Ihc.IhcSettings! loaded) -> (Ihc.IhcSettings! Effective, System.Collections.Generic.IReadOnlyList<string!>! RemainingArgs)
+static Ihc.Stubbing.ControllerStubs.SwitchRequested(System.Collections.Generic.IReadOnlyList<string!>! args) -> bool

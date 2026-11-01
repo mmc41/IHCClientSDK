@@ -12,6 +12,27 @@ namespace safe_visual_e2e_tests;
 /// </remarks>
 internal static class DriverArguments
 {
+    /// <summary>The launch verb's option carrying the controller-stub switch's value to pass to the application.</summary>
+    internal const string ControllerStubOption = "--controller-stub";
+
+    /// <summary>
+    /// The flag that makes <c>doctor</c> launch the application. Without it <c>doctor</c> only reports whether a
+    /// launched application is ready, so a readiness check can never start one around the launch gate.
+    /// </summary>
+    internal const string LaunchFlag = "--launch";
+
+    /// <summary>Whether <paramref name="args"/> ask the driver to launch the application: the one reader of
+    /// <see cref="LaunchFlag"/>, which the launch-site pin counts beside the one sender.</summary>
+    internal static bool LaunchRequested(string[] args) => Has(args, LaunchFlag);
+
+    /// <summary>
+    /// Whether a verb answers before there is an application to drive, which every other verb refuses: <c>doctor</c>,
+    /// which launches one with the launch flag and otherwise reports that none runs, and <c>session status</c>, which
+    /// reports the empty context a caller uses to discover that nothing is open.
+    /// </summary>
+    internal static bool AnswersWithoutApplication(string domain, string verb) =>
+        (domain, verb) is ("doctor", _) or ("session", "status");
+
     /// <summary>The value following <paramref name="name"/>, or null when the option is absent or last.</summary>
     internal static string? Option(string[] args, string name)
     {

@@ -5,12 +5,10 @@
     rather than by staying dark. (safe_architecture_tests is the only suite that opts out today, for a reason
     of its own that is stated in its project.)
 
-    The child process is the one that mattered: the default mode launches ihc_openvisual.exe out of the test
-    host, and an instrumented child outliving its test keeps that process holding its bin DLLs, which is how a
-    later build fails to overwrite the very binaries this suite just exercised. That is settled in .runsettings,
-    where CollectFromChildProcesses is now switched OFF explicitly instead of being left to a default that is
-    True. What is measured here is therefore the HEADLESS leg, which hosts the same MainWindow in this process —
-    and that is the leg CI runs.
+    One reason was the child process: the default mode launches ihc_openvisual.exe out of the test host. That is
+    settled in .runsettings, where CollectFromChildProcesses is switched OFF explicitly instead of being left to a
+    default that is True, and where the reason that loses nothing is stated. What is measured here is therefore
+    the HEADLESS leg, which hosts the same MainWindow in this process — and that is the leg CI runs.
 
     The other reason was that CI runs only a filtered subset, so a slice from here would describe less than the
     suite. True, and true of every suite: a slice always describes the run that produced it, which is what
@@ -45,19 +43,24 @@
     <!-- The Windows UI-Automation mechanics the real driver is built on. The DRIVER — the verbs, the envelope
          and the OpenVisual automation ids — stays here, because none of that is reusable by anything else. -->
     <ProjectReference Include="..\..\shared\ihc_uiautomation_windows\ihc_uiautomation_windows.csproj" />
+    <!-- The loopback controller stub every desktop launch is started against, so the application under test can
+         reach no controller. -->
+    <ProjectReference Include="..\..\ihcclient_stub\ihcclient_stub.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <!--
-      Where the real driver launches the application from: the APPLICATION'S own build output, not the copy the
-      ProjectReference above stages beside these tests.
+      What the real driver copies the application from: the APPLICATION'S own build output, not what the
+      ProjectReference above stages beside these tests. The driver never launches it there (O8).
 
-      The difference is ihcsettings.json. The app probes for it beside its own executable, and its project
-      stages the repository's file there (CopyIhcSettingsToOutput); the copy in this suite's output has no such
-      file, so an app launched from here starts with no telemetry and a desktop run produces nothing to diagnose
-      with. Baking the path in at build time — rather than computing it at run time — also pins the
-      CONFIGURATION to the one these tests were built in, so a Release test run cannot silently drive a Debug
-      application.
+      The app probes for ihcsettings.json beside its own executable, and its project stages the developer's file
+      there (CopyIhcSettingsToOutput): a real controller's endpoint and login, and the telemetry settings a desktop
+      run needs to be diagnosed with. So the driver launches a clean copy of this output, with a settings file of
+      the suite's own that keeps that file's telemetry and logging sections and names an endpoint that can only
+      fail (Drivers/ApplicationCopy.cs). The output beside these tests holds no settings file to keep them from.
+
+      Baking the path in at build time — rather than computing it at run time — also pins the CONFIGURATION to
+      the one these tests were built in, so a Release test run cannot silently drive a Debug application.
 
       Windows-only by construction, and so is the mode that reads it: the headless leg never launches anything.
     -->
@@ -82,6 +85,12 @@
     <Compile Include="..\shared\AuthoredMembers.cs" Link="shared\AuthoredMembers.cs" />
     <Compile Include="..\shared\ControllerReachScan.cs" Link="shared\ControllerReachScan.cs" />
     <Compile Include="..\shared\ControllerReachGuard.cs" Link="shared\ControllerReachGuard.cs" />
+    <!-- ...and the same rule at run time: a stub registered for the whole run latches every real endpoint. -->
+    <Compile Include="..\shared\ControllerStubLatchFixture.cs" Link="shared\ControllerStubLatchFixture.cs" />
+    <Compile Include="..\shared\ControllerStubLatchSupport.cs" Link="shared\ControllerStubLatchSupport.cs" />
+    <!-- ...and the copy every desktop launch starts from, made the way the unit and stub suites copy the
+         processes they start. -->
+    <Compile Include="..\shared\CleanCopy.cs" Link="shared\CleanCopy.cs" />
     <!-- The projects the application opens are read as real paths out of tests/testdata, so this suite is one
          of the few that legitimately reaches the source checkout. That is now its ONLY reason to: the driver
          is this suite's own code, and SkillIndependenceGuard fails the build if a path under .claude/ comes

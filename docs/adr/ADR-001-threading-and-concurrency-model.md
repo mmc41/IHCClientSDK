@@ -242,7 +242,7 @@ and serves console tools and test suites that want the synchronous call. Three a
 | --- | --- |
 | **Host offloads; the SDK stays synchronous** (chosen) | Changes no code, and the SDK contract it stands on is already tested. Accepted cost: the scheduling policy is not shared code, so a second frontend would copy it — which is why it is written below as a numbered contract instead of left to each caller. |
 | The facade grows `…Async(snapshot, CancellationToken)` doors | Rejected on three counts. A library wrapping synchronous CPU work in `Task.Run` spends the caller's thread-pool thread unasked. Every existing `Task`-returning door on the facade is I/O-shaped, so `Async` would come to mean two different things on one type, across a shipped public-API baseline. And the token would be a public promise the engine cannot keep mid-run. It also fails to take the hard part: coalescing, version keying and binding stay with the host either way. |
-| A shared latest-wins scheduler component | **Deferred, not rejected** — the right extraction once a second in-process frontend needs the same loop, which is revisit trigger (d). Shipping it for one shell is infrastructure ahead of its consumer. If it is built it belongs in `ihcclient`; `shared/ihc_appbootstrap` references Avalonia by design and is not a framework-free shelf. |
+| A shared latest-wins scheduler component | **Deferred, not rejected** — the right extraction once a second in-process frontend needs the same loop, which is revisit trigger (d). Shipping it for one shell is infrastructure ahead of its consumer. If it is built it belongs in `ihcclient`; `shared/ihc_hostbootstrap_avalonia` references Avalonia by design and is not a framework-free shelf. |
 
 **The host contract.** A background recompute follows five steps. They are numbered because each is a distinct
 failure mode, because a second frontend should copy a specification rather than rediscover them, and because a later
@@ -292,7 +292,7 @@ threads. This binds new fire-and-forget code; it requires no change to what exis
 
 **Amended: the dispatcher net now HANDLES a fault, and that is a trade rather than a safety judgement.** The
 earlier position was that a faulted UI thread must never be resumed, because resuming continues on possibly
-corrupt state. It is now resumed: `AppTelemetryBootstrap.DispatcherExceptionHandler` sets `args.Handled = true`,
+corrupt state. It is now resumed: `AvaloniaTelemetryBootstrap.DispatcherExceptionHandler` sets `args.Handled = true`,
 records the fault durably, and lets the application carry on. What is traded is a process whose state is
 guaranteed clean, for a fault the user can actually report — a UI-thread fault is the commonest way an Avalonia
 application of this shape dies, and with nothing persisted across the crash it is otherwise the one class of

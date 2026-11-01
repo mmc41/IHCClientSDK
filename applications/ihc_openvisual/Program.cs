@@ -10,6 +10,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using ihc_openvisual.Configuration;
 using Ihc.Bootstrap;
+using Ihc.Stubbing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -35,7 +36,7 @@ internal sealed class Program
     /// bad path is reported too.</para>
     /// <para>A switch is one starting with <c>-</c>, and only that: <c>/foo.vis</c> is an ordinary absolute path on
     /// Linux and macOS, so the DOS-style <c>/flag</c> spelling cannot be recognised here.</para></summary>
-    internal static string? ParseStartupProjectPath(string[] args) =>
+    internal static string? ParseStartupProjectPath(IReadOnlyList<string> args) =>
         args.FirstOrDefault(a => a.Length > 0 && !a.StartsWith('-'));
 
     /// <summary>
@@ -50,11 +51,14 @@ internal sealed class Program
     public static bool TestSurfaceEnabled { get; private set; }
 
     /// <summary>
-    /// The switch that turns the test surface on. Admissible behind it: state the application already computes
-    /// and discards, where publishing it unconditionally could disturb a user. NOT admissible, ever: anything
-    /// that changes what the application DOES — no seed, no reset, no time control, no relaxed validation, no
-    /// authentication bypass, no altered persistence. A candidate that would make the same input produce a
-    /// different outcome belongs neither behind this switch nor in the product.
+    /// The switch that turns the test surface on, and it stays OBSERVATION ONLY. Admissible behind it: state the
+    /// application already computes and discards, where publishing it unconditionally could disturb a user. NOT
+    /// admissible, ever: anything that changes what the application DOES — no seed, no reset, no time control, no
+    /// relaxed validation, no authentication bypass, no altered persistence. A candidate that would make the same
+    /// input produce a different outcome belongs neither behind this switch nor in the product.
+    /// <para>The one testability input that may change behaviour is a different switch,
+    /// <c>ControllerStubs.SwitchArgument</c>, and only by redirecting controller traffic to a stub. It never relaxes
+    /// validation, authentication or persistence against a real controller.</para>
     /// </summary>
     internal const string TestSurfaceArgument = "--test";
 
@@ -63,7 +67,7 @@ internal sealed class Program
     /// No change to <see cref="ParseStartupProjectPath"/> is needed or wanted: it already takes the first
     /// argument that is not a switch, so <c>ihc_openvisual foo.vis --test</c> still resolves the file.
     /// </remarks>
-    internal static bool ParseTestSurfaceEnabled(string[] args) =>
+    internal static bool ParseTestSurfaceEnabled(IReadOnlyList<string> args) =>
         args.Contains(TestSurfaceArgument, StringComparer.Ordinal);
 
     // Initialization code. Don't use any Avalonia, third-party APIs or any SynchronizationContext-reliant
@@ -84,15 +88,24 @@ internal sealed class Program
             DateTime accelerated = DateTime.UtcNow;
             // Order matters: config and the telemetry pipeline first, then hook the ILogger-backed unhandled-error
             // handler (A-25). Startup exceptions before this point are caught by Main's catch below.
-            StartupProjectPath = ParseStartupProjectPath(args);
-            TestSurfaceEnabled = ParseTestSurfaceEnabled(args);
             Config = new AppConfiguration();
             DateTime configured = DateTime.UtcNow;
             LoggerFactory = TelemetryBootstrap.SetupTelemetryAndLogging(
                 Telemetry.AppServiceName, Telemetry.AppServiceNamespace, Telemetry.ActivitySourceName,
-                Config.TelemetryConfig, Config.LoggingConfig);
-            RecordPreTelemetryPhases(entered, accelerated, configured,
-                LoggerFactory.CreateLogger("Ihc.OpenVisual.LaunchPhases"));
+                Config.TelemetryConfig, Config.LoggingConfig, ControllerStubs.SwitchRequested(args));
+            ILogger launchPhases = LoggerFactory.CreateLogger("Ihc.OpenVisual.LaunchPhases");
+            RecordPreTelemetryPhases(entered, accelerated, configured, launchPhases);
+
+            // The controller-stub switch, after the pipeline so a refusal is logged and the identity check traced,
+            // and before anything reads the controller settings or the arguments. It is applied to the settings
+            // this application's own loader produced, which are blank when there is no settings file, and a refusal
+            // ends in Main's catch: there is no fallback to the file.
+            DateTime switching = DateTime.UtcNow;
+            (Ihc.IhcSettings controller, IReadOnlyList<string> remaining) =ControllerStubs.ApplySwitch(args, Config.IhcSettings);
+            Config = new AppConfiguration(Config, controller);
+            RecordSwitchPhase(switching, launchPhases);
+            StartupProjectPath = ParseStartupProjectPath(remaining);
+            TestSurfaceEnabled = ParseTestSurfaceEnabled(remaining);
             // All four documented exception layers, because each catches faults the others cannot see (Avalonia
             // logging review BP-09/QC-03): the DISPATCHER layer for faults inside a dispatcher operation, the
             // UNOBSERVED-TASK layer for dropped tasks, the APPDOMAIN layer for everything else on any thread, and
@@ -125,7 +138,7 @@ internal sealed class Program
 
             StartCatalogWarmup(LoggerFactory.CreateLogger("Ihc.OpenVisual.CatalogWarmup"));
 
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime([.. remaining]);
         }
         catch (Exception ex)
         {
@@ -231,6 +244,14 @@ internal sealed class Program
         RecordPhase(logger, "Config", () => accelerated, configured);
         RecordPhase(logger, "Telemetry", () => configured, ready);
     }
+
+    /// <summary>
+    /// Records the controller-stub switch as a launch phase of its own, from <paramref name="started"/> to now. With
+    /// the switch it holds the stub's identity check, which may take seconds, and folded into another phase that
+    /// wait would be misattributed.
+    /// </summary>
+    internal static void RecordSwitchPhase(DateTime started, ILogger logger) =>
+        RecordPhase(logger, "Switch", () => started, DateTime.UtcNow);
 
     /// <summary>Records one launch phase, containing whatever that one phase costs.</summary>
     /// <remarks>
@@ -455,7 +476,7 @@ internal sealed class Program
 
     /// <summary>
     /// The unobserved-task layer, composed AROUND the shared handler at this application's registration site so
-    /// <c>ihc_telemetrybootstrap</c> stays the logging-only component every application shares. The shared half
+    /// <c>ihc_hostbootstrap</c> stays the logging-only component every application shares. The shared half
     /// still logs and still calls <c>SetObserved()</c>; the durable row is this application's addition.
     /// </summary>
     /// <remarks>
@@ -609,7 +630,7 @@ internal sealed class Program
         ILoggerFactory loggerFactory)
     {
         LogLevel avaloniaLevel = loggingConfig.GetValue("LogLevel:Avalonia", LogLevel.Warning);
-        LogEventLevel level = AppTelemetryBootstrap.MapFromIlogToAvaloniaLogLevel(avaloniaLevel);
+        LogEventLevel level = AvaloniaTelemetryBootstrap.MapFromIlogToAvaloniaLogLevel(avaloniaLevel);
         // The default trace logger must be installed before our sink so our sink can chain to it.
         return builder.LogToTrace(level).LogToSink(loggerFactory, level);
     }
@@ -638,7 +659,7 @@ internal sealed class Program
             // The DISPATCHER exception layer (BP-09). AfterSetup, not Main: the dispatcher must exist first, and
             // reading Dispatcher.UIThread before Avalonia is initialized would create it too early.
             builder = builder.AfterSetup(_ =>
-                Dispatcher.UIThread.UnhandledException += AppTelemetryBootstrap.DispatcherExceptionHandler(
+                Dispatcher.UIThread.UnhandledException += AvaloniaTelemetryBootstrap.DispatcherExceptionHandler(
                     loggerFactory.CreateLogger("Ihc.OpenVisual.DispatcherException"),
                     // The durable half. Through the same static port every other static-context floor uses, so
                     // it no-ops until the composition root sets it — which is the ordering this layer has always

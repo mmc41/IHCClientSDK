@@ -105,4 +105,33 @@ public class StartupProjectPathTests
             Assert.That(harness.Session.FilePath, Is.Null);
         });
     }
+
+    /// <summary>
+    /// The parsers read the arguments the switch left. Without the switch those are the arguments themselves, so a
+    /// launch with no switch resolves its file and its test surface exactly as before.
+    /// </summary>
+    [Test]
+    public void WithoutTheSwitch_TheParsersReadTheArgumentsUnchanged()
+    {
+        string[] args = ["Hus.vis", Program.TestSurfaceArgument];
+
+        var (_, remaining) = Ihc.Stubbing.ControllerStubs.ApplySwitch(args, new Ihc.IhcSettings());
+
+        Assert.That((Program.ParseStartupProjectPath(remaining), Program.ParseTestSurfaceEnabled(remaining)),
+            Is.EqualTo(("Hus.vis", true)));
+    }
+
+    /// <summary>A refused switch stops the launch: what it throws ends in the fatal start-up exit code, with no
+    /// fallback to the settings file.</summary>
+    [Test]
+    public void ARefusedSwitch_EndsInTheFatalStartupExitCode()
+    {
+        string[] args = [Ihc.Stubbing.ControllerStubs.SwitchArgument + "=mock://x", "Hus.vis"];
+        var refusal = Assert.Throws<Ihc.ErrorWithCodeException>(() =>
+            Ihc.Stubbing.ControllerStubs.ApplySwitch(args, new Ihc.IhcSettings()));
+        using var dir = new ScratchDir("ihc_ov_switch_");
+
+        Assert.That(Program.ReportFatalStartup(refusal!, new CapturingLoggerFactory(), Path.Combine(dir.Path, "startup-error.log")),
+            Is.EqualTo(Program.FatalStartupExitCode));
+    }
 }

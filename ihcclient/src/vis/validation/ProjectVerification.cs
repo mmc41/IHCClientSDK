@@ -39,7 +39,7 @@ namespace Ihc.Vis.Validation
         /// <para>
         /// It exists so a caller that wants the structured form does not have to name
         /// <see cref="IWholeProjectValidator"/> to get it. A GUI is forbidden to construct or run an executor
-        /// (L5), so before this door the rich finding was reachable only from inside the SDK, and the related
+        /// (VL5), so before this door the rich finding was reachable only from inside the SDK, and the related
         /// sites a grouped rule reports — the OTHER elements sharing a duplicate id, the rest of an
         /// under-populated module — were dropped at the boundary and could not be shown or navigated to.
         /// </para>

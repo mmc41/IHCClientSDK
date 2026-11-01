@@ -25,6 +25,8 @@ excludes:** wireless linking (E4), online simulation and runtime control (out of
   the bar never advertises a transfer the app cannot make while the status-bar indicator reads *"Ikke
   forbundet til controller"*. (Matches the original, measured 2026-08-11: it greys *Hent projekt* and
   *Send projekt* on a fresh project and on a saved one alike. Alignment F-4.)
+- MUST: While the controller settings point at a controller stub, the status-bar indicator's connected state
+  (FR-2.4) reads *"Forbundet til STUB-controller"*, matching the stub marker in the window title (FR-2.7).
 - SHOULD: Sending warns if not all wireless products are linked and confirms before overwriting an
   existing controller project.
 - SHOULD: Retrieve is disabled when the controller holds no project.

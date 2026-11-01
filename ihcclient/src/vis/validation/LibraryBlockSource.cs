@@ -9,7 +9,7 @@ namespace Ihc.Vis.Validation
     /// <para><b>Why a port and not the catalog itself.</b> The validation context may carry the catalog, and this
     /// is the narrowest shape that satisfies that: the port is declared HERE, in the
     /// validation layer, and speaks only <see cref="ProjectElement"/> — so the layer's dependency set does not
-    /// widen by one namespace, and the L1–L5 layer rules (<c>ARCHITECTURE.md</c>, challenge 5) are untouched. The composition root
+    /// widen by one namespace, and the VL1–VL5 layer rules (<c>ARCHITECTURE.md</c>, challenge 5) are untouched. The composition root
     /// (<c>ProjectAppService</c>) already holds a catalog and adapts it; a caller with no catalog supplies nothing
     /// and the rule that needs it is not evaluated, exactly as a capacity rule behaves without controller
     /// limits.</para>

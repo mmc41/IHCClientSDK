@@ -16,6 +16,11 @@ namespace Ihc.Tests
     /// reflection and emits no <c>newobj</c> here, while a real service arrives from a <c>newobj</c>. So the rule
     /// is about the constructor, and where it applies it is exact rather than approximate.</para>
     ///
+    /// <para><b>A subclass constructs its base.</b> A type the suite declares is judged by what it builds, not by who
+    /// declared it: its constructor's call to a base constructor counts as constructing that base. A suite's own
+    /// subclass of a real service, of a socket handler or of a WCF client is therefore the thing it inherits, and
+    /// its constructor is the site named. The SDK's services are not sealed, so this is a shape a suite can write.</para>
+    ///
     /// <para><b>What it therefore does NOT see: a service built for the test by a product-side factory.</b>
     /// <c>ProjectAppService.CreateWithControllerBridge</c> is the live example — the <c>newobj</c> is in the SDK,
     /// so a test calling it holds a real service that this scan never names. Following one call level would catch
@@ -112,11 +117,15 @@ namespace Ihc.Tests
         private static bool CanReachAController(MethodBase method, Anchors anchors)
         {
             Assembly? scanned = method.DeclaringType?.Assembly;
+            // A newobj builds an object; a call to a constructor is a subclass building its base, and any other
+            // call can be a factory building a transport no newobj of the suite's shows.
             return IlBody.Instructions(method)
-                .Where(instruction => instruction.Op == OpCodes.Newobj)
+                .Where(instruction => instruction.Op == OpCodes.Newobj || instruction.Op == OpCodes.Call)
                 .Select(instruction => instruction.Called)
                 .OfType<MethodBase>()
-                .Any(ctor => ReachesAController(ctor, scanned, anchors) || IsLiveTransport(ctor, scanned));
+                .Any(called => called is ConstructorInfo
+                    ? ReachesAController(called, scanned, anchors) || IsLiveTransport(called, scanned)
+                    : IsLiveTransportFactory(called));
         }
 
         /// <summary>
@@ -125,7 +134,9 @@ namespace Ihc.Tests
         /// </summary>
         /// <remarks>
         /// <para><b>A type the suite declares itself is not a controller service.</b> A test-local stub
-        /// implementing the marker interface answers from a field; it has no endpoint and no transport.</para>
+        /// implementing the marker interface answers from a field; it has no endpoint and no transport. One that
+        /// derives from a real service is judged at its base constructor call instead, where the type built is
+        /// the SDK's.</para>
         /// <para><b>A constructor handed its transport is not reaching either.</b> Those overloads exist so a
         /// test can supply the way onto the wire, so such a service reaches exactly as far as the transport its
         /// caller built — and building a LIVE one is itself flagged, by
@@ -158,17 +169,22 @@ namespace Ihc.Tests
         /// </summary>
         /// <remarks>
         /// A service handed its transport reaches only as far as that transport does, so the exclusion is exact
-        /// PROVIDED the suite cannot produce a live one. It can, in three shapes, and each is a <c>newobj</c>
+        /// PROVIDED the suite cannot produce a live one. It can, in four shapes, and each is a <c>newobj</c>
         /// the walk above sees: <c>new HttpClient()</c>, whose socket is the BCL's own; an
         /// <c>HttpMessageHandler</c> the suite did not declare itself, which is the chain such a client is built
-        /// over; and a generated <c>Ihc.Soap.*Client</c>, which derives from <c>ClientBase&lt;T&gt;</c> and
-        /// speaks the whole SOAP exchange over a binding of its own.
+        /// over; a generated <c>Ihc.Soap.*Client</c>, which derives from <c>ClientBase&lt;T&gt;</c> and
+        /// speaks the whole SOAP exchange over a binding of its own; and a network client below HTTP, which needs
+        /// no SDK service at all to reach a controller's port. A subclass the suite declares of any of these
+        /// is caught where its constructor builds that base. The abstract handler bases are not live: a handler
+        /// deriving from them directly answers from itself, and a delegating handler reaches only as far as the
+        /// inner handler, which is judged where it is built. A listener is not live either: it waits for a
+        /// connection rather than opening one.
         /// <para>Judged where the transport is CONSTRUCTED rather than where it is handed over. Following the
         /// value to its call site needs dataflow the rest of this scan does without, and construction is the
         /// same standard the service half is held to — a suite with no reason to build a live transport has no
         /// reason to build one it never passes anywhere either.</para>
         /// </remarks>
-        private static bool IsLiveTransport(MethodBase ctor, Assembly? scanned)
+        internal static bool IsLiveTransport(MethodBase ctor, Assembly? scanned)
         {
             Type? built = ctor.DeclaringType;
             if (built is null || built.Assembly == scanned)
@@ -183,9 +199,32 @@ namespace Ihc.Tests
                 // caught below. Handed NONE, the handler is the BCL's own, substituted by nobody.
                 return ctor.GetParameters().Length == 0;
             }
-            return DerivesFrom(built, "System.Net.Http.HttpMessageHandler")
-                || DerivesFrom(built, "System.ServiceModel.ClientBase`1");
+            return DerivesFrom(built, "System.ServiceModel.ClientBase`1")
+                || (!built.IsAbstract && DerivesFrom(built, "System.Net.Http.HttpMessageHandler"))
+                || RawNetworkClients.Any(client => DerivesFrom(built, client));
         }
+
+        /// <summary>The network clients below HTTP, and the legacy request API's: each opens a connection to
+        /// whatever address it is given, with no route and no latch in between.</summary>
+        private static readonly string[] RawNetworkClients =
+        [
+            "System.Net.Sockets.Socket",
+            "System.Net.Sockets.TcpClient",
+            "System.Net.Sockets.UdpClient",
+            "System.Net.WebSockets.ClientWebSocket",
+            "System.Net.WebClient",
+        ];
+
+        /// <summary>
+        /// True for a static factory that builds a live transport where a constructor would: the legacy request API
+        /// creates its client inside <c>WebRequest.Create</c> and its siblings, so no <c>newobj</c> of the suite's
+        /// shows it.
+        /// </summary>
+        internal static bool IsLiveTransportFactory(MethodBase called) =>
+            called.IsStatic
+            && called.DeclaringType is { } declaring
+            && DerivesFrom(declaring, "System.Net.WebRequest")
+            && called.Name.StartsWith("Create", StringComparison.Ordinal);
 
         /// <summary>Walks the base chain by NAME, matching a generic base by its definition.</summary>
         private static bool DerivesFrom(Type type, string baseTypeFullName)

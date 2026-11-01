@@ -5,6 +5,7 @@ using System.Net.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Ihc.Stubbing;
 
 namespace Ihc {
     /// <summary>
@@ -224,6 +225,23 @@ namespace Ihc {
         /// HttpClient disposes neither the request nor the response it hands back (see HttpClient.FinishSend).
         /// </returns>
         public async Task<HttpResponseMessage> Post(string action, string body, bool sendSessionCookie) {
+            // A stub endpoint goes only to its registration, ahead of an explicit transport, so it never reaches a
+            // controller's socket and a non-stub endpoint never reaches a stub. Decided on this client's url, fixed at
+            // construction, never on settings.Endpoint, which a host may rewrite after the service was built.
+            // An explicit transport stays ahead of the latch: it is a test's own, and suites that hold a stub for
+            // their whole run still need theirs. The latch is checked before the shared client is created, so a
+            // stub process never opens a socket at all.
+            HttpClient transport;
+            if (StubEndpoint.Is(this.url)) {
+                transport = ControllerStubRegistry.TransportFor(this.url) ?? throw ControllerStubRegistry.NotRegistered(this.url);
+            } else if (this.httpClient is { } explicitTransport) {
+                transport = explicitTransport;
+            } else if (ControllerStubRegistry.AnyLive) {
+                throw ControllerStubRegistry.SocketRefused(this.url);
+            } else {
+                transport = GetOrCreateHttpClient();
+            }
+
             // The request (and with it the content) is ours to dispose: .NET Core dropped the .NET Framework
             // behaviour where HttpClient disposed the request message for you, and nothing has owned it since.
             // Awaiting the send rather than returning its task is what gives this a scope to dispose at -
@@ -244,7 +262,7 @@ namespace Ihc {
             if (cookie != null) {
                 request.Headers.Add(CookieHeaderName, cookie);
             }
-            return await (this.httpClient ?? GetOrCreateHttpClient()).SendAsync(request).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            return await transport.SendAsync(request).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
     };
 }

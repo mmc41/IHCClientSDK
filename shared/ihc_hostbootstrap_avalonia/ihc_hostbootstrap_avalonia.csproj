@@ -4,7 +4,7 @@
     The Avalonia-only half of the shared host bootstrap: the Avalonia→ILogger sink, the AppBuilder hook, the
     dispatcher exception layer and the two level maps. Referenced by ihc_openvisual and ihc_lab.
 
-    The providers and OTLP wiring are NOT here — they moved to ihc_telemetrybootstrap, which carries no UI
+    The providers and OTLP wiring are NOT here — they are in ihc_hostbootstrap, which carries no UI
     dependency, so a console utility can build the same pipeline without Avalonia (R7). This project
     references that one and adds the toolkit on top; nothing that a headless host could use belongs here.
 
@@ -12,7 +12,7 @@
   -->
 
   <ItemGroup>
-    <ProjectReference Include="..\ihc_telemetrybootstrap\ihc_telemetrybootstrap.csproj" />
+    <ProjectReference Include="..\ihc_hostbootstrap\ihc_hostbootstrap.csproj" />
   </ItemGroup>
 
   <ItemGroup>

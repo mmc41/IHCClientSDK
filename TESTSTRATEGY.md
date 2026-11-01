@@ -30,38 +30,50 @@ gap measured against a general test-strategy standard reads as a decision rather
 
 ## The safety rule
 
-Three things are untouchable: a **live controller** (state changes are destructive), the **vendor
-application** (Windows-only, closed) and the **vendor catalog**. The suite layout encodes the
-answer. Every suite is named `safe_*` to signal it, only `safe_integration_tests` may reach a controller and
-only through state-safe operations, and everything else runs on fakes, files or headless UI.
+Three things are untouchable: a **live controller**, the **vendor application** and the **vendor catalog**.
+Why each is, and why the test seam therefore sits where it does, is
+[ARCHITECTURE.md challenge 8](ARCHITECTURE.md#8-testing-what-you-are-not-allowed-to-touch); this section is what
+the suite layout does about it. Every suite is named `safe_*` to signal it, only `safe_integration_tests` may
+reach a controller and only through state-safe operations, and everything else runs on fakes, the controller
+stub, files or headless UI.
 
-The seam is chosen deliberately: fakes go on the low-level `IIHCApiService` implementations and, where a
-test's scope does not need the embedded catalog, on `ICatalog`, while **application services are always
-real**, so business logic is exercised rather than mocked. This is
-enforced rather than merely stated: `ControllerReachGuard` is compiled into the controller-free suites and
-fails the suite that can build a service able to reach a wire. Its exemptions are per-site and carry their
-reasons, and a seeded violator in the architecture suite proves the scan can fail — which is also why that
-one suite hosts the scan without hosting the guard: a violator planted where the guard runs would fail the
-rule it exists to arm. The scan reads CONSTRUCTION, so what it catches is a suite building such a service
-directly; a service reached through a product-side factory is outside it, and the guard says so.
+Fakes go on the low-level `IIHCApiService` implementations and, where a test's scope does not need the
+embedded catalog, on `ICatalog`; the alternative to a fake is the real SDK over the controller stub, which
+replaces only the controller ([ADR-005](docs/adr/ADR-005-controller-stub-seam.md)). Either way **application
+services are always real**, so business logic is exercised rather than mocked. Keeping a suite off a
+controller is enforced rather than merely stated, and twice over. `ControllerReachGuard` is compiled into the
+controller-free suites and, as a setup fixture, stops the run of a suite that can build a service or transport
+able to reach a wire before any of its tests executes, a filtered run included. Its exemptions are per-site and
+carry their reasons, and a seeded violator in the architecture suite proves the scan can fail — which is also
+why that one suite hosts the scan without hosting the guard: a violator planted where the guard runs would fail
+the rule it exists to arm. The scan reads CONSTRUCTION, so what it catches is a suite building such a service
+directly; a service reached through a product-side factory is outside it, and the guard says so. What stops
+that one is the latch, at run time: every controller-free suite that runs SDK code, except `safe_stub_tests`,
+holds a stub registration that fails every call for its whole run, and while any stub is registered the SDK
+refuses every real endpoint.
 
 Two kinds of test affordance exist here. A **seam** is a substitution point a test configuration reaches: the
 `IIHCApiService` and `ICatalog` fakes, `TimeProvider`, `IDialogService`. A **built-in test feature** exists to
 support testing or diagnosis from inside the product — `AllowDangerousInternTestCalls` unlocks manufacturing
-operations against a live controller, `LogSensitiveData` turns redaction off, and `ihc_lab`'s `mock://`
-endpoint swaps its whole service stack. What separates them is not that one ships and the other does not:
-plenty of seams ship, and only the debug-gated developer tools are genuinely compiled out. The distinction
-that matters is **what a released binary can be talked into doing** — which is why the safety rule covers
-both. The test side is enforced by the construction guard. For dangerous diagnostics and sensitive telemetry,
-the accepted product policy is explicit opt-in with strong documentation discouraging use. The manufacturing
-operations are retained mainly for completeness and documentation, and are not intended for real use at this
-stage; both flags should remain false. This policy requires no additional runtime authorization gate and is
-recorded in [ARCHITECTURE.md](ARCHITECTURE.md#8-testing-what-you-are-not-allowed-to-touch).
+operations against a live controller, `LogSensitiveData` turns redaction off, and the SDK's controller-stub
+seam is one as well: a controller-stub endpoint (`mock://`) sends the SDK's controller traffic only to a stub
+registered for it in the same process, never to a socket, and the `--controller-stub=<loopback url>` switch
+every wired application and utility takes sends that process's controller traffic only to a stub host on the
+loopback address, refusing every real endpoint until the process exits. What separates them is not that one
+ships and the other does not: plenty of seams ship, and only the debug-gated developer tools are genuinely
+compiled out. The distinction that matters is **what a released binary can be talked into doing** — which is
+why the safety rule covers both. The test side is enforced by the construction guard and the latch; the
+product policy for the two flags, explicit opt-in with both left false, is
+[ARCHITECTURE.md](ARCHITECTURE.md#8-testing-what-you-are-not-allowed-to-touch)'s and the
+[API contract](ihcclient/docs/api-contract.md#34-diagnostic-capabilities-are-not-intended-for-real-use)'s, not
+this document's.
 
 What the seam does not buy is **fidelity**. The fakes are hand-written and nothing pins them to a real
 controller: `tests/testdata/` holds no recorded controller traffic, and `safe_integration_tests` is compiled
 in CI but never executed against a device. So a fake can be wrong from the day it was written, or model only
-the paths some test happened to need, and no gate would say so. Drift is not the worry it would be elsewhere
+the paths some test happened to need, and no gate would say so. The controller stub's answers sit in the same
+position, by decision: [its README](ihcclient_stub/README.md#the-stub-answers-differently-from-a-controller)
+says what a pass against it does and does not show. Drift is not the worry it would be elsewhere
 — the controller is discontinued, so the behaviour behind the fakes is frozen rather than moving — but that
 is an argument for recording it *once*, not for never recording it: a corpus captured against a provider that
 has stopped changing never goes stale. What the wire↔model mapping does have is checks that share no device:
@@ -75,7 +87,9 @@ Only part of that corpus is vendor ground truth — the `.vis` projects the vend
 `.ifb` exports it produced; every `.def` oracle and the rest of the `.ifb` and `.vis` files are synthetic —
 and the authentic files are kept physically separate from the synthetic ones. That separation records
 **provenance, not confidence**. The synthetic files are known correct, so an oracle taken from either half
-carries the same authority and neither half is a mere change detector. Saying so is what stops a reader
+carries the same authority — a vendor file on what the vendor does, a synthetic one on what the SDK's writers
+and the file grammar must produce, and a difference from either is the code's fault — and neither half is a
+mere change detector. Saying so is what stops a reader
 inferring the opposite from the word *synthetic* and setting about repairing a corpus that needs no repair.
 
 ## What this does not cover
@@ -133,11 +147,13 @@ in order and stop at the first whose subject claims it; the last row is the gene
 | ------- | -------------- | -------------------------- | ---------- |
 | `safe_architecture_tests` | Architecture · s | Compliance with the design: layering, dependency direction, banned shapes, the invariants in [ARCHITECTURE.md](ARCHITECTURE.md). ArchUnitNET over one IL model per assembly | Behaviour of any kind |
 | `safe_integration_tests` | Controller · s, never in CI | General `ihcclient` behaviour against a **real controller**, through state-safe operations only. Needs `ihcsettings.json`; the configured test resources' outputs may change when it runs | Anything that can be verified controller-free |
-| `safe_lab_tests` | Headless UI + unit · s | The `utilities/ihc_lab` application and only that — its GUI, parameter-control strategies, operation filtering, fakes. `[NonParallelizable]`, `mock://` services | Anything not `ihc_lab` |
-| `safe_visual_tests` | Headless UI · s | `applications/ihc_openvisual`'s **GUI** — whatever needs an Avalonia application, window, control, style or automation peer — but in a headless execution environment. Real `MainWindow` on the headless backend. Also the Avalonia-dependent `shared/` bootstrap code both apps host (`shared/ihc_appbootstrap`), which has no toolkit-free level to sit at. Run on **Linux** as well as Windows: that leg is the only one that catches an *Avalonia* portability defect, the toolkit-free suites running on all three platforms and catching the rest | Anything that compiles without an Avalonia type: view-model logic, stores, presentation mapping, host catalogs. Those are OpenVisual's non-GUI code and belong in `safe_project_tests`. Anything about `ihc_lab`, which belongs in `safe_lab_tests` |
+| `safe_lab_tests` | Headless UI + unit · s | The `utilities/ihc_lab` application and only that — its GUI, parameter-control strategies, operation filtering. `[NonParallelizable]`; Lab's real services over a registered controller stub, the suite's under a `mock://` key and each smoke case's under its own | Anything not `ihc_lab` |
+| `safe_visual_stubbed_tests` | Headless UI · s | `applications/ihc_openvisual` composed over a **controller stub**: the composition and the stub indicator, with every request's destination checked from telemetry. The stub is the condition OpenVisual runs under, not the subject; what it asserts about the stub or the SDK is only there to show the OpenVisual assertions cannot pass vacuously. It sits before `safe_visual_tests` because it claims OpenVisual-over-a-stub first. It is a suite of its own for two reasons. Its fixtures fail the run rather than ignore it: one when a controller settings file sits beside the assembly, one when any request left for anything but a stub or the loopback address, and the run-wide latch that refuses every real endpoint. And it takes the ASP.NET Core framework through `ihcclient_stub`, which the visual suite should not carry | The stub itself and the SDK's stub seam, which belong in `safe_stub_tests`. OpenVisual's GUI with no stub involved, which belongs in `safe_visual_tests` |
+| `safe_visual_tests` | Headless UI · s | `applications/ihc_openvisual`'s **GUI** — whatever needs an Avalonia application, window, control, style or automation peer — but in a headless execution environment. Real `MainWindow` on the headless backend. Also the Avalonia-dependent `shared/` bootstrap code both apps host (`shared/ihc_hostbootstrap_avalonia`), which has no toolkit-free level to sit at. Run on **Linux** as well as Windows: that leg is the only one that catches an *Avalonia* portability defect, the toolkit-free suites running on all three platforms and catching the rest | Anything that compiles without an Avalonia type: view-model logic, stores, presentation mapping, host catalogs. Those are OpenVisual's non-GUI code and belong in `safe_project_tests`. Anything about `ihc_lab`, which belongs in `safe_lab_tests` |
 | `safe_visual_e2e_tests` | End-to-end GUI · **minutes** | The confidence **no other suite can give**: that the shipped app is driveable. A thin, deliberately small set of representative scenarios — see [the bar](#the-end-to-end-bar) | Combinations, route matrices, business logic, anything still testable without real GUI |
 | `safe_project_tests` | Engine · ms–s | Not general to the SDK but about the project domain: the `Ihc.Vis` engine, `ProjectAppService`, sessions and commands, validation rules, the problem catalogue, reporting — **and OpenVisual's non-GUI code** (view-models, services, stores, route planners, presentation mapping). Real application services, oracle files, and the catalog the test's scope calls for — `BuiltInCatalog` or a fake `ICatalog` | Anything needing execution in Avalonia |
-| `safe_unit_tests` | Unit · ms | The `ihcclient` SDK in general — transport, models, serialization, security, settings, telemetry primitives. Also **any utility or `shared/` project with no suite of its own**. Faked at the `IIHCApiService` seam | Anything Avalonia-shaped; anything app-specific |
+| `safe_stub_tests` | Unit · ms–s | The **controller stub**: `ihcclient_stub`'s operation table, wire fidelity, typed answers, contract and loopback host, read through the real SDK services — including that every public SDK wrapper and one workflow per application service run clean over the stub's default answers, which is a claim about those answers rather than about the wrappers; and the SDK's **stub seam** in `Ihc.Stubbing` — which endpoints name a stub, registration ownership, routing and refusals, the latch, the `--controller-stub` switch and the loopback transport. It runs without the run-wide latch, because its seam tests must see the latch both released and held. The stub-host process test takes seconds, like the unit suite's utility process tests | SDK behaviour that merely runs over a stub, and the utilities started under the switch, which belong in `safe_unit_tests`. An application composed over a stub, which belongs in that application's suite |
+| `safe_unit_tests` | Unit · ms | The `ihcclient` SDK in general — transport, models, serialization, security, settings, telemetry primitives. Also **any utility or `shared/` project with no suite of its own**. Faked at the `IIHCApiService` seam. The exception to "ms" is the utility process tests: each starts a console utility from a clean copy of its build output under the controller-stub switch, so it takes seconds, and the runner kills a utility that has not exited within 60 seconds, well inside CI's hang timeout | Anything Avalonia-shaped; anything app-specific; the controller stub and the SDK's stub seam, which belong in `safe_stub_tests` |
 
 **`shared/ihc_uiautomation_windows` has no suite except for its platform-independent polling logic** — the one
 exception to the `safe_unit_tests` rule above, and a carve-out from the exception. Almost every method in it is
@@ -156,11 +172,9 @@ utility or `shared/` project with no suite of its own*, gated on Windows because
 alternative and was declined: a bug in the poll loop would arrive as a desktop-mode failure with no
 distinguishing symptom, which is the **Unclassified** row below — the row the wait was added to shrink.
 
-The `_windows` in the toolkit's name is what the architecture suite reads: `WindowsQuarantineArchitectureTests`
-licenses a Windows package reference or a Windows-only API call only in a project so named, and holds every
-other project file in the solution and every neutral assembly the suite loads to the opposite — a platform
-guard around the call does not change the verdict. So a Windows dependency a test needs belongs in that
-toolkit, or in another project named for Windows, and never in the suite that uses it.
+A Windows dependency a test needs belongs in that toolkit, or in another project named for Windows, and never
+in the suite that uses it: only such a project may reference a Windows package or call a Windows-only API
+([ARCHITECTURE.md invariant 12](ARCHITECTURE.md#architectural-invariants)).
 
 Two rules for the architecture suite, because both are easy to get wrong: a clean subject with an empty
 exemption roster is indistinguishable from a **broken detector**, so every scan carries a seeded violator
@@ -204,58 +218,31 @@ scenario only pins the leak in place.
 Everything else — combinations, route matrices, sorting, filtering, counts, wording, undo — is business logic,
 and business logic is cheaper one level down.
 
-The suite has two modes. The **default** launches the real `ihc_openvisual.exe` and drives it over Windows UI
-Automation, in-process, through the suite's own driver over `shared/ihc_uiautomation_windows`; it holds the
-screen for minutes and force-kills any running OpenVisual, so run it only when asked and say so first. The
-**headless** mode, which CI gates, hosts the same `MainWindow` in-process and is a **second implementation**
-of the verb vocabulary: it exercises neither the real driver nor the UIA bridge, and it refuses the verbs
-behind `[Category(E2E.DesktopOnly)]` rather than approximating them. Read a headless pass as *"the scenario
-paths still work"*, never as *"the application is driveable"*.
+The suite has two modes. The **default** launches a clean copy of the real `ihc_openvisual.exe` under the
+controller-stub switch and drives it over Windows UI Automation through the suite's own driver, which runs in
+the test process over `shared/ihc_uiautomation_windows`. It holds the screen for minutes and force-kills any
+running OpenVisual, including one a person is using, so run it only when asked and say so first. It skips
+itself off Windows, and on Windows with no desktop session it fails, deliberately: a suite that ignored its way
+past a broken application would be worse than no suite. The **headless** mode, which CI gates, hosts the same
+`MainWindow` in-process and is a **second implementation** of the verb vocabulary: it exercises neither the
+real driver nor the UIA bridge, and it refuses the verbs behind `[Category(E2E.DesktopOnly)]` rather than
+approximating them, which is why a headless run filters that category out. Read a headless pass as *"the
+scenario paths still work"*, never as *"the application is driveable"*.
+
+The suite is a project of its own so that the desktop mode is never reached by accident: every suite is run by
+project path, no verification step names this one, and CI names it only for the headless leg with
+`TestCategory!=DesktopOnly`. What does reach the desktop mode is an explicit run of the suite, or a bare
+`dotnet test` at the repository root — which is why [Running the suites](#running-the-suites) prefers the
+per-project commands.
+
+A driver that talks to the application over a text transport must pin that transport's encoding in both
+directions: Danish payloads are routine here, and an unpinned stream mojibakes them without failing.
 
 **The suite and the `aui-openvisual` skill are independent, by construction.** The suite drives the application
 with its own C# driver and reaches nothing under `.claude/`; `SkillIndependenceGuard` enforces that from inside
 the suite, by scanning its own compiled assembly's string heap, so a new edge fails a build rather than a
 review. The other direction — the skill not reaching into `tests/` — holds by convention: the skill is a
 hand-driven development tool that must stay free to change, and nothing here constrains it.
-
-**What the reduction achieved, measured 2026-09-02.** The suite went from twenty-one scenarios to ten, of
-which three are desktop-only and seven run in the gated headless leg; that leg went from ninety-one driver
-verbs to fifty-four and runs in about a second. Every scenario removed was replaced by a NAMED assertion one
-level down, or already had one. Whether the desktop mode is now "a normal decision rather than an event" is
-NOT claimed here, because it has not been measured: running it seizes the screen and needs a person's consent,
-so this campaign cut what it could count and left the desktop wall-clock unrecorded rather than estimated. What
-can be said is that the work it does was more than halved, and that its remaining scenarios are ones no cheaper
-level can hold.
-
-**Measured again 2026-09-04, against the bar as written.** The last sentence above did not survive a second
-reading. Of the ten, four asserted what a named test one level down already asserted, and left: three were a
-route matrix over destination kind — the single click that selects and moves nothing, the whole-project row
-that opens the project-information window, the program row that switches mode and opens no dialog — held by
-`ProblemsActivationGestureTests` in `safe_visual_tests` and by `HostRouteTests`, `ProblemsNavigationTests` and
-`PlanExecutionTests` in `safe_project_tests`; the fourth was a success-path screenshot, which could fail only in
-the driver. The focus-probe fixture was reclassified as a driver control beside the fault-wiring one, since its
-subject was the probe and the product fact it read is `ResultDialogFocusTests`' in `safe_visual_tests`. Inside
-the survivors, the undo leg and the count comparisons went the same way, each to the test that already owned
-it. Five scenarios remain — two desktop-only, three in the headless leg — each kept for a reason the bar names
-rather than for a route it covers. The desktop wall-clock is still unrecorded, for the reason above.
-
-**One process per verb — SUPERSEDED 2026-09-03, and kept for the record.** The transport this ruling was about
-is gone: the desktop mode no longer spawns anything per verb, because it drives the application in-process
-through the suite's own driver over `shared/ihc_uiautomation_windows`. The session-mode question it refused is
-therefore moot — there is no process to amortise. The reasoning below is left standing because it is a
-measurement, and because its last paragraph names a hazard (a text transport must pin its encoding explicitly,
-or a Danish letter arrives mojibaked) that outlives the transport it was written about.
-
-A stdin-driven session mode was built as a
-spike and works: one `pwsh` process answered six verbs with envelopes byte-identical to the per-process form,
-including a 47 KB one and Danish payloads, and `aui.ps1` needed no change to allow it — `Write-Result`'s `exit`
-ends an `&`-invoked script without ending its host. It would save about 795 ms per verb, roughly a factor of
-twenty-five. It was still refused, for three reasons together: the leg CI gates spawns no process at all and
-would gain nothing; the only beneficiary is a suite deliberately outside every default verification, run on
-request; and the change could not be verified without seizing a screen, so building it would mean shipping an
-unverified change to the desktop mode's only transport. A session mode also has a hazard the per-process form
-cannot meet — stdin must be decoded as UTF-8 explicitly, or a Danish letter arrives mojibaked, the inbound twin
-of the C1-control-byte corruption the process driver of the day had to pin its output encoding to avoid.
 
 **When it fails, classify before fixing.** A suite with a process boundary fails for six distinguishable
 reasons, and the expensive mistake is to assume the first one.
@@ -388,15 +375,17 @@ case list a consequence rather than a choice.
 
 **Oracle discipline.** Never re-save an authentic `.vis`/`.def`/`.ifb` oracle to make a test pass — byte-fidelity
 tests and `.gitattributes` pin them; diagnose the product code instead. A changed validation rule moves two
-committed oracle sets (`tests/testdata/validation/` and, for a DOCUMENTATION-category rule, the `full-*`
-report oracles), and each is regenerated by an `[Explicit]` test and then diffed — never hand-edited. The
-report family carries a regenerator per half, `.txt` and `.html`, and both now run from the suite that owns
-the reports. None of them writes over the committed file: they emit beside the test binary, so adopting a diff is a
-deliberate copy after reading it, and that copy means explaining every changed line by a rule that changed in
-the same edit. Ask before changing any committed oracle bytes.
+committed oracle sets, and each is regenerated by an `[Explicit]` test and then diffed — never hand-edited:
+`tests/testdata/validation/`, one XML file per corpus case holding every finding that case produces in
+production order, and, for a DOCUMENTATION-category rule, the `full-*` report oracles under
+`tests/testdata/reports/`, because the Full report renders that category as its appendix. The report family
+carries a regenerator per half, `.txt` and `.html`, both in the suite that owns the reports. None of them
+writes over the committed file: they emit beside the test binary, so adopting a diff is a deliberate copy after
+reading it, and that copy means explaining every changed line by a rule that changed in the same edit.
 
-> `[Explicit]` tests **do run** under a `--filter`. A broad fixture filter can silently invoke an oracle
-> regenerator; verify with `git diff --numstat`, not by looking at file timestamps.
+> `[Explicit]` tests **do run** under a `--filter`, and not every regenerator is as careful as the oracle
+> ones: the problem-catalogue regenerators rewrite `ihcclient/docs/problem-catalogue.md` in place. After a
+> broad fixture filter, verify with `git diff --numstat`, not by looking at file timestamps.
 
 **When to re-measure.** An oracle records what the vendor did on the day it was captured, and provenance is
 not freshness: `testdataoverview.md` says where every file came from, never whether it still answers the
@@ -409,36 +398,12 @@ next change can use, and the file it did not produce is the one someone will rea
 
 ## Running the suites
 
-```bash
-# Controller-free suites — these are what a change is verified against
-dotnet test tests/safe_unit_tests/safe_unit_tests.csproj
-dotnet test tests/safe_architecture_tests/safe_architecture_tests.csproj
-dotnet test tests/safe_project_tests/safe_project_tests.csproj
-dotnet test tests/safe_lab_tests/safe_lab_tests.csproj
-dotnet test tests/safe_visual_tests/safe_visual_tests.csproj
+The command for every suite is in the [README](README.md#running-the-tests). **Prefer the per-project
+commands.** A bare `dotnet test` at the repository root runs every project in the solution — the
+desktop-bound suite and the controller-backed one included.
 
-# Controller-backed; may toggle only the configured test resources
-dotnet test tests/safe_integration_tests/safe_integration_tests.csproj
-
-# Desktop-bound. Seizes the screen for minutes and force-kills a running OpenVisual. Ask first.
-dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj
-
-# The same scenarios headless, which is what CI runs
-dotnet test tests/safe_visual_e2e_tests/safe_visual_e2e_tests.csproj \
-  --filter "TestCategory!=DesktopOnly" \
-  -- 'TestRunParameters.Parameter(name="headless",value="true")'
-
-# A single test
-dotnet test <test-project.csproj> --filter "FullyQualifiedName~TestName"
-```
-
-**Prefer the per-project commands.** A bare `dotnet test` at the repository root runs every project in the
-solution — the desktop-bound suite and the controller-backed one included.
-
-**What to run after a change** is in [CLAUDE.md](CLAUDE.md) under *Verification*; it maps a changed layer to
-the suites that cover it. In short: build the affected project and run the suite mapped to that layer; add
-`safe_architecture_tests` for anything crossing the SDK/GUI boundary; add the matching headless UI suite for
-a UI change — `safe_visual_tests`, never `safe_visual_e2e_tests`.
+**What to run after a change** is in [CLAUDE.md](CLAUDE.md) under *Verification*, the one place that maps a
+changed layer to the suites that cover it.
 
 **CI** ([.github/workflows/build-validation.yml](.github/workflows/build-validation.yml)) builds on all three
 desktop platforms and runs every suite except `safe_integration_tests`, which is compiled but never executed
@@ -457,17 +422,27 @@ Coverage is collected on every `dotnet test` and **reports rather than gates**: 
 build, so this document, not a number, decides what is worth testing. Keep it on observable product
 behaviour; add null-guard, expected-exception or multithreading tests only when asked.
 
-Each suite refreshes its own slice under `artifacts/coverage/raw/<suite>/` and every run re-merges what is
-present, so a repo-wide number is current only after every collecting suite has run — the controller-backed
-and desktop-bound ones included, which is why no CI leg produces a complete one. `Summary.txt` names any
-stale slice and is the figure to quote. **`safe_architecture_tests` is the one suite that does not collect**:
-its rules read the product assemblies rather than running them, so its lines would be type loads credited as
-tested behaviour — and staying uninstrumented is also what lets its task-discard rule read the IL it judges
-instead of standing down. `safe_visual_e2e_tests` does collect, and measures the leg that ran; its desktop
-leg's child process is deliberately not instrumented, because an instrumented `ihc_openvisual.exe` outliving
-its test locks its own bin DLLs. Opt a run out with `-p:CollectCoverage=false`, which drops that suite's
-slice rather than leaving a number no run produced; an empty `--settings` fails before it is read. Scope is
-declared once, in [.runsettings](.runsettings).
+Each suite refreshes its own slice under `artifacts/coverage/raw/<suite>/`, and every run re-merges whatever
+slices are present into `artifacts/coverage/report/`, so a repo-wide number is current only after every
+collecting suite has run — the controller-backed and desktop-bound ones included, which is why no CI leg
+produces a complete one. `Summary.txt` there names any slice older than the build it was merged with and is
+the figure to quote; the browsable page under `html/` beside it computes its headline with a different tool,
+and differs slightly. **`safe_architecture_tests` is the one suite that does not collect**: its rules read the
+product assemblies rather than running them, so its lines would be type loads credited as tested behaviour —
+and staying uninstrumented is also what lets its task-discard rule read the IL it judges instead of standing
+down. `safe_visual_e2e_tests` does collect, and measures the leg that ran; its desktop leg's child process is
+deliberately not instrumented (`CollectFromChildProcesses` is off), because the headless leg hosts the same
+window in-process and is measured either way, and a desktop run proves scenarios, not lines. Scope is declared
+once, in [.runsettings](.runsettings).
+
+Three switches cover the rest. `-p:CollectCoverage=false` opts a run out and drops that suite's slice rather
+than leaving a number no run produced; an empty `--settings` does not do the same, because the `dotnet test`
+CLI fails before the settings are read. `-p:RunCoverageMerge=false` skips only the merge and still writes the
+slice. The merge costs around four and a half seconds whatever it merges, almost all of it starting the tools,
+so a sequence of suites can pass the flag on every suite but the last and end with the same repo-wide number —
+while a single-suite run should not, since its own merge is the one that matters. `-p:CoverageHtmlDetail=true`
+adds the per-file drill-down that shows which lines are uncovered; it is opt-in because it writes hundreds of
+files.
 
 Coverage says which lines ran, never whether a test would have noticed them going wrong. The measure for
 that is **mutation**: break the product code in small ways and see whether a test fails. It is run by hand,
@@ -491,10 +466,10 @@ to them too. Rules that do not fit test code are turned off **one at a time, eac
 **layer**, not a replacement: its explicit `Import` is the only thing keeping the root build policy applying
 under `tests/`, and deleting the file silently drops it.
 
-That tier is not only a test-code concession — it is the repository's **static-analysis layer**, and worth
-claiming as such. Nullable enabled everywhere, `AnalysisMode=Recommended` and warnings-as-errors are what
-stand in for a pass over variable lifecycle and data flow, which is why no suite carries one and why none
-needs to.
+That tier is not only a test-code concession — it is the compile-time half of the repository's **static
+analysis**, and worth claiming as such. Nullable enabled everywhere, `AnalysisMode=Recommended` and
+warnings-as-errors cover variable lifecycle on every build, and CodeQL asks the wider data-flow questions in CI
+([static analysis](docs/static-analysis.md)) — which is why no suite carries such a pass and why none needs to.
 
 ## See also
 
@@ -502,4 +477,6 @@ needs to.
 - [CLAUDE.md](CLAUDE.md) — *Verification*: which suites to run after which change
 - [tests/testdata/testdataoverview.md](tests/testdata/testdataoverview.md) — the oracle corpus and its provenance
 - [tests/safe_lab_tests/README.md](tests/safe_lab_tests/README.md) — Lab fixtures, fakes and screenshots
-- [docs/adr/](docs/adr/) — ADR-001 (threading), ADR-002 (service tiers / thin apps), ADR-004 (bans over architecture tests)
+- [docs/adr/](docs/adr/) — ADR-001 (threading), ADR-002 (service tiers / thin apps), ADR-003 (the generated SOAP layer stays public), ADR-004 (bans over architecture tests), ADR-005 (the controller-stub seam and its safeguards)
+- [ihcclient_stub/README.md](ihcclient_stub/README.md) — the controller stub's test rules, risks and maintenance
+- [docs/static-analysis.md](docs/static-analysis.md) — what checks the code without running it

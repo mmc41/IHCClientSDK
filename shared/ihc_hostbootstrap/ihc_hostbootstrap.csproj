@@ -4,7 +4,7 @@
     The toolkit-NEUTRAL half of the shared host bootstrap: the logger factory, the tracer and meter
     providers, the OTLP wiring, the resource and the process-wide exception handlers. It carries no UI
     dependency at all, so a console utility can reference it without dragging in Avalonia — which is the
-    whole reason the split exists (R7). The Avalonia-only extras live in ihc_appbootstrap, which
+    whole reason the split exists (R7). The Avalonia-only extras live in ihc_hostbootstrap_avalonia, which
     references this.
 
     An Avalonia PackageReference must never be added here. That is not merely convention: an

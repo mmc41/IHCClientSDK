@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 
 using ihc_openvisual.Services;
@@ -74,7 +75,7 @@ public class FaultReportingTests
         {
             // Also detaches the supervisor's port, so the fault raised here cannot be delivered into whatever
             // fixture runs next.
-            E2E.KillApp();
+            E2E.CloseApp();
         }
     }
 
@@ -94,8 +95,14 @@ public class FaultReportingTests
     /// verb never answered, the harness blocked on it, and no later verb could dismiss the dialog. The whole run
     /// hung, with the sweep's own "left a dialog standing" assertion never reached. Re-introducing that await
     /// presents HERE as a hang rather than as a red assertion, which is the same failure mode the driver's own
-    /// dispatch wrapper and its one-window rule are documented against: the two lines below are only reached by
+    /// dispatch wrapper and its one-window rule are documented against: the assertions below are only reached by
     /// a verb that came back.</para>
+    ///
+    /// <para><b>Coming back is not enough; it has to come back ON the dialog.</b> A driver that waits only for the
+    /// new document never sees one from a failed open, so it answers when its settle ceiling runs out — with the
+    /// dialog standing all along, and with the modal and document assertions still true. Only the time the verb
+    /// took tells that wait apart from one that ended on the dialog, which is why the third assertion measures
+    /// it.</para>
     ///
     /// <para>Not an <see cref="E2EScenario"/>, like its sibling above: this one fails an open on purpose. The
     /// failure is an anticipated one — malformed content — so it words itself as a coded outcome and leaves no
@@ -110,7 +117,9 @@ public class FaultReportingTests
         E2E.Launch(E2E.Fixture(FixtureFile));
         try
         {
+            Stopwatch answering = Stopwatch.StartNew();
             E2E.Envelope opened = E2E.RunOk("project", "open", "--path", unreadable);
+            TimeSpan answeredAfter = answering.Elapsed;
 
             Assert.Multiple(() =>
             {
@@ -121,14 +130,19 @@ public class FaultReportingTests
                     "a failed open leaves the previous document bound, and the verb has to publish THAT — a "
                     + "sweep asserting the document changed is the only thing standing between a broken oracle "
                     + "and a green run");
+                // Against the verb's own ceiling, not a budget: what it tells apart is a wait that ENDED on the
+                // dialog from one that ran out in front of it, and those differ by the whole ceiling on any machine.
+                Assert.That(answeredAfter, Is.LessThan(ProjectOpenPolicy.SettleTimeout),
+                    "the verb answered only when its settle ceiling ran out: it waited for a document a failed "
+                    + "open never publishes, instead of returning on the dialog that reports the failure");
             });
         }
         finally
         {
-            // Before the kill: the open's own activation is still waiting on this dialog, and closing it is what
-            // lets that finish rather than being torn down mid-flight.
+            // Before the application is closed: the open's own activation is still waiting on this dialog, and
+            // closing it is what lets that finish rather than being torn down mid-flight.
             E2E.CloseAllModals();
-            E2E.KillApp();
+            E2E.CloseApp();
             File.Delete(unreadable);
         }
     }

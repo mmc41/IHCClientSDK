@@ -31,6 +31,8 @@ Ihc.DatalineResource
 Ihc.EmailControlSettings
 Ihc.EnumDefinition
 Ihc.EnumValue
+Ihc.ErrorWithCodeException
+Ihc.Errors
 Ihc.EventPackage
 Ihc.FWVersion
 Ihc.FieldMetaData
@@ -89,6 +91,11 @@ Ihc.SmsModemInfo
 Ihc.SmsModemService
 Ihc.SmsModemSettings
 Ihc.SmsModemStatus
+Ihc.Stubbing.ControllerStubRegistration
+Ihc.Stubbing.ControllerStubRequest
+Ihc.Stubbing.ControllerStubResponse
+Ihc.Stubbing.ControllerStubs
+Ihc.Stubbing.IControllerStub
 Ihc.SystemInfo
 Ihc.TelemetryConfiguration
 Ihc.TextFile

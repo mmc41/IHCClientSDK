@@ -94,6 +94,17 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
         }
     }, CancellationToken.None).GetAwaiter().GetResult();
 
+    /// <summary>The same as <see cref="KillApp"/>.</summary>
+    /// <remarks>
+    /// The window runs in this process, so there is no shutdown of its own to let run and no telemetry of its own
+    /// to flush.
+    /// </remarks>
+    public string? CloseApp()
+    {
+        KillApp();
+        return null;
+    }
+
     /// <summary>
     /// Drops the window's content and the objects behind it. THE one release path — <see cref="KillApp"/>,
     /// <see cref="LaunchAsync"/> and <see cref="Dispose"/> all reach it, so a field added to this driver is
@@ -187,17 +198,16 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
         string domain = args[0];
         string verb = args.Length > 1 && !args[1].StartsWith("--", StringComparison.Ordinal) ? args[1] : string.Empty;
 
-        // ONE running check, here, rather than the same four-line prologue opening every verb below. The two
-        // exempt verbs are the ones that answer BEFORE there is a shell: `doctor` is what creates it, and
-        // `session status` reports the empty context a caller uses to discover that nothing is open.
-        if (shell is null && (domain, verb) is not (("doctor", _) or ("session", "status")))
+        // ONE running check, here, rather than the same four-line prologue opening every verb below.
+        if (shell is null && !DriverArguments.AnswersWithoutApplication(domain, verb))
         {
             return NotRunning();
         }
 
         return (domain, verb) switch
         {
-            ("doctor", _) => await LaunchAsync(Option(args, "--path")),
+            ("doctor", _) when DriverArguments.LaunchRequested(args) => await LaunchAsync(Option(args, "--path")),
+            ("doctor", _) => shell is null ? NotRunning() : Ok(new Dictionary<string, object?> { ["ready"] = true }),
             ("session", "status") => Ok(),
             ("session", "faults") => Faults(),
             ("problems", "state") => await ProblemsStateAsync(args),
@@ -329,6 +339,13 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
             return Refuse("PreconditionMissing", ProjectOpenPolicy.MissingFileRefusal(path));
         }
 
+        // The word the desktop driver refuses with. The command below would run happily over a standing dialog,
+        // which a person could not do, and the settle would then end on that dialog before the open had begun.
+        if (OpenModalWindows().Any())
+        {
+            return Refuse("DialogBlocked", ProjectOpenPolicy.ModalStandingRefusal);
+        }
+
         int generationBefore = ProjectOpenPolicy.GenerationOf(AutomationSnapshot.Read(snapshot));
         pendingActivation = shell!.OpenRecentCommand.ExecuteAsync(path);
         Dispatcher.UIThread.RunJobs();
@@ -336,8 +353,8 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
     }
 
     /// <summary>
-    /// Waits until the PUBLISHED snapshot says the open has arrived, and reports what the application ended up
-    /// naming.
+    /// Waits until the PUBLISHED snapshot says the open has arrived, or a dialog stands in front of the document,
+    /// and reports what the application ended up naming.
     /// </summary>
     /// <remarks>
     /// On the same surface the desktop driver settles on — <c>--test</c>'s <c>doc</c> and <c>gen</c> fields —
@@ -345,9 +362,9 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
     /// has been announced and republished, and the verb after this one reads exactly that. Settling here rather
     /// than in each scenario is what keeps the two drivers answering one contract.
     ///
-    /// <para>A standing modal ends the wait early, and says the open FAILED: the application reports a file it
-    /// cannot read that way and leaves the previous document bound, so there is nothing left to wait for and the
-    /// remaining ceiling would be spent per broken fixture.</para>
+    /// <para>When the wait is over is <see cref="ProjectOpenPolicy.HasSettled"/>'s to say, and the desktop driver
+    /// asks the same rule. A failed open reports itself through a dialog, so it answers as soon as that dialog
+    /// stands rather than at the ceiling.</para>
     ///
     /// <para>It does NOT wait for validation. That is <c>problems state --wait</c>'s job, and a scenario asks
     /// for it by name — a verb that waited for both would make the panel's own currency unobservable.</para>
@@ -360,7 +377,7 @@ internal sealed class HeadlessDriver : IE2EDriver, IDisposable
         {
             Dispatcher.UIThread.RunJobs();
             read = AutomationSnapshot.Read(snapshot);
-            if (ProjectOpenPolicy.HasArrived(read, fileName, generationBefore) || OpenModalWindows().Any())
+            if (ProjectOpenPolicy.HasSettled(read, fileName, generationBefore, () => OpenModalWindows().Any()))
             {
                 break;
             }

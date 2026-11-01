@@ -6,6 +6,9 @@ Decided — 2026-08-17. Settles the visibility question `ARCHITECTURE.md` invari
 neutral implication ADR-002 carried forward ("generated SOAP types remain technically `public` though out of
 contract"). Does not supersede ADR-002; it refines one of its recorded consequences.
 
+Amended — 2026-10-31 (`ihcclient_stub` references the generated layer) and 2026-11-01 (`safe_stub_tests` does
+too) — both are notes in Context, and neither changes the decision.
+
 Revisit triggers: (a) the SDK stops using `XmlSerializer` for the controller wire path; (b) a .NET release
 lets `XmlSerializer` bind non-public types; (c) before `ihcclient` is published as a NuGet package, since a
 released package converts a source-level detail into a distributed contract; (d) a vendor WSDL revision that
@@ -35,7 +38,12 @@ than in compiler accessibility.
   (`ARCHITECTURE.md:48`). Their suppression is a separate surface question, out of scope here.
 - Outside `ihcclient`, only two test assemblies reference `Ihc.Soap.*`: `safe_unit_tests` (a friend assembly)
   and `safe_architecture_tests`, which is deliberately *not* a friend so that its layer anchors are public
-  types (`IhcClientArchitectureTests.cs:39`).
+  types (`IhcClientArchitectureTests.cs:39`). *(Amended 2026-10-31: `ihcclient_stub` also references the layer,
+  the one non-test assembly outside `ihcclient` that does. Its controller-stub answers are written against the
+  generated message types, and it ships in no package or application ([ADR-005](ADR-005-controller-stub-seam.md)).
+  The visibility decision is unaffected: the stub needs the types public for the same `XmlSerializer` reason.)*
+  *(Amended 2026-11-01: `safe_stub_tests`, a friend assembly holding the stub's tests that moved out of
+  `safe_unit_tests`, references the layer too, through the same project-file opt-out.)*
 
 **Decision forces**: invariant 9 (`ARCHITECTURE.md:88`) admits the visible surface as a gap — vendor WSDL
 churn would surface as this SDK's own breaking changes. Both candidate resolutions were on the table and

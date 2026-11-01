@@ -7,6 +7,77 @@ namespace Ihc.Vis.Editing.Seeded
     internal sealed class NestedEngineType : INestedEngineContract { }
 }
 
+namespace Ihc.Transport.Seeded
+{
+    // Seeded violator for the SDK transport rule's System.ServiceModel half, whose production verdict is empty.
+    // Hand-written code outside the generated SOAP layer reaching a WCF type is exactly what that rule refuses.
+    internal static class SeededServiceModelReference
+    {
+        internal static object Binding() => new System.ServiceModel.BasicHttpBinding();
+    }
+
+    // Seeded violator for the controller stub's outbound rule, whose production verdict is empty: a client built
+    // with no handler, whose socket is the BCL's own.
+    internal static class SeededOutboundClient
+    {
+        internal static System.Net.Http.HttpClient Build() => new();
+    }
+
+    // Seeded violators for the stub-surface rule's halves that the SDK leaves empty: a second reader of the stub
+    // predicate, and a stub implemented outside the stub namespace.
+    internal static class SeededPredicateReader
+    {
+        internal static bool Read(IhcSettings settings) => settings.IsStubConfigured();
+    }
+
+    internal sealed class SeededControllerStub : Ihc.Stubbing.IControllerStub
+    {
+        public System.Threading.Tasks.Task<Ihc.Stubbing.ControllerStubResponse> HandleAsync(
+            Ihc.Stubbing.ControllerStubRequest request, System.Threading.CancellationToken cancellationToken) =>
+            System.Threading.Tasks.Task.FromResult(new Ihc.Stubbing.ControllerStubResponse(200, string.Empty));
+    }
+
+    // Seed for the Lab friend-grant rule's constructor half: a PUBLIC type with a public constructor and an
+    // internal transport overload, the shape the SDK's services have, and a caller of each. Only the internal
+    // overload's call may be reported, which a scan that judged the type or the member name could not tell apart.
+    public sealed class SeededTransportService
+    {
+        public SeededTransportService(string endpoint)
+        {
+            Endpoint = endpoint;
+        }
+
+        internal SeededTransportService(string endpoint, System.Net.Http.HttpClient transport)
+            : this(endpoint)
+        {
+            Transport = transport;
+        }
+
+        public string Endpoint { get; }
+
+        internal System.Net.Http.HttpClient? Transport { get; }
+    }
+
+    internal static class SeededTransportServiceCallers
+    {
+        internal static SeededTransportService Public() => new("https://seeded.invalid");
+
+        internal static SeededTransportService ThroughTheTransportOverload(System.Net.Http.HttpClient transport) =>
+            new("https://seeded.invalid", transport);
+    }
+
+    // Seeded violators for the stub-endpoint literal scan: one spelling written in place, and one a const the
+    // compiler inlines at its use, which is the shape a copied prefix constant takes.
+    internal static class SeededStubEndpointLiterals
+    {
+        private const string StubHost = "http://seeded.controllerstub.invalid";
+
+        internal static string MockKey() => "mock://seeded";
+
+        internal static string InlinedStubHost() => StubHost;
+    }
+}
+
 namespace Ihc.Vis.Io.Seeded
 {
     // Test-only type in a nested IO namespace, the sibling of the editing pair above. It arms the port-surface
@@ -272,6 +343,26 @@ namespace Ihc.Safety.Seeded
         internal static System.Net.Http.HttpClient Build() => new();
     }
 
+    /// <summary>
+    /// Positive control for the raw half of the live-transport rule: a socket client of its own, with no HTTP layer
+    /// above it, so no route and no latch stand in its way. Must be flagged.
+    /// </summary>
+    internal static class SeededRawSocketBuilder
+    {
+        internal static System.Net.Sockets.TcpClient Build() => new();
+    }
+
+    /// <summary>
+    /// Positive control for a live transport built behind a static factory rather than a constructor: the legacy
+    /// request API creates its client inside <c>WebRequest.Create</c>. Must be flagged.
+    /// </summary>
+    internal static class SeededWebRequestBuilder
+    {
+#pragma warning disable SYSLIB0014 // The obsolete factory is the very shape this seed exists to show.
+        internal static System.Net.WebRequest Build() => System.Net.WebRequest.Create("http://seeded-request.invalid");
+#pragma warning restore SYSLIB0014
+    }
+
     /// <summary>A handler this assembly declares, answering from itself: the shape a suite is SUPPOSED to
     /// substitute at the socket.</summary>
     internal sealed class SeededStubHandler : System.Net.Http.HttpMessageHandler
@@ -293,6 +384,46 @@ namespace Ihc.Safety.Seeded
 #pragma warning disable CA2000
         internal static System.Net.Http.HttpClient Build() => new(new SeededStubHandler());
 #pragma warning restore CA2000
+    }
+
+    /// <summary>
+    /// Positive control for the subclass rule on the transport side: a handler this assembly declares over the
+    /// BCL's own client handler. Declared here or not, it IS that socket handler, so its constructor, which builds
+    /// the base, builds a live transport. Must be flagged at that constructor.
+    /// </summary>
+    internal sealed class SeededClientHandlerSubclass : System.Net.Http.HttpClientHandler
+    {
+    }
+
+    /// <summary>A client over the subclass above, used the way a suite would use it. Flagged by the outbound rule
+    /// the stub and the executables are held to, which counts any client; not by the reach scan, which judges the
+    /// subclass where it is built.</summary>
+    internal static class SeededClientHandlerSubclassUser
+    {
+        // CA2000: the handler is handed to the HttpClient, which owns it from here on. CA5399: the seed is never run,
+        // only read as IL, so no certificate is ever checked through it.
+#pragma warning disable CA2000, CA5399
+        internal static System.Net.Http.HttpClient Build() => new(new SeededClientHandlerSubclass());
+#pragma warning restore CA2000, CA5399
+    }
+
+    /// <summary>
+    /// Positive control for the subclass rule on the service side: a service this assembly declares over a real
+    /// one, built from settings. The SDK's services are not sealed, and such a subclass makes its own transport
+    /// exactly as its base does. Must be flagged at its constructor.
+    /// </summary>
+    internal sealed class SeededServiceSubclass : AuthenticationService
+    {
+        internal SeededServiceSubclass()
+            : base(new IhcSettings { Endpoint = "http://seeded.invalid" })
+        {
+        }
+    }
+
+    /// <summary>Builds the subclass above, so the seed is used as a suite would use it.</summary>
+    internal static class SeededServiceSubclassUser
+    {
+        internal static AuthenticationService Build() => new SeededServiceSubclass();
     }
 
     /// <summary>

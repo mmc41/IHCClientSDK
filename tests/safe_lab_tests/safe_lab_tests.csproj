@@ -3,6 +3,8 @@
   <ItemGroup>
     <PackageReference Include="CompareNETObjects" />
     <PackageReference Include="CsCheck" />
+    <!-- Lab ships no fake; these tests fake Lab's own collaborators at the IIHCApiService seam. -->
+    <PackageReference Include="FakeItEasy" />
     <PackageReference Include="System.Configuration.ConfigurationManager" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
@@ -16,6 +18,12 @@
          an inherited member of the shared AvaloniaTestBase. -->
     <Using Include="Ihc.Tests.LabWindows" Static="true" />
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
+    <!-- The suite's controller is the stub, registered by the tests. Lab itself never references it. -->
+    <ProjectReference Include="..\..\ihcclient_stub\ihcclient_stub.csproj" />
+    <Compile Include="..\shared\SdkArguments.cs" Link="shared\SdkArguments.cs" />
+    <!-- The smoke run checks where every SDK request went, from the SDK's own HTTP spans. -->
+    <Compile Include="..\shared\TelemetryCapture.cs" Link="shared\TelemetryCapture.cs" />
+    <Compile Include="..\shared\RequestDestinations.cs" Link="shared\RequestDestinations.cs" />
     <!-- The IL decode and the member population every structural rule reads. Shared because the
          controller-reach guard runs INSIDE each suite it polices, and a suite cannot be scanned from
          outside by an assembly that does not reference it. -->
@@ -24,6 +32,9 @@
     <Compile Include="..\shared\ControllerReachScan.cs" Link="shared\ControllerReachScan.cs" />
     <!-- The safety rule, as a gate rather than a convention: this suite may reach no controller. -->
     <Compile Include="..\shared\ControllerReachGuard.cs" Link="shared\ControllerReachGuard.cs" />
+    <!-- ...and the same rule at run time: a stub registered for the whole run latches every real endpoint. -->
+    <Compile Include="..\shared\ControllerStubLatchFixture.cs" Link="shared\ControllerStubLatchFixture.cs" />
+    <Compile Include="..\shared\ControllerStubLatchSupport.cs" Link="shared\ControllerStubLatchSupport.cs" />
     <ProjectReference Include="..\..\utilities\ihc_lab\ihc_lab.csproj" />
   </ItemGroup>
 

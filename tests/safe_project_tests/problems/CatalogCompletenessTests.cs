@@ -240,7 +240,7 @@ namespace Ihc.Vis.Tests
         /// <summary>
         /// The definition findings' severities, which nothing else checks. A catalog-definition row is raised as a
         /// LITERAL <c>ValidationSeverity</c> beside a literal code inside a builder — the pre-catalogue style, kept
-        /// because a builder may not read the catalogue (L4) — so its severity and its entry's disposition are two
+        /// because a builder may not read the catalogue (VL4) — so its severity and its entry's disposition are two
         /// independent copies of one decision. The recording cannot cover them: these findings are about
         /// <c>.def</c>/<c>.ifb</c> files, which the project corpus never validates.
         ///

@@ -27,7 +27,7 @@ namespace Ihc.Tests
     public class SelectionFaultLoggingTests
     {
         /// <summary>Collects what the view-model logs, standing in for the real pipeline.</summary>
-        private sealed class CapturingProvider : ILoggerProvider
+        internal sealed class CapturingProvider : ILoggerProvider
         {
             internal List<string> Entries { get; } = [];
 

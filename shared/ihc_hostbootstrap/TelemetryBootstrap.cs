@@ -24,9 +24,9 @@ namespace Ihc.Bootstrap
     /// entrypoint (<see cref="Ihc.TelemetrySelfCheck.ProbeAndReportAsync"/>).
     /// </summary>
     /// <remarks>
-    /// Split out of <c>AppTelemetryBootstrap</c> so a console utility gets the providers without Avalonia (R7).
+    /// Split out of <c>AvaloniaTelemetryBootstrap</c> so a console utility gets the providers without Avalonia (R7).
     /// The Avalonia-only extras — the log sink, the <c>AppBuilder</c> hook, the dispatcher handler and the two
-    /// level maps — stay in <c>ihc_appbootstrap</c>, which references this. The dividing line is what a
+    /// level maps — stay in <c>ihc_hostbootstrap_avalonia</c>, which references this. The dividing line is what a
     /// headless host can use: everything here runs with no windowing system present.
     /// </remarks>
     public static class TelemetryBootstrap
@@ -62,16 +62,19 @@ namespace Ihc.Bootstrap
         /// The service version is read from the running entry assembly via <see cref="GetAppVersionStr"/>.</summary>
         /// <param name="appScopeName">The host's own instrumentation-scope name, used for BOTH its
         /// ActivitySource and its Meter - one scope, both signals, as for the SDK.</param>
+        /// <param name="controllerStubRun">Whether the run was started against a controller stub, as
+        /// <c>ControllerStubs.SwitchRequested</c> answers from the arguments. Such a run's traces, metrics and logs
+        /// are marked so they can be kept out of a real controller's baseline.</param>
         public static ILoggerFactory SetupTelemetryAndLogging(
             string serviceName, string serviceNamespace, string appScopeName,
-            TelemetryConfiguration telemetry, IConfiguration loggingConfig)
+            TelemetryConfiguration telemetry, IConfiguration loggingConfig, bool controllerStubRun = false)
         {
             ArgumentNullException.ThrowIfNull(telemetry);
 
             ApplyDefaultAttributeLimits();
             // ONE resource for all three signals: CreateDefault re-runs the default detectors on every
             // call, and three resources that merely happen to agree are three things to keep in step.
-            ResourceBuilder resource = BuildResource(serviceName, serviceNamespace, telemetry.Environment);
+            ResourceBuilder resource = BuildResource(serviceName, serviceNamespace, telemetry.Environment, controllerStubRun);
 
             ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
             {
@@ -223,18 +226,31 @@ namespace Ihc.Bootstrap
         /// </summary>
         private static readonly string ServiceInstanceId = Guid.NewGuid().ToString();
 
-        private static ResourceBuilder BuildResource(string serviceName, string serviceNamespace, string environment) =>
-            ResourceBuilder.CreateDefault()
+        /// <summary>
+        /// Marks a run that talks only to a controller stub. Present only on such a run, so a real run's resource is
+        /// unchanged and no reader has to tell a false mark from an absent one.
+        /// </summary>
+        private const string ControllerStubAttribute = "ihc.controller.stub";
+
+        private static ResourceBuilder BuildResource(string serviceName, string serviceNamespace, string environment,
+            bool controllerStubRun)
+        {
+            var attributes = new List<KeyValuePair<string, object>>
+            {
+                new("deployment.environment.name", string.IsNullOrWhiteSpace(environment) ? DefaultEnvironment : environment),
+            };
+            if (controllerStubRun)
+            {
+                attributes.Add(new(ControllerStubAttribute, true));
+            }
+            return ResourceBuilder.CreateDefault()
                 .AddService(
                     serviceName: serviceName,
                     serviceNamespace: serviceNamespace,
                     serviceVersion: GetAppVersionStr(),
                     serviceInstanceId: ServiceInstanceId)
-                .AddAttributes(new[]
-                {
-                    new KeyValuePair<string, object>("deployment.environment.name",
-                        string.IsNullOrWhiteSpace(environment) ? DefaultEnvironment : environment),
-                });
+                .AddAttributes(attributes);
+        }
 
         private static void ConfigureOtlp(OtlpExporterOptions opts, string endpoint, string headers)
         {

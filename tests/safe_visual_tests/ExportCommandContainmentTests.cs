@@ -37,8 +37,9 @@ public class ExportCommandContainmentTests : AvaloniaTestBase
         // The application's OWN dispatcher net, installed the way Program.Main installs it — otherwise this
         // would measure the absence of a handler rather than the presence of a gap.
         CapturingLogger logger = new();
-        DispatcherUnhandledExceptionEventHandler net = Ihc.Bootstrap.AppTelemetryBootstrap.DispatcherExceptionHandler(
-            logger, fault => TaskSupervisor.Report(fault, "Dispatcher.UnhandledException"));
+        DispatcherUnhandledExceptionEventHandler net =
+            Ihc.Bootstrap.AvaloniaTelemetryBootstrap.DispatcherExceptionHandler(
+                logger, fault => TaskSupervisor.Report(fault, "Dispatcher.UnhandledException"));
         Dispatcher.UIThread.UnhandledException += net;
         // Removed in a FINALLY, because the dispatcher outlives this test: the handler is installed on the one
         // UI thread the whole suite shares, so a failure anywhere below would leave every later test running

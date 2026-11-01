@@ -23,7 +23,7 @@ namespace Ihc.Bootstrap
     /// forwarding floor, defaulting to <see cref="LogEventLevel.Verbose"/> so an app that omits it forwards
     /// everything its ILogger permits — matching OpenVisual's prior no-floor behavior).</para>
     /// </remarks>
-    public static class AppTelemetryBootstrap
+    public static class AvaloniaTelemetryBootstrap
     {
         /// <summary>An <see cref="ILogSink"/> that forwards Avalonia's internal logs into <see cref="ILogger"/>
         /// (hence OpenTelemetry) while chaining to any previously installed sink. Forwarding is floored at

@@ -4,11 +4,11 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
 using System.Threading;
 
+using Ihc.Stubbing;
 using Ihc.UiAutomation;
 using Ihc.Vis.Validation;
 using ihc_openvisual.Configuration;
@@ -57,6 +57,58 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
 
     /// <summary>How long a killed application has to actually go.</summary>
     private static readonly TimeSpan KillTimeout = TimeSpan.FromSeconds(20);
+
+    /// <summary>How long a closed application has to end by itself before it is killed.</summary>
+    /// <remarks>
+    /// The application's way out has limits of its own: the wait for its catalogue warm-up
+    /// (<c>Program.CatalogWarmupShutdownLimit</c>), then one last export per telemetry signal, each bounded by the
+    /// export timeout in <see cref="TelemetryEnvironment"/>. This leaves room above their sum.
+    /// </remarks>
+    private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>How often a close is checked on: whether the process has ended, and whether it is prompting.</summary>
+    private static readonly TimeSpan ClosePoll = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>
+    /// How many dialogs a close cancels before it gives up, bounded as <see cref="E2E.CloseAllModals"/> is: a
+    /// dialog that ignores its cancel would otherwise hold the loop for ever.
+    /// </summary>
+    private const int DialogsCancelledOnClose = 4;
+
+    /// <summary>
+    /// The prompt a close raises while the document has unsaved changes, and the answer this driver gives it.
+    /// </summary>
+    /// <remarks>
+    /// Spelled here for the reason <see cref="TestSurfaceArgument"/> is. The answer is to DISCARD, never to save:
+    /// the application opens its fixtures in place in <c>tests/testdata</c>, so saving would rewrite a byte-pinned
+    /// oracle. The button is found by its words, never by its position, so a prompt whose buttons were reordered
+    /// makes the close fail instead of pressing another one.
+    /// </remarks>
+    private const string SavePromptTitle = "Gem ændringer?";
+
+    /// <inheritdoc cref="SavePromptTitle"/>
+    private const string DiscardChanges = "Gem ikke";
+
+    /// <summary>
+    /// The telemetry settings every launch gets through its environment, where the application's OpenTelemetry SDK
+    /// reads them because the application sets none of them in code.
+    /// </summary>
+    /// <remarks>
+    /// <para>The SDK sends spans and log records in batches, five seconds apart by default, so a launch that is
+    /// killed loses whatever its last five seconds produced, and one killed sooner loses everything. The launch
+    /// gate kills a refused launch on purpose, and a close that does not finish ends in a kill too; half a second
+    /// bounds what either loses. Metrics are not covered: the application sets their interval in code, which
+    /// outranks the environment.</para>
+    ///
+    /// <para>The export timeout keeps a close short when no collector answers. Shutting down exports each signal
+    /// once more, and each of those exports waits this long instead of the default ten seconds.</para>
+    /// </remarks>
+    private static readonly IReadOnlyDictionary<string, string> TelemetryEnvironment = new Dictionary<string, string>
+    {
+        ["OTEL_BSP_SCHEDULE_DELAY"] = "500",
+        ["OTEL_BLRP_SCHEDULE_DELAY"] = "500",
+        ["OTEL_EXPORTER_OTLP_TIMEOUT"] = "3000",
+    };
 
     /// <summary>
     /// How long an action is given to reach the screen before the next verb reads the result. The application
@@ -125,16 +177,17 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
         string domain = args[0];
         string verb = args.Length > 1 && !args[1].StartsWith("--", StringComparison.Ordinal) ? args[1] : string.Empty;
 
-        // One running check, as the headless driver does it. `doctor` is what creates the application and
-        // `session status` reports the empty context a caller uses to discover that nothing is open.
-        if (mainWindow is null && (domain, verb) is not (("doctor", _) or ("session", "status")))
+        // One running check, as the headless driver does it.
+        if (mainWindow is null && !DriverArguments.AnswersWithoutApplication(domain, verb))
         {
             return NotRunning();
         }
 
         return (domain, verb) switch
         {
-            ("doctor", _) => Launch(DriverArguments.Option(args, "--path")),
+            ("doctor", _) when DriverArguments.LaunchRequested(args) =>
+                Launch(DriverArguments.Option(args, "--path"), DriverArguments.Option(args, DriverArguments.ControllerStubOption)),
+            ("doctor", _) => Doctor(),
             ("session", "status") => Ok(),
             ("session", "faults") => Faults(),
             ("capture", "window") => CaptureWindow(),
@@ -154,51 +207,93 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
             ("dialog", "select-item") => DialogSelectItem(args),
             ("dialog", "click") => DialogClick(args),
             ("dialog", "cancel") => DialogCancel(),
+            ("control", "enabled") => ControlEnabled(DriverArguments.Option(args, "--id")),
             _ => Refuse("InvalidInput", $"'{domain} {verb}' is not a verb this driver implements"),
         };
+    }
+
+    /// <summary>Whether the shell's control with the given automation id accepts input.</summary>
+    private E2E.Envelope ControlEnabled(string? automationId)
+    {
+        if (automationId is null)
+        {
+            return Refuse("InvalidInput", "control enabled needs --id");
+        }
+        if (mainWindow?.FindFirstById(automationId) is not { } control)
+        {
+            return Refuse("ControlNotFound", $"the shell publishes no {automationId}");
+        }
+        return Ok(new Dictionary<string, object?> { ["enabled"] = control.IsEnabled });
     }
 
     // ---- verbs -------------------------------------------------------------------------------------------
 
     /// <summary>
-    /// Starts the application on a fixture, after making sure no earlier instance is still holding the screen.
+    /// The readiness check without the launch flag: ready while a launched application is attached, not running
+    /// otherwise. Only the launch flag starts the application, so a check can never start one around the gate.
     /// </summary>
-    private E2E.Envelope Launch(string? projectPath)
+    private E2E.Envelope Doctor() =>
+        mainWindow is null ? NotRunning() : Ok(new Dictionary<string, object?> { ["ready"] = true });
+
+    /// <summary>
+    /// Starts the application on a fixture with the controller-stub switch, after making sure no earlier instance is
+    /// still holding the screen.
+    /// </summary>
+    /// <remarks>
+    /// A launch that ends without a window carries the process's exit code in its envelope when the process has
+    /// exited, because a refused start is told apart from a crash or a hang only by that code.
+    /// </remarks>
+    private E2E.Envelope Launch(string? projectPath, string? switchValue)
     {
-        string executable = ExecutablePath();
-        if (!File.Exists(executable))
+        // Refused before anything is killed or started: without the switch the application would run on the settings
+        // file beside it, and the launch gate, which checks for the switch's stub, would be the only thing in the way.
+        if (switchValue is null)
         {
             return Refuse("PreconditionMissing",
-                $"no application at {executable} — build applications/ihc_openvisual first");
+                $"a desktop launch needs {DriverArguments.ControllerStubOption} <address of a stub host>; the "
+                + "application is never started without the controller-stub switch");
         }
 
         // Any survivor is killed BEFORE launching, not after: two instances mean two candidate windows, and the
-        // driver would attach to whichever the window manager happened to list first.
+        // driver would attach to whichever the window manager happened to list first. Before the copy is read, too,
+        // because a survivor running from it would hold the files its refresh replaces.
         KillApp();
+
+        string executable;
+        try
+        {
+            executable = ApplicationCopy.Executable;
+        }
+        catch (InvalidOperationException refused)
+        {
+            return Refuse("PreconditionMissing", refused.Message);
+        }
 
         // --test is what every wait below depends on: without it the application publishes no snapshot and the
         // driver is back to inferring lifecycle and validation currency from rendering. It gates PUBLICATION
         // only, so what is launched here behaves as the shipped application behaves.
-        List<string> arguments = [TestSurfaceArgument];
+        List<string> arguments = [TestSurfaceArgument, ControllerStubs.SwitchArgument + "=" + switchValue];
         if (projectPath is { Length: > 0 })
         {
             arguments.Add(projectPath);
         }
 
         LaunchedApp launched = AppLauncher.Start(
-            Session, executable, arguments, IsDriveableShell, LaunchTimeout);
+            Session, executable, arguments, IsDriveableShell, LaunchTimeout, TelemetryEnvironment);
 
         app = launched.Process;
         mainWindow = launched.MainWindow;
 
         if (mainWindow is null)
         {
-            string how = launched.Process.HasExited
+            bool exited = launched.Process.HasExited;
+            string how = exited
                 ? $"it exited with code {launched.Process.ExitCode}"
                 : $"it is still running but published no {AutomationIds.InstallationTree}";
-            return Refuse("AppNotRunning",
+            return envelopes.Build(false, "AppNotRunning",
                 $"{Path.GetFileName(executable)} produced no driveable window within "
-                + $"{LaunchTimeout.TotalSeconds:0} s — {how}");
+                + $"{LaunchTimeout.TotalSeconds:0} s — {how}",
+                new Dictionary<string, object?> { ["exitCode"] = exited ? launched.Process.ExitCode : null });
         }
 
         return Ok(new Dictionary<string, object?> { ["ready"] = true });
@@ -291,8 +386,7 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
         HashSet<nint> before = [.. AppDialogs().Select(dialog => dialog.NativeWindowHandle)];
         if (before.Count > 0)
         {
-            return Refuse("DialogBlocked",
-                "a dialog is already open, so the picker could not be told apart from it; close it first");
+            return Refuse("DialogBlocked", ProjectOpenPolicy.ModalStandingRefusal);
         }
 
         if (shell.FindFirstById(AutomationIds.ToolbarOpen) is not { } open || !open.Invoke())
@@ -351,14 +445,20 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
     }
 
     /// <summary>
-    /// Waits until the PUBLISHED snapshot says the open has arrived, and reports what the application ended up
-    /// naming.
+    /// Waits until the PUBLISHED snapshot says the open has arrived, or a dialog stands in front of the document,
+    /// and reports what the application ended up naming.
     /// </summary>
     /// <remarks>
-    /// The <c>--test</c> surface's <c>doc</c> and <c>gen</c> fields, settled by exactly the condition the
-    /// headless driver settles by, so a scenario gets one contract from either mode. Not the title bar: that
-    /// carries the dirty bullet and the application's own name beside a BASE name, so reading a document out of
-    /// it is an inference — and it cannot tell this file from another of the same name in another folder.
+    /// The <c>--test</c> surface's <c>doc</c> and <c>gen</c> fields and the application's dialog stack, judged by
+    /// <see cref="ProjectOpenPolicy.HasSettled"/>, the rule the headless driver asks too, so a scenario gets one
+    /// contract from either mode. Not the title bar: that carries the dirty bullet and the application's own name
+    /// beside a BASE name, so reading a document out of it is an inference — and it cannot tell this file from
+    /// another of the same name in another folder.
+    ///
+    /// <para>Any dialog in <see cref="AppDialogs"/> counts. <see cref="ProjectOpen"/> refused if one stood before
+    /// the gesture and has seen the picker close, so a dialog standing now is one the open raised. A failed open
+    /// publishes no new document, so a wait for the document alone would serve out the whole ceiling with the
+    /// error dialog in front of the shell.</para>
     ///
     /// <para>A document that never arrives is reported, not refused: see <see cref="ProjectOpenPolicy"/>. The
     /// snapshot being UNREADABLE is different and still refuses — a surface that is on and cannot be parsed is
@@ -375,7 +475,7 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
             () =>
             {
                 read = Snapshot();
-                return ProjectOpenPolicy.HasArrived(read, fileName, generationBefore);
+                return ProjectOpenPolicy.HasSettled(read, fileName, generationBefore, () => AppDialogs().Count > 0);
             },
             ProjectOpenPolicy.SettleTimeout,
             poll: TimeSpan.FromMilliseconds(50),
@@ -1755,26 +1855,103 @@ internal sealed partial class UiaDriver : IE2EDriver, IDisposable
         mainWindow = null;
     }
 
+    public string? CloseApp()
+    {
+        try
+        {
+            // A launch that never produced a window has no shell to close, and its own envelope already said why.
+            if (app is not { } running || mainWindow is not { } shell)
+            {
+                return null;
+            }
+
+            if (running.HasExited)
+            {
+                return running.ExitCode == 0 ? null : $"it had already exited, with code {running.ExitCode}";
+            }
+
+            return Close(running, shell);
+        }
+        catch (Exception fault)
+        {
+            return $"closing it faulted ({fault.GetType().Name}: {fault.Message}), so it was killed";
+        }
+        finally
+        {
+            // Whatever the close achieved: an instance that did not go is killed here, and so is any instance this
+            // driver did not launch, as before every launch.
+            KillApp();
+        }
+    }
+
+    /// <summary>
+    /// Closes the shell the way a person does and waits for the process to end, declining the save prompt if one
+    /// comes. Any dialog still open is cancelled first, because a modal holds the shell's close back.
+    /// </summary>
+    /// <remarks>
+    /// The wait polls the PROCESS rather than UI Automation. Once the shell is gone the application is running its
+    /// shutdown, with no window left to read, and a read of a window whose thread has stopped pumping messages can
+    /// stall. UI Automation is read only while a prompt is still to come, and the shell is then waiting on it.
+    /// </remarks>
+    private string? Close(Process running, UiaElement shell)
+    {
+        for (int round = 0; round < DialogsCancelledOnClose && TopmostModal() is not null; round++)
+        {
+            if (!DialogCancel().Ok)
+            {
+                break;
+            }
+        }
+
+        if (TopmostModal() is { } standing)
+        {
+            return $"the dialog '{standing.Name}' would not close, so the application could not be closed and was killed";
+        }
+
+        // Read BEFORE the close, because unsaved changes are what make the application prompt. A snapshot that
+        // cannot be read leaves that unknown, and a prompt that might come is looked for.
+        bool promptToCome = Snapshot().Value?.Dirty ?? true;
+
+        if (!AppLauncher.RequestClose(shell.NativeWindowHandle))
+        {
+            return "its window took no close request, so it was killed";
+        }
+
+        long deadline = Environment.TickCount64 + (long)CloseTimeout.TotalMilliseconds;
+        while (!running.WaitForExit(ClosePoll))
+        {
+            if (Environment.TickCount64 >= deadline)
+            {
+                return TopmostModal() is { } blocking
+                    ? $"it was still showing '{blocking.Name}' {CloseTimeout.TotalSeconds:0} s after being closed, so it was killed"
+                    : $"it had not exited {CloseTimeout.TotalSeconds:0} s after being closed, so it was killed";
+            }
+
+            if (promptToCome && DiscardOnSavePrompt() is { } discard)
+            {
+                if (!discard.Invoke())
+                {
+                    return $"its save prompt's '{DiscardChanges}' button could not be pressed, so it was killed";
+                }
+                promptToCome = false;
+            }
+        }
+
+        return running.ExitCode == 0 ? null : $"it exited with code {running.ExitCode} after being closed";
+    }
+
+    /// <summary>The save prompt's discarding button, when the save prompt is the dialog in front.</summary>
+    private UiaElement? DiscardOnSavePrompt() =>
+        TopmostModal() is { } modal && string.Equals(modal.Name, SavePromptTitle, StringComparison.Ordinal)
+            ? FindButton(modal, DiscardChanges)
+            : null;
+
     public void Dispose()
     {
         KillApp();
         session?.Dispose();
         session = null;
     }
-
-    // ---- the application under test ----------------------------------------------------------------------
-
-    /// <summary>
-    /// Where the application was built, baked in at compile time (D04) so the path is deterministic and names
-    /// the same configuration these tests were built in.
-    /// </summary>
-    private static string ExecutablePath() =>
-        typeof(UiaDriver).Assembly
-            .GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(attribute => attribute.Key == "OpenVisualExecutable")
-            ?.Value
-        ?? throw new InvalidOperationException(
-            "the test assembly carries no OpenVisualExecutable metadata; see safe_visual_e2e_tests.csproj");
 
     // ---- envelope construction ---------------------------------------------------------------------------
 

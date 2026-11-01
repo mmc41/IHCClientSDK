@@ -15,7 +15,7 @@ namespace Ihc.Tests
 {
     /// <summary>
     /// T064 — the layer model stated BEFORE Phase 2 built anything, enforced. Each rule below is one of
-    /// L1–L5 in <c>ARCHITECTURE.md</c>'s challenge 5; L6 (the code-family ownership partition) is already held by
+    /// VL1–VL5 in <c>ARCHITECTURE.md</c>'s challenge 5; VL6 (the code-family ownership partition) is already held by
     /// <see cref="ProblemOwnershipArchitectureTests"/>, so it is not restated here.
     ///
     /// <para><b>Why these are fitness tests and not symbol bans.</b> ADR-004's fidelity test decides the mechanism,
@@ -76,7 +76,7 @@ namespace Ihc.Tests
         /// <c>ProblemCatalogEntry</c> are NOT forbidden to the GUI. The app declares its own reserved
         /// <c>app.openvisual.*</c> family through those very types (T041), and R17's whole point is that a reserved
         /// family buys a host its own code space, not an exemption from governance — the same schema, the same
-        /// checks. What L5 forbids is READING THE SDK'S catalogue to re-derive text the SDK owns, which is
+        /// checks. What VL5 forbids is READING THE SDK'S catalogue to re-derive text the SDK owns, which is
         /// the <c>Current</c> access point below, not the schema types.
         /// </para>
         /// </summary>
@@ -89,10 +89,10 @@ namespace Ihc.Tests
         /// <summary>The SDK catalogue's access point — the members that hand out the SDK's own rows.</summary>
         private static IReadOnlyCollection<string> SdkCatalogueAccessors() => ["get_Current"];
 
-        // ── L1: the problem namespace is neutral ────────────────────────────────────────────────────
+        // ── VL1: the problem namespace is neutral ────────────────────────────────────────────────────
 
         /// <summary>
-        /// L1 — <c>Ihc.Vis.Problems</c> depends on <c>Ihc.Vis.Model</c> and nothing else in <c>Ihc.Vis.*</c>. This
+        /// VL1 — <c>Ihc.Vis.Problems</c> depends on <c>Ihc.Vis.Model</c> and nothing else in <c>Ihc.Vis.*</c>. This
         /// is what lets an <c>io.*</c> refusal in the reader, an <c>import.*</c> outcome or a <c>bridge.*</c> upload
         /// failure carry a coded problem without dragging the engine in behind it.
         /// <para>Asserted over the EDGES rather than as a list of forbidden namespaces: a new
@@ -125,10 +125,10 @@ namespace Ihc.Tests
             });
         }
 
-        // ── L2 and L3: nothing below the engine reaches up into it ──────────────────────────────────
+        // ── VL2 and VL3: nothing below the engine reaches up into it ──────────────────────────────────
 
         /// <summary>
-        /// L2 — the session layer does not depend on the validation engine. The direction is Validation → Session:
+        /// VL2 — the session layer does not depend on the validation engine. The direction is Validation → Session:
         /// the command-legality face reads a command, and <c>ProjectAppService</c> composes the two. This is the
         /// rule that forces the session's refusal sentences to live beside their codes, which
         /// <c>RefusalLabelDriftTests</c> then keeps in step with the catalogue.
@@ -140,7 +140,7 @@ namespace Ihc.Tests
                 + "could read the engine would be free to look its own refusal sentences up");
 
         /// <summary>
-        /// L3 — the IO layer does not depend on the validation engine, so the open/save coded refusals reach for
+        /// VL3 — the IO layer does not depend on the validation engine, so the open/save coded refusals reach for
         /// <c>Ihc.Vis.Problems</c> instead. The existing direction Validation → Io stays.
         /// </summary>
         [Test]
@@ -150,10 +150,10 @@ namespace Ihc.Tests
                 "a refusing reader or writer carries a coded problem from Ihc.Vis.Problems; reaching the engine "
                 + "would invert the layering and let the IO layer read the catalogue");
 
-        // ── L4: a definition builder reports, it does not run the engine ────────────────────────────
+        // ── VL4: a definition builder reports, it does not run the engine ────────────────────────────
 
         /// <summary>
-        /// L4 — the definition builders emit findings and keep doing so, but none of them may touch an executor
+        /// VL4 — the definition builders emit findings and keep doing so, but none of them may touch an executor
         /// port. Name-based, so the rule is armed even though the correct code has no such edge at all.
         /// </summary>
         [TestCaseSource(nameof(DefinitionNamespaces))]
@@ -164,10 +164,10 @@ namespace Ihc.Tests
                 + "validator or reading the field-metadata face from a builder would put the engine underneath "
                 + "the catalog");
 
-        // ── L5: the GUI goes through the facade ─────────────────────────────────────────────────────
+        // ── VL5: the GUI goes through the facade ─────────────────────────────────────────────────────
 
         /// <summary>
-        /// L5 — the GUI renders problems and binds dialogs to validation VALUE types, but must not construct or run
+        /// VL5 — the GUI renders problems and binds dialogs to validation VALUE types, but must not construct or run
         /// an executor, and must not read the catalogue. Both halves are name-based scans over the app assembly.
         /// </summary>
         [Test]
@@ -198,7 +198,7 @@ namespace Ihc.Tests
         /// <summary>
         /// The rules are demonstrated ARMED with known-true violations, which is what separates a fitness function
         /// from a decoration: the validation engine DOES depend on the session layer and on the IO layer (that is
-        /// the sanctioned direction), so pointing L2's and L3's mechanism the other way must report a violation.
+        /// the sanctioned direction), so pointing VL2's and VL3's mechanism the other way must report a violation.
         /// </summary>
         [Test]
         public void TheDirectionRulesCanFail()
@@ -211,10 +211,10 @@ namespace Ihc.Tests
                 // refusal site uses. That type is internal, safe_architecture_tests is not in ihcclient's
                 // InternalsVisibleTo list, and the typeof overload therefore cannot reach it — so this assertion
                 // is anchored on its full name rather than dropped. Dropping it is the one unacceptable option:
-                // it would leave L2 armed by nothing on the direction it actually governs.
+                // it would leave VL2 armed by nothing on the direction it actually governs.
                 AssertDependencyIsDetected(ArchitectureModels.Sdk, Validation + ".ProblemCatalogEntries", Session,
                     "the edit-refusal catalogue entries really do depend on the session layer — if this comes out "
-                    + "clean, the dependency mechanism is broken and L2 is passing vacuously");
+                    + "clean, the dependency mechanism is broken and VL2 is passing vacuously");
                 AssertDependencyIsDetected(ArchitectureModels.Sdk, SdkType("Ihc.Vis.Validation.ProjectRules").FullName!, Validation,
                     "and a type inside the engine depends on the engine, which is the other end of the same "
                     + "mechanism");

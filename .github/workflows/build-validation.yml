@@ -99,6 +99,11 @@ jobs:
     - name: Test (controller-free unit tests)
       run: dotnet test tests/safe_unit_tests/safe_unit_tests.csproj --no-build --logger "trx;LogFileName=safe_unit_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash
 
+    - name: Test (controller stub)
+      # The controller stub and the SDK's stub seam. Controller-free and render-free, so it runs on all three
+      # OSes like the unit tests; its loopback host and its stub-host process are the parts a platform can break.
+      run: dotnet test tests/safe_stub_tests/safe_stub_tests.csproj --no-build --logger "trx;LogFileName=safe_stub_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash
+
     - name: Test (architecture / dependency rules)
       # ArchUnitNET reads IL to enforce the SDK's directional layering rules; controller-free and
       # render-free, so it runs on all three OSes like the unit and project-engine suites.
@@ -124,6 +129,12 @@ jobs:
       # out: no runner-specific need has surfaced, and the two legs already cover both native backends.
       if: matrix.os != 'macOS-latest'
       run: dotnet test tests/safe_visual_tests/safe_visual_tests.csproj --no-build --logger "trx;LogFileName=safe_visual_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash
+
+    - name: Test (headless OpenVisual over a controller stub)
+      # OpenVisual composed over a controller stub, headless. The same legs as the visual suite, for the same
+      # reason: it composes the same cross-platform window.
+      if: matrix.os != 'macOS-latest'
+      run: dotnet test tests/safe_visual_stubbed_tests/safe_visual_stubbed_tests.csproj --no-build --logger "trx;LogFileName=safe_visual_stubbed_tests.trx" --blame-hang --blame-hang-timeout 120s --blame-crash
 
     - name: Test (end-to-end scenarios, headless)
       # The E2E scenarios driven through the in-process headless window instead of the real desktop. The DEFAULT

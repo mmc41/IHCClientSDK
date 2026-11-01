@@ -136,7 +136,17 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     private readonly AppConfiguration? _config;
     private readonly ILogger<MainWindowViewModel> _logger;
 
+    /// <summary>Whether this run's controller settings target a controller stub, decided once by the composition
+    /// root: the title then says so for as long as the window lives.</summary>
+    private readonly bool _controllerStubInUse;
+
     [ObservableProperty] private string _title = $"{Constants.UntitledDocument} - {Constants.AppName}";
+
+    /// <summary>The window title for a document: its name, the unsaved-changes bullet, the application, and the
+    /// stub suffix when calls go to a controller stub. Without a stub the title is exactly what it always was.</summary>
+    private string TitleFor(string documentName, bool dirty) =>
+        $"{documentName}{(dirty ? "•" : string.Empty)} - {Constants.AppName}"
+        + (_controllerStubInUse ? Constants.ControllerStubTitleSuffix : string.Empty);
     [ObservableProperty] private string _statusText = "Tryk F1 for hjælp";
 
     /// <summary>
@@ -601,7 +611,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
     /// them equal — and a test comparing two copies is what you write when you cannot delete one. Reading the
     /// entry deletes one.
     /// <para>
-    /// Reading the HOST catalogue is sanctioned where reading the SDK's is not (L5 / R17): a reserved family buys
+    /// Reading the HOST catalogue is sanctioned where reading the SDK's is not (VL5 / R17): a reserved family buys
     /// a host its own code space under the same governance, and this app owns every row in it.
     /// </para>
     /// </summary>
@@ -872,10 +882,13 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
         IThemeService theme,
         AppConfiguration? config = null,
         ILoggerFactory? loggerFactory = null,
-        InternalErrorLog? internalErrors = null)
+        InternalErrorLog? internalErrors = null,
+        bool controllerStubInUse = false)
     {
         ArgumentNullException.ThrowIfNull(theme);
 
+        _controllerStubInUse = controllerStubInUse;
+        Title = TitleFor(Constants.UntitledDocument, dirty: false);
         _internalErrors = internalErrors;
         _session = session;
         _dialogs = dialogs;
@@ -2680,7 +2693,7 @@ public partial class MainWindowViewModel : ViewModelBase, IDisposable
                 TreeUpdateMetrics);
 
             // D07 (U-BP-06): the dirty bullet marks unsaved changes in the title; Save itself stays always-enabled.
-            Title = $"{_session.DocumentName}{(_session.IsDirty ? "•" : string.Empty)} - {Constants.AppName}";
+            Title = TitleFor(_session.DocumentName, _session.IsDirty);
             OnPropertyChanged(nameof(UndoMenuHeader));   // the history may have grown/shrunk — refresh the Edit-menu labels (E14)
             OnPropertyChanged(nameof(RedoMenuHeader));
             if (_programmingBlockId is { } blockId

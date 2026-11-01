@@ -63,34 +63,32 @@ namespace Ihc {
             public SoapImpl(ICookieHandler cookieHandler, IhcSettings settings, HttpClient? transport)
                 : base(cookieHandler, settings, "AuthenticationService", transport) { }
 
-            public Task<outputMessageName2> authenticateAsync(inputMessageName2 request)
+            public async Task<outputMessageName2> authenticateAsync(inputMessageName2 request)
             {
                 string? cookie = null;
 
                 // A login opens a new session, so it presents no cookie: a stored one names the previous session,
                 // which a controller restart leaves dead. Recorded logins by the vendor's own clients carry no
                 // Cookie either, even while those clients hold one - the first login after a restart included.
-                var result = soapPost<outputMessageName2, inputMessageName2>("authenticate", request, resp =>
+                // Awaited rather than continued: a continuation reading Result wraps every fault in an
+                // AggregateException and turns a cancellation into a fault, so a failed login would surface
+                // neither as every other call does. A post that throws leaves the stored cookie untouched.
+                var response = await soapPost<outputMessageName2, inputMessageName2>("authenticate", request, resp =>
                 {
                     // Use side-effect to capture cookie sice our post call only captures xml response.
                     cookie = SetCookieHeader.FirstOrNull(resp);
-                }, sendSessionCookie: false);
+                }, sendSessionCookie: false).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
-                return result.ContinueWith((r) =>
+                // Add cookie only on success.
+                if (response.authenticate2?.loginWasSuccessful == true)
                 {
-                    var response = r.Result;
+                    cookieHandler.SetCookie(cookie);
+                } else
+                {
+                    cookieHandler.SetCookie(null);
+                }
 
-                    // Add cookie only on success.
-                    if (response.authenticate2?.loginWasSuccessful == true)
-                    {
-                        cookieHandler.SetCookie(cookie);
-                    } else
-                    {
-                        cookieHandler.SetCookie(null);
-                    }
-
-                    return response;
-                });
+                return response;
             }
 
             // The cookie is dropped by Disconnect's finally rather than by an on-OK side effect here: the

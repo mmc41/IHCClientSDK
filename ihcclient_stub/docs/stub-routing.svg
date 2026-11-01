@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 950 490" width="950" height="490" font-family="'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif" font-size="12.5" fill="currentColor" role="img" aria-label="Client.Post first asks whether the url is a stub endpoint. If so it routes to the registered in-process or loopback stub, or refuses when none is registered. Otherwise an explicit test transport wins, then the latch refuses sockets while any stub is registered, and only then does the shared socket client reach a real controller.">
+<title>Client.Post first asks whether the url is a stub endpoint. If so it routes to the registered in-process or loopback stub, or refuses when none is registered. Otherwise an explicit test transport wins, then the latch refuses sockets while any stub is registered, and only then does the shared socket client reach a real controller.</title>
+<style>svg{color:#1b211e}@media (prefers-color-scheme:dark){svg{color:#e2e7e3}}</style>
+<defs><marker id="f2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<g fill="none" stroke="currentColor" stroke-opacity="0.5">
+<rect x="24" y="20" width="232" height="48" rx="4"/>
+<rect x="24" y="96" width="232" height="48" rx="4"/>
+<rect x="300" y="262" width="230" height="40" rx="4"/>
+<rect x="24" y="430" width="232" height="40" rx="4"/>
+<rect x="300" y="430" width="170" height="40" rx="4"/>
+</g>
+<g fill="none" stroke="currentColor" stroke-width="1.2">
+<rect x="24" y="176" width="232" height="40" rx="20"/>
+<rect x="24" y="262" width="232" height="40" rx="20"/>
+<rect x="24" y="346" width="232" height="40" rx="20"/>
+</g>
+<g fill="#e8920c" fill-opacity="0.14" stroke="#d4850a" stroke-width="1.2">
+<rect x="300" y="176" width="170" height="40" rx="4"/>
+<rect x="590" y="108" width="345" height="46" rx="4"/>
+<rect x="590" y="176" width="345" height="46" rx="4"/>
+</g>
+<g fill="#d33a2c" fill-opacity="0.12" stroke="#d33a2c" stroke-width="1.2">
+<rect x="590" y="244" width="345" height="46" rx="4"/>
+<rect x="300" y="346" width="300" height="40" rx="4"/>
+</g>
+<g fill="none" stroke="currentColor" stroke-width="1.3" marker-end="url(#f2a)">
+<path d="M140 68 V94"/>
+<path d="M140 144 V174"/>
+<path d="M256 196 H298"/>
+<path d="M470 196 H540 V131 H588"/>
+<path d="M470 196 H588"/>
+<path d="M540 196 V267 H588"/>
+<path d="M140 216 V260"/>
+<path d="M256 282 H298"/>
+<path d="M140 302 V344"/>
+<path d="M256 366 H298"/>
+<path d="M140 386 V428"/>
+<path d="M256 450 H298"/>
+</g>
+<g text-anchor="middle">
+<text x="140" y="200">url is a stub endpoint?</text>
+<text x="385" y="200">registry lookup</text>
+<text x="140" y="286">explicit transport set?</text>
+<text x="415" y="286">existing unit-test transport</text>
+<text x="140" y="370">any stub registration live?</text>
+<text x="140" y="455">shared socket HttpClient</text>
+<text x="385" y="455">controller on the LAN</text>
+<text x="140" y="40" font-weight="600">SDK service call</text>
+</g>
+<g font-weight="600">
+<text x="606" y="127">In-process registration</text>
+<text x="606" y="195">Loopback registration</text>
+<text x="606" y="263">Not registered</text>
+</g>
+<text x="140" y="116" text-anchor="middle" font-family="'IBM Plex Mono', Consolas, monospace" font-size="11.5">Client.Post(request)</text>
+<g font-family="'IBM Plex Mono', Consolas, monospace" font-size="11">
+<text x="300" y="234">mock:// or *.controllerstub.invalid</text>
+<text x="606" y="144">ControllerStubHandler → stub.HandleAsync</text>
+<text x="606" y="212">locked client → 127.0.0.1:&lt;port&gt;/&lt;token&gt;/</text>
+<g font-weight="500" fill="#d33a2c">
+<text x="606" y="280">CONTROLLER_STUB_NOT_REGISTERED</text>
+<text x="314" y="370">CONTROLLER_SOCKET_REFUSED_WHILE_STUBBED</text>
+</g>
+</g>
+<g font-size="11" fill-opacity="0.7">
+<g text-anchor="middle">
+<text x="140" y="57">wrapper · mapping · serializer</text>
+<text x="140" y="133">inside the SDK's LoggingHandler</text>
+<text x="277" y="188">yes</text>
+<text x="277" y="274">yes</text>
+<text x="277" y="358">yes</text>
+<text x="277" y="442">sends</text>
+</g>
+<text x="148" y="164">on the client's fixed url</text>
+<text x="300" y="250">reserved host that never resolves</text>
+<text x="148" y="243">no</text>
+<text x="148" y="328">no</text>
+<text x="148" y="412">no</text>
+</g>
+<g font-family="'IBM Plex Mono', Consolas, monospace" font-size="10.5" font-weight="600" fill-opacity="0.7">
+<text x="498" y="250">L1</text>
+<text x="919" y="195" text-anchor="end">O1–O3</text>
+<text x="919" y="263" text-anchor="end">L2</text>
+<text x="612" y="370">L3 latch</text>
+</g>
+</svg>

@@ -13,7 +13,11 @@
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj"/>
     <!-- The shared telemetry bootstrap: this utility no longer builds its own providers. The
          toolkit-NEUTRAL half, so referencing it pulls in no UI toolkit. -->
-    <ProjectReference Include="..\..\shared\ihc_telemetrybootstrap\ihc_telemetrybootstrap.csproj"/>
+    <ProjectReference Include="..\..\shared\ihc_hostbootstrap\ihc_hostbootstrap.csproj"/>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The GET/STORE command line, shared with the administration utility. -->
+    <Compile Include="..\shared\GetStoreCommandLine.cs" Link="shared\GetStoreCommandLine.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Configuration"/>

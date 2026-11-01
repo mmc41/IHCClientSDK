@@ -1355,7 +1355,7 @@ namespace Ihc.Vis
         /// <see cref="ProjectValidationFinding"/> carries one locator, so a grouped rule's other sites — the
         /// remaining elements sharing a duplicate id, the rest of an under-populated module — were dropped at
         /// this boundary and could not be listed or navigated to. Reaching them meant naming
-        /// <c>IWholeProjectValidator</c>, which the architecture forbids a GUI (L5): a shell that could construct
+        /// <c>IWholeProjectValidator</c>, which the architecture forbids a GUI (VL5): a shell that could construct
         /// an executor would be a second composition root for the engine. This accessor gives the shape without
         /// the port.
         /// </para>

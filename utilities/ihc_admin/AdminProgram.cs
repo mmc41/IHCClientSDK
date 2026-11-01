@@ -5,6 +5,8 @@ using Ihc;
 using Ihc.App;
 using Microsoft.Extensions.Configuration;
 using Ihc.Bootstrap;
+using Ihc.Stubbing;
+using Ihc.Utilities;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
@@ -24,9 +26,6 @@ namespace Ihc.download_upload_example
         public static ActivitySource ActivitySource { get; } =
             new ActivitySource(name: ActivitySourceName, version: TelemetryBootstrap.GetAppVersionStr());
 
-        const string CMD_GET = "GET";
-        const string CMD_STORE = "STORE";
-
         /// <summary>Everything asked for was done.</summary>
         private const int ExitOk = 0;
 
@@ -42,25 +41,11 @@ namespace Ihc.download_upload_example
         /// </summary>
         static async Task<int> Main(string[] args)
         {
-            if (args.Length != 2)
+            // Before the settings file is read, so a command line this utility cannot use is answered with its usage
+            // whether or not that file exists. The controller-stub switch is no part of it, and is applied below.
+            GetStoreCommandLine? commandLine = GetStoreCommandLine.Parse(args, "administration");
+            if (commandLine is null)
             {
-                Console.WriteLine($"Expected arguments: '{CMD_GET} <destfile>' OR '{CMD_STORE} <sourcefile>'");
-                return ExitUsage;
-            }
-
-            // Invariant: the command words are ASCII, and a Turkish locale would fold 'i' to 'İ', leaving a
-            // correctly typed command unrecognized on that machine alone.
-            string command = args[0].ToUpperInvariant();
-            string path = args[1];
-            if (command != CMD_GET && command != CMD_STORE)
-            {
-                Console.WriteLine($"Illegal command. Expected {CMD_GET} or {CMD_STORE}");
-                return ExitUsage;
-            }
-
-            if (command == CMD_STORE && !File.Exists(path))
-            {
-                Console.WriteLine("Could not find source administration file  " + path);
                 return ExitUsage;
             }
 
@@ -81,18 +66,24 @@ namespace Ihc.download_upload_example
                 // callback, so an unconfigured utility still built a provider and still exported - to the OTLP
                 // default endpoint. It also gains this utility metrics, which it never had.
                 using ILoggerFactory loggerFactory = TelemetryBootstrap.SetupTelemetryAndLogging(
-                    AppServiceName, AppServiceNamespace, ActivitySourceName, telemetryConfig, config);
+                    AppServiceName, AppServiceNamespace, ActivitySourceName, telemetryConfig, config,
+                    ControllerStubs.SwitchRequested(args));
 
-                
+                // After the pipeline, so the stub's identity check is traced, and before the service is built, so the
+                // service gets the settings this leaves. A refusal lands in the catch below.
+                (settings, _) = ControllerStubs.ApplySwitch(args, settings);
+                ControllerStubConsole.AnnounceIfStub(settings);
+
+                string path = commandLine.Path;
                 using (var adminServer = new AdminAppService(settings, encrypted.IsEncrypted))
                 {
-                    if (command == CMD_GET)
+                    if (commandLine.Command == GetStoreCommandLine.Get)
                     {
                         var adminModel = await adminServer.GetModel();
                         await adminServer.SaveAsJson(adminModel, path);
                         Console.WriteLine($"Administration setup file sucessfully saved to {path}");
                     }
-                    else if (command == CMD_STORE)
+                    else if (commandLine.Command == GetStoreCommandLine.Store)
                     {
                         var model = await adminServer.LoadFromJson(path);
                         var changes = await adminServer.Store(model);

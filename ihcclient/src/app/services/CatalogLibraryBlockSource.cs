@@ -15,7 +15,7 @@ namespace Ihc.App
     /// <para><b>It exists so the validation layer never names the catalog.</b> The engine declares
     /// <see cref="ILibraryBlockSource"/> in terms of <see cref="ProjectElement"/> alone; the catalog lives here,
     /// where <c>ProjectAppService</c> already holds one, so the ruling that "the validation context may carry the
-    /// catalog" is satisfied without widening the engine's dependency set. The L1-L5 layer rules
+    /// catalog" is satisfied without widening the engine's dependency set. The VL1-VL5 layer rules
     /// (<c>ARCHITECTURE.md</c>, challenge 5) are untouched, and the architecture tests still hold.</para>
     ///
     /// <para><b>Lazy on purpose, and for the same reason the service's catalog is:</b> materializing the built-in

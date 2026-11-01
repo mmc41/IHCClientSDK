@@ -61,10 +61,7 @@ namespace Ihc
                 throw new ArgumentException("IhcSettings field Endpoint must be supplied");
             }
 
-            if (this.settings.Endpoint.StartsWith(SpecialEndpoints.MockedPrefix, StringComparison.Ordinal))
-            {
-                throw new ArgumentException("IhcSettings specifies a mocked implmentation which does not correspond to this real implemenentation");
-            }
+            Ihc.Stubbing.ControllerStubRegistry.RefuseUnregisteredMockEndpoint(this.settings.Endpoint);
         }
 
         public IhcSettings IhcSettings

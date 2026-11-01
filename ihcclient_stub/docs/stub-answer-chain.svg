@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400" width="1000" height="400" font-family="'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif" font-size="12.5" fill="currentColor" role="img" aria-label="A request is looked up in SdkOperations by service and wire action, or answered as unmodelled. Four checks then run in order: a raw override, an injected failure, a typed answer where the stub holds a typed value, and a shape default for every other operation. The scenario tier above supplies the values the checks read, and the journal records every exchange.">
+<title>A request is looked up in SdkOperations by service and wire action, or answered as unmodelled. Four checks then run in order: a raw override, an injected failure, a typed answer where the stub holds a typed value, and a shape default for every other operation. The scenario tier above supplies the values the checks read, and the journal records every exchange.</title>
+<style>svg{color:#1b211e}@media (prefers-color-scheme:dark){svg{color:#e2e7e3}}</style>
+<defs><marker id="f4a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect x="20" y="16" width="960" height="100" rx="6" fill="currentColor" fill-opacity="0.04" stroke="#d4850a" stroke-width="1.2"/>
+<rect x="20" y="150" width="960" height="234" rx="6" fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.25"/>
+<g fill="#e8920c" fill-opacity="0.14" stroke="#d4850a" stroke-width="1.2">
+<rect x="36" y="52" width="160" height="50" rx="4"/>
+<rect x="230" y="52" width="180" height="50" rx="4"/>
+<rect x="446" y="52" width="110" height="50" rx="4"/>
+<rect x="582" y="52" width="110" height="50" rx="4"/>
+<rect x="718" y="52" width="246" height="50" rx="4"/>
+<rect x="230" y="204" width="180" height="46" rx="4"/>
+<rect x="446" y="296" width="110" height="46" rx="4"/>
+<rect x="718" y="296" width="110" height="46" rx="4"/>
+<rect x="854" y="296" width="110" height="46" rx="4"/>
+</g>
+<g fill="none" stroke="currentColor" stroke-opacity="0.5">
+<rect x="36" y="204" width="160" height="46" rx="4"/>
+<rect x="446" y="204" width="110" height="46" rx="4"/>
+<rect x="582" y="204" width="110" height="46" rx="4"/>
+<rect x="718" y="204" width="110" height="46" rx="4"/>
+<rect x="854" y="204" width="110" height="46" rx="4"/>
+</g>
+<g fill="#d33a2c" fill-opacity="0.12" stroke="#d33a2c" stroke-width="1.2">
+<rect x="230" y="296" width="180" height="46" rx="4"/>
+<rect x="582" y="296" width="110" height="46" rx="4"/>
+</g>
+<g fill="none" stroke="currentColor" stroke-width="1.3" marker-end="url(#f4a)">
+<path d="M196 227 H228"/>
+<path d="M410 227 H444"/>
+<path d="M556 227 H580"/>
+<path d="M692 227 H716"/>
+<path d="M828 227 H852"/>
+<path d="M320 250 V294"/>
+<path d="M501 250 V294"/>
+<path d="M637 250 V294"/>
+<path d="M773 250 V294"/>
+<path d="M909 250 V294"/>
+<g stroke-dasharray="5 4">
+<path d="M501 102 V202"/>
+<path d="M637 102 V202"/>
+<path d="M773 102 V202"/>
+<path d="M320 204 V104"/>
+</g>
+</g>
+<g font-weight="600">
+<text x="36" y="38">Scenario tier <tspan font-weight="400" font-size="11" fill-opacity="0.7" dx="4">what tests write, in SDK model types</tspan></text>
+<text x="36" y="172">Wire tier <tspan font-weight="400" font-size="11" fill-opacity="0.7" dx="4">internal to ihcclient_stub</tspan></text>
+<g text-anchor="middle">
+<text x="116" y="72">Unmodelled · Defects</text>
+<text x="320" y="72">Journal</text>
+<text x="501" y="72">OverrideRaw</text>
+<text x="841" y="72">Typed values</text>
+<text x="116" y="223">Request</text>
+<text x="501" y="223">1 · override</text>
+<text x="637" y="223">2 · FailOn</text>
+<text x="773" y="223">3 · typed</text>
+<text x="909" y="223">4 · shape</text>
+<text x="320" y="315">Unmodelled</text>
+<text x="501" y="315">raw body</text>
+<text x="637" y="315">SOAP fault</text>
+<text x="773" y="315">typed reply</text>
+<text x="909" y="315">shape default</text>
+</g>
+</g>
+<g font-family="'IBM Plex Mono', Consolas, monospace" text-anchor="middle">
+<text x="637" y="72" font-size="11.5">FailOn&lt;T&gt;(op)</text>
+<text x="320" y="223" font-size="11.5">SdkOperations</text>
+<text x="841" y="89" font-size="11">stub.Controller.Project = …</text>
+</g>
+<g font-size="11" fill-opacity="0.7">
+<g text-anchor="middle">
+<text x="116" y="89">teardown asserts empty</text>
+<text x="320" y="89">every exchange, decoded</text>
+<text x="501" y="89">a raw reply</text>
+<text x="637" y="89">any sent method</text>
+<text x="116" y="240">service, action, body</text>
+<text x="320" y="240">(service, wire action)</text>
+<text x="501" y="240">raw reply set?</text>
+<text x="637" y="240">rule matches?</text>
+<text x="773" y="240">answer exists?</text>
+<text x="909" y="240">default builds?</text>
+<text x="428" y="219">found</text>
+<text x="569" y="219">no</text>
+<text x="705" y="219">no</text>
+<text x="841" y="219">no</text>
+<text x="320" y="332">HTTP 500 · Unmodelled list</text>
+<text x="501" y="332">as configured</text>
+<text x="637" y="332">or ConnectionLost</text>
+<text x="773" y="332">from typed values</text>
+<text x="909" y="332">every other op</text>
+</g>
+<text x="328" y="276">not found</text>
+<text x="509" y="276">yes</text>
+<text x="645" y="276">yes</text>
+<text x="781" y="276">yes</text>
+<text x="917" y="276">yes</text>
+<text x="582" y="364">state never changes</text>
+<text x="854" y="364">cannot build → Unmodelled</text>
+<text x="507" y="138">reads</text>
+<text x="643" y="138">reads</text>
+<text x="779" y="138">reads</text>
+<text x="326" y="138">records</text>
+</g>
+</svg>

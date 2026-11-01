@@ -13,8 +13,9 @@ namespace Ihc.UiAutomation;
 /// Mouse input, synthesized at the system level so the application under test cannot tell it from a person.
 /// </summary>
 /// <remarks>
-/// Every entry point enters a <see cref="DpiScope"/> first, because the coordinates a caller passes come from a
-/// UI-Automation rectangle and are therefore physical pixels — see that type for what happens otherwise.
+/// Every entry point enters a <see cref="DpiScope"/> first, so the coordinates a caller passes are taken as PHYSICAL
+/// pixels. A UI-Automation rectangle is in that space only when it was read inside a scope too — see that type for
+/// what happens otherwise.
 /// </remarks>
 public static class Mouse
 {

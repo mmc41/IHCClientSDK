@@ -41,4 +41,6 @@ internal sealed class UnavailableDriver(string name, string requirement) : IE2ED
     {
         // Nothing was ever started.
     }
+
+    public string? CloseApp() => null;
 }

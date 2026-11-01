@@ -11,9 +11,8 @@ namespace safe_visual_e2e_tests;
 /// <para>The two routes into the application could not be more different — a real file picker driven by
 /// synthesized keystrokes on one side, a shell command invoked in-process on the other — and that is exactly why
 /// everything ELSE about the verb has to be one thing. The preconditions, the settle ceiling and, above all, what
-/// counts as the open having ARRIVED are the verb's contract; written twice they drift, and a scenario then
-/// passes in the leg CI gates and fails on the desktop for a reason that is about the harness rather than the
-/// application.</para>
+/// ends the wait are the verb's contract; written twice they drift, and a scenario then passes in the leg CI
+/// gates and fails on the desktop for a reason that is about the harness rather than the application.</para>
 ///
 /// <para><b>What both drivers do NOT do here is refuse.</b> A file the application cannot read is reported
 /// through a modal and leaves the previous document bound, and that is a failed LOAD, not a failed gesture: the
@@ -35,9 +34,22 @@ internal static class ProjectOpenPolicy
     internal static string MissingFileRefusal(string path) => $"no project file at {path}";
 
     /// <summary>
+    /// A dialog already standing when the verb is asked to open. Refused BEFORE the gesture, by both drivers.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="HasSettled"/> reads a standing dialog as the open's own answer, and that reading holds only while
+    /// nothing stood before the gesture: a dialog left over from an earlier verb would end the wait before the open
+    /// had done anything, and the verb would report the previous document as though the open had failed. The
+    /// desktop driver has a second reason of its own: it recognizes the file picker as the one dialog that was not
+    /// there before.
+    /// </remarks>
+    internal const string ModalStandingRefusal =
+        "a dialog is already open, so nothing the open raises could be told apart from it; close it first";
+
+    /// <summary>
     /// How long a document change is given to reach the published snapshot. Generous because it covers reading and
     /// normalizing the largest oracle in the corpus, and it is a ceiling rather than a wait — both drivers return
-    /// on the first look that sees the new document.
+    /// on the first look at which <see cref="HasSettled"/> holds.
     /// </summary>
     internal static readonly TimeSpan SettleTimeout = TimeSpan.FromSeconds(30);
 
@@ -69,4 +81,26 @@ internal static class ProjectOpenPolicy
         read.Value is { } snapshot
         && snapshot.Generation != generationBefore
         && string.Equals(snapshot.DocumentName, fileName, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Whether the verb's wait is OVER: the open has <see cref="HasArrived">arrived</see>, or a dialog stands in
+    /// front of the document.
+    /// </summary>
+    /// <remarks>
+    /// <para>A standing dialog is the open's answer for as long as it stands. Either it reports a file the
+    /// application cannot read, which leaves the previous document bound and never bumps the generation, so the
+    /// document this wait would otherwise watch for is never coming. Or it is a question the open asks before it
+    /// goes on, like the save prompt <c>ProjectWorkflow.OpenAsync</c> raises over a dirty document. Either way the
+    /// open goes no further until the dialog is answered, and answering it is the scenario's business: the verb
+    /// returns what the application ended up showing, with the dialog still standing. Waiting on would only spend
+    /// the rest of <see cref="SettleTimeout"/> in front of it.</para>
+    ///
+    /// <para>The dialog can be blamed on the open because none stood before the gesture (see
+    /// <see cref="ModalStandingRefusal"/>), and, on the desktop, because the picker has closed before the wait
+    /// begins. <paramref name="modalStanding"/> is a delegate, asked only while the document has not arrived,
+    /// because on the desktop it is a cross-process enumeration of the application's windows.</para>
+    /// </remarks>
+    internal static bool HasSettled(
+        SnapshotRead read, string fileName, int generationBefore, Func<bool> modalStanding) =>
+        HasArrived(read, fileName, generationBefore) || modalStanding();
 }

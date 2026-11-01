@@ -42,7 +42,7 @@ public class GlobalExceptionHandlerTests
     {
         using SupervisedFaults faults = SupervisedFaults.Capture();
         var logger = new CapturingLogger();
-        DispatcherUnhandledExceptionEventHandler handler = AppTelemetryBootstrap.DispatcherExceptionHandler(
+        DispatcherUnhandledExceptionEventHandler handler = AvaloniaTelemetryBootstrap.DispatcherExceptionHandler(
             logger, fault => ihc_openvisual.Services.TaskSupervisor.Report(fault, "Dispatcher.UnhandledException"));
         Dispatcher.UIThread.UnhandledException += handler;
         try
@@ -68,7 +68,7 @@ public class GlobalExceptionHandlerTests
     }
 
     /// <summary>
-    /// THE BREAKER (D21). The same fault repeating is survived <see cref="AppTelemetryBootstrap.BreakerLimit"/>
+    /// THE BREAKER (D21). The same fault repeating is survived <see cref="AvaloniaTelemetryBootstrap.BreakerLimit"/>
     /// minus one times and then escalated, so a fault raised on every repaint cannot leave an application that
     /// neither works nor dies.
     /// </summary>
@@ -82,7 +82,7 @@ public class GlobalExceptionHandlerTests
     {
         var logger = new CapturingLogger();
         DispatcherUnhandledExceptionEventHandler handler =
-            AppTelemetryBootstrap.DispatcherExceptionHandler(logger);
+            AvaloniaTelemetryBootstrap.DispatcherExceptionHandler(logger);
         Dispatcher.UIThread.UnhandledException += handler;
         try
         {
@@ -90,7 +90,7 @@ public class GlobalExceptionHandlerTests
 
             Assert.Multiple(() =>
             {
-                for (int survived = 1; survived < AppTelemetryBootstrap.BreakerLimit; survived++)
+                for (int survived = 1; survived < AvaloniaTelemetryBootstrap.BreakerLimit; survived++)
                 {
                     Raise();
                     Assert.That(() => Dispatcher.UIThread.RunJobs(), Throws.Nothing,
@@ -138,14 +138,14 @@ public class GlobalExceptionHandlerTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(AppTelemetryBootstrap.FaultIdentity(a1),
-                Is.EqualTo(AppTelemetryBootstrap.FaultIdentity(a2)),
+            Assert.That(AvaloniaTelemetryBootstrap.FaultIdentity(a1),
+                Is.EqualTo(AvaloniaTelemetryBootstrap.FaultIdentity(a2)),
                 "the same thing going wrong again is the same identity");
-            Assert.That(AppTelemetryBootstrap.FaultIdentity(b),
-                Is.Not.EqualTo(AppTelemetryBootstrap.FaultIdentity(a1)),
+            Assert.That(AvaloniaTelemetryBootstrap.FaultIdentity(b),
+                Is.Not.EqualTo(AvaloniaTelemetryBootstrap.FaultIdentity(a1)),
                 "the same TYPE from a different site is not — sharing a budget would let one site's history "
                 + "deny another its first survival");
-            Assert.That(AppTelemetryBootstrap.FaultIdentity(new InvalidOperationException("never thrown")),
+            Assert.That(AvaloniaTelemetryBootstrap.FaultIdentity(new InvalidOperationException("never thrown")),
                 Is.EqualTo(typeof(InvalidOperationException).FullName),
                 "an exception with no stack falls back to its type, which is all there is to go on");
         });
@@ -233,7 +233,7 @@ public class GlobalExceptionHandlerTests
         using SupervisedFaults faults = SupervisedFaults.Capture();
         var logger = new CapturingLogger();
         DispatcherUnhandledExceptionEventHandler handler =
-            AppTelemetryBootstrap.DispatcherExceptionHandler(logger);
+            AvaloniaTelemetryBootstrap.DispatcherExceptionHandler(logger);
         Dispatcher.UIThread.UnhandledException += handler;
         try
         {
@@ -264,16 +264,16 @@ public class GlobalExceptionHandlerTests
     {
         Assert.Multiple(() =>
         {
-            Assert.That(AppTelemetryBootstrap.IsCancellation(new OperationCanceledException()), Is.True);
-            Assert.That(AppTelemetryBootstrap.IsCancellation(new TaskCanceledException()), Is.True,
+            Assert.That(AvaloniaTelemetryBootstrap.IsCancellation(new OperationCanceledException()), Is.True);
+            Assert.That(AvaloniaTelemetryBootstrap.IsCancellation(new TaskCanceledException()), Is.True,
                 "derives from the wider type");
-            Assert.That(AppTelemetryBootstrap.IsCancellation(
+            Assert.That(AvaloniaTelemetryBootstrap.IsCancellation(
                 new AggregateException(new TaskCanceledException())), Is.True);
-            Assert.That(AppTelemetryBootstrap.IsCancellation(
+            Assert.That(AvaloniaTelemetryBootstrap.IsCancellation(
                 new AggregateException(new TaskCanceledException(), new InvalidOperationException("real"))),
                 Is.False, "something in it genuinely failed");
-            Assert.That(AppTelemetryBootstrap.IsCancellation(new InvalidOperationException("real")), Is.False);
-            Assert.That(AppTelemetryBootstrap.IsCancellation(new AggregateException()), Is.False,
+            Assert.That(AvaloniaTelemetryBootstrap.IsCancellation(new InvalidOperationException("real")), Is.False);
+            Assert.That(AvaloniaTelemetryBootstrap.IsCancellation(new AggregateException()), Is.False,
                 "an EMPTY aggregate asserts nothing about cancellation");
         });
     }

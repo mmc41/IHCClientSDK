@@ -48,6 +48,26 @@ public sealed class AppConfiguration
     }
 
     /// <summary>
+    /// <paramref name="source"/> with only its controller settings replaced: the door start-up rebuilds through
+    /// once the controller-stub switch has decided which controller this run talks to, so every reader sees the
+    /// endpoint the services call while the file it reports, its logging and its telemetry stay as loaded.
+    /// </summary>
+    /// <remarks>
+    /// The replacement is settled like a loaded one, so a configuration from either door continues off the UI
+    /// context.
+    /// </remarks>
+    internal AppConfiguration(AppConfiguration source, IhcSettings controller)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(controller);
+        LoggingConfig = source.LoggingConfig;
+        TelemetryConfig = source.TelemetryConfig;
+        SettingsFileFound = source.SettingsFileFound;
+        SettingsFilePath = source.SettingsFilePath;
+        IhcSettings = Settled(controller);
+    }
+
+    /// <summary>
     /// The WHOLE read, guarded as one — the JSON parse included. A file the parser rejects throws
     /// <see cref="InvalidDataException"/> out of the configuration builder, which happens before the logger
     /// factory exists: the process would end with nothing written anywhere and, from a windowed executable with

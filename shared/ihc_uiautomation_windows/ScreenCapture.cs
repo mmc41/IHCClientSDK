@@ -16,8 +16,9 @@ namespace Ihc.UiAutomation;
 public static class ScreenCapture
 {
     /// <summary>
-    /// Captures <paramref name="region"/> — in PHYSICAL pixels, as UI Automation reports rectangles — and
-    /// writes it to <paramref name="path"/> as a PNG, creating the containing directory if it is missing.
+    /// Captures <paramref name="region"/>, in PHYSICAL pixels, and writes it to <paramref name="path"/> as a PNG,
+    /// creating the containing directory if it is missing. A <see cref="UiaElement.BoundingRectangle"/> is in that
+    /// space only when it was read inside a <see cref="DpiScope"/>.
     /// </summary>
     /// <returns>The path written.</returns>
     public static string Save(Rectangle region, string path)

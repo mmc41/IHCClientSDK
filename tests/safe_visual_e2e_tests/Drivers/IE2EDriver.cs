@@ -43,8 +43,26 @@ internal interface IE2EDriver
     E2E.Envelope Run(string[] args);
 
     /// <summary>
-    /// Disposes of whatever is hosting the application, so the next fixture starts from nothing. Kills the real
-    /// process in one mode and closes the window in the other.
+    /// Disposes of whatever is hosting the application AT ONCE, so the next fixture starts from nothing. Kills
+    /// every instance of the real process in one mode and closes the window in the other.
     /// </summary>
+    /// <remarks>
+    /// For the launch gate's refusal and for the sweep before a launch, where nothing the application would do on
+    /// the way out may run. A teardown uses <see cref="CloseApp"/>.
+    /// </remarks>
     void KillApp();
+
+    /// <summary>
+    /// Ends the application this driver launched the way a person does, so that it shuts down by itself, then
+    /// does what <see cref="KillApp"/> does.
+    /// </summary>
+    /// <remarks>
+    /// A process that shuts down by itself flushes the telemetry it was still holding, which a kill throws away.
+    /// Never throws: it runs in teardowns, where an exception would leave the application running.
+    /// </remarks>
+    /// <returns>
+    /// <see langword="null"/> when the application exited by itself with exit code zero, or nothing was running;
+    /// otherwise why it did not, as a sentence.
+    /// </returns>
+    string? CloseApp();
 }

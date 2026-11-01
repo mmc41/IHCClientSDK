@@ -44,6 +44,9 @@ namespace Ihc.Tests
             /// <summary>The connection fails before any reply arrives.</summary>
             NoReply,
 
+            /// <summary>The send is cancelled before any reply arrives.</summary>
+            Cancelled,
+
             ServerError,
 
             /// <summary>A 200 whose body is not a SOAP envelope.</summary>
@@ -97,16 +100,19 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// A re-login that gets no answer it can decode - no reply at all, a non-success status, or a body that is
-        /// not SOAP - changes nothing: the first session's cookie is still stored and the next call still presents
-        /// it, although each of those answers that had headers offered another. That is what withholding the
-        /// cookie rather than clearing it buys: an attempt that fails on the way does not end a session that may
-        /// still be live.
+        /// A re-login that gets no answer it can decode - no reply at all, a cancelled send, a non-success status,
+        /// or a body that is not SOAP - changes nothing: the first session's cookie is still stored and the next
+        /// call still presents it, although each of those answers that had headers offered another. That is what
+        /// withholding the cookie rather than clearing it buys: an attempt that fails on the way does not end a
+        /// session that may still be live.
+        ///
+        /// The login fails with the fault's own type, as every other call does: never wrapped in an
+        /// <see cref="AggregateException"/>, and a cancellation stays a cancellation.
         /// </summary>
         [Test]
         public async Task SecondLogin_WithNoDecodableAnswer_KeepsTheStoredCookie_WhichTheNextCallPresents(
             [ValueSource(nameof(Services))] LoginService service,
-            [Values(Answer.NoReply, Answer.ServerError, Answer.Undecodable)] Answer answer)
+            [Values(Answer.NoReply, Answer.Cancelled, Answer.ServerError, Answer.Undecodable)] Answer answer)
         {
             using var rig = new Rig(service, answer);
 
@@ -115,7 +121,7 @@ namespace Ihc.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(thrown, Is.Not.Null, "a login with no decodable answer fails");
+                Assert.That(thrown, Is.InstanceOf(FaultOf(answer)), "a login with no decodable answer fails with the fault's own type");
                 Assert.That(rig.StoredCookie, Is.EqualTo(CookieA));
                 Assert.That(rig.LastRequest.RequestHeaders, Does.ContainKey("Cookie").WithValue(CookieA));
             });
@@ -164,9 +170,21 @@ namespace Ihc.Tests
             Answer.Accepted => Answering(HttpStatusCode.OK, service.LoginAnswer(accepted: true), CookieB),
             Answer.Refused => Answering(HttpStatusCode.OK, service.LoginAnswer(accepted: false), CookieB),
             Answer.NoReply => throw new HttpRequestException("the connection closed before any reply"),
+            Answer.Cancelled => throw new TaskCanceledException("the send was cancelled before any reply"),
             Answer.ServerError => Answering(HttpStatusCode.InternalServerError, "<html>boom</html>", CookieB),
             Answer.Undecodable => Answering(HttpStatusCode.OK, "<html>not a SOAP envelope</html>", CookieB),
             _ => throw new ArgumentOutOfRangeException(nameof(answer), answer, null),
+        };
+
+        /// <summary>The type a login fails with when the controller gives <paramref name="answer"/>: the transport's
+        /// own fault for a lost connection or a non-success status, the SDK's coded deserialize error for a body
+        /// that is not SOAP, and the cancellation itself for a cancelled send.</summary>
+        private static Type FaultOf(Answer answer) => answer switch
+        {
+            Answer.NoReply or Answer.ServerError => typeof(HttpRequestException),
+            Answer.Cancelled => typeof(OperationCanceledException),
+            Answer.Undecodable => typeof(ErrorWithCodeException),
+            _ => throw new ArgumentOutOfRangeException(nameof(answer), answer, "this answer is decodable"),
         };
 
         /// <summary>A service built over a socket, reduced to what these cases do with it.</summary>

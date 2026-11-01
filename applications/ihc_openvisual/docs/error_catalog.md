@@ -403,7 +403,7 @@ controller.
 ### A `.def`/`.ifb` definition finding
 
 **A different procedure, and not an oversight.** A definition builder REPORTS findings from its `Build()`, and
-`ValidationLayerArchitectureTests` L4 bars it from the executor ports — so it cannot look a row up. There is no
+`ValidationLayerArchitectureTests` VL4 bars it from the executor ports — so it cannot look a row up. There is no
 `RuleBuilder` and no registration; the builder raises the finding directly.
 
 1. Add the declaration to `ProblemCatalogEntries.CatalogDefinitions.cs`, and the member to its
@@ -446,7 +446,7 @@ controller.
    over many items, as a failed save is.
 4. A site in `Ihc.Vis.Session`, `Ihc.Vis.Io` or `Ihc.Vis.Editing` **may not read the catalogue**. It carries
    its own Danish sentence beside its code through `RefusalIdentity`, and `RefusalLabelDriftTests` keeps that
-   copy equal to the entry's template. `ValidationLayerArchitectureTests` L2 and L3 enforce the dependency
+   copy equal to the entry's template. `ValidationLayerArchitectureTests` VL2 and VL3 enforce the dependency
    direction for Session and Io; `Ihc.Vis.Editing` holds the same discipline by its own declaration
    (`EditOpenRefusalCodes`) with the drift test as its gate.
 5. **Declare `RefusedOperations` on the CAUSE**, naming the head your identity refuses under. This is not
@@ -501,7 +501,7 @@ moves — and `tests/safe_architecture_tests/safe_architecture_tests.csproj` for
 | A refusing site's Danish copy equals its entry's template | `RefusalLabelDriftTests` |
 | Host text is Danish, the diagnostic ASCII, and the phrasing inside the SDK's own measured bounds | `HostProblemCatalogTests`, `HostPhrasingStandardTests` |
 | Host entries are outcomes, never findings | `HostProblemCatalogTests.EveryHostEntryIsAnOperationOutcomeAndNeverAFinding` |
-| `Ihc.Vis.Session` and `Ihc.Vis.Io` do not depend on the validation engine; the GUI runs no executor and does not read the SDK catalogue | `ValidationLayerArchitectureTests` L2/L3/L5 |
+| `Ihc.Vis.Session` and `Ihc.Vis.Io` do not depend on the validation engine; the GUI runs no executor and does not read the SDK catalogue | `ValidationLayerArchitectureTests` VL2/VL3/VL5 |
 | The SDK declares no `app.*` code; the GUI declares no SDK-family code | `ProblemOwnershipArchitectureTests` |
 | A definition finding's raised severity equals its entry's disposition, over all eleven definition codes — provoked, not scanned ([§9](#a-defifb-definition-finding)) | `CatalogCompletenessTests.EveryDefinitionFindingsRaisedSeverityMatchesItsEntry`, with its reach pinned by `TheProbeReachesEveryCatalogDefinitionCode` |
 | A definition builder's Danish copy equals its entry's template — unconditionally, with no exceptions | `DefinitionLabelDriftTests` |
@@ -606,7 +606,7 @@ of §4's generated cells are rendered from the declaration today, and every head
    directions, so this is not a second hand-kept copy of the prose column.
 2. The panel tier derives as `Severity == Error && RefusedOperations is not empty` → *Fatale fejl*, and the
    fact reaches the host ON the finding (`ValidationFinding.RefusedOperations`), never by the GUI reading the
-   catalogue, which L5 forbids. The panel keys its tiers on its own `ProblemsTier`, not on `ValidationSeverity`
+   catalogue, which VL5 forbids. The panel keys its tiers on its own `ProblemsTier`, not on `ValidationSeverity`
    — two tiers share one severity, which a severity-keyed table cannot express.
 3. §4's **Blocks** column is generated from the declaration and compared by test, with an `[Explicit]`
    regenerator beside the other two. It publishes ONE WORD PER HEAD, so the view can express every

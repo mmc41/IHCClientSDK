@@ -10,7 +10,7 @@
     <DockPanel>
         <Menu DockPanel.Dock="Top" Background="{StaticResource MenuBackgroundBrush}">
             <MenuItem Header="_File">
-                <MenuItem Header="Setup" Click="SetupMenuItemClick"/>
+                <MenuItem Name="SetupMenuItem" Header="Setup" Click="SetupMenuItemClick"/>
                 <Separator/>
                 <MenuItem Header="_Exit" Click="ExitMenuItemClick"/>
             </MenuItem>

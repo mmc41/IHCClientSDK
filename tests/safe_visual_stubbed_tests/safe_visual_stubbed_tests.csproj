@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- No CopyIhcSettingsToOutput: nothing here may read a controller's settings, so no settings file is staged
+       beside the assembly, and a fixture fails the run if one is there anyway. -->
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Headless" />
+    <PackageReference Include="Avalonia.Headless.NUnit" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Where the shared Avalonia fixture base and its capture attribute live. -->
+    <Using Include="Ihc.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
+    <ProjectReference Include="..\..\applications\ihc_openvisual\ihc_openvisual.csproj" />
+    <!-- The controller this suite runs OpenVisual against. It brings the ASP.NET Core framework with it, which is
+         why this suite is separate from safe_visual_tests. -->
+    <ProjectReference Include="..\..\ihcclient_stub\ihcclient_stub.csproj" />
+
+    <!-- The safety rule, as a gate rather than a convention, and the IL reading it rests on. -->
+    <Compile Include="..\shared\IlBody.cs" Link="shared\IlBody.cs" />
+    <Compile Include="..\shared\AuthoredMembers.cs" Link="shared\AuthoredMembers.cs" />
+    <Compile Include="..\shared\ControllerReachScan.cs" Link="shared\ControllerReachScan.cs" />
+    <Compile Include="..\shared\ControllerReachGuard.cs" Link="shared\ControllerReachGuard.cs" />
+    <!-- ...and the same rule at run time: a stub registered for the whole run latches every real endpoint. -->
+    <Compile Include="..\shared\ControllerStubLatchFixture.cs" Link="shared\ControllerStubLatchFixture.cs" />
+    <Compile Include="..\shared\ControllerStubLatchSupport.cs" Link="shared\ControllerStubLatchSupport.cs" />
+
+    <!-- The headless application and the shell harness, shared with safe_visual_tests so the two compose
+         OpenVisual the same way. -->
+    <Compile Include="..\shared\OpenVisualHeadlessApp.cs" Link="shared\OpenVisualHeadlessApp.cs" />
+    <Compile Include="..\shared\HeadlessScreenshot.cs" Link="shared\HeadlessScreenshot.cs" />
+    <Compile Include="..\shared\ScreenshotCaptureCommand.cs" Link="shared\ScreenshotCaptureCommand.cs" />
+    <Compile Include="..\shared\AvaloniaTestBase.cs" Link="shared\AvaloniaTestBase.cs" />
+    <Compile Include="..\shared\TestSupport.cs" Link="shared\TestSupport.cs" />
+    <Compile Include="..\shared\SessionEditingTestExtensions.cs" Link="shared\SessionEditingTestExtensions.cs" />
+    <Compile Include="..\shared\NoLeakedHarness.cs" Link="shared\NoLeakedHarness.cs" />
+    <Compile Include="..\shared\TraceProbe.cs" Link="shared\TraceProbe.cs" />
+    <!-- Where every request went, from the SDK's spans and from the runtime's own HTTP activities. -->
+    <Compile Include="..\shared\TelemetryCapture.cs" Link="shared\TelemetryCapture.cs" />
+    <Compile Include="..\shared\RequestDestinations.cs" Link="shared\RequestDestinations.cs" />
+  </ItemGroup>
+
+</Project>

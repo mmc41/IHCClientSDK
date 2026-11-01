@@ -10,15 +10,17 @@ namespace Ihc.UiAutomation;
 /// awareness afterwards.
 /// </summary>
 /// <remarks>
-/// <para><b>Why any of this is necessary.</b> UI Automation reports rectangles in PHYSICAL pixels, always. But
-/// cursor and synthesized-input coordinates are interpreted in the CALLING THREAD'S DPI context: a DPI-unaware
-/// thread has its coordinates scaled on the way through, so on a scaled display the click lands somewhere the
-/// caller never asked for. A test host is DPI-unaware by default, which is exactly the case that breaks.</para>
+/// <para><b>Why any of this is necessary.</b> UI Automation reports a rectangle, and the cursor is positioned,
+/// in the CALLING THREAD'S DPI context. On a scaled display a DPI-unaware thread works in coordinates scaled down
+/// by the display's factor, and a per-monitor-aware one in physical pixels. A test host is DPI-unaware by default,
+/// which is exactly the case that breaks: a rectangle read there and a click aimed at it from inside a scope are
+/// in different spaces, and on a 175% display the click lands at four sevenths of where the element is.</para>
 ///
-/// <para>Entering per-monitor awareness for the duration of the call puts both spaces in physical pixels, so an
-/// element's rectangle and the point clicked mean the same thing. The scope is per THREAD, so it must wrap the
-/// call rather than being set once at startup — and it is restored on the way out so nothing else on the thread
-/// inherits a context it did not ask for.</para>
+/// <para>Entering per-monitor awareness puts the rectangle and the point clicked in physical pixels together — but
+/// only when the rectangle is READ inside the scope as well. The scope each input method enters for itself cannot
+/// repair a rectangle read outside one, so a caller wraps the measurement and the gesture in ONE scope. The scope
+/// is per THREAD, so it must wrap the work rather than being set once at startup — and it is restored on the way
+/// out so nothing else on the thread inherits a context it did not ask for.</para>
 /// </remarks>
 public sealed class DpiScope : IDisposable
 {

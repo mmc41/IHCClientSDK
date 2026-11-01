@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- A controller stub for tests and for a person's manual runs: tests reference it, and run as an executable
+         it serves a stub endpoint that an application is pointed at with its switch. It ships in no package and
+         in no application. -->
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- Its answers are written against the generated message types and serialized as the controller would,
+         so the repo-wide ban on the generated layer does not apply here. A test drives the stub through its own
+         surface, never through those types; safe_stub_tests takes the same exception only to check the wire
+         the stub writes. -->
+    <UsesGeneratedSoapLayer>true</UsesGeneratedSoapLayer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The loopback host listens with Kestrel, which ships in the ASP.NET Core shared framework. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ihcclient\ihcclient.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The fidelity, codec and answer tests bind to the stub's internal members. -->
+    <InternalsVisibleTo Include="safe_stub_tests" />
+  </ItemGroup>
+
+</Project>

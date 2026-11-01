@@ -1,6 +1,7 @@
 using System;
 using Microsoft.Extensions.Configuration;
 using Ihc;
+using Ihc.Tests.Shared;
 
 // Serial by necessity rather than by convention. Tests here read back process-global state that a
 // concurrent fixture would be sharing: the telemetry capture, which listens by instrumentation scope
@@ -22,6 +23,11 @@ namespace Ihc.Vis.Tests
     {
         public static IhcSettings Settings { get; private set; } = new IhcSettings();
 
+        /// <summary>This suite's own proof that its tests run latched; see <see cref="ControllerLatchProbe"/>.</summary>
+        [OneTimeSetUp]
+        public void ProveTheRunIsLatched() =>
+            ControllerLatchProbe.RequireRefused(new AuthenticationService(new IhcSettings { Endpoint = ControllerLatchProbe.Endpoint }));
+
         [OneTimeSetUp]
         public void RunBeforeAnyTests()
         {
@@ -32,7 +38,17 @@ namespace Ihc.Vis.Tests
 
             if (config.GetSection("ihcclient").Exists())
             {
-                Settings = IhcSettings.GetFromConfiguration(config);
+                // The endpoint and the credentials never come from the developer's file: this suite is
+                // controller-free, so nothing it runs may reach a controller or carry a login. Every other setting
+                // still does, so a test sees the developer's flags and the reference-catalog install directory.
+                // The excluded fields keep a clean checkout's values, so they read the same on every machine.
+                IhcSettings clean = new IhcSettings();
+                Settings = IhcSettings.GetFromConfiguration(config) with
+                {
+                    Endpoint = clean.Endpoint,
+                    UserName = clean.UserName,
+                    Password = clean.Password
+                };
             }
         }
     }

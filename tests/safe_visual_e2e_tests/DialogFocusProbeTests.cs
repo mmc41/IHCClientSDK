@@ -32,7 +32,7 @@ public class DialogFocusProbeTests : E2EScenario
     public void LaunchApp() => E2E.Launch(E2E.Fixture(FixtureFile));
 
     [OneTimeTearDown]
-    public void CloseApp() => E2E.KillApp();
+    public void CloseApp() => E2E.CloseApp();
 
     [Test]
     [Category(E2E.DesktopOnly)]

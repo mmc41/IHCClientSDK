@@ -17,3 +17,15 @@ using NUnit.Framework;
 [assembly: NonParallelizable]
 
 namespace safe_visual_tests;
+
+using Ihc;
+using Ihc.Tests.Shared;
+
+/// <summary>This suite's own proof that its tests run latched; see <see cref="ControllerLatchProbe"/>.</summary>
+[SetUpFixture]
+public class RunLatchProbe
+{
+    [OneTimeSetUp]
+    public void ProveTheRunIsLatched() =>
+        ControllerLatchProbe.RequireRefused(new AuthenticationService(new IhcSettings { Endpoint = ControllerLatchProbe.Endpoint }));
+}

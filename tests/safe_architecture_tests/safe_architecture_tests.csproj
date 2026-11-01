@@ -34,6 +34,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\ihcclient\ihcclient.csproj" />
+    <!-- The controller stub, loaded so its IL can be scanned for an outbound connection it must never open. -->
+    <ProjectReference Include="..\..\ihcclient_stub\ihcclient_stub.csproj" />
     <!-- The IL decode and the member population every structural rule reads. Shared because the
          controller-reach guard runs INSIDE each suite it polices, and a suite cannot be scanned from
          outside by an assembly that does not reference it. -->
@@ -59,6 +61,10 @@
     <!-- The one NON-TEST holder of an SDK friend grant, referenced so LabFriendGrantArchitectureTests can
          read its IL and bound the grant to its two documented internal reaches. -->
     <ProjectReference Include="..\..\utilities\ihc_lab\ihc_lab.csproj" />
+    <!-- The other two console utilities that take the controller-stub switch, so StubSurfaceArchitectureTests can
+         read each Main's IL; with the two above and OpenVisual they are every executable the switch is wired into. -->
+    <ProjectReference Include="..\..\utilities\ihc_admin\ihc_admin.csproj" />
+    <ProjectReference Include="..\..\utilities\ihc_info\ihc_info.csproj" />
   </ItemGroup>
 
 </Project>

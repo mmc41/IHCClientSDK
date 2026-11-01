@@ -13,8 +13,10 @@ namespace Ihc
         public const string Usb = "http://usb";
 
         /// <summary>
-        /// Reserved endpoint URL prefix for test/utilities that support mocked IHC 
-        /// services for testing purposes.
+        /// The prefix of a controller-stub endpoint a test names itself: the SDK sends such an endpoint only to the
+        /// stub registered for it in this process through <see cref="Ihc.Stubbing.ControllerStubs.Register"/>, and
+        /// refuses it when none is. No application serves one, so an application whose settings name one is refused
+        /// when it builds its services.
         /// </summary>
         public const string MockedPrefix = "mock://";
     }
@@ -92,6 +94,18 @@ namespace Ihc
             return !string.IsNullOrEmpty(Endpoint)
                 && !string.IsNullOrEmpty(UserName)
                 && !string.IsNullOrEmpty(Password);
+        }
+
+        /// <summary>
+        /// True when <see cref="Endpoint"/> targets a controller stub (a <c>mock://</c> key or a generated stub
+        /// host) rather than a controller. It answers the same question routing asks, so an indicator built on it
+        /// says stub exactly when calls go to a stub. True also for a stub endpoint with no registration, whose
+        /// every call is refused.
+        /// </summary>
+        /// <returns>True for a stub endpoint.</returns>
+        public bool IsStubConfigured()
+        {
+            return Ihc.Stubbing.StubEndpoint.Is(Endpoint);
         }
 
         public override string ToString()

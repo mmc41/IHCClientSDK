@@ -12,7 +12,7 @@ namespace Ihc.Vis.Tests
     /// <para>The engine's <see cref="ValidationFinding"/> carries a problem, a primary site and every RELATED
     /// site. <see cref="ProjectValidationResult"/> carries one locator per finding, so a grouped rule's other
     /// sites were dropped at the boundary — and reaching them meant naming <c>IWholeProjectValidator</c>, which
-    /// the architecture forbids a GUI (L5). The rich finding existed and was unreachable by the only consumer
+    /// the architecture forbids a GUI (VL5). The rich finding existed and was unreachable by the only consumer
     /// that wanted it.</para>
     ///
     /// <para><see cref="ProjectAppService.ValidateStructured"/> is that door. It is the SAME run as

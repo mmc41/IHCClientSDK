@@ -134,11 +134,11 @@ public class ProjectCorpusLoadE2ETests : E2EScenario
     public void LaunchOnAProjectOutsideTheSweptOrder() => E2E.Launch(Corpus()[^1]);
 
     /// <summary>
-    /// <c>OneTime</c>, not per test: NUnit runs a derived <c>[TearDown]</c> BEFORE the base one, so killing the
+    /// <c>OneTime</c>, not per test: NUnit runs a derived <c>[TearDown]</c> BEFORE the base one, so closing the
     /// application per case would take it down before <see cref="E2EScenario"/> could ask it what faulted.
     /// </summary>
     [OneTimeTearDown]
-    public void CloseApp() => E2E.KillApp();
+    public void CloseApp() => E2E.CloseApp();
 
     /// <summary>
     /// Hands the next case an application with nothing modal standing in front of it.

@@ -3,8 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using NUnit.Framework;
 
+using ihc_openvisual.Configuration;
+using ihc_openvisual.Services;
+using Ihc.Stubbing;
 using Ihc.Tests.Shared;
 
 namespace safe_visual_e2e_tests;
@@ -204,22 +208,122 @@ public static class E2E
     }
 
     /// <summary>
-    /// Launches the application on a fixture and waits until it is drivable. Kills any survivor from a previous
-    /// run first: a stale instance would be driven instead of the one under test, and its DLL locks would break
-    /// the next build.
+    /// Launches the application on a fixture and waits until it is drivable. Ends any instance still running first,
+    /// closing the one the last launch left and killing any other: a stale instance would be driven instead of the
+    /// one under test, and would hold the files of the copy the launch refreshes.
     /// </summary>
-    public static void Launch(string fixturePath)
+    /// <remarks>
+    /// The desktop application is always started against a fresh loopback controller stub, and the launch gate is
+    /// checked once before the first action: this suite may reach no controller, and without the switch the
+    /// application reads whatever settings file sits beside it. The headless driver composes in process with no
+    /// settings at all, so it has nothing to gate.
+    /// </remarks>
+    /// <param name="fixturePath">The project to open.</param>
+    /// <param name="switchOverride">The switch's value instead of this launch's own host's address, for a scenario
+    /// that shows the gate refusing a launch whose switch went elsewhere.</param>
+    public static void Launch(string fixturePath, string? switchOverride = null)
     {
-        KillApp();
-        Envelope doctor = Run("doctor", "--launch", "--path", fixturePath);
+        CloseApp();
+        pipelineDownWarned = false;
+        Envelope doctor = RequestLaunch(fixturePath, switchOverride);
         Assert.That(doctor.Ok, Is.True,
             $"could not launch the app: {doctor.Code} — {doctor.Message}. E2E needs a desktop session, and the "
             + "driver must run at the SAME ELEVATION as the app.");
         Assert.That(doctor.Flag("ready"), Is.True, $"driver reports not ready: {doctor.Raw}");
+        if (!Headless)
+        {
+            PassLaunchGate(doctor);
+        }
 
         string fileName = Path.GetFileName(fixturePath);
         WaitForDocument(fileName);
         AssertStartedClean(fileName);
+    }
+
+    /// <summary>
+    /// Starts the desktop application with <paramref name="switchValue"/> and requires it NOT to start: answers the
+    /// launch's envelope, whose data carries the exit code of the process that ended.
+    /// </summary>
+    public static Envelope LaunchExpectingRefusal(string switchValue)
+    {
+        Assert.That(Headless, Is.False, "a refused start needs the real application; the headless driver takes no switch");
+        CloseApp();
+        Envelope launch = RequestLaunch(fixturePath: null, switchValue);
+        Assert.That(launch.Ok, Is.False, $"the application started although its switch should have been refused: {launch.Raw}");
+        Assert.That(launch.Data.ValueKind == JsonValueKind.Object
+                    && launch.Data.TryGetProperty("exitCode", out JsonElement code) && code.ValueKind == JsonValueKind.Number,
+            Is.True, $"the refused application did not exit, so its refusal has no exit code to read: {launch.Raw}");
+        return launch;
+    }
+
+    /// <summary>The loopback stub host the running desktop application was started against.</summary>
+    private static ControllerStubLoopbackHost? launchHost;
+
+    /// <summary>The stub behind <see cref="launchHost"/>.</summary>
+    private static ControllerStub? launchStub;
+
+    /// <summary>
+    /// Every exchange the running desktop application has had with its launch's stub. A desktop scenario reads it to
+    /// show what reached the controller side; the headless driver has no stub, so it has none.
+    /// </summary>
+    public static IReadOnlyList<StubCall> LaunchStubJournal() =>
+        launchStub?.Journal.All ?? throw new InvalidOperationException("no desktop launch is running against a stub");
+
+    /// <summary>
+    /// The one site that asks the driver to launch. A fresh loopback host per desktop launch, so the gate reads a
+    /// count no earlier launch contributed to; the switch passes that host's address unless the caller overrides it.
+    /// </summary>
+    private static Envelope RequestLaunch(string? fixturePath, string? switchOverride)
+    {
+        List<string> arguments = ["doctor", DriverArguments.LaunchFlag];
+        if (fixturePath is not null)
+        {
+            arguments.AddRange(["--path", fixturePath]);
+        }
+        if (!Headless)
+        {
+            launchStub = new ControllerStub();
+            launchHost = ControllerStubLoopbackHost.StartAsync(launchStub, CancellationToken.None).GetAwaiter().GetResult();
+            arguments.AddRange([DriverArguments.ControllerStubOption, switchOverride ?? launchHost.BaseAddress.ToString()]);
+        }
+        return Run([.. arguments]);
+    }
+
+    /// <summary>
+    /// Why a desktop launch must not be driven, empty when it may: its own host was never identified, which means
+    /// the application did not apply the switch against it, or the window it returned carries no stub marker.
+    /// </summary>
+    internal static IReadOnlyList<string> LaunchGateFailures(int identifyRequests, string windowTitle)
+    {
+        List<string> failures = [];
+        if (identifyRequests < 1)
+        {
+            failures.Add("this launch's stub host was never identified, so the application did not apply the switch against it");
+        }
+        if (!windowTitle.Contains(Constants.ControllerStubTitleSuffix, StringComparison.Ordinal))
+        {
+            failures.Add($"the window title '{windowTitle}' carries no controller-stub marker");
+        }
+        return failures;
+    }
+
+    /// <summary>Kills the launched application and fails the test before any action when the gate refuses it.</summary>
+    private static void PassLaunchGate(Envelope launch)
+    {
+        IReadOnlyList<string> failures = LaunchGateFailures(launchHost?.IdentifyRequests ?? 0, TitleOf(launch));
+        if (failures.Count > 0)
+        {
+            KillApp();
+            Assert.Fail("the launch gate refused the application before any action: " + string.Join("; ", failures));
+        }
+    }
+
+    /// <summary>Stops the loopback host of the last desktop launch, once its application is gone.</summary>
+    private static void StopLaunchHost()
+    {
+        launchHost?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        launchHost = null;
+        launchStub = null;
     }
 
     /// <summary>
@@ -245,7 +349,7 @@ public static class E2E
             return;
         }
 
-        Assert.That(reading.Appended, Is.Zero,
+        Assert.That(UnexplainedFaults(reading.Appended, reading.LastCode), Is.Zero,
             $"the application recorded {reading.Appended} internal fault(s) while starting up and opening "
             + $"'{fileName}'; the most recent was '{reading.LastCode}'. Read it as a product signal about "
             + "start-up, and triage it before treating it as a test defect.");
@@ -255,6 +359,52 @@ public static class E2E
 
     /// <summary>One reading of the application's fault record: the count and the last code, from ONE moment.</summary>
     private sealed record FaultReading(long Appended, string LastCode);
+
+    /// <summary>Whether this launch's telemetry-pipeline-down fault has already been set aside with a warning.</summary>
+    private static bool pipelineDownWarned;
+
+    /// <summary>
+    /// The faults in a window that a desktop run fails on: all of <paramref name="appended"/> except this launch's
+    /// telemetry-pipeline-down fault, which is set aside once, with a warning, when it is the most recent.
+    /// </summary>
+    /// <remarks>
+    /// A stopped telemetry collector is the developer's environment, not the application: the start-up self-check
+    /// reports it as a fault so a person sees it, and a desktop run warns about it instead of failing on it. The
+    /// self-check runs once per process, so at most one fault per launch is set aside; the application publishes
+    /// only the count and the most recent code, so a window holding it and another fault still fails.
+    /// </remarks>
+    internal static long UnexplainedFaults(long appended, string lastCode)
+    {
+        (long unexplained, bool setAside) = UnexplainedFaults(appended, lastCode, pipelineDownWarned);
+        if (setAside)
+        {
+            pipelineDownWarned = true;
+            WarnPipelineDown();
+        }
+        return unexplained;
+    }
+
+    /// <summary>The decision behind <see cref="UnexplainedFaults(long, string)"/>, free of the launch's state.</summary>
+    internal static (long Unexplained, bool SetAside) UnexplainedFaults(long appended, string lastCode, bool alreadySetAside) =>
+        appended > 0 && !alreadySetAside && lastCode == HostProblemCodes.TelemetryPipelineDown.Value
+            ? (appended - 1, true)
+            : (appended, false);
+
+    /// <summary>
+    /// The warning a set-aside pipeline-down fault leaves: an NUnit warning on the test that saw it, which fails
+    /// nothing, and a progress line for a run with a verbose console logger.
+    /// </summary>
+    /// <remarks>
+    /// An NUnit warning, because a line written to the test's output alone is shown by <c>dotnet test</c> only for
+    /// a failing test, so a passing run would hide it. The adapter lists a warned test under Skipped by default.
+    /// </remarks>
+    private static void WarnPipelineDown()
+    {
+        string warning = $"OpenVisual reported its telemetry pipeline down ({HostProblemCodes.TelemetryPipelineDown.Value}); "
+            + "is the telemetry collector running? It is not counted as a fault in this desktop run.";
+        TestContext.Progress.WriteLine("WARNING: " + warning);
+        Assert.Warn(warning);
+    }
 
     /// <summary>What the last baseline read, or null when the driver refused it.</summary>
     private static FaultReading? faultBaseline;
@@ -311,7 +461,7 @@ public static class E2E
             return;
         }
 
-        Assert.That(after.Appended, Is.EqualTo(before.Appended),
+        Assert.That(UnexplainedFaults(after.Appended - before.Appended, after.LastCode), Is.Zero,
             $"the application recorded {after.Appended - before.Appended} internal fault(s) while this scenario "
             + $"ran; the most recent was '{after.LastCode}'. Something faulted on this route — read it as a "
             + "product signal and triage it before treating it as a test defect.");
@@ -545,10 +695,38 @@ public static class E2E
     public const string ConfigurationRootLabel = "Lokaliteter";
 
     /// <summary>
-    /// Kills the application. Called in every teardown, and not only for tidiness: a surviving instance holds
-    /// locks on its own binaries, so a later build fails with a file-in-use error that names nothing about tests.
+    /// Kills every instance of the application at once, then stops the launch's stub host. For the launch gate's
+    /// refusal, where nothing the application would do on its way out may run, and for the sweep before a run,
+    /// which finds only instances this run did not start. Every other launch ends in <see cref="CloseApp"/>.
     /// </summary>
-    public static void KillApp() => Driver.KillApp();
+    public static void KillApp()
+    {
+        Driver.KillApp();
+        StopLaunchHost();
+    }
+
+    /// <summary>
+    /// Ends the application the way a person does, then stops the launch's stub host. Every teardown ends here, and
+    /// not only for tidiness: a surviving instance would hold the files of the copy the next launch refreshes.
+    /// </summary>
+    /// <remarks>
+    /// A close rather than a kill because an application that shuts down by itself sends the telemetry it was
+    /// still holding, which a kill throws away. One that does not go is killed after all, and that is written to
+    /// the run's progress output rather than failed: the scenario before it has passed or failed on its own
+    /// assertions.
+    /// </remarks>
+    /// <returns><see langword="null"/> when the application exited by itself, or nothing was running; otherwise
+    /// why it did not.</returns>
+    public static string? CloseApp()
+    {
+        string? notClean = Driver.CloseApp();
+        StopLaunchHost();
+        if (notClean is not null)
+        {
+            TestContext.Progress.WriteLine("WARNING: OpenVisual did not close cleanly: " + notClean);
+        }
+        return notClean;
+    }
 
     /// <summary>
     /// Releases the driver at the END of the assembly's run — the counterpart to the lazy

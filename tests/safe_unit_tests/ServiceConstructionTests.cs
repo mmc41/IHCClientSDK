@@ -26,7 +26,7 @@ namespace Ihc.Tests
     /// arrival instead of being remembered.
     ///
     /// <para>That reflection also means the reflected cases are INVISIBLE to
-    /// <c>ControllerReachGuard</c>: its scan reads a literal <c>newobj</c>, and there is none here, so only
+    /// <c>ControllerReachGuard</c>: its scan reads constructor calls written in IL, and there is none here, so only
     /// the cases below that name a constructor in source appear in its admitted list. What holds the
     /// reflected ones is the same thing that holds every admitted site - no operation is called on any
     /// service built here, and the endpoint is <see cref="FakeSession.Endpoint"/>, under the reserved
@@ -179,13 +179,10 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// <c>ServiceBase</c> refuses a settings object with no endpoint, and one naming the mocked
-        /// endpoint prefix - a real service constructed against the mocked prefix would otherwise post
-        /// to a URL built from it. Asserted through one representative service; the check is on the
-        /// shared base every service reaches.
+        /// <c>ServiceBase</c> refuses a settings object with no endpoint. Asserted through one representative
+        /// service; the check is on the shared base every service reaches.
         /// </summary>
         [TestCase(null, TestName = "ServiceBase_WithNoEndpoint_IsRefused")]
-        [TestCase(SpecialEndpoints.MockedPrefix + "whatever", TestName = "ServiceBase_WithTheMockedEndpointPrefix_IsRefused")]
         public void ServiceBase_RefusesAnUnusableEndpoint(string? endpoint)
         {
             // Endpoint is declared non-nullable; the null case is exactly the oblivious caller the

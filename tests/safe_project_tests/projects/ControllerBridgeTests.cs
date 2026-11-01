@@ -38,7 +38,7 @@ namespace Ihc.Vis.Tests
         // IAuthenticationService it is built from (controllerService.cs); if ProjectAppService self-builds a
         // second AuthenticationService, EnsureAuthenticated logs into a session the controller never uses. These
         // wiring tests build the REAL AuthenticationService/ControllerService (construction does no network I/O),
-        // so they need a real (non-mock) endpoint rather than the suite's default mock:// settings.
+        // so they need a real (non-mock) endpoint, which the suite's shared settings never carry (TestSetup).
         private static IhcSettings RealEndpointSettings() =>
             TestSetup.Settings with { Endpoint = "https://ihc.invalid" };
 

@@ -212,6 +212,12 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            // A start that built no setup leaves Setup nothing to edit: the endpoint it refused is repaired in the
+            // settings file (ADR-005), and opening the dialog would only replace that refusal with a failure of its own.
+            if (ihcDomain == null)
+            {
+                SetupMenuItem.IsEnabled = false;
+            }
             activity?.SetError(ex);
             viewModel?.SetError("Startup error", ex);
         }
@@ -224,6 +230,7 @@ public partial class MainWindow : Window
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow) + "." + nameof(SetupMenuItemClick), ActivityKind.Internal);
         try
         {
+            // Not null: a start that built no setup disables this item.
             var longinWindow = new LoginDialog(ihcDomain!.IhcSettings);
             await longinWindow.ShowDialog(this);
             LoginUpdated();
@@ -270,18 +277,29 @@ public partial class MainWindow : Window
     {
         using var activity = IhcLab.Telemetry.ActivitySource.StartActivity(nameof(MainWindow) + "." + nameof(LoginUpdated), ActivityKind.Internal);
 
-        ihcDomain?.UpdateSetup();
+        // Before anything that can fail: a stub endpoint the SDK refuses, or a real one a stub process refuses, still
+        // has to read as a stub, or the title would claim nothing about where calls go exactly when they go nowhere real.
+        if (ihcDomain != null && (ihcDomain.IhcSettings.IsStubConfigured() || Program.controllerStubProcess))
+        {
+            this.Title = TitleFor(ihcDomain.IhcSettings, Program.controllerStubProcess);
+        }
 
         if (ihcDomain != null)
         {
+            // A running stream reads through the services about to be replaced, from the endpoint before the edit.
+            labAppService?.StopStream();
+
             try
             {
+                ihcDomain.UpdateSetup();
+
                 // Create LabAppService with operation filter (business logic layer)
                 var operationFilter = OperationFilterConfiguration.CreateDefaultFilter();
-                labAppService = new LabAppService(globalSupportedServiceFilter: null, globalSupportedOperationFilter: operationFilter);
+                var configured = new LabAppService(globalSupportedServiceFilter: null, globalSupportedOperationFilter: operationFilter);
 
                 // Configure with all IHC services (populates service.Services array with real/mocked IHC APIs)
-                labAppService.Configure(ihcDomain.IhcSettings, ihcDomain.AllIhcServices);
+                configured.Configure(ihcDomain.IhcSettings, ihcDomain.AllIhcServices);
+                labAppService = configured;
 
                 // CRITICAL: Wire up LabAppService to ViewModel. This completes the MVVM chain:
                 // Service → ViewModel → View (via DataContext bindings)
@@ -293,22 +311,50 @@ public partial class MainWindow : Window
 
                 activity?.SetTag("labappservice.configured.service_count", labAppService.Services.Length);
 
-                // Report the new endpoint in the title only once configuration has actually succeeded.
-                this.Title = "IHC Lab : Endpoint set to " + (ihcDomain.IhcSettings.Endpoint ?? "(no endpoint set)");
+                // A real endpoint is reported only once configuration has actually succeeded; a stub endpoint
+                // was already reported above, whatever happens here.
+                this.Title = TitleFor(ihcDomain.IhcSettings, Program.controllerStubProcess);
             }
             catch (Exception ex)
             {
+                // The services still in place were built on the endpoint before this edit, which may be a controller,
+                // and the dialog has already put its new login into the settings they read. Left wired, Run would send
+                // that login there under a title naming this endpoint, so nothing runs until a setup succeeds.
+                labAppService = null;
+                if (viewModel != null)
+                {
+                    viewModel.LabAppService = null;
+                }
+                RunButton.IsEnabled = false;
+
                 activity?.SetError(ex);
                 viewModel?.SetError("Service configuration failed - check endpoint and credentials", ex);
             }
         }
 
         // Do this last so Warning is not cleared unless we are testing.
-        if (string.IsNullOrEmpty(Program.config?.telemetryConfig?.Host) && (Program.config?.ihcSettings?.Endpoint?.StartsWith(SpecialEndpoints.MockedPrefix, StringComparison.Ordinal) == false))
+        if (string.IsNullOrEmpty(Program.config?.telemetryConfig?.Host)
+            && Program.config?.ihcSettings is { Endpoint: not null } current && !current.IsStubConfigured())
         {
             OpenTelemetryMenuItem.IsEnabled = false;
             viewModel?.SetWarning("OpenTelemetry not configured. It is recommended (but not required) to setup telemetry to view logs/traces. See guide in README for details.");
         }
+    }
+
+    /// <summary>
+    /// The window title for <paramref name="settings"/>: the endpoint, and in front of it the stub marker whenever
+    /// the endpoint is a controller-stub endpoint, so no one mistakes a stubbed session for a controller.
+    /// </summary>
+    /// <param name="settings">The current settings.</param>
+    /// <param name="controllerStubProcess">Whether the switch made this a stub process. A real endpoint entered in
+    /// such a process is refused until restart, and the title says so rather than reading as a real session.</param>
+    public static string TitleFor(IhcSettings settings, bool controllerStubProcess = false)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        string marker = settings.IsStubConfigured() ? "CONTROLLER STUB (no real controller) : "
+            : controllerStubProcess ? "CONTROLLER STUB (real endpoints refused until restart) : "
+            : "";
+        return "IHC Lab : " + marker + "Endpoint set to " + (settings.Endpoint ?? "(no endpoint set)");
     }
 
     public async void RunButtonClickHandler(object sender, RoutedEventArgs e)
@@ -381,7 +427,8 @@ public partial class MainWindow : Window
         } finally
         {
             this.Cursor = Cursor.Default;
-            RunButton.IsEnabled = true;
+            // Without services there is still nothing to run, which a refused setup has already said.
+            RunButton.IsEnabled = labAppService != null;
         }
     }
 

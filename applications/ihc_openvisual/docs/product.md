@@ -486,6 +486,7 @@ optional bridge for downloading and uploading projects from and to a live contro
 - FR-2.4: A status bar confirms the result of the last action in a short sentence, and carries a controller-connection indicator whose connected and not-connected states differ in glyph shape (never colour alone) and are also stated in words.
 - FR-2.5: Light and dark themes; icon ink and state colours follow the theme tokens.
 - FR-2.6: **One language for the application's own text, verbatim for everyone else's.** Every caption the application invents is written in a single language (Danish); text that comes from the project file or the component catalog is rendered exactly as stored and is never translated.
+- FR-2.7: While the controller settings point at a controller stub rather than a controller, the window title ends with *– STUB-controller (ingen rigtig controller)*, so a stubbed session is never mistaken for one with a real controller. Without a stub the title is unchanged.
 
 ### F3 — Locality management
 

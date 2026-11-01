@@ -214,6 +214,24 @@ namespace Ihc.Tests
             });
         }
 
+        /// <summary>
+        /// A run started against a controller stub is marked on every signal, so its calls stay out of a real
+        /// controller's baseline; a run without the switch carries no such attribute at all, as before.
+        /// </summary>
+        [TestCase(true, "True")]
+        [TestCase(false, null)]
+        public void Resource_IsMarkedAsAStubRun_ExactlyWhenTheRunWasStartedWithTheSwitch(bool switched, string? expected)
+        {
+            using ILoggerFactory factory = TelemetryBootstrap.SetupTelemetryAndLogging(
+                "IhcCompositionTest", "Ihc", AppScopeName, AllEndpoints(), new ConfigurationBuilder().Build(), switched);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(ResourceAttribute(TelemetryBootstrap.TracerProvider!, "ihc.controller.stub"), Is.EqualTo(expected));
+                Assert.That(ResourceAttribute(TelemetryBootstrap.MeterProvider!, "ihc.controller.stub"), Is.EqualTo(expected));
+            });
+        }
+
         /// <summary>Unlike the endpoint keys, an empty environment does not mean "off" - it means not yet labelled.</summary>
         [Test]
         public void Resource_WithNoEnvironmentConfigured_FallsBackToDevelopment()

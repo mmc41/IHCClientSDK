@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1070 492" width="1070" height="492" font-family="'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif" font-size="12.5" fill="currentColor" role="img" aria-label="In-process: one test process holds the stub, its registration and the SDK services. Launched: the stub and its loopback host run in a test or in ihcclient_stub, and the app's Main applies the switch, verifies the host's token and sends SOAP over loopback HTTP. The switch replaces the endpoint and the credentials with stub values and keeps every other setting from the file.">
+<title>In-process: one test process holds the stub, its registration and the SDK services. Launched: the stub and its loopback host run in a test or in ihcclient_stub, and the app's Main applies the switch, verifies the host's token and sends SOAP over loopback HTTP. The switch replaces the endpoint and the credentials with stub values and keeps every other setting from the file.</title>
+<style>svg{color:#1b211e}@media (prefers-color-scheme:dark){svg{color:#e2e7e3}}</style>
+<defs><marker id="f3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<g fill="none" stroke="currentColor" stroke-opacity="0.5" stroke-width="1.2" stroke-dasharray="6 5">
+<rect x="20" y="44" width="360" height="432" rx="8"/>
+<rect x="420" y="44" width="270" height="432" rx="8"/>
+<rect x="760" y="44" width="290" height="432" rx="8"/>
+</g>
+<g fill="none" stroke="currentColor" stroke-opacity="0.5">
+<rect x="80" y="84" width="260" height="36" rx="4"/>
+<rect x="80" y="212" width="260" height="36" rx="4"/>
+<rect x="80" y="276" width="260" height="36" rx="4"/>
+<rect x="780" y="100" width="250" height="36" rx="4"/>
+<rect x="780" y="162" width="250" height="36" rx="4"/>
+<rect x="780" y="302" width="250" height="46" rx="4"/>
+<rect x="780" y="372" width="250" height="36" rx="4"/>
+</g>
+<g fill="#e8920c" fill-opacity="0.14" stroke="#d4850a" stroke-width="1.2">
+<rect x="80" y="148" width="260" height="36" rx="4"/>
+<rect x="80" y="340" width="260" height="36" rx="4"/>
+<rect x="80" y="404" width="260" height="36" rx="4"/>
+<rect x="440" y="104" width="230" height="46" rx="4"/>
+<rect x="440" y="230" width="230" height="46" rx="4"/>
+<rect x="780" y="230" width="250" height="46" rx="4"/>
+<rect x="780" y="430" width="250" height="36" rx="4"/>
+</g>
+<g fill="none" stroke="currentColor" stroke-width="1.3" marker-end="url(#f3a)">
+<path d="M210 120 V146"/>
+<path d="M210 184 V210"/>
+<path d="M210 248 V274"/>
+<path d="M210 312 V338"/>
+<path d="M210 376 V402"/>
+<path d="M555 230 V152"/>
+<path d="M905 136 V160"/>
+<path d="M905 198 V228"/>
+<path d="M905 276 V300"/>
+<path d="M905 348 V370"/>
+<path d="M905 408 V428"/>
+<path d="M690 118 H778"/>
+<path d="M780 253 H672"/>
+<path d="M780 448 H555 V278"/>
+<path d="M80 422 H52 V102 H78" stroke-dasharray="5 4"/>
+</g>
+<g font-weight="600">
+<text x="20" y="26">In-process <tspan font-weight="400" font-size="11" fill-opacity="0.7" dx="4">unit, Lab and headless visual tests</tspan></text>
+<text x="420" y="26">Launched executable <tspan font-weight="400" font-size="11" fill-opacity="0.7" dx="4">desktop E2E, utility tests and manual runs</tspan></text>
+<g text-anchor="middle">
+<text x="210" y="427">ControllerStub</text>
+<text x="555" y="123">ControllerStub</text>
+</g>
+</g>
+<g font-size="10.5" font-weight="600" letter-spacing="0.09em" fill-opacity="0.7">
+<text x="36" y="66">TEST PROCESS</text>
+<text x="436" y="66">STUB PROCESS</text>
+<text x="776" y="66">APP PROCESS</text>
+</g>
+<g text-anchor="middle">
+<text x="210" y="107">test code · sets the scenario</text>
+<text x="210" y="299">real SDK services</text>
+<text x="905" y="321">settings from the file</text>
+<text x="905" y="395">SDK services → Client.Post</text>
+<text x="905" y="453">locked-down loopback client</text>
+</g>
+<g font-family="'IBM Plex Mono', Consolas, monospace" font-size="11" text-anchor="middle">
+<text x="210" y="171">ControllerStubs.Register(stub)</text>
+<text x="210" y="235">settings.Endpoint = reg.Endpoint</text>
+<text x="210" y="363">Client.Post → ControllerStubHandler</text>
+<text x="555" y="249">ControllerStubLoopbackHost</text>
+<text x="555" y="266">127.0.0.1:&lt;port&gt;/&lt;token&gt;/</text>
+<text x="905" y="123">--controller-stub=&lt;loopback url&gt;</text>
+<text x="905" y="185">Main → ApplySwitch(args, fromFile)</text>
+<text x="905" y="249">RegisterLoopbackAsync(url, …)</text>
+</g>
+<g font-size="11" fill-opacity="0.7">
+<text x="436" y="82">a test, or ihcclient_stub run by hand</text>
+<text x="776" y="82">OpenVisual, ihc_lab, admin, info, upload</text>
+<text x="218" y="138">registers</text>
+<text x="218" y="202">fresh .invalid endpoint</text>
+<text x="218" y="266">constructs</text>
+<text x="218" y="330">SOAP request</text>
+<text x="218" y="394">HandleAsync</text>
+<text x="563" y="196">HandleAsync</text>
+<text x="565" y="420">SOAP over</text>
+<text x="565" y="434">loopback HTTP</text>
+<g text-anchor="middle">
+<text x="44" y="262" transform="rotate(-90 44 262)">test reads Journal, Unmodelled, Defects</text>
+<text x="555" y="140">scenario · journal stays here</text>
+<text x="905" y="266">validates url · token preflight</text>
+<text x="905" y="338">endpoint and credentials replaced</text>
+<text x="725" y="110">launch</text>
+<text x="726" y="245">preflight</text>
+<text x="726" y="269">token echo</text>
+</g>
+</g>
+</svg>

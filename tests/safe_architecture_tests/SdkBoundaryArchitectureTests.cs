@@ -53,6 +53,11 @@ namespace Ihc.Tests
             yield return typeof(global::Ihc.Vis.ProjectCommands);
             yield return typeof(global::Ihc.Vis.IReportIconProvider);
 
+            // The controller-stub seam (ADR-005): the provider contract a test implements, and the entry point that
+            // routes a settings endpoint to it. Its request, response and registration are reached from these two.
+            yield return typeof(global::Ihc.Stubbing.IControllerStub);
+            yield return typeof(global::Ihc.Stubbing.ControllerStubs);
+
             // The documented failure contracts. Seeded because no signature can reach them -- an exception is
             // thrown, never returned -- so without naming them here their own surfaces would go unchecked, which is
             // the one part of the contract a signature traversal cannot discover for itself.
@@ -63,6 +68,11 @@ namespace Ihc.Tests
             yield return typeof(global::Ihc.Vis.Session.EditRefusedException);
             yield return typeof(global::Ihc.Vis.Validation.ProjectValidationException);
             yield return typeof(global::Ihc.Vis.ProjectUploadException);
+
+            // The controller failure contract, and the codes it carries. The stub seam's refusals are coded through
+            // it, and a caller tells them apart only by those codes, so it is contract rather than an incidental throw.
+            yield return typeof(global::Ihc.ErrorWithCodeException);
+            yield return typeof(global::Ihc.Errors);
 
             // The read surface a caller reaches WITHOUT holding a service: the extension holders over Project and
             // ProjectElement, and the finding helpers. ARCHITECTURE.md admits these as supported ("supported static

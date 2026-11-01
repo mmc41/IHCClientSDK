@@ -40,6 +40,21 @@ namespace IhcLab
         }
         
         /// <summary>
+        /// A copy of <paramref name="source"/> with its controller settings replaced by <paramref name="controller"/>,
+        /// which is how start-up applies the controller-stub switch: every other property is the loaded one's.
+        /// </summary>
+        /// <param name="source">The configuration Lab's own loader produced.</param>
+        /// <param name="controller">The settings every SDK service is to be built from.</param>
+        public Configuration(Configuration source, IhcSettings controller)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            ArgumentNullException.ThrowIfNull(controller);
+            this.loggingConfig = source.loggingConfig;
+            this.telemetryConfig = source.telemetryConfig;
+            this.ihcSettings = controller;
+        }
+
+        /// <summary>
         /// Create configuration with provided IHC settings for testing purposes.
         /// </summary>
         /// <param name="ihcSettings"></param>

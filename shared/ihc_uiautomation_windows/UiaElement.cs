@@ -44,8 +44,9 @@ public sealed class UiaElement
         Read(() => (UiaControlType)(int)_element.CurrentControlType, UiaControlType.Unknown);
 
     /// <summary>
-    /// The element's rectangle in PHYSICAL pixels — UI Automation reports no other kind. Anything comparing it
-    /// with a cursor position has to be inside a <see cref="DpiScope"/>, or the two are in different spaces.
+    /// The element's rectangle in the CALLING THREAD'S DPI context: physical pixels inside a <see cref="DpiScope"/>,
+    /// scaled down by the display's factor on a DPI-unaware thread. Read it inside the same scope as the gesture or
+    /// capture aimed at it, or the two are in different spaces.
     /// </summary>
     public Rectangle BoundingRectangle => Read(() =>
     {
@@ -55,6 +56,9 @@ public sealed class UiaElement
 
     /// <summary>Scrolled or clipped out of view. An offscreen element cannot be clicked where it claims to be.</summary>
     public bool IsOffscreen => Read(() => (bool)_element.CurrentIsOffscreen, false);
+
+    /// <summary>Whether the element accepts input; a disabled command is how an application refuses it before it runs.</summary>
+    public bool IsEnabled => Read(() => (bool)_element.CurrentIsEnabled, false);
 
     /// <summary>Whether this element holds the keyboard focus.</summary>
     public bool HasKeyboardFocus => Read(() => (bool)_element.CurrentHasKeyboardFocus, false);

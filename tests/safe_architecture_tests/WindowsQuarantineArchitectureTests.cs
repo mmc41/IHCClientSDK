@@ -58,7 +58,7 @@ namespace Ihc.Tests
             (typeof(global::Ihc.IhcSettings).Assembly, "Ihc"),
             (typeof(global::ihc_openvisual.App).Assembly, typeof(global::ihc_openvisual.App).Namespace!),
             (typeof(global::Ihc.Bootstrap.TelemetryBootstrap).Assembly, "Ihc"),
-            (typeof(global::Ihc.Bootstrap.AppTelemetryBootstrap).Assembly, "Ihc"),
+            (typeof(global::Ihc.Bootstrap.AvaloniaTelemetryBootstrap).Assembly, "Ihc"),
             (typeof(global::Ihc.download_upload_example.ProblemConsoleFormat).Assembly, "Ihc"),
         ];
 

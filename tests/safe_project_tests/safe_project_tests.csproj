@@ -26,6 +26,9 @@
     <Compile Include="..\shared\ControllerReachScan.cs" Link="shared\ControllerReachScan.cs" />
     <!-- The safety rule, as a gate rather than a convention: this suite may reach no controller. -->
     <Compile Include="..\shared\ControllerReachGuard.cs" Link="shared\ControllerReachGuard.cs" />
+    <!-- ...and the same rule at run time: a stub registered for the whole run latches every real endpoint. -->
+    <Compile Include="..\shared\ControllerStubLatchFixture.cs" Link="shared\ControllerStubLatchFixture.cs" />
+    <Compile Include="..\shared\ControllerStubLatchSupport.cs" Link="shared\ControllerStubLatchSupport.cs" />
     <!-- OpenVisual's NON-GUI code is tested here: its view-models, command registry, menu forest and
          projector need no Avalonia toolkit, and this is the suite whose subject they are. A test project may
          reference an application; the architecture rules constrain what the PRODUCT assemblies depend on,

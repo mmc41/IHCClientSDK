@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 590" width="960" height="590" font-family="'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif" font-size="12.5" fill="currentColor" role="img" aria-label="ihcclient ships only the stub seam. ihcclient_stub implements its interface and is referenced only by test suites. Applications reference ihcclient and must never reference ihcclient_stub.">
+<title>ihcclient ships only the stub seam. ihcclient_stub implements its interface and is referenced only by test suites. Applications reference ihcclient and must never reference ihcclient_stub.</title>
+<style>svg{color:#1b211e}@media (prefers-color-scheme:dark){svg{color:#e2e7e3}}</style>
+<defs><marker id="f1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<g fill="currentColor" fill-opacity="0.04" stroke="currentColor" stroke-opacity="0.25">
+<rect x="40" y="24" width="592" height="104" rx="6"/>
+<rect x="40" y="212" width="492" height="176" rx="6"/>
+<rect x="40" y="466" width="880" height="104" rx="6"/>
+</g>
+<rect x="600" y="212" width="320" height="176" rx="6" fill="currentColor" fill-opacity="0.04" stroke="#d4850a" stroke-width="1.2"/>
+<g fill="none" stroke="currentColor" stroke-opacity="0.5">
+<rect x="56" y="64" width="104" height="44" rx="4"/>
+<rect x="170" y="64" width="104" height="44" rx="4"/>
+<rect x="284" y="64" width="104" height="44" rx="4"/>
+<rect x="398" y="64" width="104" height="44" rx="4"/>
+<rect x="512" y="64" width="104" height="44" rx="4"/>
+<rect x="56" y="256" width="148" height="44" rx="4"/>
+<rect x="56" y="328" width="148" height="44" rx="4"/>
+<rect x="57" y="504" width="136" height="46" rx="4"/>
+<rect x="199" y="504" width="136" height="46" rx="4"/>
+<rect x="341" y="504" width="136" height="46" rx="4"/>
+<rect x="483" y="504" width="136" height="46" rx="4"/>
+<rect x="625" y="504" width="136" height="46" rx="4"/>
+<rect x="767" y="504" width="136" height="46" rx="4"/>
+</g>
+<g fill="#e8920c" fill-opacity="0.14" stroke="#d4850a" stroke-width="1.2">
+<rect x="224" y="250" width="292" height="124" rx="4"/>
+<rect x="616" y="250" width="288" height="28" rx="4"/>
+<rect x="616" y="284" width="288" height="28" rx="4"/>
+<rect x="616" y="318" width="288" height="28" rx="4"/>
+<rect x="616" y="352" width="288" height="28" rx="4"/>
+</g>
+<g fill="none" stroke="currentColor" stroke-width="1.3" marker-end="url(#f1a)">
+<path d="M130 300 V326"/>
+<path d="M600 312 H520"/>
+<path d="M300 128 V210"/>
+<path d="M300 466 V390"/>
+<path d="M760 466 V390"/>
+</g>
+<path d="M632 104 L700 210" fill="none" stroke="#d33a2c" stroke-width="1.5" stroke-dasharray="6 4"/>
+<g stroke="#d33a2c" stroke-width="2.4"><line x1="657" y1="150" x2="675" y2="168"/><line x1="675" y1="150" x2="657" y2="168"/></g>
+<g text-anchor="middle">
+<text x="108" y="90">OpenVisual</text>
+<text x="222" y="90">ihc_lab</text>
+<text x="336" y="90">ihc_admin</text>
+<text x="450" y="90">ihc_info</text>
+<text x="564" y="90">upload utility</text>
+</g>
+<text x="628" y="302">Scenario tier · typed SDK values</text>
+<text x="628" y="336">Wire tier · SOAP dispatch, shape defaults</text>
+<text x="628" y="370">LoopbackHost (Kestrel) · Program.cs</text>
+<g font-weight="600">
+<text x="56" y="48">Applications and utilities</text>
+<text x="56" y="236">ihcclient <tspan font-weight="400" font-size="11" fill-opacity="0.7" dx="4">NuGet package, ships</tspan></text>
+<text x="130" y="275" text-anchor="middle">SDK services</text>
+<text x="240" y="270">Ihc.Stubbing seam</text>
+<text x="616" y="236">ihcclient_stub <tspan font-weight="400" font-size="11" fill-opacity="0.7" dx="4">Exe, not packable</tspan></text>
+<text x="56" y="490">Test suites <tspan font-weight="400" font-size="11" fill-opacity="0.7" dx="4">each named safe_&lt;name&gt;_tests</tspan></text>
+</g>
+<g font-family="'IBM Plex Mono', Consolas, monospace" font-size="11.5">
+<text x="130" y="347" text-anchor="middle">Client.Post</text>
+<text x="628" y="268">ControllerStub : IControllerStub</text>
+</g>
+<g font-family="'IBM Plex Mono', Consolas, monospace" font-size="11">
+<text x="240" y="292">IControllerStub  (SPI)</text>
+<text x="240" y="309">ControllerStubs.Register(…)</text>
+<text x="240" y="326">ControllerStubs.RegisterLoopbackAsync(…)</text>
+<text x="240" y="343">ControllerStubs.ApplySwitch(…)</text>
+<text x="240" y="360">IhcSettings.IsStubConfigured()</text>
+<text x="616" y="48" text-anchor="end">Main → ControllerStubs.ApplySwitch</text>
+<g text-anchor="middle">
+<text x="125" y="523">stub</text>
+<text x="267" y="523">unit</text>
+<text x="409" y="523">lab</text>
+<text x="551" y="523">visual_stubbed</text>
+<text x="693" y="523">visual_e2e</text>
+<text x="835" y="523">architecture</text>
+</g>
+</g>
+<g font-size="11" fill-opacity="0.7">
+<g text-anchor="middle">
+<text x="130" y="291">wrappers · serializer</text>
+<text x="130" y="363">routing · L3 latch</text>
+<text x="125" y="540">seam + fidelity</text>
+<text x="267" y="540">utility processes</text>
+<text x="409" y="540">Lab over the stub</text>
+<text x="551" y="540">headless, both legs</text>
+<text x="693" y="540">launch gate · stubs</text>
+<text x="835" y="540">L4, L7, L12, O7</text>
+<text x="566" y="304">implements</text>
+<text x="566" y="328">the SPI</text>
+</g>
+<text x="310" y="168">references · Main calls ApplySwitch</text>
+<text x="696" y="166">architecture rule (L4)</text>
+<text x="310" y="432">references</text>
+<text x="770" y="432">references · tests only</text>
+</g>
+<text x="696" y="150" font-size="11" font-weight="600" fill="#d33a2c">no reference from any app</text>
+</svg>

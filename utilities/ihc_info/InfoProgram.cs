@@ -1,6 +1,7 @@
 ﻿using Ihc.App;
 using Microsoft.Extensions.Configuration;
 using Ihc.Bootstrap;
+using Ihc.Stubbing;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Text.Json;
@@ -30,8 +31,23 @@ namespace Ihc.example
         public static ActivitySource ActivitySource { get; } =
             new ActivitySource(name: ActivitySourceName, version: TelemetryBootstrap.GetAppVersionStr());
 
+        /// <summary>The command line was not usable, so nothing was attempted.</summary>
+        private const int ExitUsage = 2;
+
         static async Task Main(string[] args)
         {
+            // Before the settings file is read, so a command line this utility cannot use is answered with its usage
+            // whether or not that file exists. An argument it ignored could be a mistyped option someone meant
+            // something by. The controller-stub switch, in any spelling, is left to ApplySwitch below.
+            string[] unexpected = [.. args.Where(argument => !ControllerStubs.SwitchRequested([argument]))];
+            if (unexpected.Length > 0)
+            {
+                Console.WriteLine($"Expected no arguments but {ControllerStubs.SwitchArgument}=http://127.0.0.1:<port>/<token>/, "
+                    + "which is optional; got " + string.Join(' ', unexpected));
+                Environment.ExitCode = ExitUsage;
+                return;
+            }
+
             IConfigurationRoot config = IhcConfiguration.FromAppDirectory();
 
             // Read configuration settings
@@ -45,7 +61,13 @@ namespace Ihc.example
                 // callback, so an unconfigured utility still built a provider and still exported - to the OTLP
                 // default endpoint. It also gains this utility metrics, which it never had.
                 using ILoggerFactory loggerFactory = TelemetryBootstrap.SetupTelemetryAndLogging(
-                    AppServiceName, AppServiceNamespace, ActivitySourceName, telemetryConfig, config);
+                    AppServiceName, AppServiceNamespace, ActivitySourceName, telemetryConfig, config,
+                    ControllerStubs.SwitchRequested(args));
+
+                // After the pipeline, so the stub's identity check is traced; before the first service is built. A
+                // refused switch lands in the catch below, with no fallback to the file's endpoint.
+                (settings, _) = ControllerStubs.ApplySwitch(args, settings);
+                ControllerStubConsole.AnnounceIfStub(settings);
 
                 // Create client information app service.
                 using (InformationAppService infoService = new InformationAppService(settings))
@@ -59,6 +81,9 @@ namespace Ihc.example
             } catch (Exception ex)
             {
                 Console.WriteLine($"Failed operation: {ex.Message} : {ex.StackTrace}");
+                // Main returns normally either way, so without this a refused switch or a failed read would report
+                // success to whatever started the utility.
+                Environment.ExitCode = 1;
             }
 
             // A console process exits as soon as this returns, so the flush happens here rather than in a

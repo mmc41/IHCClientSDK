@@ -61,6 +61,17 @@ namespace Ihc.Tests
                 + "transport overload, it reaches whatever address the settings name");
 
         /// <summary>
+        /// A test can open a connection below HTTP as well: a raw socket client, and the legacy request API whose
+        /// client a static factory builds. Neither enters <c>Client.Post</c>, so neither is routed or latched.
+        /// </summary>
+        [Test]
+        public void TheSeededRawSocketAndWebRequest_AreFlagged() =>
+            Assert.That(SeededSites(),
+                Does.Contain("Ihc.Safety.Seeded.SeededRawSocketBuilder.Build")
+                    .And.Contain("Ihc.Safety.Seeded.SeededWebRequestBuilder.Build"),
+                "a socket client and a WebRequest reach whatever address they are given, with nothing in between");
+
+        /// <summary>
         /// And its negative: a client built over a handler the suite declares. Flagging this would indict the
         /// substitution the safety rule PRESCRIBES, exactly as flagging a locally declared stub service would.
         /// </summary>
@@ -69,6 +80,18 @@ namespace Ihc.Tests
             Assert.That(SeededSites(),
                 Does.Not.Contain("Ihc.Safety.Seeded.SeededStubTransportUser.Build"),
                 "a client over a handler this assembly declares reaches no network");
+
+        /// <summary>
+        /// A type the suite declares is excluded as its own double, which holds only while it inherits nothing
+        /// live. A subclass of a real socket handler or of a real service builds that base in its constructor, so
+        /// the constructor is flagged, while the stub handler above, built on the abstract handler base, is not.
+        /// </summary>
+        [Test]
+        public void TheSeededSubclassesOfALiveTransportAndOfARealService_AreFlaggedAtTheirConstructors() =>
+            Assert.That(SeededSites(), Does.Contain("Ihc.Safety.Seeded.SeededClientHandlerSubclass..ctor")
+                    .And.Contain("Ihc.Safety.Seeded.SeededServiceSubclass..ctor")
+                    .And.Not.Contain("Ihc.Safety.Seeded.SeededStubHandler..ctor"),
+                "declaring a subclass of a live transport or of a real service does not make it a double");
 
         /// <summary>
         /// The scan's SECOND exclusion — a constructor HANDED its transport — is load-bearing: a shipped suite
