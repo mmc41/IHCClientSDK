@@ -186,7 +186,7 @@ See the [ihcclient README](ihcclient/README.md) for API details and [ARCHITECTUR
 
 ## Running from the command line
 
-All applications, utilities and examples are launched with `dotnet run --project <csproj>` from the repository root. The examples and most utilities read an `ihcsettings.json` in the repo root (see [Configuration](#configuration)); OpenVisual starts without one, and neither the controller stub nor the HTTP proxy recorder needs one. The offline `.vis` and settings tools do not need a controller.
+All applications, utilities and examples are launched with `dotnet run --project <csproj>` from the repository root. The examples and most utilities read an `ihcsettings.json` in the repo root (see [Configuration](#configuration)); OpenVisual starts without one, and the controller stub does not need one. The offline `.vis` and settings tools do not need a controller.
 
 | Project | Kind | Command |
 | --------- | ------ | --------- |
@@ -195,7 +195,6 @@ All applications, utilities and examples are launched with `dotnet run --project
 | IHC admin (settings download/upload) | Utility | `dotnet run --project utilities/ihc_admin/ihc_admin.csproj` |
 | IHC info (system information) | Utility | `dotnet run --project utilities/ihc_info/ihc_info.csproj` |
 | Program code extractor (IO constants) | Utility | `dotnet run --project utilities/ihc_project_io_extractor/ihc_projectextractor.csproj` |
-| HTTP proxy recorder | Utility | `dotnet run --project utilities/ihc_httpproxyrecorder/ihc_httpproxyrecorder.csproj` |
 | Project download/upload | Utility | `dotnet run --project utilities/ihc_project_download_upload/ihc_ProjectDownloadUpload.csproj` |
 | Settings encrypt/decrypt | Utility | `dotnet run --project utilities/ihc_settings_encrypt/ihc_settings_encrypt.csproj -- encrypt ihcsettings.json` |
 | Controller stub (no controller needed) | Utility | `dotnet run --project ihcclient_stub/ihcclient_stub.csproj` |
@@ -236,7 +235,6 @@ This project is hosted in a mono-repo containing the following sub-projects:
   * [IHC admin](utilities/ihc_admin/) contains a command line utility that downloads/uploads controller administrator settings as a JSON file.
   * [IHC info](utilities/ihc_info/) contains a command line utility that prints IHC system information such as system version, license info, number of users, modules and resources.
   * [Program code extractor](utilities/ihc_project_io_extractor/README.md) contains an optional command line utility for software developers that can generate constant definitions of IO addresses in a concrete IHC installation. Use this approach in your projects if you don't want to lookup and hardcode IO addresses yourself.
-  * [IHC Http Proxy recorder](utilities/ihc_httpproxyrecorder/README.md) contains a simple http proxy useful for software (sdk) developers to investigate undocumented IHC controller API's.
   * [IHC Project download/upload](utilities/ihc_project_download_upload/README.md) contains a tool to download/upload project files.
   * [IHC Settings encrypt](utilities/ihc_settings_encrypt/README.md) contains a tool to encrypt/decrypt passwords in ihcsettings.json.
 * Tests — every suite is named `safe_*`, and only [safe integration tests](tests/safe_integration_tests/README.md) may reach a controller:

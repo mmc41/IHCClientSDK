@@ -8,7 +8,7 @@
 [*.cs]
 
 # CA1707 (identifiers should not contain underscores). The findings are the assembly names themselves —
-# ihc_lab, ihc_admin, ihc_info, ihc_settings_encrypt, ihc_httpproxyrecorder, ihc_projectextractor,
+# ihc_lab, ihc_admin, ihc_info, ihc_settings_encrypt, ihc_projectextractor,
 # ihc_ProjectDownloadUpload — and an assembly name here is a FILE name other things already depend on: the
 # `dotnet run --project` lines in CLAUDE.md and README, and the aui and openobserve tooling. Renaming them
 # renames the executables to satisfy a spelling rule.

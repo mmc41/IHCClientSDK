@@ -33,7 +33,6 @@ dotnet run --project examples/ihcclient_example2/example2.csproj
 dotnet run --project utilities/ihc_admin/ihc_admin.csproj
 dotnet run --project utilities/ihc_info/ihc_info.csproj
 dotnet run --project utilities/ihc_project_io_extractor/ihc_projectextractor.csproj
-dotnet run --project utilities/ihc_httpproxyrecorder/ihc_httpproxyrecorder.csproj
 dotnet run --project utilities/ihc_project_download_upload/ihc_ProjectDownloadUpload.csproj
 dotnet run --project utilities/ihc_settings_encrypt/ihc_settings_encrypt.csproj -- encrypt ihcsettings.json
 # A controller stub; start an app or utility with the --controller-stub=... line it prints first

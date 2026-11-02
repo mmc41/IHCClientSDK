@@ -46,7 +46,7 @@ is the part the SDK deliberately does not own.
 
 - `ihcclient` is the SDK every first-party project sits on and the bottom of the reference graph; 15 projects
   reference it — 1 application, 5 utilities, 2 examples, 6 test suites, and `shared/ihc_appbootstrap`, the
-  Avalonia bootstrap library the two GUIs share. `ihc_httpproxyrecorder` and `ihc_project_io_extractor` do not.
+  Avalonia bootstrap library the two GUIs share. `ihc_project_io_extractor` does not.
 - API tier: 15 service classes (`ihcclient/src/api/services/`), one per generated SOAP contract, each delegating to
   a private nested `SoapImpl` adapter; shared contract `IIHCApiService` (`serviceBase.cs:15`). The generated
   `Ihc.Soap.*` layer (~17k lines) is referenced by nothing outside `ihcclient` except white-box unit tests.
@@ -77,7 +77,7 @@ is the part the SDK deliberately does not own.
   `ProjectAppService.Commands` gateway mints the commands and the `IProjectDocument` port runs them for the GUI,
   leaving `ProjectWorkflow` with document lifecycle only — and `ihc_project_io_extractor`'s standalone `.vis`
   parser is deprecated. Frontend-owned *display interpretation* of vendor values is not a deviation but a ruling
-  (see Decision); the standalone `ihc_httpproxyrecorder` operates below the SDK by design.
+  (see Decision).
 - ADR-001 (threading and concurrency model) builds on this structure; the "SDK must not reference a GUI framework" rule it
   cites as a standing invariant is owned here.
 

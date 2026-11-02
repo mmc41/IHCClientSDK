@@ -305,8 +305,7 @@ data** — so an envelope, cookie-session or adapter regression is unguarded.
       socket. What remains is small and mechanical: **no shipped service forwards the transport** — every
       `SoapImpl` constructor drops the argument — so the seam is reachable today only from a test-declared
       subclass. Forward it, and the gating item is gone.
-- [ ] **A cassette schema.** `utilities/ihc_httpproxyrecorder` writes an append-only timestamped log, not
-      canonical replay fixtures. Define the on-disk format, request-matching key, and how ordered
+- [ ] **A cassette schema.** Nothing in the repository records canonical replay fixtures. Define the on-disk format, request-matching key, and how ordered
       request/response pairs are addressed.
 - [ ] **Cookie/auth sequencing.** Sessions are cookie-based; replay must reproduce login → cookie →
       subsequent calls deterministically, or every fixture becomes order-dependent.
