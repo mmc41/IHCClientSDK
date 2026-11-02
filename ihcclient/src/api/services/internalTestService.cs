@@ -7,8 +7,10 @@ using System.Diagnostics;
 namespace Ihc
 {
     /// <summary>
-    /// High-level interface for the controller's Internal Test operations. Some of these operations may perhaps be dangerous. Use at own risk. 
-    /// For safety, some methods deemed potentially dangerous are disabled by default and must be enabled in IhcSettings by setting 'allowDangerousInternTestCalls' to true.
+    /// The controller's factory-test service: versions and identities of its boards, and tests of its LEDs, SD card,
+    /// I/O board, USB host and RS-485 port. Do not use it on an installation in use: some of its operations may be
+    /// dangerous, so those deemed most dangerous are disabled unless
+    /// <see cref="IhcSettings.AllowDangerousInternTestCalls"/> is <c>true</c>.
     /// </summary>
     public interface IInternalTestService : IIHCApiService
     {
@@ -16,144 +18,153 @@ namespace Ihc
         // wire elements are declared nillable and the generated layer is oblivious, so a non-null
         // return type here would be a promise this tier cannot keep.
         /// <summary>
-        /// Get the Airlink version string.
+        /// Gets the version string of the Airlink radio, the controller's wireless module.
         /// </summary>
+        /// <returns>The version, or <c>null</c> when the reply carries none.</returns>
         Task<string?> GetAirlinkVersion();
 
         /// <summary>
-        /// Get the IO board version string.
+        /// Gets the version string of the I/O board, the controller's dataline board.
         /// </summary>
+        /// <returns>The version, or <c>null</c> when the reply carries none.</returns>
         Task<string?> GetIOBoardVersion();
 
         /// <summary>
-        /// Get the Wiser board version string.
+        /// Gets the version string of the Wiser board, probably the controller's main board.
         /// </summary>
+        /// <returns>The version, or <c>null</c> when the reply carries none.</returns>
         Task<string?> GetWiserBoardVersion();
 
         /// <summary>
-        /// Get the Wiser board MAC address.
+        /// Gets the MAC address of the Wiser board.
         /// </summary>
+        /// <returns>The MAC address, or <c>null</c> when the reply carries none.</returns>
         Task<string?> GetWiserBoardMACAddress();
 
         /// <summary>
-        /// Get the Wiser board hardware version string.
+        /// Gets the hardware version string of the Wiser board.
         /// </summary>
+        /// <returns>The version, or <c>null</c> when the reply carries none.</returns>
         Task<string?> GetWiserBoardHWVersion();
 
         /// <summary>
-        /// Get the Wiser board serial number.
+        /// Gets the serial number of the Wiser board.
         /// </summary>
+        /// <returns>The serial number, or <c>null</c> when the reply carries none.</returns>
         Task<string?> GetWiserBoardSerialNumber();
 
         /// <summary>
-        /// Send an Airlink packet to the controller.
+        /// Probably makes the controller send a packet over its Airlink radio; the request carries no data.
         /// </summary>
         Task SendAirlinkPacket();
 
         /// <summary>
-        /// Mark production test as passed.
+        /// Marks the production test as passed.
         /// </summary>
         /// <remarks>
         /// WARNING: This operation may be dangerous and is disabled by default.
-        /// Set 'allowDangerousInternTestCalls' to true in IhcSettings to enable this method.
+        /// Set <see cref="IhcSettings.AllowDangerousInternTestCalls"/> to <c>true</c> to enable this method.
         /// </remarks>
         Task ProductionTestPassed();
 
         /// <summary>
-        /// Get the current time and date from the controller.
+        /// Gets the controller's time and date through the test service. The SDK takes the wire's <c>long</c> as
+        /// milliseconds since 1970 UTC, an unconfirmed unit, and returns <c>DateTimeOffset.MinValue</c> when the
+        /// reply carries no value.
         /// </summary>
         Task<DateTimeOffset> GetTimeAndDate();
 
         /// <summary>
-        /// Set the time and date on the controller.
+        /// Sets the controller's time and date through the test service. The SDK sends the value as milliseconds since
+        /// 1970 UTC, an unconfirmed unit.
         /// </summary>
-        /// <param name="dateTime">The date and time to set</param>
+        /// <param name="dateTime">The date and time to set; any offset is converted to UTC.</param>
         Task SetTimeAndDate(DateTimeOffset dateTime);
 
         /// <summary>
-        /// Burn IO configuration.
+        /// Probably writes (burns) the I/O board's firmware; the request carries no image.
         /// </summary>
         /// <remarks>
         /// WARNING: This operation may be dangerous and is disabled by default.
-        /// Set 'allowDangerousInternTestCalls' to true in IhcSettings to enable this method.
+        /// Set <see cref="IhcSettings.AllowDangerousInternTestCalls"/> to <c>true</c> to enable this method.
         /// </remarks>
         Task<bool> BurnIO();
 
         /// <summary>
-        /// Test the SD card functionality.
+        /// Tests the SD card.
         /// </summary>
         /// <remarks>
         /// WARNING: This operation may be dangerous and is disabled by default.
-        /// Set 'allowDangerousInternTestCalls' to true in IhcSettings to enable this method.
+        /// Set <see cref="IhcSettings.AllowDangerousInternTestCalls"/> to <c>true</c> to enable this method.
         /// </remarks>
         Task<bool> TestSdCard();
 
         /// <summary>
-        /// Turn on the red LED.
+        /// Turns on the red LED.
         /// </summary>
         Task TurnOnRedLed();
 
         /// <summary>
-        /// Turn off the red LED.
+        /// Turns off the red LED.
         /// </summary>
         Task TurnOffRedLed();
 
         /// <summary>
-        /// Turn on the green LED.
+        /// Turns on the green LED.
         /// </summary>
         Task TurnOnGreenLed();
 
         /// <summary>
-        /// Turn off the green LED.
+        /// Turns off the green LED.
         /// </summary>
         Task TurnOffGreenLed();
 
         /// <summary>
-        /// Turn on the blue LED.
+        /// Turns on the blue LED.
         /// </summary>
         Task TurnOnBlueLed();
 
         /// <summary>
-        /// Turn off the blue LED.
+        /// Turns off the blue LED.
         /// </summary>
         Task TurnOffBlueLed();
 
         /// <summary>
-        /// Turn on all LEDs.
+        /// Turns on all LEDs.
         /// </summary>
         Task TurnOnLeds();
 
         /// <summary>
-        /// Test the IO board functionality.
+        /// Tests the I/O board.
         /// </summary>
         /// <remarks>
         /// WARNING: This operation may be dangerous and is disabled by default.
-        /// Set 'allowDangerousInternTestCalls' to true in IhcSettings to enable this method.
+        /// Set <see cref="IhcSettings.AllowDangerousInternTestCalls"/> to <c>true</c> to enable this method.
         /// </remarks>
         Task<bool> TestIOBoard();
 
         /// <summary>
-        /// Read USB host status.
+        /// Reads the USB host status.
         /// </summary>
         Task<bool> ReadUsbHost();
 
         /// <summary>
-        /// Send data via RS485 interface.
+        /// Sends data over the RS-485 port.
         /// </summary>
-        /// <param name="data">The data to send</param>
+        /// <param name="data">The data to send.</param>
         /// <remarks>
         /// WARNING: This operation may be dangerous and is disabled by default.
-        /// Set 'allowDangerousInternTestCalls' to true in IhcSettings to enable this method.
+        /// Set <see cref="IhcSettings.AllowDangerousInternTestCalls"/> to <c>true</c> to enable this method.
         /// </remarks>
         Task<bool> SendRS485Data(string data);
 
         /// <summary>
-        /// Read data from RS485 interface.
+        /// Reads data from the RS-485 port.
         /// </summary>
-        /// <param name="data">Data parameter for read operation</param>
+        /// <param name="data">Passed to the controller as-is; its meaning is not documented.</param>
         /// <remarks>
         /// WARNING: This operation may be dangerous and is disabled by default.
-        /// Set 'allowDangerousInternTestCalls' to true in IhcSettings to enable this method.
+        /// Set <see cref="IhcSettings.AllowDangerousInternTestCalls"/> to <c>true</c> to enable this method.
         /// </remarks>
         Task<bool> ReadRS485Data(string data);
     }

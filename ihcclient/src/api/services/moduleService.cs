@@ -6,52 +6,67 @@ using System.Diagnostics;
 
 namespace Ihc {
     /// <summary>
-    /// A highlevel client interface for the IHC ModuleService without any of the soap distractions.
+    /// Transfers the scene project of IHC SceneDesign and IHC SceneView (the graphical pages and the e-mail and SMS
+    /// messages and controls) to and from the controller, which holds one. It is separate from the IHC project, and
+    /// sending an IHC project leaves it in place.
     /// </summary>
     public interface IModuleService : IIHCApiService
     {
         /// <summary>
-        /// Get information about the scene project on the controller.
+        /// Describes the scene project the controller holds: its name, size, file path, dates and checksum.
         /// </summary>
+        /// <returns>The information, or <c>null</c> when the reply carries none.</returns>
         public Task<SceneProjectInfo?> GetSceneProjectInfo();
 
         /// <summary>
-        /// Get a scene project by name.
+        /// Downloads the stored scene project in one call.
         /// </summary>
-        /// <param name="name">The name of the scene project to retrieve</param>
+        /// <param name="name">Probably the name <see cref="GetSceneProjectSegment"/> takes: the stored file's name
+        /// without its <c>.icz</c> suffix.</param>
+        /// <returns>The scene project, or <c>null</c> when the reply carries no file.</returns>
         public Task<SceneProject?> GetSceneProject(string name);
 
         /// <summary>
-        /// Store a scene project on the controller.
+        /// Uploads a whole scene project in one call.
         /// </summary>
-        /// <param name="project">The scene project to store</param>
+        /// <param name="project">The scene project file (.icz) to store.</param>
         public Task StoreSceneProject(SceneProject project);
 
         /// <summary>
-        /// Get a specific segment of a scene project (for large projects that need to be downloaded in parts).
+        /// Downloads one segment of the stored scene project. Ask for segments 0, 1, 2 and so on, joining their data in
+        /// order, until the reply is <c>null</c>; the controller gives no segment count.
         /// </summary>
-        /// <param name="name">The name of the scene project</param>
-        /// <param name="segmentNumber">The segment number to retrieve</param>
+        /// <param name="name">The file name in <see cref="SceneProjectInfo.Filepath"/> without its <c>.icz</c>
+        /// suffix.</param>
+        /// <param name="segmentNumber">Zero-based segment index.</param>
+        /// <returns>The segment, or <c>null</c> past the last one.</returns>
         public Task<SceneProject?> GetSceneProjectSegment(string name, int segmentNumber);
 
         /// <summary>
-        /// Store a segment of a scene project (for large projects that need to be uploaded in parts).
+        /// Uploads one segment of a scene project; the upload replaces the project the controller holds. Send slices of
+        /// <see cref="GetSceneProjectSegmentationSize"/> bytes in order, the last carrying the remainder.
         /// </summary>
-        /// <param name="projectSegment">The project segment to store</param>
-        /// <param name="isFirstSegment">True if this is the first segment</param>
-        /// <param name="isLastSegment">True if this is the last segment</param>
-        /// <returns>True if the operation was successful</returns>
+        /// <param name="projectSegment">The segment's bytes, with the project's name as
+        /// <see cref="SceneProject.Filename"/>; the controller stores its copy under a fixed file name
+        /// regardless.</param>
+        /// <param name="isFirstSegment"><c>true</c> for the first segment.</param>
+        /// <param name="isLastSegment"><c>true</c> for the last segment; a project that fits in one segment sets both
+        /// flags.</param>
+        /// <returns><c>true</c> when the controller took the segment; <c>false</c> when it did not or the reply carries
+        /// no value; stop the upload at the first <c>false</c>.</returns>
         public Task<bool> StoreSceneProjectSegment(SceneProject projectSegment, bool isFirstSegment, bool isLastSegment);
 
         /// <summary>
-        /// Clear all scene projects from the controller.
+        /// Probably deletes the scene project the controller holds. Unverified: no vendor client calls it, so treat it
+        /// as destructive.
         /// </summary>
         public Task ClearAll();
 
         /// <summary>
-        /// Get the segmentation size used for splitting large scene projects into segments.
+        /// Gets the segment size for the scene-project transfers: slice an upload into segments of this many bytes
+        /// (5,000 on firmware 3.3.44).
         /// </summary>
-        /// <returns>The segment size in bytes</returns>
+        /// <returns>The segment size in bytes; 0 when the reply carries no value.</returns>
         public Task<int> GetSceneProjectSegmentationSize();
     }
 

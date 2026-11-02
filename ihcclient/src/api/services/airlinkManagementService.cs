@@ -7,59 +7,98 @@ using System.Collections.Generic;
 namespace Ihc
 {
     /// <summary>
-    /// High-level interface for IHC Wireless (Airlink Management) operations.
-    /// Used for managing wireless devices in the IHC system.
+    /// Manages IHC Wireless (Airlink) radio devices through the controller: the configuration mode in which a device is
+    /// linked, the test mode for its signal and battery test, the detected-device list and low-battery reports.
+    /// No operation links or unlinks. The project records each linked device's serial number, and the controller keeps
+    /// its own link register, which its SD-card backup includes and a sent project does not rebuild.
     /// </summary>
     public interface IAirlinkManagementService : IIHCApiService
     {
         /// <summary>
-        /// Enter RF configuration mode to allow device pairing and configuration.
+        /// Puts the controller in wireless configuration mode, in which a device that announces itself (when its
+        /// buttons are pressed) is reported to <see cref="WaitForDeviceDetected"/>. Always end it with
+        /// <see cref="ExitRFConfiguration"/>.
         /// </summary>
+        /// <returns><c>true</c> if the controller accepted; <c>false</c> if it refused or the reply carries no
+        /// value.</returns>
         Task<bool> EnterRFConfiguration();
 
         /// <summary>
-        /// Exit RF configuration mode.
+        /// Leaves the wireless configuration mode entered with <see cref="EnterRFConfiguration"/>, once any pending
+        /// <see cref="WaitForDeviceDetected"/> has returned.
         /// </summary>
+        /// <returns><c>true</c> if the controller accepted; <c>false</c> if it refused or the reply carries no
+        /// value.</returns>
         Task<bool> ExitRFConfiguration();
 
         /// <summary>
-        /// Enter RF test mode for testing device communication.
+        /// Puts the controller in wireless test mode, in which test messages from devices are reported to
+        /// <see cref="WaitForDeviceTestResult"/>; a signal and battery test runs in it. Always end it with
+        /// <see cref="ExitRFTest"/>.
         /// </summary>
+        /// <returns><c>true</c> if the controller accepted; <c>false</c> if it refused or the reply carries no
+        /// value.</returns>
         Task<bool> EnterRFTest();
 
         /// <summary>
-        /// Exit RF test mode.
+        /// Leaves the wireless test mode entered with <see cref="EnterRFTest"/>.
         /// </summary>
+        /// <returns><c>true</c> if the controller accepted; <c>false</c> if it refused or the reply carries no
+        /// value.</returns>
         Task<bool> ExitRFTest();
 
         /// <summary>
-        /// Test an RF actuator with a specific serial number.
+        /// In test mode, asks the controller to test the mains-powered wireless device (an actuator) with this serial
+        /// number. Battery devices need no such request: they report when a button is pressed.
         /// </summary>
+        /// <param name="serialNumber">The device's 64-bit serial number, as in
+        /// <see cref="RFDevice.SerialNumber"/>.</param>
+        /// <returns><c>true</c> if the controller accepted the request; <c>false</c> if it refused or the reply
+        /// carries no value.</returns>
         Task<bool> TestRFActuatorWithSerialNumber(long serialNumber);
 
         /// <summary>
-        /// Get list of resource IDs for devices running out of battery.
+        /// Gets the ids of the devices the controller reports as low on battery, probably the element ids of the
+        /// project's wireless products and LED-dimmer channels.
         /// </summary>
+        /// <returns>The ids as sent; a controller with no low device answers a list holding only -1.</returns>
         Task<IReadOnlyList<int>> GetDevicesRunningOutOfBattery();
 
         /// <summary>
-        /// Wait for a new device to be detected during configuration.
+        /// Long-polls in wireless configuration mode: the controller holds the call until a device announces itself or
+        /// the hold runs out, so call it repeatedly while waiting for a device.
         /// </summary>
+        /// <param name="timeoutSeconds">Longest time, in seconds, the controller holds the call.</param>
+        /// <returns>The detected device, or <c>null</c> when the reply carries none; a device with serial number 0 is
+        /// no detection.</returns>
         Task<RFDevice?> WaitForDeviceDetected(int timeoutSeconds);
 
         /// <summary>
-        /// Wait for device test result.
+        /// Long-polls in wireless test mode: the controller holds the call until a device sends a test message or the
+        /// hold runs out, so call it repeatedly; a reply may come from another device than the one under test, so check
+        /// its serial number.
         /// </summary>
+        /// <param name="timeoutSeconds">Longest time, in seconds, the controller holds the call.</param>
+        /// <returns>The reporting device with its battery and signal readings, or <c>null</c> when the reply carries
+        /// none.</returns>
         Task<RFDevice?> WaitForDeviceTestResult(int timeoutSeconds);
 
         /// <summary>
-        /// Get list of all detected RF devices.
+        /// Gets the wireless devices the controller lists as detected, with their signal and battery values.
         /// </summary>
+        /// <returns>The devices in the controller's order; empty when it lists none.</returns>
+        /// <remarks>
+        /// The list need not match the running project: it can include devices of no product in it, all with
+        /// signal 0.
+        /// </remarks>
         Task<IReadOnlyList<RFDevice>> GetDetectedDeviceList();
 
         /// <summary>
-        /// Get battery level for a specific resource ID.
+        /// Gets the battery level of one device. Unverified: no vendor client calls it, and nothing documents the
+        /// scale of the result.
         /// </summary>
+        /// <param name="resourceId">Probably the id of the device's resource; nothing documents the argument.</param>
+        /// <returns>The level, or 0 when the reply carries no value.</returns>
         Task<int> GetBatteryLevel(int resourceId);
     }
 

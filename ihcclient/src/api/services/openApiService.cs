@@ -11,143 +11,202 @@ using System.Net.Http;
 
 namespace Ihc {
     /// <summary>
-    /// A highlevel client interface for the IHC OpenAPIService for v3.0+ controllers without any of the soap distractions. It represents a subset of other services.
-    /// The IHC service provided here does not appear to be fully functional, complete and perhaps not with same quality as other services. Probably best to use other services instead.
+    /// The controller's open interface for third-party products, which the vendor calls the IHC API: mostly operations
+    /// the other services also offer, behind a login of its own. IHC Administrator's access control opens it per route
+    /// (Danish UI: "Åben for tredjepart produkter"). The vendor gives no support for it, so prefer the other services.
+    /// No vendor client uses it; its operations are documented as their counterparts in the other services behave.
     /// </summary>
     public interface IOpenAPIService : ICookieHandlerService, IIHCApiService
     {
         /// <summary>
-        /// Login to IHC controller with user/password in predefined configuration settings. This method must be called prior to most other calls on other services.
+        /// Logs in with the user name and password from the settings, through this service's own login operation. Call
+        /// it before this service's other operations.
         /// </summary>
+        /// <remarks>A refused login throws <see cref="ErrorWithCodeException"/> with
+        /// <see cref="Errors.LOGIN_UNKNOWN_ERROR"/>, as the reply says only whether it succeeded.</remarks>
         public Task Authenticate();
 
         /// <summary>
-        /// Authenticate with the OpenAPI service overriding predefined configuration settings for username and password.
+        /// Logs in as <see cref="Authenticate()"/> does, with the given user name and password in place of the
+        /// settings'.
         /// </summary>
-        /// <param name="userName">Username for authentication</param>
-        /// <param name="password">Password for authentication</param>
+        /// <param name="userName">User name of the controller account; case-sensitive.</param>
+        /// <param name="password">The account's password; case-sensitive, and sent as clear text in the request body,
+        /// which only TLS (an <c>https</c> endpoint) protects.</param>
+        /// <remarks>A refused login throws <see cref="ErrorWithCodeException"/> with
+        /// <see cref="Errors.LOGIN_UNKNOWN_ERROR"/>, as the reply says only whether it succeeded.</remarks>
         public Task Authenticate(string userName, string password);
 
         /// <summary>
-        /// Get firmware version information.
+        /// Reads the controller's firmware version as major, minor and build numbers.
         /// </summary>
+        /// <returns>The version, or <c>null</c> when the reply carries none.</returns>
         public Task<FWVersion?> GetFWVersion();
 
         /// <summary>
-        /// Get OpenAPI version number.
+        /// Gets the OpenAPI version number.
         /// </summary>
+        /// <returns>The controller's integer answer as a decimal string; <c>"0"</c> when the reply carries no
+        /// value.</returns>
         public Task<string> GetAPIVersion();
 
         /// <summary>
-        /// Get controller uptime.
+        /// Reads the controller's uptime: milliseconds since it last started, as in
+        /// <see cref="IConfigurationService.GetSystemInfo"/>; <c>TimeSpan.Zero</c> when the reply carries no value.
         /// </summary>
         public Task<TimeSpan> GetUptime();
 
         /// <summary>
-        /// Get current controller time.
+        /// Reads the controller's local time, as <see cref="ITimeManagerService.GetCurrentLocalTime"/> does.
         /// </summary>
+        /// <returns>The controller's local time. The SDK reads it at a fixed +01:00 offset, so the instant is right
+        /// only while the controller runs at UTC+1; <c>DateTimeOffset.MinValue</c> when the reply carries no readable
+        /// date.</returns>
         public Task<DateTimeOffset> GetTime();
 
         /// <summary>
-        /// Check if an IHC project is available.
+        /// Asks whether the controller holds a project, as <see cref="IControllerService.IsIHCProjectAvailable"/>
+        /// does.
         /// </summary>
+        /// <returns>The controller's answer; <c>false</c> also when the reply carries no value.</returns>
         public Task<bool> IsIHCProjectAvailable();
 
         /// <summary>
-        /// Get resource IDs for all dataline inputs.
+        /// Lists the resource ids of the dataline inputs, as
+        /// <see cref="IResourceInteractionService.GetAllDatalineInputs"/> does; empty when the reply carries no list.
+        /// The dataline number the controller sends with each id is dropped.
         /// </summary>
         public Task<IReadOnlyList<int>> GetDatalineInputIDs();
 
         /// <summary>
-        /// Get resource IDs for all dataline outputs.
+        /// Lists the resource ids of the dataline outputs, as
+        /// <see cref="IResourceInteractionService.GetAllDatalineOutputs"/> does; empty when the reply carries no list.
+        /// The dataline number the controller sends with each id is dropped.
         /// </summary>
         public Task<IReadOnlyList<int>> GetDatalineOutputIDs();
 
         /// <summary>
-        /// Reboot the controller immediately.
+        /// Restarts the controller, which ends the session; log in again once it is back. As with
+        /// <see cref="IConfigurationService.DelayedReboot"/>, the controller replies first and then restarts.
         /// </summary>
         public Task DoReboot();
 
         /// <summary>
-        /// Ping the controller to verify connectivity.
+        /// Pings the controller to check that it answers.
         /// </summary>
         public Task Ping();
 
         /// <summary>
-        /// Get current values for specified resource IDs.
+        /// Reads the given resources' current (runtime) values, as
+        /// <see cref="IResourceInteractionService.GetRuntimeValues"/> does. The reply carries no resource ids, so the
+        /// SDK pairs values with the requested ids by position.
         /// </summary>
-        /// <param name="resourceIds">Collection of resource IDs to get values for</param>
+        /// <param name="resourceIds">Ids of the resources to read.</param>
+        /// <returns>One value per requested id, in request order, with <see cref="ResourceValue.ResourceID"/> set from
+        /// the request.</returns>
+        /// <exception cref="InvalidOperationException">The reply holds a different number of values than ids were
+        /// requested, or a value is missing.</exception>
         public Task<IReadOnlyList<ResourceValue>> GetValues(IReadOnlyList<int> resourceIds);
 
         /// <summary>
-        /// Set values for multiple resources.
+        /// Writes current (runtime) values to their resources in one call, as
+        /// <see cref="IResourceInteractionService.SetResourceValues"/> does; this call has no initial-value form, so
+        /// the SDK ignores <see cref="ResourceValue.IsValueRuntime"/>.
         /// </summary>
-        /// <param name="values">Collection of resource values to set</param>
+        /// <param name="values">Values to write, each addressed by its <see cref="ResourceValue.ResourceID"/>.</param>
+        /// <returns><c>true</c> when the controller accepted the values; what a <c>false</c> answer means is not
+        /// known, as for <see cref="IResourceInteractionService.SetResourceValues"/>. <c>false</c> also when the reply
+        /// carries no value.</returns>
         public Task<bool> SetValues(IReadOnlyList<ResourceValue> values);
 
         /// <summary>
-        /// Enable event subscription for specified resource IDs.
+        /// Subscribes to value changes of the given resources, which <see cref="WaitForEvents"/> then reports; the
+        /// same pattern as the value notifications of <see cref="IResourceInteractionService"/>.
         /// </summary>
-        /// <param name="resourceIds">Collection of resource IDs to subscribe to</param>
+        /// <param name="resourceIds">Ids of the resources to follow.</param>
         public Task EnableSubscription(IReadOnlyList<int> resourceIds);
 
         /// <summary>
-        /// Disable event subscription for specified resource IDs.
+        /// Ends the subscription to value changes of the given resources.
         /// </summary>
-        /// <param name="resourceIds">Collection of resource IDs to unsubscribe from</param>
+        /// <param name="resourceIds">Ids of the resources to stop following.</param>
         public Task DisableSubscription(IReadOnlyList<int> resourceIds);
 
         /// <summary>
-        /// Wait for resource value change events from subscribed resources.
+        /// Waits for value changes of the subscribed resources and returns them with two controller status fields. The
+        /// controller holds the call until a change arrives or the timeout runs out, as
+        /// <see cref="IResourceInteractionService.WaitForResourceValueChanges"/> does.
         /// </summary>
-        /// <param name="timeout">Timeout in seconds</param>
+        /// <param name="timeout">Longest time, in seconds, the controller holds the call.</param>
+        /// <returns>Never <c>null</c>: when the reply carries no package the SDK returns an empty one whose
+        /// <see cref="EventPackage.ControllerExecutionRunning"/> is <c>false</c>.</returns>
         public Task<EventPackage> WaitForEvents(int timeout);
 
         /// <summary>
-        /// Get async stream of resource value changes for subscribed resources.
+        /// Streams value changes of the given resources: subscribes once, calls <see cref="WaitForEvents"/> in a loop
+        /// until cancelled, and unsubscribes when the enumeration ends. Failed waits are retried with a growing pause
+        /// until too many fail in a row, and the last error is then thrown.
         /// </summary>
-        /// <param name="resourceIds">Collection of resource IDs to monitor</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <param name="timeout_between_waits_in_seconds">Timeout between waits in seconds</param>
+        /// <param name="resourceIds">Ids of the resources to follow.</param>
+        /// <param name="cancellationToken">Stops the stream; a wait already in flight is not interrupted.</param>
+        /// <param name="timeout_between_waits_in_seconds">Longest time, in seconds, the controller holds each
+        /// <see cref="WaitForEvents"/> call.</param>
         public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(IReadOnlyList<int> resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15);
 
         /// <summary>
-        /// Get project information.
+        /// Reads information on the project stored on the controller: the record
+        /// <see cref="IControllerService.GetProjectInfo"/> returns.
         /// </summary>
+        /// <returns>The project information, or <c>null</c> when the reply carries none.</returns>
         public Task<ProjectInfo?> GetProjectInfo();
 
         /// <summary>
-        /// Get number of project segments.
+        /// Reads how many segments the stored project downloads in through <see cref="GetIHCProjectSegment"/>, as
+        /// <see cref="IControllerService.GetIHCProjectNumberOfSegments"/> does; 0 when the reply carries no value.
         /// </summary>
         public Task<int> GetIHCProjectNumberOfSegments();
 
         /// <summary>
-        /// Get project segmentation size in bytes.
+        /// Reads the project segment size in bytes of gzip-compressed data, as
+        /// <see cref="IControllerService.GetIHCProjectSegmentationSize"/> does; 0 when the reply carries no value.
         /// </summary>
         public Task<int> GetIHCProjectSegmentationSize();
 
         /// <summary>
-        /// Get a specific project segment by index and version.
+        /// Downloads one segment of the stored project, a slice of the controller's own gzip stream of it, as
+        /// <see cref="IControllerService.GetIHCProjectSegment"/> does, but returns the slice raw: joined in index
+        /// order, the segments decompress as a whole.
         /// </summary>
-        /// <param name="index">Segment index</param>
-        /// <param name="majorVersion">Major version number</param>
-        /// <param name="minorVersion">Minor version number</param>
+        /// <param name="index">Segment index, 0-based, below <see cref="GetIHCProjectNumberOfSegments"/>.</param>
+        /// <param name="majorVersion">The <see cref="ProjectInfo.ProjectMajorRevision"/> from
+        /// <see cref="GetProjectInfo"/>.</param>
+        /// <param name="minorVersion">The <see cref="ProjectInfo.ProjectMinorRevision"/> from
+        /// <see cref="GetProjectInfo"/>.</param>
+        /// <returns>The segment; its data is empty when the reply carries no file.</returns>
         public Task<ProjectSegment> GetIHCProjectSegment(int index, int majorVersion, int minorVersion);
 
         /// <summary>
-        /// Get scene project information.
+        /// Reads information on the scene project stored on the controller: the record
+        /// <see cref="IModuleService.GetSceneProjectInfo"/> returns. This service can only download scene projects.
         /// </summary>
+        /// <returns>The scene project information, or <c>null</c> when the reply carries none.</returns>
         public Task<SceneProjectInfo?> GetSceneProjectInfo();
 
         /// <summary>
-        /// Get scene project segmentation size.
+        /// Reads the scene project segment size in bytes, as
+        /// <see cref="IModuleService.GetSceneProjectSegmentationSize"/> does; 0 when the reply carries no value.
         /// </summary>
         public Task<int> GetSceneProjectSegmentationSize();
 
         /// <summary>
-        /// Get a specific scene project segment by index.
+        /// Downloads one segment of the stored scene project's .icz file, as
+        /// <see cref="IModuleService.GetSceneProjectSegment"/> does but without a project name. Ask for segments 0, 1,
+        /// 2 and so on, joining their data in order; their count is the scene project's
+        /// <see cref="SceneProjectInfo.Size"/> divided by the segment size, rounded up, and a segment past the last
+        /// comes back empty.
         /// </summary>
-        /// <param name="index">Segment index</param>
+        /// <param name="index">Zero-based segment index.</param>
+        /// <returns>The segment; its data is empty when the reply carries no file.</returns>
         public Task<SceneProjectSegment> GetSceneProjectSegment(int index);
     }
 
@@ -811,8 +870,6 @@ namespace Ihc {
         /// <summary>
         /// Returns an async stream of changes in specified resources.
         /// Corresponds to EnableSubscription + WaitForEvents in a loop.
-        /// Nb. Internal timeout should be lower that system timeout or the call will fail after a couple of calls.
-        /// Limit seems to be maybe around 20s.
         /// </summary>
         /// <param name="resourceIds">Array of resource IDs to monitor</param>
         /// <param name="cancellationToken">Cancellation token</param>

@@ -7,69 +7,94 @@ using System.Collections.Generic;
 namespace Ihc
 {
     /// <summary>
-    /// High-level interface for IHC LED dimmer management operations.
-    /// Used for detecting, configuring and firmware-upgrading LED dimmer devices on the datalines.
+    /// Manages the RS-485 LED Dimmer 2 (a wired two-channel dimmer) through the controller: linking a dimmer's
+    /// channels, listing the dimmers and upgrading their firmware.
     /// </summary>
     public interface ILedDimmerManagementService : IIHCApiService
     {
         /// <summary>
-        /// Enter LED dimmer configuration mode to allow detection and assignment of devices.
+        /// Puts the controller's LED-dimmer handling in configuration mode, as needed around linking a dimmer and
+        /// around a firmware upgrade. Always end it with <see cref="ExitConfiguration"/>, also after a refusal.
         /// </summary>
+        /// <returns><c>true</c> if the controller accepted; <c>false</c> if it refused or the reply carries no
+        /// value.</returns>
         Task<bool> EnterConfiguration();
 
         /// <summary>
-        /// Exit LED dimmer configuration mode.
+        /// Leaves the LED-dimmer configuration mode entered with <see cref="EnterConfiguration"/>.
         /// </summary>
+        /// <returns><c>true</c> if the controller accepted; <c>false</c> if it refused or the reply carries no
+        /// value.</returns>
         Task<bool> ExitConfiguration();
 
         /// <summary>
-        /// Wait for a new LED dimmer device to be detected during configuration.
+        /// Long-polls in configuration mode: the controller holds the call until a dimmer announces itself (both its
+        /// buttons held until they blink, then one pressed) or the hold runs out. Repeat the call to keep listening.
         /// </summary>
-        /// <param name="timeoutSeconds">Time in seconds to wait for a device to be detected.</param>
+        /// <param name="timeoutSeconds">Longest time, in seconds, the controller holds the call.</param>
+        /// <returns>The announcing dimmer, or <c>null</c> when the reply carries none.</returns>
         Task<LedDimmerInfo?> WaitForDeviceDetected(int timeoutSeconds);
 
         /// <summary>
-        /// Scan for already-configured LED dimmer devices.
+        /// Scans for LED dimmers that are already configured. Unverified: no vendor client calls it.
         /// </summary>
-        /// <remarks>
-        /// The two integer parameters are passed through to the controller as-is; their exact
-        /// meaning is not documented in the service WSDL.
-        /// </remarks>
+        /// <param name="scanParameter1">Passed to the controller as-is; its meaning is not documented.</param>
+        /// <param name="scanParameter2">Passed to the controller as-is; its meaning is not documented.</param>
         Task<IReadOnlyList<LedDimmerInfo>> ScanConfiguredDevices(int scanParameter1, int scanParameter2);
 
         /// <summary>
-        /// Assign a channel ID to an LED dimmer device identified by its serial number.
+        /// Assigns a bus id to one channel of the dimmer with the given serial number; 0 is the unlink value. Link with
+        /// one call per channel, in configuration mode.
         /// </summary>
-        /// <param name="serialNumber">Serial number of the device to assign.</param>
-        /// <param name="channel">Dataline channel the device is connected to.</param>
-        /// <param name="channelID">Channel ID to assign to the device.</param>
+        /// <param name="serialNumber">The dimmer's serial number, as <see cref="WaitForDeviceDetected"/> reports
+        /// it.</param>
+        /// <param name="channel">Channel index within the dimmer, 0 or 1.</param>
+        /// <param name="channelID">Bus id for the channel, 0x80-0xBF (-128 to -65 as a signed byte); 0 unlinks.</param>
+        /// <returns><c>true</c> on success; <c>false</c> for a failed link, also when the reply carries no
+        /// value.</returns>
         Task<bool> AssignID(string serialNumber, sbyte channel, sbyte channelID);
 
         /// <summary>
-        /// Get the number of detected LED dimmer devices.
+        /// Gets the number of LED Dimmer 2 entries the controller manages.
         /// </summary>
+        /// <returns>The count; 0 also when the reply carries no value.</returns>
         Task<int> GetDeviceCount();
 
         /// <summary>
-        /// Get the current light level of the LED dimmer on the given channel.
+        /// Gets the current light level and fault flags of one LED-dimmer channel.
         /// </summary>
-        /// <param name="channel">Channel to read the light level from.</param>
+        /// <param name="channel">Channel to read the light level from; probably its bus id
+        /// (<see cref="LedDimmerInfo.ChannelID"/>).</param>
+        /// <returns>The level and fault flags, or <c>null</c> when the reply carries none.</returns>
         Task<LedDimmerLevel?> GetLightLevel(sbyte channel);
 
         /// <summary>
-        /// Get the list of all detected LED dimmer devices.
+        /// Gets the controller's LED Dimmer 2 entries with identity, versions, link state, light level and fault flags.
+        /// There is one entry per channel, a dimmer's two channels as consecutive entries.
         /// </summary>
+        /// <returns>The entries in the controller's order; empty when it lists none.</returns>
         Task<IReadOnlyList<LedDimmerInfo>> GetDeviceList();
 
         /// <summary>
-        /// Start a firmware upgrade for the LED dimmer device identified by its serial number.
+        /// Starts pushing the controller's stored LED Dimmer 2 firmware image to one dimmer; the call carries no image.
+        /// Follow the upgrade with <see cref="GetFirmwareUpgradeProgress"/>.
         /// </summary>
-        /// <param name="serialNumber">Serial number of the device to upgrade.</param>
+        /// <param name="serialNumber">Serial number of the dimmer to upgrade, as <see cref="GetDeviceList"/> reports
+        /// it.</param>
+        /// <remarks>
+        /// A full upgrade runs <see cref="EnterConfiguration"/>, this call, progress polls while the status is
+        /// <c>running</c>, and <see cref="ExitConfiguration"/>. Known defect: the controller upgrades all dimmers in
+        /// one call when the serial is <c>null</c>, but the parameter is declared non-nullable, so passing <c>null</c>
+        /// draws a nullable warning.
+        /// </remarks>
         Task StartFirmwareUpgrade(string serialNumber);
 
         /// <summary>
-        /// Get the progress of an ongoing LED dimmer firmware upgrade.
+        /// Gets the state of the current or last LED-dimmer firmware upgrade: status, progress against a maximum, the
+        /// serial being upgraded and a message. It also shows an upgrade that was already running, so check it before
+        /// <see cref="StartFirmwareUpgrade"/>.
         /// </summary>
+        /// <returns>The progress record, or <c>null</c> when the reply carries none.</returns>
         Task<LedDimmerProgress?> GetFirmwareUpgradeProgress();
     }
 

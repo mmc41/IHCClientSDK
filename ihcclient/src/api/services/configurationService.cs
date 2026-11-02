@@ -6,136 +6,199 @@ using System.Collections.Generic;
 
 namespace Ihc {
     /// <summary>
-    /// A highlevel client interface for the IHC ConfigurationService without any of the soap distractions.
+    /// Controller-wide settings and housekeeping: system information, wired network, DNS, WiFi, access control,
+    /// outgoing mail (SMTP), e-mail control (POP3), the user log, the server language and restart.
     /// </summary>
     public interface IConfigurationService : IIHCApiService
     {
         /// <summary>
-        /// Get system information including uptime, version, serial number, and hardware details.
+        /// Reads the controller's identity and status: uptime, clock, serial number, production date, and firmware,
+        /// hardware and module versions.
         /// </summary>
         public Task<SystemInfo> GetSystemInfo();
 
         /// <summary>
-        /// Clear the user log on the controller.
+        /// Deletes the user log stored on the controller (see <see cref="GetUserLog"/>).
         /// </summary>
         public Task ClearUserLog();
 
         /// <summary>
-        /// Get user log entries from the controller.
+        /// Reads the controller's user log: its own record of events, warnings and faults, not of user input. Each call
+        /// sends an empty cursor, so it returns stored lines rather than only those added since an earlier read.
         /// </summary>
-        /// <param name="lang">Language code (default: "da" for Danish)</param>
+        /// <param name="lang">Two-letter language code, such as <c>da</c> or <c>en</c>; probably selects the language
+        /// of the log text.</param>
+        /// <returns>
+        /// One entry per line, newest stored first, which is not time-stamp order once the controller's clock has
+        /// gone back. Each is a <c>yyyy.MM.dd HH:mm:ss</c> time stamp by the controller's clock, a tab, the severity
+        /// (such as <c>Fejl</c>), a tab and the message. The text ends in a line feed, so the last entry is empty.
+        /// </returns>
         public Task<IReadOnlyList<string>> GetUserLog(string lang = "da");
 
         /// <summary>
-        /// Reboot the IHC controller after a delay.
+        /// Restarts the controller after a delay. The controller replies first and then restarts, which ends the
+        /// session, so log in again once it is back.
         /// </summary>
-        /// <param name="delay">Delay in miliseconds)</param>
+        /// <param name="delay">Delay before the restart, in milliseconds.</param>
         public Task DelayedReboot(int delay);
 
         /// <summary>
-        /// Get network settings including IP address, netmask, gateway, and ports.
+        /// Reads the wired-LAN settings: IPv4 address, netmask and gateway as dotted strings, and the web (HTTP) and
+        /// secure (HTTPS) ports. There is no DHCP or host-name setting.
         /// </summary>
+        /// <returns>The settings, or <c>null</c> when the reply carries none.</returns>
         public Task<NetworkSettings?> GetNetworkSettings();
 
         /// <summary>
-        /// Set network settings for the controller.
+        /// Writes all five wired-LAN values as one record, not a delta: read them with
+        /// <see cref="GetNetworkSettings"/>, change what is needed and send them all back.
         /// </summary>
-        /// <param name="settings">Network settings to configure</param>
+        /// <param name="settings">The complete wired-LAN settings to store.</param>
+        /// <remarks>
+        /// A save that changes the IP address makes the controller restart without replying, so expect the call to fail
+        /// although the new values are kept.
+        /// </remarks>
+        /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c> or breaks a limit declared on
+        /// <see cref="NetworkSettings"/>; nothing is sent.</exception>
         public Task SetNetworkSettings(NetworkSettings settings);
 
         /// <summary>
-        /// Get DNS server addresses configured on the controller.
+        /// Reads the primary and secondary DNS servers as dotted IPv4 strings; any further servers the controller lists
+        /// are ignored.
         /// </summary>
         public Task<DNSServers> GetDNSServers();
 
         /// <summary>
-        /// Set DNS server addresses (primary and secondary).
+        /// Writes the primary and secondary DNS servers; only IPv4 addresses can be sent.
         /// </summary>
-        /// <param name="dnsServers">DNS server configuration</param>
+        /// <param name="dnsServers">Both servers as dotted IPv4 strings; a <c>null</c> or empty one is sent as no
+        /// server.</param>
+        /// <exception cref="ArgumentException"><paramref name="dnsServers"/> is <c>null</c> or breaks a limit declared
+        /// on <see cref="DNSServers"/>; nothing is sent.</exception>
         public Task SetDNSServers(DNSServers dnsServers);
 
         /// <summary>
-        /// Get wireless LAN settings.
+        /// Reads the stored configuration of the controller's WiFi client interface, a USB dongle unrelated to IHC
+        /// Wireless: on/off, network, key, security and encryption type, and its static IPv4 settings.
         /// </summary>
+        /// <returns>The settings, or <c>null</c> when the reply carries none.</returns>
         public Task<WLanSettings?> GetWLanSettings();
 
         /// <summary>
-        /// Set wireless LAN settings including SSID, security, and network configuration.
+        /// Writes the complete WiFi client configuration, not a delta: read it with <see cref="GetWLanSettings"/>,
+        /// change it and send it back.
         /// </summary>
-        /// <param name="settings">Wireless LAN settings to configure</param>
+        /// <param name="settings">The complete WiFi client settings to store.</param>
+        /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c> or breaks a limit declared on
+        /// <see cref="WLanSettings"/>; nothing is sent.</exception>
         public Task SetWLanSettings(WLanSettings settings);
 
         /// <summary>
-        /// Get wireless interface information including connection status and signal quality.
+        /// Reports whether the controller has a WiFi interface (a USB dongle, unrelated to IHC Wireless) and whether
+        /// it is associated with a network; an empty interface name means no dongle.
         /// </summary>
+        /// <returns>The interface status, or <c>null</c> when the reply carries none.</returns>
         public Task<WLanInterface?> GetWLanInterface();
 
         /// <summary>
-        /// Scan for available wireless networks.
+        /// Lists the WiFi networks the controller's WiFi interface can see, with their security and encryption
+        /// types; no signal level or channel is reported.
         /// </summary>
         public Task<IReadOnlyList<WLanCell>> GetWLanScan();
 
         /// <summary>
-        /// Get SMTP server settings for email notifications.
+        /// Reads the SMTP account the controller sends all its mail through, with the low-battery notification
+        /// switch and the notification recipient. The reply includes the stored password.
         /// </summary>
+        /// <returns>The settings, or <c>null</c> when the reply carries none.</returns>
         public Task<SMTPSettings?> GetSMTPSettings();
 
         /// <summary>
-        /// Set SMTP server settings for email notifications.
+        /// Writes the SMTP account and notification settings as one complete record, not a delta: read it with
+        /// <see cref="GetSMTPSettings"/>, change it and send it back.
         /// </summary>
-        /// <param name="settings">SMTP settings to configure</param>
+        /// <param name="settings">The complete SMTP settings to store.</param>
+        /// <remarks>
+        /// The record lacks the LED Dimmer error-mail switch that firmware 3.3.44 also holds, so this method never
+        /// sends it; what a write does to that switch is not known.
+        /// </remarks>
+        /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c> or breaks a limit declared on
+        /// <see cref="SMTPSettings"/>; nothing is sent.</exception>
         public Task SetSMTPSettings(SMTPSettings settings);
 
         /// <summary>
-        /// Test SMTP settings by attempting to connect to the mail server.
+        /// Asks the controller to test the e-mail control (POP3 mailbox) settings now, without saving them; it does not
+        /// test SMTP.
         /// </summary>
+        /// <remarks>
+        /// Known defect: this method sends no settings and discards the connection status the controller returns, so
+        /// what it tests and whether the test passed are not known.
+        /// </remarks>
         public Task TestSettingsNow();
 
         /// <summary>
-        /// Send a test email message to verify SMTP configuration.
+        /// Asks the controller to send a test mail to <paramref name="recipient"/>. Unverified: no vendor client calls
+        /// it, and the controller may not use <paramref name="subject"/> and <paramref name="message"/> as the mail's
+        /// subject and body.
         /// </summary>
-        /// <param name="recipient">Email recipient address</param>
-        /// <param name="subject">Email subject</param>
-        /// <param name="message">Email message body</param>
+        /// <param name="recipient">Recipient address.</param>
+        /// <param name="subject">Intended subject of the test mail.</param>
+        /// <param name="message">Intended body of the test mail.</param>
+        /// <returns><c>true</c> when the controller reports success; <c>false</c> otherwise, also when the reply
+        /// carries no result. Failure reasons are not returned.</returns>
         public Task<bool> TestSendMessage(string recipient, string subject, string message);
 
         /// <summary>
-        /// Check if email control feature is enabled.
+        /// Reads the controller's e-mail control enabled flag. Unverified: no vendor client calls it.
         /// </summary>
+        /// <returns>The flag; <c>false</c> also when the reply carries no value.</returns>
         public Task<bool> GetEmailControlEnabled();
 
         /// <summary>
-        /// Enable or disable the email control feature.
+        /// Sets the controller's e-mail control enabled flag. Unverified: no vendor client calls it.
         /// </summary>
-        /// <param name="enabled">True to enable, false to disable</param>
+        /// <param name="enabled"><c>true</c> to enable, <c>false</c> to disable.</param>
         public Task SetEmailControlEnabled(bool enabled);
 
         /// <summary>
-        /// Get email control settings for remote controller access via email.
+        /// Reads the e-mail control settings: the POP3 mailbox the controller polls for command mails (whose
+        /// triggers are set up in IHC SceneDesign), the poll interval and whether fetched mails are deleted. The reply
+        /// includes the stored password.
         /// </summary>
+        /// <returns>The settings, or <c>null</c> when the reply carries none.</returns>
         public Task<EmailControlSettings?> GetEmailControlSettings();
 
         /// <summary>
-        /// Set email control settings for remote controller access via email.
+        /// Writes the e-mail control mailbox and poll settings. The controller answers with an acceptance flag, which
+        /// this method does not return.
         /// </summary>
-        /// <param name="settings">Email control settings to configure</param>
+        /// <param name="settings">Mailbox, credentials and poll settings to store.</param>
+        /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c> or breaks a limit declared on
+        /// <see cref="EmailControlSettings"/>; nothing is sent.</exception>
         public Task SetEmailControlSettings(EmailControlSettings settings);
 
         /// <summary>
-        /// Get web access control settings for different applications and access types.
+        /// Reads the access-control matrix: for each client application, whether it may log in over USB, from the
+        /// controller's own IP subnet (internal) or from any other address (external).
         /// </summary>
+        /// <returns>The matrix, or <c>null</c> when the reply carries none.</returns>
         public Task<WebAccessControl?> GetWebAccessControl();
 
         /// <summary>
-        /// Set web access control settings for different applications and access types.
+        /// Writes the whole access-control matrix, not a delta: read it with <see cref="GetWebAccessControl"/>, change
+        /// it and send it back. A client whose application is not allowed on its route is refused at login.
         /// </summary>
-        /// <param name="accessControl">Web access control settings to configure</param>
+        /// <param name="accessControl">The complete matrix to store.</param>
+        /// <exception cref="ArgumentException"><paramref name="accessControl"/> is <c>null</c> or breaks a limit
+        /// declared on <see cref="WebAccessControl"/>, such as switching off IHC Administrator over USB; nothing is
+        /// sent.</exception>
         public Task SetWebAccessControl(WebAccessControl accessControl);
 
         /// <summary>
-        /// Set the server language for the controller interface.
+        /// Sets the controller's language; there is no operation to read it back. The change applies after a
+        /// controller restart and a new login; which texts it changes is not known.
         /// </summary>
-        /// <param name="language">Language code to set</param>
+        /// <param name="language">Lower-case ISO 639 language code, such as <c>da</c> or <c>en</c>.</param>
         public Task SetServerLanguage(string language);
     }
 

@@ -6,18 +6,22 @@ using System.Collections.Generic;
 
 namespace Ihc {
     /// <summary>
-    /// A highlevel client interface for the IHC MessageControlLogService without any of the soap distractions.
+    /// Reads and empties the controller's control log: the e-mail and SMS control messages it has received. It is not
+    /// the controller's own (user) log.
     /// </summary>
     public interface IMessageControlLogService : IIHCApiService
     {
         /// <summary>
-        /// Clear all entries from the message control log.
+        /// Deletes all entries of the control log.
         /// </summary>
         public Task EmptyLog();
 
         /// <summary>
-        /// Get all message control log event entries.
+        /// Reads the control log, one entry per received e-mail or SMS control message. Only messages with a control
+        /// consequence are logged, and every SMS control when the SMS modem forwards unauthorized SMS. An empty log
+        /// gives an empty list.
         /// </summary>
+        /// <remarks>A failed call can mean that the controller's e-mail control module has not started.</remarks>
         public Task<IReadOnlyList<LogEventEntry>> GetEvents();
     }
 

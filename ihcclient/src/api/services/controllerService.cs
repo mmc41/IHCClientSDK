@@ -9,126 +9,184 @@ using System.Text;
 
 namespace Ihc {
     /// <summary>
-    /// A highlevel client interface for the IHC ControllerService without any of the soap distractions.
+    /// The controller's own functions: its run state with a long poll on it, the SD card, the stored project (fetch,
+    /// send in project change mode, restore from the SD card) and the single S0 energy meter.
     /// </summary>
     public interface IControllerService : IIHCApiService
     {
         /// <summary>
-        /// Check if an IHC project is available on the controller.
+        /// Checks whether the controller holds an IHC project.
         /// </summary>
+        /// <returns><c>true</c> when the controller holds a project; <c>false</c> also when the reply carries no
+        /// value.</returns>
         public Task<bool> IsIHCProjectAvailable();
 
         /// <summary>
-        /// Check if the SD card is ready and accessible.
+        /// Checks whether the SD card is ready and accessible. Without a ready card a project send is not backed up to
+        /// it, so <see cref="Restore"/> cannot bring the project back.
         /// </summary>
+        /// <returns><c>true</c> when the card is ready; <c>false</c> also when the reply carries no value.</returns>
         public Task<bool> IsSDCardReady();
 
         /// <summary>
-        /// Get SD card information including size and free space.
+        /// Gets the size and free space of the SD card.
         /// </summary>
+        /// <returns>The card information, or <c>null</c> when the reply carries none.</returns>
         public Task<SDInfo?> GetSDCardInfo();
 
         /// <summary>
-        /// Get current controller state 
+        /// Reads the controller's current run state; a state key this SDK does not know, or none, gives
+        /// <see cref="ControllerState.Unknown"/>. Follow later changes with <see cref="WaitForControllerStateChange"/>.
         /// </summary>
         public Task<ControllerState> GetControllerState();
 
         /// <summary>
-        /// Wait for controller to transition to a specific state.
-        /// Observation: It seems the controller only waits until timeout IF the controller is already in the specified state??
+        /// Long-polls the run state: the controller holds the call while its state equals
+        /// <paramref name="waitState"/> and answers with the new state as soon as it changes, or with the unchanged
+        /// state when the hold runs out.
         /// </summary>
-        /// <param name="waitState">Target state to wait for</param>
-        /// <param name="waitSec">Timeout in seconds</param>
+        /// <param name="waitState">The state the caller believes current, normally the last one read; not a target
+        /// state. <see cref="ControllerState.Unknown"/> is refused with an <see cref="ArgumentException"/>.</param>
+        /// <param name="waitSec">Longest time, in seconds, the controller holds the call.</param>
+        /// <returns>The state the controller answered with; <see cref="ControllerState.Unknown"/> when the reply names
+        /// none.</returns>
         public Task<ControllerState> WaitForControllerStateChange(ControllerState waitState, int waitSec);
 
         /// <summary>
-        /// Get project information including version, customer name, and last modified date.
+        /// Reads the metadata of the stored project, taken from the stored file itself: its identity pair, which
+        /// segment downloads pass back, its format version, number, customer, installer and last-save stamp.
         /// </summary>
+        /// <returns>The information, or <c>null</c> when the reply carries none.</returns>
         public Task<ProjectInfo?> GetProjectInfo();
 
         /// <summary>
-        /// Download the complete IHC project file from the controller.
+        /// Downloads the whole stored project in one call and returns its XML, which the SDK decompresses. A
+        /// segmented download exists too (<see cref="GetIHCProjectSegment"/>), but see its known defect.
         /// </summary>
+        /// <returns>The project, or <c>null</c> when the reply carries no file.</returns>
         public Task<ProjectFile?> GetProject();
 
         /// <summary>
-        /// Upload and store a new project on the controller safely.
-        /// Automatically checks controller readiness and handles project change mode entry/exit and state transitions
-        /// by calling EnterProjectChangeMode/ExitProjectChangeMode and waiting for state changes.
-        /// Note: Does not reset runtime values or reboot controller - call DelayedReboot manually if needed.
+        /// Uploads and stores a new project, sending it whole in one call. It checks that the controller is ready,
+        /// enters and leaves project change mode with <see cref="EnterProjectChangeMode"/> and
+        /// <see cref="ExitProjectChangeMode"/>, and waits for the state changes. It does not reset runtime values or
+        /// restart the controller; call <see cref="IConfigurationService.DelayedReboot"/> if needed.
         /// </summary>
-        /// <param name="project">Project file to store on the controller</param>
-        /// <exception cref="InvalidOperationException">Thrown if controller is not ready or SD card unavailable</exception>
+        /// <param name="project">Project file to store on the controller.</param>
+        /// <returns>The controller's answer to the store; a reply that carries none throws instead.</returns>
+        /// <remarks>Before entering change mode it refuses a controller that holds no project, and project text
+        /// outside ISO-8859-1.</remarks>
+        /// <exception cref="InvalidOperationException">The controller is not ready or its SD card is
+        /// unavailable.</exception>
         public Task<bool> StoreProject(ProjectFile project);
 
         /// <summary>
-        /// Get a backup file from the controller.
+        /// Gets a backup file (name and raw bytes) from the controller.
         /// </summary>
+        /// <returns>The backup, or <c>null</c> when the reply carries no file.</returns>
         public Task<BackupFile?> GetBackup();
 
         /// <summary>
-        /// Restore controller from backup.
+        /// Restores the project kept on the controller's SD card, wireless links included; every project stored on
+        /// the controller overwrites that copy. It is not a factory reset.
         /// </summary>
+        /// <returns>The controller's reply value; 0 when the reply carries no value.</returns>
         public Task<int> Restore();
 
         /// <summary>
-        /// Get a specific segment of the IHC project (for large projects split into parts).
+        /// Downloads one segment of the stored project: a slice of the controller's own gzip stream of it; joined in
+        /// index order, the segments decompress as a whole.
         /// </summary>
-        /// <param name="index">Segment index</param>
-        /// <param name="major">Major version number</param>
-        /// <param name="minor">Minor version number</param>
+        /// <param name="index">Segment index, 0-based, below <see cref="GetIHCProjectNumberOfSegments"/>.</param>
+        /// <param name="major">First half of the stored project's identity:
+        /// <see cref="ProjectInfo.ProjectMajorRevision"/> from <see cref="GetProjectInfo"/>.</param>
+        /// <param name="minor">Second half of the stored project's identity:
+        /// <see cref="ProjectInfo.ProjectMinorRevision"/> from <see cref="GetProjectInfo"/>.</param>
+        /// <returns>The segment, or <c>null</c> when the reply carries no file.</returns>
+        /// <remarks>Known defect: this method decompresses each segment on its own, but only segment 0 starts with the
+        /// gzip header, so it cannot decode any later segment. Download the whole project with
+        /// <see cref="GetProject"/> instead.</remarks>
         public Task<ProjectFile?> GetIHCProjectSegment(int index, int major, int minor);
 
         /// <summary>
-        /// Store a specific segment of the IHC project.
+        /// Uploads one segment of a project. A project is sent as segments of
+        /// <see cref="GetIHCProjectSegmentationSize"/> bytes, in index order between
+        /// <see cref="EnterProjectChangeMode"/> and <see cref="ExitProjectChangeMode"/>; the reply to the last one can
+        /// take many seconds.
         /// </summary>
-        /// <param name="segment">Project segment to store</param>
-        /// <param name="index">Segment index</param>
-        /// <param name="major">Major version number</param>
+        /// <param name="segment">The segment's text.</param>
+        /// <param name="index">Segment index, 0-based.</param>
+        /// <param name="major">The total number of segments, the same in every call; it is not a version.</param>
+        /// <returns><c>true</c> when the controller accepted the segment; send the next only after an accepted one.
+        /// <c>false</c> also when the reply carries no value.</returns>
+        /// <remarks>Known defect: this method gzip-compresses each segment on its own, while the controller's segments
+        /// are slices of one gzip stream of the whole project, only the first carrying the gzip header. Whether a
+        /// controller accepts a project sent this way in more than one segment is not known; send a project whole
+        /// with <see cref="StoreProject"/> instead.</remarks>
         public Task<bool> StoreIHCProjectSegment(ProjectFile segment, int index, int major);
 
         /// <summary>
-        /// Get the size of project segments in bytes.
+        /// Gets the size of project segments in bytes of gzip-compressed data: the slice size an upload is cut into,
+        /// and the size of the slices a download returns (7,500 on firmware 3.3.44).
         /// </summary>
+        /// <returns>The size in bytes; 0 when the reply carries no value.</returns>
         public Task<int> GetIHCProjectSegmentationSize();
 
         /// <summary>
-        /// Get the total number of segments in the current project.
+        /// Gets the number of segments a download of the stored project takes: the size of the controller's own gzip
+        /// stream of it over the segment size, rounded up. Segment indexes run from 0 to this count minus one.
         /// </summary>
+        /// <returns>The segment count; 0 when the reply carries no value.</returns>
         public Task<int> GetIHCProjectNumberOfSegments();
 
         /// <summary>
-        /// Reset S0 energy meter values to zero.
+        /// Resets figures of the controller's single S0 energy meter.
         /// </summary>
+        /// <remarks>Known defect: the controller's operation takes five flags, one per period (hour, day, week, month
+        /// and year), and this method sends none of them, so which figures it resets is not known.</remarks>
         public Task ResetS0Values();
 
         /// <summary>
-        /// Get current S0 meter value.
+        /// Reads the total of the controller's single S0 energy meter (accumulated consumption in kWh).
         /// </summary>
+        /// <returns>The meter total; 0 when the reply carries no value.</returns>
         public Task<float> GetS0MeterValue();
 
         /// <summary>
-        /// Set S0 consumption configuration.
+        /// Sets the total of the controller's single S0 energy meter, for example to match the physical meter's
+        /// reading.
         /// </summary>
-        /// <param name="consumption">Consumption value to set</param>
-        /// <param name="flag">Configuration flag</param>
+        /// <param name="consumption">The new meter total in kWh.</param>
+        /// <param name="flag">A reset flag, normally <c>false</c>; probably also resets the period figures.</param>
         public Task SetS0Consumption(float consumption, bool flag);
 
         /// <summary>
-        /// Set the start date for S0 fiscal year tracking.
+        /// Sets the start of the S0 meter's fiscal (invoicing) year, as a day and month.
         /// </summary>
-        /// <param name="month">Month (1-12)</param>
-        /// <param name="day">Day of month</param>
+        /// <param name="month">The day of the month, despite the name (see the remarks); the vendor client sends it
+        /// 0-based, so day 1 is 0.</param>
+        /// <param name="day">The month, despite the name (see the remarks); the vendor client sends it 0-based, so
+        /// January is 0.</param>
+        /// <remarks>Known defect: the parameter names are swapped relative to the controller, which reads the first
+        /// argument as the day of the month and the second as the month.</remarks>
         public Task SetS0FiscalYearStart(sbyte month, sbyte day);
 
         /// <summary>
-        /// Make the controller enter project change mode to allow project updates.
+        /// Puts the controller in project change mode, which wraps every project send; the controller reports
+        /// <see cref="ControllerState.Initialize"/> from this call until <see cref="ExitProjectChangeMode"/>
+        /// completes.
         /// </summary>
+        /// <returns><c>true</c> when the controller entered the mode; <c>false</c> when it refused or the reply
+        /// carries no value.</returns>
+        /// <remarks>Always follow it with <see cref="ExitProjectChangeMode"/>, also after a failed step.</remarks>
         public Task<bool> EnterProjectChangeMode();
 
         /// <summary>
-        /// Make the controller exit project change mode after project updates.
+        /// Takes the controller out of project change mode after project updates; after a send the controller reports
+        /// <see cref="ControllerState.Ready"/> again as this call returns.
         /// </summary>
+        /// <returns><c>true</c> when the controller left the mode; <c>false</c> when it refused or the reply carries
+        /// no value.</returns>
         public Task<bool> ExitProjectChangeMode();
     }
 

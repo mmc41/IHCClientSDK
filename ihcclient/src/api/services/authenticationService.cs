@@ -8,38 +8,57 @@ using System.Net.Http;
 
 namespace Ihc {
     /// <summary>
-    /// A highlevel client interface for the IHC AuthenticationService without any of the soap distractions.
+    /// Opens and ends the session with the controller. A login's reply sets the session cookie, the only credential
+    /// later calls carry, and every service built from this instance shares it.
     /// </summary>
     public interface IAuthenticationService : ICookieHandlerService, IDisposable, IAsyncDisposable, IIHCApiService
     {
         /// <summary>
-        /// Login to IHC controller with user/password and application in predefined configuration settings. This method must be called prior to most other calls on other services.
+        /// Logs in to the controller with the user name, password and application from the settings. Call it before
+        /// most calls on the other services.
         /// </summary>
+        /// <remarks>A refused login throws <see cref="ErrorWithCodeException"/>, with the
+        /// <c>Errors.LOGIN_FAILED_DUE_TO_*</c> code of the reason the controller gives, or
+        /// <see cref="Errors.LOGIN_UNKNOWN_ERROR"/> otherwise.</remarks>
         public Task<IhcUser> Authenticate();
 
         /// <summary>
-        /// Login to IHC controller overriding user/password and application in predefined configuration settings. This method must be called prior to most other calls on other services.
+        /// Logs in as <see cref="Authenticate()"/> does, with the given user name, password and application in place of
+        /// the settings'.
         /// </summary>
-        /// <param name="userName">Your registered IHC controller user name</param>
-        /// <param name="password">Your registered IHC controller password</param>
-        /// <param name="application">Application name</param>
+        /// <param name="userName">User name of the controller account; case-sensitive.</param>
+        /// <param name="password">The account's password; case-sensitive, and sent as clear text in the request body,
+        /// which only TLS (an <c>https</c> endpoint) protects.</param>
+        /// <param name="application">The client to log in as; the account's group and the access control for the
+        /// client's route must both admit it.</param>
+        /// <returns>The user record the login reply carries. Over USB it can be a record made at login (user name,
+        /// administrators group, the login time as both dates, other fields empty) rather than the stored
+        /// account.</returns>
+        /// <remarks>A refused login throws <see cref="ErrorWithCodeException"/>, with the
+        /// <c>Errors.LOGIN_FAILED_DUE_TO_*</c> code of the reason the controller gives, or
+        /// <see cref="Errors.LOGIN_UNKNOWN_ERROR"/> otherwise.</remarks>
         public Task<IhcUser> Authenticate(string userName, string password, Application application = Application.openapi);
 
         /// <summary>
-        /// Logout from IHC controller and clear session cookie.
+        /// Logs out from the controller and clears the session cookie; the cookie and the authenticated state are
+        /// dropped even when the call fails.
         /// </summary>
+        /// <returns>The controller's answer; <c>false</c> when the reply carries no value.</returns>
         public Task<bool> Disconnect();
 
         /// <summary>
-        /// Check if the IHC controller is up and running and serving API calls.
+        /// Checks whether the controller is up and serving API calls.
         /// </summary>
+        /// <returns>The controller's answer; <c>false</c> when the reply carries no value.</returns>
         public Task<bool> Ping();
 
         /// <summary>
-        /// Check if the client is currently authenticated with the IHC controller.
-        /// Returns true if Authenticate() was successfully called and Disconnect() has not been called since.
+        /// Checks whether the client is authenticated with the controller: <c>true</c> if <see cref="Authenticate()"/>
+        /// succeeded and neither <see cref="Disconnect"/> nor a failed login has happened since.
         /// </summary>
-        /// <returns>True if authenticated, false otherwise</returns>
+        /// <returns><c>true</c> if authenticated; otherwise <c>false</c>.</returns>
+        /// <remarks>Local state only: nothing is sent, so it cannot tell whether the controller still holds the
+        /// session.</remarks>
         public Task<bool> IsAuthenticated();
     }
 

@@ -9,33 +9,52 @@ using System.Collections.Generic;
 
 namespace Ihc {
     /// <summary>
-    /// A highlevel client interface for the IHC UserManagerService without any of the soap distractions.
-    /// Status: Incomplete.
+    /// Manages the controller's user accounts: list, add, update and remove. The accounts live in the controller, not
+    /// in the project.
     /// </summary>
+    /// <remarks>It does not stop you removing or downgrading the logged-in user or the last administrator.</remarks>
     public interface IUserManagerService : IIHCApiService
     {
         /// <summary>
-        /// Get set of all users registered on the controller.
+        /// Gets all user accounts on the controller, each with its group, profile fields and two timestamps; the
+        /// controller returns every account's stored password as well.
         /// </summary>
-        /// <param name="includePassword">Include password in returned user objects</param>
+        /// <param name="includePassword"><c>true</c> keeps each password as the controller returns it; <c>false</c>
+        /// replaces it with <see cref="UserConstants.REDACTED_PASSWORD"/>.</param>
         public Task<IReadOnlySet<IhcUser>> GetUsers(bool includePassword);
 
         /// <summary>
-        /// Add a new user to the controller.
+        /// Adds a user account to the controller.
         /// </summary>
-        /// <param name="user">User information to add</param>
+        /// <param name="user">The account to add.</param>
+        /// <remarks>The record's <see cref="IhcUser.CreatedDate"/> and <see cref="IhcUser.LoginDate"/> are sent too;
+        /// when none is sent, the controller stamps both with the time of the write.</remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="user"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException"><paramref name="user"/> breaks a limit declared on
+        /// <see cref="IhcUser"/>; nothing is sent.</exception>
         public Task AddUser(IhcUser user);
 
         /// <summary>
-        /// Remove a user from the controller by username.
+        /// Removes a user account from the controller by user name.
         /// </summary>
-        /// <param name="username">Username of the user to remove</param>
+        /// <param name="username">User name of the account to remove; user names are case-sensitive.</param>
+        /// <exception cref="ArgumentException"><paramref name="username"/> is <c>usb</c>, which the SDK treats as
+        /// reserved.</exception>
         public Task RemoveUser(string username);
 
         /// <summary>
-        /// Update an existing user's information on the controller.
+        /// Updates an existing user account: the whole record is replaced, and the account is found by its user name,
+        /// which therefore cannot change.
         /// </summary>
-        /// <param name="user">Updated user information</param>
+        /// <param name="user">The updated account, password included; resending the password that
+        /// <see cref="GetUsers"/> returns with <c>true</c>, as IHC Administrator does, probably leaves it
+        /// unchanged.</param>
+        /// <remarks>The record's <see cref="IhcUser.CreatedDate"/> and <see cref="IhcUser.LoginDate"/> are sent too;
+        /// when none is sent, the controller resets both to the time of the update.</remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="user"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException"><paramref name="user"/> breaks a limit declared on
+        /// <see cref="IhcUser"/>, or has its password left at <see cref="UserConstants.REDACTED_PASSWORD"/>; nothing
+        /// is sent.</exception>
         public Task UpdateUser(IhcUser user);
     }
 

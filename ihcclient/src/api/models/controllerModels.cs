@@ -5,12 +5,13 @@ using System.Linq;
 namespace Ihc
 {
     /// <summary>
-    /// High level model of SD card information without soap distractions.
+    /// Capacity and free space of the controller's SD card, which it uses for logging and the project backup.
     /// </summary>
     public record SDInfo
     {
         /// <summary>
-        /// Total size of the SD card in bytes.
+        /// Total size of the SD card in bytes, probably that of its mounted file system: a nominal 512 MB card reports
+        /// about 480 MB.
         /// </summary>
         public long Size { get; init; }
 
@@ -26,45 +27,50 @@ namespace Ihc
     }
 
     /// <summary>
-    /// Enumeration of possible IHC controller states.
+    /// The controller's run state. The controller reports it as a key such as <c>text.ctrl.state.ready</c>, which
+    /// this SDK maps to a member.
     /// </summary>
     public enum ControllerState
     {
-        /// <summary>Controller is uninitialized.</summary>
+        /// <summary>Controller is uninitialized (key <c>text.ctrl.state.uninitialized</c>).</summary>
         Uninitialized,
 
-        /// <summary>Controller is ready aka OK.</summary>
+        /// <summary>Running normally (key <c>text.ctrl.state.ready</c>).</summary>
         Ready,
 
-        /// <summary>Controller is initializing.</summary>
+        /// <summary>
+        /// Controller is initializing (key <c>text.ctrl.state.initialize</c>): reported throughout project change mode,
+        /// from <see cref="IControllerService.EnterProjectChangeMode"/> until
+        /// <see cref="IControllerService.ExitProjectChangeMode"/> completes.
+        /// </summary>
         Initialize,
 
-        /// <summary>Controller has failed and is in an error state.</summary>
+        /// <summary>Controller has failed and is in an error state (key <c>text.ctrl.state.failed</c>).</summary>
         Failed,
 
-        /// <summary>Controller is in wireless RF configuration mode.</summary>
+        /// <summary>
+        /// Controller is in wireless RF configuration mode (key <c>text.ctrl.state.rfconfiguration</c>).
+        /// </summary>
         RfConfiguration,
 
-        /// <summary>Controller is in simulation mode.</summary>
+        /// <summary>Controller is in simulation mode (key <c>text.ctrl.state.simulation</c>).</summary>
         Simulation,
 
         /// <summary>
-        /// The controller's state could not be read: it named a state this SDK does not know (a hidden one,
-        /// perhaps), or it named none at all. Deliberately NOT the enum's zero member, so an unread state is
-        /// distinguishable from an unassigned variable and from <see cref="Uninitialized"/>, which is a state
-        /// a controller genuinely reports.
+        /// The controller's state could not be read: it named a state this SDK does not know, or it named none at
+        /// all. Deliberately not the enum's zero member, so an unread state is distinguishable from an unassigned
+        /// variable and from <see cref="Uninitialized"/>, a defined controller state.
         /// </summary>
         Unknown
     };
 
     /// <summary>
-    /// High level model of a controller backup file without soap distractions.
+    /// A backup file as <see cref="IControllerService.GetBackup"/> returns it: a name and raw bytes.
     /// </summary>
     public record BackupFile : BinaryFile
     {
         /// <summary>
-        /// Raw binary data of the backup file.
-        /// Note: Can't identify the file format. Does not seem to be compressed or encoded text. Raw Binary?
+        /// Raw bytes of the backup file, in a format that is not known; probably neither compressed nor encoded text.
         /// </summary>
         public byte[] Data { get; init; }
 
@@ -96,47 +102,53 @@ namespace Ihc
     }
 
     /// <summary>
-    /// High level model of IHC project information without soap distractions.
+    /// Metadata of the project stored on the controller, read from the stored file itself: its identity, format
+    /// version, project details and last-save stamp.
     /// </summary>
     public record ProjectInfo
     {
         /// <summary>
-        /// Minor version of IHC Visual used to create the project.
+        /// Minor part of the stored file's format version (the project root's <c>version_minor</c>).
         /// </summary>
         public int VisualMinorVersion { get; init; }
 
         /// <summary>
-        /// Major version of IHC Visual used to create the project.
+        /// Major part of the stored file's format version (the project root's <c>version_major</c>).
         /// </summary>
         public int VisualMajorVersion { get; init; }
 
         /// <summary>
-        /// Major revision number of the project.
+        /// First half of the stored project's identity, not a revision counter: the file's <c>id1</c>, a packed
+        /// timestamp of its creation, so it tells another project from a version of the same one; pass it to
+        /// <see cref="IControllerService.GetIHCProjectSegment"/>.
         /// </summary>
         public int ProjectMajorRevision { get; init; }
 
         /// <summary>
-        /// Minor revision number of the project.
+        /// Second half of the stored project's identity, not a revision counter: the file's <c>id2</c>, a packed
+        /// timestamp of the save that wrote it; pass it to <see cref="IControllerService.GetIHCProjectSegment"/>.
         /// </summary>
         public int ProjectMinorRevision { get; init; }
 
         /// <summary>
-        /// Date and time when the project was last modified.
+        /// When the stored file was last saved: its own <c>modified</c> stamp in the saving PC's local time, seconds
+        /// always 0. The SDK reads it at a fixed +01:00 offset, so the instant is right only for a time stamped at
+        /// UTC+1; <c>DateTimeOffset.MinValue</c> when the reply carries no readable date.
         /// </summary>
         public DateTimeOffset Lastmodified { get; init; }
 
         /// <summary>
-        /// Project identification number.
+        /// The project's number (Danish UI: "Projekt nummer").
         /// </summary>
         public string? ProjectNumber { get; init; }
 
         /// <summary>
-        /// Name of the customer for this project.
+        /// Customer name from the stored project's customer information.
         /// </summary>
         public string? CustomerName { get; init; }
 
         /// <summary>
-        /// Name of the installer who created/modified the project.
+        /// Installer name from the stored project's installer information.
         /// </summary>
         public string? InstallerName { get; init; }
 
@@ -147,18 +159,20 @@ namespace Ihc
     }
 
     /// <summary>
-    /// High level model of an IHC project file (XML format) without soap distractions.
+    /// An IHC project file, its <c>.vis</c> XML held as text. On the wire it travels gzip-compressed and
+    /// base64-encoded; the SDK compresses and decompresses it.
     /// </summary>
     public record ProjectFile : TextFile
     {
         /// <summary>
-        /// XML content of the project file.
+        /// XML content of the project file, carried as ISO-8859-1 bytes inside the wire's gzip stream.
         /// </summary>
         public string Data { get; init; }
 
         /// <summary>
-        /// Name of the project file (*.vis), or null when the controller supplied none. The wire's WSFile
-        /// does not require a filename, so this is genuinely optional on the download path.
+        /// Name of the project file (*.vis), or <c>null</c> when the controller supplies none, which a download may
+        /// do. A controller names each project segment it serves <c>unknown.bin</c>, not the name the project was
+        /// uploaded with.
         /// </summary>
         public string? Filename { get; init; }
 
@@ -181,8 +195,7 @@ namespace Ihc
             EncodingName, System.Text.EncoderFallback.ExceptionFallback, System.Text.DecoderFallback.ExceptionFallback);
 
         /// <summary>
-        /// Canonical file extension (without leading dot) for an IHC project file. Single source of truth used by
-        /// the Lab to suggest *.vis when saving a project result and to default the upload dialog to *.vis.
+        /// Canonical file extension (without leading dot) for an IHC project file.
         /// </summary>
         public static string FileExtension { get; } = "vis";
 
@@ -207,18 +220,17 @@ namespace Ihc
 
     /// <summary>
     /// Segment of a project (a raw binary chunk of a segmented project transfer).
-    /// Implements <see cref="BinaryFile"/> so the IHC Lab saves it as its real bytes (see the BinaryFile remarks
-    /// about the required copy-constructor), not a text preview.
     /// </summary>
     public record ProjectSegment : BinaryFile
     {
       /// <summary>
-      /// Raw binary data of the project segment.
+      /// Raw bytes of the segment, a slice of the controller's gzip stream of the project; it decompresses only when
+      /// joined with the other segments in index order.
       /// </summary>
       public byte[] Data { get; init; } = Array.Empty<byte>();
 
       /// <summary>
-      /// Name of the segment file. The controller supplies none, so the Lab saves it as {operation}.bin.
+      /// Name of the segment file; <c>null</c> from a segment download, which supplies none.
       /// </summary>
       public string? Filename { get; init; }
 

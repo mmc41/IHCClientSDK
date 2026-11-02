@@ -6,17 +6,18 @@ using System.Collections.Generic;
 
 namespace Ihc {
     /// <summary>
-    /// A highlevel client interface for the IHC NotificationManagerService without any of the soap distractions.
+    /// Reads and empties the controller's notification log: the e-mails and SMS messages the controller has sent.
     /// </summary>
     public interface INotificationManagerService : IIHCApiService
     {
         /// <summary>
-        /// Clear all notification messages from the controller.
+        /// Deletes all entries of the notification log.
         /// </summary>
         public Task ClearMessages();
 
         /// <summary>
-        /// Get all notification messages from the controller.
+        /// Reads the notification log: each e-mail or SMS message the controller has sent, with whether it was
+        /// delivered. An empty log gives an empty list.
         /// </summary>
         public Task<IReadOnlyList<NotificationMessage>> GetMessages();
     }

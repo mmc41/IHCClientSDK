@@ -3,17 +3,19 @@ using System;
 namespace Ihc
 {
     /// <summary>
-    /// High level model of a notification message without soap distractions.
+    /// One entry of the controller's notification log: an e-mail or SMS message the controller has sent.
     /// </summary>
     public record NotificationMessage
     {
         /// <summary>
-        /// Date and time when the notification was created.
+        /// Time of the message. The SDK reads it at a fixed +01:00 offset, so the instant is right only for a time
+        /// stamped at UTC+1; <c>DateTimeOffset.MinValue</c> when the reply carries no readable date.
         /// </summary>
         public DateTimeOffset Date { get; init; }
 
         /// <summary>
-        /// Type of notification (e.g., email, SMS).
+        /// Message type, reported as <c>text.notification.email_type</c> or <c>text.notification.sms_type</c>; read any
+        /// value other than the SMS one as e-mail.
         /// </summary>
         public string? NotificationType { get; init; }
 

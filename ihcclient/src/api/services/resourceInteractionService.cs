@@ -9,138 +9,187 @@ using System.Runtime.CompilerServices;
 
 namespace Ihc {
     /// <summary>
-    /// A highlevel client interface for the IHC ResourceInteractionService without any of the soap distractions.
-    /// Status: 100% API coverage but not fully tested or documented.
+    /// Reads and writes the current (runtime) and initial values of the resources in the controller's project, each
+    /// addressed by its project element id, and reports value changes through subscriptions and a long poll.
     /// </summary>
     public interface IResourceInteractionService : IIHCApiService
     {
         /// <summary>
-        /// Disable initial value notifications for specified resource IDs.
+        /// Ends the subscription to initial-value changes of the given resources; it does not end a held poll.
         /// </summary>
-        /// <param name="resourceIds">Collection of resource IDs to disable</param>
+        /// <param name="resourceIds">Ids of resources subscribed with
+        /// <see cref="EnableInitialValueNotifications"/>.</param>
+        /// <returns>The controller's answer; <c>false</c> also when the reply carries no value.</returns>
         public Task<bool> DisableInitialValueNotifactions(IReadOnlyList<int> resourceIds);
 
         /// <summary>
-        /// Disable runtime value notifications for specified resource IDs.
+        /// Ends the subscription to current-value changes of the given resources; it does not end a held poll.
         /// </summary>
-        /// <param name="resourceIds">Collection of resource IDs to disable</param>
+        /// <param name="resourceIds">Ids of resources subscribed with
+        /// <see cref="EnableRuntimeValueNotifications"/>.</param>
+        /// <returns>The controller's answer; <c>true</c> does not confirm that the ids exist in its project.
+        /// <c>false</c> also when the reply carries no value.</returns>
         public Task<bool> DisableRuntimeValueNotifactions(IReadOnlyList<int> resourceIds);
 
         /// <summary>
-        /// Enable initial value notifications for specified resource IDs and return current values.
+        /// Subscribes to initial-value changes of the given resources. The values come through
+        /// <see cref="WaitForResourceValueChanges"/>: the subscription ends a held poll, or the next poll returns at
+        /// once, with each newly subscribed resource's initial value (<see cref="ResourceValue.IsValueRuntime"/>
+        /// <c>false</c>).
         /// </summary>
-        /// <param name="resourceIds">Collection of resource IDs to enable</param>
+        /// <param name="resourceIds">Ids of the resources to subscribe.</param>
+        /// <returns>An empty list: the controller's reply carries no values.</returns>
         public Task<IReadOnlyList<ResourceValue>> EnableInitialValueNotifications(IReadOnlyList<int> resourceIds);
 
         /// <summary>
-        /// Enable runtime value notifications for specified resource IDs. Must be called before WaitForResourceValueChanges.
+        /// Subscribes to current-value changes of the given resources, which <see cref="WaitForResourceValueChanges"/>
+        /// then reports. The subscription ends a held poll, or the next poll returns at once, with each newly
+        /// subscribed resource's current value; an id the controller's project lacks is accepted but gets no value.
         /// </summary>
-        /// <param name="resourceIds">Collection of resource IDs to enable</param>
+        /// <param name="resourceIds">Ids of the resources to subscribe.</param>
+        /// <returns>An empty list: the controller's reply carries no values.</returns>
         public Task<IReadOnlyList<ResourceValue>> EnableRuntimeValueNotifications(IReadOnlyList<int> resourceIds);
 
         /// <summary>
-        /// Get all dataline input resource definitions.
+        /// Lists the controller's dataline inputs, each as its dataline number and resource id. Subscribe these ids to
+        /// follow the inputs' activity.
         /// </summary>
         public Task<IReadOnlyList<DatalineResource>> GetAllDatalineInputs();
 
         /// <summary>
-        /// Get all dataline output resource definitions.
+        /// Lists the controller's dataline outputs, each as its dataline number and resource id.
         /// </summary>
         public Task<IReadOnlyList<DatalineResource>> GetAllDatalineOutputs();
 
         /// <summary>
-        /// Get all enumerator definitions from the IHC project.
+        /// Lists the enumeration definitions of the controller's project with their values, which name the enum values
+        /// that resources carry. The controller lists a built-in dimmer load-mode definition (<c>Auto</c>, <c>RC</c>,
+        /// <c>RL</c>) first.
         /// </summary>
         public Task<IReadOnlyList<EnumDefinition>> GetEnumeratorDefinitions();
 
         /// <summary>
-        /// Get all extra dataline input resource definitions.
+        /// Lists the controller's "extra" dataline inputs, each as its dataline number and resource id: probably inputs
+        /// wired to an input module but not used in the programming.
         /// </summary>
         public Task<IReadOnlyList<DatalineResource>> GetExtraDatalineInputs();
 
         /// <summary>
-        /// Get all extra dataline output resource definitions.
+        /// Lists the controller's "extra" dataline outputs, each as its dataline number and resource id.
         /// </summary>
         public Task<IReadOnlyList<DatalineResource>> GetExtraDatalineOutputs();
 
         /// <summary>
-        /// Get initial value for a single resource ID.
+        /// Reads a resource's initial value, which the controller loads into it at restart unless the resource keeps
+        /// its value through a power cut.
         /// </summary>
-        /// <param name="initialValue">Resource ID to get initial value for</param>
+        /// <param name="initialValue">Id of the resource to read, not a value.</param>
+        /// <exception cref="ErrorWithCodeException">The reply carries no value.</exception>
         public Task<ResourceValue> GetInitialValue(int initialValue);
 
         /// <summary>
-        /// Get initial values for multiple resource IDs.
+        /// Reads the initial values of several resources (see <see cref="GetInitialValue"/>).
         /// </summary>
-        /// <param name="initialValues">Collection of resource IDs to get initial values for</param>
+        /// <param name="initialValues">Ids of the resources to read.</param>
+        /// <returns>The values; an entry the controller leaves empty is dropped, so match results by
+        /// <see cref="ResourceValue.ResourceID"/>.</returns>
         public Task<IReadOnlyList<ResourceValue>> GetInitialValues(IReadOnlyList<int> initialValues);
 
         /// <summary>
-        /// Get logged historical data for a resource ID.
+        /// Reads the samples the controller has logged to its SD card for a resource, whose logging is set up in IHC
+        /// Visual through a product with logging. The list is empty when nothing is logged.
         /// </summary>
-        /// <param name="resourceId">Resource ID to get logged data for</param>
+        /// <param name="resourceId">Id of the logged resource.</param>
+        /// <remarks>Known defect: the controller sends each timestamp in milliseconds since 1970, but the SDK converts
+        /// it as seconds, so the call throws for any sample logged after early 1978.</remarks>
         public Task<IReadOnlyList<LoggedData>> GetLoggedData(int resourceId);
 
         /// <summary>
-        /// Get the type string of a resource. Refer to TypeStrings constants for valid return values.
+        /// Gets a resource's type name, probably its element type in the .vis project file as in
+        /// <see cref="ResourceValue.TypeString"/>, such as <c>resource_output</c>.
         /// </summary>
-        /// <param name="resourceID">Resource ID to get type for</param>
+        /// <param name="resourceID">Id of the resource.</param>
+        /// <returns>The type name, or <c>null</c> when the reply carries none.</returns>
         // Null when the controller reports no type for the resource: the wire element is declared
         // nillable and the generated layer is oblivious, so a non-null return would be unfounded.
         public Task<string?> GetResourceType(int resourceID);
 
         /// <summary>
-        /// Get current runtime value of an input/output resource.
+        /// Reads a resource's current (runtime) value, the one the program and the outputs act on now.
         /// </summary>
-        /// <param name="resourceID">Resource ID to get runtime value for</param>
+        /// <param name="resourceID">Id of the resource to read.</param>
+        /// <exception cref="ErrorWithCodeException">The reply carries no value.</exception>
         public Task<ResourceValue> GetRuntimeValue(int resourceID);
 
         /// <summary>
-        /// Get current runtime values for multiple resource IDs.
+        /// Reads the current (runtime) values of several resources; each value's
+        /// <see cref="ResourceValue.TypeString"/> names the resource's project element type, such as
+        /// <c>resource_output</c>.
         /// </summary>
-        /// <param name="resourceIDs">Collection of resource IDs to get runtime values for</param>
+        /// <param name="resourceIDs">Ids of the resources to read.</param>
+        /// <returns>The values; an entry the controller leaves empty is dropped, so match results by
+        /// <see cref="ResourceValue.ResourceID"/>.</returns>
         public Task<IReadOnlyList<ResourceValue>> GetRuntimeValues(IReadOnlyList<int> resourceIDs);
 
         /// <summary>
-        /// Set value for a single resource.
+        /// Writes one resource value, as <see cref="SetResourceValues"/> does for a batch.
         /// </summary>
-        /// <param name="v">Resource value to set</param>
+        /// <param name="v">The value to write: <see cref="ResourceValue.IsValueRuntime"/> <c>true</c> sets the
+        /// current value, <c>false</c> the initial value.</param>
+        /// <returns>The controller's answer; <c>false</c> also when the reply carries no value.</returns>
         public Task<bool> SetResourceValue(ResourceValue v);
 
         /// <summary>
-        /// Set values for multiple resources.
+        /// Writes a batch of resource values. The long poll reports a subscribed resource only when the write changed
+        /// its value, and the program can overwrite a written current value at its next event.
         /// </summary>
-        /// <param name="values">Collection of resource values to set</param>
+        /// <param name="values">The values to write: <see cref="ResourceValue.IsValueRuntime"/> <c>true</c> sets the
+        /// current value, <c>false</c> the initial value loaded at restart. <see cref="ResourceValue.TypeString"/> may
+        /// be empty.</param>
+        /// <returns><c>true</c> when the controller accepted the batch, also for values it already held; what a
+        /// <c>false</c> answer means is not known. <c>false</c> also when the reply carries no value.</returns>
         public Task<bool> SetResourceValues(IReadOnlyList<ResourceValue> values);
 
         /// <summary>
-        /// Get scene resource IDs and positions for a scene group.
+        /// Lists a scene group's members, each with the member's resource id and two location texts, seen from the
+        /// product and from the function block. The list is empty for a group without members.
         /// </summary>
-        /// <param name="sceneGroupResourceIdAndPositions">Scene group resource ID</param>
+        /// <param name="sceneGroupResourceIdAndPositions">Id of the scene group, such as a function block's scene
+        /// output (<c>resource_scene</c>).</param>
         public Task<IReadOnlyList<SceneResourceIdAndLocation>> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions);
 
         /// <summary>
-        /// Get scene positions for a scene value resource.
+        /// Reads the two location texts of one scene membership, seen from the product and from the function block.
         /// </summary>
-        /// <param name="scenePositionsForSceneValueResource">Scene value resource ID</param>
+        /// <param name="scenePositionsForSceneValueResource">Id of a scene member element, such as a
+        /// <c>scene_dimmer</c>; not the scene's or the output's id.</param>
+        /// <returns>The texts, or <c>null</c> when the reply carries none.</returns>
         public Task<SceneResourceIdAndLocation?> GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource);
 
         /// <summary>
-        /// Long-poll for resource value changes. Resources must be enabled first using EnableRuntimeValueNotifications.
-        /// Returns immediately with initial values on first call, then respects timeout. Timeout should be less than 20 seconds.
-        /// TIP: Consider using GetResourceValueChanges instead.
+        /// Long-polls for changes of the subscribed resources: the controller holds the call until one changes or
+        /// <paramref name="timeout_seconds"/> runs out. A new subscription ends a held poll, or makes the next one
+        /// return at once, with the newly subscribed resources' values. <see cref="GetResourceValueChanges"/> runs
+        /// this loop for you.
         /// </summary>
-        /// <param name="timeout_seconds">Timeout in seconds (default: 15)</param>
+        /// <param name="timeout_seconds">Longest time, in seconds, the controller holds the call (default: 15).</param>
+        /// <returns>The changes since the last poll, current values with <see cref="ResourceValue.IsValueRuntime"/>
+        /// <c>true</c> and initial values with <c>false</c>, each with an empty <see cref="ResourceValue.TypeString"/>;
+        /// an empty list when the hold ran out.</returns>
         public Task<IReadOnlyList<ResourceValue>> WaitForResourceValueChanges(int timeout_seconds = 15);
 
         /// <summary>
-        /// Returns an async stream of value changes for specified resources.
-        /// Automatically handles EnableRuntimeValueNotifications + WaitForResourceValueChanges loop.
-        /// Timeout should be lower than system timeout (less than 20 seconds recommended).
+        /// Streams value changes: subscribes <paramref name="resourceIds"/> with
+        /// <see cref="EnableRuntimeValueNotifications"/>, long-polls with <see cref="WaitForResourceValueChanges"/> and
+        /// ends the subscription when the enumeration ends. It starts with each newly subscribed resource's current
+        /// value and passes on every change the poll reports, also of other subscribed resources; poll failures are
+        /// retried with a growing pause, and repeated ones end the stream with the error.
         /// </summary>
-        /// <param name="resourceIds">Collection of resource IDs to monitor</param>
-        /// <param name="cancellationToken">Cancellation token to stop monitoring</param>
-        /// <param name="timeout_between_waits_in_seconds">Timeout between waits in seconds (default: 15)</param>
+        /// <param name="resourceIds">Ids of the resources to monitor.</param>
+        /// <param name="cancellationToken">Stops the stream; it is checked between polls, so a held poll runs to its
+        /// end first.</param>
+        /// <param name="timeout_between_waits_in_seconds">Longest time, in seconds, the controller holds each poll
+        /// (default: 15).</param>
         public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(IReadOnlyList<int> resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15);
     }
 

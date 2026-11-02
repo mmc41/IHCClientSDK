@@ -16,59 +16,99 @@ namespace Ihc {
     };
 
     /// <summary>
-    /// High level enumeration for UserGroup values without soap distractions.
+    /// The account groups; a group decides which client applications its accounts may log in with.
     /// </summary>
     public enum IhcUserGroup
     {
       /// <summary>
-      /// Only used with not specified - not supported by IHC.
+      /// No group: what a reply without a group maps to. The controller has no such group, and the SDK refuses it on a
+      /// write.
       /// </summary>
       None,
       
+      /// <summary>
+      /// The Administrators group (Danish UI: "Administratorer"; reported as
+      /// <c>text.usermanager.group_administrators</c>); its accounts may log in with every client application.
+      /// </summary>
       Administrators,
 
+      /// <summary>
+      /// The Users group (Danish UI: "Brugere"; reported as <c>gtext.users</c>); its accounts may not log in as IHC
+      /// Administrator, ServiceView or SceneDesign, but may use SceneView and the online documentation.
+      /// </summary>
       Users
     };
 
     /// <summary>
-    /// High level model of a IHC user without soap distractions.
+    /// A user account on the controller, as <see cref="IUserManagerService.GetUsers"/> lists it and a login returns
+    /// it.
     /// </summary>
     public record IhcUser : IComparable<IhcUser>
   {
+      /// <summary>
+      /// Account name, case-sensitive; updates and removals find the account by it, so it cannot be changed.
+      /// </summary>
       [StringLength(20, MinimumLength = 1, ErrorMessage = "Username length can't be more than 20.")]
       [Required(ErrorMessage = "Username is required")]
       public string? Username { get; init; }
 
+      /// <summary>
+      /// Account password, case-sensitive. The controller returns the stored one with every listed account;
+      /// <see cref="IUserManagerService.GetUsers"/> replaces it with <see cref="UserConstants.REDACTED_PASSWORD"/>
+      /// unless asked to include it.
+      /// </summary>
       [StringLength(20, ErrorMessage = "Password length can't be more than 20.")]
       [Required(ErrorMessage = "Password is required")]
       [DeniedValues(UserConstants.REDACTED_PASSWORD, ErrorMessage = "Password cannot be set to reserved redacted value.")]
       [SensitiveData]
       public string? Password { get; init; }
 
+      /// <summary>
+      /// Optional e-mail address of the account holder, free text for display only; <c>null</c> or empty when unset.
+      /// </summary>
       [StringLength(25, ErrorMessage = "Email length can't be more than 25.")]
       public string? Email { get; init; }
 
+      /// <summary>
+      /// Optional first name of the account holder, free text for display only; <c>null</c> or empty when unset.
+      /// </summary>
       [StringLength(15, ErrorMessage = "Firstname length can't be more than 15.")]
       public string? Firstname { get; init; }
 
+      /// <summary>
+      /// Optional last name of the account holder, free text for display only; <c>null</c> or empty when unset.
+      /// </summary>
       [StringLength(15, ErrorMessage = "Lastname length can't be more than 15.")]
       public string? Lastname { get; init; }
 
+      /// <summary>
+      /// Optional phone number of the account holder, free text for display only; <c>null</c> or empty when unset.
+      /// </summary>
       [StringLength(15, ErrorMessage = "Phone length can't be more than 15.")]
       public string? Phone { get; init; }
 
+      /// <summary>
+      /// The account's group, which decides the client applications it may log in with; <see cref="IhcUserGroup.None"/>
+      /// when the reply carries none, which the SDK refuses on a write.
+      /// </summary>
       [AllowedValues(IhcUserGroup.Administrators, IhcUserGroup.Users, ErrorMessage = "Group must be either 'Administrators' or 'Users'.")]
       [Required(ErrorMessage = "Group is required")]
       public IhcUserGroup Group { get; init; }
+      /// <summary>
+      /// Project field of the account, of unknown purpose; it comes back <c>null</c> or empty.
+      /// </summary>
       public string? Project { get; init; }
 
       /// <summary>
-      /// Creation date of user.
+      /// Creation date of user, in the controller's local time; an update that sends no date re-stamps it. The SDK
+      /// reads it at a fixed +01:00 offset, so the instant is right only for a time stamped at UTC+1;
+      /// <c>DateTimeOffset.MinValue</c> when the reply carries no readable date.
       /// </summary>
       public DateTimeOffset CreatedDate { get; init; }
 
       /// <summary>
-      /// Last login date of user.
+      /// Last login date of user, in the controller's local time; an add or update that sends no date sets it to the
+      /// time of the write. Offset and absence are handled as for <see cref="CreatedDate"/>.
       /// </summary>
       public DateTimeOffset LoginDate { get; init; }
 

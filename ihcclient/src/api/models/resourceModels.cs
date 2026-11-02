@@ -7,31 +7,33 @@ using System.Text;
 
 namespace Ihc {
     /// <summary>
-    /// Valid TypeString values for IHC resource types.
+    /// Element type names of the dataline resources, as <see cref="ResourceValue.TypeString"/> carries them; other
+    /// resources have other names, such as <c>resource_input</c> or <c>resource_integer</c>.
     /// </summary>
     public class TypeStrings {
         /// <summary>
-        /// Type string for dataline input resources.
+        /// Type string of a wired product's dataline input, whose value is on/off (BOOL).
         /// </summary>
         public static readonly string DatalineInput = "dataline_input";
 
         /// <summary>
-        /// Type string for dataline output resources.
+        /// Type string of a wired product's dataline output, whose value is on/off (BOOL).
         /// </summary>
         public static readonly string DatalineOutput = "dataline_output";
     };
 
      /// <summary>
-     /// High level model of an IHC WS Dataline resource without soap distractions.
+     /// One input or output of the controller's wired dataline, by number, with the resource that carries its value.
      /// </summary>
     public record DatalineResource {
         /// <summary>
-        /// The dataline number in the IHC system.
+        /// The dataline number, 1-128 per direction. A controller terminal carries 16 inputs or 8 outputs, so input 17
+        /// is terminal 2, port 1.
         /// </summary>
         public int DatalineNumber { get; init; }
 
         /// <summary>
-        /// Unique resource identifier for this dataline.
+        /// Id of the resource that carries this dataline's on/off value.
         /// </summary>
         public int ResourceID { get; init; }
 
@@ -42,39 +44,43 @@ namespace Ihc {
     }
 
      /// <summary>
-     /// High level model of an IHC WS resource value without soap distractions.
+     /// One resource's value as the controller reports or accepts it: the resource id, whether it is the current or
+     /// the initial value, and the typed value itself.
      /// </summary>
     public record ResourceValue {
         /// <summary>
         /// Enumeration of supported value kinds for resource values.
         /// </summary>
         public enum ValueKind {
-            /// <summary>Boolean value type.</summary>
+            /// <summary>On/off value of inputs, outputs, flags, and dataline inputs and outputs.</summary>
             BOOL,
-            /// <summary>Date value type.</summary>
+            /// <summary>Calendar date: year, month and day (<c>resource_date</c>).</summary>
             DATE,
-            /// <summary>Integer value type.</summary>
+            /// <summary>Whole number: integers, counters and levels in percent.</summary>
             INT,
-            /// <summary>Double precision floating point value type.</summary>
+            /// <summary>Decimal number: temperatures, humidity levels, and power and energy readings.</summary>
             DOUBLE,
-            /// <summary>Enumeration value type.</summary>
+            /// <summary>One value of an enumeration: an enum resource, or a dimmer's load mode.</summary>
             ENUM,
-            /// <summary>Time value type.</summary>
+            /// <summary>Time of day to the second (<c>resource_time</c>).</summary>
             TIME,
-            /// <summary>Timer value type.</summary>
+            /// <summary>Duration in milliseconds: timers and stored timer times.</summary>
             TIMER,
-            /// <summary>Weekday value type.</summary>
+            /// <summary>Day of the week (<c>resource_weekday</c>).</summary>
             WEEKDAY,
-            /// <summary>Phone number value type.</summary>
+            /// <summary>Phone number as text, such as an SMS modem's number.</summary>
             PhoneNumber,
-            /// <summary>Scene dimmer value type (dimmer percentage + delay/ramp times).</summary>
+            /// <summary>A dimmer's scene member: the level it takes when the scene is recalled, with ramp and delay
+            /// times.</summary>
             SceneDimmer,
-            /// <summary>Scene relay value type (relay state + delay time).</summary>
+            /// <summary>A relay's scene member: the on/off state it takes when the scene is recalled, with a delay
+            /// time.</summary>
             SceneRelay,
-            /// <summary>Scene shutter value type (shutter up/down + delay time).</summary>
+            /// <summary>A shutter's scene member: up or down when the scene is recalled, with a delay time.</summary>
             SceneShutter,
-            /// <summary>No readable value: the resource carries no runtime value (e.g. a scene, whose
-            /// GetRuntimeValue envelope has a null &lt;value&gt;). Read-only — not writable to the controller.</summary>
+            /// <summary>No readable value: the resource carries none, as a function block's scene output
+            /// (<c>resource_scene</c>) arrives without a value, or the wire value is of a type the SDK does not
+            /// recognize. Read-only — not writable to the controller.</summary>
             NONE
         };
 
@@ -89,32 +95,37 @@ namespace Ihc {
             public ValueKind ValueKind { get; set; }
 
             /// <summary>
-            /// Boolean value (when ValueKind is BOOL).
+            /// On (<c>true</c>) or off (<c>false</c>) (when ValueKind is BOOL).
             /// </summary>
             public bool? BoolValue { get; set; }
 
             /// <summary>
-            /// DateTime value (when ValueKind is DATE).
+            /// Unused: the SDK neither fills nor reads it. A DATE value is carried in <see cref="DateValue"/>.
             /// </summary>
             public DateTimeOffset? DateTime { get; set; }
 
             /// <summary>
-            /// Integer value (when ValueKind is INT).
+            /// Whole number, 32-bit (when ValueKind is INT); a level in percent runs 0-100. The SDK drops the range
+            /// the controller sends with the value, and a write sends 0 as both bounds.
             /// </summary>
             public int? IntValue { get; set; }
 
             /// <summary>
-            /// Double precision value (when ValueKind is DOUBLE).
+            /// Decimal number (when ValueKind is DOUBLE), such as a temperature in degrees Celsius or a relative
+            /// humidity in percent. As for INT, the SDK drops the controller's range and writes 0 as both bounds.
             /// </summary>
             public double? DoubleValue  { get; set; }
 
             /// <summary>
-            /// Date value (when ValueKind is DATE).
+            /// Calendar date (when ValueKind is DATE). Only year, month and day travel: the SDK reads them as midnight
+            /// at a fixed +01:00 offset and writes the value's own year, month and day unconverted, so use the date
+            /// parts, not the instant.
             /// </summary>
             public DateTimeOffset? DateValue { get; set; }
 
             /// <summary>
-            /// Time span value (when ValueKind is TIME).
+            /// Time of day in whole seconds, 00:00:00 to 23:59:59 (when ValueKind is TIME); a write throws
+            /// <see cref="ArgumentException"/> for any other span.
             /// </summary>
             public TimeSpan? TimeValue { get; set; }
 
@@ -124,7 +135,7 @@ namespace Ihc {
             public long? TimerValue { get; set; }
 
             /// <summary>
-            /// Weekday value as integer (when ValueKind is WEEKDAY).
+            /// Day of the week, 0 = Monday to 6 = Sunday (when ValueKind is WEEKDAY).
             /// </summary>
             public int? WeekdayValue { get; set; }
 
@@ -134,12 +145,13 @@ namespace Ihc {
             public EnumValue? EnumValue { get; set; }
 
             /// <summary>
-            /// Phone number (when ValueKind is PhoneNumber).
+            /// Phone number as text, at most 20 characters (when ValueKind is PhoneNumber).
             /// </summary>
             public string? PhoneNumberValue { get; set; }
 
             /// <summary>
-            /// Dimmer percentage 0-100 (when ValueKind is SceneDimmer).
+            /// Light level in percent, 0-100, that the dimmer takes when the scene is recalled (when ValueKind is
+            /// SceneDimmer).
             /// </summary>
             public int? DimmerPercentage { get; set; }
 
@@ -149,7 +161,7 @@ namespace Ihc {
             public int? DimmerDelayTime { get; set; }
 
             /// <summary>
-            /// Dimmer ramp time in milliseconds (when ValueKind is SceneDimmer).
+            /// Dimmer ramp time in milliseconds (when ValueKind is SceneDimmer), at most 3,600,000 (60 minutes).
             /// </summary>
             public int? DimmerRampTime { get; set; }
 
@@ -159,12 +171,13 @@ namespace Ihc {
             public int? RelayDelayTime { get; set; }
 
             /// <summary>
-            /// Relay on/off state (when ValueKind is SceneRelay).
+            /// Relay state the scene recalls, <c>true</c> = on (when ValueKind is SceneRelay).
             /// </summary>
             public bool? RelayValue { get; set; }
 
             /// <summary>
-            /// Shutter position - true = up (when ValueKind is SceneShutter).
+            /// Shutter position the scene recalls: <c>true</c> = up, <c>false</c> = down (when ValueKind is
+            /// SceneShutter).
             /// </summary>
             public bool? ShutterPositionIsUp { get; set; }
 
@@ -212,8 +225,11 @@ namespace Ihc {
         };
 
         /// <summary>
-        /// Type string identifying the resource type.
-        /// See TypeStrings constants for valid values.
+        /// The resource's element type name in the .vis project file, such as <c>resource_input</c> or
+        /// <c>dataline_output</c>; <see cref="TypeStrings"/> holds the dataline ones. A controller names it in
+        /// <see cref="IResourceInteractionService.GetRuntimeValues"/> replies but leaves it empty in
+        /// <see cref="IResourceInteractionService.WaitForResourceValueChanges"/> replies, and accepts a write with it
+        /// empty.
         /// </summary>
         public string? TypeString  { get; init; }
 
@@ -223,18 +239,22 @@ namespace Ihc {
         public UnionValue Value { get; init; }
 
         /// <summary>
-        /// Unique resource identifier in the IHC system.
+        /// The resource's id: the decimal of the hexadecimal id the .vis project file gives the element, so
+        /// <c>_0x74a15e</c> is 7643486.
         /// </summary>
         public int ResourceID  { get; init; }
 
         /// <summary>
-        /// Indicates whether this is a runtime value (vs. configuration value).
+        /// <c>true</c> for the current (runtime) value the program and the hardware act on now; <c>false</c> for the
+        /// initial value, which the controller loads into the resource when it starts unless the resource keeps its
+        /// value through a power cut. <see cref="IOpenAPIService"/> ignores it on a write and leaves it <c>false</c>
+        /// on a read.
         /// </summary>
         public bool IsValueRuntime  { get; init; }
 
         /// <summary>
-        /// Approximately the time this value was created/changed (in most cases just approximated by the time this object was created).
-        /// Note: Not used by IHC - For internal diagnostics only.
+        /// When the SDK created this object, by the local clock, unless its creator passed a time: the controller sends
+        /// no time with a value. Not sent to the controller - for diagnostics only.
         /// </summary>
         public DateTimeOffset ValueTime { get; init; }
 
@@ -245,7 +265,7 @@ namespace Ihc {
         /// <summary>
         /// Helper that creates a boolean input value.
         /// </summary>
-        /// <param name="resourceId">Resource ID for the input.</param>
+        /// <param name="resourceId">Id of the input resource.</param>
         /// <param name="value">Boolean value to set.</param>
         /// <returns>A new ResourceValue configured as a boolean input.</returns>
         public static ResourceValue CreateBooleanRuntimeInput(int resourceId, bool value) {
@@ -260,7 +280,7 @@ namespace Ihc {
         /// <summary>
         /// Helper that creates a boolean output value.
         /// </summary>
-        /// <param name="resourceId">Resource ID for the output.</param>
+        /// <param name="resourceId">Id of the output resource.</param>
         /// <param name="value">Boolean value to set.</param>
         /// <returns>A new ResourceValue configured as a boolean output.</returns>
         public static ResourceValue CreateBooleanRuntimeOutput(int resourceId, bool value) {
@@ -298,22 +318,27 @@ namespace Ihc {
     }
 
      /// <summary>
-     /// High level model of IHC WS logged data without soap distractions.
+     /// One sample from a resource's data log, which the controller keeps on its SD card.
      /// </summary>
     public record LoggedData {
         /// <summary>
-        /// The logged value as a string.
+        /// The logged value as text, as the controller formats it: <c>true</c> or <c>false</c> for an on/off
+        /// resource.
         /// </summary>
         public string? Value  { get; init; }
 
         /// <summary>
-        /// Unique identifier for this log entry.
+        /// Running number of the sample in the log, counting from 0.
         /// </summary>
         public int Id  { get; init; }
 
         /// <summary>
-        /// Timestamp when this data was logged.
+        /// When the sample was logged, converted by the SDK from the wire value as seconds since 1970 UTC.
         /// </summary>
+        /// <remarks>
+        /// Known defect: the controller sends milliseconds since 1970, so the conversion is off by a factor of 1,000
+        /// and throws for any sample logged after early 1978.
+        /// </remarks>
         public DateTimeOffset Timestamp  { get; init; }
 
         public override string ToString()
@@ -323,11 +348,13 @@ namespace Ihc {
     }
 
      /// <summary>
-     /// High level model of an IHC WS Enum definition without soap distractions.
+     /// An enumeration type the controller knows: one of the project's enum definitions, or a built-in one such as a
+     /// dimmer's load mode with the values Auto, RC and RL.
      /// </summary>
     public record EnumDefinition {
          /// <summary>
-         /// Unique identifier for this enumerator definition.
+         /// The definition's id: the decimal of its hexadecimal id in the .vis project file, or the controller's own id
+         /// for a built-in one (-2147483647, i.e. 0x80000001, for the dimmer load mode).
          /// </summary>
          public int EnumeratorDefinitionID  { get; init; }
 
@@ -343,21 +370,25 @@ namespace Ihc {
     }
 
     /// <summary>
-    /// High level model of an IHC WS Enum value without soap distractions.
+    /// One value of an enumeration, identified by its definition's id and its own id, never by its position in the
+    /// definition's list.
     /// </summary>
     public record EnumValue {
         /// <summary>
-        /// Type identifier for the enum definition this value belongs to.
+        /// Id of the enumeration definition this value belongs to, equal to that definition's
+        /// <see cref="EnumDefinition.EnumeratorDefinitionID"/>.
         /// </summary>
         public int DefinitionTypeID  { get; init; }
 
         /// <summary>
-        /// Unique identifier for this enum value.
+        /// The value's id: the decimal of its hexadecimal id in the .vis project file, or the controller's own id for
+        /// a built-in value.
         /// </summary>
         public int EnumValueID  { get; init; }
 
         /// <summary>
-        /// Human-readable name of this enum value.
+        /// The value's display name: the project's, or the controller's own for a built-in value. A controller fills
+        /// it in the values it reports.
         /// </summary>
         public string? EnumName  { get; init; }
 
@@ -368,22 +399,27 @@ namespace Ihc {
     }
 
     /// <summary>
-    /// High level model of a scene resource ID and its location without soap distractions.
+    /// One scene membership, linking a function block's scene output to one product output: the member's resource id,
+    /// and display texts for each side.
     /// </summary>
     public record SceneResourceIdAndLocation
     {
         /// <summary>
-        /// Scene position as seen from the function block perspective.
+        /// Display text for the membership on the function block's side, suited as the label of the block's scene
+        /// link.
         /// </summary>
         public string? ScenePositionSeenFromFunctionBlock  { get; init; }
 
         /// <summary>
-        /// Unique resource ID for the scene.
+        /// The member resource's id, not the scene's: the one that carries the member's scene value (SceneDimmer,
+        /// SceneRelay or SceneShutter). In the answer of
+        /// <see cref="IResourceInteractionService.GetScenePositionsForSceneValueResource"/> it is probably the id asked
+        /// for.
         /// </summary>
         public int SceneResourceId  { get; init; }
 
         /// <summary>
-        /// Scene position as seen from the product perspective.
+        /// Display text for the membership on the product's side, suited as the label of the product's scene member.
         /// </summary>
         public string? ScenePositionSeenFromProduct  { get; init; }
 

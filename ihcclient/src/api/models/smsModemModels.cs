@@ -1,32 +1,36 @@
 namespace Ihc
 {
     /// <summary>
-    /// High level model of SMS modem settings without soap distractions.
+    /// The SMS modem settings the controller holds.
     /// </summary>
     public record SmsModemSettings
     {
         /// <summary>
-        /// Message to send when the system powers up.
+        /// SMS text sent when the modem starts up on power-up; at most 60 characters.
         /// </summary>
         public string? PowerupMessage { get; init; }
 
         /// <summary>
-        /// Message to send when the system powers down.
+        /// SMS text sent at a power failure; at most 60 characters.
         /// </summary>
         public string? PowerdownMessage { get; init; }
 
         /// <summary>
-        /// Phone number to send powerdown message to.
+        /// Not a phone number, despite its name: a mask of 30 characters <c>0</c> or <c>1</c>, one per slot of the
+        /// modem's phone list in the project (the first for slot 1). A <c>1</c> marks a slot that receives the
+        /// power-up, power-down and forwarded texts.
         /// </summary>
         public string? PowerdownNumber { get; init; }
 
         /// <summary>
-        /// Indicates whether SMS messages should be relayed.
+        /// Indicates whether an SMS refused for its unauthorized sender is forwarded to the recipient; such messages
+        /// are also logged.
         /// </summary>
         public bool RelaySMS { get; init; }
 
         /// <summary>
-        /// Forces the modem to operate in standalone mode.
+        /// Forces the modem to operate in standalone mode, in which the controller can no longer communicate with it;
+        /// the controller is then to be switched off, the data cable removed and the system restarted.
         /// </summary>
         public bool ForceStandAloneMode { get; init; }
 
@@ -36,7 +40,7 @@ namespace Ihc
         public bool SendLowBatteryNotification { get; init; }
 
         /// <summary>
-        /// Language setting for low battery notifications.
+        /// Undocumented; probably picks Danish or English for the low-battery notification. Leave it <c>false</c>.
         /// </summary>
         public bool SendLowBatteryNotificationLanguage { get; init; }
 
@@ -52,12 +56,13 @@ namespace Ihc
     }
 
     /// <summary>
-    /// High level model of SMS modem information without soap distractions.
+    /// The SMS modem's identity, and whether the controller reports a modem present.
     /// </summary>
     public record SmsModemInfo
     {
         /// <summary>
-        /// Firmware version of the SMS modem.
+        /// Firmware version of the SMS modem; <see cref="SystemInfo.SmsModemSoftwareVersion"/> need not be this, as it
+        /// is reported even without a modem.
         /// </summary>
         public string? FirmwareVersion { get; init; }
 
@@ -77,7 +82,7 @@ namespace Ihc
         public string? ProductionDate { get; init; }
 
         /// <summary>
-        /// Indicates whether the modem has been detected by the system.
+        /// Indicates whether the controller reports the modem present.
         /// </summary>
         public bool Detected { get; init; }
 
@@ -98,27 +103,29 @@ namespace Ihc
     }
 
     /// <summary>
-    /// High level model of SMS modem status without soap distractions.
+    /// The SMS modem's live GSM status.
     /// </summary>
     public record SmsModemStatus
     {
         /// <summary>
-        /// Antenna signal coverage level.
+        /// Antenna signal coverage level, reported as <c>text.sms_modem.antenna_coverage.low</c> to <c>.high</c> in
+        /// five steps, or <c>.not_applicable</c>.
         /// </summary>
         public string? AntennaCoverage { get; init; }
 
         /// <summary>
-        /// Name of the mobile network operator.
+        /// Name of the operator of the GSM network the SIM card uses.
         /// </summary>
         public string? MobileOperator { get; init; }
 
         /// <summary>
-        /// Current status of the modem.
+        /// Current status of the modem, its SIM and the GSM network, reported as a key such as <c>text.sms_modem.ok</c>
+        /// or <c>text.sms_modem.sim_card.no_card</c>.
         /// </summary>
         public string? ModemStatus { get; init; }
 
         /// <summary>
-        /// Mobile phone number associated with the SIM card.
+        /// Mobile phone number of the SIM card; the operator may not make it available.
         /// </summary>
         public string? MobileNumber { get; init; }
 

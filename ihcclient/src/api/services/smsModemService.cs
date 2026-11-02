@@ -7,34 +7,41 @@ using System.Diagnostics;
 namespace Ihc
 {
     /// <summary>
-    /// High-level interface for IHC SMS modem service operations.
-    /// Used for control of SMS modem
+    /// Reads the identity and GSM status of the LK SMS modem on the controller's RS-485 bus, and reads and writes the
+    /// settings the controller holds for it; the SIM PIN and the phone-number list are set in the IHC Visual project
+    /// instead.
     /// </summary>
     public interface ISmsModemService : IIHCApiService
     {
         /// <summary>
-        /// Set SMS modem settings.
+        /// Writes the SMS modem settings as one complete record, not a delta: read it with
+        /// <see cref="GetSmsModemSettings"/>, change it and send it back. Setting
+        /// <see cref="SmsModemSettings.ForceStandAloneMode"/> cuts the controller off from the modem.
         /// </summary>
-        /// <param name="settings">SMS modem settings to configure</param>
+        /// <param name="settings">The complete SMS modem settings to store.</param>
         Task SetSmsModemSettings(SmsModemSettings settings);
 
         /// <summary>
-        /// Get SMS modem settings.
+        /// Gets the SMS modem settings the controller holds: the power-up and power-down texts, their recipient slots
+        /// and the notification flags.
         /// </summary>
+        /// <returns>The settings, or <c>null</c> when the reply carries none.</returns>
         Task<SmsModemSettings?> GetSmsModemSettings();
 
         /// <summary>
-        /// Get SMS modem status information.
+        /// Gets the modem's live GSM status: operator, SIM number, antenna coverage and modem state.
         /// </summary>
+        /// <returns>The status, or <c>null</c> when the reply carries none.</returns>
         Task<SmsModemStatus?> GetSmsModemStatus();
 
         /// <summary>
-        /// Get SMS modem hardware and firmware information.
+        /// Gets the modem's hardware and firmware information, and whether the controller reports a modem present.
         /// </summary>
+        /// <returns>The information, or <c>null</c> when the reply carries none.</returns>
         Task<SmsModemInfo?> GetSmsModemInfo();
 
         /// <summary>
-        /// Reset the SMS modem.
+        /// Resets the SMS modem.
         /// </summary>
         Task ResetSmsModem();
     }

@@ -5,34 +5,57 @@ using System.Diagnostics;
 
 namespace Ihc {
     /// <summary>
-    /// A highlevel client interface for the IHC TimeManagerService without any of the soap distractions.
+    /// Reads the controller's clock and uptime, and reads and writes its time configuration: time zone, summer time,
+    /// time-server sync and the online holiday calendar.
     /// </summary>
     public interface ITimeManagerService : IIHCApiService
     {
         /// <summary>
-        /// Get the current local time from the controller.
+        /// Gets the current local time from the controller: UTC plus its time-zone offset and, when enabled, summer
+        /// time.
         /// </summary>
+        /// <returns>The controller's local time. The SDK reads it at a fixed +01:00 offset, so the instant is right
+        /// only while the controller runs at UTC+1; <c>DateTimeOffset.MinValue</c> when the reply carries no readable
+        /// date.</returns>
         public Task<DateTimeOffset> GetCurrentLocalTime();
 
         /// <summary>
-        /// Get controller uptime since last restart.
+        /// Gets the controller's uptime since its last restart.
         /// </summary>
+        /// <returns>The uptime, which the controller sends in milliseconds as in
+        /// <see cref="IConfigurationService.GetSystemInfo"/>; <c>TimeSpan.Zero</c> when the reply carries no
+        /// value.</returns>
         public Task<TimeSpan> GetUptime();
 
         /// <summary>
-        /// Get time manager settings including time sync, DST, and timezone configuration.
+        /// Gets the time configuration (time-server sync, summer time and time zone) and the controller's clock in
+        /// UTC.
         /// </summary>
+        /// <returns>The settings, or <c>null</c> when the reply carries none.</returns>
         public Task<TimeManagerSettings?> GetSettings();
 
         /// <summary>
-        /// Set time manager settings for time synchronization and timezone.
+        /// Writes the controller's complete time configuration; with server sync off,
+        /// <see cref="TimeManagerSettings.TimeAndDateInUTC"/> is the clock to set.
         /// </summary>
-        /// <param name="settings">Time manager settings to configure</param>
+        /// <param name="settings">The complete time settings to store; read them with <see cref="GetSettings"/> to
+        /// change part of them.</param>
+        /// <returns><c>true</c> when the controller answers result code 1; <c>false</c> for any other code, also when
+        /// the reply carries none. See the remarks.</returns>
+        /// <remarks>Known defect: the controller's code 0 means success, 1 that the time could not be set and 2 that
+        /// the calendar is not available, so this method returns <c>true</c> when the time could not be set and
+        /// <c>false</c> when it was set.</remarks>
+        /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c> or breaks a limit declared on
+        /// <see cref="TimeManagerSettings"/>; nothing is sent.</exception>
         public Task<bool> SetSettings(TimeManagerSettings settings);
 
         /// <summary>
-        /// Synchronize time with configured NTP server and get connection result.
+        /// Asks the controller to fetch the time from a time server itself, resolving a name through its own DNS, and
+        /// reports the outcome.
         /// </summary>
+        /// <returns>The outcome, or <c>null</c> when the reply carries none.</returns>
+        /// <remarks>The operation takes a server name, which this method leaves empty; which server the controller
+        /// then asks is not known.</remarks>
         public Task<TimeServerConnectionResult?> GetTimeFromServer();
     }
 
