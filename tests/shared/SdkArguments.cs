@@ -10,7 +10,7 @@ namespace Ihc.Tests
     /// <summary>
     /// A valid argument for any parameter of a public SDK service method, for tests that call every operation.
     /// A complex parameter takes the value a default <see cref="ControllerStub"/> holds of its type, which also
-    /// proves that default passes the setter's validation, except where the captured default is one the validation
+    /// proves that default passes the setter's validation, except where the default is one the validation
     /// refuses (<see cref="RefusedDefaults"/>); a type the stub holds no value of takes an explicit literal that
     /// passes it. No complex parameter is given null: the real setters refuse null before they send.
     /// </summary>
@@ -20,14 +20,13 @@ namespace Ihc.Tests
         private static readonly ControllerStub Defaults = new();
 
         /// <summary>
-        /// The stub's defaults are a real controller's answers, and for these types that answer is one the SDK's
-        /// own validation refuses to send back: a time-server name longer than its 20 characters, and a disabled
-        /// wireless setup whose addresses are empty where it requires them. Each argument keeps the captured value
-        /// and changes only what the validation refuses.
+        /// For this type the stub's default is one the SDK's own validation refuses to send back: a disabled wireless
+        /// setup whose addresses are empty where it requires them. That default is a stand-in, not a captured answer,
+        /// since no capture holds the wireless settings. The argument keeps it and changes only what the validation
+        /// refuses.
         /// </summary>
         internal static readonly IReadOnlyDictionary<Type, Func<object, object>> RefusedDefaults = new Dictionary<Type, Func<object, object>>
         {
-            [typeof(TimeManagerSettings)] = held => (TimeManagerSettings)held with { ServerName = "dk.pool.ntp.org" },
             [typeof(WLanSettings)] = held => (WLanSettings)held with { IpAddress = "192.168.77.104", Netmask = "255.255.255.0", Gateway = "192.168.77.1" },
         };
 
@@ -53,6 +52,10 @@ namespace Ihc.Tests
             if (type == typeof(SceneProject))
             {
                 return new SceneProject("stub.icw", [1, 2, 3, 4]);
+            }
+            if (type == typeof(ProjectSegment))
+            {
+                return new ProjectSegment { Data = [1, 2, 3, 4], Filename = "stub.vis" };
             }
             if (type.IsAssignableFrom(typeof(List<int>)))
             {

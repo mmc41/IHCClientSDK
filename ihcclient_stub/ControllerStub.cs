@@ -3,7 +3,8 @@ namespace Ihc.Stubbing
     /// <summary>The failure <see cref="ControllerStub.FailOn{TService}"/> injects.</summary>
     public enum StubFault
     {
-        /// <summary>HTTP 500 with a SOAP fault.</summary>
+        /// <summary>HTTP 500 with a SOAP fault: the SDK sees an <c>ErrorWithCodeException</c> with
+        /// <c>Errors.CONTROLLER_SOAP_FAULT</c>, carrying the fault's text.</summary>
         SoapFault,
 
         /// <summary>A transport failure, never a SOAP answer: the SDK sees an <c>HttpRequestException</c>.</summary>
@@ -111,8 +112,9 @@ namespace Ihc.Stubbing
         public StubAirlink Airlink { get; }
 
         /// <summary>
-        /// Every exchange the stub could not answer, in the order they arrived. The SDK raises on the fault's status
-        /// before it reads the body, so this list, not the SDK's exception, is where the diagnostic is read.
+        /// Every exchange the stub could not answer, in the order they arrived. The SDK raises the fault the stub
+        /// answers as <see cref="Errors.CONTROLLER_SOAP_FAULT"/>, its text naming the operation, but code under test
+        /// may swallow that, so this list is where the diagnostic is read.
         /// </summary>
         public IReadOnlyList<UnmodelledCall> Unmodelled => Gated.Copy(_gate, _unmodelled);
 

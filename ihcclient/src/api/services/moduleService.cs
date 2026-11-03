@@ -117,7 +117,8 @@ namespace Ihc {
         private readonly Ihc.Soap.Module.ModuleService impl;
 
         /// <summary>
-        /// Create an ModuleService instance for access to the IHC API related to projects.
+        /// Create a ModuleService instance for transferring the scene project of IHC SceneDesign and IHC SceneView,
+        /// which is separate from the IHC project.
         /// </summary>
         /// <param name="authService">AuthenticationService instance</param>
         public ModuleService(IAuthenticationService authService)

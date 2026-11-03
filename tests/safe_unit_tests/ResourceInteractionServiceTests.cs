@@ -187,21 +187,39 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// Logged data carries its timestamp as epoch SECONDS - a second, separate date convention on this
-        /// service, and the one place a wrong unit would put a whole history a thousand-fold out.
+        /// Logged data carries its timestamp as epoch MILLISECONDS: ServiceView reads the value with
+        /// <c>Calendar.setTimeInMillis</c>, and the vendor's own export shows a sample at 22-10-2015 4:52:50, about
+        /// 1.44e12 as milliseconds, which as seconds would be no date at all. The stamp here is that sample, read as
+        /// UTC, with a millisecond part to show the precision is kept.
         /// </summary>
         [Test]
-        public async Task GetLoggedData_ReadsItsTimestampsAsEpochSeconds()
+        public async Task GetLoggedData_ReadsItsTimestampsAsEpochMilliseconds()
         {
-            var when = new DateTimeOffset(2026, 3, 4, 9, 30, 15, TimeSpan.Zero);
+            var when = new DateTimeOffset(2015, 10, 22, 4, 52, 50, 123, TimeSpan.Zero);
             var soap = A.Fake<SoapContract>();
             A.CallTo(() => soap.getLoggedDataAsync(A<inputMessageName20>._))
                 .Returns(Task.FromResult(new outputMessageName20(
-                    [new WSLoggedData { id = 5, value = "on", timestamp = when.ToUnixTimeSeconds() }])));
+                    [new WSLoggedData { id = 0, value = "true", timestamp = 1_445_489_570_123L }])));
 
             IReadOnlyList<LoggedData> logged = await NewService(soap).GetLoggedData(9);
 
-            Assert.That(logged, Is.EqualTo(new[] { new LoggedData { Id = 5, Value = "on", Timestamp = when } }));
+            Assert.That(logged, Is.EqualTo(new[] { new LoggedData { Id = 0, Value = "true", Timestamp = when } }));
+        }
+
+        /// <summary>A stamp past the range milliseconds since 1970 can state fails the read and says what was sent,
+        /// rather than surfacing the framework's bare range error.</summary>
+        [TestCase(long.MaxValue)]
+        [TestCase(-62_135_596_800_001L)]
+        public void GetLoggedData_WithAStampOutsideTheMillisecondRange_FailsNamingTheValueAndTheUnit(long stamp)
+        {
+            var soap = A.Fake<SoapContract>();
+            A.CallTo(() => soap.getLoggedDataAsync(A<inputMessageName20>._))
+                .Returns(Task.FromResult(new outputMessageName20([new WSLoggedData { id = 0, value = "1", timestamp = stamp }])));
+
+            Assert.That(async () => await NewService(soap).GetLoggedData(9),
+                Throws.InvalidOperationException.With.Message.Contains(stamp.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                    .And.Message.Contains("milliseconds since 1970")
+                    .And.InnerException.TypeOf<ArgumentOutOfRangeException>());
         }
 
         private static Task<IReadOnlyList<EnumDefinition>> DefinitionsFrom(params WSEnumDefinition?[] reported)
@@ -370,8 +388,8 @@ namespace Ihc.Tests
 
             await Assert.MultipleAsync(async () =>
             {
-                Assert.That(await service.DisableRuntimeValueNotifactions([1]), Is.EqualTo(expected));
-                Assert.That(await service.DisableInitialValueNotifactions([1]), Is.EqualTo(expected));
+                Assert.That(await service.DisableRuntimeValueNotifications([1]), Is.EqualTo(expected));
+                Assert.That(await service.DisableInitialValueNotifications([1]), Is.EqualTo(expected));
             });
         }
 

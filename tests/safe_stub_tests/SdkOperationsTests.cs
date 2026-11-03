@@ -36,7 +36,7 @@ namespace Ihc.Tests
         [Test]
         public void TheTable_DeclaresTheTypedRows()
         {
-            Assert.That(SdkOperations.Rows.Count(row => row.AnswerKind != StubAnswerKind.Shape), Is.EqualTo(95));
+            Assert.That(SdkOperations.Rows.Count(row => row.AnswerKind != StubAnswerKind.Shape), Is.EqualTo(96));
         }
 
         [Test]
@@ -115,15 +115,24 @@ namespace Ihc.Tests
             }));
         }
 
-        [Test]
-        public void TheTestSendMessageOverload_IsUnwrapped_AndTestSendMessage1IsOwned()
+        /// <summary>The SDK spells the two unsubscribe methods correctly, so the name convention no longer finds their
+        /// wire actions, which keep the vendor's "Notifactions"; each still owns its own.</summary>
+        [TestCase("disableRuntimeValueNotifactions", nameof(IResourceInteractionService.DisableRuntimeValueNotifications))]
+        [TestCase("disableInitialValueNotifactions", nameof(IResourceInteractionService.DisableInitialValueNotifications))]
+        public void TheVendorSpeltUnsubscribes_AreOwnedByTheCorrectlySpeltMethods(string wireAction, string owner)
         {
-            SdkOperation? overload = SdkOperations.Find("ConfigurationService", "testSendMessage");
-            SdkOperation? sent = SdkOperations.Find("ConfigurationService", "testSendMessage1");
+            Assert.That(SdkOperations.Find("ResourceInteractionService", wireAction)?.OwnerMethod, Is.EqualTo(owner));
+        }
+
+        [Test]
+        public void TheFourPartTestSendMessageOverload_IsUnwrapped_AndTheSixPartOneIsOwned()
+        {
+            SdkOperation? overload = SdkOperations.Find("ConfigurationService", "testSendMessage1");
+            SdkOperation? sent = SdkOperations.Find("ConfigurationService", "testSendMessage");
 
             Assert.That(overload, Is.Not.Null);
             Assert.That(SdkOperations.Rows.Where(row => row.IsUnwrapped), Is.EqualTo(new[] { overload }),
-                "the testSendMessage overload is the one operation no public method sends");
+                "the four-part testSendMessage1 overload is the one operation no public method sends");
             Assert.That(sent?.OwnerMethod, Is.EqualTo(nameof(IConfigurationService.TestSendMessage)));
         }
 
@@ -139,6 +148,9 @@ namespace Ihc.Tests
                 AssertOwner("ControllerService", "storeIHCProject", typeof(IControllerService), nameof(IControllerService.StoreProject));
                 AssertOwner("ControllerService", "waitForControllerStateChange", typeof(IControllerService),
                     nameof(IControllerService.WaitForControllerStateChange));
+                AssertOwner("TimeManagerService", "getCurrentLocalTime", typeof(ITimeManagerService),
+                    nameof(ITimeManagerService.GetCurrentLocalTime));
+                AssertOwner("TimeManagerService", "getSettings", typeof(ITimeManagerService), nameof(ITimeManagerService.GetSettings));
             });
         }
 
@@ -149,8 +161,19 @@ namespace Ihc.Tests
                 Is.EqualTo(new[]
                 {
                     "getState", "isSDCardReady", "isIHCProjectAvailable", "enterProjectChangeMode",
-                    "waitForControllerStateChange", "storeIHCProject", "waitForControllerStateChange",
-                    "exitProjectChangeMode", "waitForControllerStateChange",
+                    "getState", "storeIHCProject", "getState",
+                    "exitProjectChangeMode", "getState",
+                }));
+            Assert.That(SdkOperations.Entry(typeof(ITimeManagerService), nameof(ITimeManagerService.GetCurrentLocalTime))?.WireActions,
+                Is.EqualTo(new[] { "getCurrentLocalTime", "getSettings" }));
+            Assert.That(SdkOperations.Entry(typeof(IControllerService), nameof(IControllerService.GetProjectInSegments))?.WireActions,
+                Is.EqualTo(new[] { "getProjectInfo", "getIHCProjectNumberOfSegments", "getIHCProjectSegment" }));
+            Assert.That(SdkOperations.Entry(typeof(IControllerService), nameof(IControllerService.StoreProjectInSegments))?.WireActions,
+                Is.EqualTo(new[]
+                {
+                    "getState", "isSDCardReady", "isIHCProjectAvailable", "enterProjectChangeMode",
+                    "getState", "getIHCProjectSegmentationSize", "storeIHCProjectSegment", "getState",
+                    "exitProjectChangeMode", "getState",
                 }));
         }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Ihc.Envelope;
 using Ihc.Stubbing;
 
@@ -28,6 +29,17 @@ namespace Ihc.Tests
             return (string)typeof(Serialization).GetMethod(nameof(Serialization.SerializeXml))!.MakeGenericMethod(closed)
                 .Invoke(null, [Activator.CreateInstance(closed, body)])!;
         }
+
+        /// <summary>The form a 3.3.44 controller answers every empty list in: one nil item.</summary>
+        internal const string OneNilItem = "<ns1:arrayItem xsi:nil=\"true\"/>";
+
+        /// <summary>A reply written the way a controller writes it: <paramref name="content"/> inside the <c>utcs</c>
+        /// body element <paramref name="bodyElement"/>, with the <c>xsi</c> prefix declared.</summary>
+        internal static Task<ControllerStubResponse> ControllerReply(string bodyElement, string content) =>
+            Task.FromResult(new ControllerStubResponse(200,
+                "<SOAP-ENV:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\">" +
+                $"<SOAP-ENV:Body><ns1:{bodyElement} xmlns:ns1=\"utcs\">{content}</ns1:{bodyElement}></SOAP-ENV:Body>" +
+                "</SOAP-ENV:Envelope>"));
 
         /// <summary>The body the SDK's own serializer reads from a response envelope.</summary>
         internal static object? SdkReadsResponse(Type bodyType, string xml)

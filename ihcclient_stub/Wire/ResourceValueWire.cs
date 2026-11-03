@@ -36,8 +36,14 @@ namespace Ihc.Stubbing
         {
             ValueKind.BOOL => new WSBooleanValue { value = Present(value.BoolValue) },
             ValueKind.DATE => DateToWire(Present(value.DateValue)),
-            ValueKind.INT => new WSIntegerValue { integer = Present(value.IntValue) },
-            ValueKind.DOUBLE => new WSFloatingPointValue { floatingPointValue = Present(value.DoubleValue) },
+            ValueKind.INT => new WSIntegerValue
+            {
+                integer = Present(value.IntValue), minimumValue = value.IntMinimum ?? 0, maximumValue = value.IntMaximum ?? 0,
+            },
+            ValueKind.DOUBLE => new WSFloatingPointValue
+            {
+                floatingPointValue = Present(value.DoubleValue), minimumValue = value.DoubleMinimum ?? 0, maximumValue = value.DoubleMaximum ?? 0,
+            },
             ValueKind.ENUM => EnumToWire(value.EnumValue ?? throw Absent(nameof(value.EnumValue))),
             ValueKind.TIME => TimeToWire(Present(value.TimeValue)),
             ValueKind.TIMER => new WSTimerValue { milliseconds = Present(value.TimerValue) },
@@ -66,8 +72,19 @@ namespace Ihc.Stubbing
                 ValueKind = ValueKind.DATE,
                 DateValue = new DateTimeOffset(date.year, date.month, date.day, 0, 0, 0, WireDates.Offset),
             },
-            WSIntegerValue integer => new() { ValueKind = ValueKind.INT, IntValue = integer.integer },
-            WSFloatingPointValue floating => new() { ValueKind = ValueKind.DOUBLE, DoubleValue = floating.floatingPointValue },
+            // A range of 0 to 0 is the SDK's "no range", read back as none as the SDK reads it.
+            WSIntegerValue integer => new()
+            {
+                ValueKind = ValueKind.INT, IntValue = integer.integer,
+                IntMinimum = integer.minimumValue == 0 && integer.maximumValue == 0 ? null : integer.minimumValue,
+                IntMaximum = integer.minimumValue == 0 && integer.maximumValue == 0 ? null : integer.maximumValue,
+            },
+            WSFloatingPointValue floating => new()
+            {
+                ValueKind = ValueKind.DOUBLE, DoubleValue = floating.floatingPointValue,
+                DoubleMinimum = floating.minimumValue == 0 && floating.maximumValue == 0 ? null : floating.minimumValue,
+                DoubleMaximum = floating.minimumValue == 0 && floating.maximumValue == 0 ? null : floating.maximumValue,
+            },
             WSEnumValue enumerated => new()
             {
                 ValueKind = ValueKind.ENUM,

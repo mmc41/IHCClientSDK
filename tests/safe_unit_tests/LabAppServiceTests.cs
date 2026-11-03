@@ -808,7 +808,7 @@ namespace Ihc.Tests
             var labService = new LabAppService(null, null);
             labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
 
-            // Select GetRuntimeValue(int resourceID) operation
+            // Select GetRuntimeValue(int resourceId) operation
             var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
             var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
             Assert.That(opIndex, Is.GreaterThanOrEqualTo(0), "GetRuntimeValue operation should exist");
@@ -831,7 +831,7 @@ namespace Ihc.Tests
             var labService = new LabAppService(null, null);
             labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
 
-            // Select GetRuntimeValue(int resourceID) operation
+            // Select GetRuntimeValue(int resourceId) operation
             var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
             var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
             Assert.That(opIndex, Is.GreaterThanOrEqualTo(0));
@@ -848,7 +848,7 @@ namespace Ihc.Tests
             var labService = new LabAppService(null, null);
             labService.Configure(settings, new IIHCApiService[] { fakeResourceService });
 
-            // Select GetRuntimeValue(int resourceID) operation
+            // Select GetRuntimeValue(int resourceId) operation
             var serviceItem = labService.Services.First(s => s.Service == fakeResourceService);
             var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetRuntimeValue");
             Assert.That(opIndex, Is.GreaterThanOrEqualTo(0));
@@ -1284,6 +1284,73 @@ namespace Ihc.Tests
             Assert.That(result.DisplayResult, Does.Contain("BoolValue=True"));
         }
 
+        /// <summary>
+        /// A user log shows its cursor and then its entries, one per line. The log's own ToString() names only the
+        /// cursor and a line count, so it cannot be what the Lab shows for a log on its own.
+        /// </summary>
+        [Test]
+        public async Task FormatResult_UserLog_ShowsTheCursorAndOneEntryPerLine()
+        {
+            A.CallTo(() => fakeConfigService.GetUserLog(A<string>._, A<string>._)).Returns(Task.FromResult(new UserLogFileText
+            {
+                FileName = "userlog-7",
+                Lines = ["2026.11.01 10:00:00\tFejl\tStrømsvigt", "2026.11.01 09:00:00\tAdvarsel\tLavt batteri", ""]
+            }));
+            var labService = new LabAppService(null, null);
+            labService.Configure(settings, new IIHCApiService[] { fakeConfigService });
+            var serviceItem = labService.Services.First(s => s.Service == fakeConfigService);
+            var opIndex = serviceItem.LookupFirstOperationIndexByDisplayName(fullDisplayName: "GetUserLog");
+            Assert.That(opIndex, Is.GreaterThanOrEqualTo(0), "GetUserLog operation should exist");
+            labService.SelectedOperation = serviceItem.OperationItems[opIndex];
+
+            var result = await labService.DynCallSelectedOperation();
+
+            Assert.That(result.DisplayResult, Is.EqualTo(
+                "UserLogFileText(FileName=userlog-7, Lines=string[3])\n"
+                + "2026.11.01 10:00:00\tFejl\tStrømsvigt\n"
+                + "2026.11.01 09:00:00\tAdvarsel\tLavt batteri\n"));
+        }
+
+        /// <summary>
+        /// A long log shows its first 100 entries and counts the rest. The empty line after the log's final line feed
+        /// is no entry, so a log of exactly 100 entries is shown whole, with nothing said to be left out.
+        /// </summary>
+        [TestCase(100, "")]
+        [TestCase(101, "... (1 more)\n")]
+        public void FormatResult_LongUserLog_ShowsTheFirst100EntriesAndCountsTheRest(int entries, string omission)
+        {
+            var log = UserLogOf(entries);
+
+            string display = LabAppService.FormatResult(log, typeof(UserLogFileText));
+
+            Assert.That(display, Is.EqualTo($"{log}\n{string.Concat(log.Lines.Take(100).Select(line => line + "\n"))}{omission}"));
+        }
+
+        /// <summary>
+        /// A log without the empty last line a final line feed leaves: a reply that carried no file has no lines at
+        /// all, and a text without its final line feed ends in an entry, which is shown like any other.
+        /// </summary>
+        [Test]
+        public void FormatResult_UserLogWithoutTheFinalLineFeed_ShowsEveryLineAsAnEntry()
+        {
+            var noFile = new UserLogFileText();
+            var unterminated = new UserLogFileText { FileName = "userlog-7", Lines = ["first", "second"] };
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(LabAppService.FormatResult(noFile, typeof(UserLogFileText)), Is.EqualTo($"{noFile}\n"));
+                Assert.That(LabAppService.FormatResult(unterminated, typeof(UserLogFileText)),
+                    Is.EqualTo($"{unterminated}\nfirst\nsecond\n"));
+            });
+        }
+
+        /// <summary>A user log of numbered entries, ending in the line feed a log text ends in.</summary>
+        private static UserLogFileText UserLogOf(int entries) => new()
+        {
+            FileName = "userlog-7",
+            Lines = [.. Enumerable.Range(1, entries).Select(i => $"2026.11.01 10:00:00\tFejl\tStrømsvigt {i}"), ""]
+        };
+
         #endregion
 
         #region Collection Parameter (US-A1) Tests
@@ -1639,8 +1706,9 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// US-C4 / D6: a ProjectSegment result (raw binary chunk from the OpenAPI segmented transfer) is saved as
-        /// its real bytes with a .bin name - not the ToString() preview as UTF-8 .txt, which would lose the data.
+        /// US-C4 / D6: a ProjectSegment result (a raw slice of the project's gzip stream, from the controller or the
+        /// OpenAPI segmented download) is saved as its real bytes with a .bin name - not the ToString() preview as
+        /// UTF-8 .txt, which would lose the data.
         /// </summary>
         [Test]
         public void BuildResultFileContent_ProjectSegment_SavesRealBytesAsBin()
@@ -1667,6 +1735,23 @@ namespace Ihc.Tests
 
             Assert.That(content.Bytes, Is.EqualTo(bytes));
             Assert.That(content.SuggestedFileName, Is.EqualTo("GetSceneProjectSegment.bin"));
+        }
+
+        /// <summary>
+        /// US-C4 / D6: a user log is saved whole, as UTF-8 text under its cursor line, though the display it is saved
+        /// from shows only the first 100 entries.
+        /// </summary>
+        [Test]
+        public void BuildResultFileContent_UserLog_SavesEveryEntryAsUtf8Txt()
+        {
+            var log = UserLogOf(150);
+            string display = LabAppService.FormatResult(log, typeof(UserLogFileText));
+
+            var content = LabAppService.BuildResultFileContent(log, display, "GetUserLog");
+
+            // The log's own text, every entry and the line feed it ends in, after the cursor line.
+            Assert.That(content.Bytes, Is.EqualTo(System.Text.Encoding.UTF8.GetBytes($"{log}\n{string.Join('\n', log.Lines)}")));
+            Assert.That(content.SuggestedFileName, Is.EqualTo("GetUserLog.txt"));
         }
 
         #endregion

@@ -27,7 +27,7 @@ namespace Ihc.Tests
     public class PublicWrapperCoverageTests
     {
         /// <summary>Changed deliberately when the SDK gains or loses a public service method.</summary>
-        private const int WrapperCount = 165;
+        private const int WrapperCount = 167;
 
         /// <summary>Long enough for a change stream to subscribe and wait once; a stream is read until then.</summary>
         private static readonly TimeSpan StreamReadFor = TimeSpan.FromMilliseconds(300);
@@ -90,6 +90,20 @@ namespace Ihc.Tests
                 {
                     Assert.That(raised, Is.InstanceOf<InvalidOperationException>(), $"{fault}: the gate still refuses first");
                     Assert.That(sdk.Stub.Journal.All, Is.Empty, $"{fault}: the gate refuses before it sends");
+                }
+                else if (fault == StubFault.SoapFault)
+                {
+                    // A SOAP fault is the controller's own refusal, raised with its code and text.
+                    Assert.That(raised, Is.InstanceOf<ErrorWithCodeException>()
+                        .And.Matches<ErrorWithCodeException>(coded => coded.ErrorCode == Errors.CONTROLLER_SOAP_FAULT),
+                        $"{fault} raises the production error");
+                }
+                else if (service == typeof(IConfigurationService) && method.Name == nameof(IConfigurationService.SetNetworkSettings))
+                {
+                    // A lost connection is this write's captured outcome, raised as unconfirmed with the transport's error.
+                    Assert.That(raised, Is.InstanceOf<ErrorWithCodeException>()
+                        .And.Matches<ErrorWithCodeException>(coded => coded.ErrorCode == Errors.CONTROLLER_WRITE_UNCONFIRMED)
+                        .And.InnerException.InstanceOf<HttpRequestException>(), $"{fault} raises the production error");
                 }
                 else
                 {

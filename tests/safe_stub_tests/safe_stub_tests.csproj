@@ -29,6 +29,8 @@
     <Compile Include="..\shared\CleanCopy.cs" Link="shared\CleanCopy.cs" />
     <!-- The socket stand-in the seam tests set beside a stub, shared with the unit suite's transport tests. -->
     <Compile Include="..\shared\StubTransport.cs" Link="shared\StubTransport.cs" />
+    <!-- The framework-gzip reading of a project transfer, shared with the unit suite's segment tests. -->
+    <Compile Include="..\shared\ProjectGzipText.cs" Link="shared\ProjectGzipText.cs" />
     <!-- The safety rule, as a gate rather than a convention, and the IL reading it rests on. There is no run-wide
          latch fixture: the seam tests here have to see the latch both released and held. -->
     <Compile Include="..\shared\IlBody.cs" Link="shared\IlBody.cs" />

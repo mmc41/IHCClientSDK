@@ -104,6 +104,11 @@
     <PackageVersion Include="CompareNETObjects" Version="4.84.0" />
     <PackageVersion Include="CsCheck" Version="4.7.0" />
     <PackageVersion Include="FakeItEasy" Version="9.0.1" />
+    <!-- Validates admin-model files against adminmodel.schema.json (safe_unit_tests); MIT. It validates through
+         Newtonsoft.Json, which it brings into that suite only. JsonSchema.Net, the System.Text.Json-based
+         alternative, publishes its binaries from 9.0.0 on under a maintenance-fee EULA, so read that licence
+         before switching. -->
+    <PackageVersion Include="NJsonSchema" Version="11.6.1" />
     <!-- Ships from dotnet/extensions, whose versions run ahead of the runtime's — so this is the one
          Microsoft.Extensions.* entry that does NOT track the 10.0.x above, and matching it to those would
          be a downgrade to a version that does not exist. It was left behind on 9.0.0 while the rest of the

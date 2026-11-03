@@ -11,11 +11,11 @@ namespace Ihc.Tests
     /// The integer form a DNS server takes on the wire.
     ///
     /// <see cref="NetworkHelper.ConvertIPAddressToInt"/> is the only writer of that field, and the field is
-    /// 32 bits wide - so an address that is not IPv4 has no representation there at all. What made this a
-    /// defect rather than a limitation is that <see cref="IPAddress.Parse"/> accepts an IPv6 literal happily,
-    /// <c>GetAddressBytes</c> hands back sixteen bytes, and the conversion then read four of them: a
-    /// controller ended up configured with a DNS server nobody submitted, derived from a quarter of one that
-    /// somebody did. The refusal is the contract now, and it fires before the request is built.
+    /// 32 bits wide, so only dotted-decimal IPv4 text has a representation there. The conversion used to hand the
+    /// text to <see cref="IPAddress.Parse"/>, which accepts far more: an IPv6 literal, of which four bytes were
+    /// read, and the legacy BSD forms, which read a leading zero as octal and widen a short address. Each sent a
+    /// DNS server nobody typed. Now only four decimal groups pass, and everything else is refused before the
+    /// request is built.
     /// </summary>
     [TestFixture]
     public class NetworkHelperTests
@@ -49,16 +49,46 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// The pre-existing refusal for text that is no address at all stays where it was - in
-        /// <see cref="IPAddress.Parse"/> - so the new guard is proven to add a case rather than to
-        /// replace one.
+        /// A group with a leading zero is a decimal number, as IHC Administrator reads it. <see cref="IPAddress.Parse"/>
+        /// would read <c>010</c> as octal 8 and refuse <c>08</c>, sending a server nobody typed or none at all.
         /// </summary>
-        [TestCase("")]
-        [TestCase("not-an-address")]
-        [TestCase("192.168.1.256")]
-        public void TextThatIsNoAddressAtAll_StillRaisesFormatException(string address)
+        [TestCase("010.010.010.010", "10.10.10.10")]
+        [TestCase("192.168.001.010", "192.168.1.10")]
+        [TestCase("08.8.8.8", "8.8.8.8")]
+        [TestCase("000.000.000.000", "0.0.0.0")]
+        public void ALeadingZero_IsADecimalDigit(string typed, string meant)
         {
-            Assert.Throws<FormatException>(() => NetworkHelper.ConvertIPAddressToInt(address));
+            Assert.That(NetworkHelper.ConvertIntToIPAddress(NetworkHelper.ConvertIPAddressToInt(typed)), Is.EqualTo(meant));
+        }
+
+        /// <summary>
+        /// Only four dot-separated groups of one to three ASCII digits, each 0-255, are an address. The legacy forms
+        /// <see cref="IPAddress.Parse"/> also accepts -- fewer groups widening the last, hexadecimal, one 32-bit number
+        /// -- and digits of other scripts are refused, as is text that is no address at all, each naming what was
+        /// given.
+        /// </summary>
+        [TestCase("10.1")]
+        [TestCase("192.168.1")]
+        [TestCase("0x0A.1.1.1")]
+        [TestCase("3232235777")]
+        [TestCase("١٩٢.١٦٨.١.١")]
+        [TestCase("192.168.1.256")]
+        [TestCase("0001.1.1.1")]
+        [TestCase("1.2.3.4.5")]
+        [TestCase("1..2.3")]
+        [TestCase(" 1.2.3.4")]
+        [TestCase("not-an-address")]
+        public void TextThatIsNotFourDecimalGroups_IsRefused_NamingIt(string address)
+        {
+            var ex = Assert.Throws<ArgumentException>(() => NetworkHelper.ConvertIPAddressToInt(address));
+
+            Assert.That(ex!.Message, Does.Contain($"'{address}'"));
+        }
+
+        [Test]
+        public void EmptyText_IsRefused()
+        {
+            Assert.Throws<ArgumentException>(() => NetworkHelper.ConvertIPAddressToInt(""));
         }
 
         /// <summary>

@@ -82,6 +82,51 @@ namespace Ihc
         /// they all report failure through <see cref="ActivityExtensions.SetError"/>.</para>
         /// </remarks>
         protected Activity? StartActivity(string operationName) => telemetry.StartSpan(operationName);
+
+        /// <summary>
+        /// The controller's answer to a write, refusing an absent one.
+        /// </summary>
+        /// <remarks>
+        /// An absent answer is not a declined write: the request was sent, and the reply simply did not say what
+        /// became of it. Folded to a refusal it would be indistinguishable from a controller that declined, which is
+        /// the one case a caller acts on differently.
+        /// </remarks>
+        /// <param name="answer">The acknowledgement the reply carried, null when it carried none.</param>
+        /// <param name="what">What was written, as the diagnostic names it ("the time settings").</param>
+        private protected static T Acknowledged<T>(T? answer, string what) where T : struct =>
+            answer ?? throw new InvalidOperationException(
+                $"Controller did not acknowledge {what}: the response carried no result. The request was sent, so whether the controller applied it is unknown.");
+
+        /// <summary>
+        /// Runs a project-segment download in its span, the arguments tagged under one set of names for the controller
+        /// and OpenAPI services alike, which serve the same segments through different generated clients.
+        /// </summary>
+        private protected async Task<ProjectSegment> TracedSegmentDownload(string operationName, int index, int projectMajorRevision,
+            int projectMinorRevision, Func<Task<byte[]?>> download)
+        {
+            using (var activity = StartActivity(operationName))
+            {
+                try
+                {
+                    activity?.SetParameters(
+                        (nameof(index), index),
+                        (nameof(projectMajorRevision), projectMajorRevision),
+                        (nameof(projectMinorRevision), projectMinorRevision));
+
+                    // Raw: a slice of one gzip stream, only the first carrying its header, so no slice decodes alone.
+                    // The controller's name for it (unknown.bin) is not mapped.
+                    var retv = new ProjectSegment { Data = await download().ConfigureAwait(settings.AsyncContinueOnCapturedContext) ?? [] };
+
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
     }
 
     /// <summary>
@@ -193,6 +238,22 @@ namespace Ihc
             // content either - so a non-2xx answer would otherwise walk out of here with the response still open.
             using var httpResp = await ihcClient.Post(soapAction, req, sendSessionCookie).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
 
+            // The body is read before the status is checked: a SOAP fault is the controller's own refusal whatever
+            // status it comes with (no capture records which), and its code and text are what a caller acts on, a
+            // Logon Failed by logging in again. A fault is no success, so the success side effect does not run.
+            string respStr = await httpResp.Content.ReadAsStringAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            activity?.SetTag(SdkTelemetryRegistry.Attributes.SoapResponseBodySize, System.Text.Encoding.UTF8.GetByteCount(respStr));
+            if (Serialization.SoapFaultOf(respStr) is { } fault)
+            {
+                bool logonFailed = string.Equals(fault.Text, "Logon Failed", StringComparison.Ordinal);
+                int code = logonFailed ? Errors.CONTROLLER_LOGON_FAILED : Errors.CONTROLLER_SOAP_FAULT;
+                string codeName = logonFailed ? nameof(Errors.CONTROLLER_LOGON_FAILED) : nameof(Errors.CONTROLLER_SOAP_FAULT);
+                throw new ErrorWithCodeException(code,
+                    $"{codeName}: the controller answered {soapAction} with a SOAP fault (HTTP {(int)httpResp.StatusCode}): " +
+                    $"faultcode '{fault.Code}', faultstring '{fault.Text}'.");
+            }
+
+            // A non-success status with no fault in its body carries no details to read: the transport's error.
             httpResp.EnsureSuccessStatusCode();
 
             if (onOkSideEffect != null)
@@ -200,9 +261,6 @@ namespace Ihc
                 onOkSideEffect(httpResp);
             }
 
-            string respStr = await httpResp.Content.ReadAsStringAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-            activity?.SetTag(SdkTelemetryRegistry.Attributes.SoapResponseBodySize, System.Text.Encoding.UTF8.GetByteCount(respStr));
             if (settings.LogSensitiveData)
             {
                 // Password-redacted even here: the flag opens the envelope, it does not open the credential.

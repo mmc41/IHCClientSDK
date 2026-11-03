@@ -23,17 +23,18 @@ namespace Ihc {
         public Task ClearUserLog();
 
         /// <summary>
-        /// Reads the controller's user log: its own record of events, warnings and faults, not of user input. Each call
-        /// sends an empty cursor, so it returns stored lines rather than only those added since an earlier read.
+        /// Reads the controller's user log: its own record of events, warnings and faults, not of user input. A read
+        /// starts fresh with an empty cursor; to follow the log, pass the <see cref="UserLogFileText.FileName"/> the
+        /// previous read returned, as the vendor's own tools do.
         /// </summary>
         /// <param name="lang">Two-letter language code, such as <c>da</c> or <c>en</c>; probably selects the language
         /// of the log text.</param>
-        /// <returns>
-        /// One entry per line, newest stored first, which is not time-stamp order once the controller's clock has
-        /// gone back. Each is a <c>yyyy.MM.dd HH:mm:ss</c> time stamp by the controller's clock, a tab, the severity
-        /// (such as <c>Fejl</c>), a tab and the message. The text ends in a line feed, so the last entry is empty.
-        /// </returns>
-        public Task<IReadOnlyList<string>> GetUserLog(string lang = "da");
+        /// <param name="cursor">Empty for a fresh read, otherwise the cursor a previous read returned. How much
+        /// history a fresh read returns, and what a cursor read leaves out, is not established.</param>
+        /// <returns>The lines read and the cursor for the next read.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="lang"/> or <paramref name="cursor"/> is
+        /// <c>null</c>; nothing is sent.</exception>
+        public Task<UserLogFileText> GetUserLog(string lang = "da", string cursor = "");
 
         /// <summary>
         /// Restarts the controller after a delay. The controller replies first and then restarts, which ends the
@@ -54,13 +55,20 @@ namespace Ihc {
         /// <see cref="GetNetworkSettings"/>, change what is needed and send them all back.
         /// </summary>
         /// <param name="settings">The complete wired-LAN settings to store.</param>
+        /// <returns><c>true</c> when the controller accepted the settings; <c>false</c> when it declined them.</returns>
         /// <remarks>
-        /// A save that changes the IP address makes the controller restart without replying, so expect the call to fail
-        /// although the new values are kept.
+        /// A save that changes the IP address makes the controller restart without replying, as both captured saves
+        /// did, so expect <see cref="Errors.CONTROLLER_WRITE_UNCONFIRMED"/> rather than an answer: the new values may be
+        /// kept, and only reading them back after reconnecting tells.
         /// </remarks>
         /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c> or breaks a limit declared on
         /// <see cref="NetworkSettings"/>; nothing is sent.</exception>
-        public Task SetNetworkSettings(NetworkSettings settings);
+        /// <exception cref="ErrorWithCodeException"><see cref="Errors.CONTROLLER_WRITE_UNCONFIRMED"/>: the settings were
+        /// sent but the transport failed before an answer, so whether they applied is unknown; the transport's error is
+        /// the inner exception.</exception>
+        /// <exception cref="InvalidOperationException">The reply carries no acceptance flag; the settings were sent, so
+        /// whether the controller applied them is unknown.</exception>
+        public Task<bool> SetNetworkSettings(NetworkSettings settings);
 
         /// <summary>
         /// Reads the primary and secondary DNS servers as dotted IPv4 strings; any further servers the controller lists
@@ -71,10 +79,11 @@ namespace Ihc {
         /// <summary>
         /// Writes the primary and secondary DNS servers; only IPv4 addresses can be sent.
         /// </summary>
-        /// <param name="dnsServers">Both servers as dotted IPv4 strings; a <c>null</c> or empty one is sent as no
-        /// server.</param>
-        /// <exception cref="ArgumentException"><paramref name="dnsServers"/> is <c>null</c> or breaks a limit declared
-        /// on <see cref="DNSServers"/>; nothing is sent.</exception>
+        /// <param name="dnsServers">Both servers as dotted-decimal IPv4 strings, every group read as decimal; a
+        /// <c>null</c> or empty one is sent as no server.</param>
+        /// <exception cref="ArgumentException"><paramref name="dnsServers"/> is <c>null</c>, breaks a limit declared on
+        /// <see cref="DNSServers"/>, or holds a server that is not four dot-separated groups of one to three digits 0-9,
+        /// each 0-255; nothing is sent.</exception>
         public Task SetDNSServers(DNSServers dnsServers);
 
         /// <summary>
@@ -89,9 +98,13 @@ namespace Ihc {
         /// change it and send it back.
         /// </summary>
         /// <param name="settings">The complete WiFi client settings to store.</param>
+        /// <returns>The flag the controller's reply carries, as sent, or <c>null</c> when it carries none. Its meaning
+        /// is not established: by type it is a success flag, but IHC Administrator ignores it, so read neither
+        /// <c>false</c> nor <c>null</c> as a refusal.</returns>
         /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c> or breaks a limit declared on
-        /// <see cref="WLanSettings"/>; nothing is sent.</exception>
-        public Task SetWLanSettings(WLanSettings settings);
+        /// <see cref="WLanSettings"/>: an SSID over 32 characters, a key that is neither at most 63 characters nor
+        /// exactly 64 hexadecimal digits, or a missing or over-long address; nothing is sent.</exception>
+        public Task<bool?> SetWLanSettings(WLanSettings settings);
 
         /// <summary>
         /// Reports whether the controller has a WiFi interface (a USB dongle, unrelated to IHC Wireless) and whether
@@ -107,8 +120,8 @@ namespace Ihc {
         public Task<IReadOnlyList<WLanCell>> GetWLanScan();
 
         /// <summary>
-        /// Reads the SMTP account the controller sends all its mail through, with the low-battery notification
-        /// switch and the notification recipient. The reply includes the stored password.
+        /// Reads the SMTP account the controller sends all its mail through, with the low-battery and LED Dimmer error
+        /// notification switches and the notification recipient. The reply includes the stored password.
         /// </summary>
         /// <returns>The settings, or <c>null</c> when the reply carries none.</returns>
         public Task<SMTPSettings?> GetSMTPSettings();
@@ -117,36 +130,45 @@ namespace Ihc {
         /// Writes the SMTP account and notification settings as one complete record, not a delta: read it with
         /// <see cref="GetSMTPSettings"/>, change it and send it back.
         /// </summary>
-        /// <param name="settings">The complete SMTP settings to store.</param>
-        /// <remarks>
-        /// The record lacks the LED Dimmer error-mail switch that firmware 3.3.44 also holds, so this method never
-        /// sends it; what a write does to that switch is not known.
-        /// </remarks>
-        /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c> or breaks a limit declared on
-        /// <see cref="SMTPSettings"/>; nothing is sent.</exception>
+        /// <param name="settings">The complete SMTP settings to store, the LED Dimmer error-mail switch included.</param>
+        /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c>, or its
+        /// <see cref="SMTPSettings.Hostport"/> is outside 0-65535; nothing is sent. Its strings have no length
+        /// limit.</exception>
         public Task SetSMTPSettings(SMTPSettings settings);
 
         /// <summary>
-        /// Asks the controller to test the e-mail control (POP3 mailbox) settings now, without saving them; it does not
-        /// test SMTP.
+        /// Asks the controller to test e-mail control (POP3 mailbox) settings now, without saving them, as IHC
+        /// Administrator's <c>Afprøv indstillinger</c> does with its dialog's unsaved settings; it does not test SMTP.
         /// </summary>
+        /// <param name="settings">The mailbox, credentials and poll settings to test.</param>
+        /// <returns>The connection status, or <c>null</c> when the reply carries none.</returns>
         /// <remarks>
-        /// Known defect: this method sends no settings and discards the connection status the controller returns, so
-        /// what it tests and whether the test passed are not known.
+        /// No capture holds this operation. A Visual 2 controller's test fetched the mailbox and carried out the command
+        /// mails waiting there; whether a 3.x controller does is not known.
         /// </remarks>
-        public Task TestSettingsNow();
+        /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c>, or its
+        /// <see cref="EmailControlSettings.ServerPortNumber"/> is outside 1-65535 or its
+        /// <see cref="EmailControlSettings.PollInterval"/> is negative, as for <see cref="SetEmailControlSettings"/>;
+        /// nothing is sent.</exception>
+        public Task<EmailControlConnectionStatus?> TestSettingsNow(EmailControlSettings settings);
 
         /// <summary>
-        /// Asks the controller to send a test mail to <paramref name="recipient"/>. Unverified: no vendor client calls
-        /// it, and the controller may not use <paramref name="subject"/> and <paramref name="message"/> as the mail's
-        /// subject and body.
+        /// Asks the controller to send a test mail through the SMTP account <paramref name="smtp"/>, without saving it,
+        /// as IHC Administrator's SMTP test does with its dialog's unsaved settings. The mail's sender is the
+        /// controller's own, <c>LK IHC® controller&lt;</c>user name<c>&gt;</c>.
         /// </summary>
+        /// <param name="smtp">The SMTP account to send through: host, port, user name, password and SSL.</param>
         /// <param name="recipient">Recipient address.</param>
-        /// <param name="subject">Intended subject of the test mail.</param>
-        /// <param name="message">Intended body of the test mail.</param>
-        /// <returns><c>true</c> when the controller reports success; <c>false</c> otherwise, also when the reply
-        /// carries no result. Failure reasons are not returned.</returns>
-        public Task<bool> TestSendMessage(string recipient, string subject, string message);
+        /// <param name="subject">Subject of the test mail.</param>
+        /// <param name="message">Body of the test mail.</param>
+        /// <returns>The outcome the controller reports, or <c>null</c> when the reply carries none.</returns>
+        /// <remarks>No capture holds this operation; the request is the one IHC Administrator builds.</remarks>
+        /// <exception cref="ArgumentException"><paramref name="smtp"/> is <c>null</c>, or its
+        /// <see cref="SMTPSettings.Hostport"/> is outside 0-65535, as for <see cref="SetSMTPSettings"/>; nothing is
+        /// sent.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="recipient"/>, <paramref name="subject"/> or
+        /// <paramref name="message"/> is <c>null</c>; nothing is sent.</exception>
+        public Task<NotificationSendResult?> TestSendMessage(SMTPSettings smtp, string recipient, string subject, string message);
 
         /// <summary>
         /// Reads the controller's e-mail control enabled flag. Unverified: no vendor client calls it.
@@ -169,13 +191,18 @@ namespace Ihc {
         public Task<EmailControlSettings?> GetEmailControlSettings();
 
         /// <summary>
-        /// Writes the e-mail control mailbox and poll settings. The controller answers with an acceptance flag, which
-        /// this method does not return.
+        /// Writes the e-mail control mailbox and poll settings.
         /// </summary>
         /// <param name="settings">Mailbox, credentials and poll settings to store.</param>
-        /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c> or breaks a limit declared on
-        /// <see cref="EmailControlSettings"/>; nothing is sent.</exception>
-        public Task SetEmailControlSettings(EmailControlSettings settings);
+        /// <returns><c>true</c> when the controller accepted the settings; <c>false</c> when it declined them, which IHC
+        /// Administrator reports as a failure. When a controller declines is not known.</returns>
+        /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c>, or its
+        /// <see cref="EmailControlSettings.ServerPortNumber"/> is outside 1-65535 or its
+        /// <see cref="EmailControlSettings.PollInterval"/> is negative, as IHC Administrator refuses them; nothing is
+        /// sent. Its strings have no length limit.</exception>
+        /// <exception cref="InvalidOperationException">The reply carries no acceptance flag; the settings were sent, so
+        /// whether the controller applied them is unknown.</exception>
+        public Task<bool> SetEmailControlSettings(EmailControlSettings settings);
 
         /// <summary>
         /// Reads the access-control matrix: for each client application, whether it may log in over USB, from the
@@ -378,16 +405,16 @@ namespace Ihc {
             };
         }
 
-        private static string[] mapLogFile(Ihc.Soap.Configuration.WSFile? e)
+        private static UserLogFileText mapLogFile(Ihc.Soap.Configuration.WSFile? e)
         {
             if (e == null)
-                return Array.Empty<string>();
+                return new UserLogFileText();
 
             string logs = e.data != null ? System.Text.Encoding.UTF8.GetString(e.data) : "";
             // Separators are NORMALISED, not split on individually: splitting on both characters turns each
             // CRLF into a pair of separators and so into an empty line between every real one. Genuinely
             // blank lines in the log survive, because only the terminators are collapsed.
-            return logs.ReplaceLineEndings("\n").Split('\n');
+            return new UserLogFileText { FileName = e.filename, Lines = logs.ReplaceLineEndings("\n").Split('\n') };
         }
 
         private static NetworkSettings? mapNetworkSettings(Ihc.Soap.Configuration.WSNetworkSettings? settings)
@@ -417,13 +444,17 @@ namespace Ihc {
             };
         }
 
-        private static DNSServers mapDNSServers(Ihc.Soap.Configuration.WSInetAddress[] dnsAddresses)
+        private static DNSServers mapDNSServers(Ihc.Soap.Configuration.WSInetAddress[]? dnsAddresses, Activity? activity)
         {
-            // Assume max length is 2 (primary and secondary DNS)
+            // A controller answers an empty list as one nil item, so a nil item is skipped rather than read; the list
+            // holds at most the primary and the secondary server.
+            List<string> servers = dnsAddresses is null
+                ? []
+                : WireList.MapPresent(dnsAddresses, address => NetworkHelper.ConvertIntToIPAddress(address.ipAddress), activity, nameof(GetDNSServers));
             return new DNSServers()
             {
-                PrimaryDNS = dnsAddresses != null && dnsAddresses.Length > 0 ? NetworkHelper.ConvertIntToIPAddress(dnsAddresses[0].ipAddress) : null,
-                SecondaryDNS = dnsAddresses != null && dnsAddresses.Length > 1 ? NetworkHelper.ConvertIntToIPAddress(dnsAddresses[1].ipAddress) : null
+                PrimaryDNS = servers.Count > 0 ? servers[0] : null,
+                SecondaryDNS = servers.Count > 1 ? servers[1] : null
             };
         }
 
@@ -503,7 +534,8 @@ namespace Ihc {
                 Password = settings.password,
                 Ssl = settings.ssl,
                 SendLowBatteryNotification = settings.sendLowBatteryNotification,
-                SendLowBatteryNotificationRecipient = settings.sendLowBatteryNotificationRecepient
+                SendLowBatteryNotificationRecipient = settings.sendLowBatteryNotificationRecepient,
+                SendLEDDimmerErrorNotification = settings.sendLEDDimmerErrorNotification
             } : null;
         }
 
@@ -520,7 +552,8 @@ namespace Ihc {
                 password = settings.Password,
                 ssl = settings.Ssl,
                 sendLowBatteryNotification = settings.SendLowBatteryNotification,
-                sendLowBatteryNotificationRecepient = settings.SendLowBatteryNotificationRecipient
+                sendLowBatteryNotificationRecepient = settings.SendLowBatteryNotificationRecipient,
+                sendLEDDimmerErrorNotification = settings.SendLEDDimmerErrorNotification
             };
         }
 
@@ -528,7 +561,7 @@ namespace Ihc {
         {
             return settings != null ? new EmailControlSettings()
             {
-                ServerIpAddress = settings.serverIPAddress,
+                ServerAddress = settings.serverIPAddress,
                 ServerPortNumber = settings.serverPortNumber,
                 Pop3Username = settings.pop3Username,
                 Pop3Password = settings.pop3Password,
@@ -539,6 +572,32 @@ namespace Ihc {
             } : null;
         }
 
+        private static NotificationSendResult? mapNotificationSendResult(Ihc.Soap.Configuration.WSNotificationMessageSendResult? result)
+        {
+            return result != null ? new NotificationSendResult()
+            {
+                AttemptSucceeded = result.attemptSucceeded,
+                AttemptFailedDueToAuthentication = result.attemptFailedDueToAuthentication,
+                AttemptFailedDueToNetworkProblems = result.attemptFailedDueToNetworkProblems,
+                AttemptFailedDueToInvalidSettings = result.attemptFailedDueToInvalidSettings,
+                AttemptFailedDueToInternalErrors = result.attemptFailedDueToInternalErrors,
+                AttemptFailedDueToConnectTimeout = result.attemptFailedDueToConnectTimeout,
+                AttemptFailedDueToConnectionRefused = result.attempFailedDueToConnectionRefused,
+                AttemptFailedDueToIOTimeout = result.attempFailedDueToIOTimeout
+            } : null;
+        }
+
+        private static EmailControlConnectionStatus? mapEmailControlConnectionStatus(Ihc.Soap.Configuration.WSEmailControlConnectionStatus? status)
+        {
+            return status != null ? new EmailControlConnectionStatus()
+            {
+                LastConnectionAttemptSucceeded = status.lastConnectionAttemptSucceeded,
+                AttemptFailedDueToAuthentication = status.attemptFailedDueToAuthentication,
+                AttemptFailedDueToNetworkProblems = status.attemptFailedDueToNetworkProblems,
+                AttemptFailedDueToInvalidSettings = status.attemptFailedDueToInvalidSettings
+            } : null;
+        }
+
         private static Ihc.Soap.Configuration.WSEmailControlSettings? unmapEmailControlSettings(EmailControlSettings? settings)
         {
             if (settings == null)
@@ -546,7 +605,7 @@ namespace Ihc {
 
             return new Ihc.Soap.Configuration.WSEmailControlSettings()
             {
-                serverIPAddress = settings.ServerIpAddress,
+                serverIPAddress = settings.ServerAddress,
                 serverPortNumber = settings.ServerPortNumber,
                 pop3Username = settings.Pop3Username,
                 pop3Password = settings.Pop3Password,
@@ -667,14 +726,16 @@ namespace Ihc {
             }
         }
 
-        public async Task<IReadOnlyList<string>> GetUserLog(string lang) {
+        public async Task<UserLogFileText> GetUserLog(string lang = "da", string cursor = "") {
+            ArgumentNullException.ThrowIfNull(lang);
+            ArgumentNullException.ThrowIfNull(cursor);
             using (var activity = StartActivity(nameof(GetUserLog)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(lang), lang));
+                    activity?.SetParameters((nameof(lang), lang), (nameof(cursor), cursor));
 
-                    var resp = await impl.getUserLogAsync(new inputMessageName2("", 0, lang)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var resp = await impl.getUserLogAsync(new inputMessageName2(cursor, 0, lang)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = mapLogFile(resp.getUserLog4);
 
                     activity?.SetReturnValue(retv);
@@ -726,7 +787,7 @@ namespace Ihc {
             }
         }
 
-        public async Task SetNetworkSettings(NetworkSettings settings) {
+        public async Task<bool> SetNetworkSettings(NetworkSettings settings) {
             using (var activity = StartActivity(nameof(SetNetworkSettings)))
             {
                 try
@@ -735,7 +796,25 @@ namespace Ihc {
 
                     ValidationHelper.ValidateDataAnnotations(settings, nameof(settings));
 
-                    await impl.setNetworkSettingsAsync(new inputMessageName17(unmapNetworkSettings(settings))).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
+                    outputMessageName17 resp;
+                    try
+                    {
+                        resp = await impl.setNetworkSettingsAsync(new inputMessageName17(unmapNetworkSettings(settings))).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
+                    }
+                    catch (Exception transport) when (transport is System.Net.Http.HttpRequestException { StatusCode: null } or TaskCanceledException)
+                    {
+                        // A save that changes the address restarts the controller without a reply, so a cut connection
+                        // is this write's captured outcome: neither proof that it applied nor that it failed. An HTTP
+                        // error carrying a status is the controller's own answer, a refusal, and passes as it is.
+                        throw new ErrorWithCodeException(Errors.CONTROLLER_WRITE_UNCONFIRMED,
+                            $"{nameof(Errors.CONTROLLER_WRITE_UNCONFIRMED)}: the network settings were sent, but the connection failed " +
+                            "before the controller answered, as it does when a new address restarts it. Reconnect, at the new " +
+                            "address if one was set, and read the settings back before retrying.", transport);
+                    }
+                    var retv = Acknowledged(resp.setNetworkSettings2, "the network settings");
+
+                    activity?.SetReturnValue(retv);
+                    return retv;
                 }
                 catch (Exception ex)
                 {
@@ -751,7 +830,7 @@ namespace Ihc {
                 try
                 {
                     var resp = await impl.getDNSServersAsync(new inputMessageName7()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = mapDNSServers(resp.getDNSServers1);
+                    var retv = mapDNSServers(resp.getDNSServers1, activity);
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -805,7 +884,7 @@ namespace Ihc {
             }
         }
 
-        public async Task SetWLanSettings(WLanSettings settings) {
+        public async Task<bool?> SetWLanSettings(WLanSettings settings) {
             using (var activity = StartActivity(nameof(SetWLanSettings)))
             {
                 try
@@ -814,7 +893,11 @@ namespace Ihc {
 
                     ValidationHelper.ValidateDataAnnotations(settings, nameof(settings));
 
-                    await impl.setWLanSettingsAsync(new inputMessageName15(unmapWLanSettings(settings))).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
+                    var resp = await impl.setWLanSettingsAsync(new inputMessageName15(unmapWLanSettings(settings))).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
+                    var retv = resp.setWLanSettings2;
+
+                    activity?.SetReturnValue(retv);
+                    return retv;
                 }
                 catch (Exception ex)
                 {
@@ -904,12 +987,20 @@ namespace Ihc {
             }
         }
 
-        public async Task TestSettingsNow() {
+        public async Task<EmailControlConnectionStatus?> TestSettingsNow(EmailControlSettings settings) {
             using (var activity = StartActivity(nameof(TestSettingsNow)))
             {
                 try
                 {
-                    await impl.testSettingsNowAsync(new inputMessageName9(null)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    activity?.SetParameters((nameof(settings), settings));
+
+                    ValidationHelper.ValidateDataAnnotations(settings, nameof(settings));
+
+                    var resp = await impl.testSettingsNowAsync(new inputMessageName9(unmapEmailControlSettings(settings))).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
+                    var retv = mapEmailControlConnectionStatus(resp.testSettingsNow2);
+
+                    activity?.SetReturnValue(retv);
+                    return retv;
                 }
                 catch (Exception ex)
                 {
@@ -919,19 +1010,31 @@ namespace Ihc {
             }
         }
 
-        public async Task<bool> TestSendMessage(string recipient, string subject, string message) {
+        public async Task<NotificationSendResult?> TestSendMessage(SMTPSettings smtp, string recipient, string subject, string message) {
+            ArgumentNullException.ThrowIfNull(recipient);
+            ArgumentNullException.ThrowIfNull(subject);
+            ArgumentNullException.ThrowIfNull(message);
             using (var activity = StartActivity(nameof(TestSendMessage)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(recipient), recipient), (nameof(subject), subject), (nameof(message), message));
+                    activity?.SetParameters((nameof(smtp), smtp), (nameof(recipient), recipient), (nameof(subject), subject), (nameof(message), message));
 
-                    // Using testSendMessage1Async which takes recipient, subject, and message as strings
+                    ValidationHelper.ValidateDataAnnotations(smtp, nameof(smtp));
+
+                    // The six-part overload IHC Administrator calls; nothing the vendor ships calls the four-part
+                    // testSendMessage1, so how a controller reads its loose strings is unknown.
                     var notificationMessage = new Ihc.Soap.Configuration.WSNotificationMessage() {
-                        recipient = recipient
+                        date = new Ihc.Soap.Configuration.WSDate(),
+                        notificationType = "text.notification.email_type",
+                        recipient = recipient,
+                        sender = $"LK IHC® controller<{smtp.Username}>",
+                        subject = subject,
+                        body = message,
+                        delivered = false
                     };
-                    var resp = await impl.testSendMessage1Async(new inputMessageName11(notificationMessage, subject, message, null)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = resp.testSendMessage12 != null && resp.testSendMessage12.attemptSucceeded;
+                    var resp = await impl.testSendMessageAsync(new inputMessageName10(notificationMessage, smtp.Hostname, smtp.Hostport, smtp.Username, smtp.Password, smtp.Ssl)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var retv = mapNotificationSendResult(resp.testSendMessage7);
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -1001,7 +1104,7 @@ namespace Ihc {
             }
         }
 
-        public async Task SetEmailControlSettings(EmailControlSettings settings) {
+        public async Task<bool> SetEmailControlSettings(EmailControlSettings settings) {
             using (var activity = StartActivity(nameof(SetEmailControlSettings)))
             {
                 try
@@ -1010,7 +1113,11 @@ namespace Ihc {
 
                     ValidationHelper.ValidateDataAnnotations(settings, nameof(settings));
 
-                    await impl.setEmailControlSettingsAsync(new inputMessageName23(unmapEmailControlSettings(settings))).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
+                    var resp = await impl.setEmailControlSettingsAsync(new inputMessageName23(unmapEmailControlSettings(settings))).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
+                    var retv = Acknowledged(resp.setEmailControlSettings2, "the e-mail control settings");
+
+                    activity?.SetReturnValue(retv);
+                    return retv;
                 }
                 catch (Exception ex)
                 {

@@ -9,6 +9,65 @@ Ihc.App.AuthenticatedAppServiceBase.AuthenticatedAppServiceBase(Ihc.IhcSettings!
 Ihc.App.AuthenticatedAppServiceBase.Dispose() -> void
 Ihc.App.AuthenticatedAppServiceBase.DisposeAsync() -> System.Threading.Tasks.ValueTask
 Ihc.App.BridgeRefusalCodes
+Ihc.ConfigurationService.SetEmailControlSettings(Ihc.EmailControlSettings! settings) -> System.Threading.Tasks.Task<bool>!
+Ihc.ConfigurationService.SetNetworkSettings(Ihc.NetworkSettings! settings) -> System.Threading.Tasks.Task<bool>!
+Ihc.ConfigurationService.SetWLanSettings(Ihc.WLanSettings! settings) -> System.Threading.Tasks.Task<bool?>!
+Ihc.ConfigurationService.GetUserLog(string! lang = "da", string! cursor = "") -> System.Threading.Tasks.Task<Ihc.UserLogFileText!>!
+Ihc.ControllerService.GetIHCProjectSegment(int index, int projectMajorRevision, int projectMinorRevision) -> System.Threading.Tasks.Task<Ihc.ProjectSegment!>!
+Ihc.ControllerService.GetProjectInSegments() -> System.Threading.Tasks.Task<Ihc.ProjectFile?>!
+Ihc.ControllerService.ResetS0Values(bool hour, bool day, bool week, bool month, bool year) -> System.Threading.Tasks.Task!
+Ihc.ControllerService.StoreIHCProjectSegment(Ihc.ProjectSegment! segment, int index, int segmentCount) -> System.Threading.Tasks.Task<bool>!
+Ihc.ControllerService.StoreProjectInSegments(Ihc.ProjectFile! project) -> System.Threading.Tasks.Task<bool>!
+Ihc.IConfigurationService.SetEmailControlSettings(Ihc.EmailControlSettings! settings) -> System.Threading.Tasks.Task<bool>!
+Ihc.IConfigurationService.SetNetworkSettings(Ihc.NetworkSettings! settings) -> System.Threading.Tasks.Task<bool>!
+Ihc.IConfigurationService.SetWLanSettings(Ihc.WLanSettings! settings) -> System.Threading.Tasks.Task<bool?>!
+Ihc.IConfigurationService.GetUserLog(string! lang = "da", string! cursor = "") -> System.Threading.Tasks.Task<Ihc.UserLogFileText!>!
+Ihc.IControllerService.GetIHCProjectSegment(int index, int projectMajorRevision, int projectMinorRevision) -> System.Threading.Tasks.Task<Ihc.ProjectSegment!>!
+Ihc.IOpenAPIService.GetIHCProjectSegment(int index, int projectMajorRevision, int projectMinorRevision) -> System.Threading.Tasks.Task<Ihc.ProjectSegment!>!
+Ihc.OpenAPIService.GetIHCProjectSegment(int index, int projectMajorRevision, int projectMinorRevision) -> System.Threading.Tasks.Task<Ihc.ProjectSegment!>!
+Ihc.IResourceInteractionService.GetInitialValue(int resourceId) -> System.Threading.Tasks.Task<Ihc.ResourceValue!>!
+Ihc.IResourceInteractionService.GetInitialValues(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.IResourceInteractionService.GetResourceType(int resourceId) -> System.Threading.Tasks.Task<string?>!
+Ihc.IResourceInteractionService.GetRuntimeValue(int resourceId) -> System.Threading.Tasks.Task<Ihc.ResourceValue!>!
+Ihc.IResourceInteractionService.GetRuntimeValues(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.ResourceInteractionService.GetInitialValue(int resourceId) -> System.Threading.Tasks.Task<Ihc.ResourceValue!>!
+Ihc.ResourceInteractionService.GetInitialValues(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.ResourceInteractionService.GetResourceType(int resourceId) -> System.Threading.Tasks.Task<string?>!
+Ihc.ResourceInteractionService.GetRuntimeValue(int resourceId) -> System.Threading.Tasks.Task<Ihc.ResourceValue!>!
+Ihc.ResourceInteractionService.GetRuntimeValues(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.IResourceInteractionService.GetSceneGroupResourceIdAndPositions(int sceneGroupResourceId) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.SceneResourceIdAndLocation!>!>!
+Ihc.IResourceInteractionService.GetScenePositionsForSceneValueResource(int sceneMemberResourceId) -> System.Threading.Tasks.Task<Ihc.SceneResourceIdAndLocation?>!
+Ihc.ResourceInteractionService.GetSceneGroupResourceIdAndPositions(int sceneGroupResourceId) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.SceneResourceIdAndLocation!>!>!
+Ihc.ResourceInteractionService.GetScenePositionsForSceneValueResource(int sceneMemberResourceId) -> System.Threading.Tasks.Task<Ihc.SceneResourceIdAndLocation?>!
+Ihc.AirlinkManagementService.WaitForDeviceDetected(int holdSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice?>!
+Ihc.AirlinkManagementService.WaitForDeviceTestResult(int holdSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice?>!
+Ihc.ControllerService.WaitForControllerStateChange(Ihc.ControllerState waitState, int holdSeconds) -> System.Threading.Tasks.Task<Ihc.ControllerState>!
+Ihc.IAirlinkManagementService.WaitForDeviceDetected(int holdSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice?>!
+Ihc.IAirlinkManagementService.WaitForDeviceTestResult(int holdSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice?>!
+Ihc.IControllerService.WaitForControllerStateChange(Ihc.ControllerState waitState, int holdSeconds) -> System.Threading.Tasks.Task<Ihc.ControllerState>!
+Ihc.ILedDimmerManagementService.WaitForDeviceDetected(int holdSeconds) -> System.Threading.Tasks.Task<Ihc.LedDimmerInfo?>!
+Ihc.IOpenAPIService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int>! resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int holdSeconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue!>!
+Ihc.IOpenAPIService.WaitForEvents(int holdSeconds) -> System.Threading.Tasks.Task<Ihc.EventPackage!>!
+Ihc.IResourceInteractionService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int>! resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int holdSeconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue!>!
+Ihc.IResourceInteractionService.WaitForResourceValueChanges(int holdSeconds = 15) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.LedDimmerManagementService.WaitForDeviceDetected(int holdSeconds) -> System.Threading.Tasks.Task<Ihc.LedDimmerInfo?>!
+Ihc.OpenAPIService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int>! resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int holdSeconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue!>!
+Ihc.OpenAPIService.WaitForEvents(int holdSeconds) -> System.Threading.Tasks.Task<Ihc.EventPackage!>!
+Ihc.ResourceInteractionService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int>! resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int holdSeconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue!>!
+Ihc.ResourceInteractionService.WaitForResourceValueChanges(int holdSeconds = 15) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
+Ihc.IResourceInteractionService.DisableInitialValueNotifications(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<bool>!
+Ihc.IResourceInteractionService.DisableRuntimeValueNotifications(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<bool>!
+Ihc.ResourceInteractionService.DisableInitialValueNotifications(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<bool>!
+Ihc.ResourceInteractionService.DisableRuntimeValueNotifications(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<bool>!
+static Ihc.ResourceValue.ToggleBool(Ihc.ResourceValue! src) -> Ihc.ResourceValue!
+Ihc.SmsModemSettings.RecipientSlots.get -> string?
+Ihc.SmsModemSettings.RecipientSlots.init -> void
+Ihc.EmailControlSettings.ServerAddress.get -> string?
+Ihc.EmailControlSettings.ServerAddress.init -> void
+Ihc.IControllerService.GetProjectInSegments() -> System.Threading.Tasks.Task<Ihc.ProjectFile?>!
+Ihc.IControllerService.ResetS0Values(bool hour, bool day, bool week, bool month, bool year) -> System.Threading.Tasks.Task!
+Ihc.IControllerService.StoreIHCProjectSegment(Ihc.ProjectSegment! segment, int index, int segmentCount) -> System.Threading.Tasks.Task<bool>!
+Ihc.IControllerService.StoreProjectInSegments(Ihc.ProjectFile! project) -> System.Threading.Tasks.Task<bool>!
 Ihc.IhcConfiguration
 Ihc.MetricBinding
 Ihc.OperationOutcome
@@ -39,7 +98,24 @@ Ihc.OperationTelemetry.Run<T>(string! operation, System.Func<Ihc.OperationScope!
 Ihc.OperationTelemetry.RunAsync(string! operation, System.Func<Ihc.OperationScope!, System.Threading.Tasks.Task!>! body, Ihc.MetricBinding? metrics = null) -> System.Threading.Tasks.Task!
 Ihc.OperationTelemetry.RunAsync<T>(string! operation, System.Func<Ihc.OperationScope!, System.Threading.Tasks.Task<T>!>! body, Ihc.MetricBinding? metrics = null, System.Func<T, Ihc.OperationOutcome>? classify = null) -> System.Threading.Tasks.Task<T>!
 Ihc.OperationTelemetry.Start(string! operation, System.Diagnostics.ActivityKind kind = System.Diagnostics.ActivityKind.Internal, Ihc.MetricBinding? metrics = null, System.Collections.Generic.IEnumerable<System.Diagnostics.ActivityLink>? links = null) -> Ihc.OperationScope!
+Ihc.ITimeManagerService.GetTimeFromServer(string! serverName) -> System.Threading.Tasks.Task<Ihc.TimeServerConnectionResult?>!
+Ihc.TimeManagerSettings.Validate(System.ComponentModel.DataAnnotations.ValidationContext! validationContext) -> System.Collections.Generic.IEnumerable<System.ComponentModel.DataAnnotations.ValidationResult!>!
+Ihc.ResourceValue.UnionValue.DoubleMaximum.get -> double?
+Ihc.ResourceValue.UnionValue.DoubleMaximum.set -> void
+Ihc.ResourceValue.UnionValue.DoubleMinimum.get -> double?
+Ihc.ResourceValue.UnionValue.DoubleMinimum.set -> void
+Ihc.ResourceValue.UnionValue.IntMaximum.get -> int?
+Ihc.ResourceValue.UnionValue.IntMaximum.set -> void
+Ihc.ResourceValue.UnionValue.IntMinimum.get -> int?
+Ihc.ResourceValue.UnionValue.IntMinimum.set -> void
+Ihc.ILedDimmerManagementService.StartFirmwareUpgrade(string? serialNumber) -> System.Threading.Tasks.Task!
+Ihc.LedDimmerManagementService.StartFirmwareUpgrade(string? serialNumber) -> System.Threading.Tasks.Task!
+Ihc.SMTPSettings.SendLEDDimmerErrorNotification.get -> bool
+Ihc.SMTPSettings.SendLEDDimmerErrorNotification.init -> void
+Ihc.UserLogFileText.Lines.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Ihc.UserLogFileText.Lines.init -> void
 Ihc.TelemetryConfiguration.Environment.get -> string!
+Ihc.TimeManagerService.GetTimeFromServer(string! serverName) -> System.Threading.Tasks.Task<Ihc.TimeServerConnectionResult?>!
 Ihc.TelemetryConfiguration.Environment.set -> void
 Ihc.TelemetryConfiguration.Metrics.get -> string!
 Ihc.TelemetryConfiguration.Metrics.set -> void
@@ -879,12 +955,15 @@ virtual Ihc.AuthenticationService.Dispose(bool disposing) -> void
 ~override Ihc.Vis.Validation.RuleTarget.ToString() -> string
 ~override Ihc.Vis.Validation.SeverityOverride.Equals(object obj) -> bool
 ~override Ihc.Vis.Validation.SeverityOverride.ToString() -> string
+const Ihc.Errors.CONTROLLER_LOGON_FAILED = 1018 -> int
+const Ihc.Errors.CONTROLLER_SOAP_FAULT = 1017 -> int
 const Ihc.Errors.CONTROLLER_SOCKET_REFUSED_WHILE_STUBBED = 1012 -> int
 const Ihc.Errors.CONTROLLER_STUB_ENDPOINT_IN_USE = 1016 -> int
 const Ihc.Errors.CONTROLLER_STUB_ENDPOINT_INVALID = 1014 -> int
 const Ihc.Errors.CONTROLLER_STUB_FAULTED = 1013 -> int
 const Ihc.Errors.CONTROLLER_STUB_IDENTITY_FAILED = 1015 -> int
 const Ihc.Errors.CONTROLLER_STUB_NOT_REGISTERED = 1011 -> int
+const Ihc.Errors.CONTROLLER_WRITE_UNCONFIRMED = 1019 -> int
 Ihc.IhcSettings.IsStubConfigured() -> bool
 Ihc.Stubbing.ControllerStubRegistration
 Ihc.Stubbing.ControllerStubRegistration.Dispose() -> void
@@ -910,3 +989,55 @@ static Ihc.Stubbing.ControllerStubs.RegisterLoopbackAsync(System.Uri! baseAddres
 const Ihc.Stubbing.ControllerStubs.SwitchArgument = "--controller-stub" -> string!
 static Ihc.Stubbing.ControllerStubs.ApplySwitch(System.Collections.Generic.IReadOnlyList<string!>! args, Ihc.IhcSettings! loaded) -> (Ihc.IhcSettings! Effective, System.Collections.Generic.IReadOnlyList<string!>! RemainingArgs)
 static Ihc.Stubbing.ControllerStubs.SwitchRequested(System.Collections.Generic.IReadOnlyList<string!>! args) -> bool
+Ihc.ConfigurationService.TestSettingsNow(Ihc.EmailControlSettings! settings) -> System.Threading.Tasks.Task<Ihc.EmailControlConnectionStatus?>!
+Ihc.IConfigurationService.TestSettingsNow(Ihc.EmailControlSettings! settings) -> System.Threading.Tasks.Task<Ihc.EmailControlConnectionStatus?>!
+Ihc.EmailControlConnectionStatus
+Ihc.EmailControlConnectionStatus.AttemptFailedDueToAuthentication.get -> bool
+Ihc.EmailControlConnectionStatus.AttemptFailedDueToAuthentication.init -> void
+Ihc.EmailControlConnectionStatus.AttemptFailedDueToInvalidSettings.get -> bool
+Ihc.EmailControlConnectionStatus.AttemptFailedDueToInvalidSettings.init -> void
+Ihc.EmailControlConnectionStatus.AttemptFailedDueToNetworkProblems.get -> bool
+Ihc.EmailControlConnectionStatus.AttemptFailedDueToNetworkProblems.init -> void
+Ihc.EmailControlConnectionStatus.EmailControlConnectionStatus() -> void
+Ihc.EmailControlConnectionStatus.EmailControlConnectionStatus(Ihc.EmailControlConnectionStatus! original) -> void
+Ihc.EmailControlConnectionStatus.LastConnectionAttemptSucceeded.get -> bool
+Ihc.EmailControlConnectionStatus.LastConnectionAttemptSucceeded.init -> void
+override Ihc.EmailControlConnectionStatus.Equals(object? obj) -> bool
+override Ihc.EmailControlConnectionStatus.GetHashCode() -> int
+override Ihc.EmailControlConnectionStatus.ToString() -> string!
+static Ihc.EmailControlConnectionStatus.operator !=(Ihc.EmailControlConnectionStatus? left, Ihc.EmailControlConnectionStatus? right) -> bool
+static Ihc.EmailControlConnectionStatus.operator ==(Ihc.EmailControlConnectionStatus? left, Ihc.EmailControlConnectionStatus? right) -> bool
+virtual Ihc.EmailControlConnectionStatus.<Clone>$() -> Ihc.EmailControlConnectionStatus!
+virtual Ihc.EmailControlConnectionStatus.EqualityContract.get -> System.Type!
+virtual Ihc.EmailControlConnectionStatus.Equals(Ihc.EmailControlConnectionStatus? other) -> bool
+virtual Ihc.EmailControlConnectionStatus.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Ihc.ConfigurationService.TestSendMessage(Ihc.SMTPSettings! smtp, string! recipient, string! subject, string! message) -> System.Threading.Tasks.Task<Ihc.NotificationSendResult?>!
+Ihc.IConfigurationService.TestSendMessage(Ihc.SMTPSettings! smtp, string! recipient, string! subject, string! message) -> System.Threading.Tasks.Task<Ihc.NotificationSendResult?>!
+Ihc.NotificationSendResult
+Ihc.NotificationSendResult.AttemptFailedDueToAuthentication.get -> bool
+Ihc.NotificationSendResult.AttemptFailedDueToAuthentication.init -> void
+Ihc.NotificationSendResult.AttemptFailedDueToConnectionRefused.get -> bool
+Ihc.NotificationSendResult.AttemptFailedDueToConnectionRefused.init -> void
+Ihc.NotificationSendResult.AttemptFailedDueToConnectTimeout.get -> bool
+Ihc.NotificationSendResult.AttemptFailedDueToConnectTimeout.init -> void
+Ihc.NotificationSendResult.AttemptFailedDueToInternalErrors.get -> bool
+Ihc.NotificationSendResult.AttemptFailedDueToInternalErrors.init -> void
+Ihc.NotificationSendResult.AttemptFailedDueToInvalidSettings.get -> bool
+Ihc.NotificationSendResult.AttemptFailedDueToInvalidSettings.init -> void
+Ihc.NotificationSendResult.AttemptFailedDueToIOTimeout.get -> bool
+Ihc.NotificationSendResult.AttemptFailedDueToIOTimeout.init -> void
+Ihc.NotificationSendResult.AttemptFailedDueToNetworkProblems.get -> bool
+Ihc.NotificationSendResult.AttemptFailedDueToNetworkProblems.init -> void
+Ihc.NotificationSendResult.AttemptSucceeded.get -> bool
+Ihc.NotificationSendResult.AttemptSucceeded.init -> void
+Ihc.NotificationSendResult.NotificationSendResult() -> void
+Ihc.NotificationSendResult.NotificationSendResult(Ihc.NotificationSendResult! original) -> void
+override Ihc.NotificationSendResult.Equals(object? obj) -> bool
+override Ihc.NotificationSendResult.GetHashCode() -> int
+override Ihc.NotificationSendResult.ToString() -> string!
+static Ihc.NotificationSendResult.operator !=(Ihc.NotificationSendResult? left, Ihc.NotificationSendResult? right) -> bool
+static Ihc.NotificationSendResult.operator ==(Ihc.NotificationSendResult? left, Ihc.NotificationSendResult? right) -> bool
+virtual Ihc.NotificationSendResult.<Clone>$() -> Ihc.NotificationSendResult!
+virtual Ihc.NotificationSendResult.EqualityContract.get -> System.Type!
+virtual Ihc.NotificationSendResult.Equals(Ihc.NotificationSendResult? other) -> bool
+virtual Ihc.NotificationSendResult.PrintMembers(System.Text.StringBuilder! builder) -> bool

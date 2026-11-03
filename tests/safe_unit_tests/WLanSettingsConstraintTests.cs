@@ -8,9 +8,9 @@ namespace Ihc.Tests
     /// <c>ConfigurationService.SetWLanSettings</c> validates this object before it sends anything: a limit that is
     /// too tight does not merely warn, it refuses to write settings a real access point requires.
     ///
-    /// <para>IEEE 802.11 puts an SSID at up to 32 octets, and a WPA2-PSK passphrase at 8 to 63 characters (the
-    /// 64-character form is the raw hex PSK, not a passphrase). Both limits are pinned at their boundary here —
-    /// the largest legal value and the first illegal one — so the caps can be seen to have MOVED rather than
+    /// <para>IEEE 802.11 puts an SSID at up to 32 octets, and a WPA2-PSK key at 8 to 63 characters as a passphrase or
+    /// exactly 64 hexadecimal digits as the raw pre-shared key. Both limits are pinned at their boundary here — the
+    /// largest legal value and the first illegal one — so the caps can be seen to have MOVED rather than
     /// disappeared.</para>
     ///
     /// <para>Validation runs through the same helper the service calls, so these tests exercise the check that
@@ -44,11 +44,21 @@ namespace Ihc.Tests
         public void Key_OfLegalLength_IsAccepted(int length) =>
             Assert.DoesNotThrow(() => Validate(WithKeyAndSsid(new string('k', length), "HomeNet")));
 
-        [Test]
-        public void Key_LongerThanAPassphrase_IsRejected() =>
-            Assert.Throws<System.ArgumentException>(
-                () => Validate(WithKeyAndSsid(new string('k', 64), "HomeNet")),
-                "64 characters is the raw hex PSK, not a passphrase, and stays out of range");
+        /// <summary>64 characters is the raw pre-shared key, accepted when every character is a hexadecimal digit, in
+        /// either case.</summary>
+        [TestCase("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")]
+        [TestCase("0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF")]
+        public void Key_OfSixtyFourHexDigits_IsAccepted(string rawKey) =>
+            Assert.DoesNotThrow(() => Validate(WithKeyAndSsid(rawKey, "HomeNet")));
+
+        /// <summary>64 characters that are not all hexadecimal digits are neither a passphrase nor a raw key, and
+        /// anything longer than 64 is neither either.</summary>
+        [TestCase("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg", Description = "64, one not hex")]
+        [TestCase("kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk", Description = "64 letters")]
+        [TestCase("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0", Description = "65 hex digits")]
+        public void Key_NeitherAPassphraseNorARawKey_IsRejected(string key) =>
+            Assert.That(Assert.Throws<System.ArgumentException>(() => Validate(WithKeyAndSsid(key, "HomeNet")))!.Message,
+                Does.Contain("Key"));
 
         // ----- the network name -----
 

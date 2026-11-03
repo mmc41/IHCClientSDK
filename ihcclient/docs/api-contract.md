@@ -15,7 +15,9 @@ Compatibility stance: `ihcclient` 0.8.x is an unpublished beta, so public surfac
 without a staged deprecation release. Narrowing still breaks any source or binary consumer that used
 the removed member — the absence of a published package makes the change permitted, not compatible.
 Every capability removed from the public baselines is mapped to its supported replacement in
-[the 0.8 migration note](api-migration-0.8.md).
+[the 0.8 migration note](api-migration-0.8.md), and every controller-API member the 0.9 corrections
+changed, renamed or removed, with the behaviour changes of members whose signature stayed, in
+[the 0.9 migration note](api-migration-0.9.md).
 
 ## 1. Two jobs, two supported service tiers
 
@@ -196,6 +198,15 @@ The controller-stub seam's codes, all carried by `ErrorWithCodeException` (the d
 | `CONTROLLER_STUB_IDENTITY_FAILED` | A loopback stub did not prove its identity: no token echo when registered, before any controller request is sent; or a response that does not carry the stub header exactly once with the token, after its request was sent. The message says which. |
 | `CONTROLLER_STUB_ENDPOINT_IN_USE` | A `mock://` key is registered a second time in one process; a key is single-use, live or disposed. |
 
+The controller's own refusals, also carried by `ErrorWithCodeException`, each message starting with the code's
+name and carrying the fault's `faultcode` and `faultstring`:
+
+| Code | Raised when |
+| --- | --- |
+| `CONTROLLER_SOAP_FAULT` | A controller reply carries a SOAP 1.1 fault, whatever its HTTP status. A non-success status whose body holds no fault stays the transport's `HttpRequestException`. |
+| `CONTROLLER_LOGON_FAILED` | The fault is `Logon Failed`, which a controller answers a call without a working session with; logging in again is the remedy. A login answered so leaves the stored session cookie unchanged. |
+| `CONTROLLER_WRITE_UNCONFIRMED` | `IConfigurationService.SetNetworkSettings` sent its settings but the transport failed before an answer, the captured outcome of an address change that restarts the controller: whether they applied is unknown. The transport's error is the inner exception; reconnect and read the settings back before retrying. |
+
 A refusal an edit command can foresee is reported, not thrown: `IProjectDocument.CanApply` answers the
 precondition before the fact, and applying a refused command returns an outcome whose status is
 `Refused` and whose code is the gate's own. The exception rows above are the failures that escape
@@ -249,7 +260,7 @@ try
     await auth.Authenticate();
 
     ResourceValue value = await resources.GetRuntimeValue(resourceId);
-    await resources.SetResourceValue(ResourceValue.ToogleBool(value));
+    await resources.SetResourceValue(ResourceValue.ToggleBool(value));
 }
 finally
 {

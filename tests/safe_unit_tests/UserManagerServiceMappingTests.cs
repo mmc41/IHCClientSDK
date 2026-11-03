@@ -150,6 +150,36 @@ namespace Ihc.Tests
         }
 
         /// <summary>
+        /// A captured edit through IHC Administrator stored the 20-character last name <c>test lastname edited</c>,
+        /// wider than the 15 columns of its dialog's field: the columns are a display width, so the name is sent whole.
+        /// </summary>
+        [Test]
+        public async Task UpdateUser_WithTheCapturedTwentyCharacterLastName_SendsItWhole()
+        {
+            Harness h = NewHarness();
+
+            await h.Service.UpdateUser(Installer() with { Lastname = "test lastname edited" });
+
+            Assert.That(h.Updated!.updateUser1.lastname, Is.EqualTo("test lastname edited"));
+        }
+
+        /// <summary>
+        /// A user read with its e-mail, phone and project unset carries them as null, and a read-modify-write sends
+        /// no element for them: in particular not the line break a nil element once read as.
+        /// </summary>
+        [Test]
+        public async Task UpdateUser_WithUnsetStrings_SendsNoElementForThem()
+        {
+            Harness h = NewHarness();
+
+            await h.Service.UpdateUser(Installer() with { Email = null, Phone = null, Project = null });
+
+            string updated = SoapRequestText.Of(h.Updated!);
+            Assert.That(updated, Does.Not.Contain("email").And.Not.Contain("phone").And.Not.Contain("project"));
+            Assert.That(updated, Does.Contain("<utcs:firstname>Anna</utcs:firstname>"));
+        }
+
+        /// <summary>
         /// The field-preservation law: a user written to the wire and read back is the same user. The
         /// two mappings are separate bodies of hand-written assignments, so this is what catches a
         /// field added to one direction and forgotten in the other.
@@ -205,7 +235,9 @@ namespace Ihc.Tests
         /// The controller carries the group as a magic string, and the two directions spell it in two
         /// places. A user whose group is neither of the two known ones has no wire spelling at all, so
         /// the outbound mapping writes an empty group - which reads back as
-        /// <see cref="IhcUserGroup.None"/> rather than throwing.
+        /// <see cref="IhcUserGroup.None"/> rather than throwing. A key the SDK does not know reads as
+        /// <see cref="IhcUserGroup.None"/> too, with a span warning naming it (asserted in
+        /// <c>WireSubstitutionWarningTests</c>), so one such account no longer fails a whole user list.
         /// </summary>
         [Test]
         public async Task Groups_RoundTripThroughTheirWireSpelling()
@@ -224,8 +256,8 @@ namespace Ihc.Tests
                 Assert.That(UserManagerService.mapUserGroup(administrators.group.type), Is.EqualTo(IhcUserGroup.Administrators));
                 Assert.That(UserManagerService.mapUserGroup(users.group.type), Is.EqualTo(IhcUserGroup.Users));
                 Assert.That(UserManagerService.mapUserGroup((string?)null), Is.EqualTo(IhcUserGroup.None));
-                Assert.That(() => UserManagerService.mapUserGroup("gtext.plumbers"), Throws.ArgumentException,
-                    "a group the SDK does not know must be named, not silently folded into None");
+                Assert.That(UserManagerService.mapUserGroup("gtext.plumbers"), Is.EqualTo(IhcUserGroup.None),
+                    "a group the SDK does not know reads as None, named in a warning rather than thrown");
             });
         }
 

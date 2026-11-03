@@ -31,9 +31,9 @@ namespace Ihc
         /// Long-polls in configuration mode: the controller holds the call until a dimmer announces itself (both its
         /// buttons held until they blink, then one pressed) or the hold runs out. Repeat the call to keep listening.
         /// </summary>
-        /// <param name="timeoutSeconds">Longest time, in seconds, the controller holds the call.</param>
+        /// <param name="holdSeconds">Longest time, in seconds, the controller holds the call.</param>
         /// <returns>The announcing dimmer, or <c>null</c> when the reply carries none.</returns>
-        Task<LedDimmerInfo?> WaitForDeviceDetected(int timeoutSeconds);
+        Task<LedDimmerInfo?> WaitForDeviceDetected(int holdSeconds);
 
         /// <summary>
         /// Scans for LED dimmers that are already configured. Unverified: no vendor client calls it.
@@ -76,18 +76,16 @@ namespace Ihc
         Task<IReadOnlyList<LedDimmerInfo>> GetDeviceList();
 
         /// <summary>
-        /// Starts pushing the controller's stored LED Dimmer 2 firmware image to one dimmer; the call carries no image.
-        /// Follow the upgrade with <see cref="GetFirmwareUpgradeProgress"/>.
+        /// Starts pushing the controller's stored LED Dimmer 2 firmware image to one dimmer, or to every dimmer; the call
+        /// carries no image. Follow the upgrade with <see cref="GetFirmwareUpgradeProgress"/>.
         /// </summary>
         /// <param name="serialNumber">Serial number of the dimmer to upgrade, as <see cref="GetDeviceList"/> reports
-        /// it.</param>
+        /// it, or <c>null</c> to upgrade every dimmer in one call, as the vendor's Administrator does.</param>
         /// <remarks>
         /// A full upgrade runs <see cref="EnterConfiguration"/>, this call, progress polls while the status is
-        /// <c>running</c>, and <see cref="ExitConfiguration"/>. Known defect: the controller upgrades all dimmers in
-        /// one call when the serial is <c>null</c>, but the parameter is declared non-nullable, so passing <c>null</c>
-        /// draws a nullable warning.
+        /// <c>running</c>, and <see cref="ExitConfiguration"/>.
         /// </remarks>
-        Task StartFirmwareUpgrade(string serialNumber);
+        Task StartFirmwareUpgrade(string? serialNumber);
 
         /// <summary>
         /// Gets the state of the current or last LED-dimmer firmware upgrade: status, progress against a maximum, the
@@ -279,15 +277,15 @@ namespace Ihc
             }
         }
 
-        public async Task<LedDimmerInfo?> WaitForDeviceDetected(int timeoutSeconds)
+        public async Task<LedDimmerInfo?> WaitForDeviceDetected(int holdSeconds)
         {
             using (var activity = StartActivity(nameof(WaitForDeviceDetected)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(timeoutSeconds), timeoutSeconds));
+                    activity?.SetParameters((nameof(holdSeconds), holdSeconds));
 
-                    var result = await impl.waitForDeviceDetectedAsync(new inputMessageName3(timeoutSeconds)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = await impl.waitForDeviceDetectedAsync(new inputMessageName3(holdSeconds)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = MapInfo(result.waitForDeviceDetected2);
 
                     activity?.SetReturnValue(retv);
@@ -407,7 +405,7 @@ namespace Ihc
             }
         }
 
-        public async Task StartFirmwareUpgrade(string serialNumber)
+        public async Task StartFirmwareUpgrade(string? serialNumber)
         {
             using (var activity = StartActivity(nameof(StartFirmwareUpgrade)))
             {

@@ -11,8 +11,9 @@ namespace Ihc
         public byte[] Data { get; }
 
         /// <summary>
-        /// Name of the file, or null when the source supplies none - the segment models are the
-        /// case in point, and the Lab names those after the operation instead.
+        /// Name of the file, or null when the SDK has none - the segment models, whose names the SDK
+        /// does not map from the reply, are the case in point, and the Lab names those after the operation
+        /// instead.
         /// </summary>
         public string? Filename { get; }
     }
@@ -26,9 +27,9 @@ namespace Ihc
         public string Data { get; }
 
         /// <summary>
-        /// Name of the file, or null when the source supplies none. The controller's WSFile carries no
-        /// required filename, so a project fetched from it may arrive without one - which is why the Lab
-        /// falls back to an operation-derived name rather than trusting this.
+        /// Name of the file, or null when the reply carries none. The WSDL requires the controller's
+        /// WSFile to carry a filename, but a reply that omits it is still read, so the Lab falls back to
+        /// an operation-derived name rather than trusting this.
         /// </summary>
         public string? Filename { get; }
         public static System.Text.Encoding? Encoding { get; }

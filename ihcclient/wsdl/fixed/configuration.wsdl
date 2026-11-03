@@ -49,6 +49,9 @@
 
 <xsd:element name="sendLowBatteryNotificationRecepient" type="xsd:string">
 </xsd:element>
+
+<xsd:element name="sendLEDDimmerErrorNotification" type="xsd:boolean">
+</xsd:element>
 </xsd:sequence>
 </xsd:complexType>
 

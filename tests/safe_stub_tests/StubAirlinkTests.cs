@@ -115,7 +115,8 @@ namespace Ihc.Tests
             using var sdk = StubbedSdk.Start(stub);
 
             Assert.That(await sdk.Airlink.GetDetectedDeviceList(), Is.Empty);
-            Assert.That(await sdk.Airlink.GetDevicesRunningOutOfBattery(), Is.EqualTo(new[] { -1 }), "the captured controller's answer");
+            Assert.That(stub.Airlink.LowBattery, Is.EqualTo(new[] { -1 }), "the captured controller's answer for none");
+            Assert.That(await sdk.Airlink.GetDevicesRunningOutOfBattery(), Is.Empty, "which the SDK reads as no device");
 
             stub.Airlink.DetectedDevices = [Device];
             stub.Airlink.LowBattery = [41001, 41002];

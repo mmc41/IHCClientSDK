@@ -53,10 +53,16 @@ namespace Ihc.Stubbing
         internal Task<outputMessageName22> getEmailControlSettingsAsync(inputMessageName22 request) =>
             Task.FromResult(new outputMessageName22 { getEmailControlSettings1 = EmailControlToWire(scenario.EmailControlSettings) });
 
+        /// <summary>Stores the settings and answers true, or, when the scenario declines, keeps them and answers false.</summary>
         internal Task<outputMessageName23> setEmailControlSettingsAsync(inputMessageName23 request)
         {
-            scenario.EmailControlSettings = Stored(EmailControlFromWire(request.setEmailControlSettings1));
-            return Task.FromResult(new outputMessageName23 { setEmailControlSettings2 = true });
+            EmailControlSettings? settings = Stored(EmailControlFromWire(request.setEmailControlSettings1));
+            bool accepted = scenario.EmailControlSettingsAccepted;
+            if (accepted)
+            {
+                scenario.EmailControlSettings = settings;
+            }
+            return Task.FromResult(new outputMessageName23 { setEmailControlSettings2 = accepted });
         }
 
         internal Task<outputMessageName18> getWebAccessControlAsync(inputMessageName18 request) =>
@@ -143,6 +149,7 @@ namespace Ihc.Stubbing
             ssl = smtp.Ssl,
             sendLowBatteryNotification = smtp.SendLowBatteryNotification,
             sendLowBatteryNotificationRecepient = smtp.SendLowBatteryNotificationRecipient,
+            sendLEDDimmerErrorNotification = smtp.SendLEDDimmerErrorNotification,
         };
 
         private static SMTPSettings? SmtpFromWire(WSSMTPSettings? wire) => wire is null ? null : new()
@@ -154,11 +161,12 @@ namespace Ihc.Stubbing
             Ssl = wire.ssl,
             SendLowBatteryNotification = wire.sendLowBatteryNotification,
             SendLowBatteryNotificationRecipient = wire.sendLowBatteryNotificationRecepient,
+            SendLEDDimmerErrorNotification = wire.sendLEDDimmerErrorNotification,
         };
 
         private static WSEmailControlSettings? EmailControlToWire(EmailControlSettings? mail) => mail is null ? null : new()
         {
-            serverIPAddress = mail.ServerIpAddress,
+            serverIPAddress = mail.ServerAddress,
             serverPortNumber = mail.ServerPortNumber,
             pop3Username = mail.Pop3Username,
             pop3Password = mail.Pop3Password,
@@ -170,7 +178,7 @@ namespace Ihc.Stubbing
 
         private static EmailControlSettings? EmailControlFromWire(WSEmailControlSettings? wire) => wire is null ? null : new()
         {
-            ServerIpAddress = wire.serverIPAddress,
+            ServerAddress = wire.serverIPAddress,
             ServerPortNumber = wire.serverPortNumber,
             Pop3Username = wire.pop3Username,
             Pop3Password = wire.pop3Password,

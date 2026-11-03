@@ -57,11 +57,12 @@ namespace Ihc {
         public Task<TimeSpan> GetUptime();
 
         /// <summary>
-        /// Reads the controller's local time, as <see cref="ITimeManagerService.GetCurrentLocalTime"/> does.
+        /// Reads the controller's local time, the clock <see cref="ITimeManagerService.GetCurrentLocalTime"/> reads.
         /// </summary>
-        /// <returns>The controller's local time. The SDK reads it at a fixed +01:00 offset, so the instant is right
-        /// only while the controller runs at UTC+1; <c>DateTimeOffset.MinValue</c> when the reply carries no readable
-        /// date.</returns>
+        /// <returns>The controller's local time at a fixed +01:00 offset, so the instant is right only while the
+        /// controller runs at UTC+1: the OpenAPI has no UTC clock to take the controller's current offset from, as
+        /// <see cref="ITimeManagerService.GetCurrentLocalTime"/> does. <c>DateTimeOffset.MinValue</c> when the reply
+        /// carries no readable date.</returns>
         public Task<DateTimeOffset> GetTime();
 
         /// <summary>
@@ -103,7 +104,8 @@ namespace Ihc {
         /// </summary>
         /// <param name="resourceIds">Ids of the resources to read.</param>
         /// <returns>One value per requested id, in request order, with <see cref="ResourceValue.ResourceID"/> set from
-        /// the request.</returns>
+        /// the request; empty for a request of no ids, also when the controller answers it in its empty-list form, one
+        /// nil item.</returns>
         /// <exception cref="InvalidOperationException">The reply holds a different number of values than ids were
         /// requested, or a value is missing.</exception>
         public Task<IReadOnlyList<ResourceValue>> GetValues(IReadOnlyList<int> resourceIds);
@@ -117,6 +119,8 @@ namespace Ihc {
         /// <returns><c>true</c> when the controller accepted the values; what a <c>false</c> answer means is not
         /// known, as for <see cref="IResourceInteractionService.SetResourceValues"/>. <c>false</c> also when the reply
         /// carries no value.</returns>
+        /// <exception cref="ArgumentException">A value cannot be written, refused alike by
+        /// <see cref="IResourceInteractionService.SetResourceValues"/>; nothing is sent.</exception>
         public Task<bool> SetValues(IReadOnlyList<ResourceValue> values);
 
         /// <summary>
@@ -134,13 +138,13 @@ namespace Ihc {
 
         /// <summary>
         /// Waits for value changes of the subscribed resources and returns them with two controller status fields. The
-        /// controller holds the call until a change arrives or the timeout runs out, as
+        /// controller holds the call until a change arrives or <paramref name="holdSeconds"/> runs out, as
         /// <see cref="IResourceInteractionService.WaitForResourceValueChanges"/> does.
         /// </summary>
-        /// <param name="timeout">Longest time, in seconds, the controller holds the call.</param>
+        /// <param name="holdSeconds">Longest time, in seconds, the controller holds the call.</param>
         /// <returns>Never <c>null</c>: when the reply carries no package the SDK returns an empty one whose
         /// <see cref="EventPackage.ControllerExecutionRunning"/> is <c>false</c>.</returns>
-        public Task<EventPackage> WaitForEvents(int timeout);
+        public Task<EventPackage> WaitForEvents(int holdSeconds);
 
         /// <summary>
         /// Streams value changes of the given resources: subscribes once, calls <see cref="WaitForEvents"/> in a loop
@@ -149,9 +153,13 @@ namespace Ihc {
         /// </summary>
         /// <param name="resourceIds">Ids of the resources to follow.</param>
         /// <param name="cancellationToken">Stops the stream; a wait already in flight is not interrupted.</param>
-        /// <param name="timeout_between_waits_in_seconds">Longest time, in seconds, the controller holds each
+        /// <param name="holdSeconds">Longest time, in seconds, the controller holds each
         /// <see cref="WaitForEvents"/> call.</param>
-        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(IReadOnlyList<int> resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15);
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled during the
+        /// short rest between waits or the pause after a failed one: the enumeration then throws. Cancelled while a
+        /// wait is held, the stream yields that wait's changes and ends quietly. Either way the subscription is
+        /// ended.</exception>
+        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(IReadOnlyList<int> resourceIds, CancellationToken cancellationToken = default, int holdSeconds = 15);
 
         /// <summary>
         /// Reads information on the project stored on the controller: the record
@@ -178,12 +186,12 @@ namespace Ihc {
         /// order, the segments decompress as a whole.
         /// </summary>
         /// <param name="index">Segment index, 0-based, below <see cref="GetIHCProjectNumberOfSegments"/>.</param>
-        /// <param name="majorVersion">The <see cref="ProjectInfo.ProjectMajorRevision"/> from
+        /// <param name="projectMajorRevision">The <see cref="ProjectInfo.ProjectMajorRevision"/> from
         /// <see cref="GetProjectInfo"/>.</param>
-        /// <param name="minorVersion">The <see cref="ProjectInfo.ProjectMinorRevision"/> from
+        /// <param name="projectMinorRevision">The <see cref="ProjectInfo.ProjectMinorRevision"/> from
         /// <see cref="GetProjectInfo"/>.</param>
         /// <returns>The segment; its data is empty when the reply carries no file.</returns>
-        public Task<ProjectSegment> GetIHCProjectSegment(int index, int majorVersion, int minorVersion);
+        public Task<ProjectSegment> GetIHCProjectSegment(int index, int projectMajorRevision, int projectMinorRevision);
 
         /// <summary>
         /// Reads information on the scene project stored on the controller: the record
@@ -212,7 +220,6 @@ namespace Ihc {
 
     /// <summary>
     /// A highlevel implementation of a client to the IHC OpenAPIService without exposing any of the soap distractions.
-    /// Nb. Supported by v3.0+ controllers only.
     /// </summary>
     public class OpenAPIService : ServiceBase, IOpenAPIService
     {
@@ -407,7 +414,8 @@ namespace Ihc {
                 };
             }
 
-            var events = eventPackage.resourceValueEvents?.Select(e =>
+            // A controller answers an empty list as one nil item, so a nil item is skipped rather than read.
+            var events = eventPackage.resourceValueEvents is null ? null : WireList.MapPresent(eventPackage.resourceValueEvents, e =>
             {
                 var resourceValue = OpenApiResourceValueMapper.ToDomain(e.m_value);
                 if (resourceValue != null)
@@ -415,7 +423,7 @@ namespace Ihc {
                     resourceValue = resourceValue with { ResourceID = e.m_resourceID };
                 }
                 return resourceValue;
-            }).OfType<ResourceValue>().ToArray();
+            }, Activity.Current, nameof(WaitForEvents)).ToArray();
 
             return new EventPackage()
             {
@@ -671,6 +679,15 @@ namespace Ihc {
             }
         }
 
+        // A controller answers an empty list as one nil item, so a nil item is skipped rather than read, as the
+        // resource service's dataline lists, which these mirror, already skip it.
+        private static IReadOnlyList<int> datalineIds(WSDatalineResource[]? resources, Activity? activity, string field)
+        {
+            if (resources == null)
+                return Array.Empty<int>();
+            return WireList.MapPresent(resources, resource => resource, activity, field).Select(resource => resource.resourceID).ToList();
+        }
+
         public async Task<IReadOnlyList<int>> GetDatalineInputIDs()
         {
             using (var activity = StartActivity(nameof(GetDatalineInputIDs)))
@@ -678,7 +695,7 @@ namespace Ihc {
                 try
                 {
                     var result = await impl.getDatalineInputIDsAsync(new inputMessageName3()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    IReadOnlyList<int> retv = result.getDatalineInputIDs1 != null ? result.getDatalineInputIDs1.Select(r => r.resourceID).ToList() : Array.Empty<int>();
+                    IReadOnlyList<int> retv = datalineIds(result.getDatalineInputIDs1, activity, nameof(GetDatalineInputIDs));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -698,7 +715,7 @@ namespace Ihc {
                 try
                 {
                     var result = await impl.getDatalineOutputIDsAsync(new inputMessageName4()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    IReadOnlyList<int> retv = result.getDatalineOutputIDs1 != null ? result.getDatalineOutputIDs1.Select(r => r.resourceID).ToList() : Array.Empty<int>();
+                    IReadOnlyList<int> retv = datalineIds(result.getDatalineOutputIDs1, activity, nameof(GetDatalineOutputIDs));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -753,6 +770,10 @@ namespace Ihc {
                     // Letting the omitted one through as a successful empty list would tell a caller that
                     // asked for a resource that the read worked and there was nothing there.
                     WSResourceValue[] answered = result.getValues2 ?? [];
+                    // A controller answers an empty list as one nil item. Only for a request of no resources is
+                    // that the empty answer; with a resource asked for, it is that resource's empty entry.
+                    if (resourceIds.Count == 0 && answered is [null])
+                        answered = [];
                     if (answered.Length != resourceIds.Count)
                     {
                         throw new InvalidOperationException(
@@ -844,16 +865,16 @@ namespace Ihc {
             }
         }
 
-        public async Task<EventPackage> WaitForEvents(int timeout)
+        public async Task<EventPackage> WaitForEvents(int holdSeconds)
         {
             using (var activity = StartActivity(nameof(WaitForEvents)))
             {
                 try
                 {
                     activity?.SetParameters(
-                        (nameof(timeout), timeout));
+                        (nameof(holdSeconds), holdSeconds));
 
-                    var result = await impl.waitForEventsAsync(new inputMessageName5() { waitForEvents1 = timeout }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = await impl.waitForEventsAsync(new inputMessageName5() { waitForEvents1 = holdSeconds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = mapEventPackage(result.waitForEvents2);
 
                     activity?.SetReturnValue(retv);
@@ -873,11 +894,11 @@ namespace Ihc {
         /// </summary>
         /// <param name="resourceIds">Array of resource IDs to monitor</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <param name="timeout_between_waits_in_seconds">Timeout between waits in seconds</param>
+        /// <param name="holdSeconds">Longest time, in seconds, the controller holds each wait</param>
         public async IAsyncEnumerable<ResourceValue> GetResourceValueChanges(
             IReadOnlyList<int> resourceIds,
             [EnumeratorCancellation] CancellationToken cancellationToken = default,
-            int timeout_between_waits_in_seconds = 15)
+            int holdSeconds = 15)
         {
             // Deliberately an async iterator, so the activity spans the iteration rather than the call that
             // creates it. Returning the stream from a plain method would stop and export the activity before the
@@ -887,17 +908,17 @@ namespace Ihc {
             activity?.SetParameters(
                 (nameof(resourceIds), resourceIds),
                 (nameof(cancellationToken), cancellationToken),
-                (nameof(timeout_between_waits_in_seconds), timeout_between_waits_in_seconds));
+                (nameof(holdSeconds), holdSeconds));
 
             IAsyncEnumerable<ResourceValue> changes = ServiceHelpers.GetResourceValueChanges(
                 activity,
                 resourceIds,
                 EnableSubscription,
-                async (timeout) => (await WaitForEvents(timeout).ConfigureAwait(settings.AsyncContinueOnCapturedContext)).ResourceValueEvents,
+                async (hold) => (await WaitForEvents(hold).ConfigureAwait(settings.AsyncContinueOnCapturedContext)).ResourceValueEvents,
                 DisableSubscription,
                 settings.AsyncContinueOnCapturedContext,
                 cancellationToken,
-                timeout_between_waits_in_seconds);
+                holdSeconds);
 
             await foreach (var change in changes.ConfigureAwait(settings.AsyncContinueOnCapturedContext))
             {
@@ -975,39 +996,14 @@ namespace Ihc {
             }
         }
 
-        public async Task<ProjectSegment> GetIHCProjectSegment(int index, int majorVersion, int minorVersion)
-        {
-            using (var activity = StartActivity(nameof(GetIHCProjectSegment)))
-            {
-                try
+        public Task<ProjectSegment> GetIHCProjectSegment(int index, int projectMajorRevision, int projectMinorRevision) =>
+            TracedSegmentDownload(nameof(GetIHCProjectSegment), index, projectMajorRevision, projectMinorRevision, async () =>
+                (await impl.getIHCProjectSegmentAsync(new inputMessageName17()
                 {
-                    activity?.SetParameters(
-                        (nameof(index), index),
-                        (nameof(majorVersion), majorVersion),
-                        (nameof(minorVersion), minorVersion));
-
-                    var result = await impl.getIHCProjectSegmentAsync(new inputMessageName17()
-                    {
-                        getIHCProjectSegment1 = index,
-                        getIHCProjectSegment2 = majorVersion,
-                        getIHCProjectSegment3 = minorVersion
-                    }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-                    var retv = new ProjectSegment
-                    {
-                        Data = result.getIHCProjectSegment4?.data ?? Array.Empty<byte>()
-                    };
-
-                    activity?.SetReturnValue(retv);
-                    return retv;
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
-        }
+                    getIHCProjectSegment1 = index,
+                    getIHCProjectSegment2 = projectMajorRevision,
+                    getIHCProjectSegment3 = projectMinorRevision
+                }).ConfigureAwait(settings.AsyncContinueOnCapturedContext)).getIHCProjectSegment4?.data);
 
         public async Task<SceneProjectInfo?> GetSceneProjectInfo()
         {

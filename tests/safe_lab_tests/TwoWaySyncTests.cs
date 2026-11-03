@@ -382,14 +382,14 @@ namespace Ihc.Tests
             Dispatcher.UIThread.RunJobs();
 
             // Act - Simulate user changing multiple properties of the complex parameter
-            // SmsModemSettings: 0=PowerupMessage, 1=PowerdownMessage, 2=PowerdownNumber, 3=RelaySMS, 4=ForceStandAloneMode
+            // SmsModemSettings: 0=PowerupMessage, 1=PowerdownMessage, 2=RecipientSlots, 3=RelaySMS, 4=ForceStandAloneMode
             var powerupMessageControl = FindParameterControl(parametersPanel!, "0.0");
             var powerdownMessageControl = FindParameterControl(parametersPanel!, "0.1");
-            var powerdownNumberControl = FindParameterControl(parametersPanel!, "0.2");
+            var recipientSlotsControl = FindParameterControl(parametersPanel!, "0.2");
 
             Assert.That(powerupMessageControl, Is.Not.Null);
             Assert.That(powerdownMessageControl, Is.Not.Null);
-            Assert.That(powerdownNumberControl, Is.Not.Null);
+            Assert.That(recipientSlotsControl, Is.Not.Null);
 
             powerupMessageControl!.SimulateUserChange("System starting");
             Dispatcher.UIThread.RunJobs();
@@ -397,7 +397,7 @@ namespace Ihc.Tests
             powerdownMessageControl!.SimulateUserChange("System stopping");
             Dispatcher.UIThread.RunJobs();
 
-            powerdownNumberControl!.SimulateUserChange("+1234567890");
+            recipientSlotsControl!.SimulateUserChange("100000000000000000000000000001");
             Dispatcher.UIThread.RunJobs();
 
             // Assert - LabAppService should have complex object with all properties set
@@ -479,7 +479,7 @@ namespace Ihc.Tests
             var newSettings = Activator.CreateInstance(parameterType);
 
             // Set properties using reflection
-            // SmsModemSettings: 0=PowerupMessage, 1=PowerdownMessage, 2=PowerdownNumber, 3=RelaySMS, 4=ForceStandAloneMode
+            // SmsModemSettings: 0=PowerupMessage, 1=PowerdownMessage, 2=RecipientSlots, 3=RelaySMS, 4=ForceStandAloneMode
             var powerupMessageProp = parameterType.GetProperty("PowerupMessage");
             var powerdownMessageProp = parameterType.GetProperty("PowerdownMessage");
             var relaySMSProp = parameterType.GetProperty("RelaySMS");
@@ -749,7 +749,7 @@ namespace Ihc.Tests
             servicesComboBox!.SelectedIndex = controllerServiceIndex;
             Dispatcher.UIThread.RunJobs();
 
-            // Select GetIHCProjectSegment (parameters: int index, int major, int minor - all numeric, so every
+            // Select GetIHCProjectSegment (parameters: int index, int projectMajorRevision, int projectMinorRevision - all numeric, so every
             // default extracts to a non-null value, which is the case that triggered the overwrite bug).
             int opIndex = FindOperationIndexByName(operationsComboBox!, "GetIHCProjectSegment");
             Assert.That(opIndex, Is.GreaterThanOrEqualTo(0), "GetIHCProjectSegment operation should exist");

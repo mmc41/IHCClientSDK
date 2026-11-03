@@ -40,6 +40,10 @@ namespace Ihc.Tests
             // Configure fake auth service to always report as authenticated
             A.CallTo(() => fakeAuthService.IsAuthenticated()).Returns(Task.FromResult(true));
 
+            // A controller accepts a POP3 or wired-network settings write unless a test says otherwise.
+            A.CallTo(() => fakeConfigService.SetEmailControlSettings(A<EmailControlSettings>._)).Returns(Task.FromResult(true));
+            A.CallTo(() => fakeConfigService.SetNetworkSettings(A<NetworkSettings>._)).Returns(Task.FromResult(true));
+
             // Create test settings
             settings = new IhcSettings
             {
@@ -94,7 +98,7 @@ namespace Ihc.Tests
 
             var testEmailControl = new EmailControlSettings
             {
-                ServerIpAddress = "mail.test.com",
+                ServerAddress = "mail.test.com",
                 ServerPortNumber = 110,
                 EmailAddress = "test@test.com"
             };
@@ -170,7 +174,7 @@ namespace Ihc.Tests
                 new IhcUser { Username = "user1", Email = "user1@test.com", Group = IhcUserGroup.Administrators }
             };
 
-            var testEmailControl = new EmailControlSettings { ServerIpAddress = "mail.test.com" };
+            var testEmailControl = new EmailControlSettings { ServerAddress = "mail.test.com" };
             var testSmtp = new SMTPSettings { Hostname = "smtp.test.com" };
 
             ArrangeSnapshot(testUsers, testEmailControl, testSmtp);
@@ -302,7 +306,7 @@ namespace Ihc.Tests
             // Arrange
             var initialEmailControl = new EmailControlSettings
             {
-                ServerIpAddress = "old.mail.com",
+                ServerAddress = "old.mail.com",
                 ServerPortNumber = 110,
                 Pop3Username = "user",
                 Pop3Password = "pass",
@@ -318,7 +322,7 @@ namespace Ihc.Tests
             var model = await service.GetModel();
 
             // Act - change email control settings (using record 'with' expression)
-            model.EmailControl = model.EmailControl! with { ServerIpAddress = "new.mail.com", ServerPortNumber = 995 };
+            model.EmailControl = model.EmailControl! with { ServerAddress = "new.mail.com", ServerPortNumber = 995 };
             var changeInfo = await service.Store(model);
 
             // Assert - verify change information
@@ -328,6 +332,44 @@ namespace Ihc.Tests
 
             // Assert - verify SetEmailControlSettings was called (don't check exact match due to record equality)
             A.CallTo(() => fakeConfigService.SetEmailControlSettings(A<EmailControlSettings>._))
+                .MustHaveHappenedOnceExactly();
+        }
+
+        /// <summary>
+        /// A controller that declines the POP3 settings has not applied them, so the store fails rather than report
+        /// the change as applied, and the next store still sees the change against the unchanged snapshot.
+        /// </summary>
+        [Test]
+        public async Task SaveAdminModel_EmailControlDeclined_FailsTheStore_AndKeepsTheChangePending()
+        {
+            ArrangeSnapshot(emailControl: new EmailControlSettings { ServerAddress = "old.mail.com", ServerPortNumber = 110 });
+            A.CallTo(() => fakeConfigService.SetEmailControlSettings(A<EmailControlSettings>._)).Returns(Task.FromResult(false));
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
+            model.EmailControl = model.EmailControl! with { ServerAddress = "new.mail.com" };
+
+            Assert.That(async () => await service.Store(model),
+                Throws.InvalidOperationException.With.Message.Contains("declined"));
+
+            A.CallTo(() => fakeConfigService.SetEmailControlSettings(A<EmailControlSettings>._)).Returns(Task.FromResult(true));
+            var retried = await service.Store(model);
+            Assert.That(retried.ChangeCount, Is.EqualTo(1), "the declined change is still a change");
+        }
+
+        /// <summary>The LED Dimmer error-mail switch is part of the SMTP settings: toggling it alone is an SMTP change,
+        /// written with the switch as set.</summary>
+        [Test]
+        public async Task SaveAdminModel_OnlyTheLedDimmerErrorSwitchChanged_CallsSetSMTPSettingsWithIt()
+        {
+            ArrangeSnapshot(smtp: new SMTPSettings { Hostname = "smtp.test.com", Hostport = 25 });
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
+
+            model.SmtpSettings = model.SmtpSettings! with { SendLEDDimmerErrorNotification = true };
+            var changeInfo = await service.Store(model);
+
+            Assert.That(changeInfo.ChangeCount, Is.EqualTo(1));
+            A.CallTo(() => fakeConfigService.SetSMTPSettings(A<SMTPSettings>.That.Matches(smtp => smtp.SendLEDDimmerErrorNotification)))
                 .MustHaveHappenedOnceExactly();
         }
 
@@ -426,6 +468,42 @@ namespace Ihc.Tests
                 .MustHaveHappenedOnceExactly();
         }
 
+        private async Task<(AdminAppService Service, MutableAdminModel Model)> ModelWithAChangedAddress()
+        {
+            ArrangeSnapshot(network: new NetworkSettings { IpAddress = "192.168.1.100", Netmask = "255.255.255.0", Gateway = "192.168.1.1" });
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
+            model.NetworkSettings = model.NetworkSettings! with { IpAddress = "192.168.1.200" };
+            return (service, model);
+        }
+
+        /// <summary>A controller that declines the wired-network settings has not applied them: the store fails, and
+        /// the change stays pending against the unchanged snapshot.</summary>
+        [Test]
+        public async Task SaveAdminModel_NetworkSettingsDeclined_FailsTheStore()
+        {
+            var (service, model) = await ModelWithAChangedAddress();
+            A.CallTo(() => fakeConfigService.SetNetworkSettings(A<NetworkSettings>._)).Returns(Task.FromResult(false));
+
+            Assert.That(async () => await service.Store(model), Throws.InvalidOperationException.With.Message.Contains("declined"));
+        }
+
+        /// <summary>
+        /// A write whose outcome the controller never confirmed -- the captured outcome of an address change, which
+        /// restarts the controller without a reply -- reaches the caller as such, never as applied: the coded error
+        /// telling it to reconnect and read the settings back.
+        /// </summary>
+        [Test]
+        public async Task SaveAdminModel_NetworkSettingsUnconfirmed_ReachesTheCallerAsUnconfirmed()
+        {
+            var (service, model) = await ModelWithAChangedAddress();
+            A.CallTo(() => fakeConfigService.SetNetworkSettings(A<NetworkSettings>._)).ThrowsAsync(
+                new ErrorWithCodeException(Errors.CONTROLLER_WRITE_UNCONFIRMED, "CONTROLLER_WRITE_UNCONFIRMED: reconnect and read back"));
+
+            Assert.That(async () => await service.Store(model), Throws.TypeOf<ErrorWithCodeException>()
+                .And.Matches<ErrorWithCodeException>(coded => coded.ErrorCode == Errors.CONTROLLER_WRITE_UNCONFIRMED));
+        }
+
         [Test]
         public async Task SaveAdminModel_WLanSettingsChanged_CallsSetWLanSettingsAndRequiresReboot()
         {
@@ -456,6 +534,23 @@ namespace Ihc.Tests
             // Assert - verify SetWLanSettings was called
             A.CallTo(() => fakeConfigService.SetWLanSettings(A<WLanSettings>._))
                 .MustHaveHappenedOnceExactly();
+        }
+
+        /// <summary>The WiFi write's reply flag has no established meaning and IHC Administrator ignores it, so a
+        /// false or absent one neither fails the store nor changes what it reports.</summary>
+        [TestCase(false)]
+        [TestCase(null)]
+        public async Task SaveAdminModel_WLanReplyFlagFalseOrAbsent_IsIgnored(bool? flag)
+        {
+            ArrangeSnapshot(wlan: new WLanSettings { Enabled = false, Ssid = "OldNetwork", Key = "oldkey123", SecurityType = "WPA2", EncryptionType = "AES" });
+            A.CallTo(() => fakeConfigService.SetWLanSettings(A<WLanSettings>._)).Returns(Task.FromResult(flag));
+            var service = new AdminAppService(settings, fileEnryption: true, fakeAuthService, fakeUserService, fakeConfigService);
+            var model = await service.GetModel();
+            model.WLanSettings = model.WLanSettings! with { Ssid = "NewNetwork" };
+
+            var changeInfo = await service.Store(model);
+
+            Assert.That((changeInfo.ChangeCount, changeInfo.RebootRequired), Is.EqualTo((1, true)));
         }
 
         [Test]
@@ -518,7 +613,7 @@ namespace Ihc.Tests
             };
             var initialEmailControl = new EmailControlSettings
             {
-                ServerIpAddress = "old.mail.com",
+                ServerAddress = "old.mail.com",
                 ServerPortNumber = 110,
                 Pop3Username = "",
                 Pop3Password = "",
@@ -557,7 +652,7 @@ namespace Ihc.Tests
                 CreatedDate = DateTimeOffset.Now,
                 LoginDate = DateTimeOffset.Now
             });
-            model.EmailControl = model.EmailControl! with { ServerIpAddress = "new.mail.com" };
+            model.EmailControl = model.EmailControl! with { ServerAddress = "new.mail.com" };
             model.SmtpSettings = model.SmtpSettings! with { Hostname = "new.smtp.com" };
             var changeInfo = await service.Store(model);
 
@@ -613,7 +708,7 @@ namespace Ihc.Tests
                 },
                 EmailControl = new EmailControlSettings
                 {
-                    ServerIpAddress = "mail.test.com",
+                    ServerAddress = "mail.test.com",
                     ServerPortNumber = 110,
                     Pop3Username = "testuser",
                     Pop3Password = "pop3secret",
@@ -719,6 +814,31 @@ namespace Ihc.Tests
         /// caller can legitimately produce such a file, because <c>SaveAsJson</c> writes whatever metadata the
         /// model carries rather than stamping its own.
         /// </summary>
+        /// <summary>
+        /// The POP3 server is <see cref="EmailControlSettings.ServerAddress"/> in the SDK, but the admin-model file
+        /// keeps the key it was saved under, <c>ServerIpAddress</c>, so files saved before the rename still load it
+        /// and files saved now load in older versions.
+        /// </summary>
+        [Test]
+        public async Task SaveAsJson_KeepsThePop3ServerUnderItsServerIpAddressKey_AndLoadsItBack()
+        {
+            MutableAdminModel model = CreateTestAdminModel();
+            model.EmailControl = new EmailControlSettings { ServerAddress = "pop3.example.dk", ServerPortNumber = 995 };
+            var service = new AdminAppService(settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
+            using var stream = new System.IO.MemoryStream();
+
+            await service.SaveAsJson(model, stream);
+            string json = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+            stream.Position = 0;
+            MutableAdminModel loaded = await service.LoadFromJson(stream);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(json, Does.Contain("\"ServerIpAddress\": \"pop3.example.dk\"").And.Not.Contain("\"ServerAddress\""));
+                Assert.That(loaded.EmailControl!.ServerAddress, Is.EqualTo("pop3.example.dk"));
+            });
+        }
+
         [Test]
         public async Task LoadFromJson_WhenTheSavedModelCarriedNoMetadata_IsRefusedWithAnArgumentException()
         {
@@ -751,6 +871,34 @@ namespace Ihc.Tests
             Assert.That(refusal.Message, Does.Contain("metadata"));
         }
 
+        /// <summary>
+        /// A file without its account list loads, so it can be read and completed, but a store of it is refused and no
+        /// account is removed. Store applies the list as the controller's whole account list, and the controller here
+        /// has an account, so passing the file on would remove it.
+        /// </summary>
+        [Test]
+        public async Task LoadFromJson_AcceptsAFileWithoutUsers_ButStoreRefusesIt()
+        {
+            ArrangeSnapshot(users: new HashSet<IhcUser> { new IhcUser { Username = "admin", Group = IhcUserGroup.Administrators } });
+            var service = new AdminAppService(
+                settings, fileEnryption: false, fakeAuthService, fakeUserService, fakeConfigService);
+            MutableAdminModel withoutUsers = CreateTestAdminModel();
+            withoutUsers.Users = null;
+            using var stream = new System.IO.MemoryStream();
+            await service.SaveAsJson(withoutUsers, stream);
+            stream.Position = 0;
+
+            MutableAdminModel loaded = await service.LoadFromJson(stream);
+            ArgumentException refusal = Assert.ThrowsAsync<ArgumentException>(async () => await service.Store(loaded));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(loaded.Users, Is.Null, "the file loads, without users");
+                Assert.That(refusal.Message, Does.Contain("Users"), "the refusal must name what is missing");
+            });
+            A.CallTo(() => fakeUserService.RemoveUser(A<string>._)).MustNotHaveHappened();
+        }
+
         // ----- what the three aggregate ValidateDataAnnotations calls actually reach -----
         //
         // All three (DoGetModel, Store, LoadFromJson) validate the top-level MutableAdminModel only:
@@ -759,10 +907,10 @@ namespace Ihc.Tests
         // later makes validation recurse, the change announces itself here instead of in the field — where it would
         // start refusing controller data and saved files that load today.
 
-        /// <summary>Values a nested block's own annotations forbid: the SMTP password is capped at 20 characters
-        /// and the netmask is [Required].</summary>
+        /// <summary>Values a nested block's own annotations forbid: the SMTP port is a [Range] of 0-65535 and the
+        /// netmask is [Required].</summary>
         private static (SMTPSettings Smtp, NetworkSettings Network) IllegalNestedValues() =>
-            (new SMTPSettings { Hostname = "smtp.test.com", Password = new string('x', 40), Hostport = 465 },
+            (new SMTPSettings { Hostname = "smtp.test.com", Password = "secret", Hostport = -1 },
              new NetworkSettings { IpAddress = "192.168.1.100", Netmask = null, Gateway = "192.168.1.1" });
 
         /// <summary>Whether a block passes its OWN annotations, checked directly. Every leniency test below asserts
@@ -779,7 +927,7 @@ namespace Ihc.Tests
             Assert.Multiple(() =>
             {
                 Assert.That(PassesOwnAnnotations(smtp), Is.False,
-                    "precondition: a 40-character password must break SMTPSettings' own [StringLength(20)]");
+                    "precondition: a port of -1 must break SMTPSettings' own [Range(0, 65535)]");
                 Assert.That(PassesOwnAnnotations(network), Is.False,
                     "precondition: a null netmask must break NetworkSettings' own [Required]");
             });
@@ -799,7 +947,7 @@ namespace Ihc.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(model.SmtpSettings!.Password, Has.Length.EqualTo(40), "the over-long password is kept");
+                Assert.That(model.SmtpSettings!.Hostport, Is.EqualTo(-1), "the out-of-range port is kept");
                 Assert.That(model.NetworkSettings!.Netmask, Is.Null, "the missing [Required] netmask is kept");
             });
         }
@@ -844,7 +992,7 @@ namespace Ihc.Tests
 
             Assert.Multiple(() =>
             {
-                Assert.That(loaded.SmtpSettings!.Password, Has.Length.EqualTo(40));
+                Assert.That(loaded.SmtpSettings!.Hostport, Is.EqualTo(-1));
                 Assert.That(loaded.NetworkSettings!.Netmask, Is.Null);
             });
         }
@@ -988,7 +1136,7 @@ namespace Ihc.Tests
             MaybeText.Array[4, 4], Gen.Int[0, 65535].Array[2, 2], Gen.Bool.Array[2, 2],
             (text, numbers, flags) => new EmailControlSettings
             {
-                ServerIpAddress = text[0], Pop3Username = text[1], Pop3Password = text[2], EmailAddress = text[3],
+                ServerAddress = text[0], Pop3Username = text[1], Pop3Password = text[2], EmailAddress = text[3],
                 ServerPortNumber = numbers[0], PollInterval = numbers[1],
                 RemoveEmailsAfterUsage = flags[0], Ssl = flags[1],
             });

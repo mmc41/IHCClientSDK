@@ -40,8 +40,8 @@
       }
     },
     "Users": {
-      "type": "array",
-      "description": "List of IHC controller users",
+      "type": ["array", "null"],
+      "description": "List of IHC controller users. A store applies it as the whole account list, so it refuses a file without it, absent or null, which still loads; an empty list removes every account",
       "items": {
         "type": "object",
         "required": ["Username", "Password", "Group"],
@@ -55,24 +55,25 @@
             "description": "Encrypted password (base64 encoded encrypted data)"
           },
           "Email": {
-            "type": "string",
+            "type": ["string", "null"],
             "format": "email"
           },
           "Firstname": {
-            "type": "string"
+            "type": ["string", "null"]
           },
           "Lastname": {
-            "type": "string"
+            "type": ["string", "null"]
           },
           "Phone": {
-            "type": "string"
+            "type": ["string", "null"]
           },
           "Group": {
             "type": "string",
-            "enum": ["Administrators", "Users"]
+            "enum": ["Administrators", "Users", "None"],
+            "description": "None is read for an account with no group, or with one the SDK does not know; a store refuses it"
           },
           "Project": {
-            "type": "string"
+            "type": ["string", "null"]
           },
           "CreatedDate": {
             "type": "string",
@@ -89,10 +90,10 @@
     },
     "EmailControl": {
       "type": "object",
-      "description": "Email polling configuration for incoming email control",
+      "description": "Email polling configuration for incoming email control; with no mailbox set, the server, user name, password and address are null",
       "properties": {
         "ServerIpAddress": {
-          "type": "string",
+          "type": ["string", "null"],
           "description": "POP3 server IP address or hostname"
         },
         "ServerPortNumber": {
@@ -102,14 +103,14 @@
           "default": 110
         },
         "Pop3Username": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "Pop3Password": {
-          "type": "string",
+          "type": ["string", "null"],
           "description": "Encrypted password (base64 encoded encrypted data)"
         },
         "EmailAddress": {
-          "type": "string",
+          "type": ["string", "null"],
           "format": "email"
         },
         "PollInterval": {
@@ -130,7 +131,7 @@
       "description": "SMTP configuration for sending emails",
       "properties": {
         "Hostname": {
-          "type": "string",
+          "type": ["string", "null"],
           "description": "SMTP server hostname"
         },
         "Hostport": {
@@ -140,10 +141,10 @@
           "default": 25
         },
         "Username": {
-          "type": "string"
+          "type": ["string", "null"]
         },
         "Password": {
-          "type": "string",
+          "type": ["string", "null"],
           "description": "Encrypted password (base64 encoded encrypted data)"
         },
         "Ssl": {
@@ -153,8 +154,12 @@
           "type": "boolean"
         },
         "SendLowBatteryNotificationRecipient": {
-          "type": "string",
+          "type": ["string", "null"],
           "format": "email"
+        },
+        "SendLEDDimmerErrorNotification": {
+          "type": "boolean",
+          "description": "Send a mail when an LED Dimmer reports an error"
         }
       }
     },
@@ -163,14 +168,14 @@
       "description": "DNS server configuration",
       "properties": {
         "PrimaryDNS": {
-          "type": "string",
+          "type": ["string", "null"],
           "format": "ipv4",
-          "description": "Primary DNS server IP address"
+          "description": "Primary DNS server IP address; null for none"
         },
         "SecondaryDNS": {
-          "type": "string",
+          "type": ["string", "null"],
           "format": "ipv4",
-          "description": "Secondary DNS server IP address"
+          "description": "Secondary DNS server IP address; null for none"
         }
       }
     },
@@ -309,20 +314,22 @@
           "type": "boolean"
         },
         "Ssid": {
-          "type": "string",
+          "type": ["string", "null"],
           "description": "Wireless network SSID"
         },
         "Key": {
-          "type": "string",
+          "type": ["string", "null"],
           "description": "Encrypted wireless key (base64 encoded encrypted data)"
         },
         "SecurityType": {
-          "type": "string",
-          "enum": ["WPA", "WPA2", "WEP", "None"]
+          "type": ["string", "null"],
+          "description": "Wireless security type",
+          "examples": ["NONE", "WEP", "WPA-PSK", "WPA2-PSK"]
         },
         "EncryptionType": {
-          "type": "string",
-          "enum": ["WPA", "WPA2", "WEP", "None"]
+          "type": ["string", "null"],
+          "description": "Key format for WEP (Ascii or Hex) or cipher for WPA (TKIP or CCMP); null with NONE",
+          "examples": ["Ascii", "Hex", "TKIP", "CCMP"]
         },
         "IpAddress": {
           "type": "string",

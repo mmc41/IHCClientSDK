@@ -36,12 +36,12 @@ namespace Ihc.Stubbing
         internal Task<outputMessageName19> getIHCProjectNumberOfSegmentsAsync(inputMessageName19 request) =>
             Task.FromResult(new outputMessageName19 { getIHCProjectNumberOfSegments1 = controller.NumberOfSegments() });
 
-        /// <summary>The segment the controller service answers, gzip and all: the SDK hands these bytes to its caller
-        /// as they arrive.</summary>
+        /// <summary>The segment the controller service answers, the same raw slice under the same name: the SDK hands
+        /// these bytes to its caller as they arrive.</summary>
         internal Task<outputMessageName17> getIHCProjectSegmentAsync(inputMessageName17 request) =>
             Task.FromResult(new outputMessageName17
             {
-                getIHCProjectSegment4 = GeneratedTwin.Translate<WSFile>(ControllerAnswers.ProjectToWire(controller.Segment(request.getIHCProjectSegment1 ?? -1))),
+                getIHCProjectSegment4 = GeneratedTwin.Translate<WSFile>(ControllerAnswers.SegmentToWire(controller.Segment(request.getIHCProjectSegment1 ?? -1))),
             });
 
         /// <summary>One bare value per requested id, in request order: this wire names no resource in a value, so the

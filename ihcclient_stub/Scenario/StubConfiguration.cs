@@ -3,9 +3,16 @@ using System.Collections.Immutable;
 namespace Ihc.Stubbing
 {
     /// <summary>
+    /// A test mail as the journal records it: the message, its date not read, and the SMTP account it was to go
+    /// through, without the account's password.
+    /// </summary>
+    public sealed record StubTestMail(NotificationMessage Message, SMTPSettings Smtp);
+
+    /// <summary>
     /// The configuration service's system information, user log, wireless network, test-send outcome and its
     /// settings, one property per get/set pair. The defaults are a real controller's answers, with anything that
-    /// names a person or a device replaced.
+    /// names a person or a device replaced, except the wireless settings: no capture holds them, so that default is
+    /// a stand-in.
     /// </summary>
     public sealed class StubConfiguration
     {
@@ -55,6 +62,16 @@ namespace Ihc.Stubbing
             }
         } = [];
 
+        /// <summary>
+        /// The cursor a user-log read answers as its file name, for the next read to send. The stub only echoes it:
+        /// whatever cursor a read sends, it answers every line of <see cref="UserLog"/>.
+        /// </summary>
+        public string UserLogCursor
+        {
+            get => Gated.Read(_gate, ref field);
+            set => Gated.Write(_gate, ref field, value);
+        } = "userlog.0";
+
         /// <summary>The wireless interface, or null for a controller that reports none.</summary>
         public WLanInterface? WLanInterface
         {
@@ -100,7 +117,8 @@ namespace Ihc.Stubbing
             }
         } = new() { PrimaryDNS = "193.162.153.164", SecondaryDNS = "8.8.8.8" };
 
-        /// <summary>The wireless network settings. The default is a controller with wireless switched off.</summary>
+        /// <summary>The wireless network settings. The default is a controller with wireless switched off: a
+        /// stand-in, since the captured controller had no Wi-Fi dongle and no capture holds the settings.</summary>
         public WLanSettings? WLanSettings
         {
             get => Gated.Read(_gate, ref field);
@@ -121,6 +139,7 @@ namespace Ihc.Stubbing
             Ssl = false,
             SendLowBatteryNotification = false,
             SendLowBatteryNotificationRecipient = "",
+            SendLEDDimmerErrorNotification = false,
         };
 
         /// <summary>The e-mail control settings. The default is a controller with no mailbox configured.</summary>
@@ -129,6 +148,22 @@ namespace Ihc.Stubbing
             get => Gated.Read(_gate, ref field);
             set => Gated.Write(_gate, ref field, value);
         } = new() { ServerPortNumber = 110, PollInterval = 180, RemoveEmailsAfterUsage = true, Ssl = false };
+
+        /// <summary>Whether a write of the e-mail control settings is accepted. A declined write answers false and
+        /// leaves <see cref="EmailControlSettings"/> as it was; when a controller declines one is not known.</summary>
+        public bool EmailControlSettingsAccepted
+        {
+            get => Gated.Read(_gate, ref field);
+            set => Gated.Write(_gate, ref field, value);
+        } = true;
+
+        /// <summary>The status a test of e-mail control settings answers, whatever settings it tests, or null for a
+        /// reply that carries none. The default is a mail server out of reach.</summary>
+        public EmailControlConnectionStatus? EmailControlTestStatus
+        {
+            get => Gated.Read(_gate, ref field);
+            set => Gated.Write(_gate, ref field, value);
+        } = new() { AttemptFailedDueToNetworkProblems = true };
 
         /// <summary>Which web applications are reachable over USB, the internal network and the external one.</summary>
         public WebAccessControl? WebAccessControl

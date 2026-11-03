@@ -21,6 +21,11 @@ namespace Ihc.App
         /// <summary>
         /// List of all users registered on the IHC controller.
         /// </summary>
+        /// <remarks>
+        /// <see cref="AdminAppService.Store"/> applies it as the controller's whole account list, so it refuses a model
+        /// without it with an <see cref="ArgumentException"/>: passing one on would remove every account. A file without
+        /// it still loads, to be read or completed. An empty set is applied like any other, removing every account.
+        /// </remarks>
         public ISet<IhcUser>? Users { get; set; }
 
         /// <summary>

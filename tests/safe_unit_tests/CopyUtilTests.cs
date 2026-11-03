@@ -333,7 +333,7 @@ namespace Ihc.Tests
                 Users = new HashSet<IhcUser> { user1, user2 },
                 EmailControl = new EmailControlSettings
                 {
-                    ServerIpAddress = "10.0.0.5",
+                    ServerAddress = "10.0.0.5",
                     ServerPortNumber = 110,
                     Pop3Username = "emailuser",
                     Pop3Password = "emailpass"
@@ -390,8 +390,8 @@ namespace Ihc.Tests
 
             Assert.That(copy.EmailControl, Is.Not.SameAs(original.EmailControl),
                 "EmailControl: the nested settings object is rebuilt");
-            Assert.That(copy.EmailControl.ServerIpAddress, Is.EqualTo("10.0.0.5"),
-                "EmailControl.ServerIpAddress");
+            Assert.That(copy.EmailControl.ServerAddress, Is.EqualTo("10.0.0.5"),
+                "EmailControl.ServerAddress");
 
             Assert.That(copy.SmtpSettings, Is.Not.SameAs(original.SmtpSettings),
                 "SmtpSettings: the nested settings object is rebuilt");

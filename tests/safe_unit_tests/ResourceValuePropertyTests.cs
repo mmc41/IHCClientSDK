@@ -41,22 +41,38 @@ namespace Ihc.Tests
             Gen.Bool.Select(b => new ResourceValue.UnionValue
             { ValueKind = ResourceValue.ValueKind.BOOL, BoolValue = b });
 
-        private static readonly Gen<ResourceValue.UnionValue> GenInt =
+        // An INT or DOUBLE value carries no range or the controller's: a pair holding the value, never 0/0, which
+        // is the wire form of "no range".
+        private static readonly Gen<ResourceValue.UnionValue> GenInt = Gen.OneOf(
             Gen.Int.Select(i => new ResourceValue.UnionValue
-            { ValueKind = ResourceValue.ValueKind.INT, IntValue = i });
+            { ValueKind = ResourceValue.ValueKind.INT, IntValue = i }),
+            from a in Gen.Int
+            from b in Gen.Int
+            where a != 0 || b != 0
+            from i in Gen.Int[Math.Min(a, b), Math.Max(a, b)]
+            select new ResourceValue.UnionValue
+            { ValueKind = ResourceValue.ValueKind.INT, IntValue = i, IntMinimum = Math.Min(a, b), IntMaximum = Math.Max(a, b) });
 
         // Restrict to finite doubles so any failure is attributable (the mapper is a pure copy;
         // NaN would only muddy equality semantics).
-        private static readonly Gen<ResourceValue.UnionValue> GenDouble =
+        private static readonly Gen<ResourceValue.UnionValue> GenDouble = Gen.OneOf(
             Gen.Double.Where(double.IsFinite).Select(d => new ResourceValue.UnionValue
-            { ValueKind = ResourceValue.ValueKind.DOUBLE, DoubleValue = d });
+            { ValueKind = ResourceValue.ValueKind.DOUBLE, DoubleValue = d }),
+            from a in Gen.Double[-1e6, 1e6]
+            from b in Gen.Double[-1e6, 1e6]
+            where a != 0 || b != 0
+            from d in Gen.Double[Math.Min(a, b), Math.Max(a, b)]
+            select new ResourceValue.UnionValue
+            { ValueKind = ResourceValue.ValueKind.DOUBLE, DoubleValue = d, DoubleMinimum = Math.Min(a, b), DoubleMaximum = Math.Max(a, b) });
 
         private static readonly Gen<ResourceValue.UnionValue> GenTimer =
             Gen.Long.Select(l => new ResourceValue.UnionValue
             { ValueKind = ResourceValue.ValueKind.TIMER, TimerValue = l });
 
+        // The writable values only: a write refuses a weekday outside 0-6, a percentage outside 0-100, a ramp over
+        // 3,600,000 ms and resource id 0, as the vendor editors do.
         private static readonly Gen<ResourceValue.UnionValue> GenWeekday =
-            Gen.Int.Select(w => new ResourceValue.UnionValue
+            Gen.Int[0, 6].Select(w => new ResourceValue.UnionValue
             { ValueKind = ResourceValue.ValueKind.WEEKDAY, WeekdayValue = w });
 
         private static readonly Gen<ResourceValue.UnionValue> GenPhone =
@@ -99,9 +115,9 @@ namespace Ihc.Tests
             };
 
         private static readonly Gen<ResourceValue.UnionValue> GenSceneDimmer =
-            from pct in Gen.Int
+            from pct in Gen.Int[0, 100]
             from delay in Gen.Int
-            from ramp in Gen.Int
+            from ramp in Gen.Int[int.MinValue, 3_600_000]
             select new ResourceValue.UnionValue
             {
                 ValueKind = ResourceValue.ValueKind.SceneDimmer,
@@ -132,7 +148,7 @@ namespace Ihc.Tests
 
         private static readonly Gen<ResourceValue> GenResourceValue =
             from union in GenUnion
-            from id in Gen.Int
+            from id in Gen.Int.Where(id => id != 0)
             from runtime in Gen.Bool
             from typeString in ShortText
             select new ResourceValue
@@ -173,14 +189,27 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// Law: ToogleBool is its own inverse for boolean values (modulo ValueTime).
+        /// Every payload member of the union is one some kind fills: a DATE travels in <c>DateValue</c>, so no second
+        /// date member stands beside it for a caller to set and see ignored.
         /// </summary>
         [Test]
-        public void ToogleBool_IsInvolution()
+        public void TheUnion_HasNoDateMemberBesideDateValue()
+        {
+            Assert.That(typeof(ResourceValue.UnionValue).GetProperties()
+                    .Where(property => Nullable.GetUnderlyingType(property.PropertyType) == typeof(DateTimeOffset))
+                    .Select(property => property.Name),
+                Is.EqualTo(new[] { nameof(ResourceValue.UnionValue.DateValue) }));
+        }
+
+        /// <summary>
+        /// Law: ToggleBool is its own inverse for boolean values (modulo ValueTime).
+        /// </summary>
+        [Test]
+        public void ToggleBool_IsInvolution()
         {
             GenBoolResourceValue.Sample(rv =>
             {
-                var twice = ResourceValue.ToogleBool(ResourceValue.ToogleBool(rv));
+                var twice = ResourceValue.ToggleBool(ResourceValue.ToggleBool(rv));
                 return RoundTripCompare().Compare(twice, rv).AreEqual;
             });
         }
@@ -190,11 +219,11 @@ namespace Ihc.Tests
         /// is preserved, the value kind stays BOOL, and only the boolean payload flips.
         /// </summary>
         [Test]
-        public void ToogleBool_PreservesEnvelope_AndFlipsValue()
+        public void ToggleBool_PreservesEnvelope_AndFlipsValue()
         {
             GenBoolResourceValue.Sample(rv =>
             {
-                var toggled = ResourceValue.ToogleBool(rv);
+                var toggled = ResourceValue.ToggleBool(rv);
                 return toggled.TypeString == rv.TypeString
                     && toggled.ResourceID == rv.ResourceID
                     && toggled.IsValueRuntime == rv.IsValueRuntime

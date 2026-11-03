@@ -638,8 +638,9 @@ namespace Ihc.App
         /// <summary>
         /// Builds the content to save for an operation result (D6 "smart save"): the real bytes for a byte[] or
         /// BinaryFile result, the real XML for an IHC ProjectFile result (its own ISO-8859-1 encoding and a *.vis
-        /// name), or the shown text otherwise (UTF-8, .txt) - each with a type-appropriate file name/extension.
-        /// Reads the raw result object, not the display preview, so the payload is saved verbatim.
+        /// name), every line of a user log (UTF-8, .txt), or the shown text otherwise (UTF-8, .txt) - each with a
+        /// type-appropriate file name/extension. Reads the raw result object, not the display preview, so the payload
+        /// is saved verbatim.
         /// </summary>
         /// <param name="rawResult">The unwrapped operation result (see <see cref="OperationResult.RawResult"/>).</param>
         /// <param name="displayText">The shown result text, used only for results without a file-typed payload.</param>
@@ -679,6 +680,10 @@ namespace Ihc.App
                     ProjectFile.Encoding.GetBytes(projectFile.Data),
                     $"{ProjectBaseName(projectFile.Filename, baseName)}.{ProjectFile.FileExtension}");
             }
+
+            // The shown log stops after its first lines, so the saved one is rendered again, whole.
+            if (rawResult is UserLogFileText userLog)
+                return new ResultFileContent(Encoding.UTF8.GetBytes(FormatUserLog(userLog, int.MaxValue)), $"{baseName}.txt");
 
             return new ResultFileContent(System.Text.Encoding.UTF8.GetBytes(displayText ?? string.Empty), $"{baseName}.txt");
         }
@@ -1321,7 +1326,8 @@ namespace Ihc.App
         /// Formats a result object into a readable string representation.
         /// Provides special formatting for DateTime (yyyy-MM-dd HH:mm:ss.fff), DateTimeOffset (with timezone),
         /// TimeSpan, Guid, byte arrays (hex preview), numeric types (with precision), booleans (lowercase),
-        /// and collections (limited to 100 items). Falls back to ToString() for other types.
+        /// collections (limited to 100 items), and a user log (its first 100 lines, one per line). Falls back to
+        /// ToString() for other types.
         /// </summary>
         /// <param name="result">The result object to format. Can be null.</param>
         /// <param name="returnType">The return type metadata (currently unused but available for future enhancements).</param>
@@ -1387,9 +1393,7 @@ namespace Ihc.App
                 if (items.Length == 0)
                     return "[]";
 
-                // Limit display to first 100 items to prevent excessive output
-                const int maxItems = 100;
-                var displayItems = items.Take(maxItems).ToArray();
+                var displayItems = items.Take(MaxDisplayedItems).ToArray();
 
                 // Format array elements
                 var formattedItems = displayItems.Select(item =>
@@ -1412,12 +1416,16 @@ namespace Ihc.App
                 });
 
                 var result_str = $"[{string.Join(", ", formattedItems)}";
-                if (items.Length > maxItems)
-                    result_str += string.Create(CultureInfo.InvariantCulture, $", ... ({items.Length - maxItems} more)");
+                if (items.Length > MaxDisplayedItems)
+                    result_str += string.Create(CultureInfo.InvariantCulture, $", ... ({items.Length - MaxDisplayedItems} more)");
                 result_str += "]";
 
                 return result_str;
             }
+
+            // The log's own ToString() names only its cursor and line count, which keeps a traced read small.
+            if (result is UserLogFileText userLog)
+                return FormatUserLog(userLog, MaxDisplayedItems);
 
             // A type the cases above do not name (Half, BigInteger, a domain value type) still must not be
             // spelled by the host's locale: the same value reaches the element path invariantly, so an
@@ -1426,6 +1434,31 @@ namespace Ihc.App
                 return formattableResult.ToString(null, CultureInfo.InvariantCulture);
 
             return result.ToString() ?? "(empty)";
+        }
+
+        /// <summary>
+        /// The most items <see cref="FormatResult"/> shows of a collection or of a user log, so that a large result
+        /// cannot flood the output, or the trace the Lab tags with it.
+        /// </summary>
+        private const int MaxDisplayedItems = 100;
+
+        /// <summary>
+        /// Renders a user log as its own <see cref="UserLogFileText.ToString"/>, which carries the cursor for the next
+        /// read, followed by its entries one per line, at most <paramref name="maxEntries"/> of them.
+        /// </summary>
+        private static string FormatUserLog(UserLogFileText userLog, int maxEntries)
+        {
+            IReadOnlyList<string> lines = userLog.Lines;
+            // The log text ends in a line feed, which leaves an empty last line that is no entry to show or count.
+            int entries = lines.Count > 0 && lines[^1].Length == 0 ? lines.Count - 1 : lines.Count;
+            int shown = Math.Min(entries, maxEntries);
+
+            var text = new StringBuilder(userLog.ToString()).Append('\n');
+            for (int i = 0; i < shown; i++)
+                text.Append(lines[i]).Append('\n');
+            if (entries > shown)
+                text.Append(CultureInfo.InvariantCulture, $"... ({entries - shown} more)\n");
+            return text.ToString();
         }
 
     }

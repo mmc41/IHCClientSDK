@@ -17,7 +17,10 @@ namespace Ihc
     /// the client comes by: USB, the local network (the controller's own IP subnet) or the Internet (any other
     /// address).
     ///
-    /// The member names are the exact strings the controller accepts, so renaming one breaks its login.
+    /// The member names are sent as the application name, so renaming one breaks its login. <c>administrator</c>,
+    /// <c>treeview</c>, <c>sceneview</c>, <c>scenedesign</c> and <c>ihcvisual</c> have each logged in on a captured
+    /// controller; <c>openapi</c>, the default, appears in no capture or vendor client as an application name, only in
+    /// the OpenAPI access-control switches.
     /// </summary>
     public enum Application
     {

@@ -712,9 +712,9 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Saves the most recent operation result to a file (US-C4 / D6 "smart save"): real bytes for a byte[] /
-    /// BinaryFile result, the real XML for an IHC ProjectFile result (ISO-8859-1, *.vis), or the shown text
-    /// otherwise - each with a type-appropriate file name/extension. Reads the raw result object rather than
-    /// the display preview.
+    /// BinaryFile result, the real XML for an IHC ProjectFile result (ISO-8859-1, *.vis), every line of a user log,
+    /// or the shown text otherwise - each with a type-appropriate file name/extension. Reads the raw result object
+    /// rather than the display preview.
     /// </summary>
     public async void SaveOutputMenuItemClick(object sender, RoutedEventArgs e)
     {

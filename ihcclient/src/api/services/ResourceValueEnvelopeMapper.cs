@@ -46,14 +46,14 @@ namespace Ihc
             if (v.value is WSIntegerValue intVal)
             {
                 value.IntValue = intVal.integer;
-                // TODO: What about min, max values ?
+                (value.IntMinimum, value.IntMaximum) = RangeFromWire(intVal.minimumValue, intVal.maximumValue);
                 value.ValueKind = ResourceValue.ValueKind.INT;
             }
 
             if (v.value is WSFloatingPointValue floatVal)
             {
                 value.DoubleValue = floatVal.floatingPointValue;
-                // TODO: What about min, max values?
+                (value.DoubleMinimum, value.DoubleMaximum) = RangeFromWire(floatVal.minimumValue, floatVal.maximumValue);
                 value.ValueKind = ResourceValue.ValueKind.DOUBLE;
             }
 
@@ -130,6 +130,8 @@ namespace Ihc
             if (v == null)
                 return null;
 
+            Addressed(v);
+
             WSResourceValue val;
 
             var kind = v.Value.ValueKind;
@@ -138,14 +140,14 @@ namespace Ihc
             {
                 case ResourceValue.ValueKind.BOOL: val = new WSBooleanValue() { value = Required(v.Value.BoolValue, kind, nameof(v.Value.BoolValue)) }; break;
                 case ResourceValue.ValueKind.DATE: val = MapDate(Required(v.Value.DateValue, kind, nameof(v.Value.DateValue))); break;
-                case ResourceValue.ValueKind.INT: val = new WSIntegerValue() { integer = Required(v.Value.IntValue, kind, nameof(v.Value.IntValue)) }; break;
-                case ResourceValue.ValueKind.DOUBLE: val = new WSFloatingPointValue() { floatingPointValue = Required(v.Value.DoubleValue, kind, nameof(v.Value.DoubleValue)) }; break;
+                case ResourceValue.ValueKind.INT: val = new WSIntegerValue() { integer = WritableInt(v.Value), minimumValue = v.Value.IntMinimum ?? 0, maximumValue = v.Value.IntMaximum ?? 0 }; break;
+                case ResourceValue.ValueKind.DOUBLE: val = new WSFloatingPointValue() { floatingPointValue = WritableDouble(v.Value), minimumValue = v.Value.DoubleMinimum ?? 0, maximumValue = v.Value.DoubleMaximum ?? 0 }; break;
                 case ResourceValue.ValueKind.ENUM: val = MapEnumValue(Required(v.Value.EnumValue, kind, nameof(v.Value.EnumValue))); break;
                 case ResourceValue.ValueKind.TIME: val = MapTime(Representable(Required(v.Value.TimeValue, kind, nameof(v.Value.TimeValue)), kind, nameof(v.Value.TimeValue))); break;
                 case ResourceValue.ValueKind.TIMER: val = MapTimer(Required(v.Value.TimerValue, kind, nameof(v.Value.TimerValue))); break;
-                case ResourceValue.ValueKind.WEEKDAY: val = MapWeekday(Required(v.Value.WeekdayValue, kind, nameof(v.Value.WeekdayValue))); break;
+                case ResourceValue.ValueKind.WEEKDAY: val = MapWeekday(WritableWeekday(v.Value)); break;
                 case ResourceValue.ValueKind.PhoneNumber: val = new WSPhoneNumberValue() { number = Required(v.Value.PhoneNumberValue, kind, nameof(v.Value.PhoneNumberValue)) }; break;
-                case ResourceValue.ValueKind.SceneDimmer: val = new WSSceneDimmerValue() { dimmerPercentage = Required(v.Value.DimmerPercentage, kind, nameof(v.Value.DimmerPercentage)), delayTime = Required(v.Value.DimmerDelayTime, kind, nameof(v.Value.DimmerDelayTime)), rampTime = Required(v.Value.DimmerRampTime, kind, nameof(v.Value.DimmerRampTime)) }; break;
+                case ResourceValue.ValueKind.SceneDimmer: val = new WSSceneDimmerValue() { dimmerPercentage = WritableDimmerPercentage(v.Value), delayTime = Required(v.Value.DimmerDelayTime, kind, nameof(v.Value.DimmerDelayTime)), rampTime = WritableDimmerRampTime(v.Value) }; break;
                 case ResourceValue.ValueKind.SceneRelay: val = new WSSceneRelayValue() { delayTime = Required(v.Value.RelayDelayTime, kind, nameof(v.Value.RelayDelayTime)), relayValue = Required(v.Value.RelayValue, kind, nameof(v.Value.RelayValue)) }; break;
                 case ResourceValue.ValueKind.SceneShutter: val = new WSSceneShutterSimpleValue() { shutterPositionIsUp = Required(v.Value.ShutterPositionIsUp, kind, nameof(v.Value.ShutterPositionIsUp)), delayTime = Required(v.Value.ShutterDelayTime, kind, nameof(v.Value.ShutterDelayTime)) }; break;
                 case ResourceValue.ValueKind.NONE: throw new ArgumentException($"Cannot write a ResourceValue with ValueKind.NONE — it represents a resource with no writable value (e.g. a scene). ResourceID {v.ResourceID}.");

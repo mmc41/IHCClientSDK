@@ -12,31 +12,37 @@ namespace Ihc.Stubbing
     /// </summary>
     internal static class NamedMembers
     {
-        internal static TWire ToWire<TWire>(object model, string prefix = "") where TWire : new()
+        internal static TWire ToWire<TWire>(object model, string prefix = "", IReadOnlyDictionary<string, string>? renamed = null)
+            where TWire : new()
         {
             var wire = new TWire();
-            foreach ((PropertyInfo wireMember, PropertyInfo modelMember) in Pairs(typeof(TWire), model.GetType(), prefix))
+            foreach ((PropertyInfo wireMember, PropertyInfo modelMember) in Pairs(typeof(TWire), model.GetType(), prefix, renamed))
             {
                 wireMember.SetValue(wire, modelMember.GetValue(model));
             }
             return wire;
         }
 
-        internal static TModel FromWire<TModel>(object wire, string prefix = "") where TModel : new()
+        internal static TModel FromWire<TModel>(object wire, string prefix = "", IReadOnlyDictionary<string, string>? renamed = null)
+            where TModel : new()
         {
             var model = new TModel();
-            foreach ((PropertyInfo wireMember, PropertyInfo modelMember) in Pairs(wire.GetType(), typeof(TModel), prefix))
+            foreach ((PropertyInfo wireMember, PropertyInfo modelMember) in Pairs(wire.GetType(), typeof(TModel), prefix, renamed))
             {
                 modelMember.SetValue(model, wireMember.GetValue(wire));
             }
             return model;
         }
 
-        /// <summary>Every wire member with the model member it names. A wire member that names none is a stub
-        /// defect, never a member quietly left unmapped.</summary>
-        private static IEnumerable<(PropertyInfo Wire, PropertyInfo Model)> Pairs(Type wire, Type model, string prefix) =>
+        /// <summary>Every wire member with the model member it names, or the one <paramref name="renamed"/> gives it
+        /// where the SDK names the member for what it is rather than after the wire. A wire member that names none is a
+        /// stub defect, never a member quietly left unmapped.</summary>
+        private static IEnumerable<(PropertyInfo Wire, PropertyInfo Model)> Pairs(Type wire, Type model, string prefix,
+            IReadOnlyDictionary<string, string>? renamed) =>
             wire.GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(wireMember =>
-                (wireMember, model.GetProperty(ModelName(wireMember.Name, prefix), BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                (wireMember, model.GetProperty(
+                        renamed is not null && renamed.TryGetValue(wireMember.Name, out string? modelName) ? modelName : ModelName(wireMember.Name, prefix),
+                        BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
                     ?? throw new InvalidOperationException($"{model.FullName} has no member for {wire.FullName}.{wireMember.Name}")));
 
         private static string ModelName(string wireName, string prefix)

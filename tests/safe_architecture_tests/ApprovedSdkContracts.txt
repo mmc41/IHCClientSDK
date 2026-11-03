@@ -28,6 +28,7 @@ Ihc.ControllerService
 Ihc.ControllerState
 Ihc.DNSServers
 Ihc.DatalineResource
+Ihc.EmailControlConnectionStatus
 Ihc.EmailControlSettings
 Ihc.EnumDefinition
 Ihc.EnumValue
@@ -69,6 +70,7 @@ Ihc.ModuleService
 Ihc.NetworkSettings
 Ihc.NotificationManagerService
 Ihc.NotificationMessage
+Ihc.NotificationSendResult
 Ihc.OpenAPIService
 Ihc.ProductionTestService
 Ihc.ProjectFile
@@ -102,6 +104,7 @@ Ihc.TextFile
 Ihc.TimeManagerService
 Ihc.TimeManagerSettings
 Ihc.TimeServerConnectionResult
+Ihc.UserLogFileText
 Ihc.UserManagerService
 Ihc.Version
 Ihc.Vis.CatalogItem

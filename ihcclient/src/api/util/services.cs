@@ -23,7 +23,7 @@ namespace Ihc
         /// <param name="disableSubscription">Async function to disable subscription/notifications for resources</param>
         /// <param name="asyncContinueOnCapturedContext">If true, continue on captured context for async operations</param>
         /// <param name="cancellationToken">Cancellation token to stop the async stream</param>
-        /// <param name="timeout_between_waits_in_seconds">Timeout in seconds for each wait call (default 15s, should be less than 20s)</param>
+        /// <param name="holdSeconds">Longest time, in seconds, the controller holds each wait call (default 15s, should be less than 20s)</param>
         /// <returns>Async enumerable stream of ResourceValue changes</returns>
         public static async IAsyncEnumerable<ResourceValue> GetResourceValueChanges(
             Activity? activity,
@@ -33,7 +33,7 @@ namespace Ihc
             Func<IReadOnlyList<int>, Task> disableSubscription,
             bool asyncContinueOnCapturedContext,
             [EnumeratorCancellation] CancellationToken cancellationToken = default,
-            int timeout_between_waits_in_seconds = 15)
+            int holdSeconds = 15)
         {
             try
             {
@@ -54,7 +54,7 @@ namespace Ihc
                     IReadOnlyList<ResourceValue> changes;
                     try
                     {
-                        changes = await waitForChanges(timeout_between_waits_in_seconds).ConfigureAwait(asyncContinueOnCapturedContext);
+                        changes = await waitForChanges(holdSeconds).ConfigureAwait(asyncContinueOnCapturedContext);
                         sequentialErrorCount = 0;
                     }
                     catch (Exception e)

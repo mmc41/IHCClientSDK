@@ -1,6 +1,7 @@
 using System.Xml.Serialization;
 using System;
 using System.Xml;
+using System.Xml.Linq;
 using System.IO;
 using System.Text;
 using System.Linq;
@@ -116,6 +117,77 @@ namespace Ihc {
       }
     }
 
+    // A parse of a response we do not control: DTD processing off (so no entity expansion or external subset) and no
+    // resolver (so no outbound fetch).
+    private static readonly XmlReaderSettings SafeReaderSettings = new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null };
+
+    private static XDocument loadSafe(string xml, LoadOptions options = LoadOptions.None) {
+      using var reader = new StringReader(xml);
+      using var xmlReader = XmlReader.Create(reader, SafeReaderSettings);
+      return XDocument.Load(xmlReader, options);
+    }
+
+    private static readonly XNamespace Xsi = "http://www.w3.org/2001/XMLSchema-instance";
+    private static readonly XNamespace Xsd = "http://www.w3.org/2001/XMLSchema";
+
+    /// <summary>
+    /// <paramref name="xml"/> without its nil string elements. A controller sends an absent string as
+    /// <c>xsi:nil="true"</c>, with a line break inside, also where its schema does not declare the element nillable,
+    /// and the generated string members are not nillable, so the serializer would read that text as the value. An
+    /// absent element reads as null instead. An array item stays, so an array keeps its count (OpenAPI pairs values by
+    /// position, and a lone nil item is how a controller answers an empty list), and a nil member of any other type
+    /// stays for the serializer to read as before.
+    /// </summary>
+    internal static string WithoutNilStrings(string xml) {
+      // XML allows whitespace between an attribute's name and its '=', so the shortcut looks for the name alone.
+      if (!xml.Contains(":nil", StringComparison.Ordinal))
+        return xml;
+
+      XDocument document = loadSafe(xml, LoadOptions.PreserveWhitespace);
+      var nilStrings = document.Descendants()
+          .Where(element => element.Name.LocalName != "arrayItem" && isNil(element) && isXsdString(element))
+          .ToList();
+      if (nilStrings.Count == 0)
+        return xml;
+      foreach (var element in nilStrings)
+        element.Remove();
+      return document.ToString(SaveOptions.DisableFormatting);
+    }
+
+    private static bool isNil(XElement element) =>
+        (string?)element.Attribute(Xsi + "nil") is "true" or "1";
+
+    private static bool isXsdString(XElement element) {
+      if ((string?)element.Attribute(Xsi + "type") is not { } type)
+        return false;
+      int colon = type.IndexOf(':', StringComparison.Ordinal);
+      XNamespace? typeNamespace = colon < 0 ? element.GetDefaultNamespace() : element.GetNamespaceOfPrefix(type[..colon]);
+      return typeNamespace == Xsd && type[(colon + 1)..] == "string";
+    }
+
+    private static readonly XNamespace SoapEnvelope = "http://schemas.xmlsoap.org/soap/envelope/";
+
+    /// <summary>
+    /// The <c>faultcode</c> and <c>faultstring</c> of a SOAP 1.1 fault in <paramref name="xml"/>'s body, or null when
+    /// the text is no SOAP envelope or its body holds no fault. Read without a public envelope type, since a fault is
+    /// not a message the generated contracts declare.
+    /// </summary>
+    internal static (string Code, string Text)? SoapFaultOf(string xml) {
+      if (!xml.Contains("Fault", StringComparison.Ordinal))
+        return null;
+      try {
+        if (loadSafe(xml).Root is not { } root || root.Name != SoapEnvelope + "Envelope")
+          return null;
+        if (root.Element(SoapEnvelope + "Body")?.Element(SoapEnvelope + "Fault") is not { } fault)
+          return null;
+        // SOAP 1.1 leaves faultcode and faultstring unqualified; a stack that qualifies them is read the same way.
+        string ChildText(string name) => fault.Elements().FirstOrDefault(child => child.Name.LocalName == name)?.Value.Trim() ?? "";
+        return (ChildText("faultcode"), ChildText("faultstring"));
+      } catch (XmlException) {
+        return null;
+      }
+    }
+
     public static A? DeserializeXml<A>(string xml) where A : class {
         try {
             var xmlSerializer = BuildSerializer<A>();
@@ -124,11 +196,9 @@ namespace Ihc {
             // Encoding.ASCII.GetBytes, which flattened every non-ASCII character - e.g.
             // the Danish letters aeoe/AEOE - to '?'.) A TextReader also ignores any
             // encoding declaration in the XML, since the bytes are already characters.
-            // The XmlReader is what makes the parse safe on a response we do not control: DTD processing off
-            // (so no entity expansion or external subset) and no resolver (so no outbound fetch). Deserialize
-            // over a bare TextReader leaves both to the serializer's own defaults.
-            using (var reader = new StringReader(xml))
-            using (var xmlReader = XmlReader.Create(reader, new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null }))
+            // Deserialize over a bare TextReader would leave DTD and resolver handling to the serializer's defaults.
+            using (var reader = new StringReader(WithoutNilStrings(xml)))
+            using (var xmlReader = XmlReader.Create(reader, SafeReaderSettings))
             {
                 var result = xmlSerializer.Deserialize(xmlReader);
                 return result as A;

@@ -16,7 +16,9 @@ namespace IhcLab.ParameterControls.Strategies;
 /// </summary>
 public class ResourceValueParameterStrategy : ParameterControlStrategyBase
 {
-    private enum PayloadKind { Int, Long, Double, Bool, String, Date, Time }
+    /// <summary>The editor a payload field takes; the Optional kinds are an empty editor for "none", as a resource
+    /// value's range is when the controller sent none.</summary>
+    private enum PayloadKind { Int, Long, Double, Bool, String, Date, Time, OptionalInt, OptionalDouble }
 
     private sealed record PayloadField(string Name, PayloadKind Kind);
 
@@ -47,8 +49,16 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
     private static PayloadField[] PayloadFieldsFor(ResourceValue.ValueKind kind) => kind switch
     {
         ResourceValue.ValueKind.BOOL => new[] { new PayloadField("value", PayloadKind.Bool) },
-        ResourceValue.ValueKind.INT => new[] { new PayloadField("value", PayloadKind.Int) },
-        ResourceValue.ValueKind.DOUBLE => new[] { new PayloadField("value", PayloadKind.Double) },
+        ResourceValue.ValueKind.INT => new[]
+        {
+            new PayloadField("value", PayloadKind.Int), new PayloadField("minimumValue", PayloadKind.OptionalInt),
+            new PayloadField("maximumValue", PayloadKind.OptionalInt),
+        },
+        ResourceValue.ValueKind.DOUBLE => new[]
+        {
+            new PayloadField("value", PayloadKind.Double), new PayloadField("minimumValue", PayloadKind.OptionalDouble),
+            new PayloadField("maximumValue", PayloadKind.OptionalDouble),
+        },
         ResourceValue.ValueKind.DATE => new[] { new PayloadField("value", PayloadKind.Date) },
         ResourceValue.ValueKind.TIME => new[] { new PayloadField("value", PayloadKind.Time) },
         ResourceValue.ValueKind.TIMER => new[] { new PayloadField("value", PayloadKind.Long) },
@@ -269,9 +279,9 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
                 PayloadKind.String => new TextBox { Width = 180 },
                 PayloadKind.Date => new DatePicker { SelectedDate = DateTimeOffset.Now },
                 PayloadKind.Time => ZeroDurationInput(),
-                PayloadKind.Double => new NumericUpDown { Width = 160, FormatString = "F2", Increment = 0.1m, Minimum = -999999999m, Maximum = 999999999m, Value = 0m },
+                PayloadKind.Double or PayloadKind.OptionalDouble => new NumericUpDown { Width = 160, FormatString = "F2", Increment = 0.1m, Minimum = -999999999m, Maximum = 999999999m, Value = pf.Kind == PayloadKind.Double ? 0m : null },
                 PayloadKind.Long => new NumericUpDown { Width = 160, FormatString = "F0", Increment = 1m, Minimum = long.MinValue, Maximum = long.MaxValue, Value = 0m },
-                _ => new NumericUpDown { Width = 160, FormatString = "F0", Increment = 1m, Minimum = int.MinValue, Maximum = int.MaxValue, Value = 0m }
+                _ => new NumericUpDown { Width = 160, FormatString = "F0", Increment = 1m, Minimum = int.MinValue, Maximum = int.MaxValue, Value = pf.Kind == PayloadKind.OptionalInt ? null : 0m }
             };
             editor.Name = $"{payloadHost.Name}.{pf.Name}";
 
@@ -297,8 +307,16 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         switch (kind)
         {
             case ResourceValue.ValueKind.BOOL: union.BoolValue = GetBool(payloadHost, "value"); break;
-            case ResourceValue.ValueKind.INT: union.IntValue = GetInt(payloadHost, "value"); break;
-            case ResourceValue.ValueKind.DOUBLE: union.DoubleValue = GetDouble(payloadHost, "value"); break;
+            case ResourceValue.ValueKind.INT:
+                union.IntValue = GetInt(payloadHost, "value");
+                union.IntMinimum = (int?)GetOptional(payloadHost, "minimumValue");
+                union.IntMaximum = (int?)GetOptional(payloadHost, "maximumValue");
+                break;
+            case ResourceValue.ValueKind.DOUBLE:
+                union.DoubleValue = GetDouble(payloadHost, "value");
+                union.DoubleMinimum = (double?)GetOptional(payloadHost, "minimumValue");
+                union.DoubleMaximum = (double?)GetOptional(payloadHost, "maximumValue");
+                break;
             case ResourceValue.ValueKind.DATE: union.DateValue = GetDate(payloadHost, "value"); break;
             case ResourceValue.ValueKind.TIME: union.TimeValue = GetTime(payloadHost, "value"); break;
             case ResourceValue.ValueKind.TIMER: union.TimerValue = GetLong(payloadHost, "value"); break;
@@ -330,8 +348,16 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
         switch (kind)
         {
             case ResourceValue.ValueKind.BOOL: SetBool(payloadHost, "value", union.BoolValue ?? false); break;
-            case ResourceValue.ValueKind.INT: SetNum(payloadHost, "value", union.IntValue ?? 0); break;
-            case ResourceValue.ValueKind.DOUBLE: SetNum(payloadHost, "value", (decimal)(union.DoubleValue ?? 0)); break;
+            case ResourceValue.ValueKind.INT:
+                SetNum(payloadHost, "value", union.IntValue ?? 0);
+                SetNum(payloadHost, "minimumValue", union.IntMinimum);
+                SetNum(payloadHost, "maximumValue", union.IntMaximum);
+                break;
+            case ResourceValue.ValueKind.DOUBLE:
+                SetNum(payloadHost, "value", (decimal)(union.DoubleValue ?? 0));
+                SetNum(payloadHost, "minimumValue", (decimal?)union.DoubleMinimum);
+                SetNum(payloadHost, "maximumValue", (decimal?)union.DoubleMaximum);
+                break;
             case ResourceValue.ValueKind.DATE: SetDate(payloadHost, "value", union.DateValue ?? DateTimeOffset.Now); break;
             case ResourceValue.ValueKind.TIME: SetTime(payloadHost, "value", union.TimeValue ?? TimeSpan.Zero); break;
             case ResourceValue.ValueKind.TIMER: SetNum(payloadHost, "value", union.TimerValue ?? 0); break;
@@ -378,6 +404,8 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
     private static string DisplayNameOf(string rawName) => rawName switch
     {
         "value" => "Value",
+        "minimumValue" => "Minimum",
+        "maximumValue" => "Maximum",
         "number" => "Number",
         "definitionTypeID" => "Definition Type ID",
         "enumValueID" => "Enum Value ID",
@@ -434,10 +462,14 @@ public class ResourceValueParameterStrategy : ParameterControlStrategyBase
     private static TimeSpan GetTime(StackPanel host, string name)
         => (FindPayload(host, name) as DurationInput)?.GetValueOrThrow() ?? TimeSpan.Zero;
 
-    private static void SetNum(StackPanel host, string name, decimal value)
+    /// <summary>Sets a number editor; <c>null</c> empties an optional one.</summary>
+    private static void SetNum(StackPanel host, string name, decimal? value)
     {
         if (FindPayload(host, name) is NumericUpDown n) n.Value = value;
     }
+
+    /// <summary>An optional number: empty reads as <c>null</c>.</summary>
+    private static decimal? GetOptional(StackPanel host, string name) => (FindPayload(host, name) as NumericUpDown)?.Value;
 
     private static void SetBool(StackPanel host, string name, bool value)
     {

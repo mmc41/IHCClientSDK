@@ -30,8 +30,10 @@ namespace Ihc {
         /// <remarks>The record's <see cref="IhcUser.CreatedDate"/> and <see cref="IhcUser.LoginDate"/> are sent too;
         /// when none is sent, the controller stamps both with the time of the write.</remarks>
         /// <exception cref="ArgumentNullException"><paramref name="user"/> is <c>null</c>.</exception>
-        /// <exception cref="ArgumentException"><paramref name="user"/> breaks a limit declared on
-        /// <see cref="IhcUser"/>; nothing is sent.</exception>
+        /// <exception cref="ArgumentException"><paramref name="user"/> has no user name, an empty or blank password (an
+        /// SDK policy, not a known controller minimum), its password left at
+        /// <see cref="UserConstants.REDACTED_PASSWORD"/>, or a group other than <see cref="IhcUserGroup.Administrators"/>
+        /// or <see cref="IhcUserGroup.Users"/>; nothing is sent. Its strings have no length limit.</exception>
         public Task AddUser(IhcUser user);
 
         /// <summary>
@@ -52,9 +54,10 @@ namespace Ihc {
         /// <remarks>The record's <see cref="IhcUser.CreatedDate"/> and <see cref="IhcUser.LoginDate"/> are sent too;
         /// when none is sent, the controller resets both to the time of the update.</remarks>
         /// <exception cref="ArgumentNullException"><paramref name="user"/> is <c>null</c>.</exception>
-        /// <exception cref="ArgumentException"><paramref name="user"/> breaks a limit declared on
-        /// <see cref="IhcUser"/>, or has its password left at <see cref="UserConstants.REDACTED_PASSWORD"/>; nothing
-        /// is sent.</exception>
+        /// <exception cref="ArgumentException"><paramref name="user"/> has no user name, an empty or blank password (an
+        /// SDK policy, not a known controller minimum), its password left at
+        /// <see cref="UserConstants.REDACTED_PASSWORD"/>, or a group other than <see cref="IhcUserGroup.Administrators"/>
+        /// or <see cref="IhcUserGroup.Users"/>; nothing is sent. Its strings have no length limit.</exception>
         public Task UpdateUser(IhcUser user);
     }
 
@@ -107,7 +110,14 @@ namespace Ihc {
             {
                 case "text.usermanager.group_administrators": return IhcUserGroup.Administrators;
                 case "gtext.users": return IhcUserGroup.Users;
-                default: throw new ArgumentException("Unknown user group " + wsGroupType, nameof(wsGroupType));
+                default:
+                    // The controller's group set is open where the enum is closed, and IHC Administrator keeps an
+                    // unknown key as received, so one such account must not fail a user list or a granted login.
+                    Activity.Current.AddWarning(
+                        $"A user group '{wsGroupType}' was not recognised; read as {nameof(IhcUserGroup.None)}.",
+                        ("type", "UnrecognizedUserGroup"),
+                        ("group", wsGroupType));
+                    return IhcUserGroup.None;
             }
         }
 
@@ -298,10 +308,6 @@ namespace Ihc {
                     activity?.SetParameters((nameof(user), IhcSettings.LogSensitiveData ? user : user.RedactPassword()));
 
                     ValidationHelper.ValidateDataAnnotations(user, nameof(user));
-
-                    if (user.Password == UserConstants.REDACTED_PASSWORD)
-                        throw new ArgumentException($"Password of user should not be set to reserved value ${UserConstants.REDACTED_PASSWORD}. This is likely an error!");
-
 
                     await impl.updateUserAsync(new inputMessageName4() { updateUser1 = mapUser(user) }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }

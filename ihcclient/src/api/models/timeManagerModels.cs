@@ -1,12 +1,19 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace Ihc
 {
     /// <summary>
-    /// The controller's time configuration and clock.
+    /// The controller's time configuration and clock. A write refuses what IHC Administrator refuses: an offset
+    /// outside -12 to +14 and, with synchronisation on, an interval under one hour or no server name.
     /// </summary>
-    public record TimeManagerSettings
+    /// <remarks>
+    /// Two of the Administrator's checks need the controller and are not made here: it refuses a server that is not a
+    /// dotted IPv4 address when the controller has no DNS server, and it proves the server with a time fetch before
+    /// saving.
+    /// </remarks>
+    public record TimeManagerSettings : IValidatableObject
     {
         /// <summary>
         /// <c>true</c>: the controller synchronizes its clock from <see cref="ServerName"/> every
@@ -22,6 +29,7 @@ namespace Ihc
         /// <summary>
         /// Time-zone offset in whole hours east of UTC, -12 to +14, summer time excluded (Denmark: 1).
         /// </summary>
+        [Range(-12, 14, ErrorMessage = "GmtOffsetInHours must be between -12 and 14.")]
         public int GmtOffsetInHours { get; init; }
 
         /// <summary>
@@ -29,11 +37,10 @@ namespace Ihc
         /// name needs a DNS server on the controller.
         /// </summary>
         /// <remarks>
-        /// Known defect: the SDK refuses a name longer than 20 characters, although the vendor's default
-        /// <c>0.schneider.pool.ntp.org</c> has 24, so <see cref="ITimeManagerService.SetSettings"/> throws
-        /// <see cref="ArgumentException"/> for settings read from a controller that uses it.
+        /// No length limit is known: the WSDL declares the name an unrestricted string, the vendor's default
+        /// <c>0.schneider.pool.ntp.org</c> has 24 characters, and IHC Administrator's 20 columns are only its field's
+        /// width.
         /// </remarks>
-        [StringLength(20, ErrorMessage = "ServerName length can't be more than 20.")]
         public string? ServerName { get; init; }
 
         /// <summary>
@@ -46,9 +53,9 @@ namespace Ihc
         /// when the reply carries no readable date.
         /// </summary>
         /// <remarks>
-        /// Known defect: the SDK labels the UTC wire time +01:00 instead of +00:00, in both directions. An instant read
-        /// from here is therefore one hour early, and a correct instant written sets the controller's clock one hour
-        /// ahead; a value read and written back is unchanged.
+        /// The wire carries a bare clock face, which is the controller's UTC clock: a read gives that instant at
+        /// offset 0, the same instant <see cref="SystemInfo.Realtimeclock"/> reports, and a write sends the instant's
+        /// UTC clock face, whatever offset it is stated at.
         /// </remarks>
         public DateTimeOffset TimeAndDateInUTC { get; init; }
 
@@ -66,6 +73,22 @@ namespace Ihc
         /// Until when the stored holiday calendar is valid, as a year such as 2027 rather than a timestamp.
         /// </summary>
         public int OnlineCalendarValidUntil { get; init; }
+
+        /// <summary>
+        /// With synchronisation on, the interval must be at least one hour and a server must be named, as IHC
+        /// Administrator requires; with it off, both are kept but not used.
+        /// </summary>
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (!SynchroniseTimeAgainstServer)
+                yield break;
+            if (SyncIntervalInHours < 1)
+                yield return new ValidationResult("SyncIntervalInHours must be at least 1 when SynchroniseTimeAgainstServer is set.",
+                    [nameof(SyncIntervalInHours)]);
+            if (string.IsNullOrWhiteSpace(ServerName))
+                yield return new ValidationResult("ServerName is required when SynchroniseTimeAgainstServer is set.",
+                    [nameof(ServerName)]);
+        }
 
         public override string ToString()
         {

@@ -68,6 +68,6 @@ In the rare event that WSDL must be changed and new generated code is needed, on
 The raw WSDL downloaded from the controller (`download_wsdl.sh` / `download_wsdl.ps1` write the files into `wsdl/`) contains defects that break code generation or deserialization, so it must be patched by hand. The pristine originals are kept under `wsdl/orginal/` and the hand-corrected copies under `wsdl/fixed/`; code generation reads `wsdl/fixed/` — never the originals. After re-downloading, refresh `wsdl/orginal/` from the downloaded files, then copy each changed file into `wsdl/fixed/` and re-apply the following known fixes:
 
 - **`WSDate` element order** (affects almost every WSDL, since the type is shared): change the `WSDate` complex type from `<xsd:sequence>` to `<xsd:all>`. The controller returns the date fields in an order that does not match the declared sequence, and `xsd:all` makes deserialization order-independent.
-- **Missing elements in `configuration.wsdl`**: add the `smsModemSoftwareVersion` and `ledDimmerSoftwareVersion` string elements, which are absent from the vendor WSDL.
+- **Missing elements in `configuration.wsdl`**: add the `smsModemSoftwareVersion` and `ledDimmerSoftwareVersion` string elements, which are absent from the vendor WSDL, and append the boolean `sendLEDDimmerErrorNotification` as the last element of `WSSMTPSettings`, after `sendLowBatteryNotificationRecepient`, where a 3.3.44 controller's served WSDL declares it.
 
 The easiest way to see the exact set of edits is to diff a `wsdl/fixed/` file against its `wsdl/orginal/` counterpart.

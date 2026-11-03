@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using System;
+using System.Buffers.Binary;
 using System.Linq;
 using Ihc.Soap.Controller;
 using System.IO;
@@ -46,11 +47,12 @@ namespace Ihc {
         /// state when the hold runs out.
         /// </summary>
         /// <param name="waitState">The state the caller believes current, normally the last one read; not a target
-        /// state. <see cref="ControllerState.Unknown"/> is refused with an <see cref="ArgumentException"/>.</param>
-        /// <param name="waitSec">Longest time, in seconds, the controller holds the call.</param>
+        /// state. <see cref="ControllerState.Unknown"/>, which a reply naming no state reads as, is sent as a nil
+        /// state, as IHC Administrator sends it when it has read none.</param>
+        /// <param name="holdSeconds">Longest time, in seconds, the controller holds the call.</param>
         /// <returns>The state the controller answered with; <see cref="ControllerState.Unknown"/> when the reply names
         /// none.</returns>
-        public Task<ControllerState> WaitForControllerStateChange(ControllerState waitState, int waitSec);
+        public Task<ControllerState> WaitForControllerStateChange(ControllerState waitState, int holdSeconds);
 
         /// <summary>
         /// Reads the metadata of the stored project, taken from the stored file itself: its identity pair, which
@@ -61,10 +63,26 @@ namespace Ihc {
 
         /// <summary>
         /// Downloads the whole stored project in one call and returns its XML, which the SDK decompresses. A
-        /// segmented download exists too (<see cref="GetIHCProjectSegment"/>), but see its known defect.
+        /// segmented download exists too (<see cref="GetIHCProjectSegment"/>), which returns the raw slices of the
+        /// controller's gzip stream.
         /// </summary>
         /// <returns>The project, or <c>null</c> when the reply carries no file.</returns>
+        /// <exception cref="InvalidDataException">The file's data is not one complete gzip stream, as when the transfer
+        /// was cut short.</exception>
         public Task<ProjectFile?> GetProject();
+
+        /// <summary>
+        /// Downloads the whole stored project through its segments and returns its XML, as <see cref="GetProject"/>
+        /// does: it reads the project's identity with <see cref="GetProjectInfo"/> and the count with
+        /// <see cref="GetIHCProjectNumberOfSegments"/>, fetches every segment with
+        /// <see cref="GetIHCProjectSegment"/>, joins them in index order and decompresses them once. This is how
+        /// ServiceView downloads a project.
+        /// </summary>
+        /// <returns>The project, named as the controller names its segments (<c>unknown.bin</c> on firmware 3.3.44); or
+        /// <c>null</c> when the controller holds no project or reports no segment.</returns>
+        /// <exception cref="InvalidOperationException">A segment's reply carries no data, or the joined segments do not
+        /// decompress as one complete gzip stream.</exception>
+        public Task<ProjectFile?> GetProjectInSegments();
 
         /// <summary>
         /// Uploads and stores a new project, sending it whole in one call. It checks that the controller is ready,
@@ -74,11 +92,40 @@ namespace Ihc {
         /// </summary>
         /// <param name="project">Project file to store on the controller.</param>
         /// <returns>The controller's answer to the store; a reply that carries none throws instead.</returns>
-        /// <remarks>Before entering change mode it refuses a controller that holds no project, and project text
-        /// outside ISO-8859-1.</remarks>
-        /// <exception cref="InvalidOperationException">The controller is not ready or its SD card is
-        /// unavailable.</exception>
+        /// <remarks>
+        /// <para>Before entering change mode it refuses a controller that holds no project, and project text
+        /// outside ISO-8859-1. Once the controller has entered change mode, any failed step -- the first state wait
+        /// included -- is followed by an attempt to exit the mode, and the step's own failure is the one thrown, also
+        /// when that exit fails too.</para>
+        /// <para>Each state wait -- <see cref="ControllerState.Initialize"/> after entering the mode and after the
+        /// store, <see cref="ControllerState.Ready"/> after leaving it -- first reads the state and is over when the
+        /// state is already reached. Otherwise it long-polls with <see cref="WaitForControllerStateChange"/>, sending
+        /// the state it last observed, until the expected state is answered or 10 seconds have passed; each poll is
+        /// held at most for what is left of them.</para>
+        /// </remarks>
+        /// <exception cref="InvalidOperationException">The controller is not ready, its SD card is unavailable, it
+        /// does not enter or leave change mode, an expected state is not reached within its 10 seconds, or the store's reply
+        /// carries no acknowledgement.</exception>
         public Task<bool> StoreProject(ProjectFile project);
+
+        /// <summary>
+        /// Uploads and stores a new project in segments, the way IHC Visual sends a project: it gzips the project's
+        /// ISO-8859-1 text once, reads <see cref="GetIHCProjectSegmentationSize"/> and cuts the gzip stream into slices
+        /// of that size, the last one shorter and never empty, then sends each with
+        /// <see cref="StoreIHCProjectSegment"/> and the slice count. It makes the checks, enters and leaves project
+        /// change mode and waits for the state changes as <see cref="StoreProject"/> does, and like it neither resets
+        /// runtime values nor restarts the controller.
+        /// </summary>
+        /// <param name="project">Project file to store on the controller.</param>
+        /// <returns><c>true</c> when the controller accepted every slice; <c>false</c> when it declined one, after which
+        /// no further slice is sent, as IHC Visual stops.</returns>
+        /// <remarks>Once the controller has entered change mode, any failed step is followed by an attempt to exit the
+        /// mode, and the step's own failure is the one thrown, also when that exit fails too.</remarks>
+        /// <exception cref="InvalidOperationException">The controller is not ready, its SD card is unavailable, it holds
+        /// no project, the text is outside ISO-8859-1, it does not enter or leave change mode, an expected state is not
+        /// reached within its 10 seconds, the segmentation size is not positive, or a slice's reply carries no
+        /// acknowledgement, which leaves the stored project unknown.</exception>
+        public Task<bool> StoreProjectInSegments(ProjectFile project);
 
         /// <summary>
         /// Gets a backup file (name and raw bytes) from the controller.
@@ -94,36 +141,34 @@ namespace Ihc {
         public Task<int> Restore();
 
         /// <summary>
-        /// Downloads one segment of the stored project: a slice of the controller's own gzip stream of it; joined in
-        /// index order, the segments decompress as a whole.
+        /// Downloads one segment of the stored project: a slice of the controller's own gzip stream of it, returned
+        /// raw. Only the first slice starts with the gzip header, so a segment does not decompress on its own; joined
+        /// in index order, the segments decompress as a whole to the project's ISO-8859-1 text.
         /// </summary>
         /// <param name="index">Segment index, 0-based, below <see cref="GetIHCProjectNumberOfSegments"/>.</param>
-        /// <param name="major">First half of the stored project's identity:
+        /// <param name="projectMajorRevision">First half of the stored project's identity:
         /// <see cref="ProjectInfo.ProjectMajorRevision"/> from <see cref="GetProjectInfo"/>.</param>
-        /// <param name="minor">Second half of the stored project's identity:
+        /// <param name="projectMinorRevision">Second half of the stored project's identity:
         /// <see cref="ProjectInfo.ProjectMinorRevision"/> from <see cref="GetProjectInfo"/>.</param>
-        /// <returns>The segment, or <c>null</c> when the reply carries no file.</returns>
-        /// <remarks>Known defect: this method decompresses each segment on its own, but only segment 0 starts with the
-        /// gzip header, so it cannot decode any later segment. Download the whole project with
-        /// <see cref="GetProject"/> instead.</remarks>
-        public Task<ProjectFile?> GetIHCProjectSegment(int index, int major, int minor);
+        /// <returns>The segment's bytes as the controller sent them (<see cref="GetIHCProjectSegmentationSize"/> bytes,
+        /// the last segment fewer); its data is empty when the reply carries no file.</returns>
+        public Task<ProjectSegment> GetIHCProjectSegment(int index, int projectMajorRevision, int projectMinorRevision);
 
         /// <summary>
-        /// Uploads one segment of a project. A project is sent as segments of
-        /// <see cref="GetIHCProjectSegmentationSize"/> bytes, in index order between
-        /// <see cref="EnterProjectChangeMode"/> and <see cref="ExitProjectChangeMode"/>; the reply to the last one can
-        /// take many seconds.
+        /// Uploads one segment of a project. A project is gzip-compressed once and its gzip stream cut into slices of
+        /// <see cref="GetIHCProjectSegmentationSize"/> bytes, the last one shorter, which are sent in index order
+        /// between <see cref="EnterProjectChangeMode"/> and <see cref="ExitProjectChangeMode"/>; the reply to the last
+        /// one can take many seconds.
         /// </summary>
-        /// <param name="segment">The segment's text.</param>
+        /// <param name="segment">The segment: a slice of one gzip stream of the whole project's ISO-8859-1 text, sent
+        /// as it is, so only the first slice starts with the gzip header. Its <see cref="ProjectSegment.Filename"/>
+        /// goes out as the file name, <c>temp.vis</c> when it has none.</param>
         /// <param name="index">Segment index, 0-based.</param>
-        /// <param name="major">The total number of segments, the same in every call; it is not a version.</param>
+        /// <param name="segmentCount">The total number of segments, the same in every call of one upload.</param>
         /// <returns><c>true</c> when the controller accepted the segment; send the next only after an accepted one.
         /// <c>false</c> also when the reply carries no value.</returns>
-        /// <remarks>Known defect: this method gzip-compresses each segment on its own, while the controller's segments
-        /// are slices of one gzip stream of the whole project, only the first carrying the gzip header. Whether a
-        /// controller accepts a project sent this way in more than one segment is not known; send a project whole
-        /// with <see cref="StoreProject"/> instead.</remarks>
-        public Task<bool> StoreIHCProjectSegment(ProjectFile segment, int index, int major);
+        /// <exception cref="ArgumentNullException"><paramref name="segment"/> is <c>null</c>.</exception>
+        public Task<bool> StoreIHCProjectSegment(ProjectSegment segment, int index, int segmentCount);
 
         /// <summary>
         /// Gets the size of project segments in bytes of gzip-compressed data: the slice size an upload is cut into,
@@ -140,11 +185,17 @@ namespace Ihc {
         public Task<int> GetIHCProjectNumberOfSegments();
 
         /// <summary>
-        /// Resets figures of the controller's single S0 energy meter.
+        /// Resets figures of the controller's single S0 energy meter, one flag per period, sent in the order IHC
+        /// ServiceView sends them; ServiceView ticks all five by default.
         /// </summary>
-        /// <remarks>Known defect: the controller's operation takes five flags, one per period (hour, day, week, month
-        /// and year), and this method sends none of them, so which figures it resets is not known.</remarks>
-        public Task ResetS0Values();
+        /// <param name="hour">Reset the hour figure.</param>
+        /// <param name="day">Reset the day figure.</param>
+        /// <param name="week">Reset the week figure.</param>
+        /// <param name="month">Reset the month figure.</param>
+        /// <param name="year">Reset the year figure.</param>
+        /// <remarks>What a controller resets for each flag, and whether the meter's total moves, is not known: no
+        /// capture holds a reset.</remarks>
+        public Task ResetS0Values(bool hour, bool day, bool week, bool month, bool year);
 
         /// <summary>
         /// Reads the total of the controller's single S0 energy meter (accumulated consumption in kWh).
@@ -163,12 +214,11 @@ namespace Ihc {
         /// <summary>
         /// Sets the start of the S0 meter's fiscal (invoicing) year, as a day and month.
         /// </summary>
-        /// <param name="month">The day of the month, despite the name (see the remarks); the vendor client sends it
-        /// 0-based, so day 1 is 0.</param>
-        /// <param name="day">The month, despite the name (see the remarks); the vendor client sends it 0-based, so
-        /// January is 0.</param>
-        /// <remarks>Known defect: the parameter names are swapped relative to the controller, which reads the first
-        /// argument as the day of the month and the second as the month.</remarks>
+        /// <param name="month">The month; the vendor client sends it 0-based, so January is 0.</param>
+        /// <param name="day">The day of the month; the vendor client sends it 0-based, so day 1 is 0.</param>
+        /// <remarks>The controller takes the day as the operation's first part and the month as its second, the order
+        /// IHC ServiceView sends them in, and this method sends them so. Whether the controller reads them 0- or
+        /// 1-based is not known; the values are sent as given.</remarks>
         public Task SetS0FiscalYearStart(sbyte month, sbyte day);
 
         /// <summary>
@@ -302,6 +352,9 @@ namespace Ihc {
 
         private readonly Ihc.Soap.Controller.ControllerService impl;
 
+        /// <summary>Times the deadline of <see cref="StoreProject"/>'s state waits.</summary>
+        private readonly TimeProvider clock;
+
         /// <summary>
         /// Create an ControllerService instance for access to the IHC API related to the controller itself.
         /// </summary>
@@ -310,13 +363,17 @@ namespace Ihc {
             : base(SettingsOf(authService))
         {
             this.impl = new SoapImpl(authService.GetCookieHandler(), settings);
+            this.clock = TimeProvider.System;
         }
 
-        /// <summary>Test seam: inject a fake SOAP layer (used by unit tests only).</summary>
-        internal ControllerService(IAuthenticationService authService, Ihc.Soap.Controller.ControllerService impl)
+        /// <summary>Test seam: inject a fake SOAP layer, and a clock for the state waits' deadline (used by unit
+        /// tests only).</summary>
+        internal ControllerService(IAuthenticationService authService, Ihc.Soap.Controller.ControllerService impl,
+            TimeProvider? clock = null)
             : base(SettingsOf(authService))
         {
             this.impl = impl;
+            this.clock = clock ?? TimeProvider.System;
         }
 
         private static SDInfo? mapSDCardData(WSSdCardData? e)
@@ -379,14 +436,31 @@ namespace Ihc {
             };
         }
 
+        /// <summary>
+        /// The project text in one complete gzip stream. The framework's gzip stops without complaint where its input
+        /// ends, so a stream cut short would decode to a prefix of the project. A controller's project is one gzip
+        /// member that ends the data, as in every captured download, and RFC 1952 closes a member with its decoded
+        /// length modulo 2^32: a stream cut anywhere ends in bytes that state another length, bar a 1-in-2^32
+        /// coincidence. Several members, or bytes after the member, are refused by the same test, though the framework
+        /// would decode them: no controller was seen sending either.
+        /// </summary>
+        /// <exception cref="InvalidDataException"><paramref name="fileData"/> is no gzip stream, or not a whole one.</exception>
         private async Task<string> decompress(byte[] fileData)
         {
-            using (MemoryStream mscompressed = new MemoryStream(fileData))
-            using (Stream inStream = new System.IO.Compression.GZipStream(mscompressed, System.IO.Compression.CompressionMode.Decompress))
-            using (StreamReader reader = new StreamReader(inStream, ProjectFile.Encoding, detectEncodingFromByteOrderMarks: false))
+            using var decoded = new MemoryStream();
+            using (var compressed = new MemoryStream(fileData))
+            using (var gzip = new System.IO.Compression.GZipStream(compressed, System.IO.Compression.CompressionMode.Decompress))
             {
-                return await reader.ReadToEndAsync().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                await gzip.CopyToAsync(decoded).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
             }
+            if (fileData.Length < sizeof(uint)
+                || BinaryPrimitives.ReadUInt32LittleEndian(fileData.AsSpan(fileData.Length - sizeof(uint))) != unchecked((uint)decoded.Length))
+            {
+                throw new InvalidDataException(
+                    $"The gzip stream is incomplete: its {fileData.Length} bytes decode to {decoded.Length}, but do not end in the trailer that states that length.");
+            }
+            // ISO-8859-1 maps every byte to one character and has no byte order mark to skip.
+            return ProjectFile.Encoding.GetString(decoded.GetBuffer(), 0, (int)decoded.Length);
         }
 
         private async Task<byte[]> compress(string data)
@@ -465,11 +539,14 @@ namespace Ihc {
         }
 
 
-        private static Ihc.Soap.Controller.WSControllerState mapControllerState(ControllerState state)
+        /// <summary>The wire form of a state the caller believes current; <see cref="ControllerState.Unknown"/> goes out
+        /// as nil, which is what IHC Administrator sends when it has read no state.</summary>
+        private static Ihc.Soap.Controller.WSControllerState? mapControllerState(ControllerState state)
         {
             string stateStr;
             switch (state)
             {
+                case ControllerState.Unknown: return null;
                 case ControllerState.Failed: stateStr = "text.ctrl.state.failed"; break;
                 case ControllerState.Ready: stateStr = "text.ctrl.state.ready"; break;
                 case ControllerState.Initialize: stateStr = "text.ctrl.state.initialize"; break;
@@ -563,7 +640,7 @@ namespace Ihc {
         }
 
         /*
-        public async Task<string> WaitForControllerStateChangeRaw(string waitState, int waitSec)
+        public async Task<string> WaitForControllerStateChangeRaw(string waitState, int holdSeconds)
         {
             using (var activity = StartActivity(nameof(WaitForControllerStateChange)))
             {
@@ -571,10 +648,10 @@ namespace Ihc {
                 {
                     activity?.SetParameters(
                         (nameof(waitState), waitState),
-                        (nameof(waitSec), waitSec)
+                        (nameof(holdSeconds), holdSeconds)
                     );
 
-                    var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(new Ihc.Soap.Controller.WSControllerState { state = waitState }, waitSec) { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(new Ihc.Soap.Controller.WSControllerState { state = waitState }, holdSeconds) { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = result?.waitForControllerStateChange3.state;
 
                     activity?.SetReturnValue(retv);
@@ -589,7 +666,7 @@ namespace Ihc {
         }*/
 
         
-        public async Task<ControllerState> WaitForControllerStateChange(ControllerState waitState, int waitSec)
+        public async Task<ControllerState> WaitForControllerStateChange(ControllerState waitState, int holdSeconds)
         {
             using (var activity = StartActivity(nameof(WaitForControllerStateChange)))
             {
@@ -597,10 +674,10 @@ namespace Ihc {
                 {
                     activity?.SetParameters(
                         (nameof(waitState), waitState),
-                        (nameof(waitSec), waitSec)
+                        (nameof(holdSeconds), holdSeconds)
                     );
 
-                    var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(mapControllerState(waitState), waitSec) { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = await impl.waitForControllerStateChangeAsync(new inputMessageName19(mapControllerState(waitState), holdSeconds) { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = mapControllerState(result?.waitForControllerStateChange3);
 
                     activity?.SetReturnValue(retv);
@@ -612,6 +689,33 @@ namespace Ihc {
                     throw;
                 }
             }
+        }
+
+        /// <summary>
+        /// The least time <see cref="StoreProject"/> gives each state change, and the longest a single poll is held:
+        /// IHC Administrator holds its polls for 10 s, well inside its 20 s read time-out.
+        /// </summary>
+        private static readonly TimeSpan StateWaitDeadline = TimeSpan.FromSeconds(10);
+
+        /// <summary>
+        /// Waits until the controller reports <paramref name="expected"/> or <see cref="StateWaitDeadline"/> has
+        /// passed, and returns the last state observed. The long poll holds while the controller's state EQUALS the
+        /// state sent, so it is sent the state last observed, never the one expected -- sent that, a poll would be
+        /// held for as long as the expected state lasted. A state already reached is read and needs no poll.
+        /// </summary>
+        private async Task<ControllerState> AwaitControllerState(ControllerState expected)
+        {
+            ControllerState observed = await GetControllerState().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            long started = clock.GetTimestamp();
+            while (observed != expected)
+            {
+                TimeSpan left = StateWaitDeadline - clock.GetElapsedTime(started);
+                if (left <= TimeSpan.Zero)
+                    break;
+                int holdSeconds = (int)Math.Ceiling(left.TotalSeconds);
+                observed = await WaitForControllerStateChange(observed, holdSeconds).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            }
+            return observed;
         }
 
         public async Task<float> GetS0MeterValue()
@@ -643,12 +747,20 @@ namespace Ihc {
             }
         }
         
-        public async Task ResetS0Values() {
+        public async Task ResetS0Values(bool hour, bool day, bool week, bool month, bool year) {
             using (var activity = StartActivity(nameof(ResetS0Values)))
             {
                 try
                 {
-                    await impl.resetS0ValuesAsync(new inputMessageName10() { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    activity?.SetParameters(
+                        (nameof(hour), hour),
+                        (nameof(day), day),
+                        (nameof(week), week),
+                        (nameof(month), month),
+                        (nameof(year), year)
+                    );
+
+                    await impl.resetS0ValuesAsync(new inputMessageName10(hour, day, week, month, year)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
                 catch (Exception ex)
                 {
@@ -690,7 +802,9 @@ namespace Ihc {
                         (nameof(day), day)
                     );
 
-                    await impl.setS0FiscalYearStartAsync(new inputMessageName20(month, day) { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    // The wire's first part is the day of the month and its second the month, as IHC ServiceView
+                    // sends them; the descrambled vendor signature (month, day) had the names reversed.
+                    await impl.setS0FiscalYearStartAsync(new inputMessageName20(day, month) { }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
                 catch (Exception ex)
                 {
@@ -822,125 +936,209 @@ namespace Ihc {
             }
         }
 
-        public async Task<bool> StoreProject(ProjectFile project)
+        public Task<bool> StoreProject(ProjectFile project) =>
+            storeInProjectChangeMode(nameof(StoreProject), project, async _ =>
+            {
+                var result = await impl.storeIHCProjectAsync(new inputMessageName4()
+                {
+                    storeIHCProject1 = await mapProjectFile(project).ConfigureAwait(settings.AsyncContinueOnCapturedContext)
+                }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                return result?.storeIHCProject2;
+            });
+
+        public Task<bool> StoreProjectInSegments(ProjectFile project) =>
+            storeInProjectChangeMode(nameof(StoreProjectInSegments), project, async activity =>
+            {
+                int size = await GetIHCProjectSegmentationSize().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                if (size <= 0)
+                    throw new InvalidOperationException(
+                        $"Controller reported a segmentation size of {size} bytes, which cuts the project into no segments; nothing was sent.");
+
+                // One gzip stream of the whole project, cut into slices: only the first carries the gzip header, and
+                // the controller joins them before it decompresses. Chunk never yields an empty last slice, the case
+                // IHC Visual's own arithmetic gets wrong.
+                byte[] gzip = await compress(project.Data).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                byte[][] slices = [.. gzip.Chunk(size)];
+                activity?.SetTag("progress.segments", slices.Length);
+                for (int index = 0; index < slices.Length; index++)
+                {
+                    bool? answer = await sendSegment(slices[index], project.Filename, index, slices.Length).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    if (!Acknowledged(answer, $"segment {index} of {slices.Length}"))
+                        return false;
+                }
+                return true;
+            });
+
+        /// <summary>
+        /// A project store's whole workflow around <paramref name="send"/>, in its span: the checks IHC Visual makes,
+        /// project change mode with its state waits, and the cleanup that leaves the mode after any failed step.
+        /// <paramref name="send"/> answers the controller's acknowledgement, null when the reply carried none.
+        /// </summary>
+        private async Task<bool> storeInProjectChangeMode(string operationName, ProjectFile project, Func<Activity?, Task<bool?>> send)
         {
-            using (var activity = StartActivity(nameof(StoreProject)))
+            using (var activity = StartActivity(operationName))
             {
                 try
                 {
+                    bool retv = await storeWorkflow(project, activity, send).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    activity?.SetReturnValue(retv);
+                    return retv;
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetError(ex);
+                    throw;
+                }
+            }
+        }
+
+        private async Task<bool> storeWorkflow(ProjectFile project, Activity? activity, Func<Activity?, Task<bool?>> send)
+        {
+            // Metadata only — the full project XML does not belong in telemetry tags.
+            activity?.SetParameters(
+                ("project.filename", project?.Filename),
+                ("project.data.length", project?.Data?.Length ?? 0)
+            );
+
+            ValidationHelper.ValidateDataAnnotations(project, nameof(project));
+            if (project.Data is null)
+            {
+                // Data has no [Required], so a null slips past ValidateDataAnnotations and would
+                // surface as a bare ArgumentNullException from GetBytes — name the real problem.
+                throw new InvalidOperationException(
+                    $"Project '{project.Filename}' has no Data to store; nothing was sent to the controller.");
+            }
+
+            // Fail before entering change mode: an out-of-repertoire character would otherwise either
+            // abort mid-change-mode or (with a replacement fallback) be silently stored as '?'.
+            try
+            {
+                ProjectFile.StrictEncoding.GetBytes(project.Data);
+            }
+            catch (EncoderFallbackException ex)
+            {
+                string offender = ex.OffendingCodePointLabel();
+                throw new InvalidOperationException(
+                    $"Project '{project.Filename}' contains character {offender} at index {ex.Index}, " +
+                    "outside the ISO-8859-1 repertoire required by the IHC controller. Load the file with " +
+                    $"ISO-8859-1 ({nameof(ProjectFile)}.{nameof(ProjectFile.Encoding)}), not UTF-8.", ex);
+            }
+
+            // First perform some safty checks similar to what the IHC Visual App does:
+            bool controllerReady = (await GetControllerState().ConfigureAwait(settings.AsyncContinueOnCapturedContext)) == ControllerState.Ready;
+            activity?.SetTag("progress.controllerReady", controllerReady);
+            if (!controllerReady)
+                throw new InvalidOperationException("Controller not in ready state");
+
+            bool sdCardReady = await IsSDCardReady().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            activity?.SetTag("progress.sdCardReady", sdCardReady);
+            if (!sdCardReady)
+                throw new InvalidOperationException("Controller SD Card not ready");
+
+            bool projectAvailable = await IsIHCProjectAvailable().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            activity?.SetTag("progress.projectAvailable", projectAvailable);
+            if (!projectAvailable)
+                throw new InvalidOperationException(
+                    "Controller reports no existing project (IsIHCProjectAvailable=false). Storing onto an " +
+                    "empty controller is unsupported by this SDK because the firmware behavior is unverified; " +
+                    "restore a project via IHC Visual first.");
+
+            bool inChange = await EnterProjectChangeMode().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            activity?.SetTag("progress.inChange.in", inChange);
+            if (!inChange)
+                throw new InvalidOperationException("Controller could not enter change mode to prepare for project change");
+
+            // From here on the controller is in change mode, so every step -- the first state wait
+            // included -- runs under the cleanup below: the vendor leaves the mode after any failed step.
+            ControllerState state;
+            bool? acknowledged = null;
+            Exception? primary = null;
+            try
+            {
+                state = await AwaitControllerState(ControllerState.Initialize).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                activity?.SetTag("progress.state.in", state);
+                if (state != ControllerState.Initialize)
+                    throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
+
+                acknowledged = await send(activity).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+
+                state = await AwaitControllerState(ControllerState.Initialize).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                if (state != ControllerState.Initialize)
+                    throw new InvalidOperationException("Controller state does not remain in init state after project change");
+            }
+            catch (Exception storeEx)
+            {
+                // Do not throw yet: the change-mode cleanup below must run first, and a cleanup failure
+                // must never replace this root cause (an exception leaving a finally block would).
+                primary = storeEx;
+            }
+            try
+            {
+                inChange = await ExitProjectChangeMode().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                activity?.SetTag("progress.inChange.out", inChange);
+                if (!inChange && primary == null)
+                    throw new InvalidOperationException("Controller could not exit change mode after project change");
+
+                state = await AwaitControllerState(ControllerState.Ready).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                activity?.SetTag("progress.state.out", state);
+                if (state != ControllerState.Ready && primary == null)
+                    throw new InvalidOperationException($"Controller did not return to {nameof(ControllerState.Ready)} state after project change (observed state: {state})");
+            }
+            catch (Exception cleanupEx) when (primary != null)
+            {
+                activity?.SetTag("cleanup.error", cleanupEx.ToString());
+            }
+            if (primary != null)
+                ExceptionDispatchInfo.Capture(primary).Throw();
+
+            await Task.Delay(100).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // Wait a little to let controller settle.
+
+            return Acknowledged(acknowledged, "the project store");
+        }
+
+        public async Task<ProjectFile?> GetProjectInSegments()
+        {
+            using (var activity = StartActivity(nameof(GetProjectInSegments)))
+            {
+                try
+                {
+                    var info = await GetProjectInfo().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    int count = info == null ? 0 : await GetIHCProjectNumberOfSegments().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    activity?.SetTag("progress.segments", count);
+                    if (info == null || count <= 0)
+                    {
+                        activity?.SetReturnValue<string?>(null);
+                        return null;
+                    }
+
+                    // The segments are slices of ONE gzip stream, only the first carrying its header: joined in index
+                    // order they decompress, alone none after the first does. So no slice may be missing.
+                    using var joined = new MemoryStream();
+                    string? filename = null;
+                    for (int index = 0; index < count; index++)
+                    {
+                        var file = await requestSegment(index, info.ProjectMajorRevision, info.ProjectMinorRevision).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                        if (file?.data is not { Length: > 0 } slice)
+                            throw new InvalidOperationException(
+                                $"The controller sent no data for segment {index} of {count} of the stored project; the joined segments cannot be decompressed without it.");
+                        filename ??= file.filename;
+                        joined.Write(slice);
+                    }
+
+                    string data;
+                    try
+                    {
+                        data = await decompress(joined.ToArray()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    }
+                    catch (InvalidDataException ex)
+                    {
+                        throw new InvalidOperationException(
+                            $"The {count} segments of the stored project do not decompress as one gzip stream: {ex.Message}", ex);
+                    }
+                    var retv = new ProjectFile(filename, data);
+
                     // Metadata only — the full project XML does not belong in telemetry tags.
-                    activity?.SetParameters(
-                        ("project.filename", project?.Filename),
-                        ("project.data.length", project?.Data?.Length ?? 0)
-                    );
-
-                    ValidationHelper.ValidateDataAnnotations(project, nameof(project));
-                    if (project.Data is null)
-                    {
-                        // Data has no [Required], so a null slips past ValidateDataAnnotations and would
-                        // surface as a bare ArgumentNullException from GetBytes — name the real problem.
-                        throw new InvalidOperationException(
-                            $"Project '{project.Filename}' has no Data to store; nothing was sent to the controller.");
-                    }
-
-                    // Fail before entering change mode: an out-of-repertoire character would otherwise either
-                    // abort mid-change-mode or (with a replacement fallback) be silently stored as '?'.
-                    try
-                    {
-                        ProjectFile.StrictEncoding.GetBytes(project.Data);
-                    }
-                    catch (EncoderFallbackException ex)
-                    {
-                        string offender = ex.OffendingCodePointLabel();
-                        throw new InvalidOperationException(
-                            $"Project '{project.Filename}' contains character {offender} at index {ex.Index}, " +
-                            "outside the ISO-8859-1 repertoire required by the IHC controller. Load the file with " +
-                            $"ISO-8859-1 ({nameof(ProjectFile)}.{nameof(ProjectFile.Encoding)}), not UTF-8.", ex);
-                    }
-
-                    // First perform some safty checks similar to what the IHC Visual App does:
-                    bool controllerReady = (await GetControllerState().ConfigureAwait(settings.AsyncContinueOnCapturedContext)) == ControllerState.Ready;
-                    activity?.SetTag("progress.controllerReady", controllerReady);
-                    if (!controllerReady)
-                        throw new InvalidOperationException("Controller not in ready state");
-
-                    bool sdCardReady = await IsSDCardReady().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    activity?.SetTag("progress.sdCardReady", sdCardReady);        
-                    if (!sdCardReady)
-                        throw new InvalidOperationException("Controller SD Card not ready");
-
-                    bool projectAvailable = await IsIHCProjectAvailable().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    activity?.SetTag("progress.projectAvailable", projectAvailable);
-                    if (!projectAvailable)
-                        throw new InvalidOperationException(
-                            "Controller reports no existing project (IsIHCProjectAvailable=false). Storing onto an " +
-                            "empty controller is unsupported by this SDK because the firmware behavior is unverified; " +
-                            "restore a project via IHC Visual first.");
-
-                    bool inChange = await EnterProjectChangeMode().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    activity?.SetTag("progress.inChange.in", inChange);
-                    if (!inChange)
-                        throw new InvalidOperationException("Controller could not enter change mode to prepare for project change");
-
-                    var state = await WaitForControllerStateChange(ControllerState.Initialize, 10).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // TODO: Retry x times.
-                    activity?.SetTag("progress.state.in", state);                    
-                    if (state != ControllerState.Initialize)
-                        throw new InvalidOperationException("Controller state did not enter init state to prepare for project change");
-
-                    outputMessageName4? result = null;
-                    Exception? primary = null;
-                    try
-                    {
-                        // Call the actual store project operation
-
-                        inputMessageName4 request = new inputMessageName4()
-                        {
-                            storeIHCProject1 = await mapProjectFile(project).ConfigureAwait(settings.AsyncContinueOnCapturedContext)
-                        };
-
-                        result = await impl.storeIHCProjectAsync(request).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-                        state = await WaitForControllerStateChange(ControllerState.Initialize, 10).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // TODO: Retry x times.
-                        if (state != ControllerState.Initialize)
-                            throw new InvalidOperationException("Controller state does not remain in init state after project change");
-
-                    }
-                    catch (Exception storeEx)
-                    {
-                        // Do not throw yet: the change-mode cleanup below must run first, and a cleanup failure
-                        // must never replace this root cause (an exception leaving a finally block would).
-                        primary = storeEx;
-                    }
-                    try
-                    {
-                        inChange = await ExitProjectChangeMode().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                        activity?.SetTag("progress.inChange.out", inChange);
-                        if (!inChange && primary == null)
-                            throw new InvalidOperationException("Controller could not exit change mode after project change");
-
-                        state = await WaitForControllerStateChange(ControllerState.Ready, 10).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // TODO: Retry x times.
-                        activity?.SetTag("progress.state.out", state);
-                        if (state != ControllerState.Ready && primary == null)
-                            throw new InvalidOperationException($"Controller did not return to {nameof(ControllerState.Ready)} state after project change (observed state: {state})");
-                    }
-                    catch (Exception cleanupEx) when (primary != null)
-                    {
-                        activity?.SetTag("cleanup.error", cleanupEx.ToString());
-                    }
-                    if (primary != null)
-                        ExceptionDispatchInfo.Capture(primary).Throw();
-
-                    await Task.Delay(100).ConfigureAwait(settings.AsyncContinueOnCapturedContext); // Wait a little to let controller settle.
-
-                    // An absent acknowledgement element is not a declined store: the bytes were sent, and the
-                    // answer simply did not say what became of them. Folded to `false` it is indistinguishable
-                    // from a controller that refused, which is the one thing a caller would act on differently.
-                    if (result?.storeIHCProject2 is null)
-                        throw new InvalidOperationException("Controller did not acknowledge the project store: the response carried no result. The project bytes were sent, so the controller's state is unknown.");
-
-                    var retv = result.storeIHCProject2 == true;
-
-                    activity?.SetReturnValue(retv);
+                    activity?.SetReturnValue($"{retv.Filename} ({retv.Data.Length} chars)");
                     return retv;
                 }
                 catch (Exception ex)
@@ -951,39 +1149,46 @@ namespace Ihc {
             }
         }
 
-        public async Task<ProjectFile?> GetIHCProjectSegment(int index, int major, int minor)
+        private async Task<Ihc.Soap.Controller.WSFile?> requestSegment(int index, int projectMajorRevision, int projectMinorRevision)
         {
-            using (var activity = StartActivity(nameof(GetIHCProjectSegment)))
+            var result = await impl.getIHCProjectSegmentAsync(new inputMessageName15()
             {
-                try
-                {
-                    activity?.SetParameters(
-                        (nameof(index), index),
-                        (nameof(major), major),
-                        (nameof(minor), minor)
-                    );
-
-                    var result = await impl.getIHCProjectSegmentAsync(new inputMessageName15()
-                    {
-                        getIHCProjectSegment1 = index,
-                        getIHCProjectSegment2 = major,
-                        getIHCProjectSegment3 = minor
-                    }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = await mapProjectFile(result.getIHCProjectSegment4).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-
-                    activity?.SetReturnValue(retv);
-                    return retv;
-                }
-                catch (Exception ex)
-                {
-                    activity?.SetError(ex);
-                    throw;
-                }
-            }
+                getIHCProjectSegment1 = index,
+                getIHCProjectSegment2 = projectMajorRevision,
+                getIHCProjectSegment3 = projectMinorRevision
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            return result.getIHCProjectSegment4;
         }
 
-        public async Task<bool> StoreIHCProjectSegment(ProjectFile segment, int index, int major)
+        public Task<ProjectSegment> GetIHCProjectSegment(int index, int projectMajorRevision, int projectMinorRevision) =>
+            TracedSegmentDownload(nameof(GetIHCProjectSegment), index, projectMajorRevision, projectMinorRevision,
+                async () => (await requestSegment(index, projectMajorRevision, projectMinorRevision).ConfigureAwait(settings.AsyncContinueOnCapturedContext))?.data);
+
+        /// <summary>The name IHC Visual's segments carry, without the local path it sends with it: the wire requires a
+        /// name, which a <see cref="ProjectSegment"/> need not have.</summary>
+        private const string UnnamedSegmentFilename = "temp.vis";
+
+        /// <summary>Sends one slice and answers the controller's acknowledgement, null when the reply carries none.</summary>
+        private async Task<bool?> sendSegment(byte[] slice, string? filename, int index, int segmentCount)
         {
+            // The slice goes out as it is: a controller joins the slices into one gzip stream, so gzipping each on its
+            // own would send gzip members a controller is not known to accept.
+            var result = await impl.storeIHCProjectSegmentAsync(new inputMessageName16()
+            {
+                storeIHCProjectSegment1 = new Ihc.Soap.Controller.WSFile
+                {
+                    data = slice,
+                    filename = filename ?? UnnamedSegmentFilename
+                },
+                storeIHCProjectSegment2 = index,
+                storeIHCProjectSegment3 = segmentCount
+            }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+            return result.storeIHCProjectSegment4;
+        }
+
+        public async Task<bool> StoreIHCProjectSegment(ProjectSegment segment, int index, int segmentCount)
+        {
+            ArgumentNullException.ThrowIfNull(segment);
             using (var activity = StartActivity(nameof(StoreIHCProjectSegment)))
             {
                 try
@@ -991,18 +1196,10 @@ namespace Ihc {
                     activity?.SetParameters(
                         (nameof(segment), segment),
                         (nameof(index), index),
-                        (nameof(major), major)
+                        (nameof(segmentCount), segmentCount)
                     );
 
-                    ValidationHelper.ValidateDataAnnotations(segment, nameof(segment));
-
-                    var result = await impl.storeIHCProjectSegmentAsync(new inputMessageName16()
-                    {
-                        storeIHCProjectSegment1 = await mapProjectFile(segment).ConfigureAwait(settings.AsyncContinueOnCapturedContext),
-                        storeIHCProjectSegment2 = index,
-                        storeIHCProjectSegment3 = major
-                    }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = result.storeIHCProjectSegment4.HasValue ? result.storeIHCProjectSegment4.Value : false;
+                    var retv = await sendSegment(segment.Data, segment.Filename, index, segmentCount).ConfigureAwait(settings.AsyncContinueOnCapturedContext) ?? false;
 
                     activity?.SetReturnValue(retv);
                     return retv;

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
@@ -40,6 +41,7 @@ namespace Ihc.Stubbing
         /// <summary>A response envelope around <paramref name="body"/>, as a controller answers.</summary>
         internal static string WriteResponse(Type bodyType, object body)
         {
+            EmptyListsAsOneNilItem(body, new HashSet<object>(ReferenceEqualityComparer.Instance));
             Type envelopeType = typeof(ResponseEnvelope<>).MakeGenericType(bodyType);
             object envelope = Activator.CreateInstance(envelopeType, body)!;
             // The envelope declares its own prefixes; passing them is also what keeps the serializer from adding
@@ -52,6 +54,55 @@ namespace Ihc.Stubbing
                 SerializerFor(envelopeType).Serialize(writer, envelope, prefixes);
             }
             return Encoding.UTF8.GetString(stream.ToArray());
+        }
+
+        /// <summary>
+        /// Gives every empty list in a generated answer one null item, which the serializer writes as one nil
+        /// <c>arrayItem</c>: a 3.3.44 controller answers every empty list so, 113 times across seven operations in its
+        /// proxy logs, and an answer written as an empty element would hide from the SDK the form it must read. A list
+        /// of a value type, such as the integer list whose "none" a controller states as a lone -1, has no nil item and
+        /// is left as the answer built it.
+        /// </summary>
+        private static void EmptyListsAsOneNilItem(object? node, HashSet<object> seen)
+        {
+            if (node is null || node is string || node.GetType().IsValueType || !seen.Add(node))
+            {
+                return;
+            }
+            Type type = node.GetType();
+            if (type.Namespace?.StartsWith("Ihc.Soap", StringComparison.Ordinal) != true)
+            {
+                return;
+            }
+            foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Instance))
+            {
+                field.SetValue(node, WithOneNilItemIfEmpty(field.FieldType, field.GetValue(node), seen));
+            }
+            foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (property.CanRead && property.CanWrite && property.GetIndexParameters().Length == 0)
+                {
+                    property.SetValue(node, WithOneNilItemIfEmpty(property.PropertyType, property.GetValue(node), seen));
+                }
+            }
+        }
+
+        private static object? WithOneNilItemIfEmpty(Type declared, object? value, HashSet<object> seen)
+        {
+            if (value is Array list && declared.IsArray && declared.GetElementType() is { IsValueType: false } itemType)
+            {
+                if (list.Length == 0)
+                {
+                    return Array.CreateInstance(itemType, 1);
+                }
+                foreach (object? item in list)
+                {
+                    EmptyListsAsOneNilItem(item, seen);
+                }
+                return value;
+            }
+            EmptyListsAsOneNilItem(value, seen);
+            return value;
         }
 
         /// <summary>A SOAP 1.1 server fault carrying <paramref name="faultString"/>, escaped.</summary>

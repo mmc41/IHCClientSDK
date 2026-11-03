@@ -284,6 +284,56 @@ namespace Ihc.Tests
           Assert.That(o.Body.getUsers1[0].loginDate.year, Is.EqualTo(2025));
         }
 
+        /// <summary>
+        /// The controller marks an absent string <c>xsi:nil="true"</c>, also where its schema does not declare the
+        /// element nillable, and puts a line break inside the element (the getUsers fixture above has that captured
+        /// shape). The generated members are not nillable, so the serializer used to read the element's text, an
+        /// empty string or <c>"\n"</c>; a nil string now reads as null.
+        /// </summary>
+        [Test]
+        public void ANilStringElement_ReadsAsNull_NotAsTheTextInsideIt()
+        {
+          var user = Serialization.DeserializeXml<RequestEnvelope<Ihc.Soap.Usermanager.outputMessageName2>>(getUsersResponseXml)!.Body.getUsers1[0];
+
+          Assert.That((user.email, user.phone, user.project), Is.EqualTo(((string?)null, (string?)null, (string?)null)));
+          Assert.That(user.firstname, Is.EqualTo("test forname"), "a string the controller did send is untouched");
+        }
+
+        /// <summary>
+        /// Only a nil STRING member is dropped. An array item stays, so an array keeps its count (the OpenAPI pairs
+        /// values by position, and a lone nil item is how the controller answers an empty list), and a nil member of
+        /// another type stays for the serializer to read as before.
+        /// </summary>
+        [Test]
+        public void DroppingNilStrings_KeepsNilArrayItems_AndNilMembersOfOtherTypes()
+        {
+          string xml = """
+            <e xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:ns1="utcs">
+              <ns1:arrayItem xsi:type="xsd:string" xsi:nil="true"/>
+              <ns1:day xsi:type="xsd:int" xsi:nil="true"/>
+              <ns1:createdDate xsi:type="ns1:WSDate" xsi:nil="true"/>
+              <ns1:email xsi:type="xsd:string" xsi:nil="true">
+              </ns1:email>
+              <ns1:phone xsi:type="xsd:string">12345678</ns1:phone>
+            </e>
+            """;
+
+          string kept = Serialization.WithoutNilStrings(xml);
+
+          Assert.That(normalize(kept), Does.Contain("<ns1:arrayItemxsi:type=\"xsd:string\"xsi:nil=\"true\"/>")
+              .And.Contain("<ns1:dayxsi:type=\"xsd:int\"xsi:nil=\"true\"/>")
+              .And.Contain("<ns1:createdDatexsi:type=\"ns1:WSDate\"xsi:nil=\"true\"/>")
+              .And.Contain("<ns1:phonexsi:type=\"xsd:string\">12345678</ns1:phone>")
+              .And.Not.Contain("email"));
+        }
+
+        /// <summary>A reply with no nil element in it is passed on exactly as it came.</summary>
+        [Test]
+        public void AReplyWithNoNilElement_IsUnchanged()
+        {
+          Assert.That(Serialization.WithoutNilStrings(getAllDatalineInputsXml), Is.SameAs(getAllDatalineInputsXml));
+        }
+
         #endregion
     
     }

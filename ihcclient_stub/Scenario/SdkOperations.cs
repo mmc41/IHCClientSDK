@@ -120,8 +120,9 @@ namespace Ihc.Stubbing
         /// built from a subscribe and a wait, owns none.
         /// </summary>
         /// <remarks>
-        /// <c>TestSendMessage</c> is here although a row carries its name: it sends <c>testSendMessage1</c>, and the
-        /// <c>testSendMessage</c> overload is sent by no public method, which leaves it unwrapped.
+        /// <c>TestSendMessage</c> follows the convention, sending the six-part <c>testSendMessage</c> as IHC
+        /// Administrator does, so the four-part <c>testSendMessage1</c> overload is sent by no public method, which
+        /// leaves it unwrapped.
         /// </remarks>
         private static readonly (Type Service, string Method, string? Primary, string[] WireActions)[] Exceptions =
         [
@@ -129,16 +130,37 @@ namespace Ihc.Stubbing
             (typeof(IControllerService), nameof(IControllerService.GetProject), "getIHCProject", ["getIHCProject"]),
             (typeof(IControllerService), nameof(IControllerService.StoreProject), "storeIHCProject",
             [
+                // Each state wait reads the state first and polls only when the read lags, which the default
+                // controller's synchronous transitions never do.
                 "getState", "isSDCardReady", "isIHCProjectAvailable", "enterProjectChangeMode",
-                "waitForControllerStateChange", "storeIHCProject", "waitForControllerStateChange",
-                "exitProjectChangeMode", "waitForControllerStateChange",
+                "getState", "storeIHCProject", "getState",
+                "exitProjectChangeMode", "getState",
             ]),
-            (typeof(IConfigurationService), nameof(IConfigurationService.TestSendMessage), "testSendMessage1", ["testSendMessage1"]),
+            // The whole project up in segments, inside the same change-mode workflow as StoreProject; the default
+            // project fits one segment.
+            (typeof(IControllerService), nameof(IControllerService.StoreProjectInSegments), null,
+            [
+                "getState", "isSDCardReady", "isIHCProjectAvailable", "enterProjectChangeMode",
+                "getState", "getIHCProjectSegmentationSize", "storeIHCProjectSegment", "getState",
+                "exitProjectChangeMode", "getState",
+            ]),
+            // The whole project through its segments: its identity, the count, then each segment, owned by the
+            // methods of those names; the default project fits one segment.
+            (typeof(IControllerService), nameof(IControllerService.GetProjectInSegments), null,
+                ["getProjectInfo", "getIHCProjectNumberOfSegments", "getIHCProjectSegment"]),
+            // The local clock carries no offset, so the UTC clock in the settings is read with it.
+            (typeof(ITimeManagerService), nameof(ITimeManagerService.GetCurrentLocalTime), "getCurrentLocalTime",
+                ["getCurrentLocalTime", "getSettings"]),
             // A change stream subscribes, waits as often as it is read, and unsubscribes when it ends.
             (typeof(IResourceInteractionService), nameof(IResourceInteractionService.GetResourceValueChanges), null,
                 ["enableRuntimeValueNotifications", "waitForResourceValueChanges", "disableRuntimeValueNotifactions"]),
             (typeof(IOpenAPIService), nameof(IOpenAPIService.GetResourceValueChanges), null,
                 ["enableSubscription", "waitForEvents", "disableSubscription"]),
+            // The SDK spells these correctly; the wire keeps the vendor's "Notifactions".
+            (typeof(IResourceInteractionService), nameof(IResourceInteractionService.DisableRuntimeValueNotifications),
+                "disableRuntimeValueNotifactions", ["disableRuntimeValueNotifactions"]),
+            (typeof(IResourceInteractionService), nameof(IResourceInteractionService.DisableInitialValueNotifications),
+                "disableInitialValueNotifactions", ["disableInitialValueNotifactions"]),
         ];
 
         /// <summary>
@@ -168,13 +190,14 @@ namespace Ihc.Stubbing
             ("ControllerService", "getS0MeterValue", StubAnswerKind.Typed),
             ("ControllerService", "resetS0Values", StubAnswerKind.Typed),
             ("ControllerService", "setS0Consumption", StubAnswerKind.Typed),
+            ("ControllerService", "setS0FiscalYearStart", StubAnswerKind.Typed),
             ("ControllerService", "restore", StubAnswerKind.Typed),
             ("ConfigurationService", "getSystemInfo", StubAnswerKind.Typed),
             ("ConfigurationService", "getUserLog", StubAnswerKind.Typed),
             ("ConfigurationService", "clearUserLog", StubAnswerKind.Typed),
             ("ConfigurationService", "getWLanInterface", StubAnswerKind.Typed),
             ("ConfigurationService", "getWLanScan", StubAnswerKind.Typed),
-            ("ConfigurationService", "testSendMessage1", StubAnswerKind.Typed),
+            ("ConfigurationService", "testSendMessage", StubAnswerKind.Typed),
             ("ConfigurationService", "testSettingsNow", StubAnswerKind.Typed),
             ("ConfigurationService", "delayedReboot", StubAnswerKind.Typed),
             ("ConfigurationService", "getNetworkSettings", StubAnswerKind.Typed),

@@ -184,6 +184,29 @@ namespace Ihc.Tests
             Assert.That(rv!.ResourceID, Is.EqualTo(55));
             Assert.That(rv!.Value.ValueKind, Is.EqualTo(ResourceValue.ValueKind.INT));
             Assert.That(rv!.Value.IntValue, Is.EqualTo(99));
+            Assert.That((rv!.Value.IntMinimum, rv!.Value.IntMaximum), Is.EqualTo(((int?)null, (int?)null)), "no range stays no range");
+        }
+
+        /// <summary>The range an INT or DOUBLE value was read with is shown and travels back into the extracted
+        /// value, so a value read and written again from Lab keeps it.</summary>
+        [AvaloniaTest]
+        [CaptureScreenshotOnFailure]
+        public void SetValue_RestoresTheRangeOfAnIntAndADouble()
+        {
+            var ranged = new[]
+            {
+                new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.INT, IntValue = 40, IntMinimum = 0, IntMaximum = 100 },
+                new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.DOUBLE, DoubleValue = 21.5, DoubleMinimum = -40, DoubleMaximum = 85.5 },
+            };
+
+            foreach (var value in ranged)
+            {
+                var control = strategy.CreateControl(Field, "0");
+                strategy.SetValue(control, new ResourceValue { ResourceID = 55, Value = value }, Field);
+                var rv = strategy.ExtractValue(control, Field) as ResourceValue;
+
+                Assert.That(rv!.Value, Is.EqualTo(value), value.ValueKind.ToString());
+            }
         }
 
         [AvaloniaTest]

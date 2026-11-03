@@ -8,19 +8,24 @@ namespace Ihc.Stubbing
         public string Service => "TimeManagerService";
 
         internal Task<outputMessageName2> getCurrentLocalTimeAsync(inputMessageName2 request) =>
-            Task.FromResult(new outputMessageName2 { getCurrentLocalTime1 = WireDates.ToWire<WSDate>(scenario.Now) });
+            Task.FromResult(new outputMessageName2 { getCurrentLocalTime1 = WireDates.ToWire<WSDate>(scenario.Now, scenario.UtcOffset) });
 
         internal Task<outputMessageName3> getSettingsAsync(inputMessageName3 request) =>
             Task.FromResult(new outputMessageName3 { getSettings1 = SettingsToWire(scenario.Settings) });
 
-        /// <summary>Stores the settings and acknowledges with the 1 a controller answers for success.</summary>
+        /// <summary>Answers the scenario's result code, 0 for success by default, and stores the settings, the clock
+        /// they carry with them, only on 0.</summary>
         internal Task<outputMessageName4> setSettingsAsync(inputMessageName4 request)
         {
             TimeManagerSettings settings = SettingsFromWire(request.setSettings1
                 ?? throw new InvalidOperationException("a settings change carried no settings"));
             AnswerContext.RecordPayload(settings);
-            scenario.Settings = settings;
-            return Task.FromResult(new outputMessageName4 { setSettings2 = 1 });
+            int resultCode = scenario.SetSettingsResultCode;
+            if (resultCode == 0)
+            {
+                scenario.Settings = settings;
+            }
+            return Task.FromResult(new outputMessageName4 { setSettings2 = resultCode });
         }
 
         /// <summary>The scenario's outcome, whichever server was asked: the stub reaches no time server. The server
@@ -49,7 +54,7 @@ namespace Ihc.Stubbing
             gmtOffsetInHours = settings.GmtOffsetInHours,
             serverName = settings.ServerName,
             syncIntervalInHours = settings.SyncIntervalInHours,
-            timeAndDateInUTC = WireDates.ToWire<WSDate>(settings.TimeAndDateInUTC),
+            timeAndDateInUTC = WireDates.ToWire<WSDate>(settings.TimeAndDateInUTC, TimeSpan.Zero),
             online_calendar_update_online = settings.OnlineCalendarUpdateOnline,
             online_calendar_country = settings.OnlineCalendarCountry,
             online_calendar_valid_until = settings.OnlineCalendarValidUntil,
@@ -62,7 +67,7 @@ namespace Ihc.Stubbing
             GmtOffsetInHours = wire.gmtOffsetInHours,
             ServerName = wire.serverName,
             SyncIntervalInHours = wire.syncIntervalInHours,
-            TimeAndDateInUTC = WireDates.FromWire(wire.timeAndDateInUTC),
+            TimeAndDateInUTC = WireDates.FromWire(wire.timeAndDateInUTC, TimeSpan.Zero),
             OnlineCalendarUpdateOnline = wire.online_calendar_update_online,
             OnlineCalendarCountry = wire.online_calendar_country,
             OnlineCalendarValidUntil = wire.online_calendar_valid_until,

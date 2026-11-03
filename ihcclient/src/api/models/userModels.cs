@@ -21,8 +21,9 @@ namespace Ihc {
     public enum IhcUserGroup
     {
       /// <summary>
-      /// No group: what a reply without a group maps to. The controller has no such group, and the SDK refuses it on a
-      /// write.
+      /// No group: what a reply without a group maps to, and one with a group key the SDK does not know, which the
+      /// read's span names in an <c>UnrecognizedUserGroup</c> warning. The controller has no such group, and the SDK
+      /// refuses it on a write.
       /// </summary>
       None,
       
@@ -48,7 +49,6 @@ namespace Ihc {
       /// <summary>
       /// Account name, case-sensitive; updates and removals find the account by it, so it cannot be changed.
       /// </summary>
-      [StringLength(20, MinimumLength = 1, ErrorMessage = "Username length can't be more than 20.")]
       [Required(ErrorMessage = "Username is required")]
       public string? Username { get; init; }
 
@@ -57,45 +57,49 @@ namespace Ihc {
       /// <see cref="IUserManagerService.GetUsers"/> replaces it with <see cref="UserConstants.REDACTED_PASSWORD"/>
       /// unless asked to include it.
       /// </summary>
-      [StringLength(20, ErrorMessage = "Password length can't be more than 20.")]
+      /// <remarks>
+      /// The SDK refuses an empty or blank password on a write. That is the SDK's own policy, not a known controller
+      /// minimum: IHC Administrator lets an empty password through, and whether a controller stores one is not known.
+      /// </remarks>
       [Required(ErrorMessage = "Password is required")]
       [DeniedValues(UserConstants.REDACTED_PASSWORD, ErrorMessage = "Password cannot be set to reserved redacted value.")]
       [SensitiveData]
       public string? Password { get; init; }
 
       /// <summary>
-      /// Optional e-mail address of the account holder, free text for display only; <c>null</c> or empty when unset.
+      /// Optional e-mail address of the account holder, free text for display only; <c>null</c> when unset, which the
+      /// controller answers as a nil element.
       /// </summary>
-      [StringLength(25, ErrorMessage = "Email length can't be more than 25.")]
       public string? Email { get; init; }
 
       /// <summary>
       /// Optional first name of the account holder, free text for display only; <c>null</c> or empty when unset.
       /// </summary>
-      [StringLength(15, ErrorMessage = "Firstname length can't be more than 15.")]
       public string? Firstname { get; init; }
 
       /// <summary>
       /// Optional last name of the account holder, free text for display only; <c>null</c> or empty when unset.
       /// </summary>
-      [StringLength(15, ErrorMessage = "Lastname length can't be more than 15.")]
       public string? Lastname { get; init; }
 
       /// <summary>
-      /// Optional phone number of the account holder, free text for display only; <c>null</c> or empty when unset.
+      /// Optional phone number of the account holder, free text for display only; <c>null</c> when unset, which the
+      /// controller answers as a nil element.
       /// </summary>
-      [StringLength(15, ErrorMessage = "Phone length can't be more than 15.")]
       public string? Phone { get; init; }
 
       /// <summary>
       /// The account's group, which decides the client applications it may log in with; <see cref="IhcUserGroup.None"/>
-      /// when the reply carries none, which the SDK refuses on a write.
+      /// when the reply carries none or a group the SDK does not know, which the SDK refuses on a write.
       /// </summary>
       [AllowedValues(IhcUserGroup.Administrators, IhcUserGroup.Users, ErrorMessage = "Group must be either 'Administrators' or 'Users'.")]
+      // [Required] never fails on a non-nullable enum; it states the outbound contract, and [AllowedValues] above is
+      // what refuses None.
       [Required(ErrorMessage = "Group is required")]
       public IhcUserGroup Group { get; init; }
       /// <summary>
-      /// Project field of the account, of unknown purpose; it comes back <c>null</c> or empty.
+      /// Project field of the account, of unknown purpose; <c>null</c> when unset, which the controller answers as a nil
+      /// element.
       /// </summary>
       public string? Project { get; init; }
 

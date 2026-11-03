@@ -113,6 +113,15 @@ namespace Ihc.download_upload_example
                     }
                 }
             }
+            catch (ErrorWithCodeException ex) when (ex.ErrorCode == Errors.CONTROLLER_WRITE_UNCONFIRMED)
+            {
+                // Not a failure report: the settings went out and may have applied, so the remote state is unknown,
+                // as for the unconfirmed restart above.
+                Console.WriteLine($"The network settings were sent, but the controller did not confirm them: {ex.Message}");
+                Console.WriteLine(
+                    "Reconnect to the controller, at its new address if one was set, and GET the setup to see what was applied before storing again.");
+                exitCode = ExitFailed;
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"Failed operation:{ex.Message} : {ex.StackTrace}");

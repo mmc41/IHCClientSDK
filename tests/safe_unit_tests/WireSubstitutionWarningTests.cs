@@ -60,19 +60,24 @@ namespace Ihc.Tests
             });
         }
 
+        /// <summary>A user manager whose controller answers <c>getUsers</c> with <paramref name="users"/>.</summary>
+        private static UserManagerService UsersAnswering(params Ihc.Soap.Usermanager.WSUser?[] users)
+        {
+            var soap = A.Fake<Ihc.Soap.Usermanager.UserManagerService>();
+            A.CallTo(() => soap.getUsersAsync(A<Ihc.Soap.Usermanager.inputMessageName2>._))
+                .Returns(Task.FromResult(new Ihc.Soap.Usermanager.outputMessageName2(users!)));
+            return new UserManagerService(FakeSession.Over(), soap);
+        }
+
         /// <summary>The projection shape — two dates filled from one wire record.</summary>
         [Test]
         public async Task AbsentUserDates_KeepTheSentinelAndWarnOncePerField()
         {
-            var soap = A.Fake<Ihc.Soap.Usermanager.UserManagerService>();
-            A.CallTo(() => soap.getUsersAsync(A<Ihc.Soap.Usermanager.inputMessageName2>._))
-                .Returns(Task.FromResult(new Ihc.Soap.Usermanager.outputMessageName2(
-                [
-                    new Ihc.Soap.Usermanager.WSUser { username = "admin", createdDate = null, loginDate = null },
-                ])));
+            UserManagerService service = UsersAnswering(
+                new Ihc.Soap.Usermanager.WSUser { username = "admin", createdDate = null, loginDate = null });
             using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName);
 
-            IReadOnlySet<IhcUser> users = await new UserManagerService(FakeSession.Over(), soap).GetUsers();
+            IReadOnlySet<IhcUser> users = await service.GetUsers();
 
             IReadOnlyList<Dictionary<string, object?>> warnings = Warnings(capture.Span("UserManagerService.GetUsers"));
             Assert.Multiple(() =>
@@ -82,6 +87,31 @@ namespace Ihc.Tests
                 Assert.That(warnings.Where(w => (string?)w["type"] == "AbsentWireDate").Select(w => w["field"]),
                     Is.EquivalentTo(new[] { nameof(IhcUser.CreatedDate), nameof(IhcUser.LoginDate) }),
                     "one warning per field, so a partly-answered record is not reported as a wholly absent one");
+            });
+        }
+
+        /// <summary>
+        /// A user-group key the SDK does not know reads as <see cref="IhcUserGroup.None"/>, so the rest of the list
+        /// still maps, and the span names the key that was substituted.
+        /// </summary>
+        [Test]
+        public async Task AnUnknownUserGroup_ReadsAsNoneAndWarns()
+        {
+            UserManagerService service = UsersAnswering(
+                new Ihc.Soap.Usermanager.WSUser { username = "vvs", group = new Ihc.Soap.Usermanager.WSUserGroup { type = "gtext.plumbers" } },
+                new Ihc.Soap.Usermanager.WSUser { username = "admin", group = new Ihc.Soap.Usermanager.WSUserGroup { type = "text.usermanager.group_administrators" } });
+            using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName);
+
+            IReadOnlySet<IhcUser> users = await service.GetUsers();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(users.ToDictionary(user => user.Username!, user => user.Group), Is.EquivalentTo(new Dictionary<string, IhcUserGroup>
+                {
+                    ["vvs"] = IhcUserGroup.None,
+                    ["admin"] = IhcUserGroup.Administrators,
+                }));
+                Assert.That(Warning(capture, "UserManagerService.GetUsers", "UnrecognizedUserGroup")["group"], Is.EqualTo("gtext.plumbers"));
             });
         }
 
@@ -116,13 +146,52 @@ namespace Ihc.Tests
             using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName);
 
             TimeServerConnectionResult? result =
-                await new TimeManagerService(FakeSession.Over(), soap).GetTimeFromServer();
+                await new TimeManagerService(FakeSession.Over(), soap).GetTimeFromServer("dk.pool.ntp.org");
 
             Assert.Multiple(() =>
             {
                 Assert.That(result!.DateFromServer, Is.EqualTo(DateTimeOffset.MinValue));
                 Assert.That(Warning(capture, "TimeManagerService.GetTimeFromServer", "AbsentWireDate")["field"],
                     Is.EqualTo(nameof(TimeServerConnectionResult.DateFromServer)));
+            });
+        }
+
+        /// <summary>
+        /// The controller's local time is placed at the offset its UTC clock gives. With no usable UTC reading there
+        /// is no offset to take, so the documented +01:00 stands in for it — and the substitution is recorded,
+        /// because a caller cannot tell it from an offset the controller gave. A UTC clock further from the local one
+        /// than any zone is (here a day off) gives no usable offset either.
+        /// </summary>
+        [TestCase(false, null, TestName = "AnAbsentUtcClock_FallsBackToPlusOneAndWarns(settings without a clock)")]
+        [TestCase(true, null, TestName = "AnAbsentUtcClock_FallsBackToPlusOneAndWarns(no settings at all)")]
+        [TestCase(false, 13, TestName = "AnAbsentUtcClock_FallsBackToPlusOneAndWarns(a UTC clock a day off)")]
+        public async Task AnAbsentUtcClock_FallsBackToPlusOneAndWarns(bool noSettings, int? utcDay)
+        {
+            var soap = A.Fake<Ihc.Soap.Timemanager.TimeManagerService>();
+            A.CallTo(() => soap.getCurrentLocalTimeAsync(A<Ihc.Soap.Timemanager.inputMessageName2>._))
+                .Returns(Task.FromResult(new Ihc.Soap.Timemanager.outputMessageName2(new Ihc.Soap.Timemanager.WSDate
+                {
+                    year = 2025, monthWithJanuaryAsOne = 10, day = 14, hours = 12, minutes = 18, seconds = 49,
+                })));
+            A.CallTo(() => soap.getSettingsAsync(A<Ihc.Soap.Timemanager.inputMessageName3>._))
+                .Returns(Task.FromResult(new Ihc.Soap.Timemanager.outputMessageName3(noSettings
+                    ? null
+                    : new Ihc.Soap.Timemanager.WSTimeManagerSettings
+                    {
+                        serverName = "pool.ntp.org",
+                        timeAndDateInUTC = utcDay is int day
+                            ? new Ihc.Soap.Timemanager.WSDate { year = 2025, monthWithJanuaryAsOne = 10, day = day, hours = 10, minutes = 18, seconds = 48 }
+                            : null,
+                    })));
+            using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName);
+
+            DateTimeOffset local = await new TimeManagerService(FakeSession.Over(), soap).GetCurrentLocalTime();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(local, Is.EqualTo(new DateTimeOffset(2025, 10, 14, 12, 18, 49, TimeSpan.FromHours(1))));
+                Assert.That(Warning(capture, "TimeManagerService.GetCurrentLocalTime", "AssumedUtcOffset")["field"],
+                    Is.EqualTo(nameof(TimeManagerSettings.TimeAndDateInUTC)));
             });
         }
 
@@ -268,23 +337,56 @@ namespace Ihc.Tests
             });
         }
 
+        /// <summary>
+        /// An event package whose event list is the controller's empty-list form, one nil item, holds no event: the
+        /// nil item is skipped rather than dereferenced, and the package's own flags are read as sent.
+        /// </summary>
+        [Test]
+        public async Task AnEventListOfOneNilItem_ReadsAsNoEvents()
+        {
+            var soap = A.Fake<Ihc.Soap.Openapi.OpenAPIService>();
+            A.CallTo(() => soap.waitForEventsAsync(A<Ihc.Soap.Openapi.inputMessageName5>._))
+                .Returns(Task.FromResult(new Ihc.Soap.Openapi.outputMessageName5(new Ihc.Soap.Openapi.WSEventPackage
+                {
+                    resourceValueEvents = [null!],
+                    controllerExecutionRunning = true,
+                    subscriptionAmount = 2,
+                })));
+
+            EventPackage package = await new OpenAPIService(FakeSession.Over(), soap).WaitForEvents(15);
+
+            Assert.That((package.ResourceValueEvents.Length, package.ControllerExecutionRunning, package.SubscriptionAmount),
+                Is.EqualTo((0, true, 2)));
+        }
+
+        /// <summary>A DNS list with a nil item beside a server keeps the server, and the dropped item is counted, as
+        /// every other list the SDK reads through the shared mapping is.</summary>
+        [Test]
+        public async Task ANilDnsItem_IsSkipped_AndCounted()
+        {
+            var soap = A.Fake<Ihc.Soap.Configuration.ConfigurationService>();
+            A.CallTo(() => soap.getDNSServersAsync(A<Ihc.Soap.Configuration.inputMessageName7>._))
+                .Returns(Task.FromResult(new Ihc.Soap.Configuration.outputMessageName7(
+                    [new Ihc.Soap.Configuration.WSInetAddress { ipAddress = 0x08080808 }, null!])));
+            using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName);
+
+            DNSServers servers = await new ConfigurationService(FakeSession.Over(), soap).GetDNSServers();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(servers, Is.EqualTo(new DNSServers { PrimaryDNS = "8.8.8.8" }));
+                Assert.That(Warning(capture, "ConfigurationService.GetDNSServers", "DroppedWireEntries")["received"], Is.EqualTo(2));
+            });
+        }
+
         // ── W23-W24: entries dropped from a list ────────────────────────────────────────────────────
 
         [Test]
         public async Task DroppedLogEntries_AreCountedInTheWarning()
         {
-            var soap = A.Fake<Ihc.Soap.Messagecontrollog.MessageControlLogService>();
-            A.CallTo(() => soap.getEventsAsync(A<Ihc.Soap.Messagecontrollog.inputMessageName2>._))
-                .Returns(Task.FromResult(new Ihc.Soap.Messagecontrollog.outputMessageName2(
-                [
-                    new Ihc.Soap.Messagecontrollog.WSMessageControlLogEntry { controlType = "sms" },
-                    null,
-                    null,
-                ])));
             using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName);
 
-            IReadOnlyList<LogEventEntry> events =
-                await new MessageControlLogService(FakeSession.Over(), soap).GetEvents();
+            IReadOnlyList<LogEventEntry> events = await LogEventsAnswering(entries: 1, nils: 2);
 
             Dictionary<string, object?> warning =
                 Warning(capture, "MessageControlLogService.GetEvents", "DroppedWireEntries");
@@ -297,19 +399,49 @@ namespace Ihc.Tests
             });
         }
 
+        /// <summary>
+        /// A 3.3.44 controller answers every empty list as one nil item, so that exact shape is an empty list, not a
+        /// lost entry, and warns about nothing. Any other nil is unexplained by that convention -- no capture holds a
+        /// nil item beside another -- and is still counted: several nils, or a nil beside an entry.
+        /// </summary>
+        [TestCase(0, 1, false, TestName = "TheLoneNilItem_IsAnEmptyList_WithoutAWarning")]
+        [TestCase(0, 2, true, TestName = "TwoNilItems_ReadAsEmpty_WithAWarning")]
+        [TestCase(1, 1, true, TestName = "ANilItemBesideAnEntry_IsDropped_WithAWarning")]
+        public async Task OnlyTheControllersEmptyListShape_IsExemptFromTheDroppedEntriesWarning(int entries, int nils, bool warns)
+        {
+            using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName);
+
+            IReadOnlyList<LogEventEntry> events = await LogEventsAnswering(entries, nils);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(events, Has.Count.EqualTo(entries));
+                Assert.That(Warnings(capture.Span("MessageControlLogService.GetEvents")).Any(w => (string?)w["type"] == "DroppedWireEntries"),
+                    Is.EqualTo(warns));
+            });
+        }
+
+        /// <summary>The message-control log as a controller answering <paramref name="entries"/> readable entries
+        /// followed by <paramref name="nils"/> nil ones.</summary>
+        private static Task<IReadOnlyList<LogEventEntry>> LogEventsAnswering(int entries, int nils)
+        {
+            var soap = A.Fake<Ihc.Soap.Messagecontrollog.MessageControlLogService>();
+            A.CallTo(() => soap.getEventsAsync(A<Ihc.Soap.Messagecontrollog.inputMessageName2>._))
+                .Returns(Task.FromResult(new Ihc.Soap.Messagecontrollog.outputMessageName2(
+                [
+                    .. Enumerable.Repeat(new Ihc.Soap.Messagecontrollog.WSMessageControlLogEntry { controlType = "sms" }, entries),
+                    .. Enumerable.Repeat<Ihc.Soap.Messagecontrollog.WSMessageControlLogEntry?>(null, nils),
+                ])));
+            return new MessageControlLogService(FakeSession.Over(), soap).GetEvents();
+        }
+
         [Test]
         public async Task DroppedUserEntries_AreCountedInTheWarning()
         {
-            var soap = A.Fake<Ihc.Soap.Usermanager.UserManagerService>();
-            A.CallTo(() => soap.getUsersAsync(A<Ihc.Soap.Usermanager.inputMessageName2>._))
-                .Returns(Task.FromResult(new Ihc.Soap.Usermanager.outputMessageName2(
-                [
-                    new Ihc.Soap.Usermanager.WSUser { username = "admin" },
-                    null,
-                ])));
+            UserManagerService service = UsersAnswering(new Ihc.Soap.Usermanager.WSUser { username = "admin" }, null);
             using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName);
 
-            IReadOnlySet<IhcUser> users = await new UserManagerService(FakeSession.Over(), soap).GetUsers();
+            IReadOnlySet<IhcUser> users = await service.GetUsers();
 
             Dictionary<string, object?> warning = Warning(capture, "UserManagerService.GetUsers", "DroppedWireEntries");
             Assert.Multiple(() =>
@@ -324,20 +456,15 @@ namespace Ihc.Tests
         [Test]
         public async Task ACompleteUserList_WarnsAboutNothing()
         {
-            var soap = A.Fake<Ihc.Soap.Usermanager.UserManagerService>();
-            A.CallTo(() => soap.getUsersAsync(A<Ihc.Soap.Usermanager.inputMessageName2>._))
-                .Returns(Task.FromResult(new Ihc.Soap.Usermanager.outputMessageName2(
-                [
-                    new Ihc.Soap.Usermanager.WSUser
-                    {
-                        username = "admin",
-                        createdDate = new Ihc.Soap.Usermanager.WSDate { year = 2026, monthWithJanuaryAsOne = 1, day = 1 },
-                        loginDate = new Ihc.Soap.Usermanager.WSDate { year = 2026, monthWithJanuaryAsOne = 1, day = 2 },
-                    },
-                ])));
+            UserManagerService service = UsersAnswering(new Ihc.Soap.Usermanager.WSUser
+            {
+                username = "admin",
+                createdDate = new Ihc.Soap.Usermanager.WSDate { year = 2026, monthWithJanuaryAsOne = 1, day = 1 },
+                loginDate = new Ihc.Soap.Usermanager.WSDate { year = 2026, monthWithJanuaryAsOne = 1, day = 2 },
+            });
             using TelemetryCapture capture = TelemetryCapture.Listen(Telemetry.ActivitySourceName);
 
-            await new UserManagerService(FakeSession.Over(), soap).GetUsers();
+            await service.GetUsers();
 
             Assert.That(Warnings(capture.Span("UserManagerService.GetUsers")), Is.Empty);
         }

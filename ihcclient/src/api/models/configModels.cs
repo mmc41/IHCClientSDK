@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using Ihc.Soap.Authentication;
 using System.Text;
 using System.ComponentModel.DataAnnotations;
@@ -91,24 +92,31 @@ namespace Ihc {
     }
 
     /// <summary>
-    /// Text read from the controller's user log: the controller's own record of events, warnings and faults, not of
-    /// user input.
+    /// One read of the controller's user log, the controller's own record of events, warnings and faults, not of user
+    /// input: its lines and the cursor for the next read. Two reads are equal when their cursors and lines are.
     /// </summary>
     public record UserLogFileText {
         /// <summary>
-        /// Name the controller gives the returned text, which serves as the cursor for the next read.
+        /// Name the controller gives the returned text, which is the cursor to pass to the next read; <c>null</c> when
+        /// the reply carried no file.
         /// </summary>
         public string? FileName { get; init; }
 
         /// <summary>
-        /// The log text: one line per event, <c>yyyy.MM.dd HH:mm:ss</c>, a tab, the severity (such as <c>Fejl</c>),
-        /// a tab and the message, newest first. Time stamps follow the controller's local clock.
+        /// One entry per line, newest stored first, which is not time-stamp order once the controller's clock has gone
+        /// back. Each is a <c>yyyy.MM.dd HH:mm:ss</c> time stamp by the controller's clock, a tab, the severity (such as
+        /// <c>Fejl</c>), a tab and the message. The text ends in a line feed, so the last entry is empty.
         /// </summary>
-        public string? Content { get; init; }
+        public IReadOnlyList<string> Lines { get; init; } = [];
+
+        public virtual bool Equals(UserLogFileText? other) =>
+            other is not null && EqualityContract == other.EqualityContract && FileName == other.FileName && Lines.SequenceEqual(other.Lines);
+
+        public override int GetHashCode() => HashCode.Combine(FileName, Lines.Count);
 
         public override string ToString()
         {
-          return $"UserLogFileText(FileName={FileName}, Content=string[{Content?.Length ?? 0}])";
+          return $"UserLogFileText(FileName={FileName}, Lines=string[{Lines.Count}])";
         }
     }
 
@@ -175,10 +183,13 @@ namespace Ihc {
         public string? Ssid { get; init; }
 
         /// <summary>
-        /// Wireless network password/key. A WPA2-PSK passphrase is 8–63 characters (64 would be the raw hex PSK),
-        /// so the limit is 63 — anything shorter refuses passphrases a real access point hands out.
+        /// Wireless network password/key: at most 63 characters, as a WPA2-PSK passphrase of 8–63 characters or a WEP
+        /// key is, or exactly 64 hexadecimal digits, the raw WPA2 pre-shared key.
         /// </summary>
-        [StringLength(63, ErrorMessage = "Key length can't be more than 63.")]
+        /// <remarks>Whether a controller accepts the raw 64-digit form is not known: no capture holds a WiFi
+        /// settings exchange.</remarks>
+        [RegularExpression("^([\\s\\S]{0,63}|[0-9A-Fa-f]{64})$",
+            ErrorMessage = "Key must be at most 63 characters, or exactly 64 hexadecimal digits.")]
         [SensitiveData]
         public string? Key { get; init; }
 
@@ -466,41 +477,42 @@ namespace Ihc {
     /// The POP3 mailbox the controller polls for command mails (e-mail control), with the poll settings; which mails
     /// trigger which action is set per resource in IHC SceneDesign.
     /// </summary>
+    /// <remarks>A controller with no mailbox set answers the server, user name, password and mailbox address as nil
+    /// elements, which read as <c>null</c>.</remarks>
     public record EmailControlSettings {
         /// <summary>
-        /// POP3 server host name or IP address, despite the property name.
+        /// POP3 server host name or IP address. The wire calls it <c>serverIPAddress</c>; a saved admin-model file
+        /// keeps the key <c>ServerIpAddress</c> it had before the rename, so files of either age load.
         /// </summary>
-        [StringLength(20, ErrorMessage = "ServerIpAddress length can't be more than 20.")]
-        public string? ServerIpAddress { get; init; }
+        [System.Text.Json.Serialization.JsonPropertyName("ServerIpAddress")]
+        public string? ServerAddress { get; init; }
 
         /// <summary>
-        /// POP3 server TCP port, typically 110.
+        /// POP3 server TCP port, typically 110; 1 to 65535, as IHC Administrator requires.
         /// </summary>
-        [Range(0, 65535, ErrorMessage = "ServerPortNumber must be between 0 and 65535.")]
+        [Range(1, 65535, ErrorMessage = "ServerPortNumber must be between 1 and 65535.")]
         public int ServerPortNumber { get; init; }
 
         /// <summary>
-        /// POP3 username for authentication.
+        /// POP3 username for authentication, often the full mailbox address.
         /// </summary>
-        [StringLength(10, ErrorMessage = "Pop3Username length can't be more than 10.")]
         public string? Pop3Username { get; init; }
 
         /// <summary>
         /// POP3 password; the controller returns it in clear when the settings are read.
         /// </summary>
         [SensitiveData]
-        [StringLength(10, ErrorMessage = "Pop3Password length can't be more than 10.")]
         public string? Pop3Password { get; init; }
 
         /// <summary>
         /// Address of the polled mailbox, to which command mails are sent.
         /// </summary>
-        [StringLength(20, ErrorMessage = "EmailAddress length can't be more than 20.")]
         public string? EmailAddress { get; init; }
 
         /// <summary>
-        /// Seconds between mailbox polls.
+        /// Seconds between mailbox polls; not negative, as IHC Administrator requires.
         /// </summary>
+        [Range(0, int.MaxValue, ErrorMessage = "PollInterval must not be negative.")]
         public int PollInterval { get; init; }
 
         /// <summary>
@@ -528,20 +540,42 @@ namespace Ihc {
         /// <returns></returns>
         public string ToString(bool LogSensitiveData)
         {
-          return $"EmailControlSettings(ServerIpAddress={ServerIpAddress}, ServerPortNumber={ServerPortNumber}, Pop3Username={Pop3Username}, Pop3Password={(LogSensitiveData ? Pop3Password : UserConstants.REDACTED_PASSWORD)}, EmailAddress={EmailAddress}, PollInterval={PollInterval}, RemoveEmailsAfterUsage={RemoveEmailsAfterUsage}, Ssl={Ssl})";
+          return $"EmailControlSettings(ServerAddress={ServerAddress}, ServerPortNumber={ServerPortNumber}, Pop3Username={Pop3Username}, Pop3Password={(LogSensitiveData ? Pop3Password : UserConstants.REDACTED_PASSWORD)}, EmailAddress={EmailAddress}, PollInterval={PollInterval}, RemoveEmailsAfterUsage={RemoveEmailsAfterUsage}, Ssl={Ssl})";
+        }
+    }
+
+    /// <summary>
+    /// The outcome of testing e-mail control settings against their POP3 mailbox, from which IHC Administrator shows
+    /// one of four texts: success, or an authentication, network or invalid-settings failure.
+    /// </summary>
+    public record EmailControlConnectionStatus
+    {
+        /// <summary>The controller reached the mailbox and logged in.</summary>
+        public bool LastConnectionAttemptSucceeded { get; init; }
+
+        /// <summary>The mailbox refused the user name or password.</summary>
+        public bool AttemptFailedDueToAuthentication { get; init; }
+
+        /// <summary>The mail server could not be reached.</summary>
+        public bool AttemptFailedDueToNetworkProblems { get; init; }
+
+        /// <summary>The settings themselves could not be used.</summary>
+        public bool AttemptFailedDueToInvalidSettings { get; init; }
+
+        public override string ToString()
+        {
+            return $"EmailControlConnectionStatus(LastConnectionAttemptSucceeded={LastConnectionAttemptSucceeded}, AttemptFailedDueToAuthentication={AttemptFailedDueToAuthentication}, AttemptFailedDueToNetworkProblems={AttemptFailedDueToNetworkProblems}, AttemptFailedDueToInvalidSettings={AttemptFailedDueToInvalidSettings})";
         }
     }
 
     /// <summary>
     /// The SMTP account the controller sends all its mail through (notifications and IHC SceneDesign e-mail messages),
-    /// with the notification switches and recipient. Firmware 3.3.44 also has a switch for LED Dimmer error mails,
-    /// which this record does not carry, so the SDK neither reads nor sends it.
+    /// with the notification switches and recipient.
     /// </summary>
     public record SMTPSettings {
         /// <summary>
         /// SMTP server host name or IP address.
         /// </summary>
-        [StringLength(20, ErrorMessage = "Hostname length can't be more than 20.")]
         public string? Hostname { get; init; }
 
         /// <summary>
@@ -553,13 +587,11 @@ namespace Ihc {
         /// <summary>
         /// SMTP username for authentication.
         /// </summary>
-        [StringLength(20, ErrorMessage = "Username length can't be more than 20.")]
         public string? Username { get; init; }
 
         /// <summary>
         /// SMTP password; the controller returns it in clear when the settings are read.
         /// </summary>
-        [StringLength(20, ErrorMessage = "Password length can't be more than 20.")]
         [SensitiveData]
         public string? Password { get; init; }
 
@@ -576,8 +608,13 @@ namespace Ihc {
         /// <summary>
         /// Address the notification mails go to, for LED Dimmer errors as well as low battery.
         /// </summary>
-        [StringLength(20, ErrorMessage = "SendLowBatteryNotificationRecipient length can't be more than 20.")]
         public string? SendLowBatteryNotificationRecipient { get; init; }
+
+        /// <summary>
+        /// Send a mail when an LED Dimmer reports an error. A 3.3.44 controller's served WSDL declares the switch, last
+        /// in the settings, though the vendor WSDL the SDK was first generated from lacked it.
+        /// </summary>
+        public bool SendLEDDimmerErrorNotification { get; init; }
 
         /// <summary>
         /// This default ToString method should not be used! Use alternative with bool parameter.
@@ -594,7 +631,7 @@ namespace Ihc {
         /// <returns></returns>
         public string ToString(bool LogSensitiveData)
         {
-          return $"SMTPSettings(Hostname={Hostname}, Hostport={Hostport}, Username={Username}, Password={(LogSensitiveData ? Password : UserConstants.REDACTED_PASSWORD)}, Ssl={Ssl}, SendLowBatteryNotification={SendLowBatteryNotification}, SendLowBatteryNotificationRecipient={SendLowBatteryNotificationRecipient})";
+          return $"SMTPSettings(Hostname={Hostname}, Hostport={Hostport}, Username={Username}, Password={(LogSensitiveData ? Password : UserConstants.REDACTED_PASSWORD)}, Ssl={Ssl}, SendLowBatteryNotification={SendLowBatteryNotification}, SendLowBatteryNotificationRecipient={SendLowBatteryNotificationRecipient}, SendLEDDimmerErrorNotification={SendLEDDimmerErrorNotification})";
         }
     }
 
@@ -620,8 +657,9 @@ namespace Ihc {
     /// </summary>
     public record DNSServers {
         /// <summary>
-        /// Primary DNS server as a dotted-decimal IPv4 address. The SDK sends <c>null</c> or empty as no server, and
-        /// throws for a value that is not an IPv4 address.
+        /// Primary DNS server as a dotted-decimal IPv4 address: four groups of one to three digits 0-9, each 0-255,
+        /// every group read as decimal, so <c>010</c> is ten. The SDK sends <c>null</c> or empty as no server, and
+        /// throws for any other text, the short, hexadecimal and single-number forms included.
         /// </summary>
         [StringLength(15, ErrorMessage = "PrimaryDNS length can't be more than 15.")]
         public string? PrimaryDNS { get; init; }

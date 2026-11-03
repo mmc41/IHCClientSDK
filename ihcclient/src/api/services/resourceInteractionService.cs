@@ -1,6 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using System;
+using System.Globalization;
 using System.Linq;
 using Ihc.Soap.Resourceinteraction;
 using System.Collections.Generic;
@@ -20,7 +21,8 @@ namespace Ihc {
         /// <param name="resourceIds">Ids of resources subscribed with
         /// <see cref="EnableInitialValueNotifications"/>.</param>
         /// <returns>The controller's answer; <c>false</c> also when the reply carries no value.</returns>
-        public Task<bool> DisableInitialValueNotifactions(IReadOnlyList<int> resourceIds);
+        /// <remarks>The wire operation keeps the vendor's spelling, <c>disableInitialValueNotifactions</c>.</remarks>
+        public Task<bool> DisableInitialValueNotifications(IReadOnlyList<int> resourceIds);
 
         /// <summary>
         /// Ends the subscription to current-value changes of the given resources; it does not end a held poll.
@@ -29,7 +31,8 @@ namespace Ihc {
         /// <see cref="EnableRuntimeValueNotifications"/>.</param>
         /// <returns>The controller's answer; <c>true</c> does not confirm that the ids exist in its project.
         /// <c>false</c> also when the reply carries no value.</returns>
-        public Task<bool> DisableRuntimeValueNotifactions(IReadOnlyList<int> resourceIds);
+        /// <remarks>The wire operation keeps the vendor's spelling, <c>disableRuntimeValueNotifactions</c>.</remarks>
+        public Task<bool> DisableRuntimeValueNotifications(IReadOnlyList<int> resourceIds);
 
         /// <summary>
         /// Subscribes to initial-value changes of the given resources. The values come through
@@ -83,53 +86,55 @@ namespace Ihc {
         /// Reads a resource's initial value, which the controller loads into it at restart unless the resource keeps
         /// its value through a power cut.
         /// </summary>
-        /// <param name="initialValue">Id of the resource to read, not a value.</param>
+        /// <param name="resourceId">Id of the resource to read.</param>
         /// <exception cref="ErrorWithCodeException">The reply carries no value.</exception>
-        public Task<ResourceValue> GetInitialValue(int initialValue);
+        public Task<ResourceValue> GetInitialValue(int resourceId);
 
         /// <summary>
         /// Reads the initial values of several resources (see <see cref="GetInitialValue"/>).
         /// </summary>
-        /// <param name="initialValues">Ids of the resources to read.</param>
+        /// <param name="resourceIds">Ids of the resources to read.</param>
         /// <returns>The values; an entry the controller leaves empty is dropped, so match results by
         /// <see cref="ResourceValue.ResourceID"/>.</returns>
-        public Task<IReadOnlyList<ResourceValue>> GetInitialValues(IReadOnlyList<int> initialValues);
+        public Task<IReadOnlyList<ResourceValue>> GetInitialValues(IReadOnlyList<int> resourceIds);
 
         /// <summary>
         /// Reads the samples the controller has logged to its SD card for a resource, whose logging is set up in IHC
         /// Visual through a product with logging. The list is empty when nothing is logged.
         /// </summary>
         /// <param name="resourceId">Id of the logged resource.</param>
-        /// <remarks>Known defect: the controller sends each timestamp in milliseconds since 1970, but the SDK converts
-        /// it as seconds, so the call throws for any sample logged after early 1978.</remarks>
+        /// <remarks>The controller stamps each sample in milliseconds since 1970, read as UTC; that the epoch is UTC is
+        /// not verified against a controller.</remarks>
+        /// <exception cref="InvalidOperationException">A sample's stamp is outside the range a date can represent; the
+        /// message names the value.</exception>
         public Task<IReadOnlyList<LoggedData>> GetLoggedData(int resourceId);
 
         /// <summary>
         /// Gets a resource's type name, probably its element type in the .vis project file as in
         /// <see cref="ResourceValue.TypeString"/>, such as <c>resource_output</c>.
         /// </summary>
-        /// <param name="resourceID">Id of the resource.</param>
+        /// <param name="resourceId">Id of the resource.</param>
         /// <returns>The type name, or <c>null</c> when the reply carries none.</returns>
         // Null when the controller reports no type for the resource: the wire element is declared
         // nillable and the generated layer is oblivious, so a non-null return would be unfounded.
-        public Task<string?> GetResourceType(int resourceID);
+        public Task<string?> GetResourceType(int resourceId);
 
         /// <summary>
         /// Reads a resource's current (runtime) value, the one the program and the outputs act on now.
         /// </summary>
-        /// <param name="resourceID">Id of the resource to read.</param>
+        /// <param name="resourceId">Id of the resource to read.</param>
         /// <exception cref="ErrorWithCodeException">The reply carries no value.</exception>
-        public Task<ResourceValue> GetRuntimeValue(int resourceID);
+        public Task<ResourceValue> GetRuntimeValue(int resourceId);
 
         /// <summary>
         /// Reads the current (runtime) values of several resources; each value's
         /// <see cref="ResourceValue.TypeString"/> names the resource's project element type, such as
         /// <c>resource_output</c>.
         /// </summary>
-        /// <param name="resourceIDs">Ids of the resources to read.</param>
+        /// <param name="resourceIds">Ids of the resources to read.</param>
         /// <returns>The values; an entry the controller leaves empty is dropped, so match results by
         /// <see cref="ResourceValue.ResourceID"/>.</returns>
-        public Task<IReadOnlyList<ResourceValue>> GetRuntimeValues(IReadOnlyList<int> resourceIDs);
+        public Task<IReadOnlyList<ResourceValue>> GetRuntimeValues(IReadOnlyList<int> resourceIds);
 
         /// <summary>
         /// Writes one resource value, as <see cref="SetResourceValues"/> does for a batch.
@@ -137,6 +142,8 @@ namespace Ihc {
         /// <param name="v">The value to write: <see cref="ResourceValue.IsValueRuntime"/> <c>true</c> sets the
         /// current value, <c>false</c> the initial value.</param>
         /// <returns>The controller's answer; <c>false</c> also when the reply carries no value.</returns>
+        /// <exception cref="ArgumentException">The value cannot be written, as for
+        /// <see cref="SetResourceValues"/>; nothing is sent.</exception>
         public Task<bool> SetResourceValue(ResourceValue v);
 
         /// <summary>
@@ -148,35 +155,40 @@ namespace Ihc {
         /// be empty.</param>
         /// <returns><c>true</c> when the controller accepted the batch, also for values it already held; what a
         /// <c>false</c> answer means is not known. <c>false</c> also when the reply carries no value.</returns>
+        /// <exception cref="ArgumentException">A value cannot be written: it lacks the payload its
+        /// <see cref="ResourceValue.ValueKind"/> selects, is of kind <c>NONE</c>, holds a time the wire cannot carry,
+        /// or is one the vendor editors refuse -- resource id 0, a weekday outside 0-6, a scene dimmer percentage
+        /// outside 0-100, a ramp over 3,600,000 ms, or an INT or DOUBLE outside the range it carries. Nothing is
+        /// sent.</exception>
         public Task<bool> SetResourceValues(IReadOnlyList<ResourceValue> values);
 
         /// <summary>
         /// Lists a scene group's members, each with the member's resource id and two location texts, seen from the
         /// product and from the function block. The list is empty for a group without members.
         /// </summary>
-        /// <param name="sceneGroupResourceIdAndPositions">Id of the scene group, such as a function block's scene
+        /// <param name="sceneGroupResourceId">Id of the scene group, such as a function block's scene
         /// output (<c>resource_scene</c>).</param>
-        public Task<IReadOnlyList<SceneResourceIdAndLocation>> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions);
+        public Task<IReadOnlyList<SceneResourceIdAndLocation>> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceId);
 
         /// <summary>
         /// Reads the two location texts of one scene membership, seen from the product and from the function block.
         /// </summary>
-        /// <param name="scenePositionsForSceneValueResource">Id of a scene member element, such as a
+        /// <param name="sceneMemberResourceId">Id of a scene member element, such as a
         /// <c>scene_dimmer</c>; not the scene's or the output's id.</param>
         /// <returns>The texts, or <c>null</c> when the reply carries none.</returns>
-        public Task<SceneResourceIdAndLocation?> GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource);
+        public Task<SceneResourceIdAndLocation?> GetScenePositionsForSceneValueResource(int sceneMemberResourceId);
 
         /// <summary>
         /// Long-polls for changes of the subscribed resources: the controller holds the call until one changes or
-        /// <paramref name="timeout_seconds"/> runs out. A new subscription ends a held poll, or makes the next one
+        /// <paramref name="holdSeconds"/> runs out. A new subscription ends a held poll, or makes the next one
         /// return at once, with the newly subscribed resources' values. <see cref="GetResourceValueChanges"/> runs
         /// this loop for you.
         /// </summary>
-        /// <param name="timeout_seconds">Longest time, in seconds, the controller holds the call (default: 15).</param>
+        /// <param name="holdSeconds">Longest time, in seconds, the controller holds the call (default: 15).</param>
         /// <returns>The changes since the last poll, current values with <see cref="ResourceValue.IsValueRuntime"/>
         /// <c>true</c> and initial values with <c>false</c>, each with an empty <see cref="ResourceValue.TypeString"/>;
         /// an empty list when the hold ran out.</returns>
-        public Task<IReadOnlyList<ResourceValue>> WaitForResourceValueChanges(int timeout_seconds = 15);
+        public Task<IReadOnlyList<ResourceValue>> WaitForResourceValueChanges(int holdSeconds = 15);
 
         /// <summary>
         /// Streams value changes: subscribes <paramref name="resourceIds"/> with
@@ -188,9 +200,13 @@ namespace Ihc {
         /// <param name="resourceIds">Ids of the resources to monitor.</param>
         /// <param name="cancellationToken">Stops the stream; it is checked between polls, so a held poll runs to its
         /// end first.</param>
-        /// <param name="timeout_between_waits_in_seconds">Longest time, in seconds, the controller holds each poll
+        /// <param name="holdSeconds">Longest time, in seconds, the controller holds each poll
         /// (default: 15).</param>
-        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(IReadOnlyList<int> resourceIds, CancellationToken cancellationToken = default, int timeout_between_waits_in_seconds = 15);
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was cancelled during the
+        /// short rest between polls or the pause after a failed one: the enumeration then throws. Cancelled while a
+        /// poll is held, the stream yields that poll's changes and ends quietly. Either way the subscription is
+        /// ended.</exception>
+        public IAsyncEnumerable<ResourceValue> GetResourceValueChanges(IReadOnlyList<int> resourceIds, CancellationToken cancellationToken = default, int holdSeconds = 15);
     }
 
     /// <summary>
@@ -358,9 +374,9 @@ namespace Ihc {
             this.impl = impl;
         }
 
-        public async Task<bool> DisableInitialValueNotifactions(IReadOnlyList<int> resourceIds)
+        public async Task<bool> DisableInitialValueNotifications(IReadOnlyList<int> resourceIds)
         {
-            using (var activity = StartActivity(nameof(DisableInitialValueNotifactions)))
+            using (var activity = StartActivity(nameof(DisableInitialValueNotifications)))
             {
                 try
                 {
@@ -380,9 +396,9 @@ namespace Ihc {
             }
         }
 
-        public async Task<bool> DisableRuntimeValueNotifactions(IReadOnlyList<int> resourceIds)
+        public async Task<bool> DisableRuntimeValueNotifications(IReadOnlyList<int> resourceIds)
         {
-            using (var activity = StartActivity(nameof(DisableRuntimeValueNotifactions)))
+            using (var activity = StartActivity(nameof(DisableRuntimeValueNotifications)))
             {
                 try
                 {
@@ -546,19 +562,19 @@ namespace Ihc {
             }
         }
 
-        public async Task<ResourceValue> GetInitialValue(int initialValue)
+        public async Task<ResourceValue> GetInitialValue(int resourceId)
         {
             using (var activity = StartActivity(nameof(GetInitialValue)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(initialValue), initialValue));
+                    activity?.SetParameters((nameof(resourceId), resourceId));
 
-                    var resp = await impl.getInitialValueAsync(new inputMessageName15() { getInitialValue1 = initialValue }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var resp = await impl.getInitialValueAsync(new inputMessageName15() { getInitialValue1 = resourceId }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var result = ResourceValueEnvelopeMapper.ToDomain(resp.getInitialValue2);
                     if (result == null)
                     {
-                        throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "IHC controller returned null resource value for resource ID " + initialValue);
+                        throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "IHC controller returned null resource value for resource ID " + resourceId);
                     }
 
                     activity?.SetReturnValue(result);
@@ -572,15 +588,15 @@ namespace Ihc {
             }
         }
 
-        public async Task<IReadOnlyList<ResourceValue>> GetInitialValues(IReadOnlyList<int> initialValues)
+        public async Task<IReadOnlyList<ResourceValue>> GetInitialValues(IReadOnlyList<int> resourceIds)
         {
             using (var activity = StartActivity(nameof(GetInitialValues)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(initialValues), initialValues));
+                    activity?.SetParameters((nameof(resourceIds), resourceIds));
 
-                    var resp = await impl.getInitialValuesAsync(new inputMessageName17() { getInitialValues1 = initialValues.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var resp = await impl.getInitialValuesAsync(new inputMessageName17() { getInitialValues1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = WireList.MapPresent(resp.getInitialValues2, ResourceValueEnvelopeMapper.ToDomain, activity, nameof(GetInitialValues));
 
                     activity?.SetReturnValue(retv);
@@ -640,6 +656,22 @@ namespace Ihc {
             }
         }
 
+        // A logged sample's stamp is milliseconds since 1970: ServiceView reads it with Calendar.setTimeInMillis, and
+        // the vendor's export shows 2015 samples, which as seconds would be past any date. Read as UTC, which no
+        // capture has confirmed.
+        private static DateTimeOffset loggedTimestamp(long millisecondsSince1970)
+        {
+            try
+            {
+                return DateTimeOffset.FromUnixTimeMilliseconds(millisecondsSince1970);
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                throw new InvalidOperationException(
+                    $"The controller logged a sample at {millisecondsSince1970.ToString(CultureInfo.InvariantCulture)} milliseconds since 1970, which no date can represent.", ex);
+            }
+        }
+
         public async Task<IReadOnlyList<LoggedData>> GetLoggedData(int resourceId)
         {
             using (var activity = StartActivity(nameof(GetLoggedData)))
@@ -649,7 +681,7 @@ namespace Ihc {
                     activity?.SetParameters((nameof(resourceId), resourceId));
 
                     var resp = await impl.getLoggedDataAsync(new inputMessageName20() { getLoggedData1 = resourceId }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var retv = WireList.MapPresent(resp.getLoggedData2, (l) => new LoggedData() { Value = l.value, Id = l.id, Timestamp = DateTimeOffset.FromUnixTimeSeconds(l.timestamp) }, activity, nameof(GetLoggedData));
+                    var retv = WireList.MapPresent(resp.getLoggedData2, (l) => new LoggedData() { Value = l.value, Id = l.id, Timestamp = loggedTimestamp(l.timestamp) }, activity, nameof(GetLoggedData));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -662,15 +694,15 @@ namespace Ihc {
             }
         }
 
-        public async Task<string?> GetResourceType(int resourceID)
+        public async Task<string?> GetResourceType(int resourceId)
         {
             using (var activity = StartActivity(nameof(GetResourceType)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(resourceID), resourceID));
+                    activity?.SetParameters((nameof(resourceId), resourceId));
 
-                    var resp = await impl.getResourceTypeAsync(new inputMessageName19() { getResourceType1 = resourceID }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var resp = await impl.getResourceTypeAsync(new inputMessageName19() { getResourceType1 = resourceId }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = resp.getResourceType2;
 
                     activity?.SetReturnValue(retv);
@@ -684,19 +716,19 @@ namespace Ihc {
             }
         }
 
-        public async Task<ResourceValue> GetRuntimeValue(int resourceID)
+        public async Task<ResourceValue> GetRuntimeValue(int resourceId)
         {
             using (var activity = StartActivity(nameof(GetRuntimeValue)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(resourceID), resourceID));
+                    activity?.SetParameters((nameof(resourceId), resourceId));
 
-                    var resp = await impl.getRuntimeValueAsync(new inputMessageName14() { getRuntimeValue1 = resourceID }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var resp = await impl.getRuntimeValueAsync(new inputMessageName14() { getRuntimeValue1 = resourceId }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var result = ResourceValueEnvelopeMapper.ToDomain(resp.getRuntimeValue2);
                     if (result == null)
                     {
-                        throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "IHC controller returned null runtime value for resource ID " + resourceID);
+                        throw new ErrorWithCodeException(Errors.FEATURE_NOT_IMPLEMENTED, "IHC controller returned null runtime value for resource ID " + resourceId);
                     }
 
                     activity?.SetReturnValue(result);
@@ -710,15 +742,15 @@ namespace Ihc {
             }
         }
 
-        public async Task<IReadOnlyList<ResourceValue>> GetRuntimeValues(IReadOnlyList<int> resourceIDs)
+        public async Task<IReadOnlyList<ResourceValue>> GetRuntimeValues(IReadOnlyList<int> resourceIds)
         {
             using (var activity = StartActivity(nameof(GetRuntimeValues)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(resourceIDs), resourceIDs));
+                    activity?.SetParameters((nameof(resourceIds), resourceIds));
 
-                    var resp = await impl.getRuntimeValuesAsync(new inputMessageName16() { getRuntimeValues1 = resourceIDs.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var resp = await impl.getRuntimeValuesAsync(new inputMessageName16() { getRuntimeValues1 = resourceIds.ToArray() }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = WireList.MapPresent(resp.getRuntimeValues2, ResourceValueEnvelopeMapper.ToDomain, activity, nameof(GetRuntimeValues));
 
                     activity?.SetReturnValue(retv);
@@ -732,15 +764,15 @@ namespace Ihc {
             }
         }
 
-        public async Task<IReadOnlyList<SceneResourceIdAndLocation>> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions)
+        public async Task<IReadOnlyList<SceneResourceIdAndLocation>> GetSceneGroupResourceIdAndPositions(int sceneGroupResourceId)
         {
             using (var activity = StartActivity(nameof(GetSceneGroupResourceIdAndPositions)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(sceneGroupResourceIdAndPositions), sceneGroupResourceIdAndPositions));
+                    activity?.SetParameters((nameof(sceneGroupResourceId), sceneGroupResourceId));
 
-                    var resp = await impl.getSceneGroupResourceIdAndPositionsAsync(new inputMessageName1(sceneGroupResourceIdAndPositions) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var resp = await impl.getSceneGroupResourceIdAndPositionsAsync(new inputMessageName1(sceneGroupResourceId) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = WireList.MapPresent(resp.getSceneGroupResourceIdAndPositions2, mapSceneResourceIdAndLocation, activity, nameof(GetSceneGroupResourceIdAndPositions));
 
                     activity?.SetReturnValue(retv);
@@ -754,15 +786,15 @@ namespace Ihc {
             }
         }
 
-        public async Task<SceneResourceIdAndLocation?> GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource)
+        public async Task<SceneResourceIdAndLocation?> GetScenePositionsForSceneValueResource(int sceneMemberResourceId)
         {
             using (var activity = StartActivity(nameof(GetScenePositionsForSceneValueResource)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(scenePositionsForSceneValueResource), scenePositionsForSceneValueResource));
+                    activity?.SetParameters((nameof(sceneMemberResourceId), sceneMemberResourceId));
 
-                    var resp = await impl.getScenePositionsForSceneValueResourceAsync(new inputMessageName2(scenePositionsForSceneValueResource) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var resp = await impl.getScenePositionsForSceneValueResourceAsync(new inputMessageName2(sceneMemberResourceId) {}).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = mapSceneResourceIdAndLocation(resp.getScenePositionsForSceneValueResource2);
 
                     activity?.SetReturnValue(retv);
@@ -776,15 +808,15 @@ namespace Ihc {
             }
         }
 
-        public async Task<IReadOnlyList<ResourceValue>> WaitForResourceValueChanges(int timeout_seconds = 15)
+        public async Task<IReadOnlyList<ResourceValue>> WaitForResourceValueChanges(int holdSeconds = 15)
         {
             using (var activity = StartActivity(nameof(WaitForResourceValueChanges)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(timeout_seconds), timeout_seconds));
+                    activity?.SetParameters((nameof(holdSeconds), holdSeconds));
 
-                    var resp = await impl.waitForResourceValueChangesAsync(new inputMessageName8() { waitForResourceValueChanges1 = timeout_seconds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var resp = await impl.waitForResourceValueChangesAsync(new inputMessageName8() { waitForResourceValueChanges1 = holdSeconds }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = WireList.MapPresent(resp.waitForResourceValueChanges2, ResourceValueEnvelopeMapper.ToDomain, activity, nameof(WaitForResourceValueChanges));
 
                     activity?.SetReturnValue(retv);
@@ -801,7 +833,7 @@ namespace Ihc {
         public async IAsyncEnumerable<ResourceValue> GetResourceValueChanges(
             IReadOnlyList<int> resourceIds,
             [EnumeratorCancellation] CancellationToken cancellationToken = default,
-            int timeout_between_waits_in_seconds = 15)
+            int holdSeconds = 15)
         {
             // Deliberately an async iterator, so the activity spans the iteration rather than the call that
             // creates it. Returning the stream from a plain method would stop and export the activity before the
@@ -811,17 +843,17 @@ namespace Ihc {
             activity?.SetParameters(
                 (nameof(resourceIds), resourceIds),
                 (nameof(cancellationToken), cancellationToken),
-                (nameof(timeout_between_waits_in_seconds), timeout_between_waits_in_seconds));
+                (nameof(holdSeconds), holdSeconds));
 
             IAsyncEnumerable<ResourceValue> changes = ServiceHelpers.GetResourceValueChanges(
                 activity,
                 resourceIds,
                 EnableRuntimeValueNotifications,
                 WaitForResourceValueChanges,
-                DisableRuntimeValueNotifactions,
+                DisableRuntimeValueNotifications,
                 settings.AsyncContinueOnCapturedContext,
                 cancellationToken,
-                timeout_between_waits_in_seconds);
+                holdSeconds);
 
             await foreach (var change in changes.ConfigureAwait(settings.AsyncContinueOnCapturedContext))
             {

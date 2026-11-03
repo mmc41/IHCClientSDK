@@ -25,7 +25,7 @@ namespace Ihc.Tests
             internal WSTimeManagerSettings? Sent { get; set; }
         }
 
-        private static Harness NewHarness(int? setSettingsAnswer = 1)
+        private static Harness NewHarness(int? setSettingsAnswer = 0)
         {
             var soap = A.Fake<Ihc.Soap.Timemanager.TimeManagerService>();
             var harness = new Harness { Service = new TimeManagerService(FakeSession.Over(), soap), Soap = soap };
@@ -38,9 +38,9 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// One fully populated settings block. The timestamp is stated at the WS offset because the
-        /// wire carries a bare clock face and no offset of its own - see
-        /// <see cref="SetSettings_ConvertsTheTimestampToTheWireOffsetBeforeWritingItsClockFace"/>.
+        /// One fully populated settings block. The timestamp is stated in UTC because the wire carries a bare
+        /// clock face, and in <c>timeAndDateInUTC</c> that face is the controller's UTC clock - see
+        /// <see cref="SetSettings_WritesTheInstantsUtcClockFace"/>.
         /// </summary>
         private static TimeManagerSettings Configured() => new()
         {
@@ -49,7 +49,7 @@ namespace Ihc.Tests
             GmtOffsetInHours = 1,
             ServerName = "dk.pool.ntp.org",
             SyncIntervalInHours = 24,
-            TimeAndDateInUTC = new DateTimeOffset(2026, 3, 4, 9, 30, 15, DateHelper.GetWSTimeOffset()),
+            TimeAndDateInUTC = new DateTimeOffset(2026, 3, 4, 9, 30, 15, TimeSpan.Zero),
             OnlineCalendarUpdateOnline = true,
             OnlineCalendarCountry = "DK",
             OnlineCalendarValidUntil = 2030
@@ -84,6 +84,43 @@ namespace Ihc.Tests
         </soapenv:Envelope>
         """;
 
+        /// <summary>
+        /// IHC Administrator offers offsets from -12 to +14 only, and with synchronisation on it requires an interval
+        /// of at least one hour and a server to synchronise with; the SDK refuses the same before sending.
+        /// </summary>
+        [TestCase(-13, true, 24, "dk.pool.ntp.org", "GmtOffsetInHours")]
+        [TestCase(15, true, 24, "dk.pool.ntp.org", "GmtOffsetInHours")]
+        [TestCase(1, true, 0, "dk.pool.ntp.org", "SyncIntervalInHours")]
+        [TestCase(1, true, 24, " ", "ServerName")]
+        [TestCase(1, true, 24, null, "ServerName")]
+        public void SetSettings_RefusesWhatTheAdministratorRefuses_AndSendsNothing(int offset, bool sync, int interval, string? server, string named)
+        {
+            Harness h = NewHarness();
+
+            Assert.That(async () => await h.Service.SetSettings(Configured() with
+                {
+                    GmtOffsetInHours = offset, SynchroniseTimeAgainstServer = sync, SyncIntervalInHours = interval, ServerName = server,
+                }),
+                Throws.ArgumentException.With.Message.Contains(named));
+            Assert.That(h.Sent, Is.Null);
+        }
+
+        /// <summary>With synchronisation off the interval and server are kept but not used, so neither is
+        /// required; the offset's ends are allowed.</summary>
+        [TestCase(-12, 0, null)]
+        [TestCase(14, 0, "")]
+        public async Task SetSettings_WithSyncOff_NeedsNoIntervalOrServer(int offset, int interval, string? server)
+        {
+            Harness h = NewHarness();
+
+            await h.Service.SetSettings(Configured() with
+            {
+                GmtOffsetInHours = offset, SynchroniseTimeAgainstServer = false, SyncIntervalInHours = interval, ServerName = server,
+            });
+
+            Assert.That(h.Sent, Is.Not.Null);
+        }
+
         [Test]
         public async Task SetSettings_SerializesTheSettingsVerbatimOnTheWire()
         {
@@ -115,55 +152,89 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// Unlike the user mapping, this one converts to the WS offset BEFORE writing the clock face -
-        /// so a timestamp stated anywhere else still reaches the controller as the same instant.
+        /// <c>timeAndDateInUTC</c> is the controller's clock in UTC: IHC Visual sent its pickers' time less one hour
+        /// from a UTC+1 PC. So an instant stated at any offset is written as its UTC clock face - here 00:30 on
+        /// 5 March at +02:00 is 22:30 on 4 March, the day before.
         /// </summary>
         [Test]
-        public async Task SetSettings_ConvertsTheTimestampToTheWireOffsetBeforeWritingItsClockFace()
+        public async Task SetSettings_WritesTheInstantsUtcClockFace()
         {
             Harness h = NewHarness();
-            var utcNoon = new DateTimeOffset(2026, 3, 4, 12, 0, 0, TimeSpan.Zero);
+            var halfPastMidnightAtPlusTwo = new DateTimeOffset(2026, 3, 5, 0, 30, 0, TimeSpan.FromHours(2));
 
-            await h.Service.SetSettings(Configured() with { TimeAndDateInUTC = utcNoon });
+            await h.Service.SetSettings(Configured() with { TimeAndDateInUTC = halfPastMidnightAtPlusTwo });
 
             WSDate written = h.Sent!.timeAndDateInUTC;
-            DateTimeOffset atWireOffset = utcNoon.ToOffset(DateHelper.GetWSTimeOffset());
-            Assert.Multiple(() =>
-            {
-                Assert.That(written.hours, Is.EqualTo(atWireOffset.Hour));
-                Assert.That(written.minutes, Is.EqualTo(atWireOffset.Minute));
-                Assert.That(written.day, Is.EqualTo(atWireOffset.Day));
-                Assert.That(written.monthWithJanuaryAsOne, Is.EqualTo(atWireOffset.Month));
-                Assert.That(written.year, Is.EqualTo(atWireOffset.Year));
-            });
+            Assert.That((written.year, written.monthWithJanuaryAsOne, written.day, written.hours, written.minutes, written.seconds),
+                Is.EqualTo((2026, 3, 4, 22, 30, 0)));
         }
 
         /// <summary>
-        /// The controller acknowledges a settings write with an int, and only 1 means it took. Anything
-        /// else - a different number, or no answer at all - must report false rather than leaving the
-        /// caller believing the building's clock was changed.
+        /// The read side of the same field: a <c>timeAndDateInUTC</c> clock face is a UTC instant, offset 0, so it
+        /// equals the <c>realtimeclock</c> the controller reports with a <c>Z</c>. The face is synthetic, in the shape
+        /// a getSettings reply carries.
         /// </summary>
-        [TestCase(1, true)]
-        [TestCase(0, false)]
-        [TestCase(-1, false)]
-        [TestCase(null, false)]
-        public async Task SetSettings_ReportsSuccessOnlyForTheControllersAcknowledgement(int? answer, bool expected)
+        [Test]
+        public async Task GetSettings_ReadsTheUtcClockFaceAtOffsetZero()
+        {
+            Harness h = NewHarness();
+            A.CallTo(() => h.Soap.getSettingsAsync(A<inputMessageName3>._))
+                .Returns(Task.FromResult(new outputMessageName3(new WSTimeManagerSettings
+                {
+                    serverName = "1.schneider.pool.ntp.org",
+                    timeAndDateInUTC = new WSDate { year = 2025, monthWithJanuaryAsOne = 10, day = 14, hours = 10, minutes = 18, seconds = 48 },
+                })));
+
+            DateTimeOffset read = (await h.Service.GetSettings())!.TimeAndDateInUTC;
+
+            Assert.That(read, Is.EqualTo(new DateTimeOffset(2025, 10, 14, 10, 18, 48, TimeSpan.Zero)));
+            Assert.That(read.Offset, Is.EqualTo(TimeSpan.Zero));
+        }
+
+        /// <summary>
+        /// The controller answers a settings write with a result code, and only 0 means it took: the vendor names
+        /// them RESULT_OK = 0, TIMESETTING_FAILED = 1 and CALENDAR_NOT_AVAILABLE = 2, and both IHC Administrator and
+        /// IHC Visual report success on 0 alone. A refusal must read false rather than leave the caller believing the
+        /// building's clock was changed.
+        /// </summary>
+        [TestCase(0, true)]
+        [TestCase(1, false)]
+        [TestCase(2, false)]
+        public async Task SetSettings_ReportsSuccessOnlyForResultCodeZero(int answer, bool expected)
         {
             Harness h = NewHarness(answer);
 
             Assert.That(await h.Service.SetSettings(Configured()), Is.EqualTo(expected));
         }
 
-        /// <summary>A server name past what the controller accepts must not be written at all.</summary>
+        /// <summary>
+        /// A reply with no result code is not a refusal: the settings were sent, and the answer did not say what
+        /// became of them. Folded to <c>false</c> it would read as a declined write, so it throws instead.
+        /// </summary>
         [Test]
-        public void SetSettings_WithAnOverlongServerName_IsRefusedBeforeItReachesTheController()
+        public void SetSettings_WithNoResultCode_ThrowsRatherThanReportingADeclinedWrite()
+        {
+            Harness h = NewHarness(null);
+
+            Assert.That(async () => await h.Service.SetSettings(Configured()),
+                Throws.InvalidOperationException.With.Message.Contains("unknown"));
+            Assert.That(h.Sent, Is.Not.Null, "the settings were sent before the reply was read");
+        }
+
+        /// <summary>
+        /// A captured controller stores <c>1.schneider.pool.ntp.org</c>, 24 characters, and the vendor's help names the
+        /// 24-character <c>0.schneider.pool.ntp.org</c> as the default; the WSDL declares the name an unrestricted
+        /// string, and the Administrator's 20 columns are only its field's width. So settings read from such a
+        /// controller write back as they are, the name sent whole.
+        /// </summary>
+        [Test]
+        public async Task SetSettings_WithTheCapturedControllersServerName_SendsItWhole()
         {
             Harness h = NewHarness();
 
-            Assert.CatchAsync(async () => await h.Service.SetSettings(
-                Configured() with { ServerName = new string('x', 21) }));
+            Assert.That(await h.Service.SetSettings(Configured() with { ServerName = "1.schneider.pool.ntp.org" }), Is.True);
 
-            Assert.That(h.Sent, Is.Null);
+            Assert.That(h.Sent!.serverName, Is.EqualTo("1.schneider.pool.ntp.org"));
         }
 
         [Test]
@@ -178,24 +249,50 @@ namespace Ihc.Tests
 
         // ---------------------------------------------------------------- the readings
 
-        [Test]
-        public async Task GetCurrentLocalTime_ReadsTheControllersClockAtTheWireOffset()
+        /// <summary>
+        /// The controller's local clock carries no offset, and a fixed one is wrong for part of the year, so the
+        /// offset is the controller's own: its local clock face less its UTC clock face, read in the same call and
+        /// rounded to the nearest 15 minutes, which absorbs the second or so between the two reads.
+        /// </summary>
+        /// <remarks>
+        /// The first case holds captured clock faces: a controller set to GMT+1 with summer time read 10:18:48 on its
+        /// UTC clock and 12:18:49 on its local clock a second later, in October, so UTC+2; the date is synthetic. The
+        /// others are synthetic: winter at UTC+1, and a half-hour zone.
+        /// </remarks>
+        [TestCase(12, 18, 49, 10, 18, 48, 120, TestName = "GetCurrentLocalTime_InSummerTime_IsAtPlusTwo_TheCapturedCase")]
+        [TestCase(9, 30, 15, 8, 30, 14, 60, TestName = "GetCurrentLocalTime_InWinter_IsAtPlusOne")]
+        [TestCase(15, 48, 49, 10, 18, 48, 330, TestName = "GetCurrentLocalTime_InAHalfHourZone_IsRoundedToTheQuarterHour")]
+        public async Task GetCurrentLocalTime_TakesTheControllersCurrentOffsetFromItsUtcClock(
+            int localHours, int localMinutes, int localSeconds, int utcHours, int utcMinutes, int utcSeconds, int offsetMinutes)
         {
             Harness h = NewHarness();
-            A.CallTo(() => h.Soap.getCurrentLocalTimeAsync(A<inputMessageName2>._))
-                .Returns(Task.FromResult(new outputMessageName2(new WSDate
-                {
-                    year = 2026, monthWithJanuaryAsOne = 3, day = 4, hours = 9, minutes = 30, seconds = 15
-                })));
+            AnswerLocalTime(h, new WSDate { year = 2025, monthWithJanuaryAsOne = 10, day = 14, hours = localHours, minutes = localMinutes, seconds = localSeconds });
+            AnswerUtcClock(h, new WSDate { year = 2025, monthWithJanuaryAsOne = 10, day = 14, hours = utcHours, minutes = utcMinutes, seconds = utcSeconds });
+
+            DateTimeOffset local = await h.Service.GetCurrentLocalTime();
+
+            Assert.That(local.Offset, Is.EqualTo(TimeSpan.FromMinutes(offsetMinutes)));
+            Assert.That((local.Year, local.Month, local.Day, local.Hour, local.Minute, local.Second),
+                Is.EqualTo((2025, 10, 14, localHours, localMinutes, localSeconds)), "the local clock face is kept");
+        }
+
+        /// <summary>The two clocks can stand on either side of midnight, and the offset is still their difference.</summary>
+        [Test]
+        public async Task GetCurrentLocalTime_AcrossMidnight_StillTakesTheOffsetOfTheTwoClocks()
+        {
+            Harness h = NewHarness();
+            AnswerLocalTime(h, new WSDate { year = 2026, monthWithJanuaryAsOne = 1, day = 1, hours = 0, minutes = 30, seconds = 0 });
+            AnswerUtcClock(h, new WSDate { year = 2025, monthWithJanuaryAsOne = 12, day = 31, hours = 23, minutes = 30, seconds = 0 });
 
             Assert.That(await h.Service.GetCurrentLocalTime(),
-                Is.EqualTo(new DateTimeOffset(2026, 3, 4, 9, 30, 15, DateHelper.GetWSTimeOffset())));
+                Is.EqualTo(new DateTimeOffset(2026, 1, 1, 0, 30, 0, TimeSpan.FromHours(1))));
         }
 
         /// <summary>
         /// A clock the controller did not report is not a clock at midnight year one - but that is what
         /// the caller gets, so the value is pinned rather than left to be discovered by whoever renders
-        /// it. <see cref="DateTimeOffset.MinValue"/> is the SDK's "no reading" throughout.
+        /// it. <see cref="DateTimeOffset.MinValue"/> is the SDK's "no reading" throughout. With no local clock
+        /// there is nothing to place at an offset, so the UTC clock is not read.
         /// </summary>
         [Test]
         public async Task GetCurrentLocalTime_WithNoAnswer_IsTheNoReadingValue()
@@ -205,7 +302,16 @@ namespace Ihc.Tests
                 .Returns(Task.FromResult(new outputMessageName2(null)));
 
             Assert.That(await h.Service.GetCurrentLocalTime(), Is.EqualTo(DateTimeOffset.MinValue));
+            A.CallTo(() => h.Soap.getSettingsAsync(A<inputMessageName3>._)).MustNotHaveHappened();
         }
+
+        private static void AnswerLocalTime(Harness h, WSDate local) =>
+            A.CallTo(() => h.Soap.getCurrentLocalTimeAsync(A<inputMessageName2>._))
+                .Returns(Task.FromResult(new outputMessageName2(local)));
+
+        private static void AnswerUtcClock(Harness h, WSDate? utc) =>
+            A.CallTo(() => h.Soap.getSettingsAsync(A<inputMessageName3>._))
+                .Returns(Task.FromResult(new outputMessageName3(new WSTimeManagerSettings { serverName = "pool.ntp.org", timeAndDateInUTC = utc })));
 
         [TestCase(90_000L, 90_000d)]
         [TestCase(0L, 0d)]
@@ -246,7 +352,7 @@ namespace Ihc.Tests
                     connectionFailedDueToOtherErrors = false
                 })));
 
-            TimeServerConnectionResult? result = await h.Service.GetTimeFromServer();
+            TimeServerConnectionResult? result = await h.Service.GetTimeFromServer("dk.pool.ntp.org");
 
             Assert.Multiple(() =>
             {
@@ -273,7 +379,7 @@ namespace Ihc.Tests
                     connectionFailedDueToUnknownHost = true
                 })));
 
-            TimeServerConnectionResult? result = await h.Service.GetTimeFromServer();
+            TimeServerConnectionResult? result = await h.Service.GetTimeFromServer("dk.pool.ntp.org");
 
             Assert.Multiple(() =>
             {
@@ -290,7 +396,39 @@ namespace Ihc.Tests
             A.CallTo(() => h.Soap.getTimeFromServerAsync(A<inputMessageName1>._))
                 .Returns(Task.FromResult(new outputMessageName1(null)));
 
-            Assert.That(await h.Service.GetTimeFromServer(), Is.Null);
+            Assert.That(await h.Service.GetTimeFromServer("dk.pool.ntp.org"), Is.Null);
+        }
+
+        /// <summary>
+        /// The operation's one part is the server to test, a host name or dotted IPv4 address with no scheme or port:
+        /// IHC Administrator sends its unsaved time server there, captured as <c>1.schneider.pool.ntp.org</c>.
+        /// </summary>
+        [Test]
+        public async Task GetTimeFromServer_SendsTheServerToTest()
+        {
+            Harness h = NewHarness();
+            inputMessageName1? sent = null;
+            A.CallTo(() => h.Soap.getTimeFromServerAsync(A<inputMessageName1>._))
+                .Invokes((inputMessageName1 request) => sent = request)
+                .Returns(Task.FromResult(new outputMessageName1(null)));
+
+            await h.Service.GetTimeFromServer("1.schneider.pool.ntp.org");
+
+            Assert.That(SoapRequestText.Normalized(SoapRequestText.Of(sent!)),
+                Does.Contain("<utcs:getTimeFromServer1>1.schneider.pool.ntp.org</utcs:getTimeFromServer1>"));
+        }
+
+        /// <summary>A test of no server is refused before anything is sent: what a controller does with none is not
+        /// known.</summary>
+        [TestCase(null, typeof(ArgumentNullException))]
+        [TestCase("", typeof(ArgumentException))]
+        [TestCase("   ", typeof(ArgumentException))]
+        public void GetTimeFromServer_WithNoServer_IsRefusedBeforeSending(string? serverName, Type refusal)
+        {
+            Harness h = NewHarness();
+
+            Assert.That(async () => await h.Service.GetTimeFromServer(serverName!), Throws.TypeOf(refusal));
+            A.CallTo(() => h.Soap.getTimeFromServerAsync(A<inputMessageName1>._)).MustNotHaveHappened();
         }
     }
 }

@@ -51,6 +51,36 @@ namespace Ihc.Tests
                 "every member of the answer survives the SDK's read");
         }
 
+        /// <summary>
+        /// A 3.3.44 controller answers every empty list as one nil <c>arrayItem</c> -- 113 times across seven
+        /// operations in its proxy logs -- so the stub writes an empty list so too. A list of integers is the
+        /// exception: its item is not nillable, and the controller says "none" there with a lone <c>-1</c>, which the
+        /// stub keeps as its scenario holds it.
+        /// </summary>
+        [Test]
+        public async Task AnEmptyList_IsWrittenAsOneNilArrayItem_AndAnIntegerListAsItIs()
+        {
+            var stub = new ControllerStub();
+            stub.Configuration.DNSServers = new DNSServers();
+
+            string dns = (await stub.HandleAsync(StubExchanges.For("ConfigurationService", "getDNSServers"), CancellationToken.None)).Body;
+            string lowBattery = (await stub.HandleAsync(StubExchanges.For("AirlinkManagementService", "getDevicesRunningOutOfBattery"), CancellationToken.None)).Body;
+            stub.Airlink.LowBattery = [];
+            string noIntegers = (await stub.HandleAsync(StubExchanges.For("AirlinkManagementService", "getDevicesRunningOutOfBattery"), CancellationToken.None)).Body;
+
+            System.Xml.Linq.XNamespace utcs = "utcs";
+            System.Xml.Linq.XNamespace xsi = "http://www.w3.org/2001/XMLSchema-instance";
+            System.Xml.Linq.XElement[] dnsItems = [.. System.Xml.Linq.XDocument.Parse(dns).Descendants(utcs + "arrayItem")];
+            Assert.That(dnsItems, Has.Length.EqualTo(1));
+            Assert.That((string?)dnsItems[0].Attribute(xsi + "nil"), Is.EqualTo("true"));
+            // The integer list's items are in the http://java.lang namespace, so they are found by local name.
+            Assert.That(System.Xml.Linq.XDocument.Parse(lowBattery).Descendants().Where(item => item.Name.LocalName == "arrayItem").Select(item => item.Value),
+                Is.EqualTo(new[] { "-1" }));
+            Assert.That(System.Xml.Linq.XDocument.Parse(noIntegers).Descendants().Where(item => item.Name.LocalName == "arrayItem"), Is.Empty,
+                "an integer list has no nil item");
+            Assert.That(stub.Unmodelled, Is.Empty);
+        }
+
         /// <summary>The two <c>testSendMessage</c> overloads declare one WSDL action between them; each is still
         /// answered as its own operation, because the dispatcher keys on the wire action the SDK posts.</summary>
         [Test]

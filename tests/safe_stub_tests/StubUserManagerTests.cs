@@ -112,5 +112,35 @@ namespace Ihc.Tests
             Assert.That(await sdk.UserManager.GetUsers(), Is.EquivalentTo(new[] { Kitchen }));
             Assert.That(() => stub.UserManager.Users = default(ImmutableArray<IhcUser>), Throws.ArgumentException);
         }
+
+        /// <summary>
+        /// A real controller answers an unset e-mail, phone and project nil, with a line break inside each element,
+        /// although its schema does not declare them nillable. The reply here has that captured shape, with a
+        /// synthetic account; through the whole SDK the three read as null, so a read-modify-write sends no line
+        /// break back.
+        /// </summary>
+        [Test]
+        public async Task AUserWithNilStrings_ReadsThemAsNull()
+        {
+            const string reply =
+                "<SOAP-ENV:Envelope xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\">" +
+                "<SOAP-ENV:Body><ns1:getUsers1 xmlns:ns1=\"utcs\"><ns1:arrayItem xsi:type=\"ns1:WSUser\">" +
+                "<ns1:username xsi:type=\"xsd:string\">installer</ns1:username>" +
+                "<ns1:email xsi:type=\"xsd:string\" xsi:nil=\"true\">\n</ns1:email>" +
+                "<ns1:firstname xsi:type=\"xsd:string\">Ida</ns1:firstname>" +
+                "<ns1:lastname xsi:type=\"xsd:string\">Installatør</ns1:lastname>" +
+                "<ns1:phone xsi:type=\"xsd:string\" xsi:nil=\"true\">\n</ns1:phone>" +
+                "<ns1:group xsi:type=\"ns1:WSUserGroup\"><ns1:type xsi:type=\"xsd:string\">text.usermanager.group_administrators</ns1:type></ns1:group>" +
+                "<ns1:project xsi:type=\"xsd:string\" xsi:nil=\"true\">\n</ns1:project>" +
+                "</ns1:arrayItem></ns1:getUsers1></SOAP-ENV:Body></SOAP-ENV:Envelope>";
+            var stub = new ControllerStub();
+            stub.OverrideRaw("UserManagerService", "getUsers", (_, _) => Task.FromResult(new ControllerStubResponse(200, reply)));
+            using var sdk = StubbedSdk.Start(stub);
+
+            IhcUser user = (await sdk.UserManager.GetUsers()).Single();
+
+            Assert.That((user.Email, user.Phone, user.Project), Is.EqualTo(((string?)null, (string?)null, (string?)null)));
+            Assert.That((user.Username, user.Firstname, user.Lastname), Is.EqualTo(("installer", "Ida", "Installatør")));
+        }
     }
 }

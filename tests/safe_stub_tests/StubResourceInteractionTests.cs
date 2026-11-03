@@ -26,6 +26,9 @@ namespace Ihc.Tests
             yield return Kind(new UnionValue { ValueKind = ValueKind.DATE, DateValue = new DateTimeOffset(2024, 2, 29, 0, 0, 0, TimeSpan.FromHours(1)) });
             yield return Kind(new UnionValue { ValueKind = ValueKind.INT, IntValue = -123456 });
             yield return Kind(new UnionValue { ValueKind = ValueKind.DOUBLE, DoubleValue = 21.75 });
+            // With the range a controller sends, which travels with the value both ways.
+            yield return Kind(new UnionValue { ValueKind = ValueKind.INT, IntValue = 40, IntMinimum = 0, IntMaximum = 100 }, "INT with range");
+            yield return Kind(new UnionValue { ValueKind = ValueKind.DOUBLE, DoubleValue = 21.75, DoubleMinimum = -40, DoubleMaximum = 85.5 }, "DOUBLE with range");
             yield return Kind(new UnionValue
             {
                 ValueKind = ValueKind.ENUM,
@@ -40,9 +43,9 @@ namespace Ihc.Tests
             yield return Kind(new UnionValue { ValueKind = ValueKind.SceneShutter, ShutterPositionIsUp = true, ShutterDelayTime = 6 });
         }
 
-        private static TestCaseData Kind(UnionValue value) =>
+        private static TestCaseData Kind(UnionValue value, string? name = null) =>
             new TestCaseData(new ResourceValue { ResourceID = Id, IsValueRuntime = true, TypeString = "resource_test", Value = value })
-                .SetArgDisplayNames(value.ValueKind.ToString());
+                .SetArgDisplayNames(name ?? value.ValueKind.ToString());
 
         [TestCaseSource(nameof(EveryWritableKind))]
         public async Task AValueOfEveryKind_SetThroughTheWrapper_ReadsBack(ResourceValue value)
@@ -99,7 +102,8 @@ namespace Ihc.Tests
         [Test]
         public async Task DatalineInputs_LoggedData_AndScenePositions_RoundTripThroughTheRealWrapper()
         {
-            var logged = new LoggedData { Id = 7, Value = "21.5", Timestamp = new DateTimeOffset(2024, 5, 6, 7, 8, 9, TimeSpan.Zero) };
+            // Millisecond precision: the controller stamps a sample in milliseconds since 1970.
+            var logged = new LoggedData { Id = 7, Value = "21.5", Timestamp = new DateTimeOffset(2024, 5, 6, 7, 8, 9, 456, TimeSpan.Zero) };
             var position = new SceneResourceIdAndLocation { SceneResourceId = 80206, ScenePositionSeenFromProduct = "Stue/Lys", ScenePositionSeenFromFunctionBlock = "Blok 1" };
             var input = new DatalineResource { DatalineNumber = 64, ResourceID = Id };
             var stub = new ControllerStub();
@@ -139,8 +143,8 @@ namespace Ihc.Tests
 
             Assert.That(runtime.Select(value => (value.ResourceID, value.Value.BoolValue, value.IsValueRuntime)), Is.EqualTo(new[] { (Id, (bool?)true, true) }));
             Assert.That(initial.Select(value => (value.ResourceID, value.Value.BoolValue, value.IsValueRuntime)), Is.EqualTo(new[] { (Id, (bool?)true, false) }));
-            Assert.That(await sdk.Resources.DisableRuntimeValueNotifactions([Id]), Is.True);
-            Assert.That(await sdk.Resources.DisableInitialValueNotifactions([Id]), Is.True);
+            Assert.That(await sdk.Resources.DisableRuntimeValueNotifications([Id]), Is.True);
+            Assert.That(await sdk.Resources.DisableInitialValueNotifications([Id]), Is.True);
         }
 
         [Test]

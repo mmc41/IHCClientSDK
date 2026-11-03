@@ -183,13 +183,13 @@ namespace Ihc.Tests
             var stub = new ControllerStub();
 
             await stub.HandleAsync(StubExchanges.For(Controller, GetState, "session=1"), CancellationToken.None);
-            await stub.HandleAsync(StubExchanges.For("ConfigurationService", "testSendMessage"), CancellationToken.None);
+            await stub.HandleAsync(StubExchanges.For("ConfigurationService", "testSendMessage1"), CancellationToken.None);
 
             Assert.That(stub.Journal.All, Is.EqualTo(new[]
             {
                 new StubCall(1, Controller, GetState, nameof(IControllerService), nameof(IControllerService.GetControllerState),
                     StubOutcome.Typed, null, "session=1", null),
-                new StubCall(2, "ConfigurationService", "testSendMessage", null, null, StubOutcome.Shape, null, null, null),
+                new StubCall(2, "ConfigurationService", "testSendMessage1", null, null, StubOutcome.Shape, null, null, null),
             }));
         }
 

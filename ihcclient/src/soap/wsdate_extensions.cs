@@ -80,8 +80,10 @@ namespace Ihc.Soap.Openapi
 
 namespace Ihc.Soap.Timemanager {
     public partial class WSDate : object {
-        public DateTimeOffset ToDateTimeOffset() {
-            return DateHelper.CreateDateTimeOffset(year, monthWithJanuaryAsOne, day, hours, minutes, seconds,  DateHelper.GetWSTimeOffset());
+        public DateTimeOffset ToDateTimeOffset() => ToDateTimeOffset(DateHelper.GetWSTimeOffset());
+
+        internal DateTimeOffset ToDateTimeOffset(TimeSpan offset) {
+            return DateHelper.CreateDateTimeOffset(year, monthWithJanuaryAsOne, day, hours, minutes, seconds, offset);
         }
     }
 }

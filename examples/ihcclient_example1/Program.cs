@@ -45,7 +45,7 @@ namespace Ihc.example
                 var outputValue = await resourceInteractionService.GetRuntimeValue(boolOutput1);
                 string outputStat = BoolOf(outputValue, boolOutput1) ? "ON" : "OFF";
                 Console.WriteLine($"Resource with ID {boolOutput1} was {outputStat}");
-                var reverseValue = ResourceValue.ToogleBool(outputValue);
+                var reverseValue = ResourceValue.ToggleBool(outputValue);
                 var toggledOutput = await resourceInteractionService.SetResourceValue(reverseValue);
                 outputStat = toggledOutput ? "ON" : "OFF";
                 Console.WriteLine($"Resource with ID {boolOutput1} is now {outputStat}");

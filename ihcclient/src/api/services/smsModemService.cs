@@ -19,6 +19,9 @@ namespace Ihc
         /// <see cref="SmsModemSettings.ForceStandAloneMode"/> cuts the controller off from the modem.
         /// </summary>
         /// <param name="settings">The complete SMS modem settings to store.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="settings"/> is <c>null</c>; nothing is sent.</exception>
+        /// <exception cref="ArgumentException"><see cref="SmsModemSettings.RecipientSlots"/> is set but is not 30
+        /// characters, each <c>0</c> or <c>1</c>; nothing is sent.</exception>
         Task SetSmsModemSettings(SmsModemSettings settings);
 
         /// <summary>
@@ -108,7 +111,7 @@ namespace Ihc
             {
                 PowerupMessage = ws.m_powerupMessage,
                 PowerdownMessage = ws.m_powerdownMessage,
-                PowerdownNumber = ws.m_powerdownNumber,
+                RecipientSlots = ws.m_powerdownNumber,
                 RelaySMS = ws.m_relaySMS,
                 ForceStandAloneMode = ws.m_forceStandAloneMode,
                 SendLowBatteryNotification = ws.m_sendLowBatteryNotification,
@@ -123,7 +126,7 @@ namespace Ihc
             {
                 m_powerupMessage = settings.PowerupMessage,
                 m_powerdownMessage = settings.PowerdownMessage,
-                m_powerdownNumber = settings.PowerdownNumber,
+                m_powerdownNumber = settings.RecipientSlots,
                 m_relaySMS = settings.RelaySMS,
                 m_forceStandAloneMode = settings.ForceStandAloneMode,
                 m_sendLowBatteryNotification = settings.SendLowBatteryNotification,
@@ -171,6 +174,8 @@ namespace Ihc
                 try
                 {
                     activity?.SetParameters((nameof(settings), settings));
+
+                    ValidationHelper.ValidateDataAnnotations(settings, nameof(settings));
 
                     var wsSettings = MapSettings(settings);
                     await impl.setSMSModemSettingsAsync(new inputMessageName1 { setSMSModemSettings1 = wsSettings }).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);

@@ -33,7 +33,7 @@ namespace Ihc.Tests
           Assert.That(orgOutput.Value.BoolValue, Is.Not.Null);
           Assert.That(orgOutput.ResourceID, Is.EqualTo(Setup.boolOutput1));
 
-          var toggledOutput = await resourceInteractionService.SetResourceValue(ResourceValue.ToogleBool(orgOutput));
+          var toggledOutput = await resourceInteractionService.SetResourceValue(ResourceValue.ToggleBool(orgOutput));
           Assert.That(toggledOutput, Is.True);
 
           var newOutput = await resourceInteractionService.GetRuntimeValue(Setup.boolOutput1);
@@ -67,7 +67,7 @@ namespace Ihc.Tests
                 if (resourceValueChanges++==0) { // Initial value
                     // 1st time we get an output change it is just the initial value
                     // we than introduce a new value expecting to get a new change. 
-                    await resourceInteractionService.SetResourceValue(ResourceValue.ToogleBool(r));                    
+                    await resourceInteractionService.SetResourceValue(ResourceValue.ToggleBool(r));                    
                 } else { // Change.
                     cts.Cancel(); // We can stop now.
                 }

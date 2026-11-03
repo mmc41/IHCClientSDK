@@ -1,5 +1,8 @@
 namespace Ihc.Stubbing
 {
+    /// <summary>The five period flags an S0 reset carries, in wire order, as the journal records them.</summary>
+    public sealed record S0ResetFlags(bool Hour, bool Day, bool Week, bool Month, bool Year);
+
     /// <summary>
     /// The controller's state and its project. Entering project change mode moves the state to
     /// <see cref="ControllerState.Initialize"/> and leaving it moves it back to <see cref="ControllerState.Ready"/>,
@@ -13,9 +16,18 @@ namespace Ihc.Stubbing
         /// the gate covers across a whole read-modify-write.</summary>
         private ProjectFile? _project = DefaultScenario.Project;
 
-        /// <summary>How many segments the current segmented upload has stored; any other way of replacing the
+        /// <summary>The stored project's download slices, for the project and size they were cut for.</summary>
+        private (ProjectFile Project, int Size, byte[][] Slices)? _slices;
+
+        /// <summary>How many segments the current segmented upload has received; any other way of replacing the
         /// project ends that upload.</summary>
         private int _segmentsStored;
+
+        /// <summary>The current upload's slices joined so far, the segment count its first slice announced, and the
+        /// name it arrived under.</summary>
+        private readonly List<byte> _upload = [];
+        private int _uploadCount;
+        private string _uploadName = "";
 
         internal StubController(Lock gate)
         {
@@ -61,7 +73,8 @@ namespace Ihc.Stubbing
             set => Gated.Write(_gate, ref field, value);
         } = new() { Size = 479690752, Free = 468685824 };
 
-        /// <summary>The S0 meter reading. Resetting the S0 values sets it back to zero.</summary>
+        /// <summary>The S0 meter reading. Resetting the S0 values sets it back to zero whichever period flags the reset
+        /// carries, a stand-in: what a controller resets per flag is not known.</summary>
         public float S0MeterValue
         {
             get => Gated.Read(_gate, ref field);
@@ -75,6 +88,14 @@ namespace Ihc.Stubbing
             set => Gated.Write(_gate, ref field, value);
         }
 
+        /// <summary>The start of the S0 fiscal year last set, read as a controller reads the two parts: the day of the
+        /// month first, the month second, as sent (the vendor client sends both 0-based); <c>null</c> until set.</summary>
+        public (sbyte Day, sbyte Month)? S0FiscalYearStart
+        {
+            get => Gated.Read(_gate, ref field);
+            set => Gated.Write(_gate, ref field, value);
+        }
+
         /// <summary>What a restore answers. Nothing on record shows what a real controller's restore returns, so the
         /// default is zero, the same as an unset number.</summary>
         public int RestoreResult
@@ -83,8 +104,11 @@ namespace Ihc.Stubbing
             set => Gated.Write(_gate, ref field, value);
         }
 
-        /// <summary>The size, in characters, of each segment of the segmented view of <see cref="Project"/>. A
-        /// project's characters are its ISO-8859-1 bytes, so this is also its size in bytes.</summary>
+        /// <summary>
+        /// The size, in bytes of gzip data, of each segment a download serves: the project's gzip stream is cut into
+        /// slices of this size, the last one shorter. A 3.3.44 controller answers 7,500. An upload's segments are
+        /// whatever the caller sends.
+        /// </summary>
         public int SegmentationSize
         {
             get => Gated.Read(_gate, ref field);
@@ -93,7 +117,7 @@ namespace Ihc.Stubbing
                 ArgumentOutOfRangeException.ThrowIfNegativeOrZero(value);
                 Gated.Write(_gate, ref field, value);
             }
-        } = 8192;
+        } = 7500;
 
         /// <summary>What a project-info query answers while a project is stored.</summary>
         public ProjectInfo ProjectInfo
@@ -138,57 +162,85 @@ namespace Ihc.Stubbing
             }
         }
 
-        /// <summary>How many segments the stored project splits into: at least one, so an empty project still has
-        /// a segment to download; none while no project is stored.</summary>
+        /// <summary>How many segments a download of the stored project takes: its gzip stream's size over
+        /// <see cref="SegmentationSize"/>, rounded up, as a controller counts them; none while no project is stored.
+        /// A gzip stream is never empty, so a stored project always has a segment.</summary>
         internal int NumberOfSegments()
         {
             lock (_gate)
             {
-                return _project is null ? 0 : Math.Max(1, (_project.Data.Length + SegmentationSize - 1) / SegmentationSize);
+                return StoredSlices().Length;
             }
         }
 
-        /// <summary>Segment <paramref name="index"/> of the stored project, or null when there is no such segment.</summary>
-        internal ProjectFile? Segment(int index)
+        /// <summary>Segment <paramref name="index"/> of a download: that slice of the stored project's gzip stream,
+        /// raw, so only the first starts with the gzip header; null when there is no such segment.</summary>
+        internal byte[]? Segment(int index)
         {
             lock (_gate)
             {
-                if (_project is null || index < 0 || index >= NumberOfSegments())
-                {
-                    return null;
-                }
-                int start = index * SegmentationSize;
-                return _project with { Data = _project.Data.Substring(start, Math.Min(SegmentationSize, _project.Data.Length - start)) };
+                return StoredSlices().ElementAtOrDefault(index);
             }
+        }
+
+        /// <summary>The stored project's gzip stream cut at <see cref="SegmentationSize"/>, the last slice shorter;
+        /// none while no project is stored. Cut once per project and size, so every slice of a download comes from
+        /// the same stream. Called under the gate.</summary>
+        private byte[][] StoredSlices()
+        {
+            if (_project is null)
+            {
+                return [];
+            }
+            if (_slices is not { } cut || !ReferenceEquals(cut.Project, _project) || cut.Size != SegmentationSize)
+            {
+                _slices = cut = (_project, SegmentationSize, [.. ProjectGzip.Of(_project).Chunk(SegmentationSize)]);
+            }
+            return cut.Slices;
         }
 
         /// <summary>
-        /// Stores segment <paramref name="index"/> of an upload. Index 0 starts a new upload and replaces the stored
-        /// project at once; the next index appends; any other index changes nothing and answers false. A segment
-        /// carries no total and no last flag, so the stored project is always the segments received so far. While
-        /// stores are declined every segment is, as a whole store would be.
+        /// Receives slice <paramref name="index"/> of an upload of <paramref name="segmentCount"/> slices of one gzip
+        /// stream of the project. Index 0 starts a new upload; the next index, with the same count, appends; anything
+        /// else changes nothing and answers false. The project is replaced only when the last slice arrives and the
+        /// joined slices decompress, the way a controller unpacks an upload; joined slices that do not answer false
+        /// to the last one and leave the project as it was. While stores are declined every slice is, as a whole store
+        /// would be.
         /// </summary>
-        internal bool StoreSegment(ProjectFile segment, int index)
+        internal bool StoreSegment(byte[] slice, string filename, int index, int segmentCount)
         {
             lock (_gate)
             {
-                if (!StoreProjectAccepted)
+                if (!StoreProjectAccepted || segmentCount < 1 || index < 0 || index >= segmentCount)
                 {
                     return false;
                 }
                 if (index == 0)
                 {
-                    _project = segment;
-                    _segmentsStored = 1;
-                    return true;
+                    _upload.Clear();
+                    _uploadCount = segmentCount;
+                    _uploadName = filename;
                 }
-                if (_project is null || index != _segmentsStored)
+                else if (index != _segmentsStored || segmentCount != _uploadCount)
                 {
                     return false;
                 }
-                _project = _project with { Data = _project.Data + segment.Data };
-                _segmentsStored++;
-                return true;
+                _upload.AddRange(slice);
+                _segmentsStored = index + 1;
+                if (_segmentsStored < segmentCount)
+                {
+                    return true;
+                }
+                _segmentsStored = 0;
+                try
+                {
+                    _project = ProjectGzip.ToProject(_uploadName, [.. _upload]);
+                    return true;
+                }
+                catch (InvalidDataException)
+                {
+                    return false;
+                }
             }
         }
     }

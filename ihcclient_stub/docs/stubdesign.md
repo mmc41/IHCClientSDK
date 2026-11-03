@@ -51,7 +51,7 @@ Two kinds of failure sit outside this chain. Cancellation passes through unchang
 
 | Suite | How it reaches the stub | What it covers |
 |---|---|---|
-| `safe_stub_tests` | In-process `Register`, and loopback `RegisterLoopbackAsync` | Routing and refusals in `Client.Post`, the latch, what the switch replaces and keeps, and stub fidelity through the real SDK: the password rule, segments and operation completeness. Also the stub host, run as a process from a clean copy. |
+| `safe_stub_tests` | In-process `Register`, and loopback `RegisterLoopbackAsync` | Routing and refusals in `Client.Post`, the latch, what the switch replaces and keeps, and stub fidelity through the real SDK: the password rule, segments (a download's slices of one gzip stream join and decode to the stored project), empty lists written as one nil `arrayItem`, and operation completeness. Also the stub host, run as a process from a clean copy. |
 | `safe_unit_tests` | Loopback, through the switch of each utility it starts | The console utilities, each run as a process from a clean copy (O8). |
 | `safe_lab_tests` | In-process: the suite's fixture under a `mock://` key, and each smoke case under a generated endpoint of its own | Lab smoke tests over the stub. They replace the FakeItEasy fake. |
 | `safe_visual_stubbed_tests` | In-process leg and loopback leg, headless | The OpenVisual stub title and the absence of side effects. The fixture fails if an `ihcsettings.json` is present. |

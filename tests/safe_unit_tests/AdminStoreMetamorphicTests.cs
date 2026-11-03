@@ -80,6 +80,20 @@ namespace Ihc.Tests
                 WriteCount++;
                 return Task.CompletedTask;
             }
+
+            /// <summary>As <see cref="Write"/>, for a setter that answers the controller's acceptance flag: accepted.</summary>
+            public Task<bool> WriteAccepted(Action apply)
+            {
+                Write(apply);
+                return Task.FromResult(true);
+            }
+
+            /// <summary>As <see cref="Write"/>, for a setter that answers a flag of unestablished meaning: true.</summary>
+            public Task<bool?> WriteFlagged(Action apply)
+            {
+                Write(apply);
+                return Task.FromResult<bool?>(true);
+            }
         }
 
         /// <summary>State A: what the controller holds before either path runs, and the snapshot
@@ -87,7 +101,7 @@ namespace Ihc.Tests
         private static class Baseline
         {
             public static readonly EmailControlSettings Email =
-                new() { ServerIpAddress = "a.example", ServerPortNumber = 25, EmailAddress = "ctrl@test" };
+                new() { ServerAddress = "a.example", ServerPortNumber = 25, EmailAddress = "ctrl@test" };
             public static readonly SMTPSettings Smtp = new() { Hostname = "a.example", Hostport = 25, Username = "smtp" };
             public static readonly DNSServers Dns = new() { PrimaryDNS = "a.example", SecondaryDNS = "a.example" };
             public static readonly NetworkSettings Network = new() { IpAddress = "a.example" };
@@ -119,7 +133,7 @@ namespace Ihc.Tests
         /// baseline so the properties this test does not vary keep valid controller values.</summary>
         private static readonly Gen<MutableAdminModel> Models =
             Gen.Select(
-                Gen.Select(Hosts, Ports, (h, p) => Baseline.Email with { ServerIpAddress = h, ServerPortNumber = p }),
+                Gen.Select(Hosts, Ports, (h, p) => Baseline.Email with { ServerAddress = h, ServerPortNumber = p }),
                 Gen.Select(Hosts, Ports, (h, p) => Baseline.Smtp with { Hostname = h, Hostport = p }),
                 Gen.Select(Hosts, Hosts, (a, b) => Baseline.Dns with { PrimaryDNS = a, SecondaryDNS = b }),
                 Hosts.Select(ip => Baseline.Network with { IpAddress = ip }),
@@ -183,7 +197,7 @@ namespace Ihc.Tests
 
             A.CallTo(() => config.GetEmailControlSettings()).ReturnsLazily(() => Task.FromResult<EmailControlSettings?>(controller.Email));
             A.CallTo(() => config.SetEmailControlSettings(A<EmailControlSettings>._))
-                .ReturnsLazily((EmailControlSettings s) => controller.Write(() => controller.Email = s));
+                .ReturnsLazily((EmailControlSettings s) => controller.WriteAccepted(() => controller.Email = s));
             A.CallTo(() => config.GetSMTPSettings()).ReturnsLazily(() => Task.FromResult<SMTPSettings?>(controller.Smtp));
             A.CallTo(() => config.SetSMTPSettings(A<SMTPSettings>._))
                 .ReturnsLazily((SMTPSettings s) => controller.Write(() => controller.Smtp = s));
@@ -192,13 +206,13 @@ namespace Ihc.Tests
                 .ReturnsLazily((DNSServers s) => controller.Write(() => controller.Dns = s));
             A.CallTo(() => config.GetNetworkSettings()).ReturnsLazily(() => Task.FromResult<NetworkSettings?>(controller.Network));
             A.CallTo(() => config.SetNetworkSettings(A<NetworkSettings>._))
-                .ReturnsLazily((NetworkSettings s) => controller.Write(() => controller.Network = s));
+                .ReturnsLazily((NetworkSettings s) => controller.WriteAccepted(() => controller.Network = s));
             A.CallTo(() => config.GetWebAccessControl()).ReturnsLazily(() => Task.FromResult<WebAccessControl?>(controller.WebAccess));
             A.CallTo(() => config.SetWebAccessControl(A<WebAccessControl>._))
                 .ReturnsLazily((WebAccessControl s) => controller.Write(() => controller.WebAccess = s));
             A.CallTo(() => config.GetWLanSettings()).ReturnsLazily(() => Task.FromResult<WLanSettings?>(controller.WLan));
             A.CallTo(() => config.SetWLanSettings(A<WLanSettings>._))
-                .ReturnsLazily((WLanSettings s) => controller.Write(() => controller.WLan = s));
+                .ReturnsLazily((WLanSettings s) => controller.WriteFlagged(() => controller.WLan = s));
 
             return new AdminAppService(Settings, fileEnryption: false, auth, users, config);
         }
@@ -228,7 +242,7 @@ namespace Ihc.Tests
                 .SequenceEqual(b.Users!.OrderBy(u => u.Key, StringComparer.Ordinal));
 
         private static string Describe(Controller controller) =>
-            $"email={controller.Email?.ServerIpAddress}:{controller.Email?.ServerPortNumber} "
+            $"email={controller.Email?.ServerAddress}:{controller.Email?.ServerPortNumber} "
             + $"smtp={controller.Smtp?.Hostname}:{controller.Smtp?.Hostport} "
             + $"dns={controller.Dns?.PrimaryDNS}/{controller.Dns?.SecondaryDNS} "
             + $"net={controller.Network?.IpAddress} wlan={controller.WLan?.Enabled}/{controller.WLan?.Ssid} "
@@ -274,7 +288,7 @@ namespace Ihc.Tests
         {
             MutableAdminModel atRest = BaselineModel();
             MutableAdminModel movedAway = BaselineModel();
-            movedAway.EmailControl = Baseline.Email with { ServerIpAddress = "b.example" };
+            movedAway.EmailControl = Baseline.Email with { ServerAddress = "b.example" };
 
             var inOneStep = new Controller();
             inOneStep.Service = ServiceOver(inOneStep);

@@ -230,7 +230,8 @@ namespace Ihc
       public byte[] Data { get; init; } = Array.Empty<byte>();
 
       /// <summary>
-      /// Name of the segment file; <c>null</c> from a segment download, which supplies none.
+      /// Name of the segment file; <c>null</c> from a segment download, since the SDK does not map the name a
+      /// controller gives a segment (<c>unknown.bin</c> on firmware 3.3.44).
       /// </summary>
       public string? Filename { get; init; }
 

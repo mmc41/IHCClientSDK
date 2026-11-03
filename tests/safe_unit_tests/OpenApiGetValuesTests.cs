@@ -137,5 +137,49 @@ namespace Ihc.Tests
 
             Assert.That(await h.Service.GetValues([]), Is.Empty);
         }
+
+        /// <summary>
+        /// A 3.3.44 controller answers an empty list as one nil item, so asking for nothing can be answered so; that
+        /// is the empty answer, and an empty array is too. Only the request for no resources reads it so: with a
+        /// resource asked for, one nil item is that resource's empty entry, refused as any other.
+        /// </summary>
+        [Test]
+        public async Task GetValues_ForNoResources_AnsweredByTheLoneNilItem_IsEmpty()
+        {
+            Harness h = NewHarness();
+            h.Answer = [null!];
+
+            Assert.That(await h.Service.GetValues([]), Is.Empty);
+        }
+
+        [Test]
+        public async Task GetValues_ForNoResources_AnsweredByAnEmptyArray_IsEmpty()
+        {
+            Harness h = NewHarness();
+            h.Answer = [];
+
+            Assert.That(await h.Service.GetValues([]), Is.Empty);
+        }
+
+        [Test]
+        public void GetValues_ForOneResource_AnsweredByTheLoneNilItem_IsRefused()
+        {
+            Harness h = NewHarness();
+            h.Answer = [null!];
+
+            var refusal = Assert.CatchAsync<InvalidOperationException>(async () => await h.Service.GetValues([101]))!;
+
+            Assert.That(refusal.Message, Does.Contain("101"));
+        }
+
+        [Test]
+        public void GetValues_ForTwoResources_AnsweredByTheLoneNilItem_IsRefusedByCount()
+        {
+            Harness h = NewHarness();
+            h.Answer = [null!];
+
+            Assert.That(async () => await h.Service.GetValues([101, 102]),
+                Throws.InvalidOperationException.With.Message.Contains("1 values for 2"));
+        }
     }
 }

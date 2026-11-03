@@ -14,9 +14,12 @@ namespace Ihc {
         /// Gets the current local time from the controller: UTC plus its time-zone offset and, when enabled, summer
         /// time.
         /// </summary>
-        /// <returns>The controller's local time. The SDK reads it at a fixed +01:00 offset, so the instant is right
-        /// only while the controller runs at UTC+1; <c>DateTimeOffset.MinValue</c> when the reply carries no readable
-        /// date.</returns>
+        /// <returns>The controller's local time at its current UTC offset, which the SDK takes in the same call from
+        /// the UTC clock in <see cref="GetSettings"/>: the local clock less the UTC clock, rounded to the nearest 15
+        /// minutes. When the settings carry no usable UTC clock, the offset is +01:00 and the span records a warning.
+        /// <c>DateTimeOffset.MinValue</c> when the reply carries no readable local time.</returns>
+        /// <remarks>The offset is the controller's current one, so it does not date an older timestamp: whether the
+        /// controller's summer-time rule changed the offset since is not known from these two clocks.</remarks>
         public Task<DateTimeOffset> GetCurrentLocalTime();
 
         /// <summary>
@@ -40,23 +43,26 @@ namespace Ihc {
         /// </summary>
         /// <param name="settings">The complete time settings to store; read them with <see cref="GetSettings"/> to
         /// change part of them.</param>
-        /// <returns><c>true</c> when the controller answers result code 1; <c>false</c> for any other code, also when
-        /// the reply carries none. See the remarks.</returns>
-        /// <remarks>Known defect: the controller's code 0 means success, 1 that the time could not be set and 2 that
-        /// the calendar is not available, so this method returns <c>true</c> when the time could not be set and
-        /// <c>false</c> when it was set.</remarks>
-        /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c> or breaks a limit declared on
-        /// <see cref="TimeManagerSettings"/>; nothing is sent.</exception>
+        /// <returns><c>true</c> when the controller answers result code 0, success; <c>false</c> for any other code:
+        /// 1 means the time could not be set and 2 that the calendar is not available.</returns>
+        /// <exception cref="ArgumentException"><paramref name="settings"/> is <c>null</c>, its
+        /// <see cref="TimeManagerSettings.GmtOffsetInHours"/> is outside -12 to +14, or synchronisation is on with an
+        /// interval under one hour or no server name; nothing is sent.</exception>
+        /// <exception cref="InvalidOperationException">The reply carries no result code; the settings were sent, so
+        /// whether the controller applied them is unknown.</exception>
         public Task<bool> SetSettings(TimeManagerSettings settings);
 
         /// <summary>
-        /// Asks the controller to fetch the time from a time server itself, resolving a name through its own DNS, and
-        /// reports the outcome.
+        /// Asks the controller to fetch the time from <paramref name="serverName"/> itself, resolving a name through its
+        /// own DNS, and reports the outcome; IHC Administrator tests its unsaved time server this way.
         /// </summary>
+        /// <param name="serverName">Host name or dotted IPv4 address of the time server to test, with no scheme or
+        /// port, sent as given.</param>
         /// <returns>The outcome, or <c>null</c> when the reply carries none.</returns>
-        /// <remarks>The operation takes a server name, which this method leaves empty; which server the controller
-        /// then asks is not known.</remarks>
-        public Task<TimeServerConnectionResult?> GetTimeFromServer();
+        /// <exception cref="ArgumentNullException"><paramref name="serverName"/> is <c>null</c>.</exception>
+        /// <exception cref="ArgumentException"><paramref name="serverName"/> is empty or whitespace; nothing is
+        /// sent.</exception>
+        public Task<TimeServerConnectionResult?> GetTimeFromServer(string serverName);
     }
 
     /// <summary>
@@ -127,7 +133,7 @@ namespace Ihc {
                 GmtOffsetInHours = ws.gmtOffsetInHours,
                 ServerName = ws.serverName,
                 SyncIntervalInHours = ws.syncIntervalInHours,
-                TimeAndDateInUTC = DateHelper.OrAbsentSentinel(ws.timeAndDateInUTC?.ToDateTimeOffset(), nameof(TimeManagerSettings.TimeAndDateInUTC)),
+                TimeAndDateInUTC = DateHelper.OrAbsentSentinel(clockFaceAtUtc(ws.timeAndDateInUTC), nameof(TimeManagerSettings.TimeAndDateInUTC)),
                 OnlineCalendarUpdateOnline = ws.online_calendar_update_online,
                 OnlineCalendarCountry = ws.online_calendar_country,
                 OnlineCalendarValidUntil = ws.online_calendar_valid_until
@@ -143,7 +149,7 @@ namespace Ihc {
                 gmtOffsetInHours = settings.GmtOffsetInHours,
                 serverName = settings.ServerName,
                 syncIntervalInHours = settings.SyncIntervalInHours,
-                timeAndDateInUTC = mapWSDate(settings.TimeAndDateInUTC),
+                timeAndDateInUTC = toUtcWSDate(settings.TimeAndDateInUTC),
                 online_calendar_update_online = settings.OnlineCalendarUpdateOnline,
                 online_calendar_country = settings.OnlineCalendarCountry,
                 online_calendar_valid_until = settings.OnlineCalendarValidUntil
@@ -166,14 +172,45 @@ namespace Ihc {
             };
         }
 
-        private static WSDate? mapWSDate(DateTimeOffset? dateTimeOffset)
+        // timeAndDateInUTC is the controller's clock in UTC in both directions: read, it equals the reply's HTTP Date
+        // header and the system information's realtimeclock; written, IHC Visual sends its pickers' time less one
+        // hour from a UTC+1 PC. Its clock face therefore takes offset 0, never the WS offset other dates are read at.
+        // The local clock's face is read the same way, and placed at the controller's offset once that is known.
+        private static DateTimeOffset? clockFaceAtUtc(WSDate? face) => face?.ToDateTimeOffset(TimeSpan.Zero);
+
+        private static readonly TimeSpan OffsetGranularity = TimeSpan.FromMinutes(15);
+        private static readonly TimeSpan LargestUtcOffset = TimeSpan.FromHours(14);
+
+        // The local clock carries no offset, and a fixed one is wrong for part of the year (a controller at GMT+1 with
+        // summer time was captured at UTC+2 in October). Its CURRENT offset is the local clock face less the UTC
+        // clock face, read moments apart; every zone offset is a whole quarter hour, so rounding to one absorbs the
+        // gap between the two reads. Without a usable UTC reading, the WS offset (+01:00) stands in, recorded.
+        private static TimeSpan controllerUtcOffset(DateTimeOffset localFace, DateTimeOffset? utc, Activity? activity)
+        {
+            if (utc is { } utcClock && utcClock != DateTimeOffset.MinValue)
+            {
+                double quarters = Math.Round((localFace - utcClock) / OffsetGranularity, MidpointRounding.AwayFromZero);
+                TimeSpan offset = OffsetGranularity * quarters;
+                if (offset.Duration() <= LargestUtcOffset)
+                    return offset;
+            }
+
+            TimeSpan assumed = DateHelper.GetWSTimeOffset();
+            activity.AddWarning(
+                $"The controller's settings carried no usable UTC clock reading to take its current UTC offset from; reading its local time at {assumed:hh\\:mm} after UTC.",
+                ("type", "AssumedUtcOffset"),
+                ("field", nameof(TimeManagerSettings.TimeAndDateInUTC)));
+            return assumed;
+        }
+
+        private static WSDate? toUtcWSDate(DateTimeOffset? dateTimeOffset)
         {
             if (!dateTimeOffset.HasValue)
             {
                 return null;
             }
 
-            var dto = dateTimeOffset.Value.ToOffset(DateHelper.GetWSTimeOffset());
+            var dto = dateTimeOffset.Value.ToUniversalTime();
             return new WSDate
             {
                 year = dto.Year,
@@ -192,8 +229,18 @@ namespace Ihc {
                 try
                 {
                     var resp = await impl.getCurrentLocalTimeAsync(new inputMessageName2()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    var result = resp.getCurrentLocalTime1;
-                    var retv = DateHelper.OrAbsentSentinel(result?.ToDateTimeOffset(), nameof(GetCurrentLocalTime));
+                    // The local clock face, held at offset 0 until the controller's own offset is known.
+                    var localFace = DateHelper.OrAbsentSentinel(clockFaceAtUtc(resp.getCurrentLocalTime1), nameof(GetCurrentLocalTime));
+                    if (localFace == DateTimeOffset.MinValue)
+                    {
+                        activity?.SetReturnValue(localFace);
+                        return localFace;
+                    }
+
+                    var settingsResp = await impl.getSettingsAsync(new inputMessageName3()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var utc = clockFaceAtUtc(settingsResp?.getSettings1?.timeAndDateInUTC);
+                    var retv = DateHelper.CreateDateTimeOffset(localFace.Year, localFace.Month, localFace.Day,
+                        localFace.Hour, localFace.Minute, localFace.Second, controllerUtcOffset(localFace, utc, activity));
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -259,8 +306,9 @@ namespace Ihc {
 
                     var wsSettings = mapSettings(settings);
                     var resp = await impl.setSettingsAsync(new inputMessageName4 { setSettings1 = wsSettings }).ConfigureAwait(this.settings.AsyncContinueOnCapturedContext);
-                    var result = resp.setSettings2;
-                    var retv = result.HasValue && result.Value == 1;
+                    var result = Acknowledged(resp.setSettings2, "the time settings");
+                    // The vendor's codes are RESULT_OK = 0, TIMESETTING_FAILED = 1 and CALENDAR_NOT_AVAILABLE = 2.
+                    var retv = result == 0;
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -273,13 +321,16 @@ namespace Ihc {
             }
         }
 
-        public async Task<TimeServerConnectionResult?> GetTimeFromServer()
+        public async Task<TimeServerConnectionResult?> GetTimeFromServer(string serverName)
         {
+            ArgumentException.ThrowIfNullOrWhiteSpace(serverName);
             using (var activity = StartActivity(nameof(GetTimeFromServer)))
             {
                 try
                 {
-                    var resp = await impl.getTimeFromServerAsync(new inputMessageName1()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    activity?.SetParameters((nameof(serverName), serverName));
+
+                    var resp = await impl.getTimeFromServerAsync(new inputMessageName1(serverName)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = mapTimeServerConnectionResult(resp.getTimeFromServer2);
 
                     activity?.SetReturnValue(retv);

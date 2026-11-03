@@ -89,6 +89,27 @@ namespace Ihc {
    /// </summary>
    public const int CONTROLLER_STUB_ENDPOINT_IN_USE = 1016;
 
+   /// <summary>
+   /// A controller reply carried a SOAP 1.1 fault, whatever its HTTP status; the message carries the fault's
+   /// <c>faultcode</c> and <c>faultstring</c>. A <c>Logon Failed</c> fault has a code of its own,
+   /// <see cref="CONTROLLER_LOGON_FAILED"/>.
+   /// </summary>
+   public const int CONTROLLER_SOAP_FAULT = 1017;
+
+   /// <summary>
+   /// A controller reply carried the SOAP fault <c>Logon Failed</c>, which a controller answers a call without a
+   /// working session with; logging in again is the remedy. The message carries the fault's code and text.
+   /// </summary>
+   public const int CONTROLLER_LOGON_FAILED = 1018;
+
+   /// <summary>
+   /// A write was sent, but the transport failed before the controller answered, so whether it applied is unknown:
+   /// the captured outcome of a wired-network save that changes the address, after which the controller restarts
+   /// without replying. Reconnect, at the new address if one was set, and read the settings back before retrying.
+   /// The transport's own error is the inner exception.
+   /// </summary>
+   public const int CONTROLLER_WRITE_UNCONFIRMED = 1019;
+
    public const int WEB_EXCEPTION_ERROR_BASE = 10000;
  } 
 }

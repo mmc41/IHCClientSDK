@@ -11,12 +11,18 @@ namespace Ihc.Stubbing
         internal Task<outputMessageName6> getSystemInfoAsync(inputMessageName6 request) =>
             Task.FromResult(new outputMessageName6 { getSystemInfo1 = SystemInfoToWire(scenario.SystemInfo) });
 
-        /// <summary>The log as the controller sends it: its lines in one UTF-8 file, which the SDK splits again.</summary>
-        internal Task<outputMessageName2> getUserLogAsync(inputMessageName2 request) =>
-            Task.FromResult(new outputMessageName2
+        /// <summary>
+        /// The log as the controller sends it: its lines in one UTF-8 file, which the SDK splits again, named by the
+        /// arranged next cursor. The cursor sent is journalled; it selects nothing, so every read answers every line.
+        /// </summary>
+        internal Task<outputMessageName2> getUserLogAsync(inputMessageName2 request)
+        {
+            AnswerContext.RecordPayload(request.getUserLog1);
+            return Task.FromResult(new outputMessageName2
             {
-                getUserLog4 = new WSFile { filename = "userlog.0", data = Encoding.UTF8.GetBytes(string.Join('\n', scenario.UserLog)) },
+                getUserLog4 = new WSFile { filename = scenario.UserLogCursor, data = Encoding.UTF8.GetBytes(string.Join('\n', scenario.UserLog)) },
             });
+        }
 
         internal Task<outputMessageName3> clearUserLogAsync(inputMessageName3 request)
         {
@@ -30,27 +36,55 @@ namespace Ihc.Stubbing
         internal Task<outputMessageName13> getWLanScanAsync(inputMessageName13 request) =>
             Task.FromResult(new outputMessageName13 { getWLanScan1 = [.. scenario.WLanScan.Select(WLanCellToWire)] });
 
-        internal Task<outputMessageName11> testSendMessage1Async(inputMessageName11 request)
+        /// <summary>
+        /// The six-part test mail IHC Administrator sends: journals the message and the SMTP account it names, the
+        /// account's password cleared here because the journal clears only a payload's own string members, and
+        /// answers the arranged outcome. A test stores nothing.
+        /// </summary>
+        internal Task<outputMessageName10> testSendMessageAsync(inputMessageName10 request)
         {
-            AnswerContext.RecordPayload(new NotificationMessage
-            {
-                Recipient = request.testSendMessage8?.recipient,
-                Subject = request.testSendMessage9,
-                Body = request.testSendMessage10,
-            });
+            WSNotificationMessage? message = request.testSendMessage1;
+            AnswerContext.RecordPayload(new StubTestMail(
+                new NotificationMessage
+                {
+                    NotificationType = message?.notificationType,
+                    Recipient = message?.recipient,
+                    Sender = message?.sender,
+                    Subject = message?.subject,
+                    Body = message?.body,
+                    Delivered = message?.delivered ?? false,
+                },
+                new SMTPSettings
+                {
+                    Hostname = request.testSendMessage2,
+                    Hostport = request.testSendMessage3 ?? 0,
+                    Username = request.testSendMessage4,
+                    Ssl = request.testSendMessage6 ?? false,
+                }));
             bool sent = scenario.TestSendSucceeds;
-            return Task.FromResult(new outputMessageName11
+            return Task.FromResult(new outputMessageName10
             {
-                testSendMessage12 = new WSNotificationMessageSendResult { attemptSucceeded = sent, attemptFailedDueToNetworkProblems = !sent },
+                testSendMessage7 = new WSNotificationMessageSendResult { attemptSucceeded = sent, attemptFailedDueToNetworkProblems = !sent },
             });
         }
 
-        /// <summary>The captured status of a mail server out of reach; the SDK reads nothing from it.</summary>
-        internal static Task<outputMessageName9> testSettingsNowAsync(inputMessageName9 request) =>
-            Task.FromResult(new outputMessageName9
+        /// <summary>Journals the settings to test and answers the arranged status; a test stores nothing.</summary>
+        internal Task<outputMessageName9> testSettingsNowAsync(inputMessageName9 request)
+        {
+            AnswerContext.RecordPayload(EmailControlFromWire(request.testSettingsNow1));
+            return Task.FromResult(new outputMessageName9
             {
-                testSettingsNow2 = new WSEmailControlConnectionStatus { attemptFailedDueToNetworkProblems = true },
+                testSettingsNow2 = scenario.EmailControlTestStatus is { } status
+                    ? new WSEmailControlConnectionStatus
+                    {
+                        lastConnectionAttemptSucceeded = status.LastConnectionAttemptSucceeded,
+                        attemptFailedDueToAuthentication = status.AttemptFailedDueToAuthentication,
+                        attemptFailedDueToNetworkProblems = status.AttemptFailedDueToNetworkProblems,
+                        attemptFailedDueToInvalidSettings = status.AttemptFailedDueToInvalidSettings,
+                    }
+                    : null,
             });
+        }
 
         internal static Task<outputMessageName1> delayedRebootAsync(inputMessageName1 request)
         {

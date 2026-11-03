@@ -57,7 +57,7 @@ namespace Ihc.Stubbing
                 {
                     id = logged.Id,
                     value = logged.Value,
-                    timestamp = logged.Timestamp.ToUnixTimeSeconds(),
+                    timestamp = logged.Timestamp.ToUnixTimeMilliseconds(),
                 })],
             });
 

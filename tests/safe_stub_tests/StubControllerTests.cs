@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using Ihc.Stubbing;
 using Ihc.Vis;
 using NUnit.Framework;
@@ -111,12 +112,93 @@ namespace Ihc.Tests
             stub.FailOn<IControllerService>(nameof(IControllerService.StoreProject));
             using var sdk = StubbedSdk.Start(stub);
 
-            Assert.That(async () => await sdk.Controller.StoreProject(Uploaded), Throws.TypeOf<HttpRequestException>());
+            AssertTheUploadRaisesTheInjectedSoapFault(sdk);
 
             Assert.That(await sdk.Controller.GetProject(), Is.EqualTo(before));
             Assert.That(await sdk.Controller.GetControllerState(), Is.EqualTo(ControllerState.Ready),
                 "the upload's cleanup still left change mode");
         }
+
+        /// <summary>A state poll that fails right after the upload entered change mode still leaves the mode: the
+        /// exit follows the failed poll on the wire, and the poll's failure is the one raised. Every state read
+        /// answers <c>ready</c> here, so the read after the enter is stale and a poll follows it.</summary>
+        [Test]
+        public void AFailedFirstStatePoll_IsFollowedByTheExitFromChangeMode()
+        {
+            var stub = new ControllerStub();
+            ProjectFile before = stub.Controller.Project!;
+            stub.OverrideRaw(ControllerWire, "getState", (_, _) => StateEnvelope("getState1", "text.ctrl.state.ready"));
+            stub.FailOn<IControllerService>(nameof(IControllerService.WaitForControllerStateChange));
+            using var sdk = StubbedSdk.Start(stub);
+
+            AssertTheUploadRaisesTheInjectedSoapFault(sdk);
+
+            Assert.That(sdk.Stub.Journal.All.Select(call => call.SoapAction), Is.EqualTo(new[]
+            {
+                "getState", "isSDCardReady", "isIHCProjectAvailable", "enterProjectChangeMode",
+                "getState", "waitForControllerStateChange", "exitProjectChangeMode", "getState",
+            }));
+            Assert.That(sdk.Stub.Controller.State, Is.EqualTo(ControllerState.Ready), "the upload left change mode");
+            Assert.That(sdk.Stub.Controller.Project, Is.EqualTo(before));
+        }
+
+        /// <summary>A state read that lags the enter is not taken as the answer: the upload polls with the state it
+        /// read, which the stub answers with its current state, and goes on to store.</summary>
+        [Test]
+        public async Task AStaleStateRead_IsFollowedByAPollWithThatState_AndTheUploadCompletes()
+        {
+            var stub = new ControllerStub();
+            stub.OverrideRaw(ControllerWire, "getState", (_, _) => StateEnvelope("getState1", "text.ctrl.state.ready"));
+            using var sdk = StubbedSdk.Start(stub);
+
+            bool stored = await sdk.Controller.StoreProject(Uploaded);
+
+            Assert.That(stored, Is.True);
+            Assert.That(sdk.Stub.Journal.All.Select(call => call.SoapAction), Is.EqualTo(new[]
+            {
+                "getState", "isSDCardReady", "isIHCProjectAvailable", "enterProjectChangeMode",
+                "getState", "waitForControllerStateChange", "storeIHCProject", "getState", "waitForControllerStateChange",
+                "exitProjectChangeMode", "getState",
+            }));
+            Assert.That(sdk.Stub.Controller.Project, Is.EqualTo(Uploaded));
+        }
+
+        /// <summary>The state the SDK reads from a reply naming none can be sent back: it goes out as a nil state, the
+        /// way IHC Administrator sends it, and the SDK reads the answer.</summary>
+        [Test]
+        public async Task AWaitFromAnUnknownState_GoesOutNil()
+        {
+            var stub = new ControllerStub();
+            string? body = null;
+            stub.OverrideRaw(ControllerWire, "waitForControllerStateChange", (request, _) =>
+            {
+                body = request.Body;
+                return StateEnvelope("waitForControllerStateChange3", "text.ctrl.state.ready");
+            });
+            using var sdk = StubbedSdk.Start(stub);
+
+            ControllerState answered = await sdk.Controller.WaitForControllerStateChange(ControllerState.Unknown, 10);
+
+            Assert.That(answered, Is.EqualTo(ControllerState.Ready));
+            XElement state = XDocument.Parse(body!).Descendants((XNamespace)"utcs" + "waitForControllerStateChange1").Single();
+            Assert.That((string?)state.Attribute((XNamespace)"http://www.w3.org/2001/XMLSchema-instance" + "nil"), Is.EqualTo("true"));
+            Assert.That(state.HasElements, Is.False);
+        }
+
+        private const string ControllerWire = "ControllerService";
+
+        /// <summary>An injected SOAP fault reaches the caller as the controller's coded refusal.</summary>
+        private static void AssertTheUploadRaisesTheInjectedSoapFault(StubbedSdk sdk) =>
+            Assert.That(async () => await sdk.Controller.StoreProject(Uploaded), Throws.TypeOf<ErrorWithCodeException>()
+                .And.Matches<ErrorWithCodeException>(coded => coded.ErrorCode == Errors.CONTROLLER_SOAP_FAULT));
+
+        /// <summary>A synthetic reply carrying one controller state under <paramref name="element"/>, in the envelope
+        /// shape the SDK reads.</summary>
+        private static Task<ControllerStubResponse> StateEnvelope(string element, string state) =>
+            Task.FromResult(new ControllerStubResponse(200,
+                "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:utcs=\"utcs\">" +
+                $"<soapenv:Body><utcs:{element}><utcs:state>{state}</utcs:state></utcs:{element}></soapenv:Body>" +
+                "</soapenv:Envelope>"));
 
         [Test]
         public async Task ChangeMode_MovesTheState_AndAWaitAnswersTheCurrentStateAtOnce()

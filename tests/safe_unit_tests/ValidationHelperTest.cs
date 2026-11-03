@@ -39,22 +39,38 @@ namespace Ihc.Tests
             Assert.DoesNotThrow(() => ValidationHelper.ValidateDataAnnotations(validUser, nameof(validUser)));
         }
 
+        /// <summary>IHC Administrator's user dialog fields are display widths, not limits, and its reference records no
+        /// maximum for a user name or password, so longer values pass the SDK's validation.</summary>
         [Test]
-        public void ValidateObject_WithUsernameTooLong_ThrowsArgumentException()
+        public void ValidateObject_WithStringsLongerThanTheVendorsFieldWidths_DoesNotThrow()
         {
-            // Arrange
-            var invalidUser = new IhcUser
+            var user = new IhcUser
             {
-                Username = "thisusernameiswaytoolo", // 23 characters, max is 20
-                Password = "validpass",
+                Username = "thisusernameiswaytoolo", // 22 characters, past the dialog's 20 columns
+                Password = "a password of more than twenty characters",
+                Email = "a.rather.long.address@installer.example",
+                Firstname = "Anne-Marie Louise",
+                Lastname = "test lastname edited",
+                Phone = "+45 12 34 56 78 90 12",
                 Group = IhcUserGroup.Users
             };
 
-            // Act & Assert
-            var ex = Assert.Throws<ArgumentException>(() => ValidationHelper.ValidateDataAnnotations(invalidUser, nameof(invalidUser)));
-            Assert.That(ex.ParamName, Is.EqualTo(nameof(invalidUser)));
-            Assert.That(ex.Message, Does.Contain("Validation failed"));
-            Assert.That(ex.Message, Does.Contain("Username length can't be more than 20"));
+            Assert.DoesNotThrow(() => ValidationHelper.ValidateDataAnnotations(user, nameof(user)));
+        }
+
+        /// <summary>
+        /// An empty or blank password is refused by SDK policy, not by any known controller minimum: IHC Administrator
+        /// lets an empty password through, and whether a controller stores one is unknown.
+        /// </summary>
+        [TestCase("")]
+        [TestCase("   ")]
+        [TestCase(null)]
+        public void ValidateObject_WithAnEmptyPassword_ThrowsArgumentException(string? password)
+        {
+            var user = new IhcUser { Username = "user", Password = password, Group = IhcUserGroup.Users };
+
+            var ex = Assert.Throws<ArgumentException>(() => ValidationHelper.ValidateDataAnnotations(user, nameof(user)));
+            Assert.That(ex.Message, Does.Contain("Password is required"));
         }
     }
 }

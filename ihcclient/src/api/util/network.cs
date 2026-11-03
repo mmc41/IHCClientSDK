@@ -25,28 +25,41 @@ namespace Ihc
         }
 
         /// <summary>
-        /// Convert IP address string to 32-bit integer.
-        /// IP addresses are stored in network byte order (big-endian).
+        /// Convert dotted-decimal IPv4 text to the 32-bit integer the wire carries, in network byte order
+        /// (big-endian).
         /// </summary>
-        /// <param name="ipString">IP address string (e.g., "192.168.1.1").</param>
+        /// <param name="ipString">Four dot-separated groups of one to three ASCII digits, each 0-255 (e.g.
+        /// "192.168.1.1"); a leading zero is a decimal digit, so "010" is ten.</param>
         /// <returns>IP address as 32-bit integer.</returns>
-        /// <exception cref="ArgumentException">The address is not IPv4, and so has no 32-bit form.</exception>
+        /// <exception cref="ArgumentException">The text is not of that form; the message names it.</exception>
+        /// <remarks>
+        /// <see cref="IPAddress.Parse(string)"/> is deliberately not used: it also accepts the legacy BSD forms, reading a
+        /// leading zero as octal ("010" as 8), widening a short address ("10.1" as 10.0.0.1) and taking hexadecimal or
+        /// one 32-bit number, and it accepts IPv6, which has no 32-bit form. Each would send a server nobody typed.
+        /// IHC Administrator reads every group as decimal.
+        /// </remarks>
         public static int ConvertIPAddressToInt(string ipString)
         {
-            var ipAddress = IPAddress.Parse(ipString);
-            // The wire field is 32 bits, so anything wider has no representation in it. Parse accepts an
-            // IPv6 literal and hands back sixteen bytes, of which the conversion below would read four -
-            // yielding an address nobody submitted. IPv4-mapped IPv6 is refused with the rest: its first
-            // four bytes are zeroes, so it narrows just as wrongly as any other.
-            if (ipAddress.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
-                throw new ArgumentException($"Only IPv4 addresses can be written as a 32-bit address; '{ipString}' is {ipAddress.AddressFamily}.", nameof(ipString));
+            ArgumentNullException.ThrowIfNull(ipString);
+            string[] groups = ipString.Split('.');
+            if (groups.Length != 4)
+                throw NotDottedDecimal(ipString);
 
-            byte[] bytes = ipAddress.GetAddressBytes();
-            if (BitConverter.IsLittleEndian)
+            uint packed = 0;
+            foreach (string group in groups)
             {
-                Array.Reverse(bytes);
+                // NumberStyles.None admits ASCII digits only, no sign or white space; byte caps the group at 255.
+                if (group.Length > 3 || !byte.TryParse(group, System.Globalization.NumberStyles.None,
+                        System.Globalization.CultureInfo.InvariantCulture, out byte value))
+                    throw NotDottedDecimal(ipString);
+                packed = (packed << 8) | value;
             }
-            return BitConverter.ToInt32(bytes, 0);
+            return unchecked((int)packed);
         }
+
+        private static ArgumentException NotDottedDecimal(string ipString) =>
+            new ArgumentException(
+                $"'{ipString}' is no dotted-decimal IPv4 address: four groups of one to three digits 0-9, each 0-255, separated by dots.",
+                nameof(ipString));
     }
 }

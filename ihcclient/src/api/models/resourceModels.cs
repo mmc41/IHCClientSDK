@@ -100,21 +100,38 @@ namespace Ihc {
             public bool? BoolValue { get; set; }
 
             /// <summary>
-            /// Unused: the SDK neither fills nor reads it. A DATE value is carried in <see cref="DateValue"/>.
-            /// </summary>
-            public DateTimeOffset? DateTime { get; set; }
-
-            /// <summary>
-            /// Whole number, 32-bit (when ValueKind is INT); a level in percent runs 0-100. The SDK drops the range
-            /// the controller sends with the value, and a write sends 0 as both bounds.
+            /// Whole number, 32-bit (when ValueKind is INT); a level in percent runs 0-100. Its range, when the
+            /// controller sent one, is <see cref="IntMinimum"/> to <see cref="IntMaximum"/>.
             /// </summary>
             public int? IntValue { get; set; }
 
             /// <summary>
+            /// Lowest value the controller allows for an INT value, as it sent it with the value; <c>null</c> when it
+            /// sent none. A write sends the bounds the value carries, as IHC Visual writes a value back with its range,
+            /// and 0 for an absent one; a range of 0 to 0 is that wire form and reads as none. A write refuses an
+            /// <see cref="IntValue"/> outside the bounds it carries, as ServiceView does.
+            /// </summary>
+            public int? IntMinimum { get; set; }
+
+            /// <summary>Highest value the controller allows for an INT value; see <see cref="IntMinimum"/>.</summary>
+            public int? IntMaximum { get; set; }
+
+            /// <summary>
             /// Decimal number (when ValueKind is DOUBLE), such as a temperature in degrees Celsius or a relative
-            /// humidity in percent. As for INT, the SDK drops the controller's range and writes 0 as both bounds.
+            /// humidity in percent. Its range, when the controller sent one, is <see cref="DoubleMinimum"/> to
+            /// <see cref="DoubleMaximum"/>.
             /// </summary>
             public double? DoubleValue  { get; set; }
+
+            /// <summary>
+            /// Lowest value the controller allows for a DOUBLE value, as it sent it; <c>null</c> when it sent none. As
+            /// for <see cref="IntMinimum"/>, a write sends the carried bounds, 0 for an absent one, and 0 to 0 reads as
+            /// none; a write refuses a <see cref="DoubleValue"/> outside the bounds it carries.
+            /// </summary>
+            public double? DoubleMinimum { get; set; }
+
+            /// <summary>Highest value the controller allows for a DOUBLE value; see <see cref="DoubleMinimum"/>.</summary>
+            public double? DoubleMaximum { get; set; }
 
             /// <summary>
             /// Calendar date (when ValueKind is DATE). Only year, month and day travel: the SDK reads them as midnight
@@ -135,7 +152,7 @@ namespace Ihc {
             public long? TimerValue { get; set; }
 
             /// <summary>
-            /// Day of the week, 0 = Monday to 6 = Sunday (when ValueKind is WEEKDAY).
+            /// Day of the week, 0 = Monday to 6 = Sunday (when ValueKind is WEEKDAY); a write refuses any other.
             /// </summary>
             public int? WeekdayValue { get; set; }
 
@@ -145,13 +162,14 @@ namespace Ihc {
             public EnumValue? EnumValue { get; set; }
 
             /// <summary>
-            /// Phone number as text, at most 20 characters (when ValueKind is PhoneNumber).
+            /// Phone number as text (when ValueKind is PhoneNumber). The SMS modem's editor in the vendor clients
+            /// takes 3-20 characters; the RS-485 modem's checks nothing, and the SDK checks neither.
             /// </summary>
             public string? PhoneNumberValue { get; set; }
 
             /// <summary>
             /// Light level in percent, 0-100, that the dimmer takes when the scene is recalled (when ValueKind is
-            /// SceneDimmer).
+            /// SceneDimmer); a write refuses any other.
             /// </summary>
             public int? DimmerPercentage { get; set; }
 
@@ -161,7 +179,8 @@ namespace Ihc {
             public int? DimmerDelayTime { get; set; }
 
             /// <summary>
-            /// Dimmer ramp time in milliseconds (when ValueKind is SceneDimmer), at most 3,600,000 (60 minutes).
+            /// Dimmer ramp time in milliseconds (when ValueKind is SceneDimmer), at most 3,600,000 (60 minutes); a
+            /// write refuses a longer one.
             /// </summary>
             public int? DimmerRampTime { get; set; }
 
@@ -197,7 +216,11 @@ namespace Ihc {
 
                 AppendIfPresent(buf, nameof(BoolValue), BoolValue);
                 AppendIfPresent(buf, nameof(IntValue), IntValue);
+                AppendIfPresent(buf, nameof(IntMinimum), IntMinimum);
+                AppendIfPresent(buf, nameof(IntMaximum), IntMaximum);
                 AppendIfPresent(buf, nameof(DoubleValue), DoubleValue);
+                AppendIfPresent(buf, nameof(DoubleMinimum), DoubleMinimum);
+                AppendIfPresent(buf, nameof(DoubleMaximum), DoubleMaximum);
                 AppendIfPresent(buf, nameof(DateValue), DateValue);
                 AppendIfPresent(buf, nameof(TimeValue), TimeValue);
                 AppendIfPresent(buf, nameof(TimerValue), TimerValue);
@@ -298,7 +321,7 @@ namespace Ihc {
         /// <param name="src">Source resource value to toggle.</param>
         /// <returns>A new ResourceValue with the boolean value toggled.</returns>
         /// <exception cref="ArgumentException">Thrown if source is not a boolean type.</exception>
-        public static ResourceValue ToogleBool(ResourceValue src) {
+        public static ResourceValue ToggleBool(ResourceValue src) {
             ArgumentNullException.ThrowIfNull(src);
             if (src.Value.ValueKind != ValueKind.BOOL)
                 throw new ArgumentException("Source resource should be of boolean type");
@@ -333,11 +356,11 @@ namespace Ihc {
         public int Id  { get; init; }
 
         /// <summary>
-        /// When the sample was logged, converted by the SDK from the wire value as seconds since 1970 UTC.
+        /// When the sample was logged, converted by the SDK from the wire value as milliseconds since 1970 UTC.
         /// </summary>
         /// <remarks>
-        /// Known defect: the controller sends milliseconds since 1970, so the conversion is off by a factor of 1,000
-        /// and throws for any sample logged after early 1978.
+        /// The unit is the one ServiceView reads the value in; that the epoch is UTC rather than the controller's local
+        /// time is not verified against a controller.
         /// </remarks>
         public DateTimeOffset Timestamp  { get; init; }
 

@@ -64,9 +64,10 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// The captured controller holds a time-server name longer than the SDK allows and a disabled wireless setup
-        /// without the addresses it requires, so neither default can be sent back as it is. When the SDK's validation
-        /// accepts one, its substitute here is no longer needed and this fails to say so.
+        /// The stub's wireless default, a stand-in since no capture holds those settings, is a disabled setup without
+        /// the addresses the SDK requires, so it cannot be sent back as it is. When the SDK's validation accepts it, its
+        /// substitute here is no longer needed and this fails to say so; the time settings, whose 24-character server
+        /// name the SDK once refused, are accepted as captured.
         /// </summary>
         [Test]
         public void TheDefaultsTheValidationRefuses_AreExactlyTheSubstitutedOnes()
@@ -74,13 +75,15 @@ namespace Ihc.Tests
             var stub = new ControllerStub();
             object[] refused =
             [
-                stub.Time.Settings,
                 stub.Configuration.WLanSettings ?? throw new InvalidOperationException("the default stub holds a wireless setup"),
             ];
 
             Assert.That(refused.Select(value => value.GetType()), Is.EquivalentTo(SdkArguments.RefusedDefaults.Keys));
             Assert.That(refused.Where(value => !Validator.TryValidateObject(value, new ValidationContext(value), [], validateAllProperties: true)),
                 Is.EqualTo(refused), "each substituted default is still refused");
+            TimeManagerSettings timeSettings = stub.Time.Settings;
+            Assert.That(Validator.TryValidateObject(timeSettings, new ValidationContext(timeSettings), [], validateAllProperties: true),
+                Is.True, "the captured time settings are sent back as they are");
         }
 
         private static TestCaseData Held(Type type, Func<ControllerStub, object?> held) =>

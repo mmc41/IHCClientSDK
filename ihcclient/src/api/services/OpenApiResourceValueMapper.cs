@@ -39,11 +39,13 @@ namespace Ihc
             else if (v is WSIntegerValue intVal)
             {
                 value.IntValue = intVal.integer;
+                (value.IntMinimum, value.IntMaximum) = RangeFromWire(intVal.minimumValue, intVal.maximumValue);
                 value.ValueKind = ResourceValue.ValueKind.INT;
             }
             else if (v is WSFloatingPointValue floatVal)
             {
                 value.DoubleValue = floatVal.floatingPointValue;
+                (value.DoubleMinimum, value.DoubleMaximum) = RangeFromWire(floatVal.minimumValue, floatVal.maximumValue);
                 value.ValueKind = ResourceValue.ValueKind.DOUBLE;
             }
             else if (v is WSEnumValue enumVal)
@@ -123,6 +125,8 @@ namespace Ihc
         // two together.
         internal static WSResourceValue ToWire(ResourceValue v)
         {
+            Addressed(v);
+
             var kind = v.Value.ValueKind;
 
             switch (kind)
@@ -130,9 +134,9 @@ namespace Ihc
                 case ResourceValue.ValueKind.BOOL:
                     return new WSBooleanValue() { value = Required(v.Value.BoolValue, kind, nameof(v.Value.BoolValue)) };
                 case ResourceValue.ValueKind.INT:
-                    return new WSIntegerValue() { integer = Required(v.Value.IntValue, kind, nameof(v.Value.IntValue)) };
+                    return new WSIntegerValue() { integer = WritableInt(v.Value), minimumValue = v.Value.IntMinimum ?? 0, maximumValue = v.Value.IntMaximum ?? 0 };
                 case ResourceValue.ValueKind.DOUBLE:
-                    return new WSFloatingPointValue() { floatingPointValue = Required(v.Value.DoubleValue, kind, nameof(v.Value.DoubleValue)) };
+                    return new WSFloatingPointValue() { floatingPointValue = WritableDouble(v.Value), minimumValue = v.Value.DoubleMinimum ?? 0, maximumValue = v.Value.DoubleMaximum ?? 0 };
                 case ResourceValue.ValueKind.ENUM:
                     var enumValue = Required(v.Value.EnumValue, kind, nameof(v.Value.EnumValue));
                     return new WSEnumValue()
@@ -160,11 +164,11 @@ namespace Ihc
                 case ResourceValue.ValueKind.TIMER:
                     return new WSTimerValue() { milliseconds = Required(v.Value.TimerValue, kind, nameof(v.Value.TimerValue)) };
                 case ResourceValue.ValueKind.WEEKDAY:
-                    return new WSWeekdayValue() { weekdayNumber = Required(v.Value.WeekdayValue, kind, nameof(v.Value.WeekdayValue)) };
+                    return new WSWeekdayValue() { weekdayNumber = WritableWeekday(v.Value) };
                 case ResourceValue.ValueKind.PhoneNumber:
                     return new WSPhoneNumberValue() { number = Required(v.Value.PhoneNumberValue, kind, nameof(v.Value.PhoneNumberValue)) };
                 case ResourceValue.ValueKind.SceneDimmer:
-                    return new WSSceneDimmerValue() { dimmerPercentage = Required(v.Value.DimmerPercentage, kind, nameof(v.Value.DimmerPercentage)), delayTime = Required(v.Value.DimmerDelayTime, kind, nameof(v.Value.DimmerDelayTime)), rampTime = Required(v.Value.DimmerRampTime, kind, nameof(v.Value.DimmerRampTime)) };
+                    return new WSSceneDimmerValue() { dimmerPercentage = WritableDimmerPercentage(v.Value), delayTime = Required(v.Value.DimmerDelayTime, kind, nameof(v.Value.DimmerDelayTime)), rampTime = WritableDimmerRampTime(v.Value) };
                 case ResourceValue.ValueKind.SceneRelay:
                     return new WSSceneRelayValue() { delayTime = Required(v.Value.RelayDelayTime, kind, nameof(v.Value.RelayDelayTime)), relayValue = Required(v.Value.RelayValue, kind, nameof(v.Value.RelayValue)) };
                 case ResourceValue.ValueKind.SceneShutter:

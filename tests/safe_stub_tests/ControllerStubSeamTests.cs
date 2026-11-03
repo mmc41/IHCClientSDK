@@ -447,7 +447,7 @@ namespace Ihc.Tests
             var stub = new HoldingStub();
             var registration = ControllerStubs.Register(stub);
             using var services = ServicesOn(registration.Endpoint);
-            Task<IReadOnlyList<ResourceValue>> held = services.Resources.WaitForResourceValueChanges(timeout_seconds: 1);
+            Task<IReadOnlyList<ResourceValue>> held = services.Resources.WaitForResourceValueChanges(holdSeconds: 1);
             await stub.Holding.WaitAsync(TimeSpan.FromSeconds(10));
 
             registration.Dispose();

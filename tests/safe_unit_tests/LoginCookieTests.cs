@@ -51,6 +51,9 @@ namespace Ihc.Tests
 
             /// <summary>A 200 whose body is not a SOAP envelope.</summary>
             Undecodable,
+
+            /// <summary>A 200 whose body is a SOAP fault, <c>Logon Failed</c>, the one fault text on record.</summary>
+            LogonFault,
         }
 
         private static IEnumerable<LoginService> Services() => [LoginService.Authentication, LoginService.OpenApi];
@@ -112,7 +115,7 @@ namespace Ihc.Tests
         [Test]
         public async Task SecondLogin_WithNoDecodableAnswer_KeepsTheStoredCookie_WhichTheNextCallPresents(
             [ValueSource(nameof(Services))] LoginService service,
-            [Values(Answer.NoReply, Answer.Cancelled, Answer.ServerError, Answer.Undecodable)] Answer answer)
+            [Values(Answer.NoReply, Answer.Cancelled, Answer.ServerError, Answer.Undecodable, Answer.LogonFault)] Answer answer)
         {
             using var rig = new Rig(service, answer);
 
@@ -173,6 +176,7 @@ namespace Ihc.Tests
             Answer.Cancelled => throw new TaskCanceledException("the send was cancelled before any reply"),
             Answer.ServerError => Answering(HttpStatusCode.InternalServerError, "<html>boom</html>", CookieB),
             Answer.Undecodable => Answering(HttpStatusCode.OK, "<html>not a SOAP envelope</html>", CookieB),
+            Answer.LogonFault => Answering(HttpStatusCode.OK, SoapFaultText.LogonFailed, CookieB),
             _ => throw new ArgumentOutOfRangeException(nameof(answer), answer, null),
         };
 
@@ -183,7 +187,7 @@ namespace Ihc.Tests
         {
             Answer.NoReply or Answer.ServerError => typeof(HttpRequestException),
             Answer.Cancelled => typeof(OperationCanceledException),
-            Answer.Undecodable => typeof(ErrorWithCodeException),
+            Answer.Undecodable or Answer.LogonFault => typeof(ErrorWithCodeException),
             _ => throw new ArgumentOutOfRangeException(nameof(answer), answer, "this answer is decodable"),
         };
 

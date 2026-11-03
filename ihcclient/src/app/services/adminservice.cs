@@ -177,7 +177,7 @@ namespace Ihc.App
 
             // Checks the model OBJECT, not the settings inside it. Validator.TryValidateObject does not recurse
             // into complex properties, and MutableAdminModel declares no annotations of its own, so in practice
-            // this rejects only a null model: a controller that reports an over-long SMTP password or a missing
+            // this rejects only a null model: a controller that reports an out-of-range SMTP port or a missing
             // [Required] netmask still loads. That is deliberate — the constraints on the nested blocks are
             // enforced where they are APPLIED, by the leaf setters in ConfigurationService, and enforcing them
             // here as well would refuse real controller data that loads today.
@@ -200,6 +200,15 @@ namespace Ihc.App
         /// Changes to DNS servers, network settings, or WLAN settings will set the RebootRequired flag.
         /// If no changes are detected, no API calls are made to the controller.
         /// </remarks>
+        /// <exception cref="ArgumentException">The model has no <see cref="MutableAdminModel.Users"/> list, which a store
+        /// would apply as no accounts at all; nothing is read from or sent to the controller.</exception>
+        /// <exception cref="InvalidOperationException">The controller declined the e-mail control or network settings.
+        /// Changes applied before them stay applied, and the snapshot is not updated, so a later store sends them
+        /// again.</exception>
+        /// <exception cref="ErrorWithCodeException"><see cref="Errors.CONTROLLER_WRITE_UNCONFIRMED"/>: the network
+        /// settings were sent but not answered, as when a new address restarts the controller, so whether they applied
+        /// is unknown. Reconnect, at the new address if one was set, and read the model back before storing
+        /// again.</exception>
         public async Task<ChangeInformation> Store(MutableAdminModel model)
         {
             return await RunTracedAsync(nameof(Store), async activity =>
@@ -210,9 +219,16 @@ namespace Ihc.App
                 var modelCopy = model.Copy();
 
                 // Reaches only the top-level object, exactly as in DoGetModel above: a nested value that
-                // breaks its own [StringLength] or [Required] passes here, and is refused — or not — by the
+                // breaks its own [Range] or [Required] passes here, and is refused — or not — by the
                 // leaf setter that applies it.
                 ValidationHelper.ValidateDataAnnotations(modelCopy, nameof(modelCopy));
+
+                // The account list is applied whole, so a model without one would have every account removed. It is
+                // refused here rather than on load, so that a file without users can still be read and completed.
+                if (modelCopy.Users == null)
+                    throw new ArgumentException(
+                        "Users is required, since a store without it would remove every account on the controller.",
+                        nameof(model));
 
                 // Make sure we are logged in.
                 await EnsureAuthenticated().ConfigureAwait(settings.AsyncContinueOnCapturedContext);
@@ -237,6 +253,10 @@ namespace Ihc.App
                 bool rebootRequiredFlag = false;
                 if (changes.Count > 0)
                 {
+                    // TODO: Validate changed network/WLAN settings before applying them: dotted-decimal IPv4;
+                    // HTTP/HTTPS ports 1-65535 and distinct; address/gateway first octets 1-223 except 127;
+                    // gateway in the configured subnet; address outside the USB subnet (10.18.93.0/24).
+                    // These are administration policies, so validation belongs here rather than in the raw API.
                     rebootRequiredFlag = await ApplyChanges(changes).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                 }
 
@@ -393,7 +413,7 @@ namespace Ihc.App
         /// <param name="path">File path to read JSON from</param>
         /// <returns>MutableAdminModel deserialized from JSON file with sensitive data decrypted if encryption is enabled</returns>
         /// <exception cref="FileNotFoundException">Thrown when the specified file does not exist</exception>
-        /// <exception cref="InvalidOperationException">Thrown when deserialization fails or returns null</exception>
+        /// <exception cref="ArgumentException">Thrown in the cases <see cref="LoadFromJson(Stream)"/> lists</exception>
         /// <exception cref="System.Text.Json.JsonException">Thrown when JSON format is invalid</exception>
         public async Task<MutableAdminModel> LoadFromJson(string path)
         {
@@ -651,8 +671,8 @@ namespace Ihc.App
                             break;
 
                         case AdminChangeType.EmailControlChanged:
-                            await configService.SetEmailControlSettings((EmailControlSettings)change.Payload!)
-                                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                            RequireAccepted(await configService.SetEmailControlSettings((EmailControlSettings)change.Payload!)
+                                .ConfigureAwait(settings.AsyncContinueOnCapturedContext), "the e-mail control settings");
                             break;
 
                         case AdminChangeType.SmtpSettingsChanged:
@@ -667,8 +687,10 @@ namespace Ihc.App
                             break;
 
                         case AdminChangeType.NetworkSettingsChanged:
-                            await configService.SetNetworkSettings((NetworkSettings)change.Payload!)
-                                .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                            // An unconfirmed write (CONTROLLER_WRITE_UNCONFIRMED) reaches the caller as thrown, so it is
+                            // not reported as applied either.
+                            RequireAccepted(await configService.SetNetworkSettings((NetworkSettings)change.Payload!)
+                                .ConfigureAwait(settings.AsyncContinueOnCapturedContext), "the network settings");
                             rebootRequiredFlag = true;
                             break;
 
@@ -678,6 +700,8 @@ namespace Ihc.App
                             break;
 
                         case AdminChangeType.WLanSettingsChanged:
+                            // The reply flag is ignored, as IHC Administrator ignores it: its meaning is not
+                            // established, so it can neither confirm nor refuse the write.
                             await configService.SetWLanSettings((WLanSettings)change.Payload!)
                                 .ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                             rebootRequiredFlag = true;
@@ -695,5 +719,12 @@ namespace Ihc.App
             }).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
         }
 
+        // A declined write did not apply the settings, so it fails the store rather than count as applied, as IHC
+        // Administrator keeps its dialog open on it.
+        private static void RequireAccepted(bool accepted, string what)
+        {
+            if (!accepted)
+                throw new InvalidOperationException($"The controller declined {what}; they were not applied.");
+        }
     }
 }

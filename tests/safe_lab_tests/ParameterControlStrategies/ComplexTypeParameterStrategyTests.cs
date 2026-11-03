@@ -88,7 +88,7 @@ namespace Ihc.Tests
             {
                 PowerupMessage = "powered up",
                 PowerdownMessage = "powered down",
-                PowerdownNumber = "12345678",
+                RecipientSlots = "110000000000000000000000000000",
                 RelaySMS = true,
                 ForceStandAloneMode = false,
                 SendLowBatteryNotification = true,

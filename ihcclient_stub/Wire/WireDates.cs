@@ -7,7 +7,8 @@ namespace Ihc.Stubbing
     internal static class WireDates
     {
         /// <summary>
-        /// The offset a controller writes its date components in, and the SDK reads them back with. Restated
+        /// The offset a controller writes its date components in, and the SDK reads them back with, for every date
+        /// but one carrying the controller's UTC clock, which is written and read at offset 0. Restated
         /// rather than shared, because the SDK's copy is internal to it; the typed round trips pin the two equal.
         /// </summary>
         internal static readonly TimeSpan Offset = TimeSpan.FromHours(1);
@@ -16,13 +17,19 @@ namespace Ihc.Stubbing
         /// <paramref name="value"/> as a <typeparamref name="TWsDate"/>, or null for
         /// <see cref="DateTimeOffset.MinValue"/>, which is how the SDK represents a date the controller left out.
         /// </summary>
-        internal static TWsDate? ToWire<TWsDate>(DateTimeOffset value) where TWsDate : class, new()
+        internal static TWsDate? ToWire<TWsDate>(DateTimeOffset value) where TWsDate : class, new() =>
+            ToWire<TWsDate>(value, Offset);
+
+        /// <summary>As <see cref="ToWire{TWsDate}(DateTimeOffset)"/>, with the clock face written at
+        /// <paramref name="offset"/>: <see cref="TimeSpan.Zero"/> for a field that carries the controller's UTC
+        /// clock.</summary>
+        internal static TWsDate? ToWire<TWsDate>(DateTimeOffset value, TimeSpan offset) where TWsDate : class, new()
         {
             if (value == DateTimeOffset.MinValue)
             {
                 return null;
             }
-            return (TWsDate)ShapeDefaults.SetMembers(new TWsDate(), Parts(value.ToOffset(Offset)));
+            return (TWsDate)ShapeDefaults.SetMembers(new TWsDate(), Parts(value.ToOffset(offset)));
         }
 
         /// <summary>The members a <c>WSDate</c> states <paramref name="date"/> in, as its own clock shows it.</summary>
@@ -36,7 +43,10 @@ namespace Ihc.Stubbing
         /// A generated <c>WSDate</c> of any namespace as the date it states, read at <see cref="Offset"/>, or
         /// <see cref="DateTimeOffset.MinValue"/> for none, the SDK's own sign for a date left out.
         /// </summary>
-        internal static DateTimeOffset FromWire(object? wsDate)
+        internal static DateTimeOffset FromWire(object? wsDate) => FromWire(wsDate, Offset);
+
+        /// <summary>As <see cref="FromWire(object?)"/>, with the clock face read at <paramref name="offset"/>.</summary>
+        internal static DateTimeOffset FromWire(object? wsDate, TimeSpan offset)
         {
             if (wsDate is null)
             {
@@ -46,7 +56,7 @@ namespace Ihc.Stubbing
             int Part(string name) => (int)(type.GetProperty(name)?.GetValue(wsDate)
                 ?? throw new InvalidOperationException($"{type.FullName} has no member {name}"));
             return new DateTimeOffset(Part("year"), Part("monthWithJanuaryAsOne"), Part("day"),
-                Part("hours"), Part("minutes"), Part("seconds"), Offset);
+                Part("hours"), Part("minutes"), Part("seconds"), offset);
         }
     }
 }

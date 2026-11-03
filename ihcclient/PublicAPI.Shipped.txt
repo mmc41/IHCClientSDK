@@ -10,8 +10,6 @@ Ihc.AirlinkManagementService.GetBatteryLevel(int resourceId) -> System.Threading
 Ihc.AirlinkManagementService.GetDetectedDeviceList() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.RFDevice!>!>!
 Ihc.AirlinkManagementService.GetDevicesRunningOutOfBattery() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>!>!
 Ihc.AirlinkManagementService.TestRFActuatorWithSerialNumber(long serialNumber) -> System.Threading.Tasks.Task<bool>!
-Ihc.AirlinkManagementService.WaitForDeviceDetected(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice?>!
-Ihc.AirlinkManagementService.WaitForDeviceTestResult(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice?>!
 Ihc.App.AdminAppService
 Ihc.App.AdminAppService.AdminAppService(Ihc.IhcSettings! settings, bool fileEnryption) -> void
 Ihc.App.AdminAppService.AdminAppService(Ihc.IhcSettings! settings, bool fileEnryption, Ihc.IAuthenticationService! authService, Ihc.IUserManagerService! userService, Ihc.IConfigurationService! configService) -> void
@@ -206,21 +204,15 @@ Ihc.ConfigurationService.GetEmailControlSettings() -> System.Threading.Tasks.Tas
 Ihc.ConfigurationService.GetNetworkSettings() -> System.Threading.Tasks.Task<Ihc.NetworkSettings?>!
 Ihc.ConfigurationService.GetSMTPSettings() -> System.Threading.Tasks.Task<Ihc.SMTPSettings?>!
 Ihc.ConfigurationService.GetSystemInfo() -> System.Threading.Tasks.Task<Ihc.SystemInfo!>!
-Ihc.ConfigurationService.GetUserLog(string! lang) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
 Ihc.ConfigurationService.GetWLanInterface() -> System.Threading.Tasks.Task<Ihc.WLanInterface?>!
 Ihc.ConfigurationService.GetWLanScan() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.WLanCell!>!>!
 Ihc.ConfigurationService.GetWLanSettings() -> System.Threading.Tasks.Task<Ihc.WLanSettings?>!
 Ihc.ConfigurationService.GetWebAccessControl() -> System.Threading.Tasks.Task<Ihc.WebAccessControl?>!
 Ihc.ConfigurationService.SetDNSServers(Ihc.DNSServers! dnsServers) -> System.Threading.Tasks.Task!
 Ihc.ConfigurationService.SetEmailControlEnabled(bool enabled) -> System.Threading.Tasks.Task!
-Ihc.ConfigurationService.SetEmailControlSettings(Ihc.EmailControlSettings! settings) -> System.Threading.Tasks.Task!
-Ihc.ConfigurationService.SetNetworkSettings(Ihc.NetworkSettings! settings) -> System.Threading.Tasks.Task!
 Ihc.ConfigurationService.SetSMTPSettings(Ihc.SMTPSettings! settings) -> System.Threading.Tasks.Task!
 Ihc.ConfigurationService.SetServerLanguage(string! language) -> System.Threading.Tasks.Task!
-Ihc.ConfigurationService.SetWLanSettings(Ihc.WLanSettings! settings) -> System.Threading.Tasks.Task!
 Ihc.ConfigurationService.SetWebAccessControl(Ihc.WebAccessControl! accessControl) -> System.Threading.Tasks.Task!
-Ihc.ConfigurationService.TestSendMessage(string! recipient, string! subject, string! message) -> System.Threading.Tasks.Task<bool>!
-Ihc.ConfigurationService.TestSettingsNow() -> System.Threading.Tasks.Task!
 Ihc.ControllerService
 Ihc.ControllerService.ControllerService(Ihc.IAuthenticationService! authService) -> void
 Ihc.ControllerService.EnterProjectChangeMode() -> System.Threading.Tasks.Task<bool>!
@@ -228,7 +220,6 @@ Ihc.ControllerService.ExitProjectChangeMode() -> System.Threading.Tasks.Task<boo
 Ihc.ControllerService.GetBackup() -> System.Threading.Tasks.Task<Ihc.BackupFile?>!
 Ihc.ControllerService.GetControllerState() -> System.Threading.Tasks.Task<Ihc.ControllerState>!
 Ihc.ControllerService.GetIHCProjectNumberOfSegments() -> System.Threading.Tasks.Task<int>!
-Ihc.ControllerService.GetIHCProjectSegment(int index, int major, int minor) -> System.Threading.Tasks.Task<Ihc.ProjectFile?>!
 Ihc.ControllerService.GetIHCProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
 Ihc.ControllerService.GetProject() -> System.Threading.Tasks.Task<Ihc.ProjectFile?>!
 Ihc.ControllerService.GetProjectInfo() -> System.Threading.Tasks.Task<Ihc.ProjectInfo?>!
@@ -236,13 +227,10 @@ Ihc.ControllerService.GetS0MeterValue() -> System.Threading.Tasks.Task<float>!
 Ihc.ControllerService.GetSDCardInfo() -> System.Threading.Tasks.Task<Ihc.SDInfo?>!
 Ihc.ControllerService.IsIHCProjectAvailable() -> System.Threading.Tasks.Task<bool>!
 Ihc.ControllerService.IsSDCardReady() -> System.Threading.Tasks.Task<bool>!
-Ihc.ControllerService.ResetS0Values() -> System.Threading.Tasks.Task!
 Ihc.ControllerService.Restore() -> System.Threading.Tasks.Task<int>!
 Ihc.ControllerService.SetS0Consumption(float consumption, bool flag) -> System.Threading.Tasks.Task!
 Ihc.ControllerService.SetS0FiscalYearStart(sbyte month, sbyte day) -> System.Threading.Tasks.Task!
-Ihc.ControllerService.StoreIHCProjectSegment(Ihc.ProjectFile! segment, int index, int major) -> System.Threading.Tasks.Task<bool>!
 Ihc.ControllerService.StoreProject(Ihc.ProjectFile! project) -> System.Threading.Tasks.Task<bool>!
-Ihc.ControllerService.WaitForControllerStateChange(Ihc.ControllerState waitState, int waitSec) -> System.Threading.Tasks.Task<Ihc.ControllerState>!
 Ihc.ControllerState
 Ihc.ControllerState.Failed = 3 -> Ihc.ControllerState
 Ihc.ControllerState.Initialize = 2 -> Ihc.ControllerState
@@ -278,8 +266,6 @@ Ihc.EmailControlSettings.Pop3Username.get -> string?
 Ihc.EmailControlSettings.Pop3Username.init -> void
 Ihc.EmailControlSettings.RemoveEmailsAfterUsage.get -> bool
 Ihc.EmailControlSettings.RemoveEmailsAfterUsage.init -> void
-Ihc.EmailControlSettings.ServerIpAddress.get -> string?
-Ihc.EmailControlSettings.ServerIpAddress.init -> void
 Ihc.EmailControlSettings.ServerPortNumber.get -> int
 Ihc.EmailControlSettings.ServerPortNumber.init -> void
 Ihc.EmailControlSettings.Ssl.get -> bool
@@ -388,8 +374,6 @@ Ihc.IAirlinkManagementService.GetBatteryLevel(int resourceId) -> System.Threadin
 Ihc.IAirlinkManagementService.GetDetectedDeviceList() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.RFDevice!>!>!
 Ihc.IAirlinkManagementService.GetDevicesRunningOutOfBattery() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>!>!
 Ihc.IAirlinkManagementService.TestRFActuatorWithSerialNumber(long serialNumber) -> System.Threading.Tasks.Task<bool>!
-Ihc.IAirlinkManagementService.WaitForDeviceDetected(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice?>!
-Ihc.IAirlinkManagementService.WaitForDeviceTestResult(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.RFDevice?>!
 Ihc.IAuthenticationService
 Ihc.IAuthenticationService.Authenticate() -> System.Threading.Tasks.Task<Ihc.IhcUser!>!
 Ihc.IAuthenticationService.Authenticate(string! userName, string! password, Ihc.Application application = Ihc.Application.openapi) -> System.Threading.Tasks.Task<Ihc.IhcUser!>!
@@ -405,28 +389,21 @@ Ihc.IConfigurationService.GetEmailControlSettings() -> System.Threading.Tasks.Ta
 Ihc.IConfigurationService.GetNetworkSettings() -> System.Threading.Tasks.Task<Ihc.NetworkSettings?>!
 Ihc.IConfigurationService.GetSMTPSettings() -> System.Threading.Tasks.Task<Ihc.SMTPSettings?>!
 Ihc.IConfigurationService.GetSystemInfo() -> System.Threading.Tasks.Task<Ihc.SystemInfo!>!
-Ihc.IConfigurationService.GetUserLog(string! lang = "da") -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
 Ihc.IConfigurationService.GetWLanInterface() -> System.Threading.Tasks.Task<Ihc.WLanInterface?>!
 Ihc.IConfigurationService.GetWLanScan() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.WLanCell!>!>!
 Ihc.IConfigurationService.GetWLanSettings() -> System.Threading.Tasks.Task<Ihc.WLanSettings?>!
 Ihc.IConfigurationService.GetWebAccessControl() -> System.Threading.Tasks.Task<Ihc.WebAccessControl?>!
 Ihc.IConfigurationService.SetDNSServers(Ihc.DNSServers! dnsServers) -> System.Threading.Tasks.Task!
 Ihc.IConfigurationService.SetEmailControlEnabled(bool enabled) -> System.Threading.Tasks.Task!
-Ihc.IConfigurationService.SetEmailControlSettings(Ihc.EmailControlSettings! settings) -> System.Threading.Tasks.Task!
-Ihc.IConfigurationService.SetNetworkSettings(Ihc.NetworkSettings! settings) -> System.Threading.Tasks.Task!
 Ihc.IConfigurationService.SetSMTPSettings(Ihc.SMTPSettings! settings) -> System.Threading.Tasks.Task!
 Ihc.IConfigurationService.SetServerLanguage(string! language) -> System.Threading.Tasks.Task!
-Ihc.IConfigurationService.SetWLanSettings(Ihc.WLanSettings! settings) -> System.Threading.Tasks.Task!
 Ihc.IConfigurationService.SetWebAccessControl(Ihc.WebAccessControl! accessControl) -> System.Threading.Tasks.Task!
-Ihc.IConfigurationService.TestSendMessage(string! recipient, string! subject, string! message) -> System.Threading.Tasks.Task<bool>!
-Ihc.IConfigurationService.TestSettingsNow() -> System.Threading.Tasks.Task!
 Ihc.IControllerService
 Ihc.IControllerService.EnterProjectChangeMode() -> System.Threading.Tasks.Task<bool>!
 Ihc.IControllerService.ExitProjectChangeMode() -> System.Threading.Tasks.Task<bool>!
 Ihc.IControllerService.GetBackup() -> System.Threading.Tasks.Task<Ihc.BackupFile?>!
 Ihc.IControllerService.GetControllerState() -> System.Threading.Tasks.Task<Ihc.ControllerState>!
 Ihc.IControllerService.GetIHCProjectNumberOfSegments() -> System.Threading.Tasks.Task<int>!
-Ihc.IControllerService.GetIHCProjectSegment(int index, int major, int minor) -> System.Threading.Tasks.Task<Ihc.ProjectFile?>!
 Ihc.IControllerService.GetIHCProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
 Ihc.IControllerService.GetProject() -> System.Threading.Tasks.Task<Ihc.ProjectFile?>!
 Ihc.IControllerService.GetProjectInfo() -> System.Threading.Tasks.Task<Ihc.ProjectInfo?>!
@@ -434,13 +411,10 @@ Ihc.IControllerService.GetS0MeterValue() -> System.Threading.Tasks.Task<float>!
 Ihc.IControllerService.GetSDCardInfo() -> System.Threading.Tasks.Task<Ihc.SDInfo?>!
 Ihc.IControllerService.IsIHCProjectAvailable() -> System.Threading.Tasks.Task<bool>!
 Ihc.IControllerService.IsSDCardReady() -> System.Threading.Tasks.Task<bool>!
-Ihc.IControllerService.ResetS0Values() -> System.Threading.Tasks.Task!
 Ihc.IControllerService.Restore() -> System.Threading.Tasks.Task<int>!
 Ihc.IControllerService.SetS0Consumption(float consumption, bool flag) -> System.Threading.Tasks.Task!
 Ihc.IControllerService.SetS0FiscalYearStart(sbyte month, sbyte day) -> System.Threading.Tasks.Task!
-Ihc.IControllerService.StoreIHCProjectSegment(Ihc.ProjectFile! segment, int index, int major) -> System.Threading.Tasks.Task<bool>!
 Ihc.IControllerService.StoreProject(Ihc.ProjectFile! project) -> System.Threading.Tasks.Task<bool>!
-Ihc.IControllerService.WaitForControllerStateChange(Ihc.ControllerState waitState, int waitSec) -> System.Threading.Tasks.Task<Ihc.ControllerState>!
 Ihc.ICookieHandler
 Ihc.ICookieHandler.GetCookie() -> string?
 Ihc.ICookieHandler.SetCookie(string? _cookie) -> void
@@ -481,8 +455,6 @@ Ihc.ILedDimmerManagementService.GetDeviceList() -> System.Threading.Tasks.Task<S
 Ihc.ILedDimmerManagementService.GetFirmwareUpgradeProgress() -> System.Threading.Tasks.Task<Ihc.LedDimmerProgress?>!
 Ihc.ILedDimmerManagementService.GetLightLevel(sbyte channel) -> System.Threading.Tasks.Task<Ihc.LedDimmerLevel?>!
 Ihc.ILedDimmerManagementService.ScanConfiguredDevices(int scanParameter1, int scanParameter2) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LedDimmerInfo!>!>!
-Ihc.ILedDimmerManagementService.StartFirmwareUpgrade(string! serialNumber) -> System.Threading.Tasks.Task!
-Ihc.ILedDimmerManagementService.WaitForDeviceDetected(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.LedDimmerInfo?>!
 Ihc.IMessageControlLogService
 Ihc.IMessageControlLogService.EmptyLog() -> System.Threading.Tasks.Task!
 Ihc.IMessageControlLogService.GetEvents() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LogEventEntry!>!>!
@@ -508,10 +480,8 @@ Ihc.IOpenAPIService.GetDatalineInputIDs() -> System.Threading.Tasks.Task<System.
 Ihc.IOpenAPIService.GetDatalineOutputIDs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>!>!
 Ihc.IOpenAPIService.GetFWVersion() -> System.Threading.Tasks.Task<Ihc.FWVersion?>!
 Ihc.IOpenAPIService.GetIHCProjectNumberOfSegments() -> System.Threading.Tasks.Task<int>!
-Ihc.IOpenAPIService.GetIHCProjectSegment(int index, int majorVersion, int minorVersion) -> System.Threading.Tasks.Task<Ihc.ProjectSegment!>!
 Ihc.IOpenAPIService.GetIHCProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
 Ihc.IOpenAPIService.GetProjectInfo() -> System.Threading.Tasks.Task<Ihc.ProjectInfo?>!
-Ihc.IOpenAPIService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int>! resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int timeout_between_waits_in_seconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue!>!
 Ihc.IOpenAPIService.GetSceneProjectInfo() -> System.Threading.Tasks.Task<Ihc.SceneProjectInfo?>!
 Ihc.IOpenAPIService.GetSceneProjectSegment(int index) -> System.Threading.Tasks.Task<Ihc.SceneProjectSegment!>!
 Ihc.IOpenAPIService.GetSceneProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
@@ -521,11 +491,8 @@ Ihc.IOpenAPIService.GetValues(System.Collections.Generic.IReadOnlyList<int>! res
 Ihc.IOpenAPIService.IsIHCProjectAvailable() -> System.Threading.Tasks.Task<bool>!
 Ihc.IOpenAPIService.Ping() -> System.Threading.Tasks.Task!
 Ihc.IOpenAPIService.SetValues(System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>! values) -> System.Threading.Tasks.Task<bool>!
-Ihc.IOpenAPIService.WaitForEvents(int timeout) -> System.Threading.Tasks.Task<Ihc.EventPackage!>!
 Ihc.IProductionTestService
 Ihc.IResourceInteractionService
-Ihc.IResourceInteractionService.DisableInitialValueNotifactions(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<bool>!
-Ihc.IResourceInteractionService.DisableRuntimeValueNotifactions(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<bool>!
 Ihc.IResourceInteractionService.EnableInitialValueNotifications(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
 Ihc.IResourceInteractionService.EnableRuntimeValueNotifications(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
 Ihc.IResourceInteractionService.GetAllDatalineInputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
@@ -533,18 +500,9 @@ Ihc.IResourceInteractionService.GetAllDatalineOutputs() -> System.Threading.Task
 Ihc.IResourceInteractionService.GetEnumeratorDefinitions() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.EnumDefinition!>!>!
 Ihc.IResourceInteractionService.GetExtraDatalineInputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
 Ihc.IResourceInteractionService.GetExtraDatalineOutputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
-Ihc.IResourceInteractionService.GetInitialValue(int initialValue) -> System.Threading.Tasks.Task<Ihc.ResourceValue!>!
-Ihc.IResourceInteractionService.GetInitialValues(System.Collections.Generic.IReadOnlyList<int>! initialValues) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
 Ihc.IResourceInteractionService.GetLoggedData(int resourceId) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LoggedData!>!>!
-Ihc.IResourceInteractionService.GetResourceType(int resourceID) -> System.Threading.Tasks.Task<string?>!
-Ihc.IResourceInteractionService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int>! resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int timeout_between_waits_in_seconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue!>!
-Ihc.IResourceInteractionService.GetRuntimeValue(int resourceID) -> System.Threading.Tasks.Task<Ihc.ResourceValue!>!
-Ihc.IResourceInteractionService.GetRuntimeValues(System.Collections.Generic.IReadOnlyList<int>! resourceIDs) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
-Ihc.IResourceInteractionService.GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.SceneResourceIdAndLocation!>!>!
-Ihc.IResourceInteractionService.GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource) -> System.Threading.Tasks.Task<Ihc.SceneResourceIdAndLocation?>!
 Ihc.IResourceInteractionService.SetResourceValue(Ihc.ResourceValue! v) -> System.Threading.Tasks.Task<bool>!
 Ihc.IResourceInteractionService.SetResourceValues(System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>! values) -> System.Threading.Tasks.Task<bool>!
-Ihc.IResourceInteractionService.WaitForResourceValueChanges(int timeout_seconds = 15) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
 Ihc.ISmsModemService
 Ihc.ISmsModemService.GetSmsModemInfo() -> System.Threading.Tasks.Task<Ihc.SmsModemInfo?>!
 Ihc.ISmsModemService.GetSmsModemSettings() -> System.Threading.Tasks.Task<Ihc.SmsModemSettings?>!
@@ -554,7 +512,6 @@ Ihc.ISmsModemService.SetSmsModemSettings(Ihc.SmsModemSettings! settings) -> Syst
 Ihc.ITimeManagerService
 Ihc.ITimeManagerService.GetCurrentLocalTime() -> System.Threading.Tasks.Task<System.DateTimeOffset>!
 Ihc.ITimeManagerService.GetSettings() -> System.Threading.Tasks.Task<Ihc.TimeManagerSettings?>!
-Ihc.ITimeManagerService.GetTimeFromServer() -> System.Threading.Tasks.Task<Ihc.TimeServerConnectionResult?>!
 Ihc.ITimeManagerService.GetUptime() -> System.Threading.Tasks.Task<System.TimeSpan>!
 Ihc.ITimeManagerService.SetSettings(Ihc.TimeManagerSettings! settings) -> System.Threading.Tasks.Task<bool>!
 Ihc.IUserManagerService
@@ -684,8 +641,6 @@ Ihc.LedDimmerManagementService.GetFirmwareUpgradeProgress() -> System.Threading.
 Ihc.LedDimmerManagementService.GetLightLevel(sbyte channel) -> System.Threading.Tasks.Task<Ihc.LedDimmerLevel?>!
 Ihc.LedDimmerManagementService.LedDimmerManagementService(Ihc.IAuthenticationService! authService) -> void
 Ihc.LedDimmerManagementService.ScanConfiguredDevices(int scanParameter1, int scanParameter2) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LedDimmerInfo!>!>!
-Ihc.LedDimmerManagementService.StartFirmwareUpgrade(string! serialNumber) -> System.Threading.Tasks.Task!
-Ihc.LedDimmerManagementService.WaitForDeviceDetected(int timeoutSeconds) -> System.Threading.Tasks.Task<Ihc.LedDimmerInfo?>!
 Ihc.LedDimmerProgress
 Ihc.LedDimmerProgress.Failed.get -> string?
 Ihc.LedDimmerProgress.Failed.init -> void
@@ -800,10 +755,8 @@ Ihc.OpenAPIService.GetDatalineInputIDs() -> System.Threading.Tasks.Task<System.C
 Ihc.OpenAPIService.GetDatalineOutputIDs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<int>!>!
 Ihc.OpenAPIService.GetFWVersion() -> System.Threading.Tasks.Task<Ihc.FWVersion?>!
 Ihc.OpenAPIService.GetIHCProjectNumberOfSegments() -> System.Threading.Tasks.Task<int>!
-Ihc.OpenAPIService.GetIHCProjectSegment(int index, int majorVersion, int minorVersion) -> System.Threading.Tasks.Task<Ihc.ProjectSegment!>!
 Ihc.OpenAPIService.GetIHCProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
 Ihc.OpenAPIService.GetProjectInfo() -> System.Threading.Tasks.Task<Ihc.ProjectInfo?>!
-Ihc.OpenAPIService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int>! resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int timeout_between_waits_in_seconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue!>!
 Ihc.OpenAPIService.GetSceneProjectInfo() -> System.Threading.Tasks.Task<Ihc.SceneProjectInfo?>!
 Ihc.OpenAPIService.GetSceneProjectSegment(int index) -> System.Threading.Tasks.Task<Ihc.SceneProjectSegment!>!
 Ihc.OpenAPIService.GetSceneProjectSegmentationSize() -> System.Threading.Tasks.Task<int>!
@@ -815,7 +768,6 @@ Ihc.OpenAPIService.OpenAPIService(Ihc.IAuthenticationService! authService) -> vo
 Ihc.OpenAPIService.OpenAPIService(Ihc.IhcSettings! settings) -> void
 Ihc.OpenAPIService.Ping() -> System.Threading.Tasks.Task!
 Ihc.OpenAPIService.SetValues(System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>! values) -> System.Threading.Tasks.Task<bool>!
-Ihc.OpenAPIService.WaitForEvents(int timeout) -> System.Threading.Tasks.Task<Ihc.EventPackage!>!
 Ihc.ProductionTestService
 Ihc.ProductionTestService.ProductionTestService(Ihc.IAuthenticationService! authService) -> void
 Ihc.ProjectFile
@@ -869,8 +821,6 @@ Ihc.RFDevice.SignalStrength.init -> void
 Ihc.RFDevice.Version.get -> int
 Ihc.RFDevice.Version.init -> void
 Ihc.ResourceInteractionService
-Ihc.ResourceInteractionService.DisableInitialValueNotifactions(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<bool>!
-Ihc.ResourceInteractionService.DisableRuntimeValueNotifactions(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<bool>!
 Ihc.ResourceInteractionService.EnableInitialValueNotifications(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
 Ihc.ResourceInteractionService.EnableRuntimeValueNotifications(System.Collections.Generic.IReadOnlyList<int>! resourceIds) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
 Ihc.ResourceInteractionService.GetAllDatalineInputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
@@ -878,19 +828,10 @@ Ihc.ResourceInteractionService.GetAllDatalineOutputs() -> System.Threading.Tasks
 Ihc.ResourceInteractionService.GetEnumeratorDefinitions() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.EnumDefinition!>!>!
 Ihc.ResourceInteractionService.GetExtraDatalineInputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
 Ihc.ResourceInteractionService.GetExtraDatalineOutputs() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.DatalineResource!>!>!
-Ihc.ResourceInteractionService.GetInitialValue(int initialValue) -> System.Threading.Tasks.Task<Ihc.ResourceValue!>!
-Ihc.ResourceInteractionService.GetInitialValues(System.Collections.Generic.IReadOnlyList<int>! initialValues) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
 Ihc.ResourceInteractionService.GetLoggedData(int resourceId) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.LoggedData!>!>!
-Ihc.ResourceInteractionService.GetResourceType(int resourceID) -> System.Threading.Tasks.Task<string?>!
-Ihc.ResourceInteractionService.GetResourceValueChanges(System.Collections.Generic.IReadOnlyList<int>! resourceIds, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken), int timeout_between_waits_in_seconds = 15) -> System.Collections.Generic.IAsyncEnumerable<Ihc.ResourceValue!>!
-Ihc.ResourceInteractionService.GetRuntimeValue(int resourceID) -> System.Threading.Tasks.Task<Ihc.ResourceValue!>!
-Ihc.ResourceInteractionService.GetRuntimeValues(System.Collections.Generic.IReadOnlyList<int>! resourceIDs) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
-Ihc.ResourceInteractionService.GetSceneGroupResourceIdAndPositions(int sceneGroupResourceIdAndPositions) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.SceneResourceIdAndLocation!>!>!
-Ihc.ResourceInteractionService.GetScenePositionsForSceneValueResource(int scenePositionsForSceneValueResource) -> System.Threading.Tasks.Task<Ihc.SceneResourceIdAndLocation?>!
 Ihc.ResourceInteractionService.ResourceInteractionService(Ihc.IAuthenticationService! authService) -> void
 Ihc.ResourceInteractionService.SetResourceValue(Ihc.ResourceValue! v) -> System.Threading.Tasks.Task<bool>!
 Ihc.ResourceInteractionService.SetResourceValues(System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>! values) -> System.Threading.Tasks.Task<bool>!
-Ihc.ResourceInteractionService.WaitForResourceValueChanges(int timeout_seconds = 15) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Ihc.ResourceValue!>!>!
 Ihc.ResourceValue
 Ihc.ResourceValue.IsValueRuntime.get -> bool
 Ihc.ResourceValue.IsValueRuntime.init -> void
@@ -903,8 +844,6 @@ Ihc.ResourceValue.TypeString.init -> void
 Ihc.ResourceValue.UnionValue
 Ihc.ResourceValue.UnionValue.BoolValue.get -> bool?
 Ihc.ResourceValue.UnionValue.BoolValue.set -> void
-Ihc.ResourceValue.UnionValue.DateTime.get -> System.DateTimeOffset?
-Ihc.ResourceValue.UnionValue.DateTime.set -> void
 Ihc.ResourceValue.UnionValue.DateValue.get -> System.DateTimeOffset?
 Ihc.ResourceValue.UnionValue.DateValue.set -> void
 Ihc.ResourceValue.UnionValue.DimmerDelayTime.get -> int?
@@ -1089,8 +1028,6 @@ Ihc.SmsModemSettings.ForceStandAloneMode.get -> bool
 Ihc.SmsModemSettings.ForceStandAloneMode.init -> void
 Ihc.SmsModemSettings.PowerdownMessage.get -> string?
 Ihc.SmsModemSettings.PowerdownMessage.init -> void
-Ihc.SmsModemSettings.PowerdownNumber.get -> string?
-Ihc.SmsModemSettings.PowerdownNumber.init -> void
 Ihc.SmsModemSettings.PowerupMessage.get -> string?
 Ihc.SmsModemSettings.PowerupMessage.init -> void
 Ihc.SmsModemSettings.RelaySMS.get -> bool
@@ -1213,7 +1150,6 @@ Ihc.TextFile.Filename.get -> string?
 Ihc.TimeManagerService
 Ihc.TimeManagerService.GetCurrentLocalTime() -> System.Threading.Tasks.Task<System.DateTimeOffset>!
 Ihc.TimeManagerService.GetSettings() -> System.Threading.Tasks.Task<Ihc.TimeManagerSettings?>!
-Ihc.TimeManagerService.GetTimeFromServer() -> System.Threading.Tasks.Task<Ihc.TimeServerConnectionResult?>!
 Ihc.TimeManagerService.GetUptime() -> System.Threading.Tasks.Task<System.TimeSpan>!
 Ihc.TimeManagerService.SetSettings(Ihc.TimeManagerSettings! settings) -> System.Threading.Tasks.Task<bool>!
 Ihc.TimeManagerService.TimeManagerService(Ihc.IAuthenticationService! authService) -> void
@@ -1253,8 +1189,6 @@ Ihc.TypeStrings
 Ihc.TypeStrings.TypeStrings() -> void
 Ihc.UserConstants
 Ihc.UserLogFileText
-Ihc.UserLogFileText.Content.get -> string?
-Ihc.UserLogFileText.Content.init -> void
 Ihc.UserLogFileText.FileName.get -> string?
 Ihc.UserLogFileText.FileName.init -> void
 Ihc.UserLogFileText.UserLogFileText() -> void
@@ -3746,7 +3680,6 @@ static Ihc.RFDevice.operator !=(Ihc.RFDevice? left, Ihc.RFDevice? right) -> bool
 static Ihc.RFDevice.operator ==(Ihc.RFDevice? left, Ihc.RFDevice? right) -> bool
 static Ihc.ResourceValue.CreateBooleanRuntimeInput(int resourceId, bool value) -> Ihc.ResourceValue!
 static Ihc.ResourceValue.CreateBooleanRuntimeOutput(int resourceId, bool value) -> Ihc.ResourceValue!
-static Ihc.ResourceValue.ToogleBool(Ihc.ResourceValue! src) -> Ihc.ResourceValue!
 static Ihc.ResourceValue.operator !=(Ihc.ResourceValue? left, Ihc.ResourceValue? right) -> bool
 static Ihc.ResourceValue.operator ==(Ihc.ResourceValue? left, Ihc.ResourceValue? right) -> bool
 static Ihc.SDInfo.operator !=(Ihc.SDInfo? left, Ihc.SDInfo? right) -> bool

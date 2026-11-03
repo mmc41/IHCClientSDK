@@ -138,6 +138,19 @@ namespace Ihc.Tests
                 Is.EqualTo("LD-0001"));
         }
 
+        /// <summary>No serial means every dimmer, as the vendor's Administrator sends it: the part goes out nil and
+        /// reaches the controller as no serial.</summary>
+        [Test]
+        public async Task AFirmwareUpgradeOfEveryDimmer_SendsNoSerial()
+        {
+            using var sdk = StubbedSdk.Start();
+
+            await sdk.LedDimmers.StartFirmwareUpgrade(null);
+
+            StubCall call = sdk.Stub.Journal.Calls<ILedDimmerManagementService>(nameof(ILedDimmerManagementService.StartFirmwareUpgrade)).Single();
+            Assert.That((call.Outcome, call.Payload), Is.EqualTo((StubOutcome.Typed, (object?)null)));
+        }
+
         [Test]
         public void AnUninitialisedDeviceList_IsRefused()
         {

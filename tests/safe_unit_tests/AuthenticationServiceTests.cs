@@ -301,38 +301,6 @@ namespace Ihc.Tests
         }
 
         /// <summary>
-        /// A login the controller reports as SUCCESSFUL whose user cannot be mapped. An unknown group
-        /// type is the shape that reaches this: <see cref="IhcUserGroup"/> is a closed set and the
-        /// controller's is not, so the mapping throws.
-        ///
-        /// What is at stake is the SESSION rather than the exception. The controller opened one and sent
-        /// its cookie before the SDK looked at the answer at all, so a mapping that throws AFTER the
-        /// session was marked live leaves <c>IsAuthenticated</c> true and the cookie attached on a login
-        /// the caller was told had failed - and a caller that reads the throw as "login failed" and does
-        /// not dispose leaves that session sitting on the controller until it times out. The session is
-        /// therefore handed over only once a user exists to hand over with it.
-        /// </summary>
-        [Test]
-        public async Task Authenticate_WhenTheUserCannotBeMapped_IsRefusedAndLogsOutTheSessionItOpened()
-        {
-            WSUser unmappable = LoggedIn();
-            unmappable.group = new WSUserGroup { type = "text.usermanager.group_that_does_not_exist" };
-
-            Refused refused = await RefusedLoginAsync(
-                new WSLoginResult { loginWasSuccessful = true, loggedInUser = unmappable });
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(refused.Refusal.ErrorCode, Is.EqualTo(Errors.LOGIN_UNKNOWN_ERROR),
-                    "a login that cannot be completed is refused with a login code, not with whatever the mapping threw");
-                Assert.That(refused.SoapActions, Is.EqualTo(new[] { "authenticate", "disconnect" }),
-                    "the session the controller opened is ended rather than abandoned on it");
-                Assert.That(refused.Cookie, Is.Null,
-                    "and nothing this instance sends afterwards rides a session it disowned");
-            });
-        }
-
-        /// <summary>
         /// The login answer's dates are nullable on the wire, and every other SDK site reading a WSDate
         /// takes an absent one as <see cref="DateTimeOffset.MinValue"/> - <see cref="UserManagerService"/>
         /// included, which maps the very same WSUser fields. Dereferencing an absent date here instead
@@ -358,6 +326,27 @@ namespace Ihc.Tests
                 Assert.That(user.Username, Is.EqualTo("installer"), "the rest of the answer still maps");
                 Assert.That(await login.Service.IsAuthenticated(), Is.True,
                     "an absent date is not a failed login");
+            });
+        }
+
+        /// <summary>
+        /// A group the SDK does not know is the controller's to have: IHC Administrator stores and shows such a key
+        /// as received. A login the controller granted therefore completes, its user in
+        /// <see cref="IhcUserGroup.None"/>, rather than being ended over the account's metadata.
+        /// </summary>
+        [Test]
+        public async Task Authenticate_WithAnUnknownGroup_LogsInAsNone()
+        {
+            WSUser unknownGroup = LoggedIn();
+            unknownGroup.group = new WSUserGroup { type = "text.usermanager.group_that_does_not_exist" };
+            using Login login = Login.Answering(new WSLoginResult { loginWasSuccessful = true, loggedInUser = unknownGroup });
+
+            IhcUser user = await login.Service.Authenticate();
+
+            await Assert.MultipleAsync(async () =>
+            {
+                Assert.That(user.Group, Is.EqualTo(IhcUserGroup.None));
+                Assert.That(await login.Service.IsAuthenticated(), Is.True);
             });
         }
 

@@ -13,6 +13,9 @@ namespace Ihc
     /// contract and does not change here: a caller asking for a log wants the entries that could be read. What
     /// was missing is any record that the returned list is SHORTER than the answer, so a controller with fewer
     /// users and one whose answer was partly unreadable looked alike.</para>
+    /// <para>One shape is exempt from that record: a list of exactly one null entry, which is how a 3.3.44 controller
+    /// answers every empty list. It is an empty list, not a lost entry. Several nulls, or a null beside an entry,
+    /// still warn: no capture holds a nil item beside another item.</para>
     /// <para>Shared rather than written per site, because it was written per site: seventeen copies of one LINQ
     /// chain, and a warning added to two of them would have made the absence of a warning mean nothing at the
     /// other fifteen.</para>
@@ -49,7 +52,10 @@ namespace Ihc
                 }
             }
 
-            if (mapped.Count != entries.Count)
+            // One nil entry and nothing else is how a 3.3.44 controller answers every empty list: an empty list, not
+            // a lost entry. Any other nil is unexplained by that convention and is counted.
+            bool controllersEmptyList = entries.Count == 1 && entries[0] is null;
+            if (mapped.Count != entries.Count && !controllersEmptyList)
             {
                 activity.AddWarning(
                     $"The controller answered {entries.Count} {field} entries of which {mapped.Count} could be read; "

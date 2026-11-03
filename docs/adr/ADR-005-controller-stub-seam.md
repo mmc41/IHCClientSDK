@@ -289,6 +289,10 @@ that differs between them. *(Amended 2026-11-01: such an answer was passed on be
   an answer for a negative case. A shape-faithful stub is enough to exercise the SDK; controller fidelity is not
   claimed. A contract fixture built from captured controller traffic was rejected, and the stub refers to no file
   outside the repository.
+- **A captured shape is followed where one is known.** A typed answer whose shape real traffic shows takes that
+  shape, so the SDK is exercised against it rather than against its own assumption: a segmented project download is
+  served as slices of one gzip stream, counted in gzip bytes and named `unknown.bin`, and every empty list as one nil
+  `arrayItem`, as a 3.3.44 controller serves them.
 - **Answers are typed SDK model values**, over a wire tier internal to the stub, so they are easy to read and
   maintain and can carry state, like the fakes they replace. Raw XML answers were rejected as unreadable. Typed values
   cover the operations tests need rather than every operation, and any operation that sends a request can still

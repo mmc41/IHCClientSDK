@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -69,6 +70,61 @@ namespace Ihc.Tests
             Assert.ThrowsAsync<HttpRequestException>(async () => await service.Call());
 
             Assert.That(content.Disposed, Is.True, "a non-2xx answer must not walk out with the response still open");
+        }
+
+        /// <summary>
+        /// A SOAP fault in a reply, whatever the HTTP status it comes with (which no capture records), is the
+        /// controller's own refusal: it raises <see cref="Errors.CONTROLLER_SOAP_FAULT"/> carrying the fault's code and
+        /// text, instead of a bare HTTP error that discards them (500) or an empty message read as nothing answered
+        /// (200).
+        /// </summary>
+        [TestCase(HttpStatusCode.InternalServerError)]
+        [TestCase(HttpStatusCode.OK)]
+        public void SoapPost_AFault_RaisesTheCodedSoapFault_CarryingItsCodeAndText(HttpStatusCode status)
+        {
+            var (raised, disposed) = CallAnswered(status, SoapFaultText.Of("SOAP-ENV:Server", "Resource 4711 is unknown"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(raised, Is.InstanceOf<ErrorWithCodeException>());
+                Assert.That((raised as ErrorWithCodeException)?.ErrorCode, Is.EqualTo(Errors.CONTROLLER_SOAP_FAULT));
+                Assert.That(raised?.Message, Does.StartWith(nameof(Errors.CONTROLLER_SOAP_FAULT))
+                    .And.Contain("SOAP-ENV:Server").And.Contain("Resource 4711 is unknown"));
+                Assert.That(disposed, Is.True);
+            });
+        }
+
+        /// <summary><c>Logon Failed</c> is the fault a controller answers a call without a working session with, and
+        /// a host re-logs in on it, so it has a code of its own.</summary>
+        [TestCase(HttpStatusCode.InternalServerError)]
+        [TestCase(HttpStatusCode.OK)]
+        public void SoapPost_ALogonFailedFault_RaisesTheCodedLogonFailure(HttpStatusCode status)
+        {
+            Exception? raised = CallAnswered(status, SoapFaultText.LogonFailed).Raised;
+
+            Assert.That((raised as ErrorWithCodeException)?.ErrorCode, Is.EqualTo(Errors.CONTROLLER_LOGON_FAILED));
+            Assert.That(raised?.Message, Does.StartWith(nameof(Errors.CONTROLLER_LOGON_FAILED)).And.Contain("Logon Failed"));
+        }
+
+        /// <summary>A non-success status whose body is no SOAP envelope at all, or an envelope without a fault, stays
+        /// the transport's error: there are no fault details to carry.</summary>
+        [TestCase("")]
+        [TestCase("<html>failure</html>")]
+        [TestCase("<SOAP-ENV:Envelope xmlns:SOAP-ENV=\"http://schemas.xmlsoap.org/soap/envelope/\"><SOAP-ENV:Body/></SOAP-ENV:Envelope>")]
+        public void SoapPost_ANonSuccessStatusWithoutAFault_StaysAnHttpError(string body)
+        {
+            Assert.That(CallAnswered(HttpStatusCode.InternalServerError, body).Raised, Is.InstanceOf<HttpRequestException>());
+        }
+
+        /// <summary>What a call raises when the controller answers <paramref name="status"/> with <paramref name="body"/>,
+        /// and whether the response was disposed afterwards.</summary>
+        private static (Exception? Raised, bool Disposed) CallAnswered(HttpStatusCode status, string body)
+        {
+            using var content = new DisposeTrackingContent(body);
+            using var transport = Client.CreateHttpClient(new StubTransport(status, content));
+            var service = new TestSoapService(FakeSession.Settings(), new CookieHandler(false), transport);
+            Exception? raised = Assert.CatchAsync(async () => await service.Call());
+            return (raised, content.Disposed);
         }
 
         [Test]

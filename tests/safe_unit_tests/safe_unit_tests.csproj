@@ -12,6 +12,14 @@
     <PackageReference Include="CsCheck" />
     <PackageReference Include="FakeItEasy" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="NJsonSchema" />
+  </ItemGroup>
+
+  <!-- The admin-model file's published schema is the SUBJECT of AdminModelSchemaTests, not an oracle, so it is a
+       direct link copied beside the binaries and read via TestContext.TestDirectory, never by walking into the
+       source checkout at test time. -->
+  <ItemGroup>
+    <None Include="..\..\adminmodel.schema.json" Link="schema\adminmodel.schema.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,6 +40,8 @@
     <Compile Include="..\shared\CleanCopy.cs" Link="shared\CleanCopy.cs" />
     <!-- The socket stand-in the transport tests here and the stub seam tests in safe_stub_tests both drive. -->
     <Compile Include="..\shared\StubTransport.cs" Link="shared\StubTransport.cs" />
+    <!-- The framework-gzip reading of a project transfer the segment tests here and in safe_stub_tests both check against. -->
+    <Compile Include="..\shared\ProjectGzipText.cs" Link="shared\ProjectGzipText.cs" />
     <!-- The IL decode and the member population every structural rule reads. Shared because the
          controller-reach guard runs INSIDE each suite it polices, and a suite cannot be scanned from
          outside by an assembly that does not reference it. -->

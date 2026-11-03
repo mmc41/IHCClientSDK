@@ -5,7 +5,7 @@ last_updated: 2026-11-01
 
 # Architecture
 
-> Architecture overview and design rationale for the IHCClientSDK mono-repo, organized around the five matklad `ARCHITECTURE.md` sections. Start with those sections for the system map; Design Challenges and Performance retain the detailed rationale behind it. The supported SDK surface is specified in [the API contract](ihcclient/docs/api-contract.md), with breaking changes mapped in [the 0.8 migration note](ihcclient/docs/api-migration-0.8.md). Revisit this overview whenever a layer boundary or an enforced invariant changes.
+> Architecture overview and design rationale for the IHCClientSDK mono-repo, organized around the five matklad `ARCHITECTURE.md` sections. Start with those sections for the system map; Design Challenges and Performance retain the detailed rationale behind it. The supported SDK surface is specified in [the API contract](ihcclient/docs/api-contract.md), with breaking changes mapped in [the 0.8 migration note](ihcclient/docs/api-migration-0.8.md) and [the 0.9 migration note](ihcclient/docs/api-migration-0.9.md). Revisit this overview whenever a layer boundary or an enforced invariant changes.
 
 - [Problem Overview](#problem-overview) -- what the SDK is for, and the two problems it solves
 - [Codemap](#codemap) -- the top-level modules, one line each, and the entry points

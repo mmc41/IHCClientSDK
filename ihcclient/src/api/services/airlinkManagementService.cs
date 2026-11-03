@@ -61,27 +61,28 @@ namespace Ihc
         /// Gets the ids of the devices the controller reports as low on battery, probably the element ids of the
         /// project's wireless products and LED-dimmer channels.
         /// </summary>
-        /// <returns>The ids as sent; a controller with no low device answers a list holding only -1.</returns>
+        /// <returns>The ids as sent; empty when no device is low, which the controller answers as a list holding only
+        /// -1.</returns>
         Task<IReadOnlyList<int>> GetDevicesRunningOutOfBattery();
 
         /// <summary>
         /// Long-polls in wireless configuration mode: the controller holds the call until a device announces itself or
         /// the hold runs out, so call it repeatedly while waiting for a device.
         /// </summary>
-        /// <param name="timeoutSeconds">Longest time, in seconds, the controller holds the call.</param>
+        /// <param name="holdSeconds">Longest time, in seconds, the controller holds the call.</param>
         /// <returns>The detected device, or <c>null</c> when the reply carries none; a device with serial number 0 is
         /// no detection.</returns>
-        Task<RFDevice?> WaitForDeviceDetected(int timeoutSeconds);
+        Task<RFDevice?> WaitForDeviceDetected(int holdSeconds);
 
         /// <summary>
         /// Long-polls in wireless test mode: the controller holds the call until a device sends a test message or the
         /// hold runs out, so call it repeatedly; a reply may come from another device than the one under test, so check
         /// its serial number.
         /// </summary>
-        /// <param name="timeoutSeconds">Longest time, in seconds, the controller holds the call.</param>
+        /// <param name="holdSeconds">Longest time, in seconds, the controller holds the call.</param>
         /// <returns>The reporting device with its battery and signal readings, or <c>null</c> when the reply carries
         /// none.</returns>
-        Task<RFDevice?> WaitForDeviceTestResult(int timeoutSeconds);
+        Task<RFDevice?> WaitForDeviceTestResult(int holdSeconds);
 
         /// <summary>
         /// Gets the wireless devices the controller lists as detected, with their signal and battery values.
@@ -303,7 +304,11 @@ namespace Ihc
                 try
                 {
                     var result = await impl.getDevicesRunningOutOfBatteryAsync(new inputMessageName4()).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
-                    IReadOnlyList<int> retv = result.getDevicesRunningOutOfBattery1 != null ? result.getDevicesRunningOutOfBattery1 : Array.Empty<int>();
+                    // The array's items are not nillable, so the controller cannot answer "none" with the lone nil item
+                    // the other empty lists use; it answers [-1], which ServiceView reads as no device.
+                    IReadOnlyList<int> retv = result.getDevicesRunningOutOfBattery1 is null or [-1]
+                        ? Array.Empty<int>()
+                        : result.getDevicesRunningOutOfBattery1;
 
                     activity?.SetReturnValue(retv);
                     return retv;
@@ -316,15 +321,15 @@ namespace Ihc
             }
         }
 
-        public async Task<RFDevice?> WaitForDeviceDetected(int timeoutSeconds)
+        public async Task<RFDevice?> WaitForDeviceDetected(int holdSeconds)
         {
             using (var activity = StartActivity(nameof(WaitForDeviceDetected)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(timeoutSeconds), timeoutSeconds));
+                    activity?.SetParameters((nameof(holdSeconds), holdSeconds));
 
-                    var result = await impl.waitForDeviceDetectedAsync(new inputMessageName5(timeoutSeconds)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = await impl.waitForDeviceDetectedAsync(new inputMessageName5(holdSeconds)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = mapRFDevice(result.waitForDeviceDetected2);
 
                     activity?.SetReturnValue(retv);
@@ -338,15 +343,15 @@ namespace Ihc
             }
         }
 
-        public async Task<RFDevice?> WaitForDeviceTestResult(int timeoutSeconds)
+        public async Task<RFDevice?> WaitForDeviceTestResult(int holdSeconds)
         {
             using (var activity = StartActivity(nameof(WaitForDeviceTestResult)))
             {
                 try
                 {
-                    activity?.SetParameters((nameof(timeoutSeconds), timeoutSeconds));
+                    activity?.SetParameters((nameof(holdSeconds), holdSeconds));
 
-                    var result = await impl.waitForDeviceTestResultAsync(new inputMessageName6(timeoutSeconds)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
+                    var result = await impl.waitForDeviceTestResultAsync(new inputMessageName6(holdSeconds)).ConfigureAwait(settings.AsyncContinueOnCapturedContext);
                     var retv = mapRFDevice(result.waitForDeviceTestResult2);
 
                     activity?.SetReturnValue(retv);

@@ -32,10 +32,44 @@ namespace Ihc.Tests
             var network = new NetworkSettings { IpAddress = "10.0.0.5", Netmask = "255.0.0.0", Gateway = "10.0.0.1", HttpPort = 8080, HttpsPort = 8443 };
             using var sdk = StubbedSdk.Start();
 
-            await sdk.Configuration.SetNetworkSettings(network);
+            Assert.That(await sdk.Configuration.SetNetworkSettings(network), Is.True);
 
             Assert.That(await sdk.Configuration.GetNetworkSettings(), Is.EqualTo(network));
         }
+
+        /// <summary>A connection lost on the write, as when a controller restarts on a new address, reaches the caller
+        /// through the whole SDK as an unconfirmed write, the transport's error inside.</summary>
+        [Test]
+        public void NetworkSettings_WhoseWriteLosesTheConnection_AreAnUnconfirmedWrite()
+        {
+            var stub = new ControllerStub();
+            stub.FailOn<IConfigurationService>(nameof(IConfigurationService.SetNetworkSettings), StubFault.ConnectionLost);
+            using var sdk = StubbedSdk.Start(stub);
+
+            Assert.That(async () => await sdk.Configuration.SetNetworkSettings(AnAddressChange),
+                Throws.TypeOf<ErrorWithCodeException>()
+                    .And.Matches<ErrorWithCodeException>(coded => coded.ErrorCode == Errors.CONTROLLER_WRITE_UNCONFIRMED)
+                    .And.InnerException.InstanceOf<System.Net.Http.HttpRequestException>());
+        }
+
+        /// <summary>An HTTP refusal is the controller's answer, not a lost connection: it reaches the caller as the
+        /// transport's error with the status, never as an unconfirmed write.</summary>
+        [Test]
+        public void NetworkSettings_WhoseWriteIsRefusedOverHttp_RaiseTheRefusal()
+        {
+            var stub = new ControllerStub();
+            stub.OverrideRaw("ConfigurationService", "setNetworkSettings", (_, _) => Task.FromResult(new ControllerStubResponse(401, "")));
+            using var sdk = StubbedSdk.Start(stub);
+
+            Assert.That(async () => await sdk.Configuration.SetNetworkSettings(AnAddressChange),
+                Throws.TypeOf<System.Net.Http.HttpRequestException>()
+                    .With.Property(nameof(System.Net.Http.HttpRequestException.StatusCode)).EqualTo(System.Net.HttpStatusCode.Unauthorized));
+        }
+
+        private static readonly NetworkSettings AnAddressChange = new()
+        {
+            IpAddress = "10.0.0.5", Netmask = "255.0.0.0", Gateway = "10.0.0.1", HttpPort = 80, HttpsPort = 443,
+        };
 
         [TestCase("10.20.30.40", "255.254.253.252")]
         [TestCase("1.1.1.1", null)]
@@ -67,7 +101,7 @@ namespace Ihc.Tests
             };
             using var sdk = StubbedSdk.Start();
 
-            await sdk.Configuration.SetWLanSettings(wlan);
+            Assert.That(await sdk.Configuration.SetWLanSettings(wlan), Is.True, "the stub's reply flag");
 
             Assert.That(await sdk.Configuration.GetWLanSettings(), Is.EqualTo(wlan));
             Assert.That(sdk.Stub.Journal.Calls<IConfigurationService>(nameof(IConfigurationService.SetWLanSettings)).Single().Payload,
@@ -87,6 +121,7 @@ namespace Ihc.Tests
                 Ssl = true,
                 SendLowBatteryNotification = true,
                 SendLowBatteryNotificationRecipient = "stub@stub.invalid",
+                SendLEDDimmerErrorNotification = true,
             };
             using var sdk = StubbedSdk.Start();
 
@@ -102,7 +137,7 @@ namespace Ihc.Tests
         {
             var mail = new EmailControlSettings
             {
-                ServerIpAddress = "pop.stub.invalid",
+                ServerAddress = "pop.stub.invalid",
                 ServerPortNumber = 995,
                 Pop3Username = "stub",
                 Pop3Password = "stub-only",
@@ -113,11 +148,24 @@ namespace Ihc.Tests
             };
             using var sdk = StubbedSdk.Start();
 
-            await sdk.Configuration.SetEmailControlSettings(mail);
+            Assert.That(await sdk.Configuration.SetEmailControlSettings(mail), Is.True);
 
             Assert.That(await sdk.Configuration.GetEmailControlSettings(), Is.EqualTo(mail));
             Assert.That(sdk.Stub.Journal.Calls<IConfigurationService>(nameof(IConfigurationService.SetEmailControlSettings)).Single().Payload,
                 Is.EqualTo(mail with { Pop3Password = null }));
+        }
+
+        /// <summary>A controller arranged to decline the POP3 settings answers false, and keeps the settings it had.</summary>
+        [Test]
+        public async Task EmailControlSettings_Declined_AnswerFalse_AndKeepTheSettings()
+        {
+            var stub = new ControllerStub();
+            EmailControlSettings? before = stub.Configuration.EmailControlSettings;
+            stub.Configuration.EmailControlSettingsAccepted = false;
+            using var sdk = StubbedSdk.Start(stub);
+
+            Assert.That(await sdk.Configuration.SetEmailControlSettings(new EmailControlSettings { ServerAddress = "pop.stub.invalid", ServerPortNumber = 110 }), Is.False);
+            Assert.That(await sdk.Configuration.GetEmailControlSettings(), Is.EqualTo(before));
         }
 
         /// <summary>Every flag the opposite of the default, so a mapper that swapped two flags or read one twice
@@ -225,6 +273,21 @@ namespace Ihc.Tests
             Assert.That(await sdk.Configuration.GetSMTPSettings(), Is.Null);
             Assert.That(await sdk.Configuration.GetEmailControlSettings(), Is.Null);
             Assert.That(await sdk.Configuration.GetWebAccessControl(), Is.Null);
+            Assert.That(await sdk.Configuration.GetDNSServers(), Is.EqualTo(new DNSServers()));
+        }
+
+        /// <summary>
+        /// A 3.3.44 controller answers an empty list as one nil <c>arrayItem</c>, and the DNS list's item is nillable,
+        /// so that is how a controller with no DNS server would answer (no capture holds an empty DNS reply). Through
+        /// the whole SDK it reads as no servers.
+        /// </summary>
+        [Test]
+        public async Task ADnsReplyOfOneNilItem_ReadsAsNoServers()
+        {
+            var stub = new ControllerStub();
+            stub.OverrideRaw("ConfigurationService", "getDNSServers", (_, _) => StubExchanges.ControllerReply("getDNSServers1", StubExchanges.OneNilItem));
+            using var sdk = StubbedSdk.Start(stub);
+
             Assert.That(await sdk.Configuration.GetDNSServers(), Is.EqualTo(new DNSServers()));
         }
     }

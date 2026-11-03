@@ -1865,6 +1865,8 @@ namespace Ihc.Soap.Configuration
         
         private string sendLowBatteryNotificationRecepientField;
         
+        private bool sendLEDDimmerErrorNotificationField;
+        
         /// <remarks/>
         [System.Xml.Serialization.XmlElementAttribute(Order=0)]
         public string hostname
@@ -1960,6 +1962,20 @@ namespace Ihc.Soap.Configuration
             set
             {
                 this.sendLowBatteryNotificationRecepientField = value;
+            }
+        }
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlElementAttribute(Order=7)]
+        public bool sendLEDDimmerErrorNotification
+        {
+            get
+            {
+                return this.sendLEDDimmerErrorNotificationField;
+            }
+            set
+            {
+                this.sendLEDDimmerErrorNotificationField = value;
             }
         }
     }

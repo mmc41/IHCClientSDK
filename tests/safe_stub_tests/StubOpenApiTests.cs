@@ -43,6 +43,53 @@ namespace Ihc.Tests
                 Is.EqualTo(new[] { 23386 }), "the other API's wait still reports the change");
         }
 
+        /// <summary>A read of no resources answered in the controller's empty-list form, one nil <c>arrayItem</c>,
+        /// is an empty list through the whole SDK.</summary>
+        [Test]
+        public async Task AValueReadOfNoResources_AnsweredByOneNilItem_IsEmpty()
+        {
+            var stub = new ControllerStub();
+            stub.OverrideRaw("OpenAPIService", "getValues", (_, _) => StubExchanges.ControllerReply("getValues2", StubExchanges.OneNilItem));
+            using var sdk = StubbedSdk.Start(stub);
+
+            Assert.That(await sdk.OpenApi.GetValues([]), Is.Empty);
+        }
+
+        /// <summary>
+        /// A controller with no dataline resource of a kind answers its id list as one nil <c>arrayItem</c>, the form
+        /// a 3.3.44 controller gives every empty list. Through the whole SDK both id lists read as empty.
+        /// </summary>
+        [TestCase("getDatalineInputIDs", "getDatalineInputIDs1", false)]
+        [TestCase("getDatalineOutputIDs", "getDatalineOutputIDs1", true)]
+        public async Task ADatalineIdListOfOneNilItem_ReadsAsEmpty(string action, string element, bool outputs)
+        {
+            var stub = new ControllerStub();
+            stub.OverrideRaw("OpenAPIService", action, (_, _) => StubExchanges.ControllerReply(element, StubExchanges.OneNilItem));
+            using var sdk = StubbedSdk.Start(stub);
+
+            IReadOnlyList<int> ids = outputs ? await sdk.OpenApi.GetDatalineOutputIDs() : await sdk.OpenApi.GetDatalineInputIDs();
+
+            Assert.That(ids, Is.Empty);
+        }
+
+        /// <summary>
+        /// An event package whose event list is the controller's empty-list form, one nil <c>arrayItem</c>, reads
+        /// through the whole SDK as no events, its flags as sent.
+        /// </summary>
+        [Test]
+        public async Task AnEventListOfOneNilItem_ReadsAsNoEvents()
+        {
+            var stub = new ControllerStub();
+            stub.OverrideRaw("OpenAPIService", "waitForEvents", (_, _) => StubExchanges.ControllerReply("waitForEvents2",
+                $"<ns1:resourceValueEvents>{StubExchanges.OneNilItem}</ns1:resourceValueEvents>" +
+                "<ns1:controllerExecutionRunning>true</ns1:controllerExecutionRunning><ns1:subscriptionAmount>1</ns1:subscriptionAmount>"));
+            using var sdk = StubbedSdk.Start(stub);
+
+            EventPackage events = await sdk.OpenApi.WaitForEvents(1);
+
+            Assert.That((events.ResourceValueEvents.Length, events.ControllerExecutionRunning, events.SubscriptionAmount), Is.EqualTo((0, true, 1)));
+        }
+
         /// <summary>An idle event wait holds for the client's timeout capped at one second, as every long poll does,
         /// so a change stream over the stub waits instead of spinning.</summary>
         [Test]
@@ -119,16 +166,14 @@ namespace Ihc.Tests
             Assert.That(await sdk.OpenApi.GetIHCProjectSegmentationSize(), Is.EqualTo(Size));
             int count = await sdk.OpenApi.GetIHCProjectNumberOfSegments();
             Assert.That(count, Is.EqualTo(await sdk.Controller.GetIHCProjectNumberOfSegments()).And.GreaterThan(1));
-            var controllerWire = new ControllerAnswers(stub.Controller);
-            var decoded = new StringBuilder();
+            var slices = new byte[count][];
             for (int index = 0; index < count; index++)
             {
-                outputMessageName15 served = await controllerWire.getIHCProjectSegmentAsync(new inputMessageName15 { getIHCProjectSegment1 = index });
-                Assert.That((await sdk.OpenApi.GetIHCProjectSegment(index, 1, 0)).Data, Is.EqualTo(served.getIHCProjectSegment4.data), $"segment {index}");
-                decoded.Append((await sdk.Controller.GetIHCProjectSegment(index, 1, 0))!.Data);
+                slices[index] = (await sdk.OpenApi.GetIHCProjectSegment(index, 1, 0)).Data;
+                Assert.That(slices[index], Is.EqualTo((await sdk.Controller.GetIHCProjectSegment(index, 1, 0)).Data), $"segment {index}");
             }
-            Assert.That(ProjectFile.Encoding.GetBytes(decoded.ToString()), Is.EqualTo(ProjectFile.Encoding.GetBytes(Uploaded.Data)),
-                "the segments OpenAPI serves decode, through the SDK, to the stored project");
+            Assert.That(ProjectFile.Encoding.GetBytes(ProjectGzipText.Decompress(slices)), Is.EqualTo(ProjectFile.Encoding.GetBytes(Uploaded.Data)),
+                "the segments both services serve join and decode to the stored project");
         }
 
         /// <summary>OpenAPI hands the segment's bytes to its caller as they arrive, so they must be exactly the bytes

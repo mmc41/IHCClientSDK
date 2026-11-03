@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Ihc
 {
     /// <summary>
@@ -6,21 +8,28 @@ namespace Ihc
     public record SmsModemSettings
     {
         /// <summary>
-        /// SMS text sent when the modem starts up on power-up; at most 60 characters.
+        /// SMS text sent when the modem starts up on power-up; at most 60 characters by the vendor clients, which the
+        /// SDK does not enforce because a controller may hold a longer text that IHC Administrator itself resends.
         /// </summary>
         public string? PowerupMessage { get; init; }
 
         /// <summary>
-        /// SMS text sent at a power failure; at most 60 characters.
+        /// SMS text sent at a power failure; at most 60 characters by the vendor clients, which the SDK does not
+        /// enforce, as for <see cref="PowerupMessage"/>.
         /// </summary>
         public string? PowerdownMessage { get; init; }
 
         /// <summary>
-        /// Not a phone number, despite its name: a mask of 30 characters <c>0</c> or <c>1</c>, one per slot of the
-        /// modem's phone list in the project (the first for slot 1). A <c>1</c> marks a slot that receives the
-        /// power-up, power-down and forwarded texts.
+        /// The recipient slots: a mask of 30 characters <c>0</c> or <c>1</c>, one per slot of the modem's phone list
+        /// in the project (the first for slot 1). A <c>1</c> marks a slot that receives the power-up, power-down and
+        /// forwarded texts. A write refuses any other mask, since IHC Administrator builds exactly 30 and ignores any
+        /// other length on read; <c>null</c> sends none. The wire calls it <c>powerdownNumber</c>, though it is no
+        /// phone number.
         /// </summary>
-        public string? PowerdownNumber { get; init; }
+        // The length is its own rule because a regular expression attribute passes an empty string unchecked.
+        [StringLength(30, MinimumLength = 30, ErrorMessage = "RecipientSlots must be 30 characters.")]
+        [RegularExpression("^[01]*$", ErrorMessage = "RecipientSlots must hold only the characters 0 and 1.")]
+        public string? RecipientSlots { get; init; }
 
         /// <summary>
         /// Indicates whether an SMS refused for its unauthorized sender is forwarded to the recipient; such messages
@@ -51,7 +60,7 @@ namespace Ihc
 
         public override string ToString()
         {
-            return $"SmsModemSettings(PowerupMessage={PowerupMessage}, PowerdownMessage={PowerdownMessage}, PowerdownNumber={PowerdownNumber}, RelaySMS={RelaySMS}, ForceStandAloneMode={ForceStandAloneMode}, SendLowBatteryNotification={SendLowBatteryNotification}, SendLowBatteryNotificationLanguage={SendLowBatteryNotificationLanguage}, SendLEDDimmerErrorNotification={SendLEDDimmerErrorNotification})";
+            return $"SmsModemSettings(PowerupMessage={PowerupMessage}, PowerdownMessage={PowerdownMessage}, RecipientSlots={RecipientSlots}, RelaySMS={RelaySMS}, ForceStandAloneMode={ForceStandAloneMode}, SendLowBatteryNotification={SendLowBatteryNotification}, SendLowBatteryNotificationLanguage={SendLowBatteryNotificationLanguage}, SendLEDDimmerErrorNotification={SendLEDDimmerErrorNotification})";
         }
     }
 

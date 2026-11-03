@@ -38,12 +38,12 @@ namespace Ihc.Tests
                 new Ri.WSBooleanValue { value = true });
 
             yield return new(ResourceValue.ValueKind.INT,
-                new Api.WSIntegerValue { integer = 4711 },
-                new Ri.WSIntegerValue { integer = 4711 });
+                new Api.WSIntegerValue { integer = 4711, minimumValue = -100, maximumValue = 10000 },
+                new Ri.WSIntegerValue { integer = 4711, minimumValue = -100, maximumValue = 10000 });
 
             yield return new(ResourceValue.ValueKind.DOUBLE,
-                new Api.WSFloatingPointValue { floatingPointValue = 21.5 },
-                new Ri.WSFloatingPointValue { floatingPointValue = 21.5 });
+                new Api.WSFloatingPointValue { floatingPointValue = 21.5, minimumValue = -40.0, maximumValue = 85.5 },
+                new Ri.WSFloatingPointValue { floatingPointValue = 21.5, minimumValue = -40.0, maximumValue = 85.5 });
 
             yield return new(ResourceValue.ValueKind.ENUM,
                 new Api.WSEnumValue { definitionTypeID = 11, enumValueID = 22, enumName = "Aften" },
@@ -274,6 +274,134 @@ namespace Ihc.Tests
                     "the two mappers must still write the same components for a representable span");
             });
         }
+
+        /// <summary>
+        /// The controller sends an INT or DOUBLE value with its range, and IHC Visual writes that range back with the
+        /// value; both mappers keep it on the value and write it back.
+        /// </summary>
+        [Test]
+        public void TheRangeAnIntOrDoubleArrivesWith_IsKept_AndWrittenBack()
+        {
+            ResourceValue.UnionValue openApiInt = ViaOpenApi(new Api.WSIntegerValue { integer = 7, minimumValue = 1, maximumValue = 10 });
+            ResourceValue.UnionValue twinDouble = ViaTwin(new Ri.WSFloatingPointValue { floatingPointValue = 21.5, minimumValue = -40, maximumValue = 85.5 });
+
+            var openApiWire = (Api.WSIntegerValue)OpenApiResourceValueMapper.ToWire(Addressed(openApiInt));
+            var twinWire = (Ri.WSFloatingPointValue)ResourceValueEnvelopeMapper.ToWire(Addressed(twinDouble))!.value!;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That((openApiInt.IntMinimum, openApiInt.IntMaximum), Is.EqualTo(((int?)1, (int?)10)));
+                Assert.That((twinDouble.DoubleMinimum, twinDouble.DoubleMaximum), Is.EqualTo(((double?)-40, (double?)85.5)));
+                Assert.That((openApiWire.minimumValue, openApiWire.maximumValue), Is.EqualTo((1, 10)));
+                Assert.That((twinWire.minimumValue, twinWire.maximumValue), Is.EqualTo((-40.0, 85.5)));
+            });
+        }
+
+        /// <summary>
+        /// A value carrying no range is written with 0 as both bounds, the wire form the SDK has always sent, and a
+        /// 0/0 range reads back as none: it is that form, not a range admitting only 0.
+        /// </summary>
+        [Test]
+        public void NoRange_IsWrittenAsZeroZero_AndZeroZeroReadsAsNoRange()
+        {
+            var unranged = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.INT, IntValue = 7 };
+
+            var openApiWire = (Api.WSIntegerValue)OpenApiResourceValueMapper.ToWire(Addressed(unranged));
+            var twinWire = (Ri.WSIntegerValue)ResourceValueEnvelopeMapper.ToWire(Addressed(unranged))!.value!;
+            ResourceValue.UnionValue openApiBack = ViaOpenApi(openApiWire);
+            ResourceValue.UnionValue twinBack = ViaTwin(new Ri.WSFloatingPointValue { floatingPointValue = 1.5 });
+
+            Assert.Multiple(() =>
+            {
+                Assert.That((openApiWire.minimumValue, openApiWire.maximumValue), Is.EqualTo((0, 0)));
+                Assert.That((twinWire.minimumValue, twinWire.maximumValue), Is.EqualTo((0, 0)));
+                Assert.That(openApiBack, Is.EqualTo(unranged));
+                Assert.That((twinBack.DoubleMinimum, twinBack.DoubleMaximum), Is.EqualTo(((double?)null, (double?)null)));
+            });
+        }
+
+        private static ResourceValue Addressed(ResourceValue.UnionValue value) => new() { ResourceID = 42, Value = value };
+
+        /// <summary>
+        /// The values the vendor editors refuse are refused by both mappers alike, naming the field: a weekday
+        /// outside 0 (Monday) to 6, a scene dimmer percentage outside 0-100 or a ramp over 3,600,000 ms, resource
+        /// id 0, the <c>.vis</c> null reference that IHC Visual never allocates, and an INT or DOUBLE outside the
+        /// range it carries, as ServiceView refuses one outside the range it was given.
+        /// </summary>
+        [TestCaseSource(nameof(StaticallyRefused))]
+        public void AValueTheVendorEditorsRefuse_IsRefusedTheSameWayByBothMappers(ResourceValue value, string named)
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(() => ResourceValueEnvelopeMapper.ToWire(value), Throws.ArgumentException.With.Message.Contains(named));
+                Assert.That(() => OpenApiResourceValueMapper.ToWire(value), Throws.ArgumentException.With.Message.Contains(named));
+            });
+        }
+
+        /// <summary>The edges of each rule still map in both mappers, so the refusal narrowed nothing writable.</summary>
+        [TestCaseSource(nameof(StaticallyWritable))]
+        public void AValueAtTheEdgeOfARule_StillMapsThroughBothMappers(ResourceValue value)
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.That(() => ResourceValueEnvelopeMapper.ToWire(value), Throws.Nothing);
+                Assert.That(() => OpenApiResourceValueMapper.ToWire(value), Throws.Nothing);
+            });
+        }
+
+        private static ResourceValue Weekday(int day, int id = 42) => new()
+        {
+            ResourceID = id,
+            Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.WEEKDAY, WeekdayValue = day }
+        };
+
+        private static ResourceValue SceneDimmer(int percentage, int ramp) => new()
+        {
+            ResourceID = 42,
+            Value = new ResourceValue.UnionValue
+            {
+                ValueKind = ResourceValue.ValueKind.SceneDimmer, DimmerPercentage = percentage, DimmerDelayTime = 0, DimmerRampTime = ramp,
+            }
+        };
+
+        private static IEnumerable<TestCaseData> StaticallyRefused() =>
+        [
+            new TestCaseData(Weekday(-1), nameof(ResourceValue.UnionValue.WeekdayValue)).SetName("{m}(weekday -1)"),
+            new TestCaseData(Weekday(7), nameof(ResourceValue.UnionValue.WeekdayValue)).SetName("{m}(weekday 7)"),
+            new TestCaseData(SceneDimmer(-1, 0), nameof(ResourceValue.UnionValue.DimmerPercentage)).SetName("{m}(percentage -1)"),
+            new TestCaseData(SceneDimmer(101, 0), nameof(ResourceValue.UnionValue.DimmerPercentage)).SetName("{m}(percentage 101)"),
+            new TestCaseData(SceneDimmer(50, 3_600_001), nameof(ResourceValue.UnionValue.DimmerRampTime)).SetName("{m}(ramp 3600001)"),
+            new TestCaseData(Weekday(3, id: 0), nameof(ResourceValue.ResourceID)).SetName("{m}(resource id 0)"),
+            new TestCaseData(Int(101, 0, 100), nameof(ResourceValue.UnionValue.IntValue)).SetName("{m}(INT over its maximum)"),
+            new TestCaseData(Int(-1, 0, 100), nameof(ResourceValue.UnionValue.IntValue)).SetName("{m}(INT under its minimum)"),
+            new TestCaseData(Double(85.6, -40, 85.5), nameof(ResourceValue.UnionValue.DoubleValue)).SetName("{m}(DOUBLE over its maximum)"),
+            new TestCaseData(Double(-40.1, -40, 85.5), nameof(ResourceValue.UnionValue.DoubleValue)).SetName("{m}(DOUBLE under its minimum)"),
+        ];
+
+        private static ResourceValue Int(int value, int? minimum, int? maximum) => new()
+        {
+            ResourceID = 42,
+            Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.INT, IntValue = value, IntMinimum = minimum, IntMaximum = maximum }
+        };
+
+        private static ResourceValue Double(double value, double? minimum, double? maximum) => new()
+        {
+            ResourceID = 42,
+            Value = new ResourceValue.UnionValue { ValueKind = ResourceValue.ValueKind.DOUBLE, DoubleValue = value, DoubleMinimum = minimum, DoubleMaximum = maximum }
+        };
+
+        private static IEnumerable<TestCaseData> StaticallyWritable() =>
+        [
+            new TestCaseData(Weekday(0)).SetName("{m}(weekday 0)"),
+            new TestCaseData(Weekday(6)).SetName("{m}(weekday 6)"),
+            new TestCaseData(SceneDimmer(0, 0)).SetName("{m}(percentage 0)"),
+            new TestCaseData(SceneDimmer(100, 3_600_000)).SetName("{m}(percentage 100, ramp 3600000)"),
+            new TestCaseData(Int(0, 0, 100)).SetName("{m}(INT at its minimum)"),
+            new TestCaseData(Int(100, 0, 100)).SetName("{m}(INT at its maximum)"),
+            new TestCaseData(Int(int.MaxValue, null, null)).SetName("{m}(INT with no range)"),
+            new TestCaseData(Double(-40, -40, 85.5)).SetName("{m}(DOUBLE at its minimum)"),
+            new TestCaseData(Double(85.5, -40, 85.5)).SetName("{m}(DOUBLE at its maximum)"),
+        ];
 
         private static ResourceValue TimeValue(TimeSpan span) => new()
         {

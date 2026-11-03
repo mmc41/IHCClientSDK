@@ -85,13 +85,13 @@ namespace Ihc.Tests
         [Test]
         public void DefaultFilter_ExposesOperationWithGenericCollectionParameter()
         {
-            // US-A1: DisableInitialValueNotifactions(IReadOnlyList<int>) and the other 8 IReadOnlyList<int>
+            // US-A1: DisableInitialValueNotifications(IReadOnlyList<int>) and the other 8 IReadOnlyList<int>
             // operations are now rendered by the generalized ArrayParameterStrategy, so the filter must expose them.
             var fake = A.Fake<IResourceInteractionService>();
             var filter = OperationFilterConfiguration.CreateDefaultFilter();
 
             var operation = ServiceMetadata.GetOperations(fake)
-                .Single(o => o.Name == nameof(IResourceInteractionService.DisableInitialValueNotifactions));
+                .Single(o => o.Name == nameof(IResourceInteractionService.DisableInitialValueNotifications));
 
             Assert.That(filter(operation), Is.True,
                 "Operations whose parameter is a generic collection of a supported element (IReadOnlyList<int>) " +

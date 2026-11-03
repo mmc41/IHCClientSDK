@@ -25,7 +25,8 @@ namespace Ihc.Tests
                 Is.EqualTo(("LK", "3.3.44", new DateTimeOffset(2021, 6, 23, 10, 0, 0, TimeSpan.Zero))));
             Assert.That(await sdk.Configuration.GetWLanInterface(), Is.EqualTo(new WLanInterface { Name = "wlan0", Ssid = "", Quality = "" }));
             Assert.That(await sdk.Configuration.GetWLanScan(), Is.EqualTo(sdk.Stub.Configuration.WLanScan));
-            Assert.That(await sdk.Configuration.TestSendMessage("stub@stub.invalid", "Emne", "Tekst"), Is.False,
+            Assert.That(await sdk.Configuration.TestSendMessage(sdk.Stub.Configuration.SMTPSettings!, "stub@stub.invalid", "Emne", "Tekst"),
+                Is.EqualTo(new NotificationSendResult { AttemptFailedDueToNetworkProblems = true }),
                 "the captured attempt failed on the network");
         }
 
@@ -63,11 +64,32 @@ namespace Ihc.Tests
             stub.Configuration.UserLog = ["30-10-2026 14:04 Login: stub", "30-10-2026 14:05 Æblegrød øl å"];
             using var sdk = StubbedSdk.Start(stub);
 
-            Assert.That(await sdk.Configuration.GetUserLog("da"), Is.EqualTo(stub.Configuration.UserLog));
+            Assert.That((await sdk.Configuration.GetUserLog("da")).Lines, Is.EqualTo(stub.Configuration.UserLog));
             await sdk.Configuration.ClearUserLog();
 
             Assert.That(stub.Configuration.UserLog, Is.Empty);
-            Assert.That(string.Concat(await sdk.Configuration.GetUserLog("da")), Is.Empty, "the log the SDK reads has no entries");
+            Assert.That(string.Concat((await sdk.Configuration.GetUserLog("da")).Lines), Is.Empty, "the log the SDK reads has no entries");
+        }
+
+        /// <summary>The cursor a read sends reaches the controller, and the cursor arranged for the reply comes back
+        /// as the next one.</summary>
+        [Test]
+        public async Task TheUserLogCursor_IsSent_AndTheArrangedNextOneReturned()
+        {
+            var stub = new ControllerStub();
+            stub.Configuration.UserLog = ["30-10-2026 14:04 Login: stub"];
+            stub.Configuration.UserLogCursor = "userlog.42";
+            using var sdk = StubbedSdk.Start(stub);
+
+            UserLogFileText log = await sdk.Configuration.GetUserLog("da", "userlog.41");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(log.FileName, Is.EqualTo("userlog.42"));
+                Assert.That(log.Lines, Is.EqualTo(stub.Configuration.UserLog));
+                Assert.That(sdk.Stub.Journal.Calls<IConfigurationService>(nameof(IConfigurationService.GetUserLog)).Single().Payload,
+                    Is.EqualTo("userlog.41"));
+            });
         }
 
         [Test]
@@ -105,13 +127,22 @@ namespace Ihc.Tests
         {
             var stub = new ControllerStub();
             stub.Configuration.TestSendSucceeds = true;
+            var smtp = new SMTPSettings { Hostname = "smtp.stub.invalid", Hostport = 587, Username = "stub", Password = "stub-only", Ssl = true };
             using var sdk = StubbedSdk.Start(stub);
 
-            Assert.That(await sdk.Configuration.TestSendMessage("stub@stub.invalid", "Emne", "Tekst"), Is.True);
+            Assert.That(await sdk.Configuration.TestSendMessage(smtp, "stub@stub.invalid", "Emne", "Tekst"),
+                Is.EqualTo(new NotificationSendResult { AttemptSucceeded = true }));
 
             StubCall call = sdk.Stub.Journal.Calls<IConfigurationService>(nameof(IConfigurationService.TestSendMessage)).Single();
-            Assert.That(call.SoapAction, Is.EqualTo("testSendMessage1"));
-            Assert.That(call.Payload, Is.EqualTo(new NotificationMessage { Recipient = "stub@stub.invalid", Subject = "Emne", Body = "Tekst" }));
+            Assert.That(call.SoapAction, Is.EqualTo("testSendMessage"));
+            Assert.That(call.Payload, Is.EqualTo(new StubTestMail(
+                new NotificationMessage
+                {
+                    NotificationType = "text.notification.email_type", Recipient = "stub@stub.invalid",
+                    Sender = "LK IHC® controller<stub>", Subject = "Emne", Body = "Tekst", Delivered = false,
+                },
+                smtp with { Password = null })), "the account is journalled without its password");
+            Assert.That(stub.Configuration.SMTPSettings, Is.Not.EqualTo(smtp), "a test stores nothing");
         }
 
         [Test]
@@ -125,22 +156,33 @@ namespace Ihc.Tests
                 Is.EqualTo(new object[] { 1000 }));
         }
 
+        /// <summary>The settings to test reach the controller and the arranged status comes back, while the stored
+        /// settings stay as they were.</summary>
         [Test]
-        public async Task TestingTheSettingsNow_AnswersTyped()
+        public async Task TestingTheSettingsNow_SendsThem_AndAnswersTheArrangedStatus()
         {
-            using var sdk = StubbedSdk.Start();
+            var stub = new ControllerStub();
+            stub.Configuration.EmailControlTestStatus = new EmailControlConnectionStatus { AttemptFailedDueToAuthentication = true };
+            var tested = new EmailControlSettings
+            {
+                ServerAddress = "pop3.stub.invalid", ServerPortNumber = 995, Pop3Username = "stub", Pop3Password = "stub-only",
+                EmailAddress = "stub@stub.invalid", PollInterval = 60, RemoveEmailsAfterUsage = false, Ssl = true,
+            };
+            using var sdk = StubbedSdk.Start(stub);
 
-            await sdk.Configuration.TestSettingsNow();
+            Assert.That(await sdk.Configuration.TestSettingsNow(tested), Is.EqualTo(stub.Configuration.EmailControlTestStatus));
 
-            Assert.That(sdk.Stub.Journal.Calls<IConfigurationService>(nameof(IConfigurationService.TestSettingsNow)).Single().Outcome,
-                Is.EqualTo(StubOutcome.Typed));
+            StubCall call = sdk.Stub.Journal.Calls<IConfigurationService>(nameof(IConfigurationService.TestSettingsNow)).Single();
+            Assert.That((call.Outcome, call.Payload), Is.EqualTo((StubOutcome.Typed, (object?)(tested with { Pop3Password = null }))),
+                "the tested settings are journalled without their password");
+            Assert.That(stub.Configuration.EmailControlSettings, Is.Not.EqualTo(tested), "a test stores nothing");
         }
 
         [Test]
-        public void TheTestSendMessageOverload_StaysAShapeRow()
+        public void TheUnsentTestSendMessageOverload_StaysAShapeRow()
         {
-            Assert.That(SdkOperations.Find("ConfigurationService", "testSendMessage")!.AnswerKind, Is.EqualTo(StubAnswerKind.Shape));
-            Assert.That(SdkOperations.Find("ConfigurationService", "testSendMessage1")!.AnswerKind, Is.EqualTo(StubAnswerKind.Typed));
+            Assert.That(SdkOperations.Find("ConfigurationService", "testSendMessage")!.AnswerKind, Is.EqualTo(StubAnswerKind.Typed));
+            Assert.That(SdkOperations.Find("ConfigurationService", "testSendMessage1")!.AnswerKind, Is.EqualTo(StubAnswerKind.Shape));
         }
 
         [Test]

@@ -49,4 +49,41 @@ namespace Ihc
             return $"NotificationMessage(Date={Date}, NotificationType={NotificationType}, Recipient={Recipient}, Sender={Sender}, Subject={Subject}, Body={Body}, Delivered={Delivered})";
         }
     }
+
+    /// <summary>
+    /// The outcome of a test mail: whether the controller sent it, or which failure stopped it, as the controller
+    /// reports it.
+    /// </summary>
+    public record NotificationSendResult
+    {
+        /// <summary>The controller handed the mail to the SMTP server.</summary>
+        public bool AttemptSucceeded { get; init; }
+
+        /// <summary>The SMTP server refused the user name or password.</summary>
+        public bool AttemptFailedDueToAuthentication { get; init; }
+
+        /// <summary>The SMTP server could not be reached.</summary>
+        public bool AttemptFailedDueToNetworkProblems { get; init; }
+
+        /// <summary>The SMTP settings could not be used.</summary>
+        public bool AttemptFailedDueToInvalidSettings { get; init; }
+
+        /// <summary>The controller failed internally.</summary>
+        public bool AttemptFailedDueToInternalErrors { get; init; }
+
+        /// <summary>The connection to the SMTP server timed out.</summary>
+        public bool AttemptFailedDueToConnectTimeout { get; init; }
+
+        /// <summary>The SMTP server refused the connection. The wire spells it <c>attempFailedDueToConnectionRefused</c>.</summary>
+        public bool AttemptFailedDueToConnectionRefused { get; init; }
+
+        /// <summary>Reading from or writing to the SMTP server timed out. The wire spells it
+        /// <c>attempFailedDueToIOTimeout</c>.</summary>
+        public bool AttemptFailedDueToIOTimeout { get; init; }
+
+        public override string ToString()
+        {
+            return $"NotificationSendResult(AttemptSucceeded={AttemptSucceeded}, AttemptFailedDueToAuthentication={AttemptFailedDueToAuthentication}, AttemptFailedDueToNetworkProblems={AttemptFailedDueToNetworkProblems}, AttemptFailedDueToInvalidSettings={AttemptFailedDueToInvalidSettings}, AttemptFailedDueToInternalErrors={AttemptFailedDueToInternalErrors}, AttemptFailedDueToConnectTimeout={AttemptFailedDueToConnectTimeout}, AttemptFailedDueToConnectionRefused={AttemptFailedDueToConnectionRefused}, AttemptFailedDueToIOTimeout={AttemptFailedDueToIOTimeout})";
+        }
+    }
 }        

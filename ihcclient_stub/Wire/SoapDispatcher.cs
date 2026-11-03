@@ -21,7 +21,7 @@ namespace Ihc.Stubbing
     /// <remarks>
     /// The operation is found by the wire action the SDK posts, never by the WSDL's declared action, which two
     /// generated overloads share. An operation whose answer cannot be built is unmodelled: it answers a SOAP fault
-    /// naming the operation, because the SDK raises on the status before it reads the body.
+    /// naming the operation, which the SDK raises as <see cref="Errors.CONTROLLER_SOAP_FAULT"/> with that text.
     /// </remarks>
     internal sealed class SoapDispatcher
     {

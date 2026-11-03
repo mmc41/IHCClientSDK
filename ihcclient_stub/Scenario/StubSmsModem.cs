@@ -1,8 +1,9 @@
 namespace Ihc.Stubbing
 {
     /// <summary>
-    /// The SMS modem's information, settings and status. The defaults are a real controller's answers, with its
-    /// mobile number replaced.
+    /// The SMS modem's information, settings and status. The information and status defaults are a real
+    /// controller's answers, with its mobile number replaced; no capture holds a settings answer, so the settings
+    /// default is a stand-in.
     /// </summary>
     public sealed class StubSmsModem
     {
@@ -33,7 +34,8 @@ namespace Ihc.Stubbing
             IMEINumber = "000000000000000",
         };
 
-        /// <summary>The settings a get answers and a set replaces.</summary>
+        /// <summary>The settings a get answers and a set replaces. The default is a stand-in, not a captured answer:
+        /// the vendor clients' logs name the settings read only in WSDL text.</summary>
         public SmsModemSettings Settings
         {
             get => Gated.Read(_gate, ref field);
@@ -46,7 +48,7 @@ namespace Ihc.Stubbing
         {
             PowerupMessage = "",
             PowerdownMessage = "",
-            PowerdownNumber = "000000000000000000000000000000",
+            RecipientSlots = "000000000000000000000000000000",
             RelaySMS = false,
             ForceStandAloneMode = false,
             SendLowBatteryNotification = false,
